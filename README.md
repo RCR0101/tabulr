@@ -2,28 +2,28 @@
 
 A Flutter desktop application for creating and managing academic timetables with automatic clash detection.
 
-🌙 **Dark Theme** | 🤖 **AI-Powered Timetable Generator** | 📊 **Excel Integration** | 🚀 **Cross-Platform**
+**Dark Theme** | **Timetable Generator** | **Excel Integration** | **Cross-Platform**
 
 ## Features
 
-- **📚 Excel Integration**: Import course data from XLSX files with 380+ courses
-- **🎨 Modern Dark Theme**: Professional dark UI with clean design
-- **🤖 AI Timetable Generator**: Generate multiple timetable options with constraints:
+- **Excel Integration**: Import course data from XLSX files with 380+ courses
+- **Modern Dark Theme**: Professional dark UI with clean design
+- **Timetable Generator**: Generate multiple timetable options with constraints:
   - Avoid specific instructors or time slots
   - Set max hours per day
   - Prefer certain instructors
   - Multiple MidSem time slots (9:30-11AM, 11:30-1PM, 1:30-3PM, 3:30-5PM)
-- **⚠️ Smart Clash Detection**: Automatically detects conflicts between:
+- **⚠Smart Clash Detection**: Automatically detects conflicts between:
   - Regular class timings
   - MidSem and EndSem exam schedules
   - Multiple MidSem time slots
-- **📊 Visual Timetable**: Clean grid view with gradient-filled time slots
-- **📅 Export Options**: 
+- **Visual Timetable**: Clean grid view with gradient-filled time slots
+- **Export Options**: 
   - ICS calendar files for calendar apps
   - PNG images with custom save locations
-- **🔍 Advanced Search & Filtering**: Filter by course code, instructor, credits, days, exam dates
-- **📋 Exam Schedule View**: Separate tab showing all exam dates and times
-- **💾 Data Persistence**: Saves your timetable data locally
+- **Advanced Search & Filtering**: Filter by course code, instructor, credits, days, exam dates
+- **Exam Schedule View**: Separate tab showing all exam dates and times
+- **Data Persistence**: Saves your timetable data locally
 
 ## Installation & Setup
 
