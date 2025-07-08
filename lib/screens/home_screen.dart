@@ -390,7 +390,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: RepaintBoundary(
                           key: _timetableKey,
                           child: TimetableWidget(
-                            timetableSlots: _timetableService.generateTimetableSlots(_timetable!.selectedSections),
+                            timetableSlots: _timetableService.generateTimetableSlots(_timetable!.selectedSections, _timetable!.availableCourses),
+                            incompleteSelectionWarnings: _timetableService.getIncompleteSelectionWarnings(_timetable!.selectedSections, _timetable!.availableCourses),
                             onClear: _clearTimetable,
                             onRemoveSection: _removeSection,
                           ),

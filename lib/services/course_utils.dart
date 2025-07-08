@@ -2,17 +2,30 @@ import '../models/course.dart';
 
 class CourseUtils {
   static String getInstructorInCharge(Course course) {
+    // Check all instructors in all sections, including comma-separated ones
     for (var section in course.sections) {
-      final instructor = section.instructor.trim();
-      if (instructor.isNotEmpty && instructor == instructor.toUpperCase()) {
-        return instructor;
+      final instructorField = section.instructor.trim();
+      if (instructorField.isNotEmpty) {
+        // Split by comma in case there are multiple instructors
+        final instructors = instructorField.split(',').map((i) => i.trim()).toList();
+        
+        for (var instructor in instructors) {
+          if (instructor.isNotEmpty && instructor == instructor.toUpperCase()) {
+            return instructor;
+          }
+        }
       }
     }
     
     // If no all-caps instructor found, return the first instructor
     for (var section in course.sections) {
-      if (section.instructor.trim().isNotEmpty) {
-        return section.instructor.trim();
+      final instructorField = section.instructor.trim();
+      if (instructorField.isNotEmpty) {
+        // Return the first instructor from comma-separated list
+        final firstInstructor = instructorField.split(',').first.trim();
+        if (firstInstructor.isNotEmpty) {
+          return firstInstructor;
+        }
       }
     }
     
@@ -83,7 +96,8 @@ class CourseUtils {
     
     return courses.where((course) {
       return course.sections.any((section) =>
-          section.days.any((day) => selectedDays.contains(day)));
+          section.schedule.any((scheduleEntry) =>
+              scheduleEntry.days.any((day) => selectedDays.contains(day))));
     }).toList();
   }
 }

@@ -17,11 +17,14 @@ class ClashDetector {
     Map<String, List<SelectedSection>> dayHourMap = {};
 
     for (var selectedSection in selectedSections) {
-      for (var day in selectedSection.section.days) {
-        for (var hour in selectedSection.section.hours) {
-          String key = '${day.toString()}_$hour';
-          dayHourMap[key] ??= [];
-          dayHourMap[key]!.add(selectedSection);
+      // Use the new schedule structure that properly handles day-hour pairings
+      for (var scheduleEntry in selectedSection.section.schedule) {
+        for (var day in scheduleEntry.days) {
+          for (var hour in scheduleEntry.hours) {
+            String key = '${day.toString()}_$hour';
+            dayHourMap[key] ??= [];
+            dayHourMap[key]!.add(selectedSection);
+          }
         }
       }
     }

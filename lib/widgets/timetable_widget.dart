@@ -4,12 +4,14 @@ import '../models/timetable.dart';
 
 class TimetableWidget extends StatelessWidget {
   final List<TimetableSlot> timetableSlots;
+  final List<String> incompleteSelectionWarnings;
   final VoidCallback? onClear;
   final Function(String courseCode, String sectionId)? onRemoveSection;
 
   const TimetableWidget({
     super.key,
     required this.timetableSlots,
+    this.incompleteSelectionWarnings = const [],
     this.onClear,
     this.onRemoveSection,
   });
@@ -52,117 +54,136 @@ class TimetableWidget extends StatelessWidget {
           child: Container(
             margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFF1E1E1E),
+              color: const Color(0xFF161B22),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFF30363D),
+                width: 1,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 8,
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
               ],
             ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columnSpacing: 20,
-                horizontalMargin: 24,
-                dataRowHeight: 100,
-                headingRowHeight: 60,
-              columns: const [
-                DataColumn(
-                  label: SizedBox(
-                    width: 120,
-                    child: Text(
-                      'Time',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.white,
+            child: Scrollbar(
+              scrollbarOrientation: ScrollbarOrientation.bottom,
+              thickness: 8,
+              radius: const Radius.circular(4),
+              child: Scrollbar(
+                scrollbarOrientation: ScrollbarOrientation.right,
+                thickness: 8,
+                radius: const Radius.circular(4),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
+                  physics: const ClampingScrollPhysics(),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const ClampingScrollPhysics(),
+                    child: DataTable(
+                  columnSpacing: 20,
+                  horizontalMargin: 24,
+                  dataRowHeight: 100,
+                  headingRowHeight: 60,
+                  columns: const [
+                    DataColumn(
+                      label: SizedBox(
+                        width: 120,
+                        child: Text(
+                          'Time',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFFF0F6FC),
+                          ),
+                        ),
                       ),
+                    ),
+                    DataColumn(
+                      label: SizedBox(
+                        width: 160,
+                        child: Text(
+                          'Monday',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFFF0F6FC),
+                          ),
+                        ),
+                      ),
+                    ),
+                    DataColumn(
+                      label: SizedBox(
+                        width: 160,
+                        child: Text(
+                          'Tuesday',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFFF0F6FC),
+                          ),
+                        ),
+                      ),
+                    ),
+                    DataColumn(
+                      label: SizedBox(
+                        width: 160,
+                        child: Text(
+                          'Wednesday',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFFF0F6FC),
+                          ),
+                        ),
+                      ),
+                    ),
+                    DataColumn(
+                      label: SizedBox(
+                        width: 160,
+                        child: Text(
+                          'Thursday',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFFF0F6FC),
+                          ),
+                        ),
+                      ),
+                    ),
+                    DataColumn(
+                      label: SizedBox(
+                        width: 160,
+                        child: Text(
+                          'Friday',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFFF0F6FC),
+                          ),
+                        ),
+                      ),
+                    ),
+                    DataColumn(
+                      label: SizedBox(
+                        width: 160,
+                        child: Text(
+                          'Saturday',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFFF0F6FC),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  rows: _buildRows(context),
                     ),
                   ),
                 ),
-                DataColumn(
-                  label: SizedBox(
-                    width: 160,
-                    child: Text(
-                      'Monday',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-                DataColumn(
-                  label: SizedBox(
-                    width: 160,
-                    child: Text(
-                      'Tuesday',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-                DataColumn(
-                  label: SizedBox(
-                    width: 160,
-                    child: Text(
-                      'Wednesday',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-                DataColumn(
-                  label: SizedBox(
-                    width: 160,
-                    child: Text(
-                      'Thursday',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-                DataColumn(
-                  label: SizedBox(
-                    width: 160,
-                    child: Text(
-                      'Friday',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-                DataColumn(
-                  label: SizedBox(
-                    width: 160,
-                    child: Text(
-                      'Saturday',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              rows: _buildRows(context),
               ),
             ),
           ),
@@ -191,9 +212,9 @@ class TimetableWidget extends StatelessWidget {
               height: 80,
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.1),
+                color: const Color(0xFF21262D),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                border: Border.all(color: const Color(0xFF30363D)),
               ),
               child: Center(
                 child: Text(
@@ -201,7 +222,7 @@ class TimetableWidget extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: Colors.white,
+                    color: Color(0xFFF0F6FC),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -221,9 +242,9 @@ class TimetableWidget extends StatelessWidget {
                 height: 80,
                 margin: const EdgeInsets.all(2),
                 decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.05),
+                  color: const Color(0xFF0D1117),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                  border: Border.all(color: const Color(0xFF30363D)),
                 ),
               ),
             );
@@ -247,10 +268,11 @@ class TimetableWidget extends StatelessWidget {
       child: Tooltip(
         message: _buildTooltipContent(sameCourseSlots),
         decoration: BoxDecoration(
-          color: Colors.black87,
+          color: const Color(0xFF21262D),
           borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFF30363D)),
         ),
-        textStyle: const TextStyle(color: Colors.white, fontSize: 12),
+        textStyle: const TextStyle(color: Color(0xFFF0F6FC), fontSize: 12),
         child: Container(
           width: 160,
           height: 80,
@@ -280,7 +302,7 @@ class TimetableWidget extends StatelessWidget {
           child: Stack(
             children: [
               Padding(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(6),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,38 +312,89 @@ class TimetableWidget extends StatelessWidget {
                         slot.courseCode,
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                          color: Colors.white,
+                          fontSize: 11,
+                          color: Color(0xFFFFFFFF),
                         ),
                         overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 1),
+                    Flexible(
+                      child: Text(
+                        slot.courseTitle,
+                        style: const TextStyle(
+                          fontSize: 9,
+                          color: Color(0xFFE6EDF3),
+                          fontWeight: FontWeight.w400,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
                     Flexible(
                       child: Text(
                         slot.sectionId,
                         style: const TextStyle(
-                          fontSize: 11,
-                          color: Colors.white70,
+                          fontSize: 10,
+                          color: Color(0xFFE6EDF3),
                           fontWeight: FontWeight.w500,
                         ),
                         overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 1),
                     Flexible(
                       child: Text(
                         slot.room,
                         style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.white70,
+                          fontSize: 9,
+                          color: Color(0xFFE6EDF3),
                         ),
                         overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
                   ],
                 ),
               ),
+              // Warning icon for incomplete course selections
+              if (_hasIncompleteSelection(slot.courseCode))
+                Positioned(
+                  top: 2,
+                  left: 2,
+                  child: Tooltip(
+                    message: _getIncompleteSelectionWarning(slot.courseCode),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF21262D),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF30363D)),
+                    ),
+                    textStyle: const TextStyle(color: Color(0xFFF0F6FC), fontSize: 12),
+                    child: Container(
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.9),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 2,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.warning,
+                        size: 12,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
               if (onRemoveSection != null)
                 Positioned(
                   top: 2,
@@ -405,5 +478,18 @@ class TimetableWidget extends StatelessWidget {
     ];
     
     return colors[hash.abs() % colors.length];
+  }
+
+  bool _hasIncompleteSelection(String courseCode) {
+    return incompleteSelectionWarnings.any((warning) => warning.startsWith(courseCode));
+  }
+
+  String _getIncompleteSelectionWarning(String courseCode) {
+    final warnings = incompleteSelectionWarnings
+        .where((warning) => warning.startsWith(courseCode))
+        .toList();
+    
+    if (warnings.isEmpty) return '';
+    return warnings.join('\n');
   }
 }

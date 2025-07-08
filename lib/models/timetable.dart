@@ -114,6 +114,7 @@ class TimetableSlot {
   final DayOfWeek day;
   final List<int> hours;
   final String courseCode;
+  final String courseTitle;
   final String sectionId;
   final String instructor;
   final String room;
@@ -122,6 +123,7 @@ class TimetableSlot {
     required this.day,
     required this.hours,
     required this.courseCode,
+    required this.courseTitle,
     required this.sectionId,
     required this.instructor,
     required this.room,

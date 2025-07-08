@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/timetable.dart';
+import '../models/course.dart';
 import 'clash_detector.dart';
 import 'xlsx_parser.dart';
 
@@ -177,10 +178,23 @@ class TimetableService {
     await saveTimetable(timetable);
   }
 
-  List<TimetableSlot> generateTimetableSlots(List<SelectedSection> selectedSections) {
+  List<TimetableSlot> generateTimetableSlots(List<SelectedSection> selectedSections, List<Course> availableCourses) {
     List<TimetableSlot> slots = [];
     
     for (var selectedSection in selectedSections) {
+      // Find the course title
+      final course = availableCourses.firstWhere(
+        (c) => c.courseCode == selectedSection.courseCode,
+        orElse: () => Course(
+          courseCode: selectedSection.courseCode,
+          courseTitle: 'Unknown Course',
+          lectureCredits: 0,
+          practicalCredits: 0,
+          totalCredits: 0,
+          sections: [],
+        ),
+      );
+      
       // Use the new schedule structure to handle different hours for different days
       for (var scheduleEntry in selectedSection.section.schedule) {
         for (var day in scheduleEntry.days) {
@@ -188,6 +202,7 @@ class TimetableService {
             day: day,
             hours: scheduleEntry.hours,
             courseCode: selectedSection.courseCode,
+            courseTitle: course.courseTitle,
             sectionId: selectedSection.sectionId,
             instructor: selectedSection.section.instructor,
             room: selectedSection.section.room,
@@ -197,5 +212,46 @@ class TimetableService {
     }
     
     return slots;
+  }
+
+  // Check for incomplete course selections (missing L, P, or T sections)
+  List<String> getIncompleteSelectionWarnings(List<SelectedSection> selectedSections, List<Course> availableCourses) {
+    List<String> warnings = [];
+    
+    // Group selected sections by course code
+    Map<String, List<SelectedSection>> courseSelections = {};
+    for (var selection in selectedSections) {
+      courseSelections[selection.courseCode] ??= [];
+      courseSelections[selection.courseCode]!.add(selection);
+    }
+    
+    // Check each course for missing section types
+    for (var entry in courseSelections.entries) {
+      final courseCode = entry.key;
+      final selections = entry.value;
+      
+      // Find the course to see what sections are available
+      final course = availableCourses.firstWhere(
+        (c) => c.courseCode == courseCode,
+        orElse: () => Course(courseCode: courseCode, courseTitle: '', lectureCredits: 0, practicalCredits: 0, totalCredits: 0, sections: []),
+      );
+      
+      if (course.sections.isEmpty) continue;
+      
+      // Check what section types are available for this course
+      final availableSectionTypes = course.sections.map((s) => s.type).toSet();
+      
+      // Check what section types are selected
+      final selectedSectionTypes = selections.map((s) => s.section.type).toSet();
+      
+      // Find missing section types
+      final missingSectionTypes = availableSectionTypes.difference(selectedSectionTypes);
+      
+      for (var missingType in missingSectionTypes) {
+        warnings.add('$courseCode ${missingType.name} not selected');
+      }
+    }
+    
+    return warnings;
   }
 }

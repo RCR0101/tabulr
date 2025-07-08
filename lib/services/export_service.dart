@@ -23,13 +23,14 @@ METHOD:PUBLISH
     for (var selectedSection in selectedSections) {
       final course = courses.firstWhere((c) => c.courseCode == selectedSection.courseCode);
       
-      // Add regular class events
-      for (var day in selectedSection.section.days) {
-        for (var hour in selectedSection.section.hours) {
-          final startTime = _getDateTime(day, hour);
-          final endTime = _getDateTime(day, hour, endTime: true);
-          
-          icsContent += '''BEGIN:VEVENT
+      // Add regular class events using new schedule structure
+      for (var scheduleEntry in selectedSection.section.schedule) {
+        for (var day in scheduleEntry.days) {
+          for (var hour in scheduleEntry.hours) {
+            final startTime = _getDateTime(day, hour);
+            final endTime = _getDateTime(day, hour, endTime: true);
+            
+            icsContent += '''BEGIN:VEVENT
 UID:${selectedSection.courseCode}-${selectedSection.sectionId}-$day-$hour
 DTSTART:${_formatDateTimeForICS(startTime)}
 DTEND:${_formatDateTimeForICS(endTime)}
@@ -39,6 +40,7 @@ LOCATION:${selectedSection.section.room}
 RRULE:FREQ=WEEKLY;UNTIL=20250531T235959Z
 END:VEVENT
 ''';
+          }
         }
       }
       

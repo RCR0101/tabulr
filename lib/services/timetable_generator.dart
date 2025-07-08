@@ -213,11 +213,13 @@ class TimetableGenerator {
     // Penalty for time conflicts with avoidTimes
     for (final avoidTime in constraints.avoidTimes) {
       for (final section in sections) {
-        if (section.section.days.contains(avoidTime.day)) {
-          final conflictingHours = section.section.hours
-              .where((hour) => avoidTime.hours.contains(hour))
-              .length;
-          score -= conflictingHours * 15;
+        for (final scheduleEntry in section.section.schedule) {
+          if (scheduleEntry.days.contains(avoidTime.day)) {
+            final conflictingHours = scheduleEntry.hours
+                .where((hour) => avoidTime.hours.contains(hour))
+                .length;
+            score -= conflictingHours * 15;
+          }
         }
       }
     }
@@ -255,11 +257,13 @@ class TimetableGenerator {
     final timeSlots = <String, List<ConstraintSelectedSection>>{};
     
     for (final section in sections) {
-      for (final day in section.section.days) {
-        for (final hour in section.section.hours) {
-          final key = '${day.toString()}_$hour';
-          timeSlots[key] ??= [];
-          timeSlots[key]!.add(section);
+      for (final scheduleEntry in section.section.schedule) {
+        for (final day in scheduleEntry.days) {
+          for (final hour in scheduleEntry.hours) {
+            final key = '${day.toString()}_$hour';
+            timeSlots[key] ??= [];
+            timeSlots[key]!.add(section);
+          }
         }
       }
     }
@@ -310,12 +314,16 @@ class TimetableGenerator {
     bool hasConflicts = false;
     for (final avoidTime in constraints.avoidTimes) {
       for (final section in sections) {
-        if (section.section.days.contains(avoidTime.day) &&
-            section.section.hours.any((hour) => avoidTime.hours.contains(hour))) {
-          hasConflicts = true;
-          break;
+        for (final scheduleEntry in section.section.schedule) {
+          if (scheduleEntry.days.contains(avoidTime.day) &&
+              scheduleEntry.hours.any((hour) => avoidTime.hours.contains(hour))) {
+            hasConflicts = true;
+            break;
+          }
         }
+        if (hasConflicts) break;
       }
+      if (hasConflicts) break;
     }
     
     if (!hasConflicts && constraints.avoidTimes.isNotEmpty) {
@@ -341,8 +349,10 @@ class TimetableGenerator {
     }
 
     for (final section in sections) {
-      for (final day in section.section.days) {
-        hoursPerDay[day] = hoursPerDay[day]! + section.section.hours.length;
+      for (final scheduleEntry in section.section.schedule) {
+        for (final day in scheduleEntry.days) {
+          hoursPerDay[day] = hoursPerDay[day]! + scheduleEntry.hours.length;
+        }
       }
     }
 
