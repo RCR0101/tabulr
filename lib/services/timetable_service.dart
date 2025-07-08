@@ -1,46 +1,83 @@
 import 'dart:convert';
-import 'dart:io';
-import 'dart:typed_data';
+import 'dart:js' as js;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
-import '../models/course.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/timetable.dart';
 import 'clash_detector.dart';
 import 'xlsx_parser.dart';
 
 class TimetableService {
-  static const String _fileName = 'timetable_data.json';
+  static const String _storageKey = 'user_timetable_data';
   
-  Future<String> get _localPath async {
-    final directory = await getApplicationDocumentsDirectory();
-    return directory.path;
-  }
-
-  Future<File> get _localFile async {
-    final path = await _localPath;
-    return File('$path/$_fileName');
-  }
-
+  // Save timetable using SharedPreferences
   Future<void> saveTimetable(Timetable timetable) async {
-    final file = await _localFile;
-    await file.writeAsString(jsonEncode(timetable.toJson()));
+    try {
+      print('Saving timetable to SharedPreferences...');
+      
+      // Initialize SharedPreferences for web compatibility
+      if (kIsWeb) {
+        try {
+          SharedPreferences.setMockInitialValues({});
+        } catch (e) {
+          print('Mock values already set or not needed: $e');
+        }
+      }
+      
+      final prefs = await SharedPreferences.getInstance();
+      final data = jsonEncode(timetable.toJson());
+      
+      await prefs.setString(_storageKey, data);
+      
+      print('Timetable saved successfully to SharedPreferences');
+    } catch (e) {
+      print('Error saving timetable: $e');
+      // In web, if SharedPreferences fails, let's use localStorage directly
+      if (kIsWeb) {
+        try {
+          // Access localStorage through JavaScript interop
+          final data = jsonEncode(timetable.toJson());
+          js.context.callMethod('eval', [
+            'window.localStorage.setItem("$_storageKey", \'$data\')'
+          ]);
+          print('Saved to localStorage directly');
+        } catch (jsError) {
+          print('Error saving to localStorage: $jsError');
+        }
+      }
+    }
   }
 
+  // Load timetable using SharedPreferences
   Future<Timetable> loadTimetable() async {
     try {
-      final file = await _localFile;
+      print('Loading timetable from SharedPreferences...');
+      
+      // Initialize SharedPreferences for web compatibility
+      if (kIsWeb) {
+        try {
+          SharedPreferences.setMockInitialValues({});
+        } catch (e) {
+          print('Mock values already set or not needed: $e');
+        }
+      }
+      
+      final prefs = await SharedPreferences.getInstance();
+      
       Timetable timetable;
-      print(file.path);
-      if (!await file.exists()) {
+      final data = prefs.getString(_storageKey);
+      
+      if (data == null) {
+        print('No existing timetable found, creating new one');
         timetable = Timetable(
           availableCourses: [],
           selectedSections: [],
           clashWarnings: [],
         );
       } else {
-        final contents = await file.readAsString();
-        final Map<String, dynamic> json = jsonDecode(contents);
-        timetable = Timetable.fromJson(json);
+        print('Found existing timetable data');
+        final jsonData = jsonDecode(data);
+        timetable = Timetable.fromJson(jsonData);
       }
       
       if (timetable.availableCourses.isEmpty) {
@@ -49,6 +86,7 @@ class TimetableService {
       
       return timetable;
     } catch (e) {
+      print('Error loading timetable: $e');
       final timetable = Timetable(
         availableCourses: [],
         selectedSections: [],
@@ -84,35 +122,48 @@ class TimetableService {
     }
   }
 
-
-
   Future<bool> addSection(String courseCode, String sectionId, Timetable timetable) async {
-    final course = timetable.availableCourses.firstWhere(
-      (c) => c.courseCode == courseCode,
-      orElse: () => throw Exception('Course not found'),
-    );
-
-    final section = course.sections.firstWhere(
-      (s) => s.sectionId == sectionId,
-      orElse: () => throw Exception('Section not found'),
-    );
-
-    final newSelection = SelectedSection(
-      courseCode: courseCode,
-      sectionId: sectionId,
-      section: section,
-    );
-
-    if (ClashDetector.canAddSection(newSelection, timetable.selectedSections, timetable.availableCourses)) {
-      timetable.selectedSections.add(newSelection);
-      timetable.clashWarnings.clear();
-      timetable.clashWarnings.addAll(
-        ClashDetector.detectClashes(timetable.selectedSections, timetable.availableCourses)
+    try {
+      print('Attempting to add section: $courseCode - $sectionId');
+      
+      final course = timetable.availableCourses.firstWhere(
+        (c) => c.courseCode == courseCode,
+        orElse: () => throw Exception('Course not found: $courseCode'),
       );
-      await saveTimetable(timetable);
-      return true;
+      print('Found course: ${course.courseCode}');
+
+      final section = course.sections.firstWhere(
+        (s) => s.sectionId == sectionId,
+        orElse: () => throw Exception('Section not found: $sectionId'),
+      );
+      print('Found section: ${section.sectionId}');
+
+      final newSelection = SelectedSection(
+        courseCode: courseCode,
+        sectionId: sectionId,
+        section: section,
+      );
+
+      print('Checking for clashes...');
+      if (ClashDetector.canAddSection(newSelection, timetable.selectedSections, timetable.availableCourses)) {
+        print('No clashes found, adding section');
+        timetable.selectedSections.add(newSelection);
+        timetable.clashWarnings.clear();
+        timetable.clashWarnings.addAll(
+          ClashDetector.detectClashes(timetable.selectedSections, timetable.availableCourses)
+        );
+        print('Saving timetable...');
+        await saveTimetable(timetable);
+        print('Section added successfully');
+        return true;
+      } else {
+        print('Clash detected, cannot add section');
+      }
+      return false;
+    } catch (e) {
+      print('Error in addSection: $e');
+      rethrow;
     }
-    return false;
   }
 
   Future<void> removeSection(String courseCode, String sectionId, Timetable timetable) async {
@@ -144,5 +195,4 @@ class TimetableService {
     
     return slots;
   }
-
 }

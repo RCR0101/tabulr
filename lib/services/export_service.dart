@@ -1,11 +1,14 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:path_provider/path_provider.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
+
+// Web-specific imports
+import 'dart:html' as html;
+import 'dart:convert';
 
 class ExportService {
   static Future<String> exportToICS(List<SelectedSection> selectedSections, List<Course> courses) async {
@@ -71,11 +74,23 @@ END:VEVENT
     
     icsContent += 'END:VCALENDAR\n';
     
-    final directory = await getApplicationDocumentsDirectory();
-    final file = File('${directory.path}/timetable.ics');
-    await file.writeAsString(icsContent);
-    
-    return file.path;
+    if (kIsWeb) {
+      // For web, trigger download
+      final blob = html.Blob([icsContent], 'text/calendar');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.document.createElement('a') as html.AnchorElement
+        ..href = url
+        ..style.display = 'none'
+        ..download = 'timetable.ics';
+      html.document.body?.children.add(anchor);
+      anchor.click();
+      html.document.body?.children.remove(anchor);
+      html.Url.revokeObjectUrl(url);
+      return 'timetable.ics';
+    } else {
+      // For mobile/desktop, save to documents
+      throw UnsupportedError('File saving not implemented for this platform');
+    }
   }
 
   static String _formatDateTimeForICS(DateTime dateTime) {
@@ -96,18 +111,23 @@ END:VEVENT
       
       final Uint8List pngBytes = byteData.buffer.asUint8List();
       
-      String filePath;
-      if (customPath != null) {
-        filePath = customPath;
+      if (kIsWeb) {
+        // For web, trigger download
+        final blob = html.Blob([pngBytes], 'image/png');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.document.createElement('a') as html.AnchorElement
+          ..href = url
+          ..style.display = 'none'
+          ..download = customPath ?? 'timetable.png';
+        html.document.body?.children.add(anchor);
+        anchor.click();
+        html.document.body?.children.remove(anchor);
+        html.Url.revokeObjectUrl(url);
+        return customPath ?? 'timetable.png';
       } else {
-        final directory = await getApplicationDocumentsDirectory();
-        filePath = '${directory.path}/timetable.png';
+        // For mobile/desktop, save to documents
+        throw UnsupportedError('File saving not implemented for this platform');
       }
-      
-      final file = File(filePath);
-      await file.writeAsBytes(pngBytes);
-      
-      return file.path;
     } catch (e) {
       throw Exception('Failed to export PNG: $e');
     }
