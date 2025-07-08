@@ -311,26 +311,57 @@ class XlsxParser {
     
     // Parse MidSem time slot based on time string
     TimeSlot timeSlot;
-    switch (timePart) {
-      case '9:30-11:00AM':
-      case '9:30AM-11:00AM':
+    
+    // Clean up the time part and handle different formats
+    String cleanTimePart = timePart.replaceAll('.', ':').replaceAll(' ', '');
+    
+    // Handle various time formats
+    if (cleanTimePart.contains('9:30') && cleanTimePart.contains('11:00')) {
+      timeSlot = TimeSlot.MS1;
+    } else if (cleanTimePart.contains('11:30') && cleanTimePart.contains('1:00')) {
+      timeSlot = TimeSlot.MS2;
+    } else if (cleanTimePart.contains('1:30') && cleanTimePart.contains('3:00')) {
+      timeSlot = TimeSlot.MS3;
+    } else if (cleanTimePart.contains('3:30') && cleanTimePart.contains('5:00')) {
+      timeSlot = TimeSlot.MS4;
+    } else {
+      // Try to parse by looking for key time indicators
+      if (cleanTimePart.contains('9:30') || cleanTimePart.contains('930')) {
         timeSlot = TimeSlot.MS1;
-        break;
-      case '11:30AM-1:00PM':
-      case '11:30-1:00PM':
+      } else if (cleanTimePart.contains('11:30') || cleanTimePart.contains('1130')) {
         timeSlot = TimeSlot.MS2;
-        break;
-      case '1:30-3:00PM':
-      case '1:30PM-3:00PM':
+      } else if (cleanTimePart.contains('1:30') || cleanTimePart.contains('130')) {
         timeSlot = TimeSlot.MS3;
-        break;
-      case '3:30-5:00PM':
-      case '3:30PM-5:00PM':
+      } else if (cleanTimePart.contains('3:30') || cleanTimePart.contains('330')) {
         timeSlot = TimeSlot.MS4;
-        break;
-      default:
-        // Default to first slot if format doesn't match
-        timeSlot = TimeSlot.MS1;
+      } else {
+        // Try parsing the original format as fallback
+        switch (timePart) {
+          case '9:30-11:00AM':
+          case '9:30AM-11:00AM':
+          case '9.30-11.00AM':
+            timeSlot = TimeSlot.MS1;
+            break;
+          case '11:30AM-1:00PM':
+          case '11:30-1:00PM':
+          case '11.30AM-1.00PM':
+            timeSlot = TimeSlot.MS2;
+            break;
+          case '1:30-3:00PM':
+          case '1:30PM-3:00PM':
+          case '1.30-3.00PM':
+            timeSlot = TimeSlot.MS3;
+            break;
+          case '3:30-5:00PM':
+          case '3:30PM-5:00PM':
+          case '3.30-5.00PM':
+            timeSlot = TimeSlot.MS4;
+            break;
+          default:
+            print('Unknown MidSem time format: $timePart');
+            timeSlot = TimeSlot.MS1; // Default fallback
+        }
+      }
     }
     
     return ExamSchedule(
