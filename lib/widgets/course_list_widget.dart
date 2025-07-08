@@ -171,11 +171,7 @@ class CourseListWidget extends StatelessWidget {
                       style: TextStyle(color: canSelect ? null : Colors.grey),
                     ),
                     Text(
-                      'Days: ${section.days.map((d) => d.name).join(', ')}',
-                      style: TextStyle(color: canSelect ? null : Colors.grey),
-                    ),
-                    Text(
-                      'Hours: ${TimeSlotInfo.getHourRangeName(section.hours)}',
+                      'Schedule: ${TimeSlotInfo.getFormattedSchedule(section.schedule)}',
                       style: TextStyle(color: canSelect ? null : Colors.grey),
                     ),
                     if (!canSelect && !isSelected)

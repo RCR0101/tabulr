@@ -86,9 +86,12 @@ class XlsxParser {
       final row = rows[currentRow];
       
       if (currentRow == startRow) {
-        final mainSection = _parseSection(row, startRow);
+        final mainSection = _parseSection(rows, startRow);
         if (mainSection != null) {
-          sections.add(mainSection);
+          sections.add(mainSection.section);
+          currentRow = mainSection.nextRow;
+        } else {
+          currentRow++;
         }
       } else {
         final nextCompCode = _getCellValue(row, 0);
@@ -99,14 +102,17 @@ class XlsxParser {
         
         final sectionId = _getCellValue(row, 6);
         if (sectionId != null && sectionId.toString().isNotEmpty) {
-          final section = _parseSection(row, currentRow);
-          if (section != null) {
-            sections.add(section);
+          final sectionResult = _parseSection(rows, currentRow);
+          if (sectionResult != null) {
+            sections.add(sectionResult.section);
+            currentRow = sectionResult.nextRow;
+          } else {
+            currentRow++;
           }
+        } else {
+          currentRow++;
         }
       }
-      
-      currentRow++;
     }
     
     final midSemExam = _parseExamSchedule(_getCellValue(mainRow, 11), true);
@@ -126,12 +132,9 @@ class XlsxParser {
     return CourseParseResult(course: course, nextRow: currentRow);
   }
 
-  static Section? _parseSection(List<Data?> row, int rowIndex) {
+  static SectionParseResult? _parseSection(List<List<Data?>> rows, int startRow) {
+    final row = rows[startRow];
     final sectionId = _getCellValue(row, 6);
-    final instructor = _getCellValue(row, 7);
-    final room = _getCellValue(row, 8);
-    final days = _getCellValue(row, 9);
-    final hours = _getCellValue(row, 10);
     
     if (sectionId == null || sectionId.toString().isEmpty) {
       return null;
@@ -139,18 +142,78 @@ class XlsxParser {
     
     final sectionIdStr = sectionId.toString().trim();
     final sectionType = _parseSectionType(sectionIdStr);
-    final daysList = _parseDays(days?.toString() ?? '');
     
-    final hoursList = _parseHours(_formatCellValue(hours));
+    // Collect all instructors, rooms, and paired day-hour entries for this section
+    List<String> instructors = [];
+    List<String> rooms = [];
+    List<ScheduleEntry> schedule = [];
     
-    return Section(
+    int currentRow = startRow;
+    
+    while (currentRow < rows.length) {
+      final currentRowData = rows[currentRow];
+      
+      // Check if we've reached the next section or course
+      if (currentRow > startRow) {
+        final nextSectionId = _getCellValue(currentRowData, 6);
+        final nextCompCode = _getCellValue(currentRowData, 0);
+        
+        // Break if we find a new section or new course
+        if ((nextSectionId != null && nextSectionId.toString().isNotEmpty) ||
+            (nextCompCode != null && nextCompCode.toString().isNotEmpty)) {
+          break;
+        }
+      }
+      
+      // Collect data from current row
+      final instructor = _getCellValue(currentRowData, 7);
+      final room = _getCellValue(currentRowData, 8);
+      final days = _getCellValue(currentRowData, 9);
+      final hours = _getCellValue(currentRowData, 10);
+      
+      if (instructor != null && instructor.toString().trim().isNotEmpty) {
+        final instructorStr = instructor.toString().trim();
+        if (!instructors.contains(instructorStr)) {
+          instructors.add(instructorStr);
+        }
+      }
+      
+      if (room != null && room.toString().trim().isNotEmpty) {
+        final roomStr = room.toString().trim();
+        if (!rooms.contains(roomStr)) {
+          rooms.add(roomStr);
+        }
+      }
+      
+      // Create paired day-hour entries
+      if (days != null && days.toString().trim().isNotEmpty && 
+          hours != null && hours.toString().trim().isNotEmpty) {
+        final daysStr = days.toString().trim();
+        final hoursStr = _formatCellValue(hours);
+        
+        final daysList = _parseDays(daysStr);
+        final hoursList = _parseHours(hoursStr);
+        
+        if (daysList.isNotEmpty && hoursList.isNotEmpty) {
+          schedule.add(ScheduleEntry(
+            days: daysList,
+            hours: hoursList,
+          ));
+        }
+      }
+      
+      currentRow++;
+    }
+    
+    final section = Section(
       sectionId: sectionIdStr,
       type: sectionType,
-      instructor: instructor?.toString() ?? '',
-      room: room?.toString() ?? '',
-      days: daysList,
-      hours: hoursList,
+      instructor: instructors.join(', '), // Join multiple instructors with comma
+      room: rooms.join(', '), // Join multiple rooms with comma
+      schedule: schedule,
     );
+    
+    return SectionParseResult(section: section, nextRow: currentRow);
   }
 
   static SectionType _parseSectionType(String sectionId) {
@@ -351,4 +414,11 @@ class CourseParseResult {
   final int nextRow;
   
   CourseParseResult({required this.course, required this.nextRow});
+}
+
+class SectionParseResult {
+  final Section section;
+  final int nextRow;
+  
+  SectionParseResult({required this.section, required this.nextRow});
 }

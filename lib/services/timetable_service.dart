@@ -181,15 +181,18 @@ class TimetableService {
     List<TimetableSlot> slots = [];
     
     for (var selectedSection in selectedSections) {
-      for (var day in selectedSection.section.days) {
-        slots.add(TimetableSlot(
-          day: day,
-          hours: selectedSection.section.hours,
-          courseCode: selectedSection.courseCode,
-          sectionId: selectedSection.sectionId,
-          instructor: selectedSection.section.instructor,
-          room: selectedSection.section.room,
-        ));
+      // Use the new schedule structure to handle different hours for different days
+      for (var scheduleEntry in selectedSection.section.schedule) {
+        for (var day in scheduleEntry.days) {
+          slots.add(TimetableSlot(
+            day: day,
+            hours: scheduleEntry.hours,
+            courseCode: selectedSection.courseCode,
+            sectionId: selectedSection.sectionId,
+            instructor: selectedSection.section.instructor,
+            room: selectedSection.section.room,
+          ));
+        }
       }
     }
     

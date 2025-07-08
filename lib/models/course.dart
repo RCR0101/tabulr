@@ -57,17 +57,19 @@ class Section {
   final SectionType type;
   final String instructor;
   final String room;
-  final List<DayOfWeek> days;
-  final List<int> hours;
+  final List<ScheduleEntry> schedule; // Changed to list of schedule entries
 
   Section({
     required this.sectionId,
     required this.type,
     required this.instructor,
     required this.room,
-    required this.days,
-    required this.hours,
+    required this.schedule,
   });
+
+  // Convenience getters for backward compatibility
+  List<DayOfWeek> get days => schedule.expand((entry) => entry.days).toSet().toList();
+  List<int> get hours => schedule.expand((entry) => entry.hours).toList();
 
   Map<String, dynamic> toJson() {
     return {
@@ -75,8 +77,7 @@ class Section {
       'type': type.toString(),
       'instructor': instructor,
       'room': room,
-      'days': days.map((d) => d.toString()).toList(),
-      'hours': hours,
+      'schedule': schedule.map((entry) => entry.toJson()).toList(),
     };
   }
 
@@ -88,6 +89,31 @@ class Section {
       ),
       instructor: json['instructor'],
       room: json['room'],
+      schedule: (json['schedule'] as List)
+          .map((entry) => ScheduleEntry.fromJson(entry))
+          .toList(),
+    );
+  }
+}
+
+class ScheduleEntry {
+  final List<DayOfWeek> days;
+  final List<int> hours;
+
+  ScheduleEntry({
+    required this.days,
+    required this.hours,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'days': days.map((d) => d.toString()).toList(),
+      'hours': hours,
+    };
+  }
+
+  factory ScheduleEntry.fromJson(Map<String, dynamic> json) {
+    return ScheduleEntry(
       days: (json['days'] as List)
           .map((d) => DayOfWeek.values.firstWhere(
                 (e) => e.toString() == d,
@@ -97,6 +123,7 @@ class Section {
     );
   }
 }
+
 
 class ExamSchedule {
   final DateTime date;
@@ -128,9 +155,9 @@ enum SectionType { L, P, T }
 
 enum DayOfWeek { M, T, W, Th, F, S }
 
-enum TimeSlot { 
-  FN,  // 9:30AM-12:30PM (EndSem only)
-  AN,  // 2:00PM-5:00PM (EndSem only)
+enum TimeSlot {
+  FN, // 9:30AM-12:30PM (EndSem only)
+  AN, // 2:00PM-5:00PM (EndSem only)
   MS1, // 9:30AM-11:00AM (MidSem)
   MS2, // 11:30AM-1:00PM (MidSem)
   MS3, // 1:30PM-3:00PM (MidSem)
@@ -175,25 +202,47 @@ class TimeSlotInfo {
     hours.sort();
     int startHour = hours.first;
     int endHour = hours.last;
-    
     String startTime = hourSlotNames[startHour]?.split('-')[0] ?? '';
     String endTime = hourSlotNames[endHour]?.split('-')[1] ?? '';
-    
     return '$startTime-$endTime';
   }
-  
+
+  // New method to handle schedule entries with individual day-hour pairs
+  static List<String> getScheduleEntryNames(List<ScheduleEntry> schedule) {
+    List<String> result = [];
+    
+    for (var entry in schedule) {
+      // For each day in the entry, pair it with the hour range
+      for (var day in entry.days) {
+        String dayStr = day.toString().split('.').last;
+        String hourStr = getHourRangeName(entry.hours);
+        result.add('$dayStr $hourStr');
+      }
+    }
+    
+    return result;
+  }
+
+  // New method to get formatted string for all schedule entries
+  static String getFormattedSchedule(List<ScheduleEntry> schedule) {
+    if (schedule.isEmpty) return '';
+    
+    List<String> entryNames = getScheduleEntryNames(schedule);
+    return entryNames.join(', ');
+  }
+
   static bool isMidSemSlot(TimeSlot slot) {
     return [TimeSlot.MS1, TimeSlot.MS2, TimeSlot.MS3, TimeSlot.MS4].contains(slot);
   }
-  
+
   static bool isEndSemSlot(TimeSlot slot) {
     return [TimeSlot.FN, TimeSlot.AN].contains(slot);
   }
-  
+
   static List<TimeSlot> getMidSemSlots() {
     return [TimeSlot.MS1, TimeSlot.MS2, TimeSlot.MS3, TimeSlot.MS4];
   }
-  
+
   static List<TimeSlot> getEndSemSlots() {
     return [TimeSlot.FN, TimeSlot.AN];
   }

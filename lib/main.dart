@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:html' as html;
+import 'dart:js' as js;
 import 'screens/home_screen.dart';
 
 void main() async {
@@ -8,9 +10,40 @@ void main() async {
   
   if (kIsWeb) {
     setUrlStrategy(PathUrlStrategy());
+    _setupWebCacheClearOnClose();
   }
   
   runApp(const TimetableMakerApp());
+}
+
+void _setupWebCacheClearOnClose() {
+  if (kIsWeb) {
+    try {
+      // Clear localStorage when the page is about to unload
+      html.window.addEventListener('beforeunload', (event) {
+        try {
+          js.context.callMethod('eval', [
+            'window.localStorage.removeItem("user_timetable_data")'
+          ]);
+        } catch (e) {
+          print('Error clearing localStorage: $e');
+        }
+      });
+      
+      // Also clear on page hide (covers mobile scenarios)
+      html.window.addEventListener('pagehide', (event) {
+        try {
+          js.context.callMethod('eval', [
+            'window.localStorage.removeItem("user_timetable_data")'
+          ]);
+        } catch (e) {
+          print('Error clearing localStorage: $e');
+        }
+      });
+    } catch (e) {
+      print('Error setting up cache clearing: $e');
+    }
+  }
 }
 
 class TimetableMakerApp extends StatelessWidget {

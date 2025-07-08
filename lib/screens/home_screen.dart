@@ -384,11 +384,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: Card(
                     margin: const EdgeInsets.all(8),
-                    child: RepaintBoundary(
-                      key: _timetableKey,
-                      child: TimetableWidget(
-                        timetableSlots: _timetableService.generateTimetableSlots(_timetable!.selectedSections),
-                        onClear: _clearTimetable,
+                    child: SingleChildScrollView(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: RepaintBoundary(
+                          key: _timetableKey,
+                          child: TimetableWidget(
+                            timetableSlots: _timetableService.generateTimetableSlots(_timetable!.selectedSections),
+                            onClear: _clearTimetable,
+                            onRemoveSection: _removeSection,
+                          ),
+                        ),
                       ),
                     ),
                   ),
