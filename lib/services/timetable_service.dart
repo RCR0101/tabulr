@@ -30,7 +30,7 @@ class TimetableService {
     try {
       final file = await _localFile;
       Timetable timetable;
-      
+      print(file.path);
       if (!await file.exists()) {
         timetable = Timetable(
           availableCourses: [],

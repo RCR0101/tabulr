@@ -140,7 +140,8 @@ class XlsxParser {
     final sectionIdStr = sectionId.toString().trim();
     final sectionType = _parseSectionType(sectionIdStr);
     final daysList = _parseDays(days?.toString() ?? '');
-    final hoursList = _parseHours(hours?.toString() ?? '');
+    
+    final hoursList = _parseHours(_formatCellValue(hours));
     
     return Section(
       sectionId: sectionIdStr,
@@ -185,10 +186,30 @@ class XlsxParser {
 
   static List<int> _parseHours(String hoursStr) {
     if (hoursStr.isEmpty) return [];
-    
+    print(hoursStr);
     try {
-      final hourValue = int.parse(hoursStr.trim());
-      return [hourValue];
+      final trimmed = hoursStr.trim();
+      final hourValue = int.parse(trimmed);
+      
+      // Handle multi-digit values (split into individual digits)
+      if (hourValue >= 11 && hourValue <= 9999) {
+        // Split multi-digit into individual digits
+        // e.g., 89 -> [8, 9], 45 -> [4, 5], 123 -> [1, 2, 3]
+        final digits = trimmed.split('').map(int.parse).toList();
+        
+        // Validate that all digits are valid hour slots (1-9, not 0)
+        // Note: 10 should be handled as a single value, not split into 1,0
+        if (digits.every((digit) => digit >= 1 && digit <= 9)) {
+          return digits;
+        }
+      }
+      
+      // Handle single digit or 10
+      if (hourValue >= 1 && hourValue <= 10) {
+        return [hourValue];
+      }
+      
+      return [];
     } catch (e) {
       return [];
     }
@@ -287,6 +308,19 @@ class XlsxParser {
   static dynamic _getCellValue(List<Data?> row, int index) {
     if (index >= row.length) return null;
     return row[index]?.value;
+  }
+
+  static String _formatCellValue(dynamic value) {
+    if (value == null) return '';
+    if (value is String) return value;
+    if (value is num) {
+      // Handle numbers - convert to integer if no decimal part
+      if (value == value.truncate()) {
+        return value.truncate().toString();
+      }
+      return value.toString();
+    }
+    return value.toString();
   }
 
   static int _getNumericValue(List<Data?> row, int index) {
