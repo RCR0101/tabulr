@@ -1,0 +1,27 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read access to courses collection for everyone
+    match /courses/{document} {
+      allow read: if true;
+      allow write: if false; // Only admin can write via script
+    }
+    
+    // Allow read access to timetable metadata for everyone
+    match /timetable_metadata/{document} {
+      allow read: if true;
+      allow write: if false; // Only admin can write via script
+    }
+    
+    // User timetables - only authenticated users can access their own data
+    match /user_timetables/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Deny access to all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

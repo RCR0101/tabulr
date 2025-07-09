@@ -1,0 +1,16 @@
+{
+  "name": "timetable-data-uploader",
+  "version": "1.0.0",
+  "description": "Script to parse XLSX files and upload to Firestore",
+  "main": "upload-timetable.js",
+  "scripts": {
+    "upload": "node upload-timetable.js",
+    "test": "node test-parser.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "xlsx": "^0.18.5",
+    "dotenv": "^16.0.0"
+  },
+  "type": "module"
+}

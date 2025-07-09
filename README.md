@@ -1,4 +1,4 @@
-# Timetable Maker
+# Tabulr
 
 A Flutter desktop application for creating and managing academic timetables with automatic clash detection.
 

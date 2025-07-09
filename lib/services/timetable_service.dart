@@ -1,20 +1,49 @@
 import 'dart:convert';
 import 'dart:js' as js;
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/timetable.dart';
 import '../models/course.dart';
 import 'clash_detector.dart';
-import 'xlsx_parser.dart';
+import 'auth_service.dart';
+import 'firestore_service.dart';
+import 'course_data_service.dart';
 
 class TimetableService {
   static const String _storageKey = 'user_timetable_data';
+  final AuthService _authService = AuthService();
+  final FirestoreService _firestoreService = FirestoreService();
+  final CourseDataService _courseDataService = CourseDataService();
   
-  // Save timetable using SharedPreferences
+  // Save timetable using Firestore for authenticated users or local storage for guests
   Future<void> saveTimetable(Timetable timetable) async {
     try {
-      print('Saving timetable to SharedPreferences...');
+      // If user is authenticated, save to Firestore
+      if (_authService.isAuthenticated) {
+        print('Saving timetable to Firestore...');
+        final success = await _firestoreService.saveTimetable(timetable);
+        if (success) {
+          print('Timetable saved successfully to Firestore');
+        } else {
+          print('Failed to save to Firestore, falling back to local storage');
+          await _saveToLocalStorage(timetable);
+        }
+      } else {
+        // Guest user - save to local storage
+        print('Guest user - saving timetable to local storage...');
+        await _saveToLocalStorage(timetable);
+      }
+    } catch (e) {
+      print('Error saving timetable: $e');
+      // Fallback to local storage
+      await _saveToLocalStorage(timetable);
+    }
+  }
+
+  // Helper method to save to local storage
+  Future<void> _saveToLocalStorage(Timetable timetable) async {
+    try {
+      print('Saving timetable to local storage...');
       
       // Initialize SharedPreferences for web compatibility
       if (kIsWeb) {
@@ -30,9 +59,9 @@ class TimetableService {
       
       await prefs.setString(_storageKey, data);
       
-      print('Timetable saved successfully to SharedPreferences');
+      print('Timetable saved successfully to local storage');
     } catch (e) {
-      print('Error saving timetable: $e');
+      print('Error saving timetable to local storage: $e');
       // In web, if SharedPreferences fails, let's use localStorage directly
       if (kIsWeb) {
         try {
@@ -49,10 +78,59 @@ class TimetableService {
     }
   }
 
-  // Load timetable using SharedPreferences
+  // Load timetable using Firestore for authenticated users or local storage for guests
   Future<Timetable> loadTimetable() async {
     try {
-      print('Loading timetable from SharedPreferences...');
+      Timetable? timetable;
+      
+      // If user is authenticated, try to load from Firestore
+      if (_authService.isAuthenticated) {
+        print('Loading timetable from Firestore...');
+        timetable = await _firestoreService.loadTimetable();
+        if (timetable != null) {
+          print('Timetable loaded successfully from Firestore');
+        } else {
+          print('No timetable found in Firestore, checking local storage...');
+          timetable = await _loadFromLocalStorage();
+        }
+      } else {
+        // Guest user - load from local storage
+        print('Guest user - loading timetable from local storage...');
+        timetable = await _loadFromLocalStorage();
+      }
+      
+      // If no timetable found, create a new one
+      if (timetable == null) {
+        print('No existing timetable found, creating new one');
+        timetable = Timetable(
+          availableCourses: [],
+          selectedSections: [],
+          clashWarnings: [],
+        );
+      }
+      
+      // Load courses from Firestore if not already loaded
+      if (timetable.availableCourses.isEmpty) {
+        await _loadCoursesFromFirestore(timetable);
+      }
+      
+      return timetable;
+    } catch (e) {
+      print('Error loading timetable: $e');
+      final timetable = Timetable(
+        availableCourses: [],
+        selectedSections: [],
+        clashWarnings: [],
+      );
+      await _loadCoursesFromFirestore(timetable);
+      return timetable;
+    }
+  }
+
+  // Helper method to load from local storage
+  Future<Timetable?> _loadFromLocalStorage() async {
+    try {
+      print('Loading timetable from local storage...');
       
       // Initialize SharedPreferences for web compatibility
       if (kIsWeb) {
@@ -64,49 +142,35 @@ class TimetableService {
       }
       
       final prefs = await SharedPreferences.getInstance();
-      
-      Timetable timetable;
       final data = prefs.getString(_storageKey);
       
       if (data == null) {
-        print('No existing timetable found, creating new one');
-        timetable = Timetable(
-          availableCourses: [],
-          selectedSections: [],
-          clashWarnings: [],
-        );
+        print('No existing timetable found in local storage');
+        return null;
       } else {
-        print('Found existing timetable data');
+        print('Found existing timetable data in local storage');
         final jsonData = jsonDecode(data);
-        timetable = Timetable.fromJson(jsonData);
+        return Timetable.fromJson(jsonData);
       }
-      
-      if (timetable.availableCourses.isEmpty) {
-        await _loadCoursesFromXlsx(timetable);
-      }
-      
-      return timetable;
     } catch (e) {
-      print('Error loading timetable: $e');
-      final timetable = Timetable(
-        availableCourses: [],
-        selectedSections: [],
-        clashWarnings: [],
-      );
-      await _loadCoursesFromXlsx(timetable);
-      return timetable;
+      print('Error loading timetable from local storage: $e');
+      return null;
     }
   }
 
-  Future<void> _loadCoursesFromXlsx(Timetable timetable) async {
+  Future<void> _loadCoursesFromFirestore(Timetable timetable) async {
     try {
-      print('Attempting to load courses from XLSX assets...');
-      final ByteData data = await rootBundle.load('DRAFT TIMETABLE I SEM 2025 -26.xlsx');
-      final Uint8List bytes = data.buffer.asUint8List();
-      print('Loaded XLSX file from assets (${bytes.length} bytes)');
+      print('Attempting to load courses from Firestore...');
       
-      final courses = await XlsxParser.parseXlsxBytes(bytes);
-      print('Parsed ${courses.length} courses from XLSX');
+      // Try to fetch courses directly without checking metadata first
+      final courses = await _courseDataService.fetchCourses();
+      
+      if (courses.isEmpty) {
+        print('No courses found in Firestore. This might be a configuration issue.');
+        throw Exception('No course data found in Firestore. Please ensure the upload script has been run successfully.');
+      }
+      
+      print('Loaded ${courses.length} courses from Firestore');
       
       // Clear existing courses before adding new ones
       timetable.availableCourses.clear();
@@ -117,9 +181,21 @@ class TimetableService {
       }
       
       await saveTimetable(timetable);
-      print('Saved timetable with XLSX courses');
+      print('Saved timetable with Firestore courses');
     } catch (e) {
-      print('Error loading courses from XLSX: $e');
+      print('Error loading courses from Firestore: $e');
+      
+      // Show a more user-friendly error message
+      String userMessage = 'Failed to load course data.';
+      if (e.toString().contains('Permission denied')) {
+        userMessage = 'Access denied to course data. Please check your internet connection and try again.';
+      } else if (e.toString().contains('Network connection error')) {
+        userMessage = 'Network connection error. Please check your internet connection and try again.';
+      } else if (e.toString().contains('No course data found')) {
+        userMessage = 'Course data is not available. Please contact the administrator.';
+      }
+      
+      throw Exception(userMessage);
     }
   }
 

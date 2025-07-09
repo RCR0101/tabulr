@@ -4,6 +4,7 @@ import '../models/timetable.dart';
 import '../services/timetable_service.dart';
 import '../services/course_utils.dart';
 import '../services/export_service.dart';
+import '../services/auth_service.dart';
 import 'package:file_picker/file_picker.dart';
 import '../widgets/courses_tab_widget.dart';
 import '../widgets/timetable_widget.dart';
@@ -21,6 +22,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TimetableService _timetableService = TimetableService();
+  final AuthService _authService = AuthService();
   final GlobalKey _timetableKey = GlobalKey();
   Timetable? _timetable;
   List<Course> _filteredCourses = [];
@@ -45,7 +47,14 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _isLoading = false;
       });
-      _showErrorDialog('Error loading timetable: $e');
+      
+      // Show more helpful error message for missing course data
+      String errorMessage = 'Error loading timetable: $e';
+      if (e.toString().contains('No course data available')) {
+        errorMessage = 'Course data is not available. Please contact the administrator to upload the latest timetable data.';
+      }
+      
+      _showErrorDialog(errorMessage);
     }
   }
 
@@ -301,6 +310,39 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign Out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _authService.signOut();
+        // Navigation will be handled by AuthWrapper
+      } catch (e) {
+        _showErrorDialog('Error signing out: $e');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -311,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (_timetable == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Timetable Maker')),
+        appBar: AppBar(title: const Text('Tabulr')),
         body: const Center(
           child: Text('Failed to load timetable'),
         ),
@@ -320,7 +362,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Timetable Maker'),
+        title: const Text('Tabulr'),
         centerTitle: true,
         actions: [
           if (_timetable?.selectedSections.isNotEmpty == true)
@@ -339,6 +381,84 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: _exportToPNG,
             tooltip: 'Export to PNG',
           ),
+          // User info and logout
+          if (_authService.isAuthenticated)
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'logout') {
+                  _logout();
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  enabled: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _authService.userName ?? 'User',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        _authService.userEmail ?? '',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).textTheme.bodySmall?.color,
+                        ),
+                      ),
+                      const Divider(),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'logout',
+                  child: ListTile(
+                    leading: Icon(Icons.logout),
+                    title: Text('Sign Out'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundImage: _authService.userPhotoUrl != null
+                          ? NetworkImage(_authService.userPhotoUrl!)
+                          : null,
+                      child: _authService.userPhotoUrl == null
+                          ? const Icon(Icons.person, size: 16)
+                          : null,
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.arrow_drop_down),
+                  ],
+                ),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.person_outline,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Guest',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(width: 8),
         ],
       ),
@@ -385,16 +505,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Card(
                     margin: const EdgeInsets.all(8),
                     child: SingleChildScrollView(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: RepaintBoundary(
-                          key: _timetableKey,
-                          child: TimetableWidget(
-                            timetableSlots: _timetableService.generateTimetableSlots(_timetable!.selectedSections, _timetable!.availableCourses),
-                            incompleteSelectionWarnings: _timetableService.getIncompleteSelectionWarnings(_timetable!.selectedSections, _timetable!.availableCourses),
-                            onClear: _clearTimetable,
-                            onRemoveSection: _removeSection,
-                          ),
+                      scrollDirection: Axis.horizontal,
+                      child: RepaintBoundary(
+                        key: _timetableKey,
+                        child: TimetableWidget(
+                          timetableSlots: _timetableService.generateTimetableSlots(_timetable!.selectedSections, _timetable!.availableCourses),
+                          incompleteSelectionWarnings: _timetableService.getIncompleteSelectionWarnings(_timetable!.selectedSections, _timetable!.availableCourses),
+                          onClear: _clearTimetable,
+                          onRemoveSection: _removeSection,
                         ),
                       ),
                     ),

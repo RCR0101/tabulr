@@ -15,7 +15,7 @@ class ExportService {
     // Create manual ICS content since the library API is complex
     String icsContent = '''BEGIN:VCALENDAR
 VERSION:2.0
-PRODID:-//Timetable Maker//EN
+PRODID:-//Tabulr//EN
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
 ''';

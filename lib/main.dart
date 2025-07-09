@@ -3,10 +3,26 @@ import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:html' as html;
 import 'dart:js' as js;
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'firebase_options.dart';
 import 'screens/home_screen.dart';
+import 'screens/auth_screen.dart';
+import 'services/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Load environment variables
+  await dotenv.load(fileName: ".env");
+  
+  // Initialize Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  
+  // Initialize Auth Service
+  await AuthService().initialize();
   
   if (kIsWeb) {
     setUrlStrategy(PathUrlStrategy());
@@ -19,12 +35,16 @@ void main() async {
 void _setupWebCacheClearOnClose() {
   if (kIsWeb) {
     try {
-      // Clear localStorage when the page is about to unload
+      // Clear localStorage when the page is about to unload (only for guest users)
       html.window.addEventListener('beforeunload', (event) {
         try {
-          js.context.callMethod('eval', [
-            'window.localStorage.removeItem("user_timetable_data")'
-          ]);
+          // Only clear if user is in guest mode
+          final authService = AuthService();
+          if (!authService.isAuthenticated) {
+            js.context.callMethod('eval', [
+              'window.localStorage.removeItem("user_timetable_data")'
+            ]);
+          }
         } catch (e) {
           print('Error clearing localStorage: $e');
         }
@@ -33,9 +53,13 @@ void _setupWebCacheClearOnClose() {
       // Also clear on page hide (covers mobile scenarios)
       html.window.addEventListener('pagehide', (event) {
         try {
-          js.context.callMethod('eval', [
-            'window.localStorage.removeItem("user_timetable_data")'
-          ]);
+          // Only clear if user is in guest mode
+          final authService = AuthService();
+          if (!authService.isAuthenticated) {
+            js.context.callMethod('eval', [
+              'window.localStorage.removeItem("user_timetable_data")'
+            ]);
+          }
         } catch (e) {
           print('Error clearing localStorage: $e');
         }
@@ -52,7 +76,7 @@ class TimetableMakerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Timetable Maker',
+      title: 'Tabulr',
       theme: ThemeData.dark().copyWith(
         primaryColor: const Color(0xFF0D1117),
         scaffoldBackgroundColor: const Color(0xFF0D1117),
@@ -137,8 +161,42 @@ class TimetableMakerApp extends StatelessWidget {
         ),
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: const HomeScreen(),
+      home: const AuthWrapper(),
       debugShowCheckedModeBanner: false,
+    );
+  }
+}
+
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final authService = AuthService();
+    
+    return StreamBuilder(
+      stream: authService.authStateChanges,
+      builder: (context, snapshot) {
+        // Show loading while checking auth state
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        
+        // If user is authenticated, go to home screen
+        if (snapshot.hasData && snapshot.data != null) {
+          return const HomeScreen();
+        }
+        
+        // If user has chosen an auth method (guest or sign-in), go to home screen
+        if (authService.hasChosenAuthMethod) {
+          return const HomeScreen();
+        }
+        
+        // Otherwise, show auth screen (guest users will see this on every app start)
+        return const AuthScreen();
+      },
     );
   }
 }

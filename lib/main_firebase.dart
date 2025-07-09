@@ -17,7 +17,7 @@ class TimetableMakerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Timetable Maker',
+      title: 'Tabulr',
       theme: ThemeData.dark().copyWith(
         primaryColor: const Color(0xFF1A1A1A),
         scaffoldBackgroundColor: const Color(0xFF121212),

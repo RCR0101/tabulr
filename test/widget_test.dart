@@ -16,6 +16,6 @@ void main() {
     await tester.pumpWidget(const TimetableMakerApp());
 
     // Verify that the app loads
-    expect(find.text('Timetable Maker'), findsOneWidget);
+    expect(find.text('Tabulr'), findsOneWidget);
   });
 }

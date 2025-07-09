@@ -18,12 +18,19 @@ class TimetableWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return ConstrainedBox(
+      constraints: const BoxConstraints(
+        minWidth: 800,
+        maxWidth: double.infinity,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
         Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
                 'Weekly Timetable',
@@ -32,7 +39,7 @@ class TimetableWidget extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 16),
               if (timetableSlots.isNotEmpty && onClear != null)
                 ElevatedButton.icon(
                   onPressed: onClear,
@@ -189,7 +196,7 @@ class TimetableWidget extends StatelessWidget {
           ),
         ),
       ],
-    );
+    ),);
   }
 
   List<DataRow> _buildRows(BuildContext context) {
@@ -427,7 +434,7 @@ class TimetableWidget extends StatelessWidget {
           ),
         ),
       ),
-    );
+      );
   }
 
   String _buildTooltipContent(List<TimetableSlot> slots) {
