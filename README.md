@@ -230,3 +230,6 @@ flutter build macos
 flutter run -d linux
 flutter build linux
 ```
+
+## Created by
+- Aryan Dalmia
