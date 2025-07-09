@@ -7,12 +7,14 @@ class CourseListWidget extends StatelessWidget {
   final List<Course> courses;
   final List<SelectedSection> selectedSections;
   final Function(String courseCode, String sectionId, bool isSelected) onSectionToggle;
+  final bool showOnlySelected;
 
   const CourseListWidget({
     super.key,
     required this.courses,
     required this.selectedSections,
     required this.onSectionToggle,
+    this.showOnlySelected = false,
   });
 
   bool _isSectionSelected(String courseCode, String sectionId) {
@@ -29,74 +31,74 @@ class CourseListWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Separate courses into selected and non-selected
-    final selectedCourses = <Course>[];
-    final nonSelectedCourses = <Course>[];
+    List<Course> displayCourses;
     
-    for (final course in courses) {
-      final hasSelectedSections = selectedSections.any(
-        (s) => s.courseCode == course.courseCode,
-      );
-      
-      if (hasSelectedSections) {
-        selectedCourses.add(course);
-      } else {
-        nonSelectedCourses.add(course);
-      }
+    if (showOnlySelected) {
+      // Show only courses that have selected sections
+      displayCourses = courses.where((course) => 
+        selectedSections.any((s) => s.courseCode == course.courseCode)
+      ).toList();
+    } else {
+      // Show all courses without any reordering
+      displayCourses = courses;
     }
     
-    // Combine lists with selected courses first
-    final sortedCourses = [...selectedCourses, ...nonSelectedCourses];
-    
-    // Calculate item count including divider
-    final totalItems = sortedCourses.length + (selectedCourses.isNotEmpty && nonSelectedCourses.isNotEmpty ? 1 : 0);
+    if (displayCourses.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              showOnlySelected ? Icons.school_outlined : Icons.search_off,
+              size: 64,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              showOnlySelected ? 'No courses selected' : 'No courses found',
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              showOnlySelected 
+                ? 'Go to Search tab to add courses' 
+                : 'Try adjusting your search criteria',
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     
     return ListView.builder(
       padding: const EdgeInsets.all(8),
-      itemCount: totalItems,
+      itemCount: displayCourses.length,
       itemBuilder: (context, index) {
-        // Check if this is the divider position
-        if (selectedCourses.isNotEmpty && nonSelectedCourses.isNotEmpty && index == selectedCourses.length) {
-          return Container(
-            margin: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              children: [
-                Expanded(child: Divider(color: Theme.of(context).colorScheme.outline)),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    'Other Courses (${nonSelectedCourses.length})',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                Expanded(child: Divider(color: Theme.of(context).colorScheme.outline)),
-              ],
-            ),
-          );
-        }
-        
-        // Adjust index for course items after divider
-        final courseIndex = index > selectedCourses.length ? index - 1 : index;
-        final course = sortedCourses[courseIndex];
-        final isSelectedCourse = selectedCourses.contains(course);
+        final course = displayCourses[index];
+        final isSelectedCourse = selectedSections.any(
+          (s) => s.courseCode == course.courseCode,
+        );
         
         return Container(
           margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
           decoration: BoxDecoration(
-            color: isSelectedCourse 
+            color: (isSelectedCourse && !showOnlySelected) 
               ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
               : Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(12),
-            border: isSelectedCourse 
+            border: (isSelectedCourse && !showOnlySelected) 
               ? Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.3))
               : null,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.2),
-                blurRadius: isSelectedCourse ? 6 : 4,
+                blurRadius: (isSelectedCourse && !showOnlySelected) ? 6 : 4,
                 offset: const Offset(0, 2),
               ),
             ],
@@ -104,7 +106,7 @@ class CourseListWidget extends StatelessWidget {
           child: ExpansionTile(
             title: Row(
               children: [
-                if (isSelectedCourse) ...[
+                if (isSelectedCourse && !showOnlySelected) ...[
                   Container(
                     width: 10,
                     height: 10,
@@ -127,7 +129,7 @@ class CourseListWidget extends StatelessWidget {
                     course.courseCode,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: isSelectedCourse 
+                      color: (isSelectedCourse && !showOnlySelected) 
                         ? Theme.of(context).colorScheme.primary
                         : Theme.of(context).colorScheme.onSurface,
                     ),

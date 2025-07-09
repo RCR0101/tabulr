@@ -185,6 +185,8 @@ class TimeSlotInfo {
     8: '3:00PM-3:50PM',
     9: '4:00PM-4:50PM',
     10: '5:00PM-5:50PM',
+    11: '6:00PM-6:50PM',
+    12: '7:00PM-7:50PM',
   };
 
   static String getTimeSlotName(TimeSlot slot) {

@@ -249,31 +249,58 @@ class XlsxParser {
 
   static List<int> _parseHours(String hoursStr) {
     if (hoursStr.isEmpty) return [];
-    print(hoursStr);
+    
+    // Remove thousands separator if present (e.g., "1,011" -> "1011")
+    final cleaned = hoursStr.replaceAll(',', '').trim();
+    print('Parsing hours: $hoursStr -> cleaned: $cleaned');
+    
     try {
-      final trimmed = hoursStr.trim();
-      final hourValue = int.parse(trimmed);
-      
-      // Handle multi-digit values (split into individual digits)
-      if (hourValue >= 11 && hourValue <= 9999) {
-        // Split multi-digit into individual digits
-        // e.g., 89 -> [8, 9], 45 -> [4, 5], 123 -> [1, 2, 3]
-        final digits = trimmed.split('').map(int.parse).toList();
-        
-        // Validate that all digits are valid hour slots (1-9, not 0)
-        // Note: 10 should be handled as a single value, not split into 1,0
-        if (digits.every((digit) => digit >= 1 && digit <= 9)) {
-          return digits;
-        }
-      }
+      final hourValue = int.parse(cleaned);
       
       // Handle single digit or 10
       if (hourValue >= 1 && hourValue <= 10) {
         return [hourValue];
       }
       
+      // Handle multi-digit values - try to parse as two-digit pairs first
+      if (hourValue > 10) {
+        final str = cleaned;
+        
+        // Try to parse as consecutive two-digit numbers (e.g., 1011 -> [10, 11], 1112 -> [11, 12])
+        if (str.length % 2 == 0) {
+          bool canParseAsTwoDigit = true;
+          final List<int> twoDigitHours = [];
+          
+          for (int i = 0; i < str.length; i += 2) {
+            final twoDigitStr = str.substring(i, i + 2);
+            final twoDigitValue = int.parse(twoDigitStr);
+            // Accept hours 10, 11, 12 as valid two-digit hours
+            if (twoDigitValue >= 10 && twoDigitValue <= 12) {
+              twoDigitHours.add(twoDigitValue);
+            } else {
+              canParseAsTwoDigit = false;
+              break;
+            }
+          }
+          
+          if (canParseAsTwoDigit && twoDigitHours.isNotEmpty) {
+            print('Parsed as two-digit hours: $twoDigitHours');
+            return twoDigitHours;
+          }
+        }
+        
+        // Fall back to single digit parsing (e.g., 678 -> [6, 7, 8])
+        final digits = str.split('').map(int.parse).toList();
+        if (digits.every((digit) => digit >= 1 && digit <= 9)) {
+          print('Parsed as single-digit hours: $digits');
+          return digits;
+        }
+      }
+      
+      print('Hour value $hourValue could not be parsed');
       return [];
     } catch (e) {
+      print('Error parsing hours "$hoursStr": $e');
       return [];
     }
   }

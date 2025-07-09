@@ -27,7 +27,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -58,9 +58,19 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    const Icon(Icons.search, size: 16),
+                    const SizedBox(width: 4),
+                    Text('Search (${widget.courses.length})'),
+                  ],
+                ),
+              ),
+              Tab(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     const Icon(Icons.school, size: 16),
                     const SizedBox(width: 4),
-                    Text('Courses (${widget.courses.length})'),
+                    Text('My Courses (${widget.selectedSections.map((s) => s.courseCode).toSet().length})'),
                   ],
                 ),
               ),
@@ -70,7 +80,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                   children: [
                     const Icon(Icons.event, size: 16),
                     const SizedBox(width: 4),
-                    Text('Exam Schedule (${widget.selectedSections.length})'),
+                    const Text('Exams'),
                   ],
                 ),
               ),
@@ -81,11 +91,19 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
           child: TabBarView(
             controller: _tabController,
             children: [
-              // Courses tab
+              // Search tab - shows all courses without reordering
               CourseListWidget(
                 courses: widget.courses,
                 selectedSections: widget.selectedSections,
                 onSectionToggle: widget.onSectionToggle,
+                showOnlySelected: false,
+              ),
+              // My Courses tab - shows only selected courses
+              CourseListWidget(
+                courses: widget.courses,
+                selectedSections: widget.selectedSections,
+                onSectionToggle: widget.onSectionToggle,
+                showOnlySelected: true,
               ),
               // Exam schedule tab
               widget.selectedSections.isEmpty
