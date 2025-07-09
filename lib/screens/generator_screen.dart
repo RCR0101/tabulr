@@ -98,15 +98,108 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0D1117),
       appBar: AppBar(
-        title: const Text('Advanced Timetable Generator'),
+        backgroundColor: const Color(0xFF161B22),
+        elevation: 0,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF58A6FF).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.auto_awesome,
+                color: Color(0xFF58A6FF),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Timetable Generator',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFF0F6FC),
+                  ),
+                ),
+                Text(
+                  'Automatic Scheduling',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF8B949E),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFFF0F6FC)),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TimetableGeneratorWidget(
-              availableCourses: _availableCourses,
-              onTimetableSelected: _onTimetableSelected,
-            ),
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(
+                    color: Color(0xFF58A6FF),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Loading courses...',
+                    style: TextStyle(
+                      color: const Color(0xFF8B949E),
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : _availableCourses.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.school_outlined,
+                        size: 64,
+                        color: const Color(0xFF8B949E),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No courses available',
+                        style: TextStyle(
+                          color: const Color(0xFFF0F6FC),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Please ensure course data is loaded',
+                        style: TextStyle(
+                          color: const Color(0xFF8B949E),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : Container(
+                  padding: const EdgeInsets.all(16),
+                  child: TimetableGeneratorWidget(
+                    availableCourses: _availableCourses,
+                    onTimetableSelected: _onTimetableSelected,
+                  ),
+                ),
     );
   }
 }

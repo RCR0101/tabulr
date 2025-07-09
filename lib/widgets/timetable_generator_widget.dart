@@ -32,31 +32,231 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Card(
-          margin: const EdgeInsets.all(8),
-          child: Padding(
+        // Left panel - Configuration
+        Expanded(
+          flex: 1,
+          child: Column(
+            children: [
+              _buildConfigurationPanel(),
+              const SizedBox(height: 16),
+              _buildConstraintsPanel(),
+              const SizedBox(height: 16),
+              _buildGenerateButton(),
+            ],
+          ),
+        ),
+        const SizedBox(width: 16),
+        // Right panel - Results
+        Expanded(
+          flex: 2,
+          child: _buildResultsPanel(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConfigurationPanel() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF161B22),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF30363D)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            decoration: const BoxDecoration(
+              color: Color(0xFF21262D),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+            ),
+            child: Row(
               children: [
-                const Text(
-                  'Timetable Generator',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Icon(
+                  Icons.settings,
+                  color: const Color(0xFF58A6FF),
+                  size: 20,
                 ),
-                const SizedBox(height: 16),
-                _buildCourseSelection(),
-                const SizedBox(height: 16),
-                _buildConstraints(),
-                const SizedBox(height: 16),
-                _buildGenerateButton(),
+                const SizedBox(width: 8),
+                const Text(
+                  'Course Selection',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFF0F6FC),
+                  ),
+                ),
               ],
             ),
           ),
-        ),
-        if (_generatedTimetables.isNotEmpty) _buildGeneratedTimetables(),
-      ],
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: _buildCourseSelection(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConstraintsPanel() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF161B22),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF30363D)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: Color(0xFF21262D),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.tune,
+                  color: const Color(0xFF58A6FF),
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Constraints & Preferences',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFF0F6FC),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: _buildConstraints(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResultsPanel() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF161B22),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF30363D)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: Color(0xFF21262D),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.view_list,
+                  color: const Color(0xFF58A6FF),
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Generated Timetables',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFF0F6FC),
+                  ),
+                ),
+                const Spacer(),
+                if (_generatedTimetables.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF58A6FF).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${_generatedTimetables.length} found',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF58A6FF),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _generatedTimetables.isEmpty
+                ? _buildEmptyResults()
+                : _buildGeneratedTimetables(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyResults() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.auto_awesome_outlined,
+            size: 64,
+            color: const Color(0xFF8B949E),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _isGenerating ? 'Generating timetables...' : 'No timetables generated yet',
+            style: const TextStyle(
+              color: Color(0xFFF0F6FC),
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _isGenerating 
+                ? 'This may take a few moments'
+                : 'Select courses and click Generate to see results',
+            style: const TextStyle(
+              color: Color(0xFF8B949E),
+              fontSize: 14,
+            ),
+          ),
+          if (_isGenerating) ...[
+            const SizedBox(height: 16),
+            const CircularProgressIndicator(
+              color: Color(0xFF58A6FF),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -409,24 +609,77 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
   }
 
   Widget _buildGenerateButton() {
-    return SizedBox(
+    return Container(
       width: double.infinity,
+      height: 56,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: _selectedCourses.isNotEmpty && !_isGenerating
+            ? const LinearGradient(
+                colors: [Color(0xFF58A6FF), Color(0xFF79C0FF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : null,
+        color: _selectedCourses.isEmpty || _isGenerating
+            ? const Color(0xFF21262D)
+            : null,
+      ),
       child: ElevatedButton(
         onPressed: _selectedCourses.isNotEmpty && !_isGenerating ? _generateTimetables : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
         child: _isGenerating
-          ? const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                SizedBox(width: 8),
-                Text('Generating...'),
-              ],
-            )
-          : const Text('Generate Timetables'),
+            ? const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFF58A6FF),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    'Generating...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF58A6FF),
+                    ),
+                  ),
+                ],
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.auto_awesome,
+                    color: _selectedCourses.isNotEmpty 
+                        ? const Color(0xFF0D1117) 
+                        : const Color(0xFF8B949E),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Generate Timetables',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: _selectedCourses.isNotEmpty 
+                          ? const Color(0xFF0D1117) 
+                          : const Color(0xFF8B949E),
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }

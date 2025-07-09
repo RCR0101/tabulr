@@ -217,22 +217,35 @@ class TimetableWidget extends StatelessWidget {
             Container(
               width: 120,
               height: 80,
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFF21262D),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: const Color(0xFF30363D)),
               ),
-              child: Center(
-                child: Text(
-                  TimeSlotInfo.getHourSlotName(hour),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFFF0F6FC),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Hour $hour',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF58A6FF),
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                ),
+                  const SizedBox(height: 4),
+                  Text(
+                    TimeSlotInfo.getHourSlotName(hour),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w400,
+                      color: Color(0xFFE6EDF3),
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                  ),
+                ],
               ),
             ),
           ),
