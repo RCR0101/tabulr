@@ -3,6 +3,7 @@ import 'course.dart';
 class TimetableConstraints {
   final List<String> requiredCourses;
   final List<TimeAvoidance> avoidTimes;
+  final List<LabAvoidance> avoidLabs;
   final int maxHoursPerDay;
   final List<String> preferredInstructors;
   final List<String> avoidedInstructors;
@@ -12,6 +13,7 @@ class TimetableConstraints {
   TimetableConstraints({
     required this.requiredCourses,
     this.avoidTimes = const [],
+    this.avoidLabs = const [],
     this.maxHoursPerDay = 8,
     this.preferredInstructors = const [],
     this.avoidedInstructors = const [],
@@ -25,6 +27,16 @@ class TimeAvoidance {
   final List<int> hours;
 
   TimeAvoidance({
+    required this.day,
+    required this.hours,
+  });
+}
+
+class LabAvoidance {
+  final DayOfWeek day;
+  final List<int> hours;
+
+  LabAvoidance({
     required this.day,
     required this.hours,
   });

@@ -224,6 +224,23 @@ class TimetableGenerator {
       }
     }
 
+    // Heavy penalty for lab conflicts with avoidLabs (only applies to practical sections)
+    for (final avoidLab in constraints.avoidLabs) {
+      for (final section in sections) {
+        // Only apply lab avoidance to practical sections (P1, P2, etc.)
+        if (section.section.type == SectionType.P) {
+          for (final scheduleEntry in section.section.schedule) {
+            if (scheduleEntry.days.contains(avoidLab.day)) {
+              final conflictingHours = scheduleEntry.hours
+                  .where((hour) => avoidLab.hours.contains(hour))
+                  .length;
+              score -= conflictingHours * 25; // Higher penalty for lab conflicts
+            }
+          }
+        }
+      }
+    }
+
     // Bonus for preferred instructors
     for (final section in sections) {
       if (constraints.preferredInstructors.contains(section.section.instructor)) {
@@ -330,6 +347,30 @@ class TimetableGenerator {
       pros.add('Avoids all specified time conflicts');
     } else if (hasConflicts) {
       cons.add('Has some time conflicts with preferences');
+    }
+
+    // Check for lab conflicts
+    bool hasLabConflicts = false;
+    for (final avoidLab in constraints.avoidLabs) {
+      for (final section in sections) {
+        if (section.section.type == SectionType.P) {
+          for (final scheduleEntry in section.section.schedule) {
+            if (scheduleEntry.days.contains(avoidLab.day) &&
+                scheduleEntry.hours.any((hour) => avoidLab.hours.contains(hour))) {
+              hasLabConflicts = true;
+              break;
+            }
+          }
+        }
+        if (hasLabConflicts) break;
+      }
+      if (hasLabConflicts) break;
+    }
+    
+    if (!hasLabConflicts && constraints.avoidLabs.isNotEmpty) {
+      pros.add('Avoids all specified lab time conflicts');
+    } else if (hasLabConflicts) {
+      cons.add('Has lab conflicts with specified preferences');
     }
 
     // Analyze compactness

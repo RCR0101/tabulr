@@ -22,6 +22,7 @@ class TimetableGeneratorWidget extends StatefulWidget {
 class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
   final List<String> _selectedCourses = [];
   final List<TimeAvoidance> _avoidTimes = [];
+  final List<LabAvoidance> _avoidLabs = [];
   int _maxHoursPerDay = 8;
   final List<String> _preferredInstructors = [];
   final List<String> _avoidedInstructors = [];
@@ -545,6 +546,8 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
         ),
         const SizedBox(height: 8),
         _buildTimeAvoidance(),
+        const SizedBox(height: 8),
+        _buildLabAvoidance(),
         const SizedBox(height: 16),
         _buildInstructorAvoidance(),
       ],
@@ -598,6 +601,64 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
                       });
                     },
                     backgroundColor: const Color(0xFF58A6FF).withOpacity(0.1),
+                    deleteIconColor: Colors.red,
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildLabAvoidance() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text('Avoid labs on:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            const Spacer(),
+            ElevatedButton(
+              onPressed: _addLabAvoidance,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                minimumSize: const Size(0, 32),
+              ),
+              child: const Text('Add', style: TextStyle(fontSize: 12)),
+            ),
+          ],
+        ),
+        if (_avoidLabs.isNotEmpty) ...[ 
+          const SizedBox(height: 8),
+          Container(
+            constraints: const BoxConstraints(maxHeight: 80),
+            decoration: BoxDecoration(
+              color: const Color(0xFF21262D).withOpacity(0.3),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF30363D)),
+            ),
+            padding: const EdgeInsets.all(8),
+            child: SingleChildScrollView(
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: _avoidLabs.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final avoidLab = entry.value;
+                  return Chip(
+                    label: Text(
+                      '${avoidLab.day.name}: ${_formatAvoidTimeHours(avoidLab.hours)} (Labs)',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    deleteIcon: const Icon(Icons.close, size: 16),
+                    onDeleted: () {
+                      setState(() {
+                        _avoidLabs.removeAt(index);
+                      });
+                    },
+                    backgroundColor: const Color(0xFFFF6B6B).withOpacity(0.1),
                     deleteIconColor: Colors.red,
                   );
                 }).toList(),
@@ -726,6 +787,19 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
     }
   }
 
+  Future<void> _addLabAvoidance() async {
+    final result = await showDialog<LabAvoidance>(
+      context: context,
+      builder: (context) => const _LabAvoidanceDialog(),
+    );
+    
+    if (result != null && mounted) {
+      setState(() {
+        _avoidLabs.add(result);
+      });
+    }
+  }
+
   Widget _buildGenerateButton() {
     return Container(
       width: double.infinity,
@@ -811,6 +885,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
       final constraints = TimetableConstraints(
         requiredCourses: _selectedCourses,
         avoidTimes: _avoidTimes,
+        avoidLabs: _avoidLabs,
         maxHoursPerDay: _maxHoursPerDay,
         preferredInstructors: _preferredInstructors,
         avoidedInstructors: _avoidedInstructors,
@@ -958,6 +1033,104 @@ class _TimeAvoidanceDialogState extends State<_TimeAvoidanceDialog> {
                   hours: [..._selectedHours],
                 );
                 Navigator.pop(context, avoidTime);
+              }
+            : null,
+          child: const Text('Add'),
+        ),
+      ],
+    );
+  }
+}
+
+class _LabAvoidanceDialog extends StatefulWidget {
+  const _LabAvoidanceDialog();
+
+  @override
+  State<_LabAvoidanceDialog> createState() => _LabAvoidanceDialogState();
+}
+
+class _LabAvoidanceDialogState extends State<_LabAvoidanceDialog> {
+  DayOfWeek? _selectedDay;
+  final List<int> _selectedHours = [];
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Add Lab Avoidance'),
+      content: SizedBox(
+        width: 400,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<DayOfWeek>(
+              decoration: const InputDecoration(labelText: 'Day'),
+              value: _selectedDay,
+              items: DayOfWeek.values.map((day) => DropdownMenuItem(
+                value: day,
+                child: Text(day.name),
+              )).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedDay = value;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            const Text('Hours to avoid labs:'),
+            const SizedBox(height: 8),
+            Container(
+              height: 200,
+              width: double.infinity,
+              child: GridView.builder(
+                shrinkWrap: true,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 5,
+                  childAspectRatio: 2,
+                  crossAxisSpacing: 4,
+                  mainAxisSpacing: 4,
+                ),
+                itemCount: 10,
+                itemBuilder: (context, index) {
+                  final hour = index + 1;
+                  final isSelected = _selectedHours.contains(hour);
+                  return FilterChip(
+                    label: Text(
+                      hour.toString(),
+                      style: const TextStyle(fontSize: 10),
+                    ),
+                    tooltip: TimeSlotInfo.getHourSlotName(hour),
+                    selected: isSelected,
+                    selectedColor: const Color(0xFFFF6B6B).withOpacity(0.3),
+                    checkmarkColor: const Color(0xFFFF6B6B),
+                    onSelected: (selected) {
+                      setState(() {
+                        if (selected) {
+                          _selectedHours.add(hour);
+                        } else {
+                          _selectedHours.remove(hour);
+                        }
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _selectedDay != null && _selectedHours.isNotEmpty
+            ? () {
+                final avoidLab = LabAvoidance(
+                  day: _selectedDay!,
+                  hours: [..._selectedHours],
+                );
+                Navigator.pop(context, avoidLab);
               }
             : null,
           child: const Text('Add'),
