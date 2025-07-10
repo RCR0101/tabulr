@@ -40,10 +40,20 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
           flex: 1,
           child: Column(
             children: [
-              _buildConfigurationPanel(),
-              const SizedBox(height: 16),
-              _buildConstraintsPanel(),
-              const SizedBox(height: 16),
+              // Scrollable content area
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Column(
+                    children: [
+                      _buildConfigurationPanel(),
+                      const SizedBox(height: 16),
+                      _buildConstraintsPanel(),
+                    ],
+                  ),
+                ),
+              ),
+              // Fixed generate button at bottom
               _buildGenerateButton(),
             ],
           ),
@@ -330,26 +340,50 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.grey[100],
+          color: const Color(0xFF21262D).withOpacity(0.3),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey[300]!),
+          border: Border.all(color: const Color(0xFF30363D)),
         ),
         child: const Center(
           child: Text(
             'No courses selected',
-            style: TextStyle(color: Colors.grey),
+            style: TextStyle(
+              color: Color(0xFF8B949E),
+              fontSize: 14,
+            ),
           ),
         ),
       );
     }
 
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 120),
-      child: SingleChildScrollView(
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: _selectedCourses.map((courseCode) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_selectedCourses.length > 6)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              '${_selectedCourses.length} courses selected • Scroll to see all',
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF8B949E),
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+        Container(
+          constraints: const BoxConstraints(maxHeight: 150),
+          decoration: BoxDecoration(
+            color: const Color(0xFF21262D).withOpacity(0.3),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFF30363D)),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: SingleChildScrollView(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _selectedCourses.map((courseCode) {
             final course = widget.availableCourses.firstWhere(
               (c) => c.courseCode == courseCode,
               orElse: () => Course(
@@ -371,29 +405,39 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
                     course.courseCode,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                      fontSize: 11,
+                      color: Color(0xFF58A6FF),
                     ),
                   ),
                   Text(
                     course.courseTitle,
-                    style: const TextStyle(fontSize: 10),
+                    style: const TextStyle(
+                      fontSize: 9,
+                      color: Color(0xFF8B949E),
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
-              deleteIcon: const Icon(Icons.close, size: 16),
+              deleteIcon: const Icon(Icons.close, size: 14),
               onDeleted: () {
                 setState(() {
                   _selectedCourses.remove(courseCode);
                 });
               },
-              backgroundColor: Colors.blue.withOpacity(0.1),
-              deleteIconColor: Colors.red,
+              backgroundColor: const Color(0xFF58A6FF).withOpacity(0.1),
+              deleteIconColor: const Color(0xFFFF6B6B),
+              side: BorderSide(
+                color: const Color(0xFF58A6FF).withOpacity(0.3),
+                width: 1,
+              ),
             );
           }).toList(),
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -403,60 +447,101 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
       children: [
         const Text('Constraints & Preferences:', style: TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            const Text('Max hours per day:'),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 60,
-              child: TextField(
-                controller: TextEditingController(text: _maxHoursPerDay.toString()),
-                keyboardType: TextInputType.number,
-                onChanged: (value) {
-                  final hours = int.tryParse(value);
-                  if (hours != null && hours > 0 && hours <= 12) {
-                    _maxHoursPerDay = hours;
-                  }
-                },
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        CheckboxListTile(
-          title: const Text('Avoid back-to-back classes'),
-          value: _avoidBackToBack,
-          onChanged: (value) {
-            setState(() {
-              _avoidBackToBack = value ?? false;
-            });
-          },
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            const Text('Preferred exam slot:'),
-            const SizedBox(width: 8),
-            DropdownButton<TimeSlot?>(
-              value: _preferredExamSlot,
-              hint: const Text('Any'),
-              items: [
-                const DropdownMenuItem<TimeSlot?>(
-                  value: null,
-                  child: Text('Any'),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF21262D).withOpacity(0.3),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFF30363D)),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              const Text('Max hours per day:', style: TextStyle(fontSize: 14)),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 60,
+                child: TextField(
+                  controller: TextEditingController(text: _maxHoursPerDay.toString()),
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(fontSize: 14),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (value) {
+                    final hours = int.tryParse(value);
+                    if (hours != null && hours > 0 && hours <= 12) {
+                      _maxHoursPerDay = hours;
+                    }
+                  },
                 ),
-                ...TimeSlot.values.map((slot) => DropdownMenuItem(
-                  value: slot,
-                  child: Text(TimeSlotInfo.getTimeSlotName(slot)),
-                )),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _preferredExamSlot = value;
-                });
-              },
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF21262D).withOpacity(0.3),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFF30363D)),
+          ),
+          child: CheckboxListTile(
+            title: const Text(
+              'Avoid back-to-back classes',
+              style: TextStyle(fontSize: 14),
             ),
-          ],
+            value: _avoidBackToBack,
+            dense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            onChanged: (value) {
+              setState(() {
+                _avoidBackToBack = value ?? false;
+              });
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF21262D).withOpacity(0.3),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFF30363D)),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              const Text('Preferred exam slot:', style: TextStyle(fontSize: 14)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: DropdownButton<TimeSlot?>(
+                  value: _preferredExamSlot,
+                  hint: const Text('Any', style: TextStyle(fontSize: 14)),
+                  isExpanded: true,
+                  underline: Container(),
+                  items: [
+                    const DropdownMenuItem<TimeSlot?>(
+                      value: null,
+                      child: Text('Any', style: TextStyle(fontSize: 14)),
+                    ),
+                    ...TimeSlot.values.map((slot) => DropdownMenuItem(
+                      value: slot,
+                      child: Text(
+                        TimeSlotInfo.getTimeSlotName(slot),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    )),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _preferredExamSlot = value;
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 8),
         _buildTimeAvoidance(),
@@ -472,27 +557,54 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
       children: [
         Row(
           children: [
-            const Text('Avoid time slots:'),
-            const SizedBox(width: 8),
+            const Text('Avoid time slots:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            const Spacer(),
             ElevatedButton(
               onPressed: _addTimeAvoidance,
-              child: const Text('Add'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                minimumSize: const Size(0, 32),
+              ),
+              child: const Text('Add', style: TextStyle(fontSize: 12)),
             ),
           ],
         ),
-        if (_avoidTimes.isNotEmpty)
-          ...(_avoidTimes.asMap().entries.map((entry) {
-            final index = entry.key;
-            final avoidTime = entry.value;
-            return Chip(
-              label: Text('${avoidTime.day.name}: ${_formatAvoidTimeHours(avoidTime.hours)}'),
-              onDeleted: () {
-                setState(() {
-                  _avoidTimes.removeAt(index);
-                });
-              },
-            );
-          })),
+        if (_avoidTimes.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Container(
+            constraints: const BoxConstraints(maxHeight: 80),
+            decoration: BoxDecoration(
+              color: const Color(0xFF21262D).withOpacity(0.3),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF30363D)),
+            ),
+            padding: const EdgeInsets.all(8),
+            child: SingleChildScrollView(
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: _avoidTimes.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final avoidTime = entry.value;
+                  return Chip(
+                    label: Text(
+                      '${avoidTime.day.name}: ${_formatAvoidTimeHours(avoidTime.hours)}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    deleteIcon: const Icon(Icons.close, size: 16),
+                    onDeleted: () {
+                      setState(() {
+                        _avoidTimes.removeAt(index);
+                      });
+                    },
+                    backgroundColor: const Color(0xFF58A6FF).withOpacity(0.1),
+                    deleteIconColor: Colors.red,
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -526,10 +638,16 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
         const SizedBox(height: 8),
         if (availableInstructors.isNotEmpty) ...[
           Container(
-            constraints: const BoxConstraints(maxHeight: 120),
+            constraints: const BoxConstraints(maxHeight: 100),
+            decoration: BoxDecoration(
+              color: const Color(0xFF21262D).withOpacity(0.3),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF30363D)),
+            ),
+            padding: const EdgeInsets.all(8),
             child: SingleChildScrollView(
               child: Wrap(
-                spacing: 8,
+                spacing: 6,
                 runSpacing: 4,
                 children: availableInstructors.map((instructor) {
                   final isAvoided = _avoidedInstructors.contains(instructor);

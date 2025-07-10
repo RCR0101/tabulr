@@ -5,6 +5,7 @@
   "main": "upload-timetable.js",
   "scripts": {
     "upload": "node upload-timetable.js",
+    "upload-guide": "node upload_course_guide.js",
     "test": "node test-parser.js"
   },
   "dependencies": {

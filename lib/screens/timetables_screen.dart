@@ -3,6 +3,7 @@ import '../models/timetable.dart';
 import '../services/timetable_service.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
+import 'course_guide_screen.dart';
 
 class TimetablesScreen extends StatefulWidget {
   const TimetablesScreen({super.key});
@@ -239,6 +240,18 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
         title: const Text('My Timetables'),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.menu_book),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CourseGuideScreen(),
+                ),
+              );
+            },
+            tooltip: 'Course Guide',
+          ),
           // User info and logout
           if (_authService.isAuthenticated)
             PopupMenuButton<String>(

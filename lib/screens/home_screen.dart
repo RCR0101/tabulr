@@ -12,6 +12,7 @@ import '../widgets/clash_warnings_widget.dart';
 import '../widgets/search_filter_widget.dart';
 import 'generator_screen.dart';
 import 'timetables_screen.dart';
+import 'course_guide_screen.dart';
 import '../models/timetable.dart' as timetable;
 
 class HomeScreen extends StatefulWidget {
@@ -375,6 +376,18 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Tabulr'),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.menu_book),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CourseGuideScreen(),
+                ),
+              );
+            },
+            tooltip: 'Course Guide',
+          ),
           if (_timetable?.selectedSections.isNotEmpty == true)
             IconButton(
               icon: const Icon(Icons.clear_all),
@@ -853,6 +866,18 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
         title: Text(_timetable.name),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.menu_book),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CourseGuideScreen(),
+                ),
+              );
+            },
+            tooltip: 'Course Guide',
+          ),
           if (_timetable.selectedSections.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.clear_all),
