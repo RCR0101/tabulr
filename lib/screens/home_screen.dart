@@ -38,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Timetable? _timetable;
   List<Course> _filteredCourses = [];
   bool _isLoading = true;
+  TimetableSize _timetableSize = TimetableSize.medium;
 
   @override
   void initState() {
@@ -536,6 +537,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           incompleteSelectionWarnings: _timetableService.getIncompleteSelectionWarnings(_timetable!.selectedSections, _timetable!.availableCourses),
                           onClear: _clearTimetable,
                           onRemoveSection: _removeSection,
+                          size: _timetableSize,
+                          onSizeChanged: (newSize) {
+                            setState(() {
+                              _timetableSize = newSize;
+                            });
+                          },
                         ),
                       ),
                     ),
@@ -564,6 +571,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
   late Timetable _timetable;
   List<Course> _filteredCourses = [];
   bool _isLoading = false;
+  TimetableSize _timetableSize = TimetableSize.medium;
 
   @override
   void initState() {
@@ -1026,6 +1034,12 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                           incompleteSelectionWarnings: _timetableService.getIncompleteSelectionWarnings(_timetable.selectedSections, _timetable.availableCourses),
                           onClear: _clearTimetable,
                           onRemoveSection: _removeSection,
+                          size: _timetableSize,
+                          onSizeChanged: (newSize) {
+                            setState(() {
+                              _timetableSize = newSize;
+                            });
+                          },
                         ),
                       ),
                     ),

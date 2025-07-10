@@ -2,11 +2,20 @@ import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 
+enum TimetableSize {
+  compact,
+  medium,
+  large,
+  extraLarge,
+}
+
 class TimetableWidget extends StatelessWidget {
   final List<TimetableSlot> timetableSlots;
   final List<String> incompleteSelectionWarnings;
   final VoidCallback? onClear;
   final Function(String courseCode, String sectionId)? onRemoveSection;
+  final TimetableSize size;
+  final Function(TimetableSize)? onSizeChanged;
 
   const TimetableWidget({
     super.key,
@@ -14,6 +23,8 @@ class TimetableWidget extends StatelessWidget {
     this.incompleteSelectionWarnings = const [],
     this.onClear,
     this.onRemoveSection,
+    this.size = TimetableSize.medium,
+    this.onSizeChanged,
   });
 
   @override
@@ -28,7 +39,7 @@ class TimetableWidget extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(8),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -39,6 +50,69 @@ class TimetableWidget extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              const SizedBox(width: 16),
+              PopupMenuButton<TimetableSize>(
+                onSelected: onSizeChanged,
+                enabled: onSizeChanged != null,
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: TimetableSize.compact,
+                      child: Row(
+                        children: [
+                          Icon(Icons.view_compact, size: 16),
+                          SizedBox(width: 8),
+                          Text('Compact'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: TimetableSize.medium,
+                      child: Row(
+                        children: [
+                          Icon(Icons.view_module, size: 16),
+                          SizedBox(width: 8),
+                          Text('Medium'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: TimetableSize.large,
+                      child: Row(
+                        children: [
+                          Icon(Icons.view_comfortable, size: 16),
+                          SizedBox(width: 8),
+                          Text('Large'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: TimetableSize.extraLarge,
+                      child: Row(
+                        children: [
+                          Icon(Icons.view_agenda, size: 16),
+                          SizedBox(width: 8),
+                          Text('Extra Large'),
+                        ],
+                      ),
+                    ),
+                  ],
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(_getSizeIcon(), size: 16),
+                        SizedBox(width: 4),
+                        Icon(Icons.arrow_drop_down, size: 16),
+                      ],
+                    ),
+                  ),
+                ),
               const SizedBox(width: 16),
               if (timetableSlots.isNotEmpty && onClear != null)
                 ElevatedButton.icon(
@@ -59,7 +133,7 @@ class TimetableWidget extends StatelessWidget {
         ),
         Expanded(
           child: Container(
-            margin: const EdgeInsets.all(8),
+            margin: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: const Color(0xFF161B22),
               borderRadius: BorderRadius.circular(12),
@@ -75,29 +149,23 @@ class TimetableWidget extends StatelessWidget {
                 ),
               ],
             ),
-            child: Scrollbar(
-              scrollbarOrientation: ScrollbarOrientation.bottom,
-              thickness: 8,
-              radius: const Radius.circular(4),
-              child: Scrollbar(
-                scrollbarOrientation: ScrollbarOrientation.right,
-                thickness: 8,
-                radius: const Radius.circular(4),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  physics: const ClampingScrollPhysics(),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const ClampingScrollPhysics(),
-                    child: DataTable(
-                  columnSpacing: 20,
-                  horizontalMargin: 24,
-                  dataRowHeight: 100,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.vertical,
+              physics: const ClampingScrollPhysics(),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const ClampingScrollPhysics(),
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: DataTable(
+                  columnSpacing: _getColumnSpacing(),
+                  horizontalMargin: _getHorizontalMargin(),
+                  dataRowHeight: _getDataRowHeight(),
                   headingRowHeight: 60,
-                  columns: const [
+                  columns: [
                     DataColumn(
                       label: SizedBox(
-                        width: 120,
+                        width: _getTimeColumnWidth(),
                         child: Text(
                           'Time',
                           style: TextStyle(
@@ -110,7 +178,7 @@ class TimetableWidget extends StatelessWidget {
                     ),
                     DataColumn(
                       label: SizedBox(
-                        width: 160,
+                        width: _getDayColumnWidth(),
                         child: Text(
                           'Monday',
                           style: TextStyle(
@@ -123,7 +191,7 @@ class TimetableWidget extends StatelessWidget {
                     ),
                     DataColumn(
                       label: SizedBox(
-                        width: 160,
+                        width: _getDayColumnWidth(),
                         child: Text(
                           'Tuesday',
                           style: TextStyle(
@@ -136,7 +204,7 @@ class TimetableWidget extends StatelessWidget {
                     ),
                     DataColumn(
                       label: SizedBox(
-                        width: 160,
+                        width: _getDayColumnWidth(),
                         child: Text(
                           'Wednesday',
                           style: TextStyle(
@@ -149,7 +217,7 @@ class TimetableWidget extends StatelessWidget {
                     ),
                     DataColumn(
                       label: SizedBox(
-                        width: 160,
+                        width: _getDayColumnWidth(),
                         child: Text(
                           'Thursday',
                           style: TextStyle(
@@ -162,7 +230,7 @@ class TimetableWidget extends StatelessWidget {
                     ),
                     DataColumn(
                       label: SizedBox(
-                        width: 160,
+                        width: _getDayColumnWidth(),
                         child: Text(
                           'Friday',
                           style: TextStyle(
@@ -175,7 +243,7 @@ class TimetableWidget extends StatelessWidget {
                     ),
                     DataColumn(
                       label: SizedBox(
-                        width: 160,
+                        width: _getDayColumnWidth(),
                         child: Text(
                           'Saturday',
                           style: TextStyle(
@@ -188,7 +256,6 @@ class TimetableWidget extends StatelessWidget {
                     ),
                   ],
                   rows: _buildRows(context),
-                    ),
                   ),
                 ),
               ),
@@ -210,13 +277,13 @@ class TimetableWidget extends StatelessWidget {
       }
     }
 
-    for (int hour = 1; hour <= 10; hour++) {
+    for (int hour = 1; hour <= 12; hour++) {
       rows.add(DataRow(
         cells: [
           DataCell(
             Container(
-              width: 120,
-              height: 80,
+              width: _getTimeColumnWidth(),
+              height: _getCellHeight(),
               padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFF21262D),
@@ -258,9 +325,9 @@ class TimetableWidget extends StatelessWidget {
             }
             return DataCell(
               Container(
-                width: 160,
-                height: 80,
-                margin: const EdgeInsets.all(2),
+                width: _getDayColumnWidth(),
+                height: _getCellHeight(),
+                margin: EdgeInsets.all(_getCellMargin()),
                 decoration: BoxDecoration(
                   color: const Color(0xFF0D1117),
                   borderRadius: BorderRadius.circular(8),
@@ -294,9 +361,9 @@ class TimetableWidget extends StatelessWidget {
         ),
         textStyle: const TextStyle(color: Color(0xFFF0F6FC), fontSize: 12),
         child: Container(
-          width: 160,
-          height: 80,
-          margin: const EdgeInsets.all(2),
+          width: _getDayColumnWidth(),
+          height: _getCellHeight(),
+          margin: EdgeInsets.all(_getCellMargin()),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -322,56 +389,64 @@ class TimetableWidget extends StatelessWidget {
           child: Stack(
             children: [
               Padding(
-                padding: const EdgeInsets.all(6),
+                padding: EdgeInsets.all(_getCellPadding()),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.max,
                   children: [
                     Flexible(
+                      flex: 3,
                       child: Text(
                         slot.courseCode,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                          color: Color(0xFFFFFFFF),
+                          fontSize: _getCourseCodeFontSize(),
+                          color: const Color(0xFFFFFFFF),
+                          height: 1.1,
                         ),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
                       ),
                     ),
-                    const SizedBox(height: 1),
-                    Flexible(
-                      child: Text(
-                        slot.courseTitle,
-                        style: const TextStyle(
-                          fontSize: 9,
-                          color: Color(0xFFE6EDF3),
-                          fontWeight: FontWeight.w400,
+                    if (size != TimetableSize.compact) ...[
+                      Flexible(
+                        flex: 2,
+                        child: Text(
+                          slot.courseTitle,
+                          style: TextStyle(
+                            fontSize: _getCourseTitleFontSize(),
+                            color: const Color(0xFFE6EDF3),
+                            fontWeight: FontWeight.w400,
+                            height: 1.1,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: _getCourseTitleMaxLines(),
                         ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 2,
                       ),
-                    ),
-                    const SizedBox(height: 1),
+                    ],
                     Flexible(
+                      flex: 2,
                       child: Text(
                         slot.sectionId,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Color(0xFFE6EDF3),
+                        style: TextStyle(
+                          fontSize: _getSectionIdFontSize(),
+                          color: const Color(0xFFE6EDF3),
                           fontWeight: FontWeight.w500,
+                          height: 1.1,
                         ),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
                       ),
                     ),
-                    const SizedBox(height: 1),
                     Flexible(
+                      flex: 2,
                       child: Text(
                         slot.room,
-                        style: const TextStyle(
-                          fontSize: 9,
-                          color: Color(0xFFE6EDF3),
+                        style: TextStyle(
+                          fontSize: _getRoomFontSize(),
+                          color: const Color(0xFFE6EDF3),
+                          height: 1.1,
                         ),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
@@ -511,5 +586,193 @@ class TimetableWidget extends StatelessWidget {
     
     if (warnings.isEmpty) return '';
     return warnings.join('\n');
+  }
+
+  // Size-specific dimension helpers
+  double _getDayColumnWidth() {
+    switch (size) {
+      case TimetableSize.compact:
+        return 140;
+      case TimetableSize.medium:
+        return 160;
+      case TimetableSize.large:
+        return 200;
+      case TimetableSize.extraLarge:
+        return 240;
+    }
+  }
+
+  double _getTimeColumnWidth() {
+    return _getDayColumnWidth() * 0.75;
+  }
+
+  double _getCellHeight() {
+    switch (size) {
+      case TimetableSize.compact:
+        return 70;
+      case TimetableSize.medium:
+        return 80;
+      case TimetableSize.large:
+        return 100;
+      case TimetableSize.extraLarge:
+        return 120;
+    }
+  }
+
+  double _getCellMargin() {
+    switch (size) {
+      case TimetableSize.compact:
+        return 1;
+      case TimetableSize.medium:
+        return 1;
+      case TimetableSize.large:
+        return 2;
+      case TimetableSize.extraLarge:
+        return 3;
+    }
+  }
+
+  double _getColumnSpacing() {
+    switch (size) {
+      case TimetableSize.compact:
+        return 12;
+      case TimetableSize.medium:
+        return 16;
+      case TimetableSize.large:
+        return 20;
+      case TimetableSize.extraLarge:
+        return 24;
+    }
+  }
+
+  double _getHorizontalMargin() {
+    switch (size) {
+      case TimetableSize.compact:
+        return 10;
+      case TimetableSize.medium:
+        return 12;
+      case TimetableSize.large:
+        return 16;
+      case TimetableSize.extraLarge:
+        return 20;
+    }
+  }
+
+  double _getDataRowHeight() {
+    switch (size) {
+      case TimetableSize.compact:
+        return 90;
+      case TimetableSize.medium:
+        return 100;
+      case TimetableSize.large:
+        return 120;
+      case TimetableSize.extraLarge:
+        return 140;
+    }
+  }
+
+  IconData _getSizeIcon() {
+    switch (size) {
+      case TimetableSize.compact:
+        return Icons.view_compact;
+      case TimetableSize.medium:
+        return Icons.view_module;
+      case TimetableSize.large:
+        return Icons.view_comfortable;
+      case TimetableSize.extraLarge:
+        return Icons.view_agenda;
+    }
+  }
+
+  // Dynamic text sizing helpers
+  double _getCourseCodeFontSize() {
+    switch (size) {
+      case TimetableSize.compact:
+        return 12;
+      case TimetableSize.medium:
+        return 14;
+      case TimetableSize.large:
+        return 16;
+      case TimetableSize.extraLarge:
+        return 18;
+    }
+  }
+
+  double _getCourseTitleFontSize() {
+    switch (size) {
+      case TimetableSize.compact:
+        return 10;
+      case TimetableSize.medium:
+        return 11;
+      case TimetableSize.large:
+        return 12;
+      case TimetableSize.extraLarge:
+        return 14;
+    }
+  }
+
+  double _getSectionIdFontSize() {
+    switch (size) {
+      case TimetableSize.compact:
+        return 11;
+      case TimetableSize.medium:
+        return 12;
+      case TimetableSize.large:
+        return 13;
+      case TimetableSize.extraLarge:
+        return 15;
+    }
+  }
+
+  double _getRoomFontSize() {
+    switch (size) {
+      case TimetableSize.compact:
+        return 10;
+      case TimetableSize.medium:
+        return 11;
+      case TimetableSize.large:
+        return 12;
+      case TimetableSize.extraLarge:
+        return 13;
+    }
+  }
+
+  double _getCellPadding() {
+    switch (size) {
+      case TimetableSize.compact:
+        return 6;
+      case TimetableSize.medium:
+        return 8;
+      case TimetableSize.large:
+        return 10;
+      case TimetableSize.extraLarge:
+        return 12;
+    }
+  }
+
+  double _getTextSpacing() {
+    switch (size) {
+      case TimetableSize.compact:
+        return 1;
+      case TimetableSize.medium:
+        return 2;
+      case TimetableSize.large:
+        return 3;
+      case TimetableSize.extraLarge:
+        return 4;
+    }
+  }
+
+  int _getCourseTitleMaxLines() {
+    switch (size) {
+      case TimetableSize.compact:
+        return 0; // Hidden in compact mode
+      case TimetableSize.medium:
+        return 1;
+      case TimetableSize.large:
+        return 2;
+      case TimetableSize.extraLarge:
+        return 2;
+    }
   }
 }
