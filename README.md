@@ -109,7 +109,7 @@ The app comes with **380+ courses** pre-loaded from an Excel file. You can:
 - **Smart Constraints**: App prevents selecting multiple sections of same type per course
 - **Real-time Clash Detection**: Warnings appear for scheduling conflicts
 
-#### AI Generator (Recommended):
+#### TT Generator (Recommended):
 1. **Click the "TT Generator" floating button**
 2. **Select Required Courses**: Search and add courses you want to take
 3. **Set Constraints**:
@@ -140,6 +140,8 @@ The app comes with **380+ courses** pre-loaded from an Excel file. You can:
 - Hour 8: 3:00PM-3:50PM
 - Hour 9: 4:00PM-4:50PM
 - Hour 10: 5:00PM-5:50PM
+- Hour 11: 6:00PM-6:50PM
+- Hour 12: 7:00PM-7:50PM
 
 **MidSem Exam Slots:**
 - MS1: 9:30AM-11:00AM
