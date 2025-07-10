@@ -115,7 +115,21 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     if (newName != null && newName.isNotEmpty && newName != timetable.name) {
       try {
         await _timetableService.updateTimetableName(timetable.id, newName);
-        await _loadTimetables();
+        // Update local state instead of reloading from Firestore
+        setState(() {
+          final index = _timetables.indexWhere((t) => t.id == timetable.id);
+          if (index != -1) {
+            _timetables[index] = Timetable(
+              id: timetable.id,
+              name: newName,
+              createdAt: timetable.createdAt,
+              updatedAt: DateTime.now(),
+              availableCourses: timetable.availableCourses,
+              selectedSections: timetable.selectedSections,
+              clashWarnings: timetable.clashWarnings,
+            );
+          }
+        });
       } catch (e) {
         _showErrorDialog('Error renaming timetable: $e');
       }
@@ -168,9 +182,12 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
       MaterialPageRoute(
         builder: (context) => TimetableEditorScreen(timetableId: timetable.id),
       ),
-    ).then((_) {
-      // Refresh the list when returning from editor
-      _loadTimetables();
+    ).then((result) {
+      // Only refresh if there were changes (optional optimization)
+      // For now, we'll keep the refresh but consider reducing frequency
+      if (result != null) {
+        _loadTimetables();
+      }
     });
   }
 

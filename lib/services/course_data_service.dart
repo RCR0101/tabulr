@@ -13,7 +13,7 @@ class CourseDataService {
   // Cache for courses to avoid repeated fetches
   List<Course>? _cachedCourses;
   DateTime? _lastFetchTime;
-  static const Duration _cacheTimeout = Duration(minutes: 10);
+  static const Duration _cacheTimeout = Duration(hours: 24);
 
   /// Fetch all courses from Firestore
   Future<List<Course>> fetchCourses() async {
@@ -26,7 +26,7 @@ class CourseDataService {
         return _cachedCourses!;
       }
 
-      print('Fetching courses from Firestore...');
+      print('🔥 FIRESTORE READ: Fetching courses from Firestore...');
       print('Collection: ${_config.coursesCollection}');
       
       final QuerySnapshot snapshot = await _firestore

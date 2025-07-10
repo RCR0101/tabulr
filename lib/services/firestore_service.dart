@@ -211,6 +211,8 @@ class FirestoreService {
         return [];
       }
 
+      print('🔥 FIRESTORE READ: Loading timetables for user: ${user.uid}');
+
       final querySnapshot = await _firestore
           .collection(_collectionName)
           .doc(user.uid)
