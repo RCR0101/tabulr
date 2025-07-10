@@ -485,16 +485,14 @@ class TimetableWidget extends StatelessWidget {
     // Generate consistent colors based on course code
     final hash = courseCode.hashCode;
     final colors = [
-      Colors.blue,
-      Colors.green,
-      Colors.orange,
-      Colors.purple,
-      Colors.teal,
-      Colors.indigo,
-      Colors.red,
-      Colors.pink,
-      Colors.cyan,
-      Colors.amber,
+      const Color(0xFFF77E7E), 
+      const Color(0xFFF9A825), 
+      const Color(0xFF7CB342), 
+      const Color(0xFF5C6BC0), 
+      const Color(0xFF39AAB8), 
+      const Color(0xFFF06292), 
+      const Color(0xFF8E8E9F), 
+      const Color(0xFFBA68C8), 
     ];
     
     return colors[hash.abs() % colors.length];

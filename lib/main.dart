@@ -79,40 +79,33 @@ class TimetableMakerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Tabulr',
-      theme: ThemeData.dark().copyWith(
-        primaryColor: const Color(0xFF0D1117),
-        scaffoldBackgroundColor: const Color(0xFF0D1117),
-        cardColor: const Color(0xFF161B22),
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF121212), 
+        cardColor: const Color(0xFF1E1E1E), 
+        
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF58A6FF),
-          secondary: Color(0xFF56D364),
-          surface: Color(0xFF161B22),
-          background: Color(0xFF0D1117),
-          error: Color(0xFFFF6B6B),
-          onPrimary: Color(0xFF0D1117),
-          onSecondary: Color(0xFF0D1117),
-          onSurface: Color(0xFFF0F6FC),
-          onBackground: Color(0xFFF0F6FC),
-          onError: Color(0xFF0D1117),
-          outline: Color(0xFF30363D),
+          primary: Color(0xFF82AAFF),       
+          secondary: Color(0xFFC3E88D),      
+          background: Color(0xFF121212),
+          surface: Color(0xFF1E1E1E),
+          error: Color(0xFFFF9B9B),         
+          onPrimary: Color(0xFF10141C),      
+          onSecondary: Color(0xFF181C10),    
+          onBackground: Color(0xFFE0E0E0),   
+          onSurface: Color(0xFFE0E0E0),      
+          onError: Color(0xFF1C1010),        
+          outline: Color(0xFF3A3A3A),       
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF0D1117),
-          foregroundColor: Color(0xFFF0F6FC),
+          backgroundColor: Color(0xFF1E1E1E),
           elevation: 0,
         ),
-        cardTheme: CardTheme(
-          color: const Color(0xFF161B22),
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
+        
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF58A6FF),
-            foregroundColor: const Color(0xFF0D1117),
-            elevation: 1,
+            backgroundColor: const Color(0xFF82AAFF), 
+            foregroundColor: const Color(0xFF10141C), 
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
@@ -120,47 +113,26 @@ class TimetableMakerApp extends StatelessWidget {
         ),
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFF58A6FF),
+            foregroundColor: const Color(0xFF82AAFF), 
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: const Color(0xFF21262D),
+          fillColor: const Color(0xFF121212),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF30363D)),
+            borderSide: const BorderSide(color: Color(0xFF3A3A3A)),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF30363D)),
+            borderSide: const BorderSide(color: Color(0xFF3A3A3A)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF58A6FF)),
-          ),
-          labelStyle: const TextStyle(color: Color(0xFF8B949E)),
-          hintStyle: const TextStyle(color: Color(0xFF6E7681)),
-        ),
-        chipTheme: ChipThemeData(
-          backgroundColor: const Color(0xFF21262D),
-          selectedColor: const Color(0xFF58A6FF),
-          labelStyle: const TextStyle(color: Color(0xFFF0F6FC)),
-          secondaryLabelStyle: const TextStyle(color: Color(0xFF0D1117)),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderSide: const BorderSide(color: Color(0xFF82AAFF), width: 1.5),
           ),
         ),
-        dataTableTheme: DataTableThemeData(
-          headingRowColor: MaterialStateProperty.all(const Color(0xFF21262D)),
-          dataRowColor: MaterialStateProperty.all(const Color(0xFF161B22)),
-          dividerThickness: 1,
-        ),
-        expansionTileTheme: const ExpansionTileThemeData(
-          backgroundColor: Color(0xFF21262D),
-          collapsedBackgroundColor: Color(0xFF161B22),
-          iconColor: Color(0xFF58A6FF),
-          collapsedIconColor: Color(0xFF8B949E),
-        ),
+        
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       home: const AuthWrapper(),
