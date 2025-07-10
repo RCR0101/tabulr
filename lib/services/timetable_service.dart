@@ -11,6 +11,7 @@ import 'course_data_service.dart';
 
 class TimetableService {
   static const String _storageKey = 'user_timetable_data';
+  static const String _timetablesListKey = 'user_timetables_list';
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
   final CourseDataService _courseDataService = CourseDataService();
@@ -18,25 +19,36 @@ class TimetableService {
   // Save timetable using Firestore for authenticated users or local storage for guests
   Future<void> saveTimetable(Timetable timetable) async {
     try {
+      // Update the timetable's updatedAt timestamp
+      final updatedTimetable = Timetable(
+        id: timetable.id,
+        name: timetable.name,
+        createdAt: timetable.createdAt,
+        updatedAt: DateTime.now(),
+        availableCourses: timetable.availableCourses,
+        selectedSections: timetable.selectedSections,
+        clashWarnings: timetable.clashWarnings,
+      );
+      
       // If user is authenticated, save to Firestore
       if (_authService.isAuthenticated) {
         print('Saving timetable to Firestore...');
-        final success = await _firestoreService.saveTimetable(timetable);
+        final success = await _firestoreService.saveTimetable(updatedTimetable);
         if (success) {
           print('Timetable saved successfully to Firestore');
         } else {
           print('Failed to save to Firestore, falling back to local storage');
-          await _saveToLocalStorage(timetable);
+          await saveTimetableToStorage(updatedTimetable);
         }
       } else {
-        // Guest user - save to local storage
+        // Guest user - save to local storage using new format
         print('Guest user - saving timetable to local storage...');
-        await _saveToLocalStorage(timetable);
+        await saveTimetableToStorage(updatedTimetable);
       }
     } catch (e) {
       print('Error saving timetable: $e');
       // Fallback to local storage
-      await _saveToLocalStorage(timetable);
+      await saveTimetableToStorage(timetable);
     }
   }
 
@@ -102,7 +114,12 @@ class TimetableService {
       // If no timetable found, create a new one
       if (timetable == null) {
         print('No existing timetable found, creating new one');
+        final now = DateTime.now();
         timetable = Timetable(
+          id: now.millisecondsSinceEpoch.toString(),
+          name: 'My Timetable',
+          createdAt: now,
+          updatedAt: now,
           availableCourses: [],
           selectedSections: [],
           clashWarnings: [],
@@ -117,7 +134,12 @@ class TimetableService {
       return timetable;
     } catch (e) {
       print('Error loading timetable: $e');
+      final now = DateTime.now();
       final timetable = Timetable(
+        id: now.millisecondsSinceEpoch.toString(),
+        name: 'My Timetable',
+        createdAt: now,
+        updatedAt: now,
         availableCourses: [],
         selectedSections: [],
         clashWarnings: [],
@@ -329,5 +351,366 @@ class TimetableService {
     }
     
     return warnings;
+  }
+
+  // Multiple timetables functionality
+  Future<List<Timetable>> getAllTimetables() async {
+    try {
+      print('Getting all timetables...');
+      List<Timetable> timetables = [];
+      
+      if (_authService.isAuthenticated) {
+        print('User is authenticated, loading from Firestore...');
+        timetables = await _firestoreService.getAllTimetables();
+        if (timetables.isEmpty) {
+          print('No timetables found in Firestore, checking local storage...');
+          timetables = await _getAllTimetablesFromLocalStorage();
+        }
+      } else {
+        print('User is guest, using local storage');
+        timetables = await _getAllTimetablesFromLocalStorage();
+      }
+      
+      print('Found ${timetables.length} timetables from storage');
+      
+      // If no timetables exist, try to migrate from old format or create a default one
+      if (timetables.isEmpty) {
+        print('No timetables found, attempting migration or creating default');
+        // Try to migrate from old timetable format
+        final oldTimetable = await _migrateFromOldFormat();
+        if (oldTimetable != null) {
+          print('Migration successful, using migrated timetable');
+          timetables.add(oldTimetable);
+        } else {
+          print('No migration data, creating default timetable');
+          final defaultTimetable = await createNewTimetable("My Timetable");
+          timetables.add(defaultTimetable);
+        }
+      }
+      
+      return timetables;
+    } catch (e) {
+      print('Error getting all timetables: $e');
+      // Return a default timetable if there's an error
+      final defaultTimetable = await createNewTimetable("My Timetable");
+      return [defaultTimetable];
+    }
+  }
+
+  Future<List<Timetable>> _getAllTimetablesFromLocalStorage() async {
+    try {
+      print('Loading timetables from local storage...');
+      
+      if (kIsWeb) {
+        try {
+          SharedPreferences.setMockInitialValues({});
+        } catch (e) {
+          print('Mock values already set or not needed: $e');
+        }
+      }
+      
+      final prefs = await SharedPreferences.getInstance();
+      final timetableIds = prefs.getStringList(_timetablesListKey) ?? [];
+      
+      print('Timetable IDs from list: $timetableIds');
+      
+      List<Timetable> timetables = [];
+      for (String id in timetableIds) {
+        print('Loading timetable with id: $id');
+        final data = prefs.getString('timetable_$id');
+        if (data != null) {
+          try {
+            final jsonData = jsonDecode(data);
+            final timetable = Timetable.fromJson(jsonData);
+            timetables.add(timetable);
+            print('Successfully loaded timetable: ${timetable.name}');
+          } catch (e) {
+            print('Error parsing timetable $id: $e');
+          }
+        } else {
+          print('No data found for timetable $id');
+        }
+      }
+      
+      print('Total timetables loaded: ${timetables.length}');
+      return timetables;
+    } catch (e) {
+      print('Error loading timetables from local storage: $e');
+      return [];
+    }
+  }
+
+  Future<Timetable> createNewTimetable(String name) async {
+    final now = DateTime.now();
+    final id = now.millisecondsSinceEpoch.toString();
+    
+    print('Creating new timetable with id: $id, name: $name');
+    
+    // Load available courses
+    List<Course> courses = [];
+    try {
+      courses = await _courseDataService.fetchCourses();
+      print('Loaded ${courses.length} courses for new timetable');
+    } catch (e) {
+      print('Error loading courses for new timetable: $e');
+    }
+    
+    final timetable = Timetable(
+      id: id,
+      name: name,
+      createdAt: now,
+      updatedAt: now,
+      availableCourses: courses,
+      selectedSections: [],
+      clashWarnings: [],
+    );
+    
+    try {
+      if (_authService.isAuthenticated) {
+        print('Saving new timetable to Firestore...');
+        final success = await _firestoreService.saveTimetable(timetable);
+        if (success) {
+          print('Timetable saved successfully to Firestore');
+        } else {
+          print('Failed to save to Firestore, falling back to local storage');
+          await saveTimetableToStorage(timetable);
+          await _addTimetableToList(id);
+        }
+      } else {
+        print('Guest user - saving to local storage');
+        await saveTimetableToStorage(timetable);
+        await _addTimetableToList(id);
+      }
+      
+      // Verify it was saved properly
+      final savedTimetable = await getTimetableById(id);
+      if (savedTimetable != null) {
+        print('Verification: Timetable saved successfully');
+      } else {
+        print('Verification: Failed to save timetable');
+      }
+      
+    } catch (e) {
+      print('Error saving new timetable: $e');
+      throw e;
+    }
+    
+    return timetable;
+  }
+
+  Future<void> saveTimetableToStorage(Timetable timetable) async {
+    try {
+      print('Saving timetable ${timetable.id} to storage...');
+      
+      if (kIsWeb) {
+        try {
+          SharedPreferences.setMockInitialValues({});
+        } catch (e) {
+          print('Mock values already set or not needed: $e');
+        }
+      }
+      
+      final prefs = await SharedPreferences.getInstance();
+      final data = jsonEncode(timetable.toJson());
+      final key = 'timetable_${timetable.id}';
+      
+      print('Saving with key: $key');
+      await prefs.setString(key, data);
+      
+      // Verify it was saved
+      final savedData = prefs.getString(key);
+      if (savedData != null) {
+        print('Successfully saved timetable to storage');
+      } else {
+        print('Failed to save timetable to storage - verification failed');
+        throw Exception('Failed to save timetable to storage');
+      }
+    } catch (e) {
+      print('Error saving timetable to storage: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _addTimetableToList(String id) async {
+    try {
+      if (kIsWeb) {
+        try {
+          SharedPreferences.setMockInitialValues({});
+        } catch (e) {
+          print('Mock values already set or not needed: $e');
+        }
+      }
+      
+      final prefs = await SharedPreferences.getInstance();
+      final timetableIds = prefs.getStringList(_timetablesListKey) ?? [];
+      
+      if (!timetableIds.contains(id)) {
+        timetableIds.add(id);
+        await prefs.setStringList(_timetablesListKey, timetableIds);
+      }
+    } catch (e) {
+      print('Error adding timetable to list: $e');
+    }
+  }
+
+  Future<Timetable?> getTimetableById(String id) async {
+    try {
+      print('Getting timetable by id: $id');
+      
+      if (_authService.isAuthenticated) {
+        print('User is authenticated, checking Firestore first...');
+        final timetable = await _firestoreService.getTimetableById(id);
+        if (timetable != null) {
+          print('Found timetable in Firestore: ${timetable.name}');
+          return timetable;
+        }
+        print('Timetable not found in Firestore, checking local storage...');
+      }
+      
+      // Check local storage (for guests or as fallback)
+      if (kIsWeb) {
+        try {
+          SharedPreferences.setMockInitialValues({});
+        } catch (e) {
+          print('Mock values already set or not needed: $e');
+        }
+      }
+      
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'timetable_$id';
+      final data = prefs.getString(key);
+      
+      print('Looking for key: $key');
+      if (data != null) {
+        print('Found timetable data, parsing...');
+        final jsonData = jsonDecode(data);
+        final timetable = Timetable.fromJson(jsonData);
+        print('Successfully parsed timetable: ${timetable.name}');
+        return timetable;
+      } else {
+        print('No data found for key: $key');
+        
+        // Debug: List all keys to see what's actually stored
+        final allKeys = prefs.getKeys();
+        print('All stored keys: $allKeys');
+      }
+      
+      return null;
+    } catch (e) {
+      print('Error getting timetable by id: $e');
+      return null;
+    }
+  }
+
+  Future<void> deleteTimetable(String id) async {
+    try {
+      if (_authService.isAuthenticated) {
+        print('Deleting timetable from Firestore...');
+        final success = await _firestoreService.deleteTimetableById(id);
+        if (!success) {
+          print('Failed to delete from Firestore, deleting from local storage...');
+        }
+      }
+      
+      // Also delete from local storage (for guests or as cleanup)
+      if (kIsWeb) {
+        try {
+          SharedPreferences.setMockInitialValues({});
+        } catch (e) {
+          print('Mock values already set or not needed: $e');
+        }
+      }
+      
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Remove from storage
+      await prefs.remove('timetable_$id');
+      
+      // Remove from list
+      final timetableIds = prefs.getStringList(_timetablesListKey) ?? [];
+      timetableIds.remove(id);
+      await prefs.setStringList(_timetablesListKey, timetableIds);
+    } catch (e) {
+      print('Error deleting timetable: $e');
+    }
+  }
+
+  Future<void> updateTimetableName(String id, String newName) async {
+    final timetable = await getTimetableById(id);
+    if (timetable != null) {
+      final updatedTimetable = Timetable(
+        id: timetable.id,
+        name: newName,
+        createdAt: timetable.createdAt,
+        updatedAt: DateTime.now(),
+        availableCourses: timetable.availableCourses,
+        selectedSections: timetable.selectedSections,
+        clashWarnings: timetable.clashWarnings,
+      );
+      
+      await saveTimetable(updatedTimetable);
+    }
+  }
+
+  // Migration method to convert old timetable format to new format
+  Future<Timetable?> _migrateFromOldFormat() async {
+    try {
+      print('Attempting to migrate from old timetable format...');
+      
+      if (kIsWeb) {
+        try {
+          SharedPreferences.setMockInitialValues({});
+        } catch (e) {
+          print('Mock values already set or not needed: $e');
+        }
+      }
+      
+      final prefs = await SharedPreferences.getInstance();
+      final oldData = prefs.getString(_storageKey);
+      
+      if (oldData != null) {
+        print('Found old timetable data, migrating...');
+        final jsonData = jsonDecode(oldData);
+        
+        // Check if this is old format (missing id, name, etc.)
+        if (jsonData['id'] == null) {
+          final now = DateTime.now();
+          final id = now.millisecondsSinceEpoch.toString();
+          
+          // Create new timetable with old data
+          final migratedTimetable = Timetable(
+            id: id,
+            name: 'My Timetable',
+            createdAt: now,
+            updatedAt: now,
+            availableCourses: (jsonData['availableCourses'] as List)
+                .map((c) => Course.fromJson(c))
+                .toList(),
+            selectedSections: (jsonData['selectedSections'] as List)
+                .map((s) => SelectedSection.fromJson(s))
+                .toList(),
+            clashWarnings: (jsonData['clashWarnings'] as List)
+                .map((w) => ClashWarning.fromJson(w))
+                .toList(),
+          );
+          
+          // Save to new format
+          await saveTimetableToStorage(migratedTimetable);
+          await _addTimetableToList(id);
+          
+          // Remove old format
+          await prefs.remove(_storageKey);
+          
+          print('Migration completed successfully');
+          return migratedTimetable;
+        }
+      }
+      
+      print('No old format timetable found');
+      return null;
+    } catch (e) {
+      print('Error during migration: $e');
+      return null;
+    }
   }
 }

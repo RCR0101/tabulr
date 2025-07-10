@@ -1,11 +1,19 @@
 import 'course.dart';
 
 class Timetable {
+  final String id;
+  final String name;
+  final DateTime createdAt;
+  final DateTime updatedAt;
   final List<Course> availableCourses;
   final List<SelectedSection> selectedSections;
   final List<ClashWarning> clashWarnings;
 
   Timetable({
+    required this.id,
+    required this.name,
+    required this.createdAt,
+    required this.updatedAt,
     required this.availableCourses,
     required this.selectedSections,
     required this.clashWarnings,
@@ -13,6 +21,10 @@ class Timetable {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
+      'name': name,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
       'availableCourses': availableCourses.map((c) => c.toJson()).toList(),
       'selectedSections': selectedSections.map((s) => s.toJson()).toList(),
       'clashWarnings': clashWarnings.map((w) => w.toJson()).toList(),
@@ -21,6 +33,14 @@ class Timetable {
 
   factory Timetable.fromJson(Map<String, dynamic> json) {
     return Timetable(
+      id: json['id'] ?? '',
+      name: json['name'] ?? 'Untitled Timetable',
+      createdAt: json['createdAt'] != null 
+          ? DateTime.parse(json['createdAt']) 
+          : DateTime.now(),
+      updatedAt: json['updatedAt'] != null 
+          ? DateTime.parse(json['updatedAt']) 
+          : DateTime.now(),
       availableCourses: (json['availableCourses'] as List)
           .map((c) => Course.fromJson(c))
           .toList(),

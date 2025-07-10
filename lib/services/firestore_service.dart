@@ -24,25 +24,24 @@ class FirestoreService {
         return false;
       }
 
-      // Check if document exists to decide whether to set createdAt
-      final docRef = _firestore.collection(_collectionName).doc(user.uid);
-      final docSnapshot = await docRef.get();
+      // Save individual timetable as a subcollection document
+      final docRef = _firestore
+          .collection(_collectionName)
+          .doc(user.uid)
+          .collection('timetables')
+          .doc(timetable.id);
       
       final Map<String, dynamic> timetableData = {
         'userId': user.uid,
         'userEmail': user.email,
         'timetableData': timetable.toJson(),
         'lastUpdated': FieldValue.serverTimestamp(),
+        'createdAt': FieldValue.serverTimestamp(),
       };
-
-      // Only set createdAt if document doesn't exist
-      if (!docSnapshot.exists) {
-        timetableData['createdAt'] = FieldValue.serverTimestamp();
-      }
 
       await docRef.set(timetableData, SetOptions(merge: true));
 
-      print('Timetable saved successfully for user: ${user.email}');
+      print('Timetable ${timetable.id} saved successfully for user: ${user.email}');
       return true;
     } catch (e) {
       print('Error saving timetable: $e');
@@ -200,6 +199,107 @@ class FirestoreService {
     } catch (e) {
       print('Error getting timetable metadata: $e');
       return null;
+    }
+  }
+
+  // Multiple timetables support
+  Future<List<Timetable>> getAllTimetables() async {
+    try {
+      final user = _authService.currentUser;
+      if (user == null) {
+        print('User not authenticated, cannot load timetables');
+        return [];
+      }
+
+      final querySnapshot = await _firestore
+          .collection(_collectionName)
+          .doc(user.uid)
+          .collection('timetables')
+          .orderBy('createdAt', descending: false)
+          .get();
+
+      final timetables = <Timetable>[];
+      for (final doc in querySnapshot.docs) {
+        try {
+          final data = doc.data();
+          final timetableData = data['timetableData'];
+          if (timetableData != null) {
+            final timetable = Timetable.fromJson(timetableData as Map<String, dynamic>);
+            timetables.add(timetable);
+          }
+        } catch (e) {
+          print('Error parsing timetable ${doc.id}: $e');
+        }
+      }
+
+      print('Loaded ${timetables.length} timetables from Firestore for user: ${user.email}');
+      return timetables;
+    } catch (e) {
+      print('Error loading timetables: $e');
+      return [];
+    }
+  }
+
+  Future<Timetable?> getTimetableById(String timetableId) async {
+    try {
+      final user = _authService.currentUser;
+      if (user == null) {
+        print('User not authenticated, cannot load timetable');
+        return null;
+      }
+
+      final doc = await _firestore
+          .collection(_collectionName)
+          .doc(user.uid)
+          .collection('timetables')
+          .doc(timetableId)
+          .get();
+
+      if (!doc.exists) {
+        print('Timetable $timetableId not found for user: ${user.email}');
+        return null;
+      }
+
+      final data = doc.data();
+      if (data == null) {
+        print('Document exists but has no data for timetable: $timetableId');
+        return null;
+      }
+
+      final timetableData = data['timetableData'];
+      if (timetableData == null) {
+        print('No timetable data found in document for timetable: $timetableId');
+        return null;
+      }
+
+      print('Timetable $timetableId loaded successfully for user: ${user.email}');
+      return Timetable.fromJson(timetableData as Map<String, dynamic>);
+    } catch (e) {
+      print('Error loading timetable $timetableId: $e');
+      return null;
+    }
+  }
+
+  Future<bool> deleteTimetableById(String timetableId) async {
+    try {
+      final user = _authService.currentUser;
+      if (user == null) {
+        print('User not authenticated, cannot delete timetable');
+        return false;
+      }
+
+      await _firestore
+          .collection(_collectionName)
+          .doc(user.uid)
+          .collection('timetables')
+          .doc(timetableId)
+          .delete();
+
+      print('Timetable $timetableId deleted successfully for user: ${user.email}');
+      return true;
+    } catch (e) {
+      print('Error deleting timetable $timetableId: $e');
+      return false;
     }
   }
 

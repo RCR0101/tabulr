@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -6,8 +7,9 @@ import 'dart:js' as js;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
-import 'screens/home_screen.dart';
 import 'screens/auth_screen.dart';
+import 'screens/home_screen.dart';
+import 'screens/timetables_screen.dart';
 import 'services/auth_service.dart';
 
 void main() async {
@@ -167,15 +169,38 @@ class TimetableMakerApp extends StatelessWidget {
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
   @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  final AuthService _authService = AuthService();
+  late StreamSubscription<bool> _authMethodSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    // Listen to auth method chosen stream to trigger rebuilds for guest mode
+    _authMethodSubscription = _authService.authMethodChosenStream.listen((_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authMethodSubscription.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final authService = AuthService();
-    
     return StreamBuilder(
-      stream: authService.authStateChanges,
+      stream: _authService.authStateChanges,
       builder: (context, snapshot) {
         // Show loading while checking auth state
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -184,14 +209,19 @@ class AuthWrapper extends StatelessWidget {
           );
         }
         
-        // If user is authenticated, go to home screen
+        // If user is authenticated, go to timetables screen
         if (snapshot.hasData && snapshot.data != null) {
+          return const TimetablesScreen();
+        }
+        
+        // If user has chosen an auth method as guest, go to simple home screen
+        if (_authService.hasChosenAuthMethod && _authService.isGuest) {
           return const HomeScreen();
         }
         
-        // If user has chosen an auth method (guest or sign-in), go to home screen
-        if (authService.hasChosenAuthMethod) {
-          return const HomeScreen();
+        // If user has chosen an auth method (authenticated), go to timetables screen
+        if (_authService.hasChosenAuthMethod) {
+          return const TimetablesScreen();
         }
         
         // Otherwise, show auth screen (guest users will see this on every app start)

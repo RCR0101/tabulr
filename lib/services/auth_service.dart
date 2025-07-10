@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,12 +17,16 @@ class AuthService {
   // Session-only guest mode tracker (not persisted)
   bool _isCurrentlyGuest = false;
   
+  // Stream controller for auth state changes including guest mode
+  final StreamController<bool> _authStateController = StreamController<bool>.broadcast();
+  
   User? get currentUser => _firebaseAuth.currentUser;
   bool get isAuthenticated => _firebaseAuth.currentUser != null;
   bool get isGuest => _isCurrentlyGuest && !isAuthenticated;
   bool get hasChosenAuthMethod => isAuthenticated || _isCurrentlyGuest;
   
   Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
+  Stream<bool> get authMethodChosenStream => _authStateController.stream;
 
   // Initialize the service
   Future<void> initialize() async {
@@ -187,6 +192,10 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('is_authenticated');
       await prefs.remove('is_guest');
+      
+      // Notify listeners that auth method has been chosen
+      _authStateController.add(true);
+      
       print('Guest mode activated for this session only');
     } catch (e) {
       print('Error setting guest mode: $e');
@@ -195,6 +204,12 @@ class AuthService {
 
   Future<void> signOut() async {
     try {
+      // Reset guest mode
+      _isCurrentlyGuest = false;
+      
+      // Notify listeners about auth state change
+      _authStateController.add(false);
+      
       // Sign out from Google (only for mobile)
       if (!kIsWeb) {
         await _googleSignIn.signOut();
