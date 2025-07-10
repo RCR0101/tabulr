@@ -41,18 +41,19 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
     return Column(
       children: [
         Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: const BorderRadius.only(
+          decoration: const BoxDecoration(
+            color: Color(0xFF21262D),
+            borderRadius: BorderRadius.only(
               topLeft: Radius.circular(8),
               topRight: Radius.circular(8),
             ),
           ),
           child: TabBar(
             controller: _tabController,
-            labelColor: Colors.blue,
-            unselectedLabelColor: Colors.grey[600],
-            indicatorColor: Colors.blue,
+            labelColor: Color(0xFF58A6FF),
+            unselectedLabelColor: Color(0xFF8B949E),
+            indicatorColor: Color(0xFF58A6FF),
+            dividerColor: Color(0xFF30363D),
             tabs: [
               Tab(
                 child: Row(
@@ -114,14 +115,14 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                           Icon(
                             Icons.event_busy,
                             size: 64,
-                            color: Colors.grey,
+                            color: Color(0xFF656D76),
                           ),
                           SizedBox(height: 16),
                           Text(
                             'No courses selected',
                             style: TextStyle(
                               fontSize: 16,
-                              color: Colors.grey,
+                              color: Color(0xFF8B949E),
                             ),
                           ),
                           SizedBox(height: 8),
@@ -129,7 +130,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                             'Add courses to see exam schedules',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey,
+                              color: Color(0xFF656D76),
                             ),
                           ),
                         ],
