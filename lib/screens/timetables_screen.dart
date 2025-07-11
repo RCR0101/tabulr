@@ -501,6 +501,7 @@ class _TimetableEditorScreenState extends State<TimetableEditorScreen> {
   final TimetableService _timetableService = TimetableService();
   Timetable? _timetable;
   bool _isLoading = true;
+  bool _hasUnsavedChanges = false;
 
   @override
   void initState() {
@@ -538,6 +539,35 @@ class _TimetableEditorScreenState extends State<TimetableEditorScreen> {
     }
   }
 
+  void _onUnsavedChangesChanged(bool hasChanges) {
+    setState(() {
+      _hasUnsavedChanges = hasChanges;
+    });
+  }
+
+  Future<bool> _showUnsavedChangesDialog() async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unsaved Changes'),
+        content: const Text('You have unsaved changes that will be lost. Are you sure you want to go back?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Stay'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Leave'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -552,14 +582,37 @@ class _TimetableEditorScreenState extends State<TimetableEditorScreen> {
       );
     }
 
-    return TimetableHomeScreen(timetable: _timetable!);
+    return PopScope(
+      canPop: !_hasUnsavedChanges,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        
+        // Only show dialog if there are actual unsaved changes
+        if (_hasUnsavedChanges) {
+          final navigator = Navigator.of(context);
+          final shouldPop = await _showUnsavedChangesDialog();
+          if (shouldPop && navigator.canPop()) {
+            navigator.pop();
+          }
+        }
+      },
+      child: TimetableHomeScreen(
+        timetable: _timetable!,
+        onUnsavedChangesChanged: _onUnsavedChangesChanged,
+      ),
+    );
   }
 }
 
 class TimetableHomeScreen extends StatefulWidget {
   final Timetable timetable;
+  final Function(bool)? onUnsavedChangesChanged;
 
-  const TimetableHomeScreen({super.key, required this.timetable});
+  const TimetableHomeScreen({
+    super.key, 
+    required this.timetable,
+    this.onUnsavedChangesChanged,
+  });
 
   @override
   State<TimetableHomeScreen> createState() => _TimetableHomeScreenState();
@@ -576,6 +629,9 @@ class _TimetableHomeScreenState extends State<TimetableHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return HomeScreenWithTimetable(timetable: _timetable);
+    return HomeScreenWithTimetable(
+      timetable: _timetable,
+      onUnsavedChangesChanged: widget.onUnsavedChangesChanged,
+    );
   }
 }

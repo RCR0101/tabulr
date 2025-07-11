@@ -276,6 +276,55 @@ class TimetableService {
     await saveTimetable(timetable);
   }
 
+  // Non-saving versions for manual save functionality
+  bool addSectionWithoutSaving(String courseCode, String sectionId, Timetable timetable) {
+    try {
+      print('Attempting to add section (no save): $courseCode - $sectionId');
+      
+      final course = timetable.availableCourses.firstWhere(
+        (c) => c.courseCode == courseCode,
+        orElse: () => throw Exception('Course not found: $courseCode'),
+      );
+
+      final section = course.sections.firstWhere(
+        (s) => s.sectionId == sectionId,
+        orElse: () => throw Exception('Section not found: $sectionId'),
+      );
+
+      final newSelection = SelectedSection(
+        courseCode: courseCode,
+        sectionId: sectionId,
+        section: section,
+      );
+
+      if (ClashDetector.canAddSection(newSelection, timetable.selectedSections, timetable.availableCourses)) {
+        timetable.selectedSections.add(newSelection);
+        timetable.clashWarnings.clear();
+        timetable.clashWarnings.addAll(
+          ClashDetector.detectClashes(timetable.selectedSections, timetable.availableCourses)
+        );
+        print('Section added successfully (no save)');
+        return true;
+      } else {
+        print('Clash detected, cannot add section');
+      }
+      return false;
+    } catch (e) {
+      print('Error in addSectionWithoutSaving: $e');
+      rethrow;
+    }
+  }
+
+  void removeSectionWithoutSaving(String courseCode, String sectionId, Timetable timetable) {
+    timetable.selectedSections.removeWhere(
+      (s) => s.courseCode == courseCode && s.sectionId == sectionId,
+    );
+    timetable.clashWarnings.clear();
+    timetable.clashWarnings.addAll(
+      ClashDetector.detectClashes(timetable.selectedSections, timetable.availableCourses)
+    );
+  }
+
   List<TimetableSlot> generateTimetableSlots(List<SelectedSection> selectedSections, List<Course> availableCourses) {
     List<TimetableSlot> slots = [];
     

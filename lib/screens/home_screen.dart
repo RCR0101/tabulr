@@ -10,6 +10,7 @@ import '../widgets/timetable_widget.dart';
 import '../widgets/export_timetable_widget.dart';
 import '../widgets/clash_warnings_widget.dart';
 import '../widgets/search_filter_widget.dart';
+import '../services/page_leave_warning_service.dart';
 import 'generator_screen.dart';
 import 'timetables_screen.dart';
 import 'course_guide_screen.dart';
@@ -24,8 +25,13 @@ class HomeScreen extends StatefulWidget {
 
 class HomeScreenWithTimetable extends StatefulWidget {
   final Timetable timetable;
+  final Function(bool)? onUnsavedChangesChanged;
   
-  const HomeScreenWithTimetable({super.key, required this.timetable});
+  const HomeScreenWithTimetable({
+    super.key, 
+    required this.timetable,
+    this.onUnsavedChangesChanged,
+  });
 
   @override
   State<HomeScreenWithTimetable> createState() => _HomeScreenWithTimetableState();
@@ -34,10 +40,13 @@ class HomeScreenWithTimetable extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TimetableService _timetableService = TimetableService();
   final AuthService _authService = AuthService();
+  final PageLeaveWarningService _pageLeaveWarning = PageLeaveWarningService();
   final GlobalKey _timetableKey = GlobalKey();
   Timetable? _timetable;
   List<Course> _filteredCourses = [];
   bool _isLoading = true;
+  bool _hasUnsavedChanges = false;
+  bool _isSaving = false;
   TimetableSize _timetableSize = TimetableSize.medium;
 
   @override
@@ -110,13 +119,16 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _addSection(String courseCode, String sectionId) async {
+  void _addSection(String courseCode, String sectionId) {
     if (_timetable == null) return;
 
     try {
-      final success = await _timetableService.addSection(courseCode, sectionId, _timetable!);
+      final success = _timetableService.addSectionWithoutSaving(courseCode, sectionId, _timetable!);
       if (success) {
-        setState(() {});
+        setState(() {
+          _hasUnsavedChanges = true;
+        });
+        _pageLeaveWarning.enableWarning(true);
       } else {
         final course = _timetable!.availableCourses.firstWhere((c) => c.courseCode == courseCode);
         final section = course.sections.firstWhere((s) => s.sectionId == sectionId);
@@ -137,12 +149,14 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _removeSection(String courseCode, String sectionId) async {
+  void _removeSection(String courseCode, String sectionId) {
     if (_timetable == null) return;
 
     try {
-      await _timetableService.removeSection(courseCode, sectionId, _timetable!);
-      setState(() {});
+      _timetableService.removeSectionWithoutSaving(courseCode, sectionId, _timetable!);
+      setState(() {
+        _hasUnsavedChanges = true;
+      });
     } catch (e) {
       _showErrorDialog('Error removing section: $e');
     }
@@ -177,7 +191,10 @@ class _HomeScreenState extends State<HomeScreen> {
       try {
         _timetable!.selectedSections.clear();
         _timetable!.clashWarnings.clear();
-        setState(() {});
+        setState(() {
+          _hasUnsavedChanges = true;
+        });
+        _pageLeaveWarning.enableWarning(true);
         
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Timetable cleared successfully')),
@@ -185,6 +202,36 @@ class _HomeScreenState extends State<HomeScreen> {
       } catch (e) {
         _showErrorDialog('Error clearing timetable: $e');
       }
+    }
+  }
+
+  Future<void> _saveTimetable() async {
+    if (_timetable == null || _isSaving) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await _timetableService.saveTimetable(_timetable!);
+      setState(() {
+        _hasUnsavedChanges = false;
+        _isSaving = false;
+      });
+      _pageLeaveWarning.enableWarning(false);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Timetable saved successfully!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      setState(() {
+        _isSaving = false;
+      });
+      _showErrorDialog('Error saving timetable: $e');
     }
   }
 
@@ -571,6 +618,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           onClear: _clearTimetable,
                           onRemoveSection: _removeSection,
                           size: _timetableSize,
+                          hasUnsavedChanges: _hasUnsavedChanges,
+                          isSaving: _isSaving,
+                          onSave: _saveTimetable,
                           onSizeChanged: (newSize) {
                             setState(() {
                               _timetableSize = newSize;
@@ -600,10 +650,13 @@ class _HomeScreenState extends State<HomeScreen> {
 class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
   final TimetableService _timetableService = TimetableService();
   final AuthService _authService = AuthService();
+  final PageLeaveWarningService _pageLeaveWarning = PageLeaveWarningService();
   final GlobalKey _timetableKey = GlobalKey();
   late Timetable _timetable;
   List<Course> _filteredCourses = [];
   bool _isLoading = false;
+  bool _hasUnsavedChanges = false;
+  bool _isSaving = false;
   TimetableSize _timetableSize = TimetableSize.medium;
 
   @override
@@ -651,12 +704,15 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
     });
   }
 
-  Future<void> _addSection(String courseCode, String sectionId) async {
+  void _addSection(String courseCode, String sectionId) {
     try {
-      final success = await _timetableService.addSection(courseCode, sectionId, _timetable);
+      final success = _timetableService.addSectionWithoutSaving(courseCode, sectionId, _timetable);
       if (success) {
-        setState(() {});
-        await _timetableService.saveTimetable(_timetable);
+        setState(() {
+          _hasUnsavedChanges = true;
+        });
+        widget.onUnsavedChangesChanged?.call(true);
+        _pageLeaveWarning.enableWarning(true);
       } else {
         final course = _timetable.availableCourses.firstWhere((c) => c.courseCode == courseCode);
         final section = course.sections.firstWhere((s) => s.sectionId == sectionId);
@@ -677,11 +733,13 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
     }
   }
 
-  Future<void> _removeSection(String courseCode, String sectionId) async {
+  void _removeSection(String courseCode, String sectionId) {
     try {
-      await _timetableService.removeSection(courseCode, sectionId, _timetable);
-      setState(() {});
-      await _timetableService.saveTimetable(_timetable);
+      _timetableService.removeSectionWithoutSaving(courseCode, sectionId, _timetable);
+      setState(() {
+        _hasUnsavedChanges = true;
+      });
+      widget.onUnsavedChangesChanged?.call(true);
     } catch (e) {
       _showErrorDialog('Error removing section: $e');
     }
@@ -714,8 +772,11 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
       try {
         _timetable.selectedSections.clear();
         _timetable.clashWarnings.clear();
-        setState(() {});
-        await _timetableService.saveTimetable(_timetable);
+        setState(() {
+          _hasUnsavedChanges = true;
+        });
+        widget.onUnsavedChangesChanged?.call(true);
+        _pageLeaveWarning.enableWarning(true);
         
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Timetable cleared successfully')),
@@ -723,6 +784,37 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
       } catch (e) {
         _showErrorDialog('Error clearing timetable: $e');
       }
+    }
+  }
+
+  Future<void> _saveTimetable() async {
+    if (_isSaving) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await _timetableService.saveTimetable(_timetable);
+      setState(() {
+        _hasUnsavedChanges = false;
+        _isSaving = false;
+      });
+      widget.onUnsavedChangesChanged?.call(false);
+      _pageLeaveWarning.enableWarning(false);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Timetable saved successfully!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      setState(() {
+        _isSaving = false;
+      });
+      _showErrorDialog('Error saving timetable: $e');
     }
   }
 
@@ -1101,6 +1193,9 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                           onClear: _clearTimetable,
                           onRemoveSection: _removeSection,
                           size: _timetableSize,
+                          hasUnsavedChanges: _hasUnsavedChanges,
+                          isSaving: _isSaving,
+                          onSave: _saveTimetable,
                           onSizeChanged: (newSize) {
                             setState(() {
                               _timetableSize = newSize;

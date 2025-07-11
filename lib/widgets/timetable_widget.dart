@@ -18,6 +18,9 @@ class TimetableWidget extends StatefulWidget {
   final Function(TimetableSize)? onSizeChanged;
   final bool isForExport;
   final GlobalKey? tableKey;
+  final bool hasUnsavedChanges;
+  final bool isSaving;
+  final VoidCallback? onSave;
 
   const TimetableWidget({
     super.key,
@@ -29,6 +32,9 @@ class TimetableWidget extends StatefulWidget {
     this.onSizeChanged,
     this.isForExport = false,
     this.tableKey,
+    this.hasUnsavedChanges = false,
+    this.isSaving = false,
+    this.onSave,
   });
 
   @override
@@ -125,6 +131,36 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   ),
                 ),
               const SizedBox(width: 16),
+              // Save button
+              if (!widget.isForExport && widget.onSave != null)
+                ElevatedButton.icon(
+                  onPressed: widget.hasUnsavedChanges && !widget.isSaving ? widget.onSave : null,
+                  icon: widget.isSaving 
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        widget.hasUnsavedChanges ? Icons.save : Icons.check,
+                        size: 16,
+                      ),
+                  label: Text(
+                    widget.isSaving ? 'Saving...' : 
+                    widget.hasUnsavedChanges ? 'Save' : 'Saved',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: widget.hasUnsavedChanges 
+                      ? Colors.blue 
+                      : Colors.green,
+                    foregroundColor: Colors.white,
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              const SizedBox(width: 8),
               if (widget.timetableSlots.isNotEmpty && widget.onClear != null)
                 ElevatedButton.icon(
                   onPressed: widget.onClear,

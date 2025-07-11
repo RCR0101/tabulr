@@ -376,7 +376,7 @@ class XlsxParser {
     // Create date in local timezone to avoid shifting
     const date = new Date(year, month - 1, day);
     // Format as YYYY-MM-DD to avoid timezone issues
-    const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00.000Z`;
+    const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T08:30:00.000Z`;
     
     return {
       date: dateString,
@@ -410,7 +410,7 @@ class XlsxParser {
     // Create date in local timezone to avoid shifting
     const date = new Date(year, month - 1, day);
     // Format as YYYY-MM-DD to avoid timezone issues
-    const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00.000Z`;
+    const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T08:30:00.000Z`;
     
     return {
       date: dateString,
