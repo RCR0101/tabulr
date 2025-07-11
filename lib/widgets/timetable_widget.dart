@@ -9,7 +9,7 @@ enum TimetableSize {
   extraLarge,
 }
 
-class TimetableWidget extends StatelessWidget {
+class TimetableWidget extends StatefulWidget {
   final List<TimetableSlot> timetableSlots;
   final List<String> incompleteSelectionWarnings;
   final VoidCallback? onClear;
@@ -30,6 +30,13 @@ class TimetableWidget extends StatelessWidget {
     this.isForExport = false,
     this.tableKey,
   });
+
+  @override
+  State<TimetableWidget> createState() => _TimetableWidgetState();
+}
+
+class _TimetableWidgetState extends State<TimetableWidget> {
+  String? _hoveredCourse; // Track which course is being hovered
 
   @override
   Widget build(BuildContext context) {
@@ -56,8 +63,8 @@ class TimetableWidget extends StatelessWidget {
               ),
               const SizedBox(width: 16),
               PopupMenuButton<TimetableSize>(
-                onSelected: onSizeChanged,
-                enabled: onSizeChanged != null,
+                onSelected: widget.onSizeChanged,
+                enabled: widget.onSizeChanged != null,
                   itemBuilder: (context) => [
                     PopupMenuItem(
                       value: TimetableSize.compact,
@@ -110,7 +117,7 @@ class TimetableWidget extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(_getSizeIcon(), size: 16),
+                        Icon(_getSizeIcon(widget.size), size: 16),
                         SizedBox(width: 4),
                         Icon(Icons.arrow_drop_down, size: 16),
                       ],
@@ -118,9 +125,9 @@ class TimetableWidget extends StatelessWidget {
                   ),
                 ),
               const SizedBox(width: 16),
-              if (timetableSlots.isNotEmpty && onClear != null)
+              if (widget.timetableSlots.isNotEmpty && widget.onClear != null)
                 ElevatedButton.icon(
-                  onPressed: onClear,
+                  onPressed: widget.onClear,
                   icon: const Icon(Icons.clear_all, size: 16),
                   label: const Text('Clear'),
                   style: ElevatedButton.styleFrom(
@@ -135,7 +142,7 @@ class TimetableWidget extends StatelessWidget {
             ],
           ),
         ),
-        isForExport
+        widget.isForExport
             ? Container(
                 margin: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
@@ -147,18 +154,18 @@ class TimetableWidget extends StatelessWidget {
                   ),
                 ),
                 child: RepaintBoundary(
-                  key: tableKey,
+                  key: widget.tableKey,
                   child: IntrinsicWidth(
                     child: IntrinsicHeight(
                       child: DataTable(
-                        columnSpacing: _getColumnSpacing(),
-                        horizontalMargin: _getHorizontalMargin(),
-                        dataRowHeight: _getDataRowHeight(),
+                        columnSpacing: _getColumnSpacing(widget.size),
+                        horizontalMargin: _getHorizontalMargin(widget.size),
+                        dataRowHeight: _getDataRowHeight(widget.size),
                         headingRowHeight: 60,
                         columns: [
                         DataColumn(
                           label: SizedBox(
-                            width: _getTimeColumnWidth(),
+                            width: _getTimeColumnWidth(widget.size),
                             child: Text(
                               'Time',
                               style: TextStyle(
@@ -171,7 +178,7 @@ class TimetableWidget extends StatelessWidget {
                         ),
                         DataColumn(
                           label: SizedBox(
-                            width: _getDayColumnWidth(),
+                            width: _getDayColumnWidth(widget.size),
                             child: Text(
                               'Monday',
                               style: TextStyle(
@@ -184,7 +191,7 @@ class TimetableWidget extends StatelessWidget {
                         ),
                         DataColumn(
                           label: SizedBox(
-                            width: _getDayColumnWidth(),
+                            width: _getDayColumnWidth(widget.size),
                             child: Text(
                               'Tuesday',
                               style: TextStyle(
@@ -197,7 +204,7 @@ class TimetableWidget extends StatelessWidget {
                         ),
                         DataColumn(
                           label: SizedBox(
-                            width: _getDayColumnWidth(),
+                            width: _getDayColumnWidth(widget.size),
                             child: Text(
                               'Wednesday',
                               style: TextStyle(
@@ -210,7 +217,7 @@ class TimetableWidget extends StatelessWidget {
                         ),
                         DataColumn(
                           label: SizedBox(
-                            width: _getDayColumnWidth(),
+                            width: _getDayColumnWidth(widget.size),
                             child: Text(
                               'Thursday',
                               style: TextStyle(
@@ -223,7 +230,7 @@ class TimetableWidget extends StatelessWidget {
                         ),
                         DataColumn(
                           label: SizedBox(
-                            width: _getDayColumnWidth(),
+                            width: _getDayColumnWidth(widget.size),
                             child: Text(
                               'Friday',
                               style: TextStyle(
@@ -236,7 +243,7 @@ class TimetableWidget extends StatelessWidget {
                         ),
                         DataColumn(
                           label: SizedBox(
-                            width: _getDayColumnWidth(),
+                            width: _getDayColumnWidth(widget.size),
                             child: Text(
                               'Saturday',
                               style: TextStyle(
@@ -281,16 +288,16 @@ class TimetableWidget extends StatelessWidget {
                       child: Align(
                         alignment: Alignment.topLeft,
                         child: RepaintBoundary(
-                          key: tableKey,
+                          key: widget.tableKey,
                           child: DataTable(
-                            columnSpacing: _getColumnSpacing(),
-                            horizontalMargin: _getHorizontalMargin(),
-                            dataRowHeight: _getDataRowHeight(),
+                            columnSpacing: _getColumnSpacing(widget.size),
+                            horizontalMargin: _getHorizontalMargin(widget.size),
+                            dataRowHeight: _getDataRowHeight(widget.size),
                             headingRowHeight: 60,
                           columns: [
                             DataColumn(
                               label: SizedBox(
-                                width: _getTimeColumnWidth(),
+                                width: _getTimeColumnWidth(widget.size),
                                 child: Text(
                                   'Time',
                                   style: TextStyle(
@@ -303,7 +310,7 @@ class TimetableWidget extends StatelessWidget {
                             ),
                             DataColumn(
                               label: SizedBox(
-                                width: _getDayColumnWidth(),
+                                width: _getDayColumnWidth(widget.size),
                                 child: Text(
                                   'Monday',
                                   style: TextStyle(
@@ -316,7 +323,7 @@ class TimetableWidget extends StatelessWidget {
                             ),
                             DataColumn(
                               label: SizedBox(
-                                width: _getDayColumnWidth(),
+                                width: _getDayColumnWidth(widget.size),
                                 child: Text(
                                   'Tuesday',
                                   style: TextStyle(
@@ -329,7 +336,7 @@ class TimetableWidget extends StatelessWidget {
                             ),
                             DataColumn(
                               label: SizedBox(
-                                width: _getDayColumnWidth(),
+                                width: _getDayColumnWidth(widget.size),
                                 child: Text(
                                   'Wednesday',
                                   style: TextStyle(
@@ -342,7 +349,7 @@ class TimetableWidget extends StatelessWidget {
                             ),
                             DataColumn(
                               label: SizedBox(
-                                width: _getDayColumnWidth(),
+                                width: _getDayColumnWidth(widget.size),
                                 child: Text(
                                   'Thursday',
                                   style: TextStyle(
@@ -355,7 +362,7 @@ class TimetableWidget extends StatelessWidget {
                             ),
                             DataColumn(
                               label: SizedBox(
-                                width: _getDayColumnWidth(),
+                                width: _getDayColumnWidth(widget.size),
                                 child: Text(
                                   'Friday',
                                   style: TextStyle(
@@ -368,7 +375,7 @@ class TimetableWidget extends StatelessWidget {
                             ),
                             DataColumn(
                               label: SizedBox(
-                                width: _getDayColumnWidth(),
+                                width: _getDayColumnWidth(widget.size),
                                 child: Text(
                                   'Saturday',
                                   style: TextStyle(
@@ -396,7 +403,7 @@ class TimetableWidget extends StatelessWidget {
     List<DataRow> rows = [];
     Map<int, Map<DayOfWeek, TimetableSlot?>> timeTable = {};
 
-    for (var slot in timetableSlots) {
+    for (var slot in widget.timetableSlots) {
       for (var hour in slot.hours) {
         timeTable[hour] ??= {};
         timeTable[hour]![slot.day] = slot;
@@ -408,8 +415,8 @@ class TimetableWidget extends StatelessWidget {
         cells: [
           DataCell(
             Container(
-              width: _getTimeColumnWidth(),
-              height: _getCellHeight(),
+              width: _getTimeColumnWidth(widget.size),
+              height: _getCellHeight(widget.size),
               padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFF21262D),
@@ -451,9 +458,9 @@ class TimetableWidget extends StatelessWidget {
             }
             return DataCell(
               Container(
-                width: _getDayColumnWidth(),
-                height: _getCellHeight(),
-                margin: EdgeInsets.all(_getCellMargin()),
+                width: _getDayColumnWidth(widget.size),
+                height: _getCellHeight(widget.size),
+                margin: EdgeInsets.all(_getCellMargin(widget.size)),
                 decoration: BoxDecoration(
                   color: const Color(0xFF0D1117),
                   borderRadius: BorderRadius.circular(8),
@@ -471,13 +478,21 @@ class TimetableWidget extends StatelessWidget {
 
   Widget _buildTimetableCell(BuildContext context, TimetableSlot slot, int hour, DayOfWeek day) {
     // Find all slots for the same course to show in hover
-    final sameCourseSlots = timetableSlots
+    final sameCourseSlots = widget.timetableSlots
         .where((s) => s.courseCode == slot.courseCode && s.sectionId == slot.sectionId)
         .toList();
     
     return MouseRegion(
-      onEnter: (_) {},
-      onExit: (_) {},
+      onEnter: (_) {
+        setState(() {
+          _hoveredCourse = '${slot.courseCode}-${slot.sectionId}';
+        });
+      },
+      onExit: (_) {
+        setState(() {
+          _hoveredCourse = null;
+        });
+      },
       child: Tooltip(
         message: _buildTooltipContent(sameCourseSlots),
         decoration: BoxDecoration(
@@ -487,9 +502,9 @@ class TimetableWidget extends StatelessWidget {
         ),
         textStyle: const TextStyle(color: Color(0xFFF0F6FC), fontSize: 12),
         child: Container(
-          width: _getDayColumnWidth(),
-          height: _getCellHeight(),
-          margin: EdgeInsets.all(_getCellMargin()),
+          width: _getDayColumnWidth(widget.size),
+          height: _getCellHeight(widget.size),
+          margin: EdgeInsets.all(_getCellMargin(widget.size)),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -515,7 +530,7 @@ class TimetableWidget extends StatelessWidget {
           child: Stack(
             children: [
               Padding(
-                padding: EdgeInsets.all(_getCellPadding()),
+                padding: EdgeInsets.all(_getCellPadding(widget.size)),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -527,7 +542,7 @@ class TimetableWidget extends StatelessWidget {
                         slot.courseCode,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: _getCourseCodeFontSize(),
+                          fontSize: _getCourseCodeFontSize(widget.size),
                           color: const Color(0xFFFFFFFF),
                           height: 1.1,
                         ),
@@ -535,19 +550,19 @@ class TimetableWidget extends StatelessWidget {
                         maxLines: 1,
                       ),
                     ),
-                    if (size != TimetableSize.compact) ...[
+                    if (widget.size != TimetableSize.compact) ...[
                       Flexible(
                         flex: 2,
                         child: Text(
                           slot.courseTitle,
                           style: TextStyle(
-                            fontSize: _getCourseTitleFontSize(),
+                            fontSize: _getCourseTitleFontSize(widget.size),
                             color: const Color(0xFFE6EDF3),
                             fontWeight: FontWeight.w400,
                             height: 1.1,
                           ),
                           overflow: TextOverflow.ellipsis,
-                          maxLines: _getCourseTitleMaxLines(),
+                          maxLines: _getCourseTitleMaxLines(widget.size),
                         ),
                       ),
                     ],
@@ -556,7 +571,7 @@ class TimetableWidget extends StatelessWidget {
                       child: Text(
                         slot.sectionId,
                         style: TextStyle(
-                          fontSize: _getSectionIdFontSize(),
+                          fontSize: _getSectionIdFontSize(widget.size),
                           color: const Color(0xFFE6EDF3),
                           fontWeight: FontWeight.w500,
                           height: 1.1,
@@ -570,7 +585,7 @@ class TimetableWidget extends StatelessWidget {
                       child: Text(
                         slot.room,
                         style: TextStyle(
-                          fontSize: _getRoomFontSize(),
+                          fontSize: _getRoomFontSize(widget.size),
                           color: const Color(0xFFE6EDF3),
                           height: 1.1,
                         ),
@@ -616,12 +631,12 @@ class TimetableWidget extends StatelessWidget {
                     ),
                   ),
                 ),
-              if (onRemoveSection != null)
+              if (widget.onRemoveSection != null && _hoveredCourse == '${slot.courseCode}-${slot.sectionId}')
                 Positioned(
                   top: 2,
                   right: 2,
                   child: GestureDetector(
-                    onTap: () => onRemoveSection!(slot.courseCode, slot.sectionId),
+                    onTap: () => widget.onRemoveSection!(slot.courseCode, slot.sectionId),
                     child: Container(
                       width: 20,
                       height: 20,
@@ -702,11 +717,11 @@ class TimetableWidget extends StatelessWidget {
   }
 
   bool _hasIncompleteSelection(String courseCode) {
-    return incompleteSelectionWarnings.any((warning) => warning.startsWith(courseCode));
+    return widget.incompleteSelectionWarnings.any((warning) => warning.startsWith(courseCode));
   }
 
   String _getIncompleteSelectionWarning(String courseCode) {
-    final warnings = incompleteSelectionWarnings
+    final warnings = widget.incompleteSelectionWarnings
         .where((warning) => warning.startsWith(courseCode))
         .toList();
     
@@ -715,7 +730,7 @@ class TimetableWidget extends StatelessWidget {
   }
 
   // Size-specific dimension helpers
-  double _getDayColumnWidth() {
+  double _getDayColumnWidth(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:
         return 140;
@@ -728,11 +743,11 @@ class TimetableWidget extends StatelessWidget {
     }
   }
 
-  double _getTimeColumnWidth() {
-    return _getDayColumnWidth() * 0.75;
+  double _getTimeColumnWidth(TimetableSize size) {
+    return _getDayColumnWidth(size) * 0.75;
   }
 
-  double _getCellHeight() {
+  double _getCellHeight(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:
         return 70;
@@ -745,7 +760,7 @@ class TimetableWidget extends StatelessWidget {
     }
   }
 
-  double _getCellMargin() {
+  double _getCellMargin(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:
         return 1;
@@ -758,7 +773,7 @@ class TimetableWidget extends StatelessWidget {
     }
   }
 
-  double _getColumnSpacing() {
+  double _getColumnSpacing(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:
         return 12;
@@ -771,7 +786,7 @@ class TimetableWidget extends StatelessWidget {
     }
   }
 
-  double _getHorizontalMargin() {
+  double _getHorizontalMargin(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:
         return 10;
@@ -784,7 +799,7 @@ class TimetableWidget extends StatelessWidget {
     }
   }
 
-  double _getDataRowHeight() {
+  double _getDataRowHeight(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:
         return 90;
@@ -797,7 +812,7 @@ class TimetableWidget extends StatelessWidget {
     }
   }
 
-  IconData _getSizeIcon() {
+  IconData _getSizeIcon(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:
         return Icons.view_compact;
@@ -811,7 +826,7 @@ class TimetableWidget extends StatelessWidget {
   }
 
   // Dynamic text sizing helpers
-  double _getCourseCodeFontSize() {
+  double _getCourseCodeFontSize(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:
         return 12;
@@ -824,7 +839,7 @@ class TimetableWidget extends StatelessWidget {
     }
   }
 
-  double _getCourseTitleFontSize() {
+  double _getCourseTitleFontSize(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:
         return 10;
@@ -837,7 +852,7 @@ class TimetableWidget extends StatelessWidget {
     }
   }
 
-  double _getSectionIdFontSize() {
+  double _getSectionIdFontSize(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:
         return 11;
@@ -850,7 +865,7 @@ class TimetableWidget extends StatelessWidget {
     }
   }
 
-  double _getRoomFontSize() {
+  double _getRoomFontSize(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:
         return 10;
@@ -863,7 +878,7 @@ class TimetableWidget extends StatelessWidget {
     }
   }
 
-  double _getCellPadding() {
+  double _getCellPadding(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:
         return 6;
@@ -876,7 +891,7 @@ class TimetableWidget extends StatelessWidget {
     }
   }
 
-  double _getTextSpacing() {
+  double _getTextSpacing(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:
         return 1;
@@ -889,7 +904,7 @@ class TimetableWidget extends StatelessWidget {
     }
   }
 
-  int _getCourseTitleMaxLines() {
+  int _getCourseTitleMaxLines(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:
         return 0; // Hidden in compact mode
