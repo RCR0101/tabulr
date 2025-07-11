@@ -204,6 +204,26 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<bool> _showIncompleteWarningDialog() async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Incomplete Course Selections'),
+        content: const Text('Some courses have incomplete selections (missing lab/tutorial/lecture sections). Do you want to continue exporting anyway?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
   Future<void> _exportToICS() async {
     if (_timetable == null || _timetable!.selectedSections.isEmpty) {
       _showErrorDialog('No sections selected to export');
@@ -238,6 +258,15 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_timetable == null || _timetable!.selectedSections.isEmpty) {
       _showErrorDialog('No sections selected to export');
       return;
+    }
+
+    // Check for incomplete course selections
+    final warnings = _timetableService.getIncompleteSelectionWarnings(_timetable!.selectedSections, _timetable!.availableCourses);
+    if (warnings.isNotEmpty) {
+      final shouldContinue = await _showIncompleteWarningDialog();
+      if (!shouldContinue) {
+        return;
+      }
     }
 
     try {
@@ -713,6 +742,26 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
     );
   }
 
+  Future<bool> _showIncompleteWarningDialog() async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Incomplete Course Selections'),
+        content: const Text('Some courses have incomplete selections (missing lab/tutorial/lecture sections). Do you want to continue exporting anyway?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
   Future<void> _exportToICS() async {
     if (_timetable.selectedSections.isEmpty) {
       _showErrorDialog('No sections selected to export');
@@ -747,6 +796,15 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
     if (_timetable.selectedSections.isEmpty) {
       _showErrorDialog('No sections selected to export');
       return;
+    }
+
+    // Check for incomplete course selections
+    final warnings = _timetableService.getIncompleteSelectionWarnings(_timetable.selectedSections, _timetable.availableCourses);
+    if (warnings.isNotEmpty) {
+      final shouldContinue = await _showIncompleteWarningDialog();
+      if (!shouldContinue) {
+        return;
+      }
     }
 
     try {
