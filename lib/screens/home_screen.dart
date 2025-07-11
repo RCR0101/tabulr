@@ -7,6 +7,7 @@ import '../services/export_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/courses_tab_widget.dart';
 import '../widgets/timetable_widget.dart';
+import '../widgets/export_timetable_widget.dart';
 import '../widgets/clash_warnings_widget.dart';
 import '../widgets/search_filter_widget.dart';
 import 'generator_screen.dart';
@@ -240,7 +241,45 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     try {
-      final filePath = await ExportService.exportToPNG(_timetableKey);
+      GlobalKey tableExportKey = GlobalKey();
+      
+      final overlay = Overlay.of(context);
+      late OverlayEntry overlayEntry;
+      
+      overlayEntry = OverlayEntry(
+        builder: (context) => Positioned(
+          left: -10000,
+          top: -10000,
+          child: Material(
+            child: SizedBox(
+              width: 2000, // Provide enough width for full table
+              height: 2000, // Provide enough height for full table
+              child: TimetableWidget(
+                timetableSlots: _timetableService.generateTimetableSlots(
+                  _timetable!.selectedSections, 
+                  _timetable!.availableCourses
+                ),
+                incompleteSelectionWarnings: _timetableService.getIncompleteSelectionWarnings(
+                  _timetable!.selectedSections, 
+                  _timetable!.availableCourses
+                ),
+                size: TimetableSize.extraLarge, // Use largest size for best quality
+                isForExport: true,
+                tableKey: tableExportKey,
+              ),
+            ),
+          ),
+        ),
+      );
+      
+      overlay.insert(overlayEntry);
+      
+      // Wait for the widget to render
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      final filePath = await ExportService.exportToPNG(tableExportKey);
+      
+      overlayEntry.remove();
       
       showDialog(
         context: context,
@@ -711,7 +750,45 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
     }
 
     try {
-      final filePath = await ExportService.exportToPNG(_timetableKey);
+      GlobalKey tableExportKey = GlobalKey();
+      
+      final overlay = Overlay.of(context);
+      late OverlayEntry overlayEntry;
+      
+      overlayEntry = OverlayEntry(
+        builder: (context) => Positioned(
+          left: -10000,
+          top: -10000,
+          child: Material(
+            child: SizedBox(
+              width: 2000, // Provide enough width for full table
+              height: 2000, // Provide enough height for full table
+              child: TimetableWidget(
+                timetableSlots: _timetableService.generateTimetableSlots(
+                  _timetable.selectedSections, 
+                  _timetable.availableCourses
+                ),
+                incompleteSelectionWarnings: _timetableService.getIncompleteSelectionWarnings(
+                  _timetable.selectedSections, 
+                  _timetable.availableCourses
+                ),
+                size: TimetableSize.extraLarge, // Use largest size for best quality
+                isForExport: true,
+                tableKey: tableExportKey,
+              ),
+            ),
+          ),
+        ),
+      );
+      
+      overlay.insert(overlayEntry);
+      
+      // Wait for the widget to render
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      final filePath = await ExportService.exportToPNG(tableExportKey);
+      
+      overlayEntry.remove();
       
       showDialog(
         context: context,

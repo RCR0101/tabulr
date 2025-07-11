@@ -16,6 +16,8 @@ class TimetableWidget extends StatelessWidget {
   final Function(String courseCode, String sectionId)? onRemoveSection;
   final TimetableSize size;
   final Function(TimetableSize)? onSizeChanged;
+  final bool isForExport;
+  final GlobalKey? tableKey;
 
   const TimetableWidget({
     super.key,
@@ -25,6 +27,8 @@ class TimetableWidget extends StatelessWidget {
     this.onRemoveSection,
     this.size = TimetableSize.medium,
     this.onSizeChanged,
+    this.isForExport = false,
+    this.tableKey,
   });
 
   @override
@@ -131,137 +135,259 @@ class TimetableWidget extends StatelessWidget {
             ],
           ),
         ),
-        Expanded(
-          child: Container(
-            margin: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: const Color(0xFF161B22),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: const Color(0xFF30363D),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
+        isForExport
+            ? Container(
+                margin: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF161B22),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF30363D),
+                    width: 1,
+                  ),
                 ),
-              ],
-            ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              physics: const ClampingScrollPhysics(),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                physics: const ClampingScrollPhysics(),
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: DataTable(
-                  columnSpacing: _getColumnSpacing(),
-                  horizontalMargin: _getHorizontalMargin(),
-                  dataRowHeight: _getDataRowHeight(),
-                  headingRowHeight: 60,
-                  columns: [
-                    DataColumn(
-                      label: SizedBox(
-                        width: _getTimeColumnWidth(),
-                        child: Text(
-                          'Time',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Color(0xFFF0F6FC),
+                child: RepaintBoundary(
+                  key: tableKey,
+                  child: IntrinsicWidth(
+                    child: IntrinsicHeight(
+                      child: DataTable(
+                        columnSpacing: _getColumnSpacing(),
+                        horizontalMargin: _getHorizontalMargin(),
+                        dataRowHeight: _getDataRowHeight(),
+                        headingRowHeight: 60,
+                        columns: [
+                        DataColumn(
+                          label: SizedBox(
+                            width: _getTimeColumnWidth(),
+                            child: Text(
+                              'Time',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Color(0xFFF0F6FC),
+                              ),
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: SizedBox(
+                            width: _getDayColumnWidth(),
+                            child: Text(
+                              'Monday',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Color(0xFFF0F6FC),
+                              ),
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: SizedBox(
+                            width: _getDayColumnWidth(),
+                            child: Text(
+                              'Tuesday',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Color(0xFFF0F6FC),
+                              ),
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: SizedBox(
+                            width: _getDayColumnWidth(),
+                            child: Text(
+                              'Wednesday',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Color(0xFFF0F6FC),
+                              ),
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: SizedBox(
+                            width: _getDayColumnWidth(),
+                            child: Text(
+                              'Thursday',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Color(0xFFF0F6FC),
+                              ),
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: SizedBox(
+                            width: _getDayColumnWidth(),
+                            child: Text(
+                              'Friday',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Color(0xFFF0F6FC),
+                              ),
+                            ),
+                          ),
+                        ),
+                        DataColumn(
+                          label: SizedBox(
+                            width: _getDayColumnWidth(),
+                            child: Text(
+                              'Saturday',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Color(0xFFF0F6FC),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                      rows: _buildRows(context),
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            : Expanded(
+                child: Container(
+                  margin: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161B22),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFF30363D),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.vertical,
+                    physics: const ClampingScrollPhysics(),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const ClampingScrollPhysics(),
+                      child: Align(
+                        alignment: Alignment.topLeft,
+                        child: RepaintBoundary(
+                          key: tableKey,
+                          child: DataTable(
+                            columnSpacing: _getColumnSpacing(),
+                            horizontalMargin: _getHorizontalMargin(),
+                            dataRowHeight: _getDataRowHeight(),
+                            headingRowHeight: 60,
+                          columns: [
+                            DataColumn(
+                              label: SizedBox(
+                                width: _getTimeColumnWidth(),
+                                child: Text(
+                                  'Time',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Color(0xFFF0F6FC),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            DataColumn(
+                              label: SizedBox(
+                                width: _getDayColumnWidth(),
+                                child: Text(
+                                  'Monday',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Color(0xFFF0F6FC),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            DataColumn(
+                              label: SizedBox(
+                                width: _getDayColumnWidth(),
+                                child: Text(
+                                  'Tuesday',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Color(0xFFF0F6FC),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            DataColumn(
+                              label: SizedBox(
+                                width: _getDayColumnWidth(),
+                                child: Text(
+                                  'Wednesday',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Color(0xFFF0F6FC),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            DataColumn(
+                              label: SizedBox(
+                                width: _getDayColumnWidth(),
+                                child: Text(
+                                  'Thursday',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Color(0xFFF0F6FC),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            DataColumn(
+                              label: SizedBox(
+                                width: _getDayColumnWidth(),
+                                child: Text(
+                                  'Friday',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Color(0xFFF0F6FC),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            DataColumn(
+                              label: SizedBox(
+                                width: _getDayColumnWidth(),
+                                child: Text(
+                                  'Saturday',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Color(0xFFF0F6FC),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                          rows: _buildRows(context),
                           ),
                         ),
                       ),
                     ),
-                    DataColumn(
-                      label: SizedBox(
-                        width: _getDayColumnWidth(),
-                        child: Text(
-                          'Monday',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Color(0xFFF0F6FC),
-                          ),
-                        ),
-                      ),
-                    ),
-                    DataColumn(
-                      label: SizedBox(
-                        width: _getDayColumnWidth(),
-                        child: Text(
-                          'Tuesday',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Color(0xFFF0F6FC),
-                          ),
-                        ),
-                      ),
-                    ),
-                    DataColumn(
-                      label: SizedBox(
-                        width: _getDayColumnWidth(),
-                        child: Text(
-                          'Wednesday',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Color(0xFFF0F6FC),
-                          ),
-                        ),
-                      ),
-                    ),
-                    DataColumn(
-                      label: SizedBox(
-                        width: _getDayColumnWidth(),
-                        child: Text(
-                          'Thursday',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Color(0xFFF0F6FC),
-                          ),
-                        ),
-                      ),
-                    ),
-                    DataColumn(
-                      label: SizedBox(
-                        width: _getDayColumnWidth(),
-                        child: Text(
-                          'Friday',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Color(0xFFF0F6FC),
-                          ),
-                        ),
-                      ),
-                    ),
-                    DataColumn(
-                      label: SizedBox(
-                        width: _getDayColumnWidth(),
-                        child: Text(
-                          'Saturday',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Color(0xFFF0F6FC),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                  rows: _buildRows(context),
                   ),
                 ),
               ),
-            ),
-          ),
-        ),
       ],
     ),);
   }
