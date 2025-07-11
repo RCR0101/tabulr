@@ -16,6 +16,7 @@ class SearchFilterWidget extends StatefulWidget {
 class _SearchFilterWidgetState extends State<SearchFilterWidget> {
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _instructorController = TextEditingController();
+  final TextEditingController _courseCodeController = TextEditingController();
   DateTime? _selectedMidSemDate;
   DateTime? _selectedEndSemDate;
   int? _minCredits;
@@ -26,6 +27,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
   void _updateSearch() {
     final filters = <String, dynamic>{
       'instructor': _instructorController.text,
+      'courseCode': _courseCodeController.text,
       'midSemDate': _selectedMidSemDate,
       'endSemDate': _selectedEndSemDate,
       'minCredits': _minCredits,
@@ -40,6 +42,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
     setState(() {
       _searchController.clear();
       _instructorController.clear();
+      _courseCodeController.clear();
       _selectedMidSemDate = null;
       _selectedEndSemDate = null;
       _minCredits = null;
@@ -75,7 +78,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                     controller: _searchController,
                     decoration: InputDecoration(
                       labelText: 'Search courses, instructors...',
-                      hintText: 'e.g., CS101, Data Structures, John Doe',
+                      hintText: 'e.g., CS F211, Data Structures',
                       prefixIcon: const Icon(Icons.search),
                       border: const OutlineInputBorder(),
                       suffixIcon: _searchController.text.isNotEmpty
@@ -118,14 +121,32 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
               ),
               const SizedBox(height: 12),
               
-              // Instructor filter
-              TextField(
-                controller: _instructorController,
-                decoration: const InputDecoration(
-                  labelText: 'Filter by Instructor',
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (_) => _updateSearch(),
+              // Course Code and Instructor filters
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _courseCodeController,
+                      decoration: const InputDecoration(
+                        labelText: 'Filter by Course Code',
+                        hintText: 'e.g., CS F211, MATH F211',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (_) => _updateSearch(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _instructorController,
+                      decoration: const InputDecoration(
+                        labelText: 'Filter by Instructor',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (_) => _updateSearch(),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               

@@ -67,7 +67,7 @@ class ExamDatesWidget extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Table(
                   border: TableBorder.all(
-                    color: Colors.grey.withOpacity(0.3),
+                    color: const Color(0xFF30363D),
                     width: 1,
                   ),
                   columnWidths: const {
@@ -78,8 +78,8 @@ class ExamDatesWidget extends StatelessWidget {
                   children: [
                     // Header row
                     TableRow(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF21262D),
                       ),
                       children: const [
                         Padding(
@@ -89,6 +89,7 @@ class ExamDatesWidget extends StatelessWidget {
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
+                              color: Color(0xFFF0F6FC),
                             ),
                           ),
                         ),
@@ -99,6 +100,7 @@ class ExamDatesWidget extends StatelessWidget {
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
+                              color: Color(0xFFF0F6FC),
                             ),
                           ),
                         ),
@@ -109,6 +111,7 @@ class ExamDatesWidget extends StatelessWidget {
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
+                              color: Color(0xFFF0F6FC),
                             ),
                           ),
                         ),
@@ -127,6 +130,7 @@ class ExamDatesWidget extends StatelessWidget {
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 13,
+                                  color: Color(0xFFF0F6FC),
                                 ),
                               ),
                               const SizedBox(height: 2),
@@ -134,7 +138,7 @@ class ExamDatesWidget extends StatelessWidget {
                                 exam.courseTitle,
                                 style: const TextStyle(
                                   fontSize: 11,
-                                  color: Colors.grey,
+                                  color: Color(0xFF8B949E),
                                 ),
                                 overflow: TextOverflow.ellipsis,
                                 maxLines: 2,
@@ -154,7 +158,7 @@ class ExamDatesWidget extends StatelessWidget {
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.orange.withOpacity(0.1),
+                                      color: const Color(0xFF7C3AED).withOpacity(0.2),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
@@ -162,7 +166,7 @@ class ExamDatesWidget extends StatelessWidget {
                                       style: const TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.orange,
+                                        color: Color(0xFF7C3AED),
                                       ),
                                     ),
                                   ),
@@ -172,7 +176,7 @@ class ExamDatesWidget extends StatelessWidget {
                                       exam.midSemTime,
                                       style: const TextStyle(
                                         fontSize: 10,
-                                        color: Colors.grey,
+                                        color: Color(0xFF8B949E),
                                       ),
                                     ),
                                   ],
@@ -180,7 +184,7 @@ class ExamDatesWidget extends StatelessWidget {
                               )
                             : const Text(
                                 '-',
-                                style: TextStyle(color: Colors.grey),
+                                style: TextStyle(color: Color(0xFF656D76)),
                               ),
                         ),
                         Padding(
@@ -195,7 +199,7 @@ class ExamDatesWidget extends StatelessWidget {
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.red.withOpacity(0.1),
+                                      color: const Color(0xFFDA3633).withOpacity(0.2),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
@@ -203,7 +207,7 @@ class ExamDatesWidget extends StatelessWidget {
                                       style: const TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.red,
+                                        color: Color(0xFFDA3633),
                                       ),
                                     ),
                                   ),
@@ -213,7 +217,7 @@ class ExamDatesWidget extends StatelessWidget {
                                       exam.endSemTime,
                                       style: const TextStyle(
                                         fontSize: 10,
-                                        color: Colors.grey,
+                                        color: Color(0xFF8B949E),
                                       ),
                                     ),
                                   ],
@@ -221,7 +225,7 @@ class ExamDatesWidget extends StatelessWidget {
                               )
                             : const Text(
                                 '-',
-                                style: TextStyle(color: Colors.grey),
+                                style: TextStyle(color: Color(0xFF656D76)),
                               ),
                         ),
                       ],

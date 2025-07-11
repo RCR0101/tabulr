@@ -70,6 +70,16 @@ class CourseUtils {
     }).toList();
   }
 
+  static List<Course> filterByCourseCode(List<Course> courses, String courseCode) {
+    if (courseCode.isEmpty) return courses;
+    
+    final lowercaseCourseCode = courseCode.toLowerCase();
+    
+    return courses.where((course) {
+      return course.courseCode.toLowerCase().contains(lowercaseCourseCode);
+    }).toList();
+  }
+
   static List<Course> filterByExamDate(List<Course> courses, DateTime? examDate, bool isMidSem) {
     if (examDate == null) return courses;
     

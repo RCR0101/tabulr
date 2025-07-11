@@ -5,7 +5,6 @@ import '../services/timetable_service.dart';
 import '../services/course_utils.dart';
 import '../services/export_service.dart';
 import '../services/auth_service.dart';
-import 'package:file_picker/file_picker.dart';
 import '../widgets/courses_tab_widget.dart';
 import '../widgets/timetable_widget.dart';
 import '../widgets/clash_warnings_widget.dart';
@@ -78,6 +77,11 @@ class _HomeScreenState extends State<HomeScreen> {
       
       // Apply text search
       courses = CourseUtils.searchCourses(courses, query);
+      
+      // Apply course code filter
+      if (filters['courseCode'] != null && filters['courseCode'].toString().isNotEmpty) {
+        courses = CourseUtils.filterByCourseCode(courses, filters['courseCode']);
+      }
       
       // Apply instructor filter
       if (filters['instructor'] != null && filters['instructor'].toString().isNotEmpty) {
@@ -235,47 +239,14 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // Show dialog to choose export location
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Export PNG'),
-        content: const Text('Choose export location:'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Default Location'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Choose Location'),
-          ),
-        ],
-      ),
-    );
-
-    if (result == null) return;
-
     try {
-      String? customPath;
-      
-      if (result) {
-        // Let user choose custom location
-        final selectedDirectory = await FilePicker.platform.getDirectoryPath();
-        if (selectedDirectory != null) {
-          customPath = '$selectedDirectory/timetable.png';
-        } else {
-          return; // User cancelled
-        }
-      }
-
-      final filePath = await ExportService.exportToPNG(_timetableKey, customPath: customPath);
+      final filePath = await ExportService.exportToPNG(_timetableKey);
       
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Export Successful'),
-          content: Text('Timetable exported to: $filePath'),
+          content: Text('Timetable downloaded as: $filePath'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -389,12 +360,6 @@ class _HomeScreenState extends State<HomeScreen> {
             },
             tooltip: 'Course Guide',
           ),
-          if (_timetable?.selectedSections.isNotEmpty == true)
-            IconButton(
-              icon: const Icon(Icons.clear_all),
-              onPressed: _clearTimetable,
-              tooltip: 'Clear Timetable',
-            ),
           IconButton(
             icon: const Icon(Icons.calendar_today),
             onPressed: _exportToICS,
@@ -587,6 +552,11 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
       // Apply text search
       courses = CourseUtils.searchCourses(courses, query);
       
+      // Apply course code filter
+      if (filters['courseCode'] != null && filters['courseCode'].toString().isNotEmpty) {
+        courses = CourseUtils.filterByCourseCode(courses, filters['courseCode']);
+      }
+      
       // Apply instructor filter
       if (filters['instructor'] != null && filters['instructor'].toString().isNotEmpty) {
         courses = CourseUtils.filterByInstructor(courses, filters['instructor']);
@@ -740,47 +710,14 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
       return;
     }
 
-    // Show dialog to choose export location
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Export PNG'),
-        content: const Text('Choose export location:'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Default Location'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Choose Location'),
-          ),
-        ],
-      ),
-    );
-
-    if (result == null) return;
-
     try {
-      String? customPath;
-      
-      if (result) {
-        // Let user choose custom location
-        final selectedDirectory = await FilePicker.platform.getDirectoryPath();
-        if (selectedDirectory != null) {
-          customPath = '$selectedDirectory/timetable.png';
-        } else {
-          return; // User cancelled
-        }
-      }
-
-      final filePath = await ExportService.exportToPNG(_timetableKey, customPath: customPath);
+      final filePath = await ExportService.exportToPNG(_timetableKey);
       
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('Export Successful'),
-          content: Text('Timetable exported to: $filePath'),
+          content: Text('Timetable downloaded as: $filePath'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -886,12 +823,6 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
             },
             tooltip: 'Course Guide',
           ),
-          if (_timetable.selectedSections.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.clear_all),
-              onPressed: _clearTimetable,
-              tooltip: 'Clear Timetable',
-            ),
           IconButton(
             icon: const Icon(Icons.calendar_today),
             onPressed: _exportToICS,
