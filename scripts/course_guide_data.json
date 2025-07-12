@@ -565,6 +565,217 @@
             "type": "Lecture"
           }
         ]
+      },
+      "B1": {
+        "branches": ["MSc Biology"],
+        "courses": [
+          {
+            "code": "MATH F211",
+            "name": "Mathematics III",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "BIO F211",
+            "name": "Biological Chemistry",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "BIO F213",
+            "name": "Cell Biology",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "BIO F212",
+            "name": "Microbiology",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "BIO F214",
+            "name": "Integrated Biology",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECON F211",
+            "name": "Principles of Economics",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "B2": {
+        "branches": ["MSc Chemistry"],
+        "courses": [
+          {
+            "code": "MATH F211",
+            "name": "Mathematics III",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHEM F211",
+            "name": "Physical Chemistry I",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHEM F212",
+            "name": "Organic Chemistry I",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHEM F213",
+            "name": "Physical Chemistry II",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHY F212",
+            "name": "Electromagnetic Theory I",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHEM F214",
+            "name": "Inorganic Chemistry I",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECON F211",
+            "name": "Principles of Economics",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "B3": {
+        "branches": ["MSc Economics"],
+        "courses": [
+          {
+            "code": "MATH F211",
+            "name": "Mathematics III",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECON F211",
+            "name": "Principles of Economics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECON F212",
+            "name": "Fundamentals of Finance & Accounts",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECON F213",
+            "name": "Mathematical & Statistical Methods",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECON F214",
+            "name": "Economic Environment of Business",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "BITS F225",
+            "name": "Environmental Studies",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "B4": {
+        "branches": ["MSc Mathematics"],
+        "courses": [
+          {
+            "code": "MATH F211",
+            "name": "Mathematics III",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MATH F212",
+            "name": "Optimization",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MATH F213",
+            "name": "Discrete Mathematics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MATH F214",
+            "name": "Elementary Real Analysis",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MATH F215",
+            "name": "Algebra I",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECON F211",
+            "name": "Principles of Economics",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "B5": {
+        "branches": ["MSc Physics"],
+        "courses": [
+          {
+            "code": "MATH F211",
+            "name": "Mathematics III",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHY F211",
+            "name": "Classical Mechanics",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHY F212",
+            "name": "Electromagnetic Theory I",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHY F213",
+            "name": "Optics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHY F214",
+            "name": "Electricity, Magnetism & Optics Laboratory",
+            "credits": 2,
+            "type": "Laboratory"
+          },
+          {
+            "code": "BITS F225",
+            "name": "Environmental Studies",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
       }
     }
   },
@@ -896,6 +1107,181 @@
             "type": "Laboratory"
           }
         ]
+      },
+      "B1": {
+        "branches": ["MSc Biology"],
+        "courses": [
+          {
+            "code": "BIO F241",
+            "name": "Ecology & Environmental Science",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "BIO F242",
+            "name": "Introduction to Bioinformatics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "BIO F243",
+            "name": "Genetics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "BIO F244",
+            "name": "Instrumental Methods of Analysis",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "BITS F225",
+            "name": "Environmental Studies",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "B2": {
+        "branches": ["MSc Chemistry"],
+        "courses": [
+          {
+            "code": "CHEM F241",
+            "name": "Inorganic Chemistry II",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHEM F242",
+            "name": "Chemical Experimentation I",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHEM F243",
+            "name": "Organic Chemistry II",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHEM F244",
+            "name": "Physical Chemistry III",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "BITS F225",
+            "name": "Environmental Studies",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "B3": {
+        "branches": ["MSc Economics"],
+        "courses": [
+          {
+            "code": "MGTS F211",
+            "name": "Principles of Management",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECON F241",
+            "name": "Econometric Methods",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECON F242",
+            "name": "Microeconomics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECON F243",
+            "name": "Macroeconomics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECON F244",
+            "name": "Economics of Growth & Development",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "B4": {
+        "branches": ["MSc Mathematics"],
+        "courses": [
+          {
+            "code": "BITS F225",
+            "name": "Environmental Studies",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MATH F241",
+            "name": "Mathematical Methods",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MATH F242",
+            "name": "Operations Research",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MATH F243",
+            "name": "Graphs & Networks",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MATH F244",
+            "name": "Measure & Integration",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "B5": {
+        "branches": ["MSc Physics"],
+        "courses": [
+          {
+            "code": "ECON F211",
+            "name": "Principles of Economics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHY F241",
+            "name": "Electromagnetic Theory II",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHY F242",
+            "name": "Quantum Mechanics I",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHY F243",
+            "name": "Mathematical Methods of Physics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHY F244",
+            "name": "Modern Physics Laboratory",
+            "credits": 2,
+            "type": "Laboratory"
+          }
+        ]
       }
     }
   },
@@ -1137,6 +1523,121 @@
             "type": "Lecture"
           }
         ]
+      },
+      "B1": {
+        "branches": ["MSc Biology"],
+        "courses": [
+          {
+            "code": "BIO F311",
+            "name": "Recombinant DNA Technology",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "BIO F312",
+            "name": "Plant Physiology",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "BIO F313",
+            "name": "Animal Physiology",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "B2": {
+        "branches": ["MSc Chemistry"],
+        "courses": [
+          {
+            "code": "CHEM F313",
+            "name": "Instrumental Methods of Analysis",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHEM F311",
+            "name": "Organic Chemistry III",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHEM F312",
+            "name": "Physical Chemistry IV",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "B3": {
+        "branches": ["MSc Economics"],
+        "courses": [
+          {
+            "code": "ECON F311",
+            "name": "International Economics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECON F312",
+            "name": "Money, Banking & Financial Markets",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECON F313",
+            "name": "Issues in Economic Development",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "B4": {
+        "branches": ["MSc Mathematics"],
+        "courses": [
+          {
+            "code": "MATH F311",
+            "name": "Introduction to Topology",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MATH F312",
+            "name": "Ordinary Differential Equations",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MATH F313",
+            "name": "Numerical Analysis",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "B5": {
+        "branches": ["MSc Physics"],
+        "courses": [
+          {
+            "code": "PHY F311",
+            "name": "Quantum Mechanics II",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHY F312",
+            "name": "Statistical Mechanics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHY F313",
+            "name": "Computational Physics",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
       }
     }
   },
@@ -1352,6 +1853,127 @@
             "name": "Computational Partial Differential Equations",
             "credits": 4,
             "type": "Lecture"
+          }
+        ]
+      },
+      "B1": {
+        "branches": ["MSc Biology"],
+        "courses": [
+          {
+            "code": "BIO F341",
+            "name": "Developmental Biology",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "BIO F342",
+            "name": "Immunology",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "BIO F215",
+            "name": "Biophysics",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "B2": {
+        "branches": ["MSc Chemistry"],
+        "courses": [
+          {
+            "code": "CHEM F341",
+            "name": "Chemical Experimentation II",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHEM F342",
+            "name": "Organic Chemistry IV",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHEM F343",
+            "name": "Inorganic Chemistry III",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "B3": {
+        "branches": ["MSc Economics"],
+        "courses": [
+          {
+            "code": "ECON F341",
+            "name": "Public Finance Theory & Policy",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECON F342",
+            "name": "Applied Econometrics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECON F343",
+            "name": "Economic Analysis of Public Policy",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "B4": {
+        "branches": ["MSc Mathematics"],
+        "courses": [
+          {
+            "code": "MATH F341",
+            "name": "Introduction to Functional Analysis",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MATH F342",
+            "name": "Differential Geometry",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MATH F343",
+            "name": "Partial Differential Equations",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "B5": {
+        "branches": ["MSc Physics"],
+        "courses": [
+          {
+            "code": "PHY F341",
+            "name": "Solid State Physics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHY F342",
+            "name": "Atomic & Molecular Physics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHY F343",
+            "name": "Nuclear & Particle Physics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHY F344",
+            "name": "Advanced Physics Laboratory",
+            "credits": 3,
+            "type": "Laboratory"
           }
         ]
       }
