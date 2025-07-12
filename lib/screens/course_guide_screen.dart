@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/course_guide_widget.dart';
 import '../services/auth_service.dart';
+import '../widgets/theme_selector_widget.dart';
 
 class CourseGuideScreen extends StatefulWidget {
   const CourseGuideScreen({super.key});
@@ -54,6 +55,7 @@ class _CourseGuideScreenState extends State<CourseGuideScreen> {
         title: const Text('Course Guide'),
         centerTitle: true,
         actions: [
+          const ThemeToggleButton(),
           // User info and logout
           if (_authService.isAuthenticated)
             PopupMenuButton<String>(

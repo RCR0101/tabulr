@@ -98,26 +98,26 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D1117),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF161B22),
+        backgroundColor: Theme.of(context).cardColor,
         elevation: 0,
         title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF58A6FF).withOpacity(0.1),
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.auto_awesome,
-                color: Color(0xFF58A6FF),
+                color: Theme.of(context).colorScheme.primary,
                 size: 24,
               ),
             ),
             const SizedBox(width: 12),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
@@ -125,14 +125,14 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFFF0F6FC),
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 Text(
                   'Automatic Scheduling',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Color(0xFF8B949E),
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   ),
                 ),
               ],
@@ -140,7 +140,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
           ],
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFFF0F6FC)),
+          icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -149,14 +149,14 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const CircularProgressIndicator(
-                    color: Color(0xFF58A6FF),
+                  CircularProgressIndicator(
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'Loading courses...',
                     style: TextStyle(
-                      color: const Color(0xFF8B949E),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -171,13 +171,13 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                       Icon(
                         Icons.school_outlined,
                         size: 64,
-                        color: const Color(0xFF8B949E),
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                       ),
                       const SizedBox(height: 16),
                       Text(
                         'No courses available',
                         style: TextStyle(
-                          color: const Color(0xFFF0F6FC),
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 18,
                           fontWeight: FontWeight.w500,
                         ),
@@ -186,7 +186,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                       Text(
                         'Please ensure course data is loaded',
                         style: TextStyle(
-                          color: const Color(0xFF8B949E),
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           fontSize: 14,
                         ),
                       ),

@@ -72,9 +72,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
   Widget _buildConfigurationPanel() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF161B22),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF30363D)),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,9 +82,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Color(0xFF21262D),
-              borderRadius: BorderRadius.only(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
               ),
@@ -93,16 +93,16 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
               children: [
                 Icon(
                   Icons.settings,
-                  color: const Color(0xFF58A6FF),
+                  color: Theme.of(context).colorScheme.primary,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   'Course Selection',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFFF0F6FC),
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -120,9 +120,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
   Widget _buildConstraintsPanel() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF161B22),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF30363D)),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -130,8 +130,8 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Color(0xFF21262D),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
@@ -141,16 +141,16 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
               children: [
                 Icon(
                   Icons.tune,
-                  color: const Color(0xFF58A6FF),
+                  color: Theme.of(context).colorScheme.primary,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   'Constraints & Preferences',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFFF0F6FC),
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -168,9 +168,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
   Widget _buildResultsPanel() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF161B22),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF30363D)),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -178,9 +178,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Color(0xFF21262D),
-              borderRadius: BorderRadius.only(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
               ),
@@ -189,16 +189,16 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
               children: [
                 Icon(
                   Icons.view_list,
-                  color: const Color(0xFF58A6FF),
+                  color: Theme.of(context).colorScheme.primary,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   'Generated Timetables',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFFF0F6FC),
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const Spacer(),
@@ -206,14 +206,14 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF58A6FF).withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       '${_generatedTimetables.length} found',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: Color(0xFF58A6FF),
+                        color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -239,13 +239,13 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
           Icon(
             Icons.auto_awesome_outlined,
             size: 64,
-            color: const Color(0xFF8B949E),
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
           ),
           const SizedBox(height: 16),
           Text(
             _isGenerating ? 'Generating timetables...' : 'No timetables generated yet',
-            style: const TextStyle(
-              color: Color(0xFFF0F6FC),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
               fontSize: 18,
               fontWeight: FontWeight.w500,
             ),
@@ -255,15 +255,15 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
             _isGenerating 
                 ? 'This may take a few moments'
                 : 'Select courses and click Generate to see results',
-            style: const TextStyle(
-              color: Color(0xFF8B949E),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               fontSize: 14,
             ),
           ),
           if (_isGenerating) ...[
             const SizedBox(height: 16),
-            const CircularProgressIndicator(
-              color: Color(0xFF58A6FF),
+            CircularProgressIndicator(
+              color: Theme.of(context).colorScheme.primary,
             ),
           ],
         ],
@@ -341,15 +341,15 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF21262D).withOpacity(0.3),
+          color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFF30363D)),
+          border: Border.all(color: Theme.of(context).colorScheme.outline),
         ),
-        child: const Center(
+        child: Center(
           child: Text(
             'No courses selected',
             style: TextStyle(
-              color: Color(0xFF8B949E),
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               fontSize: 14,
             ),
           ),
@@ -365,9 +365,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
             padding: const EdgeInsets.only(bottom: 4),
             child: Text(
               '${_selectedCourses.length} courses selected • Scroll to see all',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: Color(0xFF8B949E),
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -375,9 +375,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
         Container(
           constraints: const BoxConstraints(maxHeight: 150),
           decoration: BoxDecoration(
-            color: const Color(0xFF21262D).withOpacity(0.3),
+            color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFF30363D)),
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
           ),
           padding: const EdgeInsets.all(12),
           child: SingleChildScrollView(
@@ -404,17 +404,17 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
                 children: [
                   Text(
                     course.courseCode,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 11,
-                      color: Color(0xFF58A6FF),
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                   Text(
                     course.courseTitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 9,
-                      color: Color(0xFF8B949E),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -427,10 +427,10 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
                   _selectedCourses.remove(courseCode);
                 });
               },
-              backgroundColor: const Color(0xFF58A6FF).withOpacity(0.1),
-              deleteIconColor: const Color(0xFFFF6B6B),
+              backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              deleteIconColor: Theme.of(context).colorScheme.error,
               side: BorderSide(
-                color: const Color(0xFF58A6FF).withOpacity(0.3),
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
                 width: 1,
               ),
             );
@@ -450,9 +450,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF21262D).withOpacity(0.3),
+            color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFF30363D)),
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
           ),
           padding: const EdgeInsets.all(12),
           child: Row(
@@ -464,7 +464,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
                 child: TextField(
                   controller: TextEditingController(text: _maxHoursPerDay.toString()),
                   keyboardType: TextInputType.number,
-                  style: const TextStyle(fontSize: 14),
+                  style: TextStyle(fontSize: 14),
                   decoration: const InputDecoration(
                     isDense: true,
                     contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -484,9 +484,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF21262D).withOpacity(0.3),
+            color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFF30363D)),
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
           ),
           child: CheckboxListTile(
             title: const Text(
@@ -506,9 +506,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF21262D).withOpacity(0.3),
+            color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFF30363D)),
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
           ),
           padding: const EdgeInsets.all(12),
           child: Row(
@@ -530,7 +530,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
                       value: slot,
                       child: Text(
                         TimeSlotInfo.getTimeSlotName(slot),
-                        style: const TextStyle(fontSize: 14),
+                        style: TextStyle(fontSize: 14),
                       ),
                     )),
                   ],
@@ -577,9 +577,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
           Container(
             constraints: const BoxConstraints(maxHeight: 80),
             decoration: BoxDecoration(
-              color: const Color(0xFF21262D).withOpacity(0.3),
+              color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF30363D)),
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
             ),
             padding: const EdgeInsets.all(8),
             child: SingleChildScrollView(
@@ -592,7 +592,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
                   return Chip(
                     label: Text(
                       '${avoidTime.day.name}: ${_formatAvoidTimeHours(avoidTime.hours)}',
-                      style: const TextStyle(fontSize: 12),
+                      style: TextStyle(fontSize: 12),
                     ),
                     deleteIcon: const Icon(Icons.close, size: 16),
                     onDeleted: () {
@@ -600,7 +600,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
                         _avoidTimes.removeAt(index);
                       });
                     },
-                    backgroundColor: const Color(0xFF58A6FF).withOpacity(0.1),
+                    backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                     deleteIconColor: Colors.red,
                   );
                 }).toList(),
@@ -635,9 +635,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
           Container(
             constraints: const BoxConstraints(maxHeight: 80),
             decoration: BoxDecoration(
-              color: const Color(0xFF21262D).withOpacity(0.3),
+              color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF30363D)),
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
             ),
             padding: const EdgeInsets.all(8),
             child: SingleChildScrollView(
@@ -650,7 +650,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
                   return Chip(
                     label: Text(
                       '${avoidLab.day.name}: ${_formatAvoidTimeHours(avoidLab.hours)} (Labs)',
-                      style: const TextStyle(fontSize: 12),
+                      style: TextStyle(fontSize: 12),
                     ),
                     deleteIcon: const Icon(Icons.close, size: 16),
                     onDeleted: () {
@@ -658,7 +658,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
                         _avoidLabs.removeAt(index);
                       });
                     },
-                    backgroundColor: const Color(0xFFFF6B6B).withOpacity(0.1),
+                    backgroundColor: Theme.of(context).colorScheme.error.withOpacity(0.1),
                     deleteIconColor: Colors.red,
                   );
                 }).toList(),
@@ -701,9 +701,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
           Container(
             constraints: const BoxConstraints(maxHeight: 100),
             decoration: BoxDecoration(
-              color: const Color(0xFF21262D).withOpacity(0.3),
+              color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF30363D)),
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
             ),
             padding: const EdgeInsets.all(8),
             child: SingleChildScrollView(
@@ -715,7 +715,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
                   return FilterChip(
                     label: Text(
                       instructor,
-                      style: const TextStyle(fontSize: 12),
+                      style: TextStyle(fontSize: 12),
                     ),
                     selected: isAvoided,
                     selectedColor: Theme.of(context).colorScheme.error.withOpacity(0.3),
@@ -807,14 +807,14 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         gradient: _selectedCourses.isNotEmpty && !_isGenerating
-            ? const LinearGradient(
-                colors: [Color(0xFF58A6FF), Color(0xFF79C0FF)],
+            ? LinearGradient(
+                colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withOpacity(0.8)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               )
             : null,
         color: _selectedCourses.isEmpty || _isGenerating
-            ? const Color(0xFF21262D)
+            ? Theme.of(context).colorScheme.surface
             : null,
       ),
       child: ElevatedButton(
@@ -827,7 +827,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
           ),
         ),
         child: _isGenerating
-            ? const Row(
+            ? Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   SizedBox(
@@ -835,7 +835,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
                     height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Color(0xFF58A6FF),
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                   SizedBox(width: 12),
@@ -844,7 +844,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF58A6FF),
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ],
@@ -855,8 +855,8 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
                   Icon(
                     Icons.auto_awesome,
                     color: _selectedCourses.isNotEmpty 
-                        ? const Color(0xFF0D1117) 
-                        : const Color(0xFF8B949E),
+                        ? Theme.of(context).scaffoldBackgroundColor 
+                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     size: 20,
                   ),
                   const SizedBox(width: 8),
@@ -866,8 +866,8 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: _selectedCourses.isNotEmpty 
-                          ? const Color(0xFF0D1117) 
-                          : const Color(0xFF8B949E),
+                          ? Theme.of(context).scaffoldBackgroundColor 
+                          : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     ),
                   ),
                 ],
@@ -924,7 +924,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
               padding: const EdgeInsets.all(16),
               child: Text(
                 'Generated Timetables (${_generatedTimetables.length})',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
             Expanded(
@@ -1000,7 +1000,7 @@ class _TimeAvoidanceDialogState extends State<_TimeAvoidanceDialog> {
                   return FilterChip(
                     label: Text(
                       hour.toString(),
-                      style: const TextStyle(fontSize: 10),
+                      style: TextStyle(fontSize: 10),
                     ),
                     tooltip: TimeSlotInfo.getHourSlotName(hour),
                     selected: isSelected,
@@ -1096,12 +1096,12 @@ class _LabAvoidanceDialogState extends State<_LabAvoidanceDialog> {
                   return FilterChip(
                     label: Text(
                       hour.toString(),
-                      style: const TextStyle(fontSize: 10),
+                      style: TextStyle(fontSize: 10),
                     ),
                     tooltip: TimeSlotInfo.getHourSlotName(hour),
                     selected: isSelected,
-                    selectedColor: const Color(0xFFFF6B6B).withOpacity(0.3),
-                    checkmarkColor: const Color(0xFFFF6B6B),
+                    selectedColor: Theme.of(context).colorScheme.error.withOpacity(0.3),
+                    checkmarkColor: Theme.of(context).colorScheme.error,
                     onSelected: (selected) {
                       setState(() {
                         if (selected) {

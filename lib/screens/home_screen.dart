@@ -10,6 +10,7 @@ import '../widgets/timetable_widget.dart';
 import '../widgets/export_timetable_widget.dart';
 import '../widgets/clash_warnings_widget.dart';
 import '../widgets/search_filter_widget.dart';
+import '../widgets/theme_selector_widget.dart';
 import '../services/page_leave_warning_service.dart';
 import 'generator_screen.dart';
 import 'timetables_screen.dart';
@@ -475,6 +476,7 @@ class _HomeScreenState extends State<HomeScreen> {
             },
             tooltip: 'Course Guide',
           ),
+          const ThemeToggleButton(),
           IconButton(
             icon: const Icon(Icons.calendar_today),
             onPressed: _exportToICS,
@@ -1050,6 +1052,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
             },
             tooltip: 'Course Guide',
           ),
+          const ThemeToggleButton(),
           IconButton(
             icon: const Icon(Icons.calendar_today),
             onPressed: _exportToICS,

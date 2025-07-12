@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/timetable.dart';
 import '../services/timetable_service.dart';
 import '../services/auth_service.dart';
+import '../widgets/theme_selector_widget.dart';
 import 'home_screen.dart';
 import 'course_guide_screen.dart';
 
@@ -269,6 +270,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
             },
             tooltip: 'Course Guide',
           ),
+          const ThemeToggleButton(),
           // User info and logout
           if (_authService.isAuthenticated)
             PopupMenuButton<String>(
