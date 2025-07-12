@@ -206,5 +206,1155 @@
         ]
       }
     }
+  },
+  "semester_2_1": {
+    "groups": {
+      "A1": {
+        "branches": ["Chemical"],
+        "courses": [
+          {
+            "code": "MATH F211",
+            "name": "Mathematics III",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHE F211",
+            "name": "Chemical Process Calculations",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHE F214",
+            "name": "Engineering Chemistry",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHE F213",
+            "name": "Chemical Engineering Thermodynamics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHE F212",
+            "name": "Fluid Mechanics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "BITS F225",
+            "name": "Environmental Studies",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A2": {
+        "branches": ["Civil"],
+        "courses": [
+          {
+            "code": "MATH F211",
+            "name": "Mathematics III",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CE F211",
+            "name": "Mechanics of Solids",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CE F231",
+            "name": "Fluid Mechanics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CE F213",
+            "name": "Surveying",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "CE F230",
+            "name": "Civil Engineering Materials",
+            "credits": 4,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A3": {
+        "branches": ["Electrical and Electronics"],
+        "courses": [
+          {
+            "code": "MATH F211",
+            "name": "Mathematics III",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "EEE F211",
+            "name": "Electrical Machines",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "EEE F212",
+            "name": "Electromagnetic Theory",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "EEE F215",
+            "name": "Digital Design",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "EEE F214",
+            "name": "Electronic Devices",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "BITS F225",
+            "name": "Environmental Studies",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A4": {
+        "branches": ["Mechanical"],
+        "courses": [
+          {
+            "code": "MATH F211",
+            "name": "Mathematics III",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ME F211",
+            "name": "Mechanics of Solids",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ME F212",
+            "name": "Fluid Mechanics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ME F216",
+            "name": "Materials Science & Engineering",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ME F217",
+            "name": "Applied Thermodynamics",
+            "credits": 4,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A5": {
+        "branches": ["Pharma"],
+        "courses": [
+          {
+            "code": "MATH F211",
+            "name": "Mathematics III",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHA F211",
+            "name": "Pharmaceutical Analysis",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHA F214",
+            "name": "Anatomy, Physiology & Hygiene",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHA F216",
+            "name": "Pharmaceutical Formulations I",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHA F217",
+            "name": "Pharmaceutical Microbiology",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "BITS F225",
+            "name": "Environmental Studies",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A7": {
+        "branches": ["Computer Science"],
+        "courses": [
+          {
+            "code": "MATH F211",
+            "name": "Mathematics III",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CS F214",
+            "name": "Logic in Computer Science",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CS F222",
+            "name": "Discrete Structures for Computer Science",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CS F213",
+            "name": "Object Oriented Programming",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "CS F215",
+            "name": "Digital Design",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECON F211",
+            "name": "Principles of Economics",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A8": {
+        "branches": ["Electronics and Instrumentation"],
+        "courses": [
+          {
+            "code": "MATH F211",
+            "name": "Mathematics III",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "INSTR F211",
+            "name": "Electrical Machines",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "INSTR F212",
+            "name": "Electromagnetic Theory",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "INSTR F215",
+            "name": "Digital Design",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "INSTR F214",
+            "name": "Electronic Devices",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "BITS F225",
+            "name": "Environmental Studies",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "AA": {
+        "branches": ["Electronics and Communication"],
+        "courses": [
+          {
+            "code": "MATH F211",
+            "name": "Mathematics III",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECE F211",
+            "name": "Electrical Machines",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECE F212",
+            "name": "Electromagnetic Theory",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECE F215",
+            "name": "Digital Design",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECE F214",
+            "name": "Electronic Devices",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "BITS F225",
+            "name": "Environmental Studies",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "AD": {
+        "branches": ["Math and Computing"],
+        "courses": [
+          {
+            "code": "MATH F211",
+            "name": "Mathematics III",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MAC F211",
+            "name": "Linear Algebra and Applications",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MAC F212",
+            "name": "Object Oriented Programming",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "MAC F213",
+            "name": "Discrete Mathematics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MAC F214",
+            "name": "Elementary Real Analysis",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "BITS F225",
+            "name": "Environmental Studies",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      }
+    }
+  },
+  "semester_2_2": {
+    "groups": {
+      "A1": {
+        "branches": ["Chemical"],
+        "courses": [
+          {
+            "code": "ECON F211",
+            "name": "Principles of Economics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHE F241",
+            "name": "Heat Transfer",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHE F242",
+            "name": "Numerical Methods for Chemical Engineers",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHE F243",
+            "name": "Material Science & Engineering",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHE F244",
+            "name": "Separation Processes I",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A2": {
+        "branches": ["Civil"],
+        "courses": [
+          {
+            "code": "ECON F211",
+            "name": "Principles of Economics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CE F241",
+            "name": "Analysis of Structures",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CE F242",
+            "name": "Construction Planning & Technology",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CE F243",
+            "name": "Soil Mechanics",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "CE F244",
+            "name": "Highway Engineering",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "BITS F225",
+            "name": "Environmental Studies",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A3": {
+        "branches": ["Electrical and Electronics"],
+        "courses": [
+          {
+            "code": "ECON F211",
+            "name": "Principles of Economics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "EEE F241",
+            "name": "Microprocessors & Interfacing",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "EEE F242",
+            "name": "Control Systems",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "EEE F243",
+            "name": "Signals & Systems",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "EEE F244",
+            "name": "Microelectronic Circuits",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A4": {
+        "branches": ["Mechanical"],
+        "courses": [
+          {
+            "code": "BITS F225",
+            "name": "Environmental Studies",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECON F211",
+            "name": "Principles of Economics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ME F218",
+            "name": "Advanced Mechanics of Solids",
+            "credits": 2,
+            "type": "Lecture"
+          },
+          {
+            "code": "ME F219",
+            "name": "Manufacturing Processes",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "ME F220",
+            "name": "Heat Transfer",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "ME F221",
+            "name": "Mechanisms and Machines",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A5": {
+        "branches": ["Pharma"],
+        "courses": [
+          {
+            "code": "ECON F211",
+            "name": "Principles of Economics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHA F241",
+            "name": "Pharmaceutical Chemistry",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHA F242",
+            "name": "Biological Chemistry",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHA F243",
+            "name": "Industrial Pharmacy",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHA F244",
+            "name": "Physical Pharmacy",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A7": {
+        "branches": ["Computer Science"],
+        "courses": [
+          {
+            "code": "CS F211",
+            "name": "Data Structures & Algorithms",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "CS F241",
+            "name": "Microprocessors & Interfacing",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "CS F212",
+            "name": "Database Systems",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "BITS F225",
+            "name": "Environmental Studies",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A8": {
+        "branches": ["Electronics and Instrumentation"],
+        "courses": [
+          {
+            "code": "ECON F211",
+            "name": "Principles of Economics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "INSTR F241",
+            "name": "Microprocessors & Interfacing",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "INSTR F242",
+            "name": "Control Systems",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "INSTR F243",
+            "name": "Signals & Systems",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "INSTR F244",
+            "name": "Microelectronic Circuits",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "AA": {
+        "branches": ["Electronics and Communication"],
+        "courses": [
+          {
+            "code": "ECON F211",
+            "name": "Principles of Economics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECE F241",
+            "name": "Microprocessors & Interfacing",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECE F242",
+            "name": "Control Systems",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECE F243",
+            "name": "Signals & Systems",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECE F244",
+            "name": "Microelectronic Circuits",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "AD": {
+        "branches": ["Math and Computing"],
+        "courses": [
+          {
+            "code": "ECON F211",
+            "name": "Principles of Economics",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MAC F241",
+            "name": "Numerical Analysis",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MAC F242",
+            "name": "Data Structures & Algorithms",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "MAC F243",
+            "name": "Numerical Optimization",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MAC F244",
+            "name": "Stochastic Calculus and Application to Finance",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MAC F245",
+            "name": "Scientific Computing Laboratory",
+            "credits": 1,
+            "type": "Laboratory"
+          }
+        ]
+      }
+    }
+  },
+  "semester_3_1": {
+    "groups": {
+      "A1": {
+        "branches": ["Chemical"],
+        "courses": [
+          {
+            "code": "CHE F312",
+            "name": "Chemical Engineering Lab I",
+            "credits": 3,
+            "type": "Laboratory"
+          },
+          {
+            "code": "CHE F313",
+            "name": "Separation Processes II",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHE F311",
+            "name": "Kinetics & Reactor Design",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHE F314",
+            "name": "Process Design Principles I",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A2": {
+        "branches": ["Civil"],
+        "courses": [
+          {
+            "code": "CE F320",
+            "name": "Design of Reinforced Concrete Structures",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CE F312",
+            "name": "Hydraulic Engineering",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "CE F313",
+            "name": "Foundation Engineering",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A3": {
+        "branches": ["Electrical and Electronics"],
+        "courses": [
+          {
+            "code": "EEE F311",
+            "name": "Communication Systems",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "MATH F212",
+            "name": "Optimization",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "EEE F313",
+            "name": "Analog & Digital VLSI Design",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A4": {
+        "branches": ["Mechanical"],
+        "courses": [
+          {
+            "code": "ME F314",
+            "name": "Design of Machine Elements",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ME F315",
+            "name": "Advanced Manufacturing Processes",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ME F316",
+            "name": "Manufacturing Management",
+            "credits": 2,
+            "type": "Lecture"
+          },
+          {
+            "code": "ME F317",
+            "name": "Engines, Motors, and Mobility",
+            "credits": 2,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A5": {
+        "branches": ["Pharma"],
+        "courses": [
+          {
+            "code": "PHA F311",
+            "name": "Pharmacology I",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHA F312",
+            "name": "Medicinal Chemistry I",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHA F313",
+            "name": "Instrumental Methods of Analysis",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHA F315",
+            "name": "Pharmaceutical Formulations II",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A7": {
+        "branches": ["Computer Science"],
+        "courses": [
+          {
+            "code": "CS F351",
+            "name": "Theory of Computation",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CS F372",
+            "name": "Operating Systems",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CS F301",
+            "name": "Principles of Programming Languages",
+            "credits": 2,
+            "type": "Lecture"
+          },
+          {
+            "code": "CS F342",
+            "name": "Computer Architecture",
+            "credits": 4,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A8": {
+        "branches": ["Electronics and Instrumentation"],
+        "courses": [
+          {
+            "code": "INSTR F311",
+            "name": "Electronic Instruments & Instrumentation Technology",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "INSTR F312",
+            "name": "Transducers & Measurement Systems",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "INSTR F313",
+            "name": "Analog & Digital VLSI Design",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "AA": {
+        "branches": ["Electronics and Communication"],
+        "courses": [
+          {
+            "code": "ECE F311",
+            "name": "Communication Systems",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECE F314",
+            "name": "Electromagnetic Fields & Microwave Engineering",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECE F434",
+            "name": "Digital Signal Processing",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "AD": {
+        "branches": ["Math and Computing"],
+        "courses": [
+          {
+            "code": "MAC F311",
+            "name": "Algebra I",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MAC F312",
+            "name": "Foundations of Data Science",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MAC F313",
+            "name": "Statistical Data Analysis",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "MAC F314",
+            "name": "Mathematical Modelling",
+            "credits": 4,
+            "type": "Lecture"
+          }
+        ]
+      }
+    }
+  },
+  "semester_3_2": {
+    "groups": {
+      "A1": {
+        "branches": ["Chemical"],
+        "courses": [
+          {
+            "code": "CHE F341",
+            "name": "Chemical Engineering Lab II",
+            "credits": 3,
+            "type": "Laboratory"
+          },
+          {
+            "code": "CHE F342",
+            "name": "Process Dynamics & Control",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CHE F343",
+            "name": "Process Design Principles II",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A2": {
+        "branches": ["Civil"],
+        "courses": [
+          {
+            "code": "CE F342",
+            "name": "Water & Waste Water Treatment",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "CE F321",
+            "name": "Engineering Hydrology",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CE F343",
+            "name": "Design of Steel Structures",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A3": {
+        "branches": ["Electrical and Electronics"],
+        "courses": [
+          {
+            "code": "EEE F341",
+            "name": "Analog Electronics",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "EEE F342",
+            "name": "Power Electronics",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "EEE F312",
+            "name": "Power Systems",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A4": {
+        "branches": ["Mechanical"],
+        "courses": [
+          {
+            "code": "ME F318",
+            "name": "Computer-Aided Design",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ME F319",
+            "name": "Vibrations & Control",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ME F320",
+            "name": "Engineering Optimization",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ME F341",
+            "name": "Prime Movers & Fluid Machines",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A5": {
+        "branches": ["Pharma"],
+        "courses": [
+          {
+            "code": "PHA F341",
+            "name": "Pharmacology II",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHA F342",
+            "name": "Medicinal Chemistry II",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHA F343",
+            "name": "Forensic Pharmacy",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "PHA F344",
+            "name": "Natural Drugs",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A7": {
+        "branches": ["Computer Science"],
+        "courses": [
+          {
+            "code": "CS F363",
+            "name": "Compiler Construction",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CS F364",
+            "name": "Design & Analysis of Algorithms",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "CS F303",
+            "name": "Computer Networks",
+            "credits": 4,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "A8": {
+        "branches": ["Electronics and Instrumentation"],
+        "courses": [
+          {
+            "code": "INSTR F341",
+            "name": "Analog Electronics",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "INSTR F342",
+            "name": "Power Electronics",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "INSTR F343",
+            "name": "Industrial Instrumentation & Control",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "AA": {
+        "branches": ["Electronics and Communication"],
+        "courses": [
+          {
+            "code": "ECE F341",
+            "name": "Analog Electronics",
+            "credits": 4,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECE F343",
+            "name": "Communication Networks",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "ECE F344",
+            "name": "Information Theory & Coding",
+            "credits": 3,
+            "type": "Lecture"
+          }
+        ]
+      },
+      "AD": {
+        "branches": ["Math and Computing"],
+        "courses": [
+          {
+            "code": "MAC F341",
+            "name": "Design and Analysis of Algorithms",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "MAC F342",
+            "name": "Computational Partial Differential Equations",
+            "credits": 4,
+            "type": "Lecture"
+          }
+        ]
+      }
+    }
   }
 }

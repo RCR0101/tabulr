@@ -210,7 +210,7 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
         leading: CircleAvatar(
           backgroundColor: Theme.of(context).colorScheme.secondary,
           child: Text(
-            semester.semesterId.contains('1_1') ? '1-1' : '1-2',
+            semester.semesterId.replaceAll('semester_', '').replaceAll('_', '-'),
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSecondary,
               fontWeight: FontWeight.bold,
