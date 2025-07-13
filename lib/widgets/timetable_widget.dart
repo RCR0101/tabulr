@@ -588,23 +588,26 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Hour $hour',
-                    style:  TextStyle(
-                      fontSize: 12,
+                    _isMobile ? 'H$hour' : 'Hour $hour',
+                    style: TextStyle(
+                      fontSize: _getHourLabelFontSize(widget.size),
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).colorScheme.primary,
                     ),
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: _isMobile ? 2 : 4),
                   Text(
                     TimeSlotInfo.getHourSlotName(hour),
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: _getHourTimeFontSize(widget.size),
                       fontWeight: FontWeight.w400,
                       color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
                     ),
                     textAlign: TextAlign.center,
-                    maxLines: 2,
+                    maxLines: _isMobile ? 1 : 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -899,14 +902,14 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       TimetableSize.extraLarge => 240.0,
     };
     
-    // Significantly reduce width for mobile to fit all columns
+    // Make cells bigger on mobile for better readability
     if (_isMobile) {
       final screenWidth = MediaQuery.maybeOf(context)?.size.width ?? 400;
       final availableWidth = screenWidth - 48; // Account for padding and margins
       final timeColumnWidth = _getTimeColumnWidth(size);
       final remainingWidth = availableWidth - timeColumnWidth;
       final columnWidth = remainingWidth / 6; // 6 day columns
-      return columnWidth.clamp(60.0, baseWidth * 0.7); // Minimum 60px, max 70% of base
+      return columnWidth.clamp(80.0, baseWidth * 0.8); // Increased minimum from 60px to 80px
     }
     
     return baseWidth;
@@ -914,7 +917,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
 
   double _getTimeColumnWidth(TimetableSize size) {
     if (_isMobile) {
-      return 50.0; // Fixed small width for mobile
+      return 65.0; // Increased from 50px for better readability
     }
     return _getDayColumnWidth(size) * 0.75;
   }
@@ -951,8 +954,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       TimetableSize.extraLarge => 24.0,
     };
     
-    // Minimal spacing for mobile to fit more content
-    return _isMobile ? 2.0 : baseSpacing;
+    // Better spacing for mobile readability
+    return _isMobile ? 12.0 : baseSpacing;
   }
 
   double _getHorizontalMargin(TimetableSize size) {
@@ -975,8 +978,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       TimetableSize.extraLarge => 140.0,
     };
     
-    // Reduce height for mobile
-    return _isMobile ? baseHeight * 0.85 : baseHeight;
+    // Make rows taller on mobile for better touch targets
+    return _isMobile ? baseHeight * 1.1 : baseHeight;
   }
 
   IconData _getSizeIcon(TimetableSize size) {
@@ -1035,6 +1038,30 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     };
     
     return _isMobile ? baseSize * 0.9 : baseSize;
+  }
+
+  double _getHourLabelFontSize(TimetableSize size) {
+    final baseSize = switch (size) {
+      TimetableSize.compact => 10.0,
+      TimetableSize.medium => 12.0,
+      TimetableSize.large => 14.0,
+      TimetableSize.extraLarge => 16.0,
+    };
+    
+    // Smaller font for mobile to prevent overflow
+    return _isMobile ? baseSize * 0.8 : baseSize;
+  }
+
+  double _getHourTimeFontSize(TimetableSize size) {
+    final baseSize = switch (size) {
+      TimetableSize.compact => 9.0,
+      TimetableSize.medium => 10.0,
+      TimetableSize.large => 11.0,
+      TimetableSize.extraLarge => 12.0,
+    };
+    
+    // Smaller font for mobile to prevent overflow
+    return _isMobile ? baseSize * 0.8 : baseSize;
   }
 
   double _getCellPadding(TimetableSize size) {

@@ -71,12 +71,12 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                       const SizedBox(height: 2),
                       Text(
                         'Search',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                         textAlign: TextAlign.center,
                       ),
                       Text(
                         '(${widget.courses.length})',
-                        style: TextStyle(fontSize: 8),
+                        style: TextStyle(fontSize: 10),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -94,12 +94,12 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                       const SizedBox(height: 2),
                       Text(
                         'Selected',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                         textAlign: TextAlign.center,
                       ),
                       Text(
                         '(${widget.selectedSections.map((s) => s.courseCode).toSet().length})',
-                        style: TextStyle(fontSize: 8),
+                        style: TextStyle(fontSize: 10),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -117,7 +117,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                       const SizedBox(height: 2),
                       Text(
                         'Exams',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -131,7 +131,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                   children: [
                     const Icon(Icons.search, size: 16),
                     const SizedBox(width: 4),
-                    Text('Search (${widget.courses.length})'),
+                    Text('Search (${widget.courses.length})', style: TextStyle(fontSize: 14)),
                   ],
                 ),
               ),
@@ -141,7 +141,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                   children: [
                     const Icon(Icons.school, size: 16),
                     const SizedBox(width: 4),
-                    Text('My Courses (${widget.selectedSections.map((s) => s.courseCode).toSet().length})'),
+                    Text('My Courses (${widget.selectedSections.map((s) => s.courseCode).toSet().length})', style: TextStyle(fontSize: 14)),
                   ],
                 ),
               ),
@@ -151,7 +151,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                   children: [
                     const Icon(Icons.event, size: 16),
                     const SizedBox(width: 4),
-                    const Text('Exams'),
+                    const Text('Exams', style: TextStyle(fontSize: 14)),
                   ],
                 ),
               ),
