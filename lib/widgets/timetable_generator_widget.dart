@@ -33,6 +33,63 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width <= 800;
+    
+    if (isMobile) {
+      return DefaultTabController(
+        length: 2,
+        child: Column(
+          children: [
+            Material(
+              color: Theme.of(context).colorScheme.surface,
+              child: TabBar(
+                tabs: const [
+                  Tab(icon: Icon(Icons.settings), text: 'Configure'),
+                  Tab(icon: Icon(Icons.view_list), text: 'Results'),
+                ],
+                labelColor: Theme.of(context).colorScheme.primary,
+                unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                indicatorColor: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  // Configuration Tab
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: Column(
+                              children: [
+                                _buildConfigurationPanel(),
+                                const SizedBox(height: 16),
+                                _buildConstraintsPanel(),
+                              ],
+                            ),
+                          ),
+                        ),
+                        _buildGenerateButton(),
+                      ],
+                    ),
+                  ),
+                  // Results Tab
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: _buildResultsPanel(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // Desktop layout
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

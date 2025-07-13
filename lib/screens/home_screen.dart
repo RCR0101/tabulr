@@ -459,6 +459,8 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
+    final isWideScreen = MediaQuery.of(context).size.width > 800;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tabulr'),
@@ -477,16 +479,46 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: 'Course Guide',
           ),
           const ThemeToggleButton(),
-          IconButton(
-            icon: const Icon(Icons.calendar_today),
-            onPressed: _exportToICS,
-            tooltip: 'Export to ICS',
-          ),
-          IconButton(
-            icon: const Icon(Icons.image),
-            onPressed: _exportToPNG,
-            tooltip: 'Export to PNG',
-          ),
+          if (isWideScreen) ...[
+            IconButton(
+              icon: const Icon(Icons.calendar_today),
+              onPressed: _exportToICS,
+              tooltip: 'Export to ICS',
+            ),
+            IconButton(
+              icon: const Icon(Icons.image),
+              onPressed: _exportToPNG,
+              tooltip: 'Export to PNG',
+            ),
+          ] else
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'export_ics') {
+                  _exportToICS();
+                } else if (value == 'export_png') {
+                  _exportToPNG();
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'export_ics',
+                  child: ListTile(
+                    leading: Icon(Icons.calendar_today),
+                    title: Text('Export to ICS'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'export_png',
+                  child: ListTile(
+                    leading: Icon(Icons.image),
+                    title: Text('Export to PNG'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+              icon: const Icon(Icons.more_vert),
+            ),
           // User info and logout
           if (_authService.isAuthenticated)
             PopupMenuButton<String>(
@@ -568,83 +600,143 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: Row(
-        children: [
-          Expanded(
-            flex: 1,
-            child: Column(
+      body: isWideScreen
+          ? Row(
               children: [
-                SearchFilterWidget(
-                  onSearchChanged: _onSearchChanged,
+                Expanded(
+                  flex: 1,
+                  child: _buildCoursesPanel(),
                 ),
                 Expanded(
-                  child: Card(
-                    margin: const EdgeInsets.all(8),
-                    child: CoursesTabWidget(
-                      courses: _filteredCourses,
-                      selectedSections: _timetable!.selectedSections,
-                      onSectionToggle: (courseCode, sectionId, isSelected) {
-                        if (isSelected) {
-                          _removeSection(courseCode, sectionId);
-                        } else {
-                          _addSection(courseCode, sectionId);
-                        }
+                  flex: 2,
+                  child: _buildTimetablePanel(),
+                ),
+              ],
+            )
+          : DefaultTabController(
+              length: 2,
+              child: Column(
+                children: [
+                  Material(
+                    color: Theme.of(context).colorScheme.surface,
+                    child: TabBar(
+                      labelColor: Theme.of(context).colorScheme.primary,
+                      unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      indicatorColor: Theme.of(context).colorScheme.primary,
+                      tabs: const [
+                        Tab(
+                          icon: Icon(Icons.search),
+                          text: 'Courses',
+                        ),
+                        Tab(
+                          icon: Icon(Icons.calendar_view_week),
+                          text: 'Timetable',
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        _buildCoursesPanel(),
+                        _buildTimetablePanel(),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+      floatingActionButton: isWideScreen
+          ? FloatingActionButton.extended(
+              onPressed: _openGenerator,
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('TT Generator'),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+            )
+          : FloatingActionButton(
+              onPressed: _openGenerator,
+              child: const Icon(Icons.auto_awesome),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              tooltip: 'TT Generator',
+            ),
+    );
+  }
+
+  Widget _buildCoursesPanel() {
+    return Column(
+      children: [
+        SearchFilterWidget(
+          onSearchChanged: _onSearchChanged,
+        ),
+        Expanded(
+          child: Card(
+            margin: const EdgeInsets.all(8),
+            child: CoursesTabWidget(
+              courses: _filteredCourses,
+              selectedSections: _timetable!.selectedSections,
+              onSectionToggle: (courseCode, sectionId, isSelected) {
+                if (isSelected) {
+                  _removeSection(courseCode, sectionId);
+                } else {
+                  _addSection(courseCode, sectionId);
+                }
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTimetablePanel() {
+    final isMobile = MediaQuery.of(context).size.width <= 800;
+    
+    return Column(
+      children: [
+        if (_timetable!.clashWarnings.isNotEmpty)
+          Card(
+            margin: EdgeInsets.all(isMobile ? 4 : 8),
+            child: ClashWarningsWidget(
+              warnings: _timetable!.clashWarnings,
+            ),
+          ),
+        Expanded(
+          child: Card(
+            margin: EdgeInsets.all(isMobile ? 4 : 8),
+            child: Container(
+              width: double.infinity,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Container(
+                  constraints: BoxConstraints(
+                    minWidth: isMobile ? MediaQuery.of(context).size.width - 32 : 800,
+                  ),
+                  child: RepaintBoundary(
+                    key: _timetableKey,
+                    child: TimetableWidget(
+                      timetableSlots: _timetableService.generateTimetableSlots(_timetable!.selectedSections, _timetable!.availableCourses),
+                      incompleteSelectionWarnings: _timetableService.getIncompleteSelectionWarnings(_timetable!.selectedSections, _timetable!.availableCourses),
+                      onClear: _clearTimetable,
+                      onRemoveSection: _removeSection,
+                      size: _timetableSize,
+                      hasUnsavedChanges: _hasUnsavedChanges,
+                      isSaving: _isSaving,
+                      onSave: _authService.isGuest ? null : _saveTimetable,
+                      onSizeChanged: (newSize) {
+                        setState(() {
+                          _timetableSize = newSize;
+                        });
                       },
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
-          Expanded(
-            flex: 2,
-            child: Column(
-              children: [
-                if (_timetable!.clashWarnings.isNotEmpty)
-                  Card(
-                    margin: const EdgeInsets.all(8),
-                    child: ClashWarningsWidget(
-                      warnings: _timetable!.clashWarnings,
-                    ),
-                  ),
-                Expanded(
-                  child: Card(
-                    margin: const EdgeInsets.all(8),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: RepaintBoundary(
-                        key: _timetableKey,
-                        child: TimetableWidget(
-                          timetableSlots: _timetableService.generateTimetableSlots(_timetable!.selectedSections, _timetable!.availableCourses),
-                          incompleteSelectionWarnings: _timetableService.getIncompleteSelectionWarnings(_timetable!.selectedSections, _timetable!.availableCourses),
-                          onClear: _clearTimetable,
-                          onRemoveSection: _removeSection,
-                          size: _timetableSize,
-                          hasUnsavedChanges: _hasUnsavedChanges,
-                          isSaving: _isSaving,
-                          onSave: _authService.isGuest ? null : _saveTimetable,
-                          onSizeChanged: (newSize) {
-                            setState(() {
-                              _timetableSize = newSize;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openGenerator,
-        icon: const Icon(Icons.auto_awesome),
-        label: const Text('TT Generator'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-      ),
+        ),
+      ],
     );
   }
 }
@@ -1035,6 +1127,8 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
       );
     }
 
+    final isWideScreen = MediaQuery.of(context).size.width > 800;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(_timetable.name),
@@ -1053,16 +1147,46 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
             tooltip: 'Course Guide',
           ),
           const ThemeToggleButton(),
-          IconButton(
-            icon: const Icon(Icons.calendar_today),
-            onPressed: _exportToICS,
-            tooltip: 'Export to ICS',
-          ),
-          IconButton(
-            icon: const Icon(Icons.image),
-            onPressed: _exportToPNG,
-            tooltip: 'Export to PNG',
-          ),
+          if (isWideScreen) ...[
+            IconButton(
+              icon: const Icon(Icons.calendar_today),
+              onPressed: _exportToICS,
+              tooltip: 'Export to ICS',
+            ),
+            IconButton(
+              icon: const Icon(Icons.image),
+              onPressed: _exportToPNG,
+              tooltip: 'Export to PNG',
+            ),
+          ] else
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'export_ics') {
+                  _exportToICS();
+                } else if (value == 'export_png') {
+                  _exportToPNG();
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'export_ics',
+                  child: ListTile(
+                    leading: Icon(Icons.calendar_today),
+                    title: Text('Export to ICS'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'export_png',
+                  child: ListTile(
+                    leading: Icon(Icons.image),
+                    title: Text('Export to PNG'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+              icon: const Icon(Icons.more_vert),
+            ),
           // User info and logout
           if (_authService.isAuthenticated)
             PopupMenuButton<String>(
@@ -1144,83 +1268,133 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
           const SizedBox(width: 8),
         ],
       ),
-      body: Row(
-        children: [
-          Expanded(
-            flex: 1,
-            child: Column(
+      body: isWideScreen
+          ? Row(
               children: [
-                SearchFilterWidget(
-                  onSearchChanged: _onSearchChanged,
+                Expanded(
+                  flex: 1,
+                  child: _buildCoursesPanel(),
                 ),
                 Expanded(
-                  child: Card(
-                    margin: const EdgeInsets.all(8),
-                    child: CoursesTabWidget(
-                      courses: _filteredCourses,
-                      selectedSections: _timetable.selectedSections,
-                      onSectionToggle: (courseCode, sectionId, isSelected) {
-                        if (isSelected) {
-                          _removeSection(courseCode, sectionId);
-                        } else {
-                          _addSection(courseCode, sectionId);
-                        }
-                      },
-                    ),
-                  ),
+                  flex: 2,
+                  child: _buildTimetablePanel(),
                 ),
               ],
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Column(
-              children: [
-                if (_timetable.clashWarnings.isNotEmpty)
-                  Card(
-                    margin: const EdgeInsets.all(8),
-                    child: ClashWarningsWidget(
-                      warnings: _timetable.clashWarnings,
-                    ),
-                  ),
-                Expanded(
-                  child: Card(
-                    margin: const EdgeInsets.all(8),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: RepaintBoundary(
-                        key: _timetableKey,
-                        child: TimetableWidget(
-                          timetableSlots: _timetableService.generateTimetableSlots(_timetable.selectedSections, _timetable.availableCourses),
-                          incompleteSelectionWarnings: _timetableService.getIncompleteSelectionWarnings(_timetable.selectedSections, _timetable.availableCourses),
-                          onClear: _clearTimetable,
-                          onRemoveSection: _removeSection,
-                          size: _timetableSize,
-                          hasUnsavedChanges: _hasUnsavedChanges,
-                          isSaving: _isSaving,
-                          onSave: _authService.isGuest ? null : _saveTimetable,
-                          onSizeChanged: (newSize) {
-                            setState(() {
-                              _timetableSize = newSize;
-                            });
-                          },
+            )
+          : DefaultTabController(
+              length: 2,
+              child: Column(
+                children: [
+                  Material(
+                    color: Theme.of(context).colorScheme.surface,
+                    child: TabBar(
+                      labelColor: Theme.of(context).colorScheme.primary,
+                      unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      indicatorColor: Theme.of(context).colorScheme.primary,
+                      tabs: const [
+                        Tab(
+                          icon: Icon(Icons.search),
+                          text: 'Courses',
                         ),
-                      ),
+                        Tab(
+                          icon: Icon(Icons.calendar_view_week),
+                          text: 'Timetable',
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        _buildCoursesPanel(),
+                        _buildTimetablePanel(),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+      floatingActionButton: isWideScreen
+          ? FloatingActionButton.extended(
+              onPressed: _openGenerator,
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('TT Generator'),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+            )
+          : FloatingActionButton(
+              onPressed: _openGenerator,
+              child: const Icon(Icons.auto_awesome),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              tooltip: 'TT Generator',
+            ),
+    );
+  }
+
+  Widget _buildCoursesPanel() {
+    return Column(
+      children: [
+        SearchFilterWidget(
+          onSearchChanged: _onSearchChanged,
+        ),
+        Expanded(
+          child: Card(
+            margin: const EdgeInsets.all(8),
+            child: CoursesTabWidget(
+              courses: _filteredCourses,
+              selectedSections: _timetable.selectedSections,
+              onSectionToggle: (courseCode, sectionId, isSelected) {
+                if (isSelected) {
+                  _removeSection(courseCode, sectionId);
+                } else {
+                  _addSection(courseCode, sectionId);
+                }
+              },
             ),
           ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openGenerator,
-        icon: const Icon(Icons.auto_awesome),
-        label: const Text('TT Generator'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-      ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTimetablePanel() {
+    return Column(
+      children: [
+        if (_timetable.clashWarnings.isNotEmpty)
+          Card(
+            margin: const EdgeInsets.all(8),
+            child: ClashWarningsWidget(
+              warnings: _timetable.clashWarnings,
+            ),
+          ),
+        Expanded(
+          child: Card(
+            margin: const EdgeInsets.all(8),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: RepaintBoundary(
+                key: _timetableKey,
+                child: TimetableWidget(
+                  timetableSlots: _timetableService.generateTimetableSlots(_timetable.selectedSections, _timetable.availableCourses),
+                  incompleteSelectionWarnings: _timetableService.getIncompleteSelectionWarnings(_timetable.selectedSections, _timetable.availableCourses),
+                  onClear: _clearTimetable,
+                  onRemoveSection: _removeSection,
+                  size: _timetableSize,
+                  hasUnsavedChanges: _hasUnsavedChanges,
+                  isSaving: _isSaving,
+                  onSave: _authService.isGuest ? null : _saveTimetable,
+                  onSizeChanged: (newSize) {
+                    setState(() {
+                      _timetableSize = newSize;
+                    });
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

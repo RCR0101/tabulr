@@ -44,12 +44,19 @@ class TimetableWidget extends StatefulWidget {
 class _TimetableWidgetState extends State<TimetableWidget> {
   String? _hoveredCourse; // Track which course is being hovered
 
+  bool get _isMobile {
+    final mediaQuery = MediaQuery.maybeOf(context);
+    return (mediaQuery?.size.width ?? 1000) <= 800;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isMobile = _isMobile;
+    
     return ConstrainedBox(
-      constraints: const BoxConstraints(
-        minWidth: 800,
-        maxWidth: double.infinity,
+      constraints: BoxConstraints(
+        minWidth: isMobile ? 280 : 800,
+        maxWidth: isMobile ? MediaQuery.of(context).size.width - 16 : double.infinity,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -57,126 +64,240 @@ class _TimetableWidgetState extends State<TimetableWidget> {
         children: [
         Padding(
           padding: const EdgeInsets.all(8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Weekly Timetable',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+          child: isMobile 
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Weekly Timetable',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      PopupMenuButton<TimetableSize>(
+                        onSelected: widget.onSizeChanged,
+                        enabled: widget.onSizeChanged != null,
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: TimetableSize.compact,
+                            child: Row(
+                              children: [
+                                Icon(Icons.view_compact, size: 16),
+                                SizedBox(width: 8),
+                                Text('Compact'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: TimetableSize.medium,
+                            child: Row(
+                              children: [
+                                Icon(Icons.view_module, size: 16),
+                                SizedBox(width: 8),
+                                Text('Medium'),
+                              ],
+                            ),
+                          ),
+                        ],
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(_getSizeIcon(widget.size), size: 14),
+                              SizedBox(width: 4),
+                              Icon(Icons.arrow_drop_down, size: 14),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      // Save button
+                      if (!widget.isForExport && widget.onSave != null)
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: widget.hasUnsavedChanges && !widget.isSaving ? widget.onSave : null,
+                            icon: widget.isSaving 
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : Icon(
+                                  widget.hasUnsavedChanges ? Icons.save : Icons.check,
+                                  size: 16,
+                                ),
+                            label: Text(
+                              widget.isSaving ? 'Saving...' : 
+                              widget.hasUnsavedChanges ? 'Save' : 'Saved',
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: widget.hasUnsavedChanges 
+                                ? Theme.of(context).colorScheme.primary 
+                                : Theme.of(context).colorScheme.tertiary,
+                              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (!widget.isForExport && widget.onSave != null && widget.timetableSlots.isNotEmpty && widget.onClear != null)
+                        const SizedBox(width: 8),
+                      if (widget.timetableSlots.isNotEmpty && widget.onClear != null)
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: widget.onClear,
+                            icon: const Icon(Icons.clear_all, size: 16),
+                            label: const Text('Clear'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(context).colorScheme.error.withOpacity(0.2),
+                              foregroundColor: Theme.of(context).colorScheme.error,
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              )
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Weekly Timetable',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  PopupMenuButton<TimetableSize>(
+                    onSelected: widget.onSizeChanged,
+                    enabled: widget.onSizeChanged != null,
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: TimetableSize.compact,
+                        child: Row(
+                          children: [
+                            Icon(Icons.view_compact, size: 16),
+                            SizedBox(width: 8),
+                            Text('Compact'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: TimetableSize.medium,
+                        child: Row(
+                          children: [
+                            Icon(Icons.view_module, size: 16),
+                            SizedBox(width: 8),
+                            Text('Medium'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: TimetableSize.large,
+                        child: Row(
+                          children: [
+                            Icon(Icons.view_comfortable, size: 16),
+                            SizedBox(width: 8),
+                            Text('Large'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: TimetableSize.extraLarge,
+                        child: Row(
+                          children: [
+                            Icon(Icons.view_agenda, size: 16),
+                            SizedBox(width: 8),
+                            Text('Extra Large'),
+                          ],
+                        ),
+                      ),
+                    ],
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(_getSizeIcon(widget.size), size: 16),
+                          SizedBox(width: 4),
+                          Icon(Icons.arrow_drop_down, size: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Save button
+                  if (!widget.isForExport && widget.onSave != null)
+                    ElevatedButton.icon(
+                      onPressed: widget.hasUnsavedChanges && !widget.isSaving ? widget.onSave : null,
+                      icon: widget.isSaving 
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            widget.hasUnsavedChanges ? Icons.save : Icons.check,
+                            size: 16,
+                          ),
+                      label: Text(
+                        widget.isSaving ? 'Saving...' : 
+                        widget.hasUnsavedChanges ? 'Save' : 'Saved',
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: widget.hasUnsavedChanges 
+                          ? Theme.of(context).colorScheme.primary 
+                          : Theme.of(context).colorScheme.tertiary,
+                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 8),
+                  if (widget.timetableSlots.isNotEmpty && widget.onClear != null)
+                    ElevatedButton.icon(
+                      onPressed: widget.onClear,
+                      icon: const Icon(Icons.clear_all, size: 16),
+                      label: const Text('Clear'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.error.withOpacity(0.2),
+                        foregroundColor: Theme.of(context).colorScheme.error,
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              const SizedBox(width: 16),
-              PopupMenuButton<TimetableSize>(
-                onSelected: widget.onSizeChanged,
-                enabled: widget.onSizeChanged != null,
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: TimetableSize.compact,
-                      child: Row(
-                        children: [
-                          Icon(Icons.view_compact, size: 16),
-                          SizedBox(width: 8),
-                          Text('Compact'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: TimetableSize.medium,
-                      child: Row(
-                        children: [
-                          Icon(Icons.view_module, size: 16),
-                          SizedBox(width: 8),
-                          Text('Medium'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: TimetableSize.large,
-                      child: Row(
-                        children: [
-                          Icon(Icons.view_comfortable, size: 16),
-                          SizedBox(width: 8),
-                          Text('Large'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: TimetableSize.extraLarge,
-                      child: Row(
-                        children: [
-                          Icon(Icons.view_agenda, size: 16),
-                          SizedBox(width: 8),
-                          Text('Extra Large'),
-                        ],
-                      ),
-                    ),
-                  ],
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(_getSizeIcon(widget.size), size: 16),
-                        SizedBox(width: 4),
-                        Icon(Icons.arrow_drop_down, size: 16),
-                      ],
-                    ),
-                  ),
-                ),
-              const SizedBox(width: 16),
-              // Save button
-              if (!widget.isForExport && widget.onSave != null)
-                ElevatedButton.icon(
-                  onPressed: widget.hasUnsavedChanges && !widget.isSaving ? widget.onSave : null,
-                  icon: widget.isSaving 
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(
-                        widget.hasUnsavedChanges ? Icons.save : Icons.check,
-                        size: 16,
-                      ),
-                  label: Text(
-                    widget.isSaving ? 'Saving...' : 
-                    widget.hasUnsavedChanges ? 'Save' : 'Saved',
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: widget.hasUnsavedChanges 
-                      ? Theme.of(context).colorScheme.primary 
-                      : Theme.of(context).colorScheme.tertiary,
-                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              const SizedBox(width: 8),
-              if (widget.timetableSlots.isNotEmpty && widget.onClear != null)
-                ElevatedButton.icon(
-                  onPressed: widget.onClear,
-                  icon: const Icon(Icons.clear_all, size: 16),
-                  label: const Text('Clear'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.error.withOpacity(0.2),
-                    foregroundColor: Theme.of(context).colorScheme.error,
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-            ],
-          ),
         ),
         widget.isForExport
             ? Container(
@@ -771,85 +892,91 @@ class _TimetableWidgetState extends State<TimetableWidget> {
 
   // Size-specific dimension helpers
   double _getDayColumnWidth(TimetableSize size) {
-    switch (size) {
-      case TimetableSize.compact:
-        return 140;
-      case TimetableSize.medium:
-        return 160;
-      case TimetableSize.large:
-        return 200;
-      case TimetableSize.extraLarge:
-        return 240;
+    final baseWidth = switch (size) {
+      TimetableSize.compact => 140.0,
+      TimetableSize.medium => 160.0,
+      TimetableSize.large => 200.0,
+      TimetableSize.extraLarge => 240.0,
+    };
+    
+    // Significantly reduce width for mobile to fit all columns
+    if (_isMobile) {
+      final screenWidth = MediaQuery.maybeOf(context)?.size.width ?? 400;
+      final availableWidth = screenWidth - 48; // Account for padding and margins
+      final timeColumnWidth = _getTimeColumnWidth(size);
+      final remainingWidth = availableWidth - timeColumnWidth;
+      final columnWidth = remainingWidth / 6; // 6 day columns
+      return columnWidth.clamp(60.0, baseWidth * 0.7); // Minimum 60px, max 70% of base
     }
+    
+    return baseWidth;
   }
 
   double _getTimeColumnWidth(TimetableSize size) {
+    if (_isMobile) {
+      return 50.0; // Fixed small width for mobile
+    }
     return _getDayColumnWidth(size) * 0.75;
   }
 
   double _getCellHeight(TimetableSize size) {
-    switch (size) {
-      case TimetableSize.compact:
-        return 70;
-      case TimetableSize.medium:
-        return 80;
-      case TimetableSize.large:
-        return 100;
-      case TimetableSize.extraLarge:
-        return 120;
-    }
+    final baseHeight = switch (size) {
+      TimetableSize.compact => 70.0,
+      TimetableSize.medium => 80.0,
+      TimetableSize.large => 100.0,
+      TimetableSize.extraLarge => 120.0,
+    };
+    
+    // Reduce height for mobile
+    return _isMobile ? baseHeight * 0.85 : baseHeight;
   }
 
   double _getCellMargin(TimetableSize size) {
-    switch (size) {
-      case TimetableSize.compact:
-        return 1;
-      case TimetableSize.medium:
-        return 1;
-      case TimetableSize.large:
-        return 2;
-      case TimetableSize.extraLarge:
-        return 3;
-    }
+    final baseMargin = switch (size) {
+      TimetableSize.compact => 1.0,
+      TimetableSize.medium => 1.0,
+      TimetableSize.large => 2.0,
+      TimetableSize.extraLarge => 3.0,
+    };
+    
+    // Reduce margin for mobile
+    return _isMobile ? 0.5 : baseMargin;
   }
 
   double _getColumnSpacing(TimetableSize size) {
-    switch (size) {
-      case TimetableSize.compact:
-        return 12;
-      case TimetableSize.medium:
-        return 16;
-      case TimetableSize.large:
-        return 20;
-      case TimetableSize.extraLarge:
-        return 24;
-    }
+    final baseSpacing = switch (size) {
+      TimetableSize.compact => 12.0,
+      TimetableSize.medium => 16.0,
+      TimetableSize.large => 20.0,
+      TimetableSize.extraLarge => 24.0,
+    };
+    
+    // Minimal spacing for mobile to fit more content
+    return _isMobile ? 2.0 : baseSpacing;
   }
 
   double _getHorizontalMargin(TimetableSize size) {
-    switch (size) {
-      case TimetableSize.compact:
-        return 10;
-      case TimetableSize.medium:
-        return 12;
-      case TimetableSize.large:
-        return 16;
-      case TimetableSize.extraLarge:
-        return 20;
-    }
+    final baseMargin = switch (size) {
+      TimetableSize.compact => 10.0,
+      TimetableSize.medium => 12.0,
+      TimetableSize.large => 16.0,
+      TimetableSize.extraLarge => 20.0,
+    };
+    
+    // Minimal margin for mobile
+    return _isMobile ? 4.0 : baseMargin;
   }
 
   double _getDataRowHeight(TimetableSize size) {
-    switch (size) {
-      case TimetableSize.compact:
-        return 90;
-      case TimetableSize.medium:
-        return 100;
-      case TimetableSize.large:
-        return 120;
-      case TimetableSize.extraLarge:
-        return 140;
-    }
+    final baseHeight = switch (size) {
+      TimetableSize.compact => 90.0,
+      TimetableSize.medium => 100.0,
+      TimetableSize.large => 120.0,
+      TimetableSize.extraLarge => 140.0,
+    };
+    
+    // Reduce height for mobile
+    return _isMobile ? baseHeight * 0.85 : baseHeight;
   }
 
   IconData _getSizeIcon(TimetableSize size) {
@@ -867,68 +994,58 @@ class _TimetableWidgetState extends State<TimetableWidget> {
 
   // Dynamic text sizing helpers
   double _getCourseCodeFontSize(TimetableSize size) {
-    switch (size) {
-      case TimetableSize.compact:
-        return 12;
-      case TimetableSize.medium:
-        return 14;
-      case TimetableSize.large:
-        return 16;
-      case TimetableSize.extraLarge:
-        return 18;
-    }
+    final baseSize = switch (size) {
+      TimetableSize.compact => 12.0,
+      TimetableSize.medium => 14.0,
+      TimetableSize.large => 16.0,
+      TimetableSize.extraLarge => 18.0,
+    };
+    
+    return _isMobile ? baseSize * 0.9 : baseSize;
   }
 
   double _getCourseTitleFontSize(TimetableSize size) {
-    switch (size) {
-      case TimetableSize.compact:
-        return 10;
-      case TimetableSize.medium:
-        return 11;
-      case TimetableSize.large:
-        return 12;
-      case TimetableSize.extraLarge:
-        return 14;
-    }
+    final baseSize = switch (size) {
+      TimetableSize.compact => 10.0,
+      TimetableSize.medium => 11.0,
+      TimetableSize.large => 12.0,
+      TimetableSize.extraLarge => 14.0,
+    };
+    
+    return _isMobile ? baseSize * 0.9 : baseSize;
   }
 
   double _getSectionIdFontSize(TimetableSize size) {
-    switch (size) {
-      case TimetableSize.compact:
-        return 11;
-      case TimetableSize.medium:
-        return 12;
-      case TimetableSize.large:
-        return 13;
-      case TimetableSize.extraLarge:
-        return 15;
-    }
+    final baseSize = switch (size) {
+      TimetableSize.compact => 11.0,
+      TimetableSize.medium => 12.0,
+      TimetableSize.large => 13.0,
+      TimetableSize.extraLarge => 15.0,
+    };
+    
+    return _isMobile ? baseSize * 0.9 : baseSize;
   }
 
   double _getRoomFontSize(TimetableSize size) {
-    switch (size) {
-      case TimetableSize.compact:
-        return 10;
-      case TimetableSize.medium:
-        return 11;
-      case TimetableSize.large:
-        return 12;
-      case TimetableSize.extraLarge:
-        return 13;
-    }
+    final baseSize = switch (size) {
+      TimetableSize.compact => 10.0,
+      TimetableSize.medium => 11.0,
+      TimetableSize.large => 12.0,
+      TimetableSize.extraLarge => 13.0,
+    };
+    
+    return _isMobile ? baseSize * 0.9 : baseSize;
   }
 
   double _getCellPadding(TimetableSize size) {
-    switch (size) {
-      case TimetableSize.compact:
-        return 6;
-      case TimetableSize.medium:
-        return 8;
-      case TimetableSize.large:
-        return 10;
-      case TimetableSize.extraLarge:
-        return 12;
-    }
+    final basePadding = switch (size) {
+      TimetableSize.compact => 6.0,
+      TimetableSize.medium => 8.0,
+      TimetableSize.large => 10.0,
+      TimetableSize.extraLarge => 12.0,
+    };
+    
+    return _isMobile ? basePadding * 0.7 : basePadding;
   }
 
   double _getTextSpacing(TimetableSize size) {

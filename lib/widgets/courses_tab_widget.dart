@@ -38,6 +38,8 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width <= 800;
+    
     return Column(
       children: [
         Container(
@@ -54,7 +56,75 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
             unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             indicatorColor: Theme.of(context).colorScheme.primary,
             dividerColor: Theme.of(context).colorScheme.outline,
-            tabs: [
+            isScrollable: false,
+            labelPadding: isMobile ? const EdgeInsets.symmetric(horizontal: 4) : null,
+            tabAlignment: TabAlignment.fill,
+            tabs: isMobile ? [
+              Tab(
+                height: 60,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.search, size: 16),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Search',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+                        textAlign: TextAlign.center,
+                      ),
+                      Text(
+                        '(${widget.courses.length})',
+                        style: TextStyle(fontSize: 8),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Tab(
+                height: 60,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.school, size: 16),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Selected',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+                        textAlign: TextAlign.center,
+                      ),
+                      Text(
+                        '(${widget.selectedSections.map((s) => s.courseCode).toSet().length})',
+                        style: TextStyle(fontSize: 8),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Tab(
+                height: 60,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.event, size: 16),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Exams',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ] : [
               Tab(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
