@@ -45,6 +45,9 @@ class _TimetableWidgetState extends State<TimetableWidget> {
   String? _hoveredCourse; // Track which course is being hovered
 
   bool get _isMobile {
+    // Always use desktop layout for export
+    if (widget.isForExport) return false;
+    
     final mediaQuery = MediaQuery.maybeOf(context);
     return (mediaQuery?.size.width ?? 1000) <= 800;
   }
