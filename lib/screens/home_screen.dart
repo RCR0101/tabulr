@@ -622,7 +622,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           size: _timetableSize,
                           hasUnsavedChanges: _hasUnsavedChanges,
                           isSaving: _isSaving,
-                          onSave: _saveTimetable,
+                          onSave: _authService.isGuest ? null : _saveTimetable,
                           onSizeChanged: (newSize) {
                             setState(() {
                               _timetableSize = newSize;
@@ -1198,7 +1198,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                           size: _timetableSize,
                           hasUnsavedChanges: _hasUnsavedChanges,
                           isSaving: _isSaving,
-                          onSave: _saveTimetable,
+                          onSave: _authService.isGuest ? null : _saveTimetable,
                           onSizeChanged: (newSize) {
                             setState(() {
                               _timetableSize = newSize;

@@ -41,8 +41,8 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
     return Column(
       children: [
         Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF21262D),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(8),
               topRight: Radius.circular(8),
@@ -50,10 +50,10 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
           ),
           child: TabBar(
             controller: _tabController,
-            labelColor: Color(0xFF58A6FF),
-            unselectedLabelColor: Color(0xFF8B949E),
-            indicatorColor: Color(0xFF58A6FF),
-            dividerColor: Color(0xFF30363D),
+            labelColor: Theme.of(context).colorScheme.primary,
+            unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            indicatorColor: Theme.of(context).colorScheme.primary,
+            dividerColor: Theme.of(context).colorScheme.outline,
             tabs: [
               Tab(
                 child: Row(
@@ -108,21 +108,21 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
               ),
               // Exam schedule tab
               widget.selectedSections.isEmpty
-                  ? const Center(
+                  ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
                             Icons.event_busy,
                             size: 64,
-                            color: Color(0xFF656D76),
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                           ),
                           SizedBox(height: 16),
                           Text(
                             'No courses selected',
                             style: TextStyle(
                               fontSize: 16,
-                              color: Color(0xFF8B949E),
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                             ),
                           ),
                           SizedBox(height: 8),
@@ -130,7 +130,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                             'Add courses to see exam schedules',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Color(0xFF656D76),
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                             ),
                           ),
                         ],

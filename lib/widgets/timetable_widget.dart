@@ -116,9 +116,9 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   child: Container(
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.surface.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                      border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.3)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -151,9 +151,9 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: widget.hasUnsavedChanges 
-                      ? Colors.blue 
-                      : Colors.green,
-                    foregroundColor: Colors.white,
+                      ? Theme.of(context).colorScheme.primary 
+                      : Theme.of(context).colorScheme.tertiary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     elevation: 2,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -167,8 +167,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   icon: const Icon(Icons.clear_all, size: 16),
                   label: const Text('Clear'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red.withOpacity(0.2),
-                    foregroundColor: Colors.red,
+                    backgroundColor: Theme.of(context).colorScheme.error.withOpacity(0.2),
+                    foregroundColor: Theme.of(context).colorScheme.error,
                     elevation: 2,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -182,10 +182,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
             ? Container(
                 margin: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF161B22),
+                  color: Theme.of(context).scaffoldBackgroundColor,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFF30363D),
+                    color: Theme.of(context).colorScheme.outline,
                     width: 1,
                   ),
                 ),
@@ -198,6 +198,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                         horizontalMargin: _getHorizontalMargin(widget.size),
                         dataRowHeight: _getDataRowHeight(widget.size),
                         headingRowHeight: 60,
+                        dividerThickness: 0,
+                        border: TableBorder.all(color: Colors.transparent),
                         columns: [
                         DataColumn(
                           label: SizedBox(
@@ -301,15 +303,15 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                 child: Container(
                   margin: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF161B22),
+                    color: Theme.of(context).scaffoldBackgroundColor,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: const Color(0xFF30363D),
+                      color: Theme.of(context).colorScheme.outline,
                       width: 1,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
+                        color: Theme.of(context).shadowColor.withOpacity(0.2),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -330,6 +332,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                             horizontalMargin: _getHorizontalMargin(widget.size),
                             dataRowHeight: _getDataRowHeight(widget.size),
                             headingRowHeight: 60,
+                            dividerThickness: 0,
+                            border: TableBorder.all(color: Colors.transparent, width: 0),
                           columns: [
                             DataColumn(
                               label: SizedBox(
@@ -455,7 +459,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               height: _getCellHeight(widget.size),
               padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF21262D),
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: const Color(0xFF30363D)),
               ),
@@ -464,19 +468,19 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                 children: [
                   Text(
                     'Hour $hour',
-                    style: const TextStyle(
+                    style:  TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF58A6FF),
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     TimeSlotInfo.getHourSlotName(hour),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w400,
-                      color: Color(0xFFE6EDF3),
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
                     ),
                     textAlign: TextAlign.center,
                     maxLines: 2,
@@ -498,7 +502,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                 height: _getCellHeight(widget.size),
                 margin: EdgeInsets.all(_getCellMargin(widget.size)),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0D1117),
+                  color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: const Color(0xFF30363D)),
                 ),
@@ -532,11 +536,11 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       child: Tooltip(
         message: _buildTooltipContent(sameCourseSlots),
         decoration: BoxDecoration(
-          color: const Color(0xFF21262D),
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFF30363D)),
+          border: Border.all(color: Theme.of(context).colorScheme.outline),
         ),
-        textStyle: const TextStyle(color: Color(0xFFF0F6FC), fontSize: 12),
+        textStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12),
         child: Container(
           width: _getDayColumnWidth(widget.size),
           height: _getCellHeight(widget.size),
@@ -579,7 +583,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: _getCourseCodeFontSize(widget.size),
-                          color: const Color(0xFFFFFFFF),
+                          color: Theme.of(context).colorScheme.onPrimary,
                           height: 1.1,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -640,29 +644,29 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   child: Tooltip(
                     message: _getIncompleteSelectionWarning(slot.courseCode),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF21262D),
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF30363D)),
+                      border: Border.all(color: Theme.of(context).colorScheme.outline),
                     ),
-                    textStyle: const TextStyle(color: Color(0xFFF0F6FC), fontSize: 12),
+                    textStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12),
                     child: Container(
                       width: 18,
                       height: 18,
                       decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.9),
+                        color: Theme.of(context).colorScheme.secondary.withOpacity(0.9),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Theme.of(context).shadowColor.withOpacity(0.3),
                             blurRadius: 2,
                             offset: const Offset(0, 1),
                           ),
                         ],
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.warning,
                         size: 12,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSecondary,
                       ),
                     ),
                   ),
@@ -677,20 +681,20 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                       width: 20,
                       height: 20,
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.8),
+                        color: Theme.of(context).colorScheme.error.withOpacity(0.8),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Theme.of(context).shadowColor.withOpacity(0.3),
                             blurRadius: 2,
                             offset: const Offset(0, 1),
                           ),
                         ],
                       ),
-                      child: const Icon(
+                      child:  Icon(
                         Icons.close,
                         size: 14,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onSecondary,
                       ),
                     ),
                   ),
@@ -737,16 +741,16 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     // Generate consistent colors based on course code
     final hash = courseCode.hashCode;
     final colors = [
-      Colors.blue,
-      Colors.green,
-      Colors.orange,
-      Colors.purple,
-      Colors.teal,
-      Colors.indigo,
-      Colors.red,
-      Colors.pink,
-      Colors.cyan,
-      Colors.amber,
+      const Color(0xFF58A6FF),
+      const Color(0xFF56D364),
+      const Color(0xFFFF922B),
+      const Color(0xFFBD561D),
+      const Color(0xFF39C5CF),
+      const Color(0xFF6F42C1),
+      const Color(0xFFDA3633),
+      const Color(0xFFDB61A2),
+      const Color(0xFF39C5CF),
+      const Color(0xFFD4A72C),
     ];
     
     return colors[hash.abs() % colors.length];
