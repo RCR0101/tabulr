@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import { parse } from 'csv-parse/sync';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -59,6 +60,56 @@ class XlsxParser {
     }
     
     let currentRow = 2; // Skip header rows
+    
+    while (currentRow < data.length) {
+      const row = data[currentRow];
+      
+      if (!row || this.isEmptyRow(row)) {
+        currentRow++;
+        continue;
+      }
+      
+      const compCode = this.getCellValue(row, 0);
+      
+      if (compCode && compCode.toString().trim() !== '') {
+        const courseResult = this.parseCourseGroup(data, currentRow);
+        if (courseResult) {
+          courses.push(courseResult.course);
+          currentRow = courseResult.nextRow;
+        } else {
+          currentRow++;
+        }
+      } else {
+        currentRow++;
+      }
+    }
+    
+    return courses;
+  }
+
+  static parseCsvFile(filePath) {
+    try {
+      const csvContent = fs.readFileSync(filePath, 'utf8');
+      const records = parse(csvContent, {
+        columns: false, // Don't use first row as headers since it's just column numbers
+        skip_empty_lines: true,
+        trim: true
+      });
+      
+      return this.parseCsvData(records);
+    } catch (error) {
+      throw new Error(`Error parsing CSV file: ${error.message}`);
+    }
+  }
+
+  static parseCsvData(data) {
+    const courses = [];
+    
+    if (data.length < 2) {
+      throw new Error('Invalid CSV format');
+    }
+    
+    let currentRow = 1; // Skip header row with column numbers
     
     while (currentRow < data.length) {
       const row = data[currentRow];
@@ -266,50 +317,21 @@ class XlsxParser {
   static parseHours(hoursStr) {
     if (!hoursStr) return [];
     
-    const cleaned = hoursStr.replace(/,/g, '').trim();
+    const cleaned = hoursStr.trim();
     
     try {
-      const hourValue = parseInt(cleaned);
+      // Split by spaces since hours are now space-separated (e.g., "6 7 8")
+      const hourParts = cleaned.split(/\s+/);
+      const hours = [];
       
-      if (hourValue >= 1 && hourValue <= 10) {
-        return [hourValue];
-      }
-      
-      if (hourValue > 10) {
-        const str = cleaned;
-        const hours = [];
-        let i = 0;
-        
-        while (i < str.length) {
-          if (i + 1 < str.length) {
-            const twoDigitStr = str.substring(i, i + 2);
-            const twoDigitValue = parseInt(twoDigitStr);
-            
-            if (twoDigitValue >= 10 && twoDigitValue <= 12) {
-              hours.push(twoDigitValue);
-              i += 2;
-              continue;
-            }
-          }
-          
-          const singleDigitStr = str.substring(i, i + 1);
-          const singleDigitValue = parseInt(singleDigitStr);
-          
-          if (singleDigitValue >= 1 && singleDigitValue <= 9) {
-            hours.push(singleDigitValue);
-            i += 1;
-          } else {
-            break;
-          }
-        }
-        
-        if (hours.length > 0) {
-          return hours;
+      for (const part of hourParts) {
+        const hourValue = parseInt(part);
+        if (hourValue >= 1 && hourValue <= 12) {
+          hours.push(hourValue);
         }
       }
       
-      console.log(`Hour value ${hourValue} could not be parsed`);
-      return [];
+      return hours;
     } catch (error) {
       console.log(`Error parsing hours "${hoursStr}": ${error}`);
       return [];
@@ -373,10 +395,8 @@ class XlsxParser {
       }
     }
     
-    // Create date in local timezone to avoid shifting
-    const date = new Date(year, month - 1, day);
-    // Format as YYYY-MM-DD to avoid timezone issues
-    const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T08:30:00.000Z`;
+    // Create date string directly to avoid timezone issues
+    const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00.000Z`;
     
     return {
       date: dateString,
@@ -407,10 +427,8 @@ class XlsxParser {
       return null;
     }
     
-    // Create date in local timezone to avoid shifting
-    const date = new Date(year, month - 1, day);
-    // Format as YYYY-MM-DD to avoid timezone issues
-    const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T08:30:00.000Z`;
+    // Create date string directly to avoid timezone issues
+    const dateString = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00.000Z`;
     
     return {
       date: dateString,
@@ -454,10 +472,21 @@ class XlsxParser {
   }
 }
 
-async function uploadTimetableData(xlsxFilePath) {
+async function uploadTimetableData(filePath) {
   try {
-    console.log('🔄 Parsing XLSX file...');
-    const courses = XlsxParser.parseXlsxFile(xlsxFilePath);
+    const fileExtension = path.extname(filePath).toLowerCase();
+    let courses;
+    
+    if (fileExtension === '.csv') {
+      console.log('🔄 Parsing CSV file...');
+      courses = XlsxParser.parseCsvFile(filePath);
+    } else if (fileExtension === '.xlsx') {
+      console.log('🔄 Parsing XLSX file...');
+      courses = XlsxParser.parseXlsxFile(filePath);
+    } else {
+      throw new Error('Unsupported file format. Please use .csv or .xlsx files.');
+    }
+    
     console.log(`✅ Parsed ${courses.length} courses`);
     
     // Clear existing data
@@ -513,28 +542,33 @@ async function uploadTimetableData(xlsxFilePath) {
 
 // Main execution
 async function main() {
-  let xlsxFilePath = process.argv[2];
+  let filePath = process.argv[2];
   
-  // If no path provided, look for the default XLSX file in parent directory
-  if (!xlsxFilePath) {
-    const defaultPath = path.join(__dirname, '..', 'DRAFT TIMETABLE I SEM 2025 -26.xlsx');
-    if (fs.existsSync(defaultPath)) {
-      xlsxFilePath = defaultPath;
-      console.log(`📂 Using default XLSX file: ${path.basename(defaultPath)}`);
+  // If no path provided, look for default files in parent directory
+  if (!filePath) {
+    const defaultCsvPath = path.join(__dirname, '.', 'output.csv');
+    const defaultXlsxPath = path.join(__dirname, '..', 'DRAFT TIMETABLE I SEM 2025 -26.xlsx');
+    
+    if (fs.existsSync(defaultCsvPath)) {
+      filePath = defaultCsvPath;
+      console.log(`📂 Using default CSV file: ${path.basename(defaultCsvPath)}`);
+    } else if (fs.existsSync(defaultXlsxPath)) {
+      filePath = defaultXlsxPath;
+      console.log(`📂 Using default XLSX file: ${path.basename(defaultXlsxPath)}`);
     } else {
-      console.error('❌ Please provide the path to the XLSX file');
-      console.log('Usage: npm run upload [path-to-xlsx-file]');
-      console.log('Or place "DRAFT TIMETABLE I SEM 2025 -26.xlsx" in the project root');
+      console.error('❌ Please provide the path to a CSV or XLSX file');
+      console.log('Usage: npm run upload [path-to-file]');
+      console.log('Or place "output.csv" or "DRAFT TIMETABLE I SEM 2025 -26.xlsx" in the project root');
       process.exit(1);
     }
   }
   
-  if (!fs.existsSync(xlsxFilePath)) {
-    console.error('❌ XLSX file not found:', xlsxFilePath);
+  if (!fs.existsSync(filePath)) {
+    console.error('❌ File not found:', filePath);
     process.exit(1);
   }
   
-  await uploadTimetableData(xlsxFilePath);
+  await uploadTimetableData(filePath);
 }
 
 main().catch(console.error);

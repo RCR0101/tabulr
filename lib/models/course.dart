@@ -142,8 +142,15 @@ class ExamSchedule {
   }
 
   factory ExamSchedule.fromJson(Map<String, dynamic> json) {
+    // Parse only the date part to avoid timezone issues
+    final dateString = json['date'] as String;
+    final dateParts = dateString.split('T')[0].split('-');
+    final year = int.parse(dateParts[0]);
+    final month = int.parse(dateParts[1]);
+    final day = int.parse(dateParts[2]);
+    
     return ExamSchedule(
-      date: DateTime.parse(json['date']),
+      date: DateTime(year, month, day),
       timeSlot: TimeSlot.values.firstWhere(
         (e) => e.toString() == json['timeSlot'],
       ),
