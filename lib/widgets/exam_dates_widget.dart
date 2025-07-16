@@ -107,6 +107,18 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                         ),
                       ],
                     ),
+                    // Small screen sorting buttons row
+                    if (MediaQuery.of(context).size.width < 768)
+                      TableRow(
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF21262D),
+                        ),
+                        children: [
+                          _buildMobileSortButton(SortColumn.course),
+                          _buildMobileSortButton(SortColumn.midSem),
+                          _buildMobileSortButton(SortColumn.endSem),
+                        ],
+                      ),
                     // Data rows
                     ...examData.map((exam) => TableRow(
                       children: [
@@ -283,7 +295,14 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
   Widget _buildSortableHeader(String title, SortColumn column) {
     final isCurrentColumn = _sortColumn == column;
     final isAscending = _sortDirection == SortDirection.ascending;
+    final isSmallScreen = MediaQuery.of(context).size.width < 768;
     
+    // On small screens, headers are not clickable (sorting buttons are in separate row)
+    if (isSmallScreen) {
+      return _buildMobileHeader(title, isCurrentColumn, isAscending);
+    }
+    
+    // On large screens, headers are clickable
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -299,18 +318,106 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
       },
       child: Container(
         padding: const EdgeInsets.all(12),
+        child: _buildWebHeader(title, isCurrentColumn, isAscending),
+      ),
+    );
+  }
+
+  Widget _buildWebHeader(String title, bool isCurrentColumn, bool isAscending) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            color: Color(0xFFF0F6FC),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            color: isCurrentColumn 
+              ? const Color(0xFF58A6FF).withOpacity(0.1)
+              : Colors.transparent,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.keyboard_arrow_up,
+                size: 20,
+                color: isCurrentColumn && isAscending 
+                  ? const Color(0xFF58A6FF) 
+                  : const Color(0xFF8B949E),
+              ),
+              const SizedBox(height: 1),
+              Icon(
+                Icons.keyboard_arrow_down,
+                size: 20,
+                color: isCurrentColumn && !isAscending 
+                  ? const Color(0xFF58A6FF) 
+                  : const Color(0xFF8B949E),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileHeader(String title, bool isCurrentColumn, bool isAscending) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+          color: Color(0xFFF0F6FC),
+        ),
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildMobileSortButton(SortColumn column) {
+    final isCurrentColumn = _sortColumn == column;
+    final isAscending = _sortDirection == SortDirection.ascending;
+    
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (isCurrentColumn) {
+            _sortDirection = isAscending 
+              ? SortDirection.descending 
+              : SortDirection.ascending;
+          } else {
+            _sortColumn = column;
+            _sortDirection = SortDirection.ascending;
+          }
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: Color(0xFFF0F6FC),
+              'Sort',
+              style: TextStyle(
+                fontSize: 12,
+                color: isCurrentColumn 
+                  ? const Color(0xFF58A6FF) 
+                  : const Color(0xFF8B949E),
+                fontWeight: isCurrentColumn ? FontWeight.bold : FontWeight.normal,
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
             Container(
               padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
@@ -324,15 +431,14 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                 children: [
                   Icon(
                     Icons.keyboard_arrow_up,
-                    size: 20,
+                    size: 16,
                     color: isCurrentColumn && isAscending 
                       ? const Color(0xFF58A6FF) 
                       : const Color(0xFF8B949E),
                   ),
-                  const SizedBox(height: 1),
                   Icon(
                     Icons.keyboard_arrow_down,
-                    size: 20,
+                    size: 16,
                     color: isCurrentColumn && !isAscending 
                       ? const Color(0xFF58A6FF) 
                       : const Color(0xFF8B949E),
