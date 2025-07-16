@@ -3,6 +3,7 @@ import 'package:flutter_typeahead/flutter_typeahead.dart';
 import '../models/course.dart';
 import '../models/timetable_constraints.dart';
 import '../services/timetable_generator.dart';
+import '../services/toast_service.dart';
 import 'generated_timetable_card.dart';
 
 class TimetableGeneratorWidget extends StatefulWidget {
@@ -965,9 +966,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
         _isGenerating = false;
       });
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error generating timetables: $e')),
-      );
+      ToastService.showError('Error generating timetables: $e');
     }
   }
 

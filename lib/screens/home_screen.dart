@@ -12,6 +12,7 @@ import '../widgets/clash_warnings_widget.dart';
 import '../widgets/search_filter_widget.dart';
 import '../widgets/theme_selector_widget.dart';
 import '../services/page_leave_warning_service.dart';
+import '../services/toast_service.dart';
 import 'generator_screen.dart';
 import 'timetables_screen.dart';
 import 'course_guide_screen.dart';
@@ -198,9 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
         });
         _pageLeaveWarning.enableWarning(true);
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Timetable cleared successfully')),
-        );
+        ToastService.showSuccess('Timetable cleared successfully');
       } catch (e) {
         _showErrorDialog('Error clearing timetable: $e');
       }
@@ -222,13 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
       _pageLeaveWarning.enableWarning(false);
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Timetable saved successfully!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
+      ToastService.showSuccess('Timetable saved successfully!');
     } catch (e) {
       setState(() {
         _isSaving = false;
@@ -401,9 +394,7 @@ class _HomeScreenState extends State<HomeScreen> {
         
         setState(() {});
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Generated timetable applied successfully!')),
-        );
+        ToastService.showSuccess('Generated timetable applied successfully!');
       } catch (e) {
         _showErrorDialog('Error applying generated timetable: $e');
       }
@@ -885,9 +876,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
         widget.onUnsavedChangesChanged?.call(true);
         _pageLeaveWarning.enableWarning(true);
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Timetable cleared successfully')),
-        );
+        ToastService.showSuccess('Timetable cleared successfully');
       } catch (e) {
         _showErrorDialog('Error clearing timetable: $e');
       }
@@ -910,13 +899,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
       widget.onUnsavedChangesChanged?.call(false);
       _pageLeaveWarning.enableWarning(false);
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Timetable saved successfully!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
+      ToastService.showSuccess('Timetable saved successfully!');
     } catch (e) {
       setState(() {
         _isSaving = false;
@@ -1090,9 +1073,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
         setState(() {});
         await _timetableService.saveTimetable(_timetable);
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Generated timetable applied successfully!')),
-        );
+        ToastService.showSuccess('Generated timetable applied successfully!');
       } catch (e) {
         _showErrorDialog('Error applying generated timetable: $e');
       }

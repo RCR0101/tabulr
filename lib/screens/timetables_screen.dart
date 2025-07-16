@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/timetable.dart';
 import '../services/timetable_service.dart';
 import '../services/auth_service.dart';
+import '../services/toast_service.dart';
 import '../widgets/theme_selector_widget.dart';
 import 'home_screen.dart';
 import 'course_guide_screen.dart';
@@ -428,7 +429,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                       children: [
                         const SizedBox(height: 4),
                         Text(
-                          '${timetable.selectedSections.length} courses selected',
+                          '${timetable.selectedSections.map((s) => s.courseCode).toSet().length} courses selected',
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                           ),
@@ -525,18 +526,14 @@ class _TimetableEditorScreenState extends State<TimetableEditorScreen> {
         print('Timetable not found, going back');
         if (mounted) {
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Timetable not found')),
-          );
+          ToastService.showError('Timetable not found');
         }
       }
     } catch (e) {
       print('Error loading timetable: $e');
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading timetable: $e')),
-        );
+        ToastService.showError('Error loading timetable: $e');
       }
     }
   }

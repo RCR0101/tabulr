@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/course_guide_widget.dart';
 import '../services/auth_service.dart';
+import '../services/toast_service.dart';
 import '../widgets/theme_selector_widget.dart';
 
 class CourseGuideScreen extends StatefulWidget {
@@ -41,9 +42,7 @@ class _CourseGuideScreenState extends State<CourseGuideScreen> {
         await _authService.signOut();
         // Navigation will be handled by AuthWrapper
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error signing out: $e')),
-        );
+        ToastService.showError('Error signing out: $e');
       }
     }
   }
