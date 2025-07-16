@@ -15,6 +15,7 @@ import '../services/page_leave_warning_service.dart';
 import 'generator_screen.dart';
 import 'timetables_screen.dart';
 import 'course_guide_screen.dart';
+import 'discipline_electives_screen.dart';
 import '../models/timetable.dart' as timetable;
 
 class HomeScreen extends StatefulWidget {
@@ -477,6 +478,18 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
             tooltip: 'Course Guide',
+          ),
+          IconButton(
+            icon: const Icon(Icons.school),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const DisciplineElectivesScreen(),
+                ),
+              );
+            },
+            tooltip: 'Discipline Electives',
           ),
           const ThemeToggleButton(),
           if (isWideScreen) ...[
@@ -1145,6 +1158,18 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
               );
             },
             tooltip: 'Course Guide',
+          ),
+          IconButton(
+            icon: const Icon(Icons.school),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const DisciplineElectivesScreen(),
+                ),
+              );
+            },
+            tooltip: 'Discipline Electives',
           ),
           const ThemeToggleButton(),
           if (isWideScreen) ...[
