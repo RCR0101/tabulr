@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 
-class ExamDatesWidget extends StatelessWidget {
+enum SortColumn { course, midSem, endSem }
+enum SortDirection { ascending, descending }
+
+class ExamDatesWidget extends StatefulWidget {
   final List<SelectedSection> selectedSections;
   final List<Course> courses;
 
@@ -11,6 +14,14 @@ class ExamDatesWidget extends StatelessWidget {
     required this.selectedSections,
     required this.courses,
   });
+
+  @override
+  State<ExamDatesWidget> createState() => _ExamDatesWidgetState();
+}
+
+class _ExamDatesWidgetState extends State<ExamDatesWidget> {
+  SortColumn _sortColumn = SortColumn.course;
+  SortDirection _sortDirection = SortDirection.ascending;
 
   @override
   Widget build(BuildContext context) {
@@ -81,39 +92,18 @@ class ExamDatesWidget extends StatelessWidget {
                       decoration: const BoxDecoration(
                         color: Color(0xFF21262D),
                       ),
-                      children: const [
-                        Padding(
-                          padding: EdgeInsets.all(12),
-                          child: Text(
-                            'Course',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Color(0xFFF0F6FC),
-                            ),
-                          ),
+                      children: [
+                        _buildSortableHeader(
+                          'Course',
+                          SortColumn.course,
                         ),
-                        Padding(
-                          padding: EdgeInsets.all(12),
-                          child: Text(
-                            'MidSem Exam',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Color(0xFFF0F6FC),
-                            ),
-                          ),
+                        _buildSortableHeader(
+                          'MidSem Exam',
+                          SortColumn.midSem,
                         ),
-                        Padding(
-                          padding: EdgeInsets.all(12),
-                          child: Text(
-                            'EndSem Exam',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Color(0xFFF0F6FC),
-                            ),
-                          ),
+                        _buildSortableHeader(
+                          'EndSem Exam',
+                          SortColumn.endSem,
                         ),
                       ],
                     ),
@@ -229,7 +219,7 @@ class ExamDatesWidget extends StatelessWidget {
                               ),
                         ),
                       ],
-                    )).toList(),
+                    )),
                   ],
                 ),
               ),
@@ -244,12 +234,12 @@ class ExamDatesWidget extends StatelessWidget {
     final examDataList = <ExamData>[];
     final processedCourses = <String>{};
 
-    for (var selectedSection in selectedSections) {
+    for (var selectedSection in widget.selectedSections) {
       if (processedCourses.contains(selectedSection.courseCode)) {
         continue;
       }
       
-      final course = courses.where(
+      final course = widget.courses.where(
         (c) => c.courseCode == selectedSection.courseCode,
       ).firstOrNull;
       
@@ -285,8 +275,128 @@ class ExamDatesWidget extends StatelessWidget {
       ));
     }
 
-    examDataList.sort((a, b) => a.courseCode.compareTo(b.courseCode));
+    // Apply sorting
+    _sortExamData(examDataList);
     return examDataList;
+  }
+
+  Widget _buildSortableHeader(String title, SortColumn column) {
+    final isCurrentColumn = _sortColumn == column;
+    final isAscending = _sortDirection == SortDirection.ascending;
+    
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (isCurrentColumn) {
+            _sortDirection = isAscending 
+              ? SortDirection.descending 
+              : SortDirection.ascending;
+          } else {
+            _sortColumn = column;
+            _sortDirection = SortDirection.ascending;
+          }
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: Color(0xFFF0F6FC),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: isCurrentColumn 
+                  ? const Color(0xFF58A6FF).withOpacity(0.1)
+                  : Colors.transparent,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.keyboard_arrow_up,
+                    size: 20,
+                    color: isCurrentColumn && isAscending 
+                      ? const Color(0xFF58A6FF) 
+                      : const Color(0xFF8B949E),
+                  ),
+                  const SizedBox(height: 1),
+                  Icon(
+                    Icons.keyboard_arrow_down,
+                    size: 20,
+                    color: isCurrentColumn && !isAscending 
+                      ? const Color(0xFF58A6FF) 
+                      : const Color(0xFF8B949E),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _sortExamData(List<ExamData> examData) {
+    examData.sort((a, b) {
+      int compareResult;
+      
+      switch (_sortColumn) {
+        case SortColumn.course:
+          compareResult = a.courseCode.compareTo(b.courseCode);
+          break;
+        case SortColumn.midSem:
+          compareResult = _compareDates(a.midSemText, b.midSemText);
+          break;
+        case SortColumn.endSem:
+          compareResult = _compareDates(a.endSemText, b.endSemText);
+          break;
+      }
+      
+      return _sortDirection == SortDirection.ascending 
+        ? compareResult 
+        : -compareResult;
+    });
+  }
+
+  int _compareDates(String dateA, String dateB) {
+    // Handle empty dates (put them at the end)
+    if (dateA.isEmpty && dateB.isEmpty) return 0;
+    if (dateA.isEmpty) return 1;
+    if (dateB.isEmpty) return -1;
+    
+    // Parse dates in format "dd/mm"
+    try {
+      final partsA = dateA.split('/');
+      final partsB = dateB.split('/');
+      
+      if (partsA.length != 2 || partsB.length != 2) {
+        return dateA.compareTo(dateB);
+      }
+      
+      final dayA = int.parse(partsA[0]);
+      final monthA = int.parse(partsA[1]);
+      final dayB = int.parse(partsB[0]);
+      final monthB = int.parse(partsB[1]);
+      
+      // Compare month first, then day
+      if (monthA != monthB) {
+        return monthA.compareTo(monthB);
+      }
+      return dayA.compareTo(dayB);
+    } catch (e) {
+      // Fallback to string comparison if parsing fails
+      return dateA.compareTo(dateB);
+    }
   }
 }
 
