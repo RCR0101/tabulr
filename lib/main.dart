@@ -12,6 +12,7 @@ import 'screens/home_screen.dart';
 import 'screens/timetables_screen.dart';
 import 'services/auth_service.dart';
 import 'services/theme_service.dart';
+import 'services/campus_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +24,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Initialize campus service
+  await CampusService.initializeCampus();
   
   // Initialize Auth Service
   await AuthService().initialize();

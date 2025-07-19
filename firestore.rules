@@ -8,6 +8,18 @@ service cloud.firestore {
       allow write: if false; // Only admin can write via script
     }
     
+    // Allow read access to Hyderabad campus courses for everyone
+    match /hyd-courses/{document} {
+      allow read: if true;
+      allow write: if false; // Only admin can write via script
+    }
+    
+    // Allow read access to Pilani campus courses for everyone
+    match /pilani-courses/{document} {
+      allow read: if true;
+      allow write: if false; // Only admin can write via script
+    }
+    
     // Allow read access to timetable metadata for everyone
     match /timetable_metadata/{document} {
       allow read: if true;

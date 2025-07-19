@@ -13,6 +13,9 @@ import '../widgets/search_filter_widget.dart';
 import '../widgets/theme_selector_widget.dart';
 import '../services/page_leave_warning_service.dart';
 import '../services/toast_service.dart';
+import '../services/campus_service.dart';
+import '../services/course_data_service.dart';
+import '../widgets/campus_selector_widget.dart';
 import 'generator_screen.dart';
 import 'timetables_screen.dart';
 import 'course_guide_screen.dart';
@@ -458,6 +461,15 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Tabulr'),
         centerTitle: true,
         actions: [
+          CampusSelectorWidget(
+            onCampusChanged: (campus) {
+              // Clear course cache and reload timetable when campus changes
+              CourseDataService().clearCache();
+              _loadTimetable();
+              ToastService.showInfo('Switched to ${CampusService.getCampusDisplayName(campus)} campus');
+            },
+          ),
+          const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.menu_book),
             onPressed: () {

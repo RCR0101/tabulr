@@ -32,54 +32,119 @@ function runCommand(command, args, cwd = process.cwd()) {
   });
 }
 
+// Helper function to detect campus from filename
+function detectCampusFromFilename(filename) {
+  const name = filename.toLowerCase();
+  if (name.includes('hyd') || name.includes('hyderabad')) {
+    return { campus: 'hyderabad', displayName: 'Hyderabad' };
+  } else if (name.includes('pil') || name.includes('pilani')) {
+    return { campus: 'pilani', displayName: 'Pilani' };
+  }
+  return { campus: 'default', displayName: 'Default' };
+}
+
+// Helper function to find campus-specific timetable files
+function findCampusTimetables(projectRoot) {
+  const files = fs.readdirSync(projectRoot);
+  const timetableFiles = [];
+  
+  // Look for campus-specific files first
+  for (const file of files) {
+    if (file.toLowerCase().includes('timetable') && file.toLowerCase().endsWith('.pdf')) {
+      const campusInfo = detectCampusFromFilename(file);
+      timetableFiles.push({
+        path: path.join(projectRoot, file),
+        filename: file,
+        campus: campusInfo.campus,
+        displayName: campusInfo.displayName
+      });
+    }
+  }
+  
+  // If no campus-specific files found, look for generic timetable.pdf
+  if (timetableFiles.length === 0) {
+    const genericPath = path.join(projectRoot, 'timetable.pdf');
+    if (fs.existsSync(genericPath)) {
+      timetableFiles.push({
+        path: genericPath,
+        filename: 'timetable.pdf',
+        campus: 'default',
+        displayName: 'Default'
+      });
+    }
+  }
+  
+  return timetableFiles;
+}
+
+async function processTimetableFile(timetableInfo, scriptsDir) {
+  const { path: pdfPath, filename, campus, displayName } = timetableInfo;
+  
+  console.log(`\n📄 Processing ${filename} for ${displayName} campus`);
+  
+  // Step 1: Convert PDF to CSV
+  console.log(`\n=== Step 1: Converting ${filename} to CSV ===`);
+  const csvPath = path.join(scriptsDir, `output-${campus}.csv`);
+  
+  await runCommand('python', [
+    path.join(scriptsDir, 'converter.py'),
+    pdfPath,
+    csvPath
+  ]);
+  
+  if (!fs.existsSync(csvPath)) {
+    throw new Error(`CSV file was not created for ${filename}`);
+  }
+  
+  console.log(`✅ ${filename} converted to CSV successfully`);
+  
+  // Step 2: Upload CSV to Firestore
+  console.log(`\n=== Step 2: Uploading ${displayName} data to Firestore ===`);
+  
+  await runCommand('node', [
+    path.join(scriptsDir, 'upload-timetable.js'),
+    csvPath,
+    campus
+  ], scriptsDir);
+  
+  console.log(`✅ ${displayName} campus data uploaded successfully`);
+  
+  // Clean up the CSV file
+  if (fs.existsSync(csvPath)) {
+    console.log(`🧹 Cleaning up temporary CSV file for ${displayName}...`);
+    fs.unlinkSync(csvPath);
+  }
+}
+
 async function main() {
   try {
     const projectRoot = path.join(__dirname, '..');
     const scriptsDir = __dirname;
     
-    // Look for timetable.pdf in the project root
-    const pdfPath = path.join(projectRoot, 'timetable.pdf');
+    // Find all campus timetable files
+    const timetableFiles = findCampusTimetables(projectRoot);
     
-    if (!fs.existsSync(pdfPath)) {
-      console.error('❌ timetable.pdf not found in the project root');
-      console.log('Please place your timetable PDF file as "timetable.pdf" in the timetable_maker folder');
+    if (timetableFiles.length === 0) {
+      console.error('❌ No timetable PDF files found in the project root');
+      console.log('Please place your timetable PDF files in the timetable_maker folder:');
+      console.log('  - timetable-hyd.pdf (for Hyderabad campus)');
+      console.log('  - timetable-pilani.pdf (for Pilani campus)');
+      console.log('  - or timetable.pdf (for default/single campus)');
       process.exit(1);
     }
     
-    console.log('📄 Found timetable.pdf');
+    console.log(`📋 Found ${timetableFiles.length} timetable file(s):`);
+    timetableFiles.forEach(file => {
+      console.log(`  - ${file.filename} → ${file.displayName} campus`);
+    });
     
-    // Step 1: Convert PDF to CSV
-    console.log('\n=== Step 1: Converting PDF to CSV ===');
-    const csvPath = path.join(scriptsDir, 'output.csv');
-    
-    await runCommand('python', [
-      path.join(scriptsDir, 'converter.py'),
-      pdfPath,
-      csvPath
-    ]);
-    
-    if (!fs.existsSync(csvPath)) {
-      throw new Error('CSV file was not created');
+    // Process each timetable file
+    for (const timetableInfo of timetableFiles) {
+      await processTimetableFile(timetableInfo, scriptsDir);
     }
     
-    console.log('✅ PDF converted to CSV successfully');
-    
-    // Step 2: Upload CSV to Firestore
-    console.log('\n=== Step 2: Uploading to Firestore ===');
-    
-    await runCommand('node', [
-      path.join(scriptsDir, 'upload-timetable.js'),
-      csvPath
-    ], scriptsDir);
-    
-    console.log('\n🎉 Timetable processing completed successfully!');
-    console.log('📊 Your timetable data has been uploaded to Firestore');
-    
-    // Optional: Clean up the CSV file
-    if (fs.existsSync(csvPath)) {
-      console.log('🧹 Cleaning up temporary CSV file...');
-      fs.unlinkSync(csvPath);
-    }
+    console.log('\n🎉 All timetable processing completed successfully!');
+    console.log(`📊 Data for ${timetableFiles.length} campus(es) has been uploaded to Firestore`);
     
   } catch (error) {
     console.error('❌ Error processing timetable:', error.message);

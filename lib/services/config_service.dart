@@ -1,4 +1,5 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'campus_service.dart';
 
 class ConfigService {
   static final ConfigService _instance = ConfigService._internal();
@@ -11,7 +12,7 @@ class ConfigService {
 
   // Firestore Configuration
   String get firestoreTimetablesCollection => dotenv.env['FIRESTORE_TIMETABLES_COLLECTION'] ?? 'user_timetables';
-  String get coursesCollection => dotenv.env['COURSES_COLLECTION'] ?? 'courses';
+  String get coursesCollection => CampusService.currentCoursesCollection;
   String get timetableMetadataCollection => dotenv.env['TIMETABLE_METADATA_COLLECTION'] ?? 'timetable_metadata';
 
   // App Configuration
