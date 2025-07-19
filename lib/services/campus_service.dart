@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum Campus {
@@ -9,8 +10,11 @@ class CampusService {
   static const String _campusKey = 'selected_campus';
   
   static Campus _currentCampus = Campus.hyderabad;
+  static final StreamController<Campus> _campusChangeController = StreamController<Campus>.broadcast();
   
   static Campus get currentCampus => _currentCampus;
+  
+  static Stream<Campus> get campusChangeStream => _campusChangeController.stream;
   
   static String get currentCampusCode {
     switch (_currentCampus) {
@@ -50,14 +54,16 @@ class CampusService {
   
   static Future<void> initializeCampus() async {
     final prefs = await SharedPreferences.getInstance();
-    final campusIndex = prefs.getInt(_campusKey) ?? Campus.pilani.index;
+    final campusIndex = prefs.getInt(_campusKey) ?? Campus.hyderabad.index;
     _currentCampus = Campus.values[campusIndex];
+    _campusChangeController.add(_currentCampus); // Notify initial state
   }
   
   static Future<void> setCampus(Campus campus) async {
     _currentCampus = campus;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_campusKey, campus.index);
+    _campusChangeController.add(campus); // Notify listeners
   }
   
   static List<Campus> get allCampuses => Campus.values;

@@ -8,6 +8,7 @@ import 'clash_detector.dart';
 import 'auth_service.dart';
 import 'firestore_service.dart';
 import 'course_data_service.dart';
+import 'campus_service.dart';
 
 class TimetableService {
   static const String _storageKey = 'user_timetable_data';
@@ -25,10 +26,13 @@ class TimetableService {
         name: timetable.name,
         createdAt: timetable.createdAt,
         updatedAt: DateTime.now(),
+        campus: timetable.campus,
         availableCourses: timetable.availableCourses,
         selectedSections: timetable.selectedSections,
         clashWarnings: timetable.clashWarnings,
       );
+      
+      print('Saving timetable "${timetable.name}" with campus: ${CampusService.getCampusDisplayName(timetable.campus)}');
       
       // If user is authenticated, save to Firestore
       if (_authService.isAuthenticated) {
@@ -120,10 +124,17 @@ class TimetableService {
           name: 'My Timetable',
           createdAt: now,
           updatedAt: now,
+          campus: CampusService.currentCampus,
           availableCourses: [],
           selectedSections: [],
           clashWarnings: [],
         );
+      }
+      
+      // Set the campus to match the timetable's campus
+      if (CampusService.currentCampus != timetable.campus) {
+        await CampusService.setCampus(timetable.campus);
+        print('Campus automatically switched to ${CampusService.getCampusDisplayName(timetable.campus)} to match timetable');
       }
       
       // Load courses from Firestore if not already loaded
@@ -140,6 +151,7 @@ class TimetableService {
         name: 'My Timetable',
         createdAt: now,
         updatedAt: now,
+        campus: CampusService.currentCampus,
         availableCourses: [],
         selectedSections: [],
         clashWarnings: [],
@@ -509,6 +521,7 @@ class TimetableService {
       name: name,
       createdAt: now,
       updatedAt: now,
+      campus: CampusService.currentCampus,
       availableCourses: courses,
       selectedSections: [],
       clashWarnings: [],
@@ -611,6 +624,13 @@ class TimetableService {
         final timetable = await _firestoreService.getTimetableById(id);
         if (timetable != null) {
           print('Found timetable in Firestore: ${timetable.name}');
+          
+          // Set the campus to match the timetable's campus
+          if (CampusService.currentCampus != timetable.campus) {
+            await CampusService.setCampus(timetable.campus);
+            print('Campus automatically switched to ${CampusService.getCampusDisplayName(timetable.campus)} to match timetable');
+          }
+          
           return timetable;
         }
         print('Timetable not found in Firestore, checking local storage...');
@@ -635,6 +655,13 @@ class TimetableService {
         final jsonData = jsonDecode(data);
         final timetable = Timetable.fromJson(jsonData);
         print('Successfully parsed timetable: ${timetable.name}');
+        
+        // Set the campus to match the timetable's campus
+        if (CampusService.currentCampus != timetable.campus) {
+          await CampusService.setCampus(timetable.campus);
+          print('Campus automatically switched to ${CampusService.getCampusDisplayName(timetable.campus)} to match timetable');
+        }
+        
         return timetable;
       } else {
         print('No data found for key: $key');
@@ -692,6 +719,7 @@ class TimetableService {
         name: newName,
         createdAt: timetable.createdAt,
         updatedAt: DateTime.now(),
+        campus: timetable.campus,
         availableCourses: timetable.availableCourses,
         selectedSections: timetable.selectedSections,
         clashWarnings: timetable.clashWarnings,
@@ -732,6 +760,7 @@ class TimetableService {
             name: 'My Timetable',
             createdAt: now,
             updatedAt: now,
+            campus: Campus.hyderabad, // Default to hyderabad for migration
             availableCourses: (jsonData['availableCourses'] as List)
                 .map((c) => Course.fromJson(c))
                 .toList(),

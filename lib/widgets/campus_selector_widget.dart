@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/campus_service.dart';
 
@@ -14,6 +15,24 @@ class CampusSelectorWidget extends StatefulWidget {
 }
 
 class _CampusSelectorWidgetState extends State<CampusSelectorWidget> {
+  late StreamSubscription<Campus> _campusSubscription;
+  
+  @override
+  void initState() {
+    super.initState();
+    _campusSubscription = CampusService.campusChangeStream.listen((_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+  
+  @override
+  void dispose() {
+    _campusSubscription.cancel();
+    super.dispose();
+  }
+  
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<Campus>(

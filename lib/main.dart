@@ -145,17 +145,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
           return const TimetablesScreen();
         }
         
-        // If user has chosen an auth method as guest, go to simple home screen
-        if (_authService.hasChosenAuthMethod && _authService.isGuest) {
+        // If user has chosen guest mode, go to simple home screen
+        if (_authService.isGuest) {
           return const HomeScreen();
         }
         
-        // If user has chosen an auth method (authenticated), go to timetables screen
-        if (_authService.hasChosenAuthMethod) {
-          return const TimetablesScreen();
-        }
-        
-        // Otherwise, show auth screen (guest users will see this on every app start)
+        // Otherwise, show auth screen
         return const AuthScreen();
       },
     );

@@ -1,5 +1,6 @@
 import 'course.dart';
 import 'timetable.dart';
+import '../services/campus_service.dart';
 export 'course.dart';
 export 'timetable.dart' show Timetable, SelectedSection, TimetableSlot, ClashWarning, ClashType, ClashSeverity;
 
@@ -79,6 +80,7 @@ class NormalizedTimetable {
       name: name,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      campus: Campus.hyderabad, // Default to hyderabad for migration
       availableCourses: availableCourses,
       selectedSections: selectedSectionsLegacy,
       clashWarnings: clashWarnings,
