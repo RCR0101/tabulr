@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
@@ -54,11 +55,24 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hasUnsavedChanges = false;
   bool _isSaving = false;
   TimetableSize _timetableSize = TimetableSize.medium;
+  StreamSubscription<Campus>? _campusSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadTimetable();
+    
+    // Listen for campus changes
+    _campusSubscription = CampusService.campusChangeStream.listen((_) {
+      print('Campus changed, reloading timetable...');
+      _loadTimetable();
+    });
+  }
+  
+  @override
+  void dispose() {
+    _campusSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadTimetable() async {

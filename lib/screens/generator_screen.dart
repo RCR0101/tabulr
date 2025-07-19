@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../models/timetable_constraints.dart';
 import '../models/timetable.dart' as timetable;
-import '../services/timetable_service.dart';
+import '../services/course_data_service.dart';
+import '../services/campus_service.dart';
 import '../widgets/timetable_generator_widget.dart';
 
 class GeneratorScreen extends StatefulWidget {
@@ -13,21 +15,40 @@ class GeneratorScreen extends StatefulWidget {
 }
 
 class _GeneratorScreenState extends State<GeneratorScreen> {
-  final TimetableService _timetableService = TimetableService();
+  final CourseDataService _courseDataService = CourseDataService();
   List<Course> _availableCourses = [];
   bool _isLoading = true;
+  StreamSubscription<Campus>? _campusSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadCourses();
+    
+    // Listen for campus changes
+    _campusSubscription = CampusService.campusChangeStream.listen((_) {
+      print('Campus changed in generator, reloading courses...');
+      _loadCourses();
+    });
+  }
+  
+  @override
+  void dispose() {
+    _campusSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadCourses() async {
     try {
-      final timetable = await _timetableService.loadTimetable();
       setState(() {
-        _availableCourses = timetable.availableCourses;
+        _isLoading = true;
+      });
+      
+      // Load courses directly for current campus without affecting campus selection
+      final courses = await _courseDataService.fetchCourses();
+      
+      setState(() {
+        _availableCourses = courses;
         _isLoading = false;
       });
     } catch (e) {

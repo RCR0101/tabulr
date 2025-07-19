@@ -1,28 +1,40 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/course.dart';
 import 'config_service.dart';
+import 'campus_service.dart';
 
 class CourseDataService {
   static final CourseDataService _instance = CourseDataService._internal();
   factory CourseDataService() => _instance;
-  CourseDataService._internal();
+  CourseDataService._internal() {
+    // Listen for campus changes and clear cache
+    CampusService.campusChangeStream.listen((_) {
+      print('Campus changed, clearing course cache...');
+      clearCache();
+    });
+  }
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final ConfigService _config = ConfigService();
   
-  // Cache for courses to avoid repeated fetches
+  // Campus-aware cache for courses
   List<Course>? _cachedCourses;
   DateTime? _lastFetchTime;
+  Campus? _cachedCampus;
   static const Duration _cacheTimeout = Duration(hours: 24);
 
   /// Fetch all courses from Firestore
   Future<List<Course>> fetchCourses() async {
     try {
-      // Check cache first
+      final currentCampus = CampusService.currentCampus;
+      
+      // Check cache first - must match current campus and be within timeout
       if (_cachedCourses != null && 
           _lastFetchTime != null && 
+          _cachedCampus == currentCampus &&
           DateTime.now().difference(_lastFetchTime!) < _cacheTimeout) {
-        print('Using cached courses (${_cachedCourses!.length} courses)');
+        print('Using cached courses for ${CampusService.getCampusDisplayName(currentCampus)} (${_cachedCourses!.length} courses)');
         return _cachedCourses!;
       }
 
@@ -57,9 +69,10 @@ class CourseDataService {
 
       print('Successfully parsed ${courses.length} courses from Firestore');
       
-      // Update cache
+      // Update cache with current campus
       _cachedCourses = courses;
       _lastFetchTime = DateTime.now();
+      _cachedCampus = currentCampus;
       
       return courses;
     } catch (e) {
@@ -112,6 +125,7 @@ class CourseDataService {
   void clearCache() {
     _cachedCourses = null;
     _lastFetchTime = null;
+    _cachedCampus = null;
   }
 
   /// Get cached courses if available

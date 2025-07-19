@@ -38,8 +38,6 @@ function getCampusCollection(campus) {
   const campusMap = {
     'hyderabad': 'hyd-courses',
     'hyd': 'hyd-courses',
-    'pilani': 'pilani-courses',
-    'pil': 'pilani-courses',
     'default': 'courses'
   };
   
@@ -52,8 +50,6 @@ function getCampusName(campus) {
   const campusMap = {
     'hyderabad': 'Hyderabad',
     'hyd': 'Hyderabad',
-    'pilani': 'Pilani',
-    'pil': 'Pilani',
     'default': 'Default'
   };
   

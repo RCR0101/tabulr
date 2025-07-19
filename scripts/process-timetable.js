@@ -82,12 +82,27 @@ async function processTimetableFile(timetableInfo, scriptsDir) {
   
   console.log(`\n📄 Processing ${filename} for ${displayName} campus`);
   
+  // Determine converter and upload script based on campus
+  let converterScript, uploadScript, csvFileName;
+  
+  if (campus === 'hyderabad' || campus === 'default') {
+    converterScript = 'converter.py';
+    uploadScript = 'upload-timetable.js';
+    csvFileName = `output-${campus}.csv`;
+  } else if (campus === 'pilani') {
+    converterScript = 'pilani_conv.py';
+    uploadScript = 'upload-timetable-pilani.js';
+    csvFileName = 'pilani_courses.csv'; // Expected by the Pilani upload script
+  } else {
+    throw new Error(`Unknown campus: ${campus}`);
+  }
+  
   // Step 1: Convert PDF to CSV
-  console.log(`\n=== Step 1: Converting ${filename} to CSV ===`);
-  const csvPath = path.join(scriptsDir, `output-${campus}.csv`);
+  console.log(`\n=== Step 1: Converting ${filename} to CSV using ${converterScript} ===`);
+  const csvPath = path.join(scriptsDir, csvFileName);
   
   await runCommand('python', [
-    path.join(scriptsDir, 'converter.py'),
+    path.join(scriptsDir, converterScript),
     pdfPath,
     csvPath
   ]);
@@ -99,13 +114,21 @@ async function processTimetableFile(timetableInfo, scriptsDir) {
   console.log(`✅ ${filename} converted to CSV successfully`);
   
   // Step 2: Upload CSV to Firestore
-  console.log(`\n=== Step 2: Uploading ${displayName} data to Firestore ===`);
+  console.log(`\n=== Step 2: Uploading ${displayName} data to Firestore using ${uploadScript} ===`);
   
-  await runCommand('node', [
-    path.join(scriptsDir, 'upload-timetable.js'),
-    csvPath,
-    campus
-  ], scriptsDir);
+  if (campus === 'pilani') {
+    // Pilani upload script doesn't need extra parameters
+    await runCommand('node', [
+      path.join(scriptsDir, uploadScript)
+    ], scriptsDir);
+  } else {
+    // Hyderabad upload script needs CSV path and campus parameter
+    await runCommand('node', [
+      path.join(scriptsDir, uploadScript),
+      csvPath,
+      campus
+    ], scriptsDir);
+  }
   
   console.log(`✅ ${displayName} campus data uploaded successfully`);
   
