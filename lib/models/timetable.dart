@@ -1,10 +1,12 @@
 import 'course.dart';
+import '../services/campus_service.dart';
 
 class Timetable {
   final String id;
   final String name;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final Campus campus;
   final List<Course> availableCourses;
   final List<SelectedSection> selectedSections;
   final List<ClashWarning> clashWarnings;
@@ -14,6 +16,7 @@ class Timetable {
     required this.name,
     required this.createdAt,
     required this.updatedAt,
+    required this.campus,
     required this.availableCourses,
     required this.selectedSections,
     required this.clashWarnings,
@@ -25,6 +28,7 @@ class Timetable {
       'name': name,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'campus': CampusService.getCampusCode(campus),
       'availableCourses': availableCourses.map((c) => c.toJson()).toList(),
       'selectedSections': selectedSections.map((s) => s.toJson()).toList(),
       'clashWarnings': clashWarnings.map((w) => w.toJson()).toList(),
@@ -32,6 +36,17 @@ class Timetable {
   }
 
   factory Timetable.fromJson(Map<String, dynamic> json) {
+    // Parse campus, defaulting to hyderabad if not specified
+    Campus parsedCampus = Campus.hyderabad;
+    if (json['campus'] != null) {
+      final campusCode = json['campus'] as String;
+      if (campusCode == 'pilani') {
+        parsedCampus = Campus.pilani;
+      } else if (campusCode == 'hyderabad') {
+        parsedCampus = Campus.hyderabad;
+      }
+    }
+    
     return Timetable(
       id: json['id'] ?? '',
       name: json['name'] ?? 'Untitled Timetable',
@@ -41,6 +56,7 @@ class Timetable {
       updatedAt: json['updatedAt'] != null 
           ? DateTime.parse(json['updatedAt']) 
           : DateTime.now(),
+      campus: parsedCampus,
       availableCourses: (json['availableCourses'] as List)
           .map((c) => Course.fromJson(c))
           .toList(),

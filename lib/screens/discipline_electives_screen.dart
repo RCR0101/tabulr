@@ -1,8 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/discipline_electives_service.dart';
-import '../services/timetable_service.dart';
+import '../services/course_data_service.dart';
+import '../services/campus_service.dart';
 import '../models/course.dart';
-import '../models/timetable.dart';
 import '../widgets/course_list_widget.dart';
 
 class DisciplineElectivesScreen extends StatefulWidget {
@@ -14,7 +15,7 @@ class DisciplineElectivesScreen extends StatefulWidget {
 
 class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
   final DisciplineElectivesService _disciplineElectivesService = DisciplineElectivesService();
-  final TimetableService _timetableService = TimetableService();
+  final CourseDataService _courseDataService = CourseDataService();
   
   List<BranchInfo> _availableBranches = [];
   List<DisciplineElective> _disciplineElectives = [];
@@ -26,11 +27,24 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
   bool _isLoading = true;
   bool _isSearching = false;
   String _errorMessage = '';
+  StreamSubscription<Campus>? _campusSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadInitialData();
+    
+    // Listen for campus changes
+    _campusSubscription = CampusService.campusChangeStream.listen((_) {
+      print('Campus changed, reloading disciplinary electives data...');
+      _loadInitialData();
+    });
+  }
+  
+  @override
+  void dispose() {
+    _campusSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadInitialData() async {
@@ -46,14 +60,14 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
           .timeout(Duration(seconds: 15));
       print('Loaded ${branches.length} branches: ${branches.map((b) => b.name).join(', ')}');
       
-      // Load timetable
-      print('Loading timetable...');
-      final timetable = await _timetableService.loadTimetable();
-      print('Loaded timetable with ${timetable.availableCourses.length} courses and ${timetable.selectedSections.length} selected sections');
+      // Load courses for current campus
+      print('Loading courses for current campus...');
+      final courses = await _courseDataService.fetchCourses();
+      print('Loaded ${courses.length} courses for ${CampusService.getCampusDisplayName(CampusService.currentCampus)} campus');
       
       setState(() {
         _availableBranches = branches;
-        _availableCourses = timetable.availableCourses;
+        _availableCourses = courses;
         _isLoading = false;
       });
     } catch (e) {

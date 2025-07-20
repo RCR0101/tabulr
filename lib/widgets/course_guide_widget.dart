@@ -159,7 +159,7 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Course Guide',
+                      'Course Guide (for BPHC)',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.bold,

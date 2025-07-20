@@ -33,6 +33,30 @@ initializeApp({
 
 const db = getFirestore();
 
+// Helper function to get campus-specific collection name
+function getCampusCollection(campus) {
+  const campusMap = {
+    'hyderabad': 'hyd-courses',
+    'hyd': 'hyd-courses',
+    'default': 'courses'
+  };
+  
+  const campusKey = campus.toString().toLowerCase();
+  return campusMap[campusKey] || 'courses'; // fallback to original collection
+}
+
+// Helper function to get campus name for display
+function getCampusName(campus) {
+  const campusMap = {
+    'hyderabad': 'Hyderabad',
+    'hyd': 'Hyderabad',
+    'default': 'Default'
+  };
+  
+  const campusKey = campus.toString().toLowerCase();
+  return campusMap[campusKey] || 'Default Campus';
+}
+
 // Parser functions (copied from Flutter app)
 class XlsxParser {
   static parseXlsxFile(filePath) {
@@ -472,7 +496,7 @@ class XlsxParser {
   }
 }
 
-async function uploadTimetableData(filePath) {
+async function uploadTimetableData(filePath, campus) {
   try {
     const fileExtension = path.extname(filePath).toLowerCase();
     let courses;
@@ -487,11 +511,15 @@ async function uploadTimetableData(filePath) {
       throw new Error('Unsupported file format. Please use .csv or .xlsx files.');
     }
     
-    console.log(`✅ Parsed ${courses.length} courses`);
+    console.log(`✅ Parsed ${courses.length} courses for ${campus}`);
+    
+    // Determine collection name based on campus
+    const collectionName = getCampusCollection(campus);
+    console.log(`📚 Using collection: ${collectionName}`);
     
     // Clear existing data
-    console.log('🔄 Clearing existing course data...');
-    const coursesRef = db.collection(process.env.COURSES_COLLECTION || 'courses');
+    console.log(`🔄 Clearing existing course data for ${campus}...`);
+    const coursesRef = db.collection(collectionName);
     const snapshot = await coursesRef.get();
     
     const batch = db.batch();
@@ -522,16 +550,20 @@ async function uploadTimetableData(filePath) {
     }
     
     // Update metadata
-    console.log('🔄 Updating metadata...');
-    const metadataRef = db.collection(process.env.TIMETABLE_METADATA_COLLECTION || 'timetable_metadata').doc('current');
+    console.log(`🔄 Updating metadata for ${getCampusName(campus)}...`);
+    const metadataCollectionName = process.env.TIMETABLE_METADATA_COLLECTION || 'timetable_metadata';
+    const metadataDocName = campus === 'default' ? 'current' : `current-${campus}`;
+    const metadataRef = db.collection(metadataCollectionName).doc(metadataDocName);
     await metadataRef.set({
       lastUpdated: new Date().toISOString(),
       totalCourses: courses.length,
       uploadedAt: new Date().toISOString(),
-      version: Date.now().toString()
+      version: Date.now().toString(),
+      campus: getCampusName(campus),
+      campusCode: campus
     });
     
-    console.log('🎉 Upload completed successfully!');
+    console.log(`🎉 Upload completed successfully for ${getCampusName(campus)}!`);
     console.log(`📊 Total courses uploaded: ${courses.length}`);
     
   } catch (error) {
@@ -543,6 +575,7 @@ async function uploadTimetableData(filePath) {
 // Main execution
 async function main() {
   let filePath = process.argv[2];
+  let campus = process.argv[3] || 'default';
   
   // If no path provided, look for default files in parent directory
   if (!filePath) {
@@ -557,7 +590,8 @@ async function main() {
       console.log(`📂 Using default XLSX file: ${path.basename(defaultXlsxPath)}`);
     } else {
       console.error('❌ Please provide the path to a CSV or XLSX file');
-      console.log('Usage: npm run upload [path-to-file]');
+      console.log('Usage: npm run upload [path-to-file] [campus]');
+      console.log('Campus options: hyderabad, pilani, default');
       console.log('Or place "output.csv" or "DRAFT TIMETABLE I SEM 2025 -26.xlsx" in the project root');
       process.exit(1);
     }
@@ -568,7 +602,8 @@ async function main() {
     process.exit(1);
   }
   
-  await uploadTimetableData(filePath);
+  console.log(`🏫 Processing for ${getCampusName(campus)} campus`);
+  await uploadTimetableData(filePath, campus);
 }
 
 main().catch(console.error);

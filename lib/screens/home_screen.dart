@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
@@ -13,6 +14,9 @@ import '../widgets/search_filter_widget.dart';
 import '../widgets/theme_selector_widget.dart';
 import '../services/page_leave_warning_service.dart';
 import '../services/toast_service.dart';
+import '../services/campus_service.dart';
+import '../services/course_data_service.dart';
+import '../widgets/campus_selector_widget.dart';
 import 'generator_screen.dart';
 import 'timetables_screen.dart';
 import 'course_guide_screen.dart';
@@ -51,11 +55,24 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hasUnsavedChanges = false;
   bool _isSaving = false;
   TimetableSize _timetableSize = TimetableSize.medium;
+  StreamSubscription<Campus>? _campusSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadTimetable();
+    
+    // Listen for campus changes
+    _campusSubscription = CampusService.campusChangeStream.listen((_) {
+      print('Campus changed, reloading timetable...');
+      _loadTimetable();
+    });
+  }
+  
+  @override
+  void dispose() {
+    _campusSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadTimetable() async {
@@ -458,6 +475,15 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Tabulr'),
         centerTitle: true,
         actions: [
+          CampusSelectorWidget(
+            onCampusChanged: (campus) {
+              // Clear course cache and reload timetable when campus changes
+              CourseDataService().clearCache();
+              _loadTimetable();
+              ToastService.showInfo('Switched to ${CampusService.getCampusDisplayName(campus)} campus');
+            },
+          ),
+          const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.menu_book),
             onPressed: () {
@@ -1128,6 +1154,38 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
         title: Text(_timetable.name),
         centerTitle: true,
         actions: [
+          CampusSelectorWidget(
+            onCampusChanged: (campus) async {
+              // Clear course cache when campus changes
+              CourseDataService().clearCache();
+              // Reload courses and clear timetable for the new campus
+              try {
+                final courseDataService = CourseDataService();
+                final newCourses = await courseDataService.fetchCourses();
+                setState(() {
+                  // Create a new timetable with updated courses and cleared selections
+                  _timetable = Timetable(
+                    id: _timetable.id,
+                    name: _timetable.name,
+                    createdAt: _timetable.createdAt,
+                    updatedAt: DateTime.now(),
+                    campus: campus,
+                    availableCourses: newCourses,
+                    selectedSections: [], // Clear selected sections
+                    clashWarnings: [], // Clear clash warnings
+                  );
+                  _filteredCourses = newCourses;
+                  _hasUnsavedChanges = true; // Mark as unsaved since we cleared selections
+                });
+                widget.onUnsavedChangesChanged?.call(true);
+                _pageLeaveWarning.enableWarning(true);
+                ToastService.showInfo('Switched to ${CampusService.getCampusDisplayName(campus)} campus. Timetable cleared.');
+              } catch (e) {
+                ToastService.showError('Error switching campus: $e');
+              }
+            },
+          ),
+          const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.menu_book),
             onPressed: () {

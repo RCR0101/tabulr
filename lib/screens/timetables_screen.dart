@@ -3,7 +3,10 @@ import '../models/timetable.dart';
 import '../services/timetable_service.dart';
 import '../services/auth_service.dart';
 import '../services/toast_service.dart';
+import '../services/campus_service.dart';
+import '../services/course_data_service.dart';
 import '../widgets/theme_selector_widget.dart';
+import '../widgets/campus_selector_widget.dart';
 import 'home_screen.dart';
 import 'course_guide_screen.dart';
 
@@ -126,6 +129,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
               name: newName,
               createdAt: timetable.createdAt,
               updatedAt: DateTime.now(),
+              campus: timetable.campus,
               availableCourses: timetable.availableCourses,
               selectedSections: timetable.selectedSections,
               clashWarnings: timetable.clashWarnings,
@@ -259,6 +263,14 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
         title: const Text('My Timetables'),
         centerTitle: true,
         actions: [
+          CampusSelectorWidget(
+            onCampusChanged: (campus) {
+              // Clear course cache when campus changes
+              CourseDataService().clearCache();
+              ToastService.showInfo('Switched to ${CampusService.getCampusDisplayName(campus)} campus');
+            },
+          ),
+          const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.menu_book),
             onPressed: () {
