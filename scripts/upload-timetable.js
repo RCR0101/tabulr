@@ -84,6 +84,7 @@ class XlsxParser {
     }
     
     let currentRow = 2; // Skip header rows
+    let lastCompCode = null; // Track the last comp code we saw
     
     while (currentRow < data.length) {
       const row = data[currentRow];
@@ -94,9 +95,17 @@ class XlsxParser {
       }
       
       const compCode = this.getCellValue(row, 0);
+      const courseNo = this.getCellValue(row, 1);
       
+      // Update the last comp code if we see a new one
       if (compCode && compCode.toString().trim() !== '') {
-        const courseResult = this.parseCourseGroup(data, currentRow);
+        lastCompCode = compCode.toString().trim();
+      }
+      
+      // Start a new course if we have a comp code OR if we have a course number (same comp code, different course)
+      if ((compCode && compCode.toString().trim() !== '') || 
+          (courseNo && courseNo.toString().trim() !== '')) {
+        const courseResult = this.parseCourseGroup(data, currentRow, lastCompCode);
         if (courseResult) {
           courses.push(courseResult.course);
           currentRow = courseResult.nextRow;
@@ -134,6 +143,7 @@ class XlsxParser {
     }
     
     let currentRow = 1; // Skip header row with column numbers
+    let lastCompCode = null; // Track the last comp code we saw
     
     while (currentRow < data.length) {
       const row = data[currentRow];
@@ -144,9 +154,17 @@ class XlsxParser {
       }
       
       const compCode = this.getCellValue(row, 0);
+      const courseNo = this.getCellValue(row, 1);
       
+      // Update the last comp code if we see a new one
       if (compCode && compCode.toString().trim() !== '') {
-        const courseResult = this.parseCourseGroup(data, currentRow);
+        lastCompCode = compCode.toString().trim();
+      }
+      
+      // Start a new course if we have a comp code OR if we have a course number (same comp code, different course)
+      if ((compCode && compCode.toString().trim() !== '') || 
+          (courseNo && courseNo.toString().trim() !== '')) {
+        const courseResult = this.parseCourseGroup(data, currentRow, lastCompCode);
         if (courseResult) {
           courses.push(courseResult.course);
           currentRow = courseResult.nextRow;
@@ -161,15 +179,20 @@ class XlsxParser {
     return courses;
   }
   
-  static parseCourseGroup(data, startRow) {
+  static parseCourseGroup(data, startRow, inheritedCompCode = null) {
     const mainRow = data[startRow];
     
-    const compCode = this.getCellValue(mainRow, 0);
+    let compCode = this.getCellValue(mainRow, 0);
     const courseNo = this.getCellValue(mainRow, 1);
     const courseTitle = this.getCellValue(mainRow, 2);
     const lectureCredits = this.getNumericValue(mainRow, 3);
     const practicalCredits = this.getNumericValue(mainRow, 4);
     const totalCredits = this.getNumericValue(mainRow, 5);
+    
+    // Use inherited comp code if current row doesn't have one
+    if ((!compCode || compCode.toString().trim() === '') && inheritedCompCode) {
+      compCode = inheritedCompCode;
+    }
     
     if (!compCode || !courseNo || !courseTitle) {
       return null;
@@ -191,8 +214,16 @@ class XlsxParser {
         }
       } else {
         const nextCompCode = this.getCellValue(row, 0);
+        const nextCourseNo = this.getCellValue(row, 1);
         
+        // Stop if we encounter a new comp code OR a new course number
         if (nextCompCode && nextCompCode.toString().trim() !== '') {
+          break;
+        }
+        
+        // Also stop if we encounter a new course number (different course with same comp code)
+        if (nextCourseNo && nextCourseNo.toString().trim() !== '' && 
+            nextCourseNo.toString() !== courseNo.toString()) {
           break;
         }
         

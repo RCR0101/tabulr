@@ -51,3 +51,5 @@ lib/firebase_options.dart
 
 
 scripts/*.json
+output.csv
+coursewise_timetable.csv

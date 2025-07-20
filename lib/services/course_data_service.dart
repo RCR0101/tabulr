@@ -22,6 +22,7 @@ class CourseDataService {
   List<Course>? _cachedCourses;
   DateTime? _lastFetchTime;
   Campus? _cachedCampus;
+  String? _cachedVersion; // Track the version of cached data
   static const Duration _cacheTimeout = Duration(hours: 24);
 
   /// Fetch all courses from Firestore
@@ -29,14 +30,21 @@ class CourseDataService {
     try {
       final currentCampus = CampusService.currentCampus;
       
-      // Check cache first - must match current campus and be within timeout
-      if (_cachedCourses != null && 
-          _lastFetchTime != null && 
-          _cachedCampus == currentCampus &&
-          DateTime.now().difference(_lastFetchTime!) < _cacheTimeout) {
-        print('Using cached courses for ${CampusService.getCampusDisplayName(currentCampus)} (${_cachedCourses!.length} courses)');
+      // Check if cache is valid by comparing version with database
+      final cacheValid = await _isCacheValid(currentCampus);
+      
+      print('🔍 Cache validation result: $cacheValid');
+      print('🔍 Cached courses count: ${_cachedCourses?.length ?? 0}');
+      print('🔍 Cached campus: $_cachedCampus');
+      print('🔍 Current campus: $currentCampus');
+      print('🔍 Cached version: $_cachedVersion');
+      
+      if (cacheValid && _cachedCourses != null) {
+        print('✅ Using cached courses for ${CampusService.getCampusDisplayName(currentCampus)} (${_cachedCourses!.length} courses)');
         return _cachedCourses!;
       }
+      
+      print('❌ Cache invalid, fetching fresh data from Firestore...');
 
       print('🔥 FIRESTORE READ: Fetching courses from Firestore...');
       print('Collection: ${_config.coursesCollection}');
@@ -69,10 +77,15 @@ class CourseDataService {
 
       print('Successfully parsed ${courses.length} courses from Firestore');
       
-      // Update cache with current campus
+      // Get the current version to cache alongside the courses
+      final metadata = await _getCurrentMetadata(currentCampus);
+      final currentVersion = metadata?['version'] as String?;
+      
+      // Update cache with current campus and version
       _cachedCourses = courses;
       _lastFetchTime = DateTime.now();
       _cachedCampus = currentCampus;
+      _cachedVersion = currentVersion;
       
       return courses;
     } catch (e) {
@@ -92,18 +105,11 @@ class CourseDataService {
     }
   }
 
-  /// Get metadata about the timetable data
+  /// Get metadata about the timetable data for current campus
   Future<Map<String, dynamic>?> getMetadata() async {
     try {
-      final DocumentSnapshot doc = await _firestore
-          .collection(_config.timetableMetadataCollection)
-          .doc('current')
-          .get();
-
-      if (doc.exists) {
-        return doc.data() as Map<String, dynamic>;
-      }
-      return null;
+      final currentCampus = CampusService.currentCampus;
+      return await _getCurrentMetadata(currentCampus);
     } catch (e) {
       print('Error fetching metadata: $e');
       return null;
@@ -121,11 +127,103 @@ class CourseDataService {
     }
   }
 
+  /// Check if the current cache is valid by comparing versions
+  Future<bool> _isCacheValid(Campus currentCampus) async {
+    try {
+      print('🔍 _isCacheValid: Starting validation...');
+      print('🔍 _cachedCourses: ${_cachedCourses != null ? "exists (${_cachedCourses!.length})" : "null"}');
+      print('🔍 _cachedCampus: $_cachedCampus vs currentCampus: $currentCampus');
+      print('🔍 _lastFetchTime: $_lastFetchTime');
+      
+      // Basic checks: cache exists, campus matches, and not too old (fallback)
+      if (_cachedCourses == null) {
+        print('🔍 Cache invalid: no cached courses');
+        return false;
+      }
+      
+      if (_cachedCampus != currentCampus) {
+        print('🔍 Cache invalid: campus mismatch');
+        return false;
+      }
+      
+      if (_lastFetchTime == null) {
+        print('🔍 Cache invalid: no fetch time');
+        return false;
+      }
+      
+      if (DateTime.now().difference(_lastFetchTime!) > _cacheTimeout) {
+        print('🔍 Cache invalid: timeout exceeded');
+        return false;
+      }
+      
+      print('🔍 Basic cache checks passed, checking version...');
+      
+      // Version check: compare cached version with current database version
+      final metadata = await _getCurrentMetadata(currentCampus);
+      print('🔍 Retrieved metadata: $metadata');
+      
+      final currentVersion = metadata?['version'] as String?;
+      print('🔍 Current DB version: $currentVersion');
+      print('🔍 Cached version: $_cachedVersion');
+      
+      // If we can't get the current version, fall back to time-based cache
+      if (currentVersion == null) {
+        print('🔍 No current version found, using time-based cache');
+        return DateTime.now().difference(_lastFetchTime!) < _cacheTimeout;
+      }
+      
+      // Cache is valid if versions match
+      final versionsMatch = _cachedVersion != null && _cachedVersion == currentVersion;
+      
+      if (!versionsMatch) {
+        print('📦 Cache invalidated: version mismatch (cached: $_cachedVersion, current: $currentVersion)');
+      } else {
+        print('✅ Cache valid: versions match');
+      }
+      
+      return versionsMatch;
+    } catch (e) {
+      print('Error checking cache validity: $e');
+      // On error, fall back to time-based cache validation
+      return _lastFetchTime != null && 
+             DateTime.now().difference(_lastFetchTime!) < _cacheTimeout;
+    }
+  }
+  
+  /// Get metadata for the current campus
+  Future<Map<String, dynamic>?> _getCurrentMetadata(Campus campus) async {
+    try {
+      String docName;
+      switch (campus) {
+        case Campus.hyderabad:
+          docName = 'current-hyderabad';
+          break;
+        case Campus.pilani:
+          docName = 'current-pilani';
+          break;
+      }
+      
+      final DocumentSnapshot doc = await _firestore
+          .collection(_config.timetableMetadataCollection)
+          .doc(docName)
+          .get();
+
+      if (doc.exists) {
+        return doc.data() as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching current metadata: $e');
+      return null;
+    }
+  }
+
   /// Clear the cache (useful for testing or forcing refresh)
   void clearCache() {
     _cachedCourses = null;
     _lastFetchTime = null;
     _cachedCampus = null;
+    _cachedVersion = null;
   }
 
   /// Get cached courses if available

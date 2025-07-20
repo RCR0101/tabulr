@@ -137,10 +137,8 @@ class TimetableService {
         print('Campus automatically switched to ${CampusService.getCampusDisplayName(timetable.campus)} to match timetable');
       }
       
-      // Load courses from Firestore if not already loaded
-      if (timetable.availableCourses.isEmpty) {
-        await _loadCoursesFromFirestore(timetable);
-      }
+      // Always check for updated courses from Firestore
+      await _loadCoursesFromFirestore(timetable);
       
       return timetable;
     } catch (e) {
@@ -631,6 +629,9 @@ class TimetableService {
             print('Campus automatically switched to ${CampusService.getCampusDisplayName(timetable.campus)} to match timetable');
           }
           
+          // Always check for updated courses from Firestore
+          await _loadCoursesFromFirestore(timetable);
+          
           return timetable;
         }
         print('Timetable not found in Firestore, checking local storage...');
@@ -661,6 +662,9 @@ class TimetableService {
           await CampusService.setCampus(timetable.campus);
           print('Campus automatically switched to ${CampusService.getCampusDisplayName(timetable.campus)} to match timetable');
         }
+        
+        // Always check for updated courses from Firestore
+        await _loadCoursesFromFirestore(timetable);
         
         return timetable;
       } else {
