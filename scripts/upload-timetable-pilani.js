@@ -265,13 +265,34 @@ class PilaniCsvParser {
       // Check if it's a time slot (number)
       else if (/^\d+$/.test(part)) {
         const hour = parseInt(part);
-        if (currentDays.length > 0) {
-          // Add this time slot for all current days
+        if (hour >= 1 && hour <= 12 && currentDays.length > 0) {
+          // Look ahead to collect all consecutive hours
+          const hours = [hour];
+          
+          // Collect consecutive hours
+          for (let j = i + 1; j < parts.length; j++) {
+            const nextPart = parts[j];
+            if (/^\d+$/.test(nextPart)) {
+              const nextHour = parseInt(nextPart);
+              if (nextHour >= 1 && nextHour <= 12) {
+                hours.push(nextHour);
+                i = j; // Skip these parts in main loop
+              } else {
+                break;
+              }
+            } else {
+              break; // Stop at non-hour part
+            }
+          }
+          
+          // Create schedule entry for current days with all collected hours
           schedule.push({
             days: [...currentDays],
-            hours: [hour],
+            hours: hours,
           });
-          currentDays = []; // Reset for next group
+          
+          // Reset days for next group
+          currentDays = [];
         }
       }
     }
