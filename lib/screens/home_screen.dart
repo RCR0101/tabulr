@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:html' as html;
 import '../models/course.dart';
 import '../models/timetable.dart';
 import '../services/timetable_service.dart';
@@ -418,6 +420,23 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _openGitHub() async {
+    // Replace with your GitHub repository URL
+    const String githubUrl = 'https://github.com/RCR0101/timetable_maker';
+    
+    try {
+      // For web, open in new tab
+      if (kIsWeb) {
+        html.window.open(githubUrl, '_blank');
+      } else {
+        // For mobile, you'd need url_launcher package
+        print('Open GitHub: $githubUrl');
+      }
+    } catch (e) {
+      print('Error opening GitHub: $e');
+    }
+  }
+
   Future<void> _logout() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -579,6 +598,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
               icon: const Icon(Icons.more_vert),
             ),
+          IconButton(
+            icon: const Icon(Icons.star_border),
+            onPressed: () => _openGitHub(),
+            tooltip: 'Star on GitHub',
+          ),
           // User info and logout
           if (_authService.isAuthenticated)
             PopupMenuButton<String>(
@@ -1167,6 +1191,23 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
     }
   }
 
+  Future<void> _openGitHub() async {
+    // Replace with your GitHub repository URL
+    const String githubUrl = 'https://github.com/RCR0101/timetable_maker';
+    
+    try {
+      // For web, open in new tab
+      if (kIsWeb) {
+        html.window.open(githubUrl, '_blank');
+      } else {
+        // For mobile, you'd need url_launcher package
+        print('Open GitHub: $githubUrl');
+      }
+    } catch (e) {
+      print('Error opening GitHub: $e');
+    }
+  }
+
   Future<void> _logout() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1315,6 +1356,11 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
               ],
               icon: const Icon(Icons.more_vert),
             ),
+          IconButton(
+            icon: const Icon(Icons.star_border),
+            onPressed: () => _openGitHub(),
+            tooltip: 'Star on GitHub',
+          ),
           // User info and logout
           if (_authService.isAuthenticated)
             PopupMenuButton<String>(

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:html' as html;
 import '../models/timetable.dart';
 import '../services/timetable_service.dart';
 import '../services/auth_service.dart';
@@ -63,29 +65,30 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     final controller = TextEditingController();
     return showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create New Timetable'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'Timetable Name',
-            hintText: 'Enter a name for your timetable',
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Create New Timetable'),
+            content: TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Timetable Name',
+                hintText: 'Enter a name for your timetable',
+              ),
+              autofocus: true,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context, controller.text.trim());
+                },
+                child: const Text('Create'),
+              ),
+            ],
           ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context, controller.text.trim());
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -93,28 +96,27 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     final controller = TextEditingController(text: timetable.name);
     final newName = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Rename Timetable'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'Timetable Name',
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Rename Timetable'),
+            content: TextField(
+              controller: controller,
+              decoration: const InputDecoration(labelText: 'Timetable Name'),
+              autofocus: true,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context, controller.text.trim());
+                },
+                child: const Text('Rename'),
+              ),
+            ],
           ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context, controller.text.trim());
-            },
-            child: const Text('Rename'),
-          ),
-        ],
-      ),
     );
 
     if (newName != null && newName.isNotEmpty && newName != timetable.name) {
@@ -150,24 +152,27 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Timetable'),
-        content: Text('Are you sure you want to delete "${timetable.name}"? This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Delete Timetable'),
+            content: Text(
+              'Are you sure you want to delete "${timetable.name}"? This action cannot be undone.',
             ),
-            child: const Text('Delete'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Delete'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
 
     if (confirmed == true) {
@@ -200,16 +205,17 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Error'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Error'),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -217,27 +223,46 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     return '${date.day}/${date.month}/${date.year}';
   }
 
+  Future<void> _openGitHub() async {
+    // Replace with your GitHub repository URL
+    const String githubUrl = 'https://github.com/RCR0101/timetable_maker';
+
+    try {
+      // For web, open in new tab
+      if (kIsWeb) {
+        html.window.open(githubUrl, '_blank');
+      } else {
+        // For mobile, you'd need url_launcher package
+        // await launchUrl(Uri.parse(githubUrl));
+        print('Open GitHub: $githubUrl');
+      }
+    } catch (e) {
+      print('Error opening GitHub: $e');
+    }
+  }
+
   Future<void> _logout() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Sign Out'),
+            content: const Text('Are you sure you want to sign out?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Sign Out'),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
     );
 
     if (confirmed == true) {
@@ -253,9 +278,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -282,7 +305,9 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
             onCampusChanged: (campus) {
               // Clear course cache when campus changes
               CourseDataService().clearCache();
-              ToastService.showInfo('Switched to ${CampusService.getCampusDisplayName(campus)} campus');
+              ToastService.showInfo(
+                'Switched to ${CampusService.getCampusDisplayName(campus)} campus',
+              );
             },
           ),
           const SizedBox(width: 8),
@@ -299,6 +324,11 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
             tooltip: 'Course Guide',
           ),
           const ThemeToggleButton(),
+          IconButton(
+            icon: const Icon(Icons.star_border),
+            onPressed: () => _openGitHub(),
+            tooltip: 'Star on GitHub',
+          ),
           // User info and logout
           if (_authService.isAuthenticated)
             PopupMenuButton<String>(
@@ -307,36 +337,38 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                   _logout();
                 }
               },
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  enabled: false,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _authService.userName ?? 'User',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+              itemBuilder:
+                  (context) => [
+                    PopupMenuItem(
+                      enabled: false,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _authService.userName ?? 'User',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            _authService.userEmail ?? '',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color:
+                                  Theme.of(context).textTheme.bodySmall?.color,
+                            ),
+                          ),
+                          const Divider(),
+                        ],
                       ),
-                      Text(
-                        _authService.userEmail ?? '',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).textTheme.bodySmall?.color,
-                        ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'logout',
+                      child: ListTile(
+                        leading: Icon(Icons.logout),
+                        title: Text('Sign Out'),
+                        contentPadding: EdgeInsets.zero,
                       ),
-                      const Divider(),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'logout',
-                  child: ListTile(
-                    leading: Icon(Icons.logout),
-                    title: Text('Sign Out'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ],
+                    ),
+                  ],
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Row(
@@ -344,12 +376,14 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                   children: [
                     CircleAvatar(
                       radius: 16,
-                      backgroundImage: _authService.userPhotoUrl != null
-                          ? NetworkImage(_authService.userPhotoUrl!)
-                          : null,
-                      child: _authService.userPhotoUrl == null
-                          ? const Icon(Icons.person, size: 16)
-                          : null,
+                      backgroundImage:
+                          _authService.userPhotoUrl != null
+                              ? NetworkImage(_authService.userPhotoUrl!)
+                              : null,
+                      child:
+                          _authService.userPhotoUrl == null
+                              ? const Icon(Icons.person, size: 16)
+                              : null,
                     ),
                     const SizedBox(width: 4),
                     const Icon(Icons.arrow_drop_down),
@@ -364,25 +398,26 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                   _logout();
                 }
               },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  enabled: false,
-                  child: ListTile(
-                    leading: Icon(Icons.person_outline),
-                    title: Text('Guest User'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-                const PopupMenuDivider(),
-                const PopupMenuItem(
-                  value: 'logout',
-                  child: ListTile(
-                    leading: Icon(Icons.logout),
-                    title: Text('Sign Out'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
-              ],
+              itemBuilder:
+                  (context) => [
+                    const PopupMenuItem(
+                      enabled: false,
+                      child: ListTile(
+                        leading: Icon(Icons.person_outline),
+                        title: Text('Guest User'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: 'logout',
+                      child: ListTile(
+                        leading: Icon(Icons.logout),
+                        title: Text('Sign Out'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ],
               child: const Padding(
                 padding: EdgeInsets.all(8.0),
                 child: Row(
@@ -398,115 +433,137 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: _timetables.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.schedule,
-                    size: 64,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No timetables yet',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+      body:
+          _timetables.isEmpty
+              ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.schedule,
+                      size: 64,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withOpacity(0.5),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No timetables yet',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.headlineSmall?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Create your first timetable to get started',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+              : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _timetables.length,
+                itemBuilder: (context, index) {
+                  final timetable = _timetables[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.all(16),
+                      leading: CircleAvatar(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        child: Text(
+                          timetable.name.isNotEmpty
+                              ? timetable.name[0].toUpperCase()
+                              : 'T',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onPrimary,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Create your first timetable to get started',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                        ),
-                  ),
-                ],
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _timetables.length,
-              itemBuilder: (context, index) {
-                final timetable = _timetables[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(16),
-                    leading: CircleAvatar(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      child: Text(
-                        timetable.name.isNotEmpty ? timetable.name[0].toUpperCase() : 'T',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onPrimary,
+                      ),
+                      title: Text(
+                        timetable.name,
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
                       ),
-                    ),
-                    title: Text(
-                      timetable.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 4),
-                        Text(
-                          '${timetable.selectedSections.map((s) => s.courseCode).toSet().length} courses selected',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Created: ${_formatDate(timetable.createdAt)}',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                    trailing: PopupMenuButton<String>(
-                      onSelected: (value) {
-                        switch (value) {
-                          case 'rename':
-                            _renameTimetable(timetable);
-                            break;
-                          case 'delete':
-                            _deleteTimetable(timetable);
-                            break;
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: 'rename',
-                          child: ListTile(
-                            leading: Icon(Icons.edit),
-                            title: Text('Rename'),
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                        ),
-                        if (_timetables.length > 1)
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: ListTile(
-                              leading: Icon(Icons.delete, color: Colors.red),
-                              title: Text('Delete', style: TextStyle(color: Colors.red)),
-                              contentPadding: EdgeInsets.zero,
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          Text(
+                            '${timetable.selectedSections.map((s) => s.courseCode).toSet().length} courses selected',
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withOpacity(0.7),
                             ),
                           ),
-                      ],
+                          const SizedBox(height: 2),
+                          Text(
+                            'Created: ${_formatDate(timetable.createdAt)}',
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withOpacity(0.5),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                      trailing: PopupMenuButton<String>(
+                        onSelected: (value) {
+                          switch (value) {
+                            case 'rename':
+                              _renameTimetable(timetable);
+                              break;
+                            case 'delete':
+                              _deleteTimetable(timetable);
+                              break;
+                          }
+                        },
+                        itemBuilder:
+                            (context) => [
+                              const PopupMenuItem(
+                                value: 'rename',
+                                child: ListTile(
+                                  leading: Icon(Icons.edit),
+                                  title: Text('Rename'),
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                              if (_timetables.length > 1)
+                                const PopupMenuItem(
+                                  value: 'delete',
+                                  child: ListTile(
+                                    leading: Icon(
+                                      Icons.delete,
+                                      color: Colors.red,
+                                    ),
+                                    title: Text(
+                                      'Delete',
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                ),
+                            ],
+                      ),
+                      onTap: () => _openTimetable(timetable),
                     ),
-                    onTap: () => _openTimetable(timetable),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -530,7 +587,9 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
               child: Text(
                 'Disclaimer: This software may make mistakes or suggest classes you might not be eligible for. Please double-check all course selections with your academic advisor.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withOpacity(0.7),
                   fontSize: 12,
                 ),
               ),
@@ -573,7 +632,9 @@ class _TimetableEditorScreenState extends State<TimetableEditorScreen> {
   Future<void> _loadTimetable() async {
     try {
       print('Loading timetable with ID: ${widget.timetableId}');
-      final timetable = await _timetableService.getTimetableById(widget.timetableId);
+      final timetable = await _timetableService.getTimetableById(
+        widget.timetableId,
+      );
       if (timetable != null) {
         print('Timetable loaded successfully: ${timetable.name}');
         setState(() {
@@ -604,46 +665,44 @@ class _TimetableEditorScreenState extends State<TimetableEditorScreen> {
 
   Future<bool> _showUnsavedChangesDialog() async {
     return await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Unsaved Changes'),
-        content: const Text('You have unsaved changes that will be lost. Are you sure you want to go back?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Stay'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Leave'),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
-            ),
-          ),
-        ],
-      ),
-    ) ?? false;
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                title: const Text('Unsaved Changes'),
+                content: const Text(
+                  'You have unsaved changes that will be lost. Are you sure you want to go back?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Stay'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Leave'),
+                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                  ),
+                ],
+              ),
+        ) ??
+        false;
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (_timetable == null) {
-      return const Scaffold(
-        body: Center(child: Text('Timetable not found')),
-      );
+      return const Scaffold(body: Center(child: Text('Timetable not found')));
     }
 
     return PopScope(
       canPop: !_hasUnsavedChanges,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        
+
         // Only show dialog if there are actual unsaved changes
         if (_hasUnsavedChanges) {
           final navigator = Navigator.of(context);
@@ -666,7 +725,7 @@ class TimetableHomeScreen extends StatefulWidget {
   final Function(bool)? onUnsavedChangesChanged;
 
   const TimetableHomeScreen({
-    super.key, 
+    super.key,
     required this.timetable,
     this.onUnsavedChangesChanged,
   });
