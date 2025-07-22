@@ -444,7 +444,10 @@ class _HomeScreenState extends State<HomeScreen> {
     if (confirmed == true) {
       try {
         await _authService.signOut();
-        // Navigation will be handled by AuthWrapper
+        // Force navigation back to root since we're deep in navigation stack
+        if (mounted) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
       } catch (e) {
         _showErrorDialog('Error signing out: $e');
       }
@@ -718,6 +721,37 @@ class _HomeScreenState extends State<HomeScreen> {
               foregroundColor: Theme.of(context).colorScheme.onPrimary,
               tooltip: 'TT Generator',
             ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          border: Border(
+            top: BorderSide(
+              color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.info_outline,
+              size: 14,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'Disclaimer: This software may make mistakes or suggest classes you might not be eligible for. Please double-check all course selections with your academic advisor.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1159,7 +1193,10 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
     if (confirmed == true) {
       try {
         await _authService.signOut();
-        // Navigation will be handled by AuthWrapper
+        // Force navigation back to root since we're deep in navigation stack
+        if (mounted) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
       } catch (e) {
         _showErrorDialog('Error signing out: $e');
       }
@@ -1420,6 +1457,37 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
               foregroundColor: Theme.of(context).colorScheme.onPrimary,
               tooltip: 'TT Generator',
             ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          border: Border(
+            top: BorderSide(
+              color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.info_outline,
+              size: 14,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'Disclaimer: This software may make mistakes or suggest classes you might not be eligible for. Please double-check all course selections with your academic advisor.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

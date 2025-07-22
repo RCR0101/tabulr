@@ -91,14 +91,17 @@ class _AuthScreenState extends State<AuthScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // App Icon or Logo
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.asset(
-                  'images/full_logo_bg.png',
+              Transform.scale(
+                alignment: Alignment.bottomCenter,
+                scale: 0.5,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.asset(
+                    'images/full_logo_bg.png',
+                  ),
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
               // App Description
               Text(
                 'Create and manage your class timetables',

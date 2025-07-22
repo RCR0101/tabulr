@@ -507,6 +507,37 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                 );
               },
             ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          border: Border(
+            top: BorderSide(
+              color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.info_outline,
+              size: 16,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Disclaimer: This software may make mistakes or suggest classes you might not be eligible for. Please double-check all course selections with your academic advisor.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _createNewTimetable,
         icon: const Icon(Icons.add),

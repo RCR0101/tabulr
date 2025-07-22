@@ -207,9 +207,6 @@ class AuthService {
       // Reset guest mode
       _isCurrentlyGuest = false;
       
-      // Notify listeners about auth state change
-      _authStateController.add(false);
-      
       // Sign out from Google (only for mobile)
       if (!kIsWeb) {
         await _googleSignIn.signOut();
@@ -225,6 +222,12 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('is_authenticated');
       await prefs.remove('is_guest');
+      
+      // Small delay to ensure Firebase auth state change propagates
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      // Notify auth method chosen listeners after clearing guest mode
+      _authStateController.add(false);
       
       print('User signed out successfully');
     } catch (e) {

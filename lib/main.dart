@@ -132,21 +132,27 @@ class _AuthWrapperState extends State<AuthWrapper> {
   Widget build(BuildContext context) {
     return StreamBuilder(
       stream: _authService.authStateChanges,
-      builder: (context, snapshot) {
+      builder: (context, authSnapshot) {
         // Show loading while checking auth state
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (authSnapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
         
+        // Force rebuild when auth state changes by checking current state
+        final isAuthenticated = _authService.isAuthenticated;
+        final isGuest = _authService.isGuest;
+        
+        print('AuthWrapper rebuild - isAuthenticated: $isAuthenticated, isGuest: $isGuest');
+        
         // If user is authenticated, go to timetables screen
-        if (snapshot.hasData && snapshot.data != null) {
+        if (isAuthenticated) {
           return const TimetablesScreen();
         }
         
         // If user has chosen guest mode, go to simple home screen
-        if (_authService.isGuest) {
+        if (isGuest) {
           return const HomeScreen();
         }
         
