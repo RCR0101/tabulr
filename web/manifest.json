@@ -1,11 +1,11 @@
 {
-    "name": "timetable_maker",
-    "short_name": "timetable_maker",
+    "name": "Tabulr - Timetable Creator",
+    "short_name": "Tabulr",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Create and manage your personalized timetables with ease. A powerful, intuitive timetable creator for students and professionals.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -73,6 +73,8 @@ flutter:
   assets:
     - DRAFT TIMETABLE I SEM 2025 -26.xlsx
     - .env
+    - images/full_logo_bg.png
+    - images/logo_bg.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

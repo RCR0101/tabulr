@@ -260,7 +260,22 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Timetables'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'images/full_logo_bg.png',
+                  height: 50,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          ],
+        ),
         centerTitle: true,
         actions: [
           CampusSelectorWidget(

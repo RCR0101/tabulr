@@ -92,31 +92,13 @@ class _AuthScreenState extends State<AuthScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // App Icon or Logo
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Icon(
-                  Icons.calendar_today,
-                  size: 60,
-                  color: Theme.of(context).colorScheme.onPrimary,
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.asset(
+                  'images/full_logo_bg.png',
                 ),
               ),
               const SizedBox(height: 32),
-
-              // App Title
-              Text(
-                'Tabulr',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onBackground,
-                ),
-              ),
-              const SizedBox(height: 16),
-
               // App Description
               Text(
                 'Create and manage your class timetables',

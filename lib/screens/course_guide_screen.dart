@@ -51,7 +51,24 @@ class _CourseGuideScreenState extends State<CourseGuideScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Course Guide'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.asset(
+                  'images/full_logo_bg.png',
+                  height: 50,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text('Course Guide'),
+          ],
+        ),
         centerTitle: true,
         actions: [
           const ThemeToggleButton(),

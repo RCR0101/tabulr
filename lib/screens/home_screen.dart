@@ -461,7 +461,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (_timetable == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Tabulr')),
+        appBar: AppBar(
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.asset(
+                    'images/full_logo_bg.png',
+                    height: 50,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          centerTitle: true,
+        ),
         body: const Center(
           child: Text('Failed to load timetable'),
         ),
@@ -472,7 +490,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tabulr'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'images/full_logo_bg.png',
+              height: 32,
+              fit: BoxFit.contain,
+            ),
+          ],
+        ),
         centerTitle: true,
         actions: [
           CampusSelectorWidget(
