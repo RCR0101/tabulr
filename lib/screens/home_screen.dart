@@ -23,6 +23,7 @@ import 'generator_screen.dart';
 import 'timetables_screen.dart';
 import 'course_guide_screen.dart';
 import 'discipline_electives_screen.dart';
+import 'humanities_electives_screen.dart';
 import '../models/timetable.dart' as timetable;
 
 class HomeScreen extends StatefulWidget {
@@ -556,6 +557,18 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
             tooltip: 'Discipline Electives',
+          ),
+          IconButton(
+            icon: const Icon(Icons.library_books),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const HumanitiesElectivesScreen(),
+                ),
+              );
+            },
+            tooltip: 'Humanities Electives',
           ),
           const ThemeToggleButton(),
           if (isWideScreen) ...[
@@ -1314,6 +1327,18 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
               );
             },
             tooltip: 'Discipline Electives',
+          ),
+          IconButton(
+            icon: const Icon(Icons.library_books),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const HumanitiesElectivesScreen(),
+                ),
+              );
+            },
+            tooltip: 'Humanities Electives',
           ),
           const ThemeToggleButton(),
           if (isWideScreen) ...[
