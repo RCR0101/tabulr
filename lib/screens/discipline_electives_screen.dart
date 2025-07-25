@@ -23,11 +23,18 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
   
   BranchInfo? _selectedPrimaryBranch;
   BranchInfo? _selectedSecondaryBranch;
+  String? _selectedPrimarySemester;
+  String? _selectedSecondarySemester;
   
   bool _isLoading = true;
   bool _isSearching = false;
   String _errorMessage = '';
   StreamSubscription<Campus>? _campusSubscription;
+
+  // Semester options from 2-1 to 4-2
+  final List<String> _semesterOptions = [
+    '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'
+  ];
 
   @override
   void initState() {
@@ -80,9 +87,9 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
   }
 
   Future<void> _searchDisciplineElectives() async {
-    if (_selectedPrimaryBranch == null) {
+    if (_selectedPrimaryBranch == null || _selectedPrimarySemester == null) {
       setState(() {
-        _errorMessage = 'Please select a primary branch';
+        _errorMessage = 'Please select primary branch and semester';
       });
       return;
     }
@@ -94,11 +101,13 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
         _disciplineElectives = [];
       });
 
-      print('Searching electives for: ${_selectedPrimaryBranch!.name}${_selectedSecondaryBranch != null ? ' and ${_selectedSecondaryBranch!.name}' : ''}');
+      print('Searching electives for: ${_selectedPrimaryBranch!.name} ${_selectedPrimarySemester!}${_selectedSecondaryBranch != null && _selectedSecondarySemester != null ? ' and ${_selectedSecondaryBranch!.name} ${_selectedSecondarySemester!}' : ''}');
 
-      final electives = await _disciplineElectivesService.getFilteredDisciplineElectives(
+      final electives = await _disciplineElectivesService.getFilteredDisciplineElectivesWithClashDetection(
         _selectedPrimaryBranch!.name,
         _selectedSecondaryBranch?.name,
+        _selectedPrimarySemester!,
+        _selectedSecondarySemester,
         _availableCourses,
       ).timeout(Duration(seconds: 20));
 
@@ -111,7 +120,7 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
 
       if (electives.isEmpty) {
         setState(() {
-          _errorMessage = 'No discipline electives found for the selected branch(es) that are available in the current semester.';
+          _errorMessage = 'No discipline electives found for the selected branch(es) and semester(s) that are available and don\'t clash with core courses.';
         });
       }
     } catch (e) {
@@ -123,9 +132,10 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
     }
   }
 
-  void _clearSecondaryBranch() {
+  void _clearSecondarySelections() {
     setState(() {
       _selectedSecondaryBranch = null;
+      _selectedSecondarySemester = null;
     });
   }
 
@@ -142,7 +152,7 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
             Row(
               children: [
                 const Text(
-                  'Select Branch(es)',
+                  'Select Branch(es) and Semester(s)',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -160,14 +170,22 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
             ),
             const SizedBox(height: 16),
             
-            // Primary Branch Selector
+            // Primary Selection
+            const Text(
+              'Primary Branch and Semester *',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
                   child: DropdownButtonFormField<BranchInfo>(
                     value: _selectedPrimaryBranch,
                     decoration: const InputDecoration(
-                      labelText: 'Primary Branch *',
+                      labelText: 'Primary Branch',
                       border: OutlineInputBorder(),
                     ),
                     items: _availableBranches.isEmpty ? [] : _availableBranches.map((branch) {
@@ -194,19 +212,63 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                         : const Text('Select primary branch'),
                   ),
                 ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedPrimarySemester,
+                    decoration: const InputDecoration(
+                      labelText: 'Semester',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _semesterOptions.map((semester) {
+                      return DropdownMenuItem<String>(
+                        value: semester,
+                        child: Text(semester),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        _selectedPrimarySemester = newValue;
+                      });
+                    },
+                    isExpanded: true,
+                  ),
+                ),
               ],
             ),
             
             const SizedBox(height: 16),
             
-            // Secondary Branch Selector
+            // Secondary Selection (Optional)
+            Row(
+              children: [
+                const Text(
+                  'Secondary Branch and Semester (Optional)',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const Spacer(),
+                if (_selectedSecondaryBranch != null || _selectedSecondarySemester != null)
+                  TextButton.icon(
+                    onPressed: _clearSecondarySelections,
+                    icon: const Icon(Icons.clear, size: 16),
+                    label: const Text('Clear'),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
                   child: DropdownButtonFormField<BranchInfo>(
                     value: _selectedSecondaryBranch,
                     decoration: const InputDecoration(
-                      labelText: 'Secondary Branch (Optional)',
+                      labelText: 'Secondary Branch',
                       border: OutlineInputBorder(),
                     ),
                     items: _availableBranches.where((branch) {
@@ -229,14 +291,30 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                     hint: const Text('Select secondary branch'),
                   ),
                 ),
-                if (_selectedSecondaryBranch != null) ...[
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.clear),
-                    onPressed: _clearSecondaryBranch,
-                    tooltip: 'Clear secondary branch',
+                const SizedBox(width: 8),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedSecondarySemester,
+                    decoration: const InputDecoration(
+                      labelText: 'Semester',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _semesterOptions.where((semester) {
+                      return semester != _selectedPrimarySemester;
+                    }).map((semester) {
+                      return DropdownMenuItem<String>(
+                        value: semester,
+                        child: Text(semester),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        _selectedSecondarySemester = newValue;
+                      });
+                    },
+                    isExpanded: true,
                   ),
-                ],
+                ),
               ],
             ),
             
@@ -246,7 +324,7 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _selectedPrimaryBranch == null || _isSearching
+                onPressed: (_selectedPrimaryBranch == null || _selectedPrimarySemester == null || _isSearching)
                     ? null
                     : _searchDisciplineElectives,
                 style: ElevatedButton.styleFrom(
@@ -300,9 +378,17 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Found ${_disciplineElectives.length} discipline electives for ${_selectedPrimaryBranch?.name}${_selectedSecondaryBranch != null ? ' and ${_selectedSecondaryBranch?.name}' : ''}',
+                  'Found ${_disciplineElectives.length} discipline electives for ${_selectedPrimaryBranch?.name} ${_selectedPrimarySemester ?? ''}${_selectedSecondaryBranch != null && _selectedSecondarySemester != null ? ' and ${_selectedSecondaryBranch?.name} ${_selectedSecondarySemester!}' : ''}',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'These courses don\'t clash with your core curriculum',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontSize: 12,
                   ),
                 ),
                 if (_disciplineElectives.length != courses.length) ...[
