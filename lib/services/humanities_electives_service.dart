@@ -7,22 +7,61 @@ class HumanitiesElectivesService {
 
   // Mapping from branch codes to full branch names
   static const Map<String, String> _branchCodeToName = {
-    'A1': 'Chemical Engineering',
-    'A2': 'Civil Engineering', 
-    'A3': 'Electrical and Electronics Engineering',
-    'A4': 'Mechanical Engineering',
-    'A5': 'B Pharma',
+    'A1': 'Chemical',
+    'A2': 'Civil', 
+    'A3': 'Electrical and Electronics',
+    'A4': 'Mechanical',
+    'A5': 'Pharma',
     'A7': 'Computer Science',
     'A8': 'Electronics and Instrumentation',
-    'AA': 'Electronics and Communication Engineering',
+    'AA': 'Electronics and Communication',
     'AB': 'Manufacturing',
-    'AD': 'Math And Computing',
-    'B1': 'MSc Biological Sciences',
+    'AD': 'Math and Computing',
+    'B1': 'MSc Biology',
     'B2': 'MSc Chemistry',
     'B3': 'MSc Economics',
     'B4': 'MSc Mathematics',
     'B5': 'MSc Physics',
   };
+
+  // Get all humanities electives without clash checking
+  Future<List<Course>> getAllHumanitiesElectives(List<Course> availableCourses) async {
+    try {
+      // Get HUEL courses from Firebase
+      final huelSnapshot = await _firestore.collection('huel_guide').get();
+      
+      if (huelSnapshot.docs.isEmpty) {
+        print('No HUEL courses found in database');
+        return [];
+      }
+
+      // Extract HUEL course codes (excluding metadata document)
+      final huelCourseCodes = <String>{};
+      for (final doc in huelSnapshot.docs) {
+        if (doc.id == '_metadata') continue;
+        
+        final data = doc.data();
+        final courseCode = data['course_code'] as String?;
+        if (courseCode != null) {
+          huelCourseCodes.add(courseCode);
+        }
+      }
+
+      print('Found ${huelCourseCodes.length} HUEL courses in database');
+
+      // Filter to only HUEL courses that are available in current semester timetable
+      final allHuelCourses = availableCourses
+          .where((course) => huelCourseCodes.contains(course.courseCode))
+          .toList();
+
+      print('Found ${allHuelCourses.length} available HUEL courses without clash filtering');
+      return allHuelCourses;
+
+    } catch (e) {
+      print('Error in getAllHumanitiesElectives: $e');
+      rethrow;
+    }
+  }
 
   // Get filtered humanities electives based on branch and semester
   Future<List<Course>> getFilteredHumanitiesElectives(
@@ -194,14 +233,32 @@ class HumanitiesElectivesService {
         .where((course) => coreCourseCodes.contains(course.courseCode))
         .toList();
 
-    // Check if HUEL course sections clash with any core course sections
-    for (final huelSection in huelCourse.sections) {
-      for (final coreCoreCourse in coreCourses) {
-        for (final coreSection in coreCoreCourse.sections) {
-          if (_doSectionsClash(huelSection, coreSection)) {
-            return true;
-          }
-        }
+    // First check exam clashes
+    for (final coreCourse in coreCourses) {
+      if (_hasExamClash(huelCourse, coreCourse)) {
+        print('HUEL ${huelCourse.courseCode} has exam clash with core course ${coreCourse.courseCode}');
+        return true;
+      }
+    }
+
+    // Then check time clashes with section-type awareness
+    // Group HUEL sections by type
+    final huelLectures = huelCourse.sections.where((s) => s.type == SectionType.L).toList();
+    final huelPracticals = huelCourse.sections.where((s) => s.type == SectionType.P).toList();
+    final huelTutorials = huelCourse.sections.where((s) => s.type == SectionType.T).toList();
+
+    for (final coreCourse in coreCourses) {
+      // Group core course sections by type
+      final coreLectures = coreCourse.sections.where((s) => s.type == SectionType.L).toList();
+      final corePracticals = coreCourse.sections.where((s) => s.type == SectionType.P).toList();
+      final coreTutorials = coreCourse.sections.where((s) => s.type == SectionType.T).toList();
+
+      // Check if ALL sections of same type clash (means no viable option)
+      if (_allSectionsClash(huelLectures, coreLectures) ||
+          _allSectionsClash(huelPracticals, corePracticals) ||
+          _allSectionsClash(huelTutorials, coreTutorials)) {
+        print('HUEL ${huelCourse.courseCode} has unavoidable time clash with core course ${coreCourse.courseCode}');
+        return true;
       }
     }
 
@@ -224,5 +281,59 @@ class HumanitiesElectivesService {
       }
     }
     return false; // No clash
+  }
+
+  // Check if two courses have exam clashes
+  bool _hasExamClash(Course course1, Course course2) {
+    // Check MidSem exam clash
+    if (course1.midSemExam != null && course2.midSemExam != null) {
+      if (_examTimesConflict(course1.midSemExam!, course2.midSemExam!)) {
+        return true;
+      }
+    }
+    
+    // Check EndSem exam clash
+    if (course1.endSemExam != null && course2.endSemExam != null) {
+      if (_examTimesConflict(course1.endSemExam!, course2.endSemExam!)) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  // Check if exam times conflict
+  bool _examTimesConflict(ExamSchedule exam1, ExamSchedule exam2) {
+    return exam1.date.day == exam2.date.day && 
+           exam1.date.month == exam2.date.month && 
+           exam1.date.year == exam2.date.year &&
+           exam1.timeSlot == exam2.timeSlot;
+  }
+
+  // Check if ALL sections of one type clash with ALL sections of another type
+  // This means there's no way to pick compatible sections
+  bool _allSectionsClash(List<Section> sections1, List<Section> sections2) {
+    if (sections1.isEmpty || sections2.isEmpty) {
+      return false; // No clash if either has no sections of this type
+    }
+
+    // Check if every section in sections1 clashes with every section in sections2
+    for (final section1 in sections1) {
+      bool hasNonClashingOption = false;
+      for (final section2 in sections2) {
+        if (!_doSectionsClash(section1, section2)) {
+          hasNonClashingOption = true;
+          break;
+        }
+      }
+      // If this section1 has at least one non-clashing option in sections2,
+      // then not all sections clash
+      if (hasNonClashingOption) {
+        return false;
+      }
+    }
+    
+    // All sections in sections1 clash with all sections in sections2
+    return true;
   }
 }

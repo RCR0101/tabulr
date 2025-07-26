@@ -86,6 +86,48 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
     }
   }
 
+  Future<void> _viewAllDisciplineElectives() async {
+    if (_selectedPrimaryBranch == null) {
+      setState(() {
+        _errorMessage = 'Please select primary branch';
+      });
+      return;
+    }
+
+    try {
+      setState(() {
+        _isSearching = true;
+        _errorMessage = '';
+        _disciplineElectives = [];
+      });
+
+      print('Fetching all discipline electives without clash filtering');
+      
+      final electives = await _disciplineElectivesService.getAllDisciplineElectives(
+        _selectedPrimaryBranch!.name,
+        _selectedSecondaryBranch?.name,
+        _availableCourses,
+      );
+
+      setState(() {
+        _disciplineElectives = electives;
+        _isSearching = false;
+      });
+
+      if (electives.isEmpty) {
+        setState(() {
+          _errorMessage = 'No discipline electives found for the selected branch(es).';
+        });
+      }
+    } catch (e) {
+      print('Error in _viewAllDisciplineElectives: $e');
+      setState(() {
+        _errorMessage = 'Unable to load discipline electives at this time. Please try again later.';
+        _isSearching = false;
+      });
+    }
+  }
+
   Future<void> _searchDisciplineElectives() async {
     if (_selectedPrimaryBranch == null || _selectedPrimarySemester == null) {
       setState(() {
@@ -320,24 +362,39 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
             
             const SizedBox(height: 16),
             
-            // Search Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: (_selectedPrimaryBranch == null || _selectedPrimarySemester == null || _isSearching)
-                    ? null
-                    : _searchDisciplineElectives,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+            // Search Buttons
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: ElevatedButton(
+                    onPressed: (_selectedPrimaryBranch == null || _selectedPrimarySemester == null || _isSearching)
+                        ? null
+                        : _searchDisciplineElectives,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: _isSearching
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Search (No Clashes)'),
+                  ),
                 ),
-                child: _isSearching
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Search Discipline Electives'),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: OutlinedButton(
+                    onPressed: (_selectedPrimaryBranch == null || _isSearching) ? null : _viewAllDisciplineElectives,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text('View All'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -385,7 +442,9 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'These courses don\'t clash with your core curriculum',
+                  _disciplineElectives.isNotEmpty && (_selectedPrimarySemester != null)
+                      ? 'These courses don\'t clash with your core curriculum'
+                      : 'All available discipline electives (may have clashes)',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.primary,
                     fontSize: 12,

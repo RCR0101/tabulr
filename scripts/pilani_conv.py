@@ -76,12 +76,13 @@ if __name__ == "__main__":
         "MIDSEM\nDATE &\nSESSION",
         "COMPRE\nDATE &\nSESSION",
         "*Sections ending with",
-        "L", "P", "U"
+        "L", "P", "U",
+        "*There will be changes"
     ]
     
     # Page range to extract the timetable from
     # Update this range based on your PDF structure
-    page_range: list[int] = [1, 71]  # Updated to 70 pages as mentioned
+    page_range: list[int] = [1, 66]  # Updated to 70 pages as mentioned
     
     try:
         with pdfplumber.open(input_pdf) as pdf:

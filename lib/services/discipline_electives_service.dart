@@ -6,17 +6,17 @@ class DisciplineElectivesService {
 
   // Mapping from branch codes to full branch names (same as humanities service)
   static const Map<String, String> _branchCodeToName = {
-    'A1': 'Chemical Engineering',
-    'A2': 'Civil Engineering', 
-    'A3': 'Electrical and Electronics Engineering',
-    'A4': 'Mechanical Engineering',
-    'A5': 'B Pharma',
+    'A1': 'Chemical',
+    'A2': 'Civil', 
+    'A3': 'Electrical and Electronics',
+    'A4': 'Mechanical',
+    'A5': 'Pharma',
     'A7': 'Computer Science',
     'A8': 'Electronics and Instrumentation',
-    'AA': 'Electronics and Communication Engineering',
+    'AA': 'Electronics and Communication',
     'AB': 'Manufacturing',
-    'AD': 'Mathematics And Computing',
-    'B1': 'MSc Biological Sciences',
+    'AD': 'Math and Computing',
+    'B1': 'MSc Biology',
     'B2': 'MSc Chemistry',
     'B3': 'MSc Economics',
     'B4': 'MSc Mathematics',
@@ -83,6 +83,45 @@ class DisciplineElectivesService {
     ];
   }
   
+  // Get all discipline electives without clash checking
+  Future<List<DisciplineElective>> getAllDisciplineElectives(
+    String primaryBranch,
+    String? secondaryBranch,
+    List<Course> availableCourses,
+  ) async {
+    try {
+      // Get discipline electives for primary branch
+      List<DisciplineElective> electives = await getDisciplineElectives(primaryBranch);
+      
+      // If secondary branch is selected, get its electives too
+      if (secondaryBranch != null && secondaryBranch.isNotEmpty) {
+        final secondaryElectives = await getDisciplineElectives(secondaryBranch);
+        electives.addAll(secondaryElectives);
+      }
+      
+      // Filter to only include courses that exist in the available courses
+      final availableCourseCodes = availableCourses.map((c) => c.courseCode).toSet();
+      
+      final filteredElectives = electives.where((elective) {
+        return availableCourseCodes.contains(elective.courseCode);
+      }).toList();
+      
+      // Remove duplicates (in case both branches have same electives)
+      final uniqueElectives = <String, DisciplineElective>{};
+      for (final elective in filteredElectives) {
+        uniqueElectives[elective.courseCode] = elective;
+      }
+      
+      final result = uniqueElectives.values.toList()
+        ..sort((a, b) => a.courseCode.compareTo(b.courseCode));
+      
+      print('Found ${result.length} discipline electives without clash filtering');
+      return result;
+    } catch (e) {
+      throw Exception('Failed to get all discipline electives: $e');
+    }
+  }
+
   // Get discipline electives for a branch
   Future<List<DisciplineElective>> getDisciplineElectives(String branchName) async {
     try {
@@ -342,7 +381,7 @@ class DisciplineElectivesService {
     }
   }
 
-  // Check if a discipline elective course clashes with any core course (reused from humanities service)
+  // Check if a discipline elective course clashes with any core course
   bool _doesCourseClashWithCore(
     Course electiveCourse,
     Set<String> coreCourseCodes,
@@ -353,21 +392,39 @@ class DisciplineElectivesService {
         .where((course) => coreCourseCodes.contains(course.courseCode))
         .toList();
 
-    // Check if elective course sections clash with any core course sections
-    for (final electiveSection in electiveCourse.sections) {
-      for (final coreCoreCourse in coreCourses) {
-        for (final coreSection in coreCoreCourse.sections) {
-          if (_doSectionsClash(electiveSection, coreSection)) {
-            return true;
-          }
-        }
+    // First check exam clashes
+    for (final coreCourse in coreCourses) {
+      if (_hasExamClash(electiveCourse, coreCourse)) {
+        print('Discipline elective ${electiveCourse.courseCode} has exam clash with core course ${coreCourse.courseCode}');
+        return true;
+      }
+    }
+
+    // Then check time clashes with section-type awareness
+    // Group elective sections by type
+    final electiveLectures = electiveCourse.sections.where((s) => s.type == SectionType.L).toList();
+    final electivePracticals = electiveCourse.sections.where((s) => s.type == SectionType.P).toList();
+    final electiveTutorials = electiveCourse.sections.where((s) => s.type == SectionType.T).toList();
+
+    for (final coreCourse in coreCourses) {
+      // Group core course sections by type
+      final coreLectures = coreCourse.sections.where((s) => s.type == SectionType.L).toList();
+      final corePracticals = coreCourse.sections.where((s) => s.type == SectionType.P).toList();
+      final coreTutorials = coreCourse.sections.where((s) => s.type == SectionType.T).toList();
+
+      // Check if ALL sections of same type clash (means no viable option)
+      if (_allSectionsClash(electiveLectures, coreLectures) ||
+          _allSectionsClash(electivePracticals, corePracticals) ||
+          _allSectionsClash(electiveTutorials, coreTutorials)) {
+        print('Discipline elective ${electiveCourse.courseCode} has unavoidable time clash with core course ${coreCourse.courseCode}');
+        return true;
       }
     }
 
     return false;
   }
 
-  // Check if two sections have time clashes (reused from humanities service)
+  // Check if two sections have time clashes
   bool _doSectionsClash(Section section1, Section section2) {
     for (final schedule1 in section1.schedule) {
       for (final schedule2 in section2.schedule) {
@@ -383,6 +440,60 @@ class DisciplineElectivesService {
       }
     }
     return false; // No clash
+  }
+
+  // Check if two courses have exam clashes
+  bool _hasExamClash(Course course1, Course course2) {
+    // Check MidSem exam clash
+    if (course1.midSemExam != null && course2.midSemExam != null) {
+      if (_examTimesConflict(course1.midSemExam!, course2.midSemExam!)) {
+        return true;
+      }
+    }
+    
+    // Check EndSem exam clash
+    if (course1.endSemExam != null && course2.endSemExam != null) {
+      if (_examTimesConflict(course1.endSemExam!, course2.endSemExam!)) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  // Check if exam times conflict
+  bool _examTimesConflict(ExamSchedule exam1, ExamSchedule exam2) {
+    return exam1.date.day == exam2.date.day && 
+           exam1.date.month == exam2.date.month && 
+           exam1.date.year == exam2.date.year &&
+           exam1.timeSlot == exam2.timeSlot;
+  }
+
+  // Check if ALL sections of one type clash with ALL sections of another type
+  // This means there's no way to pick compatible sections
+  bool _allSectionsClash(List<Section> sections1, List<Section> sections2) {
+    if (sections1.isEmpty || sections2.isEmpty) {
+      return false; // No clash if either has no sections of this type
+    }
+
+    // Check if every section in sections1 clashes with every section in sections2
+    for (final section1 in sections1) {
+      bool hasNonClashingOption = false;
+      for (final section2 in sections2) {
+        if (!_doSectionsClash(section1, section2)) {
+          hasNonClashingOption = true;
+          break;
+        }
+      }
+      // If this section1 has at least one non-clashing option in sections2,
+      // then not all sections clash
+      if (hasNonClashingOption) {
+        return false;
+      }
+    }
+    
+    // All sections in sections1 clash with all sections in sections2
+    return true;
   }
 
   // Get course details for a discipline elective

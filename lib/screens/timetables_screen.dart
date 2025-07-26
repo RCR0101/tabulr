@@ -12,6 +12,7 @@ import '../widgets/campus_selector_widget.dart';
 import 'home_screen.dart';
 import 'course_guide_screen.dart';
 import 'humanities_electives_screen.dart';
+import 'discipline_electives_screen.dart';
 
 class TimetablesScreen extends StatefulWidget {
   const TimetablesScreen({super.key});
@@ -326,6 +327,18 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.school),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const DisciplineElectivesScreen(),
+                ),
+              );
+            },
+            tooltip: 'Discipline Electives',
+          ),
+          IconButton(
+            icon: const Icon(Icons.library_books),
             onPressed: () {
               Navigator.push(
                 context,

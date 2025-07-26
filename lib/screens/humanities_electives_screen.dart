@@ -84,6 +84,39 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
     }
   }
 
+  Future<void> _viewAllHumanitiesElectives() async {
+    try {
+      setState(() {
+        _isSearching = true;
+        _errorMessage = '';
+        _huelCourses = [];
+      });
+
+      print('Fetching all HUEL courses without clash filtering');
+      
+      final huelCourses = await _humanitiesElectivesService.getAllHumanitiesElectives(
+        _availableCourses,
+      );
+
+      setState(() {
+        _huelCourses = huelCourses;
+        _isSearching = false;
+      });
+
+      if (huelCourses.isEmpty) {
+        setState(() {
+          _errorMessage = 'No humanities electives found in the current semester.';
+        });
+      }
+    } catch (e) {
+      print('Error in _viewAllHumanitiesElectives: $e');
+      setState(() {
+        _errorMessage = 'Unable to load humanities electives at this time. Please try again later.';
+        _isSearching = false;
+      });
+    }
+  }
+
   Future<void> _searchHumanitiesElectives() async {
     if (_selectedPrimarySemester == null || _selectedPrimaryBranch == null) {
       setState(() {
@@ -290,24 +323,39 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
             
             const SizedBox(height: 16),
             
-            // Search Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: (_selectedPrimaryBranch == null || _selectedPrimarySemester == null || _isSearching)
-                    ? null
-                    : _searchHumanitiesElectives,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+            // Search Buttons
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: ElevatedButton(
+                    onPressed: (_selectedPrimaryBranch == null || _selectedPrimarySemester == null || _isSearching)
+                        ? null
+                        : _searchHumanitiesElectives,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: _isSearching
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Search (No Clashes)'),
+                  ),
                 ),
-                child: _isSearching
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Search Humanities Electives'),
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: OutlinedButton(
+                    onPressed: _isSearching ? null : _viewAllHumanitiesElectives,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text('View All'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -346,7 +394,9 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'These courses don\'t clash with your core curriculum',
+                  _huelCourses.isNotEmpty && (_selectedPrimaryBranch != null || _selectedPrimarySemester != null)
+                      ? 'These courses don\'t clash with your core curriculum'
+                      : 'All available humanities electives (may have clashes)',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.primary,
                     fontSize: 12,

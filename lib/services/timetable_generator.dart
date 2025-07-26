@@ -55,24 +55,7 @@ class TimetableGenerator {
 
     
 
-    // If no valid timetables found, try generating some basic ones without strict validation
-    if (validTimetables.isEmpty && allCombinations.isNotEmpty) {
-      
-      for (int i = 0; i < min(5, allCombinations.length); i++) {
-        final combination = allCombinations[i];
-        final score = _scoreTimetable(combination, constraints);
-        final analysis = _analyzeTimetable(combination, constraints);
-        
-        validTimetables.add(GeneratedTimetable(
-          id: 'basic_timetable_${validTimetables.length + 1}',
-          sections: combination,
-          score: score,
-          pros: ['Basic timetable option', ...analysis['pros'] as List<String>],
-          cons: ['May have conflicts', ...analysis['cons'] as List<String>],
-          hoursPerDay: _calculateHoursPerDay(combination),
-        ));
-      }
-    }
+    // No fallback - only return conflict-free timetables
 
     // Sort by score (highest first)
     validTimetables.sort((a, b) => b.score.compareTo(a.score));
@@ -189,7 +172,8 @@ class TimetableGenerator {
       )).toList();
       
       final clashes = ClashDetector.detectClashes(timetableSections, courses);
-      final isValid = !clashes.any((clash) => clash.severity == timetable.ClashSeverity.error);
+      // Reject ANY clashes (both warnings and errors) to prevent conflict timetables
+      final isValid = clashes.isEmpty;
       
       return isValid;
     } catch (e) {
