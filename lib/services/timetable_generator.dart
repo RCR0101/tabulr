@@ -79,58 +79,66 @@ class TimetableGenerator {
       
 
       for (final combination in combinations) {
-        // Must have at least one lecture section
-        if (lectureSection.isEmpty) {
-          
-          continue; // Skip courses without lecture sections
-        }
-        
-        for (final lSection in lectureSection) {
-          final newCombination = [...combination];
-          newCombination.add(ConstraintSelectedSection(
-            courseCode: course.courseCode,
-            sectionId: lSection.sectionId,
-            section: lSection,
-          ));
+        // Handle courses with lecture sections
+        if (lectureSection.isNotEmpty) {
+          for (final lSection in lectureSection) {
+            final newCombination = [...combination];
+            newCombination.add(ConstraintSelectedSection(
+              courseCode: course.courseCode,
+              sectionId: lSection.sectionId,
+              section: lSection,
+            ));
 
-          // Add practical if available
-          if (practicalSections.isNotEmpty) {
-            for (final pSection in practicalSections) {
-              final withPractical = [...newCombination];
-              withPractical.add(ConstraintSelectedSection(
-                courseCode: course.courseCode,
-                sectionId: pSection.sectionId,
-                section: pSection,
-              ));
+            // Add practical if available
+            if (practicalSections.isNotEmpty) {
+              for (final pSection in practicalSections) {
+                final withPractical = [...newCombination];
+                withPractical.add(ConstraintSelectedSection(
+                  courseCode: course.courseCode,
+                  sectionId: pSection.sectionId,
+                  section: pSection,
+                ));
 
-              // Add tutorial if available
-              if (tutorialSections.isNotEmpty) {
-                for (final tSection in tutorialSections) {
-                  final withTutorial = [...withPractical];
-                  withTutorial.add(ConstraintSelectedSection(
-                    courseCode: course.courseCode,
-                    sectionId: tSection.sectionId,
-                    section: tSection,
-                  ));
-                  newCombinations.add(withTutorial);
+                // Add tutorial if available
+                if (tutorialSections.isNotEmpty) {
+                  for (final tSection in tutorialSections) {
+                    final withTutorial = [...withPractical];
+                    withTutorial.add(ConstraintSelectedSection(
+                      courseCode: course.courseCode,
+                      sectionId: tSection.sectionId,
+                      section: tSection,
+                    ));
+                    newCombinations.add(withTutorial);
+                  }
+                } else {
+                  newCombinations.add(withPractical);
                 }
-              } else {
-                newCombinations.add(withPractical);
               }
+            } else if (tutorialSections.isNotEmpty) {
+              // Add tutorial without practical
+              for (final tSection in tutorialSections) {
+                final withTutorial = [...newCombination];
+                withTutorial.add(ConstraintSelectedSection(
+                  courseCode: course.courseCode,
+                  sectionId: tSection.sectionId,
+                  section: tSection,
+                ));
+                newCombinations.add(withTutorial);
+              }
+            } else {
+              // Only lecture
+              newCombinations.add(newCombination);
             }
-          } else if (tutorialSections.isNotEmpty) {
-            // Add tutorial without practical
-            for (final tSection in tutorialSections) {
-              final withTutorial = [...newCombination];
-              withTutorial.add(ConstraintSelectedSection(
-                courseCode: course.courseCode,
-                sectionId: tSection.sectionId,
-                section: tSection,
-              ));
-              newCombinations.add(withTutorial);
-            }
-          } else {
-            // Only lecture
+          }
+        } else if (practicalSections.isNotEmpty) {
+          // Handle practical-only courses (no lecture sections)
+          for (final pSection in practicalSections) {
+            final newCombination = [...combination];
+            newCombination.add(ConstraintSelectedSection(
+              courseCode: course.courseCode,
+              sectionId: pSection.sectionId,
+              section: pSection,
+            ));
             newCombinations.add(newCombination);
           }
         }

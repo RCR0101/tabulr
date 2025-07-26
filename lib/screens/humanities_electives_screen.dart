@@ -393,15 +393,6 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  _huelCourses.isNotEmpty && (_selectedPrimaryBranch != null || _selectedPrimarySemester != null)
-                      ? 'These courses don\'t clash with your core curriculum'
-                      : 'All available humanities electives (may have clashes)',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontSize: 12,
-                  ),
-                ),
               ],
             ),
           ),

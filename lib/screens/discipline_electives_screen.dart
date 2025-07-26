@@ -441,15 +441,6 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  _disciplineElectives.isNotEmpty && (_selectedPrimarySemester != null)
-                      ? 'These courses don\'t clash with your core curriculum'
-                      : 'All available discipline electives (may have clashes)',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontSize: 12,
-                  ),
-                ),
                 if (_disciplineElectives.length != courses.length) ...[
                   const SizedBox(height: 4),
                   Text(
