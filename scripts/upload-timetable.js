@@ -544,6 +544,12 @@ async function uploadTimetableData(filePath, campus) {
     
     console.log(`✅ Parsed ${courses.length} courses for ${campus}`);
     
+    // Write course codes to text file
+    const courseCodesFile = path.join(__dirname, `course_codes_${campus}.txt`);
+    const courseCodes = courses.map(course => course.courseCode).sort();
+    fs.writeFileSync(courseCodesFile, courseCodes.join('\n'));
+    console.log(`📝 Written ${courseCodes.length} course codes to ${courseCodesFile}`);
+    
     // Determine collection name based on campus
     const collectionName = getCampusCollection(campus);
     console.log(`📚 Using collection: ${collectionName}`);

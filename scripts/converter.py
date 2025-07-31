@@ -71,11 +71,11 @@ if __name__ == "__main__":
     print(f"Converting {input_pdf} to {output_csv}")
     
     # headers to remove from the table
-    headers: list[str] = ["COMP\nCODE", "DRAFT TIMETABLE I SEM 2025 - 26"]
+    headers: list[str] = ["COMP\nCODE", "DRAFT TIMETABLE I SEM 2025 - 26", "TIMETABEL I SEM 2025 -26"]
 
     # page range to extract the timetable from
     # [from, to] - extracting all pages
-    page_range: list[int] = [1, 67]
+    page_range: list[int] = [7, 59]
 
     try:
         pdf: pdfplumber.pdf.PDF = pdfplumber.open(input_pdf)

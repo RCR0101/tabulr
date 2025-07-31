@@ -602,9 +602,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
             ],
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
         _buildTimeAvoidance(),
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
         _buildLabAvoidance(),
         const SizedBox(height: 16),
         _buildInstructorAvoidance(),
@@ -729,35 +729,27 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
   }
 
   Widget _buildInstructorAvoidance() {
-    // Get all unique instructors from selected courses
-    final Set<String> availableInstructors = <String>{};
-    for (final courseCode in _selectedCourses) {
-      final course = widget.availableCourses.firstWhere(
-        (c) => c.courseCode == courseCode,
-        orElse: () => Course(
-          courseCode: courseCode,
-          courseTitle: 'Unknown',
-          lectureCredits: 0,
-          practicalCredits: 0,
-          totalCredits: 0,
-          sections: [],
-        ),
-      );
-      for (final section in course.sections) {
-        if (section.instructor.isNotEmpty) {
-          availableInstructors.add(section.instructor);
-        }
-      }
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Avoid Instructors:', style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        if (availableInstructors.isNotEmpty) ...[
+        Row(
+          children: [
+            const Text('Avoid instructors:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            const Spacer(),
+            ElevatedButton(
+              onPressed: _selectedCourses.isNotEmpty ? _addInstructorAvoidance : null,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                minimumSize: const Size(0, 32),
+              ),
+              child: const Text('Add', style: TextStyle(fontSize: 12)),
+            ),
+          ],
+        ),
+        if (_avoidedInstructors.isNotEmpty) ...[
+          const SizedBox(height: 8),
           Container(
-            constraints: const BoxConstraints(maxHeight: 100),
+            constraints: const BoxConstraints(maxHeight: 80),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
               borderRadius: BorderRadius.circular(8),
@@ -768,31 +760,28 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
               child: Wrap(
                 spacing: 6,
                 runSpacing: 4,
-                children: availableInstructors.map((instructor) {
-                  final isAvoided = _avoidedInstructors.contains(instructor);
-                  return FilterChip(
+                children: _avoidedInstructors.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final instructor = entry.value;
+                  return Chip(
                     label: Text(
                       instructor,
                       style: TextStyle(fontSize: 12),
                     ),
-                    selected: isAvoided,
-                    selectedColor: Theme.of(context).colorScheme.error.withOpacity(0.3),
-                    checkmarkColor: Theme.of(context).colorScheme.error,
-                    onSelected: (selected) {
+                    deleteIcon: const Icon(Icons.close, size: 16),
+                    onDeleted: () {
                       setState(() {
-                        if (selected) {
-                          _avoidedInstructors.add(instructor);
-                        } else {
-                          _avoidedInstructors.remove(instructor);
-                        }
+                        _avoidedInstructors.removeAt(index);
                       });
                     },
+                    backgroundColor: Theme.of(context).colorScheme.error.withOpacity(0.1),
+                    deleteIconColor: Colors.red,
                   );
                 }).toList(),
               ),
             ),
           ),
-        ] else ...[
+        ] else if (_selectedCourses.isEmpty) ...[
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -802,18 +791,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
             ),
             child: const Text(
               'Select courses first to see available instructors',
-              style: TextStyle(fontStyle: FontStyle.italic),
-            ),
-          ),
-        ],
-        if (_avoidedInstructors.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(
-            'Avoiding: ${_avoidedInstructors.join(", ")}',
-            style: TextStyle(
-              fontSize: 12,
-              color: Theme.of(context).colorScheme.error,
-              fontWeight: FontWeight.w500,
+              style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
             ),
           ),
         ],
@@ -854,6 +832,64 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
     if (result != null && mounted) {
       setState(() {
         _avoidLabs.add(result);
+      });
+    }
+  }
+
+  Future<void> _addInstructorAvoidance() async {
+    // Get instructors organized by course to avoid duplicates
+    final Map<String, List<String>> courseInstructors = {};
+    final Set<String> seenInstructorsLower = <String>{};
+    
+    for (final courseCode in _selectedCourses) {
+      final course = widget.availableCourses.firstWhere(
+        (c) => c.courseCode == courseCode,
+        orElse: () => Course(
+          courseCode: courseCode,
+          courseTitle: 'Unknown',
+          lectureCredits: 0,
+          practicalCredits: 0,
+          totalCredits: 0,
+          sections: [],
+        ),
+      );
+      
+      final courseInstructorSet = <String>{};
+      for (final section in course.sections) {
+        if (section.instructor.isNotEmpty) {
+          // Split comma-separated instructors into individual instructors
+          final instructorList = section.instructor.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty);
+          for (final instructor in instructorList) {
+            final instructorLower = instructor.toLowerCase();
+            // Only add if we haven't seen this instructor name (case-insensitive) before
+            if (!seenInstructorsLower.contains(instructorLower)) {
+              seenInstructorsLower.add(instructorLower);
+              courseInstructorSet.add(instructor);
+            }
+          }
+        }
+      }
+      
+      if (courseInstructorSet.isNotEmpty) {
+        courseInstructors[courseCode] = courseInstructorSet.toList()..sort();
+      }
+    }
+
+    final result = await showDialog<List<String>>(
+      context: context,
+      builder: (context) => _InstructorAvoidanceDialog(
+        courseInstructors: courseInstructors,
+        currentlyAvoided: _avoidedInstructors,
+      ),
+    );
+    
+    if (result != null && mounted) {
+      setState(() {
+        for (final instructor in result) {
+          if (!_avoidedInstructors.contains(instructor)) {
+            _avoidedInstructors.add(instructor);
+          }
+        }
       });
     }
   }
@@ -1270,6 +1306,206 @@ class _LabAvoidanceDialogState extends State<_LabAvoidanceDialog> {
               }
             : null,
           child: const Text('Add'),
+        ),
+      ],
+    );
+  }
+}
+
+class _InstructorAvoidanceDialog extends StatefulWidget {
+  final Map<String, List<String>> courseInstructors;
+  final List<String> currentlyAvoided;
+
+  const _InstructorAvoidanceDialog({
+    required this.courseInstructors,
+    required this.currentlyAvoided,
+  });
+
+  @override
+  State<_InstructorAvoidanceDialog> createState() => _InstructorAvoidanceDialogState();
+}
+
+class _InstructorAvoidanceDialogState extends State<_InstructorAvoidanceDialog> {
+  final List<String> _selectedInstructors = [];
+  final Set<String> _expandedCourses = <String>{};
+
+  @override
+  void initState() {
+    super.initState();
+    // Expand all courses by default for better visibility
+    _expandedCourses.addAll(widget.courseInstructors.keys);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Select Instructors to Avoid'),
+      content: SizedBox(
+        width: 600,
+        height: 500,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (widget.currentlyAvoided.isNotEmpty) ...[
+              Text(
+                'Currently avoiding: ${widget.currentlyAvoided.join(", ")}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.error,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            const Text('Select instructors by course:'),
+            const SizedBox(height: 8),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Theme.of(context).colorScheme.outline),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: widget.courseInstructors.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'No instructors found in selected courses',
+                          style: TextStyle(fontStyle: FontStyle.italic),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(8),
+                        itemCount: widget.courseInstructors.keys.length,
+                        itemBuilder: (context, index) {
+                          final courseCode = widget.courseInstructors.keys.elementAt(index);
+                          final instructors = widget.courseInstructors[courseCode]!;
+                          final isExpanded = _expandedCourses.contains(courseCode);
+                          
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: Column(
+                              children: [
+                                ListTile(
+                                  title: Text(
+                                    courseCode,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    '${instructors.length} instructor${instructors.length == 1 ? '' : 's'}',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  trailing: Icon(
+                                    isExpanded ? Icons.expand_less : Icons.expand_more,
+                                  ),
+                                  onTap: () {
+                                    setState(() {
+                                      if (isExpanded) {
+                                        _expandedCourses.remove(courseCode);
+                                      } else {
+                                        _expandedCourses.add(courseCode);
+                                      }
+                                    });
+                                  },
+                                ),
+                                if (isExpanded) ...[
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                                    child: Wrap(
+                                      spacing: 8,
+                                      runSpacing: 4,
+                                      children: instructors.map((instructor) {
+                                        final isSelected = _selectedInstructors.contains(instructor);
+                                        final isAlreadyAvoided = widget.currentlyAvoided.contains(instructor);
+                                        
+                                        return FilterChip(
+                                          label: Text(
+                                            instructor,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: isAlreadyAvoided 
+                                                  ? Theme.of(context).colorScheme.onSurface.withOpacity(0.5)
+                                                  : null,
+                                            ),
+                                          ),
+                                          selected: isSelected,
+                                          selectedColor: Theme.of(context).colorScheme.error.withOpacity(0.3),
+                                          checkmarkColor: Theme.of(context).colorScheme.error,
+                                          backgroundColor: isAlreadyAvoided 
+                                              ? Theme.of(context).colorScheme.surface.withOpacity(0.5)
+                                              : null,
+                                          onSelected: isAlreadyAvoided 
+                                              ? null 
+                                              : (selected) {
+                                                  setState(() {
+                                                    if (selected) {
+                                                      _selectedInstructors.add(instructor);
+                                                    } else {
+                                                      _selectedInstructors.remove(instructor);
+                                                    }
+                                                  });
+                                                },
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ),
+            if (_selectedInstructors.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Selected to avoid (${_selectedInstructors.length}):',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _selectedInstructors.join(", "),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: _selectedInstructors.isNotEmpty
+              ? () => Navigator.pop(context, _selectedInstructors)
+              : null,
+          child: Text('Add ${_selectedInstructors.length} Instructor${_selectedInstructors.length == 1 ? '' : 's'}'),
         ),
       ],
     );
