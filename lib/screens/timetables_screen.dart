@@ -189,6 +189,16 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     }
   }
 
+  void _onReorder(int oldIndex, int newIndex) {
+    setState(() {
+      if (newIndex > oldIndex) {
+        newIndex -= 1;
+      }
+      final item = _timetables.removeAt(oldIndex);
+      _timetables.insert(newIndex, item);
+    });
+  }
+
   void _openTimetable(Timetable timetable) {
     Navigator.push(
       context,
@@ -470,7 +480,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                       size: 64,
                       color: Theme.of(
                         context,
-                      ).colorScheme.onSurface.withOpacity(0.5),
+                      ).colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -480,7 +490,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                       ).textTheme.headlineSmall?.copyWith(
                         color: Theme.of(
                           context,
-                        ).colorScheme.onSurface.withOpacity(0.7),
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -489,32 +499,48 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(
                           context,
-                        ).colorScheme.onSurface.withOpacity(0.5),
+                        ).colorScheme.onSurface.withValues(alpha: 0.5),
                       ),
                     ),
                   ],
                 ),
               )
-              : ListView.builder(
+              : ReorderableListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: _timetables.length,
+                onReorder: _onReorder,
+                buildDefaultDragHandles: false,
                 itemBuilder: (context, index) {
                   final timetable = _timetables[index];
                   return Card(
+                    key: ValueKey(timetable.id),
                     margin: const EdgeInsets.only(bottom: 12),
                     child: ListTile(
                       contentPadding: const EdgeInsets.all(16),
-                      leading: CircleAvatar(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        child: Text(
-                          timetable.name.isNotEmpty
-                              ? timetable.name[0].toUpperCase()
-                              : 'T',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onPrimary,
-                            fontWeight: FontWeight.bold,
+                      leading: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ReorderableDragStartListener(
+                            index: index,
+                            child: const Icon(
+                              Icons.drag_handle,
+                              color: Colors.grey,
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 8),
+                          CircleAvatar(
+                            backgroundColor: Theme.of(context).colorScheme.primary,
+                            child: Text(
+                              timetable.name.isNotEmpty
+                                  ? timetable.name[0].toUpperCase()
+                                  : 'T',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onPrimary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       title: Text(
                         timetable.name,
@@ -532,7 +558,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                             style: TextStyle(
                               color: Theme.of(
                                 context,
-                              ).colorScheme.onSurface.withOpacity(0.7),
+                              ).colorScheme.onSurface.withValues(alpha: 0.7),
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -541,7 +567,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                             style: TextStyle(
                               color: Theme.of(
                                 context,
-                              ).colorScheme.onSurface.withOpacity(0.5),
+                              ).colorScheme.onSurface.withValues(alpha: 0.5),
                               fontSize: 12,
                             ),
                           ),
@@ -596,7 +622,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
           color: Theme.of(context).colorScheme.surface,
           border: Border(
             top: BorderSide(
-              color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
               width: 1,
             ),
           ),
@@ -606,7 +632,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
             Icon(
               Icons.info_outline,
               size: 16,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -615,7 +641,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(
                     context,
-                  ).colorScheme.onSurface.withOpacity(0.7),
+                  ).colorScheme.onSurface.withValues(alpha: 0.7),
                   fontSize: 12,
                 ),
               ),
