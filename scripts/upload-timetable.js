@@ -184,7 +184,7 @@ class XlsxParser {
     
     let compCode = this.getCellValue(mainRow, 0);
     const courseNo = this.getCellValue(mainRow, 1);
-    const courseTitle = this.getCellValue(mainRow, 2);
+    let courseTitle = this.getCellValue(mainRow, 2);
     const lectureCredits = this.getNumericValue(mainRow, 3);
     const practicalCredits = this.getNumericValue(mainRow, 4);
     const totalCredits = this.getNumericValue(mainRow, 5);
@@ -194,7 +194,12 @@ class XlsxParser {
       compCode = inheritedCompCode;
     }
     
-    if (!compCode || !courseNo || !courseTitle) {
+    // Use "Unknown" as default title if missing
+    if (!courseTitle || courseTitle.toString().trim() === '') {
+      courseTitle = 'Unknown';
+    }
+    
+    if (!compCode || !courseNo) {
       return null;
     }
     

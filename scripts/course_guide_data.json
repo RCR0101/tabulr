@@ -1,26 +1,26 @@
 {
   "semester_1_1": {
     "groups": {
-      "A1_A3_A8_AA_B1_B2_B5": {
-        "branches": ["A1", "A3", "A8", "AA", "B1", "B2", "B5"],
+      "A3_A4_A7_A8_AA_AD_AJ": {
+        "branches": ["A3", "A4", "A7", "A8", "AA", "AD", "AJ"],
         "courses": [
           {
-            "code": "BIO F110",
-            "name": "Biology Laboratory",
-            "credits": 1,
-            "type": "Laboratory"
-          },
-          {
-            "code": "BIO F111",
-            "name": "General Biology",
+            "code": "BIO F101",
+            "name": "Introduction to Biological Sciences",
             "credits": 3,
             "type": "Lecture"
           },
           {
-            "code": "BITS F110",
+            "code": "BITS K101",
+            "name": "Physical Fitness, Health Well-Being and Creativity",
+            "credits": 1,
+            "type": "Lecture"
+          },
+          {
+            "code": "BITS F103",
             "name": "Engineering Graphics",
             "credits": 2,
-            "type": "Laboratory"
+            "type": "Lecture"
           },
           {
             "code": "BITS F111",
@@ -41,56 +41,62 @@
             "type": "Lecture"
           },
           {
-            "code": "MATH F111",
-            "name": "Mathematics I",
-            "credits": 4,
+            "code": "MATH F101",
+            "name": "Multivariable Calculus",
+            "credits": 3,
             "type": "Lecture"
           }
         ]
       },
-      "A2_A4_A7_AB_B3_B4_AD": {
-        "branches": ["A2", "A4", "A7", "AB", "B3", "B4", "AD"],
+      "A1_A2_B1_B2_B3_B4_B5_B7": {
+        "branches": ["A1", "A2", "B1", "B2", "B3", "B4", "B5", "B7"],
         "courses": [
           {
             "code": "EEE F111",
             "name": "Electrical Sciences",
-            "credits": 4,
+            "credits": 3,
             "type": "Lecture"
           },
           {
-            "code": "CHEM F110",
-            "name": "Chemistry Laboratory",
-            "credits": 1,
-            "type": "Laboratory"
-          },
-          {
-            "code": "CHEM F111",
-            "name": "General Chemistry",
+            "code": "CHEM F101",
+            "name": "Fundamentals of Chemistry",
             "credits": 3,
             "type": "Lecture"
           },
           {
             "code": "ME F112",
-            "name": "Workshop Practice",
+            "name": "Workshop",
             "credits": 2,
-            "type": "Laboratory"
-          },
-          {
-            "code": "MATH F111",
-            "name": "Mathematics I",
-            "credits": 4,
             "type": "Lecture"
           },
           {
-            "code": "PHY F110",
-            "name": "Physics Laboratory",
-            "credits": 1,
-            "type": "Laboratory"
+            "code": "MATH F101",
+            "name": "Multivariable Calculus",
+            "credits": 3,
+            "type": "Lecture"
           },
           {
-            "code": "PHY F111",
-            "name": "Mechanics, Oscillations and Waves",
-            "credits": 4,
+            "code": "PHY F101",
+            "name": "Oscillations and Waves",
+            "credits": 3,
+            "type": "Lecture"
+          },
+          {
+            "code": "BITS F101",
+            "name": "Navigating Campus Life and Living Well",
+            "credits": 1,
+            "type": "Lecture"
+          },
+          {
+            "code": "BITS F102",
+            "name": "Innovation and Design Thinking",
+            "credits": 1,
+            "type": "Lecture"
+          },
+          {
+            "code": "BITS K101",
+            "name": "Physical Fitness, Health Well-Being and Creativity",
+            "credits": 1,
             "type": "Lecture"
           }
         ]
@@ -99,8 +105,8 @@
   },
   "semester_1_2": {
     "groups": {
-      "A2_A4_A7_AB_B3_B4_AD": {
-        "branches": ["A2", "A4", "A7", "AB", "B3", "B4", "AD"],
+      "A3_A4_A7_A8_AA_AD": {
+        "branches": ["A3", "A4", "A7", "A8", "AA", "AD"],
         "courses": [
           {
             "code": "BIO F110",
@@ -115,7 +121,7 @@
             "type": "Lecture"
           },
           {
-            "code": "BITS F110",
+            "code": "BITS F103",
             "name": "Engineering Graphics",
             "credits": 2,
             "type": "Laboratory"
@@ -152,8 +158,8 @@
           }
         ]
       },
-      "A1_A3_A8_AA_B1_B2_B5": {
-        "branches": ["A1", "A3", "A8", "AA", "B1", "B2", "B5"],
+      "A1_A2_B1_B2_B3_B4_B5": {
+        "branches": ["A1", "A2", "B1", "B2", "B3", "B4", "B5"],
         "courses": [
           {
             "code": "EEE F111",

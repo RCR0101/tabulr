@@ -837,8 +837,8 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
   }
 
   Future<void> _addInstructorAvoidance() async {
-    // Get instructors organized by course to avoid duplicates
-    final Map<String, List<String>> courseInstructors = {};
+    // Get instructors organized by course and section type to avoid duplicates
+    final Map<String, Map<String, List<String>>> courseSectionInstructors = {};
     final Set<String> seenInstructorsLower = <String>{};
     
     for (final courseCode in _selectedCourses) {
@@ -854,40 +854,81 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
         ),
       );
       
-      final courseInstructorSet = <String>{};
+      final sectionTypeInstructors = <String, Set<String>>{
+        'Lecture': <String>{},
+        'Tutorial': <String>{},
+        'Practical': <String>{},
+      };
+      
+      // Track seen instructors per section type to avoid duplicates within each section type
+      final sectionTypeSeenLower = <String, Set<String>>{
+        'Lecture': <String>{},
+        'Tutorial': <String>{},
+        'Practical': <String>{},
+      };
+      
       for (final section in course.sections) {
         if (section.instructor.isNotEmpty) {
+          // Determine section type
+          String sectionType = 'Lecture'; // default
+          if (section.type.toString().contains('SectionType.L')) {
+            sectionType = 'Lecture';
+          } else if (section.type.toString().contains('SectionType.T')) {
+            sectionType = 'Tutorial';
+          } else if (section.type.toString().contains('SectionType.P')) {
+            sectionType = 'Practical';
+          }
+          
           // Split comma-separated instructors into individual instructors
           final instructorList = section.instructor.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty);
           for (final instructor in instructorList) {
             final instructorLower = instructor.toLowerCase();
-            // Only add if we haven't seen this instructor name (case-insensitive) before
-            if (!seenInstructorsLower.contains(instructorLower)) {
+            
+            // Only add if we haven't seen this instructor in this section type before
+            if (!sectionTypeSeenLower[sectionType]!.contains(instructorLower)) {
+              sectionTypeSeenLower[sectionType]!.add(instructorLower);
+              sectionTypeInstructors[sectionType]!.add(instructor);
+              
+              // Also track globally to avoid duplicates across courses
               seenInstructorsLower.add(instructorLower);
-              courseInstructorSet.add(instructor);
             }
           }
         }
       }
       
-      if (courseInstructorSet.isNotEmpty) {
-        courseInstructors[courseCode] = courseInstructorSet.toList()..sort();
+      // Convert sets to sorted lists and filter out empty section types
+      final filteredSectionInstructors = <String, List<String>>{};
+      for (final entry in sectionTypeInstructors.entries) {
+        if (entry.value.isNotEmpty) {
+          filteredSectionInstructors[entry.key] = entry.value.toList()..sort();
+        }
+      }
+      
+      if (filteredSectionInstructors.isNotEmpty) {
+        courseSectionInstructors[courseCode] = filteredSectionInstructors;
       }
     }
 
     final result = await showDialog<List<String>>(
       context: context,
       builder: (context) => _InstructorAvoidanceDialog(
-        courseInstructors: courseInstructors,
+        courseSectionInstructors: courseSectionInstructors,
         currentlyAvoided: _avoidedInstructors,
       ),
     );
     
     if (result != null && mounted) {
       setState(() {
-        for (final instructor in result) {
-          if (!_avoidedInstructors.contains(instructor)) {
-            _avoidedInstructors.add(instructor);
+        for (final sectionSpecificKey in result) {
+          // Extract the actual instructor name from the section-specific key
+          // Format: "courseCode-sectionType-instructorName"
+          final parts = sectionSpecificKey.split('-');
+          if (parts.length >= 3) {
+            // Join back in case instructor name had hyphens
+            final instructor = parts.sublist(2).join('-');
+            if (!_avoidedInstructors.contains(instructor)) {
+              _avoidedInstructors.add(instructor);
+            }
           }
         }
       });
@@ -1313,11 +1354,11 @@ class _LabAvoidanceDialogState extends State<_LabAvoidanceDialog> {
 }
 
 class _InstructorAvoidanceDialog extends StatefulWidget {
-  final Map<String, List<String>> courseInstructors;
+  final Map<String, Map<String, List<String>>> courseSectionInstructors;
   final List<String> currentlyAvoided;
 
   const _InstructorAvoidanceDialog({
-    required this.courseInstructors,
+    required this.courseSectionInstructors,
     required this.currentlyAvoided,
   });
 
@@ -1333,7 +1374,7 @@ class _InstructorAvoidanceDialogState extends State<_InstructorAvoidanceDialog> 
   void initState() {
     super.initState();
     // Expand all courses by default for better visibility
-    _expandedCourses.addAll(widget.courseInstructors.keys);
+    _expandedCourses.addAll(widget.courseSectionInstructors.keys);
   }
 
   @override
@@ -1366,7 +1407,7 @@ class _InstructorAvoidanceDialogState extends State<_InstructorAvoidanceDialog> 
                   border: Border.all(color: Theme.of(context).colorScheme.outline),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: widget.courseInstructors.isEmpty
+                child: widget.courseSectionInstructors.isEmpty
                     ? const Center(
                         child: Text(
                           'No instructors found in selected courses',
@@ -1375,11 +1416,17 @@ class _InstructorAvoidanceDialogState extends State<_InstructorAvoidanceDialog> 
                       )
                     : ListView.builder(
                         padding: const EdgeInsets.all(8),
-                        itemCount: widget.courseInstructors.keys.length,
+                        itemCount: widget.courseSectionInstructors.keys.length,
                         itemBuilder: (context, index) {
-                          final courseCode = widget.courseInstructors.keys.elementAt(index);
-                          final instructors = widget.courseInstructors[courseCode]!;
+                          final courseCode = widget.courseSectionInstructors.keys.elementAt(index);
+                          final sectionInstructors = widget.courseSectionInstructors[courseCode]!;
                           final isExpanded = _expandedCourses.contains(courseCode);
+                          
+                          // Count total instructors across all section types
+                          final totalInstructors = sectionInstructors.values
+                              .expand((instructors) => instructors)
+                              .toSet()
+                              .length;
                           
                           return Card(
                             margin: const EdgeInsets.only(bottom: 8),
@@ -1394,7 +1441,7 @@ class _InstructorAvoidanceDialogState extends State<_InstructorAvoidanceDialog> 
                                     ),
                                   ),
                                   subtitle: Text(
-                                    '${instructors.length} instructor${instructors.length == 1 ? '' : 's'}',
+                                    '$totalInstructors instructor${totalInstructors == 1 ? '' : 's'} across ${sectionInstructors.keys.length} section type${sectionInstructors.keys.length == 1 ? '' : 's'}',
                                     style: const TextStyle(fontSize: 12),
                                   ),
                                   trailing: Icon(
@@ -1413,40 +1460,67 @@ class _InstructorAvoidanceDialogState extends State<_InstructorAvoidanceDialog> 
                                 if (isExpanded) ...[
                                   Padding(
                                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                                    child: Wrap(
-                                      spacing: 8,
-                                      runSpacing: 4,
-                                      children: instructors.map((instructor) {
-                                        final isSelected = _selectedInstructors.contains(instructor);
-                                        final isAlreadyAvoided = widget.currentlyAvoided.contains(instructor);
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: sectionInstructors.entries.map((sectionEntry) {
+                                        final sectionType = sectionEntry.key;
+                                        final instructors = sectionEntry.value;
                                         
-                                        return FilterChip(
-                                          label: Text(
-                                            instructor,
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: isAlreadyAvoided 
-                                                  ? Theme.of(context).colorScheme.onSurface.withOpacity(0.5)
-                                                  : null,
-                                            ),
+                                        return Container(
+                                          margin: const EdgeInsets.only(bottom: 12),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                '$sectionType (${instructors.length})',
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Theme.of(context).colorScheme.primary,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Wrap(
+                                                spacing: 6,
+                                                runSpacing: 4,
+                                                children: instructors.map((instructor) {
+                                                  // Create a unique key for section-specific selection
+                                                  final sectionSpecificKey = '$courseCode-$sectionType-$instructor';
+                                                  final isSelected = _selectedInstructors.contains(sectionSpecificKey);
+                                                  final isAlreadyAvoided = widget.currentlyAvoided.contains(instructor);
+                                                  
+                                                  return FilterChip(
+                                                    label: Text(
+                                                      instructor,
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                        color: isAlreadyAvoided 
+                                                            ? Theme.of(context).colorScheme.onSurface.withOpacity(0.5)
+                                                            : null,
+                                                      ),
+                                                    ),
+                                                    selected: isSelected,
+                                                    selectedColor: Theme.of(context).colorScheme.error.withOpacity(0.3),
+                                                    checkmarkColor: Theme.of(context).colorScheme.error,
+                                                    backgroundColor: isAlreadyAvoided 
+                                                        ? Theme.of(context).colorScheme.surface.withOpacity(0.5)
+                                                        : null,
+                                                    onSelected: isAlreadyAvoided 
+                                                        ? null 
+                                                        : (selected) {
+                                                            setState(() {
+                                                              if (selected) {
+                                                                _selectedInstructors.add(sectionSpecificKey);
+                                                              } else {
+                                                                _selectedInstructors.remove(sectionSpecificKey);
+                                                              }
+                                                            });
+                                                          },
+                                                  );
+                                                }).toList(),
+                                              ),
+                                            ],
                                           ),
-                                          selected: isSelected,
-                                          selectedColor: Theme.of(context).colorScheme.error.withOpacity(0.3),
-                                          checkmarkColor: Theme.of(context).colorScheme.error,
-                                          backgroundColor: isAlreadyAvoided 
-                                              ? Theme.of(context).colorScheme.surface.withOpacity(0.5)
-                                              : null,
-                                          onSelected: isAlreadyAvoided 
-                                              ? null 
-                                              : (selected) {
-                                                  setState(() {
-                                                    if (selected) {
-                                                      _selectedInstructors.add(instructor);
-                                                    } else {
-                                                      _selectedInstructors.remove(instructor);
-                                                    }
-                                                  });
-                                                },
                                         );
                                       }).toList(),
                                     ),
@@ -1483,7 +1557,17 @@ class _InstructorAvoidanceDialogState extends State<_InstructorAvoidanceDialog> 
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _selectedInstructors.join(", "),
+                      _selectedInstructors.map((key) {
+                        // Extract instructor name from section-specific key for display
+                        final parts = key.split('-');
+                        if (parts.length >= 3) {
+                          final instructor = parts.sublist(2).join('-');
+                          final courseCode = parts[0];
+                          final sectionType = parts[1];
+                          return '$instructor ($courseCode-$sectionType)';
+                        }
+                        return key;
+                      }).join(", "),
                       style: TextStyle(
                         fontSize: 11,
                         color: Theme.of(context).colorScheme.primary,
