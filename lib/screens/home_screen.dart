@@ -58,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hasUnsavedChanges = false;
   bool _isSaving = false;
   TimetableSize _timetableSize = TimetableSize.medium;
+  TimetableLayout _timetableLayout = TimetableLayout.vertical;
   StreamSubscription<Campus>? _campusSubscription;
 
   @override
@@ -857,6 +858,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           _timetableSize = newSize;
                         });
                       },
+                      layout: _timetableLayout,
+                      onLayoutChanged: (newLayout) {
+                        setState(() {
+                          _timetableLayout = newLayout;
+                        });
+                      },
                     ),
                   ),
                 ),
@@ -880,6 +887,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
   bool _hasUnsavedChanges = false;
   bool _isSaving = false;
   TimetableSize _timetableSize = TimetableSize.medium;
+  TimetableLayout _timetableLayout = TimetableLayout.vertical;
 
   @override
   void initState() {
@@ -1617,6 +1625,12 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                   onSizeChanged: (newSize) {
                     setState(() {
                       _timetableSize = newSize;
+                    });
+                  },
+                  layout: _timetableLayout,
+                  onLayoutChanged: (newLayout) {
+                    setState(() {
+                      _timetableLayout = newLayout;
                     });
                   },
                 ),

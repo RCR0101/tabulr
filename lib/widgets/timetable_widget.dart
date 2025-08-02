@@ -9,6 +9,11 @@ enum TimetableSize {
   extraLarge,
 }
 
+enum TimetableLayout {
+  horizontal, // Days on Y-axis, Hours on X-axis
+  vertical,   // Hours on Y-axis, Days on X-axis (current default)
+}
+
 class TimetableWidget extends StatefulWidget {
   final List<TimetableSlot> timetableSlots;
   final List<String> incompleteSelectionWarnings;
@@ -16,6 +21,8 @@ class TimetableWidget extends StatefulWidget {
   final Function(String courseCode, String sectionId)? onRemoveSection;
   final TimetableSize size;
   final Function(TimetableSize)? onSizeChanged;
+  final TimetableLayout layout;
+  final Function(TimetableLayout)? onLayoutChanged;
   final bool isForExport;
   final GlobalKey? tableKey;
   final bool hasUnsavedChanges;
@@ -30,6 +37,8 @@ class TimetableWidget extends StatefulWidget {
     this.onRemoveSection,
     this.size = TimetableSize.medium,
     this.onSizeChanged,
+    this.layout = TimetableLayout.vertical,
+    this.onLayoutChanged,
     this.isForExport = false,
     this.tableKey,
     this.hasUnsavedChanges = false,
@@ -81,6 +90,30 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                         ),
                       ),
                       const Spacer(),
+                      // Layout toggle button
+                      IconButton(
+                        onPressed: widget.onLayoutChanged != null 
+                          ? () => widget.onLayoutChanged!(
+                              widget.layout == TimetableLayout.vertical 
+                                ? TimetableLayout.horizontal 
+                                : TimetableLayout.vertical
+                            )
+                          : null,
+                        icon: Icon(
+                          widget.layout == TimetableLayout.vertical 
+                            ? Icons.view_column 
+                            : Icons.view_stream,
+                          size: 18,
+                        ),
+                        tooltip: widget.layout == TimetableLayout.vertical 
+                          ? 'Switch to horizontal layout'
+                          : 'Switch to vertical layout',
+                        style: IconButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
+                          side: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       PopupMenuButton<TimetableSize>(
                         onSelected: widget.onSizeChanged,
                         enabled: widget.onSizeChanged != null,
@@ -192,6 +225,30 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     ),
                   ),
                   const SizedBox(width: 16),
+                  // Layout toggle button
+                  IconButton(
+                    onPressed: widget.onLayoutChanged != null 
+                      ? () => widget.onLayoutChanged!(
+                          widget.layout == TimetableLayout.vertical 
+                            ? TimetableLayout.horizontal 
+                            : TimetableLayout.vertical
+                        )
+                      : null,
+                    icon: Icon(
+                      widget.layout == TimetableLayout.vertical 
+                        ? Icons.view_column 
+                        : Icons.view_stream,
+                      size: 20,
+                    ),
+                    tooltip: widget.layout == TimetableLayout.vertical 
+                      ? 'Switch to horizontal layout'
+                      : 'Switch to vertical layout',
+                    style: IconButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
+                      side: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   PopupMenuButton<TimetableSize>(
                     onSelected: widget.onSizeChanged,
                     enabled: widget.onSizeChanged != null,
@@ -324,100 +381,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                         headingRowHeight: 60,
                         dividerThickness: 0,
                         border: TableBorder.all(color: Colors.transparent),
-                        columns: [
-                        DataColumn(
-                          label: SizedBox(
-                            width: _getTimeColumnWidth(widget.size),
-                            child: Text(
-                              'Time',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Color(0xFFF0F6FC),
-                              ),
-                            ),
-                          ),
-                        ),
-                        DataColumn(
-                          label: SizedBox(
-                            width: _getDayColumnWidth(widget.size),
-                            child: Text(
-                              'Monday',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Color(0xFFF0F6FC),
-                              ),
-                            ),
-                          ),
-                        ),
-                        DataColumn(
-                          label: SizedBox(
-                            width: _getDayColumnWidth(widget.size),
-                            child: Text(
-                              'Tuesday',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Color(0xFFF0F6FC),
-                              ),
-                            ),
-                          ),
-                        ),
-                        DataColumn(
-                          label: SizedBox(
-                            width: _getDayColumnWidth(widget.size),
-                            child: Text(
-                              'Wednesday',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Color(0xFFF0F6FC),
-                              ),
-                            ),
-                          ),
-                        ),
-                        DataColumn(
-                          label: SizedBox(
-                            width: _getDayColumnWidth(widget.size),
-                            child: Text(
-                              'Thursday',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Color(0xFFF0F6FC),
-                              ),
-                            ),
-                          ),
-                        ),
-                        DataColumn(
-                          label: SizedBox(
-                            width: _getDayColumnWidth(widget.size),
-                            child: Text(
-                              'Friday',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Color(0xFFF0F6FC),
-                              ),
-                            ),
-                          ),
-                        ),
-                        DataColumn(
-                          label: SizedBox(
-                            width: _getDayColumnWidth(widget.size),
-                            child: Text(
-                              'Saturday',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Color(0xFFF0F6FC),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                      rows: _buildRows(context),
+                        columns: _buildColumns(context),
+                        rows: _buildRows(context),
                       ),
                     ),
                   ),
@@ -443,10 +408,14 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   ),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.vertical,
-                    physics: const ClampingScrollPhysics(),
+                    physics: widget.layout == TimetableLayout.horizontal 
+                      ? const BouncingScrollPhysics() 
+                      : const ClampingScrollPhysics(),
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
-                      physics: const ClampingScrollPhysics(),
+                      physics: widget.layout == TimetableLayout.horizontal 
+                        ? const BouncingScrollPhysics() 
+                        : const ClampingScrollPhysics(),
                       child: Align(
                         alignment: Alignment.topLeft,
                         child: RepaintBoundary(
@@ -458,99 +427,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                             headingRowHeight: 60,
                             dividerThickness: 0,
                             border: TableBorder.all(color: Colors.transparent, width: 0),
-                          columns: [
-                            DataColumn(
-                              label: SizedBox(
-                                width: _getTimeColumnWidth(widget.size),
-                                child: Text(
-                                  'Time',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Color(0xFFF0F6FC),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: SizedBox(
-                                width: _getDayColumnWidth(widget.size),
-                                child: Text(
-                                  'Monday',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Color(0xFFF0F6FC),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: SizedBox(
-                                width: _getDayColumnWidth(widget.size),
-                                child: Text(
-                                  'Tuesday',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Color(0xFFF0F6FC),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: SizedBox(
-                                width: _getDayColumnWidth(widget.size),
-                                child: Text(
-                                  'Wednesday',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Color(0xFFF0F6FC),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: SizedBox(
-                                width: _getDayColumnWidth(widget.size),
-                                child: Text(
-                                  'Thursday',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Color(0xFFF0F6FC),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: SizedBox(
-                                width: _getDayColumnWidth(widget.size),
-                                child: Text(
-                                  'Friday',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Color(0xFFF0F6FC),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: SizedBox(
-                                width: _getDayColumnWidth(widget.size),
-                                child: Text(
-                                  'Saturday',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Color(0xFFF0F6FC),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                          columns: _buildColumns(context),
                           rows: _buildRows(context),
                           ),
                         ),
@@ -563,7 +440,162 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     ),);
   }
 
+  List<DataColumn> _buildColumns(BuildContext context) {
+    if (widget.layout == TimetableLayout.horizontal) {
+      // Horizontal layout: Days on Y-axis, Hours on X-axis
+      return [
+        DataColumn(
+          label: SizedBox(
+            width: _getTimeColumnWidth(widget.size),
+            child: Text(
+              'Day',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Color(0xFFF0F6FC),
+              ),
+            ),
+          ),
+        ),
+        ...List.generate(12, (hour) => DataColumn(
+          label: SizedBox(
+            width: _getDayColumnWidth(widget.size),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _isMobile ? 'H${hour + 1}' : 'Hour ${hour + 1}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: _isMobile ? 12 : 14,
+                    color: Color(0xFFF0F6FC),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 2),
+                Text(
+                  TimeSlotInfo.getHourSlotName(hour + 1),
+                  style: TextStyle(
+                    fontSize: _isMobile ? 9 : 11,
+                    color: Color(0xFFF0F6FC).withValues(alpha: 0.8),
+                    fontWeight: FontWeight.w400,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: _isMobile ? 1 : 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        )),
+      ];
+    } else {
+      // Vertical layout: Hours on Y-axis, Days on X-axis (default)
+      return [
+        DataColumn(
+          label: SizedBox(
+            width: _getTimeColumnWidth(widget.size),
+            child: Text(
+              'Time',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Color(0xFFF0F6FC),
+              ),
+            ),
+          ),
+        ),
+        DataColumn(
+          label: SizedBox(
+            width: _getDayColumnWidth(widget.size),
+            child: Text(
+              'Monday',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Color(0xFFF0F6FC),
+              ),
+            ),
+          ),
+        ),
+        DataColumn(
+          label: SizedBox(
+            width: _getDayColumnWidth(widget.size),
+            child: Text(
+              'Tuesday',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Color(0xFFF0F6FC),
+              ),
+            ),
+          ),
+        ),
+        DataColumn(
+          label: SizedBox(
+            width: _getDayColumnWidth(widget.size),
+            child: Text(
+              'Wednesday',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Color(0xFFF0F6FC),
+              ),
+            ),
+          ),
+        ),
+        DataColumn(
+          label: SizedBox(
+            width: _getDayColumnWidth(widget.size),
+            child: Text(
+              'Thursday',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Color(0xFFF0F6FC),
+              ),
+            ),
+          ),
+        ),
+        DataColumn(
+          label: SizedBox(
+            width: _getDayColumnWidth(widget.size),
+            child: Text(
+              'Friday',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Color(0xFFF0F6FC),
+              ),
+            ),
+          ),
+        ),
+        DataColumn(
+          label: SizedBox(
+            width: _getDayColumnWidth(widget.size),
+            child: Text(
+              'Saturday',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Color(0xFFF0F6FC),
+              ),
+            ),
+          ),
+        ),
+      ];
+    }
+  }
+
   List<DataRow> _buildRows(BuildContext context) {
+    if (widget.layout == TimetableLayout.horizontal) {
+      return _buildHorizontalRows(context);
+    } else {
+      return _buildVerticalRows(context);
+    }
+  }
+
+  List<DataRow> _buildVerticalRows(BuildContext context) {
     List<DataRow> rows = [];
     Map<int, Map<DayOfWeek, TimetableSlot?>> timeTable = {};
 
@@ -606,7 +638,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     style: TextStyle(
                       fontSize: _getHourTimeFontSize(widget.size),
                       fontWeight: FontWeight.w400,
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                     ),
                     textAlign: TextAlign.center,
                     maxLines: _isMobile ? 1 : 2,
@@ -629,7 +661,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                 height: _getCellHeight(widget.size),
                 margin: EdgeInsets.all(_getCellMargin(widget.size)),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
+                  color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: const Color(0xFF30363D)),
                 ),
@@ -641,6 +673,83 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     }
 
     return rows;
+  }
+
+  List<DataRow> _buildHorizontalRows(BuildContext context) {
+    List<DataRow> rows = [];
+    Map<DayOfWeek, Map<int, TimetableSlot?>> dayTable = {};
+
+    for (var slot in widget.timetableSlots) {
+      dayTable[slot.day] ??= {};
+      for (var hour in slot.hours) {
+        dayTable[slot.day]![hour] = slot;
+      }
+    }
+
+    for (var day in DayOfWeek.values) {
+      rows.add(DataRow(
+        cells: [
+          DataCell(
+            Container(
+              width: _getTimeColumnWidth(widget.size),
+              height: _getCellHeight(widget.size),
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFF30363D)),
+              ),
+              child: Center(
+                child: Text(
+                  _getDayName(day),
+                  style: TextStyle(
+                    fontSize: _getHourLabelFontSize(widget.size),
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ),
+          ...List.generate(12, (index) {
+            final hour = index + 1;
+            final slot = dayTable[day]?[hour];
+            if (slot != null) {
+              return DataCell(
+                _buildTimetableCell(context, slot, hour, day),
+              );
+            }
+            return DataCell(
+              Container(
+                width: _getDayColumnWidth(widget.size),
+                height: _getCellHeight(widget.size),
+                margin: EdgeInsets.all(_getCellMargin(widget.size)),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF30363D)),
+                ),
+              ),
+            );
+          }),
+        ],
+      ));
+    }
+
+    return rows;
+  }
+
+  String _getDayName(DayOfWeek day) {
+    switch (day) {
+      case DayOfWeek.M: return 'Monday';
+      case DayOfWeek.T: return 'Tuesday';
+      case DayOfWeek.W: return 'Wednesday';
+      case DayOfWeek.Th: return 'Thursday';
+      case DayOfWeek.F: return 'Friday';
+      case DayOfWeek.S: return 'Saturday';
+    }
   }
 
   Widget _buildTimetableCell(BuildContext context, TimetableSlot slot, int hour, DayOfWeek day) {
@@ -905,6 +1014,12 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       TimetableSize.extraLarge => 240.0,
     };
     
+    // Adjust width for horizontal layout with more columns
+    if (widget.layout == TimetableLayout.horizontal) {
+      final adjustedWidth = _isMobile ? baseWidth * 0.6 : baseWidth * 0.8;
+      return adjustedWidth.clamp(100.0, 180.0);
+    }
+    
     // Make cells bigger on mobile for better readability
     if (_isMobile) {
       final screenWidth = MediaQuery.maybeOf(context)?.size.width ?? 400;
@@ -956,6 +1071,11 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       TimetableSize.large => 20.0,
       TimetableSize.extraLarge => 24.0,
     };
+    
+    // Reduce spacing for horizontal layout to fit more columns
+    if (widget.layout == TimetableLayout.horizontal) {
+      return _isMobile ? 8.0 : baseSpacing * 0.7;
+    }
     
     // Better spacing for mobile readability
     return _isMobile ? 12.0 : baseSpacing;
