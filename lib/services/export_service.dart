@@ -21,26 +21,6 @@ String _escapeText(String input) {
       .replaceAll(';', r'\;');
 }
 
-/// Fold lines longer than 75 bytes: insert CRLF + single space per RFC 5545
-String _foldLine(String line) {
-  final bytes = line.codeUnits;
-  const maxOctets = 75;
-  if (bytes.length <= maxOctets) return line;
-  StringBuffer buf = StringBuffer();
-  int i = 0;
-  while (i < bytes.length) {
-    int end = i + maxOctets;
-    if (end >= bytes.length) {
-      buf.write(String.fromCharCodes(bytes.sublist(i)));
-      break;
-    }
-    // Find slice up to end
-    buf.write(String.fromCharCodes(bytes.sublist(i, end)));
-    buf.write('\r\n ');
-    i = end;
-  }
-  return buf.toString();
-}
 
 /// Format a DateTime as UTC in the ICS format: YYYYMMDDTHHMMSSZ
 String _formatUtcForICS(DateTime dt) {
@@ -52,7 +32,58 @@ String _formatUtcForICS(DateTime dt) {
   String hour = two(utc.hour);
   String minute = two(utc.minute);
   String second = two(utc.second);
-  return '${year}${month}${day}T${hour}${minute}${second}Z';
+  return '$year${month}${day}T$hour${minute}${second}Z';
+}
+
+/// Generate EXDATE entries for holiday breaks
+String _generateExDates(DayOfWeek day, int hour) {
+  final breakPeriods = [
+    {'start': DateTime(2025, 10, 6), 'end': DateTime(2025, 10, 11)}, // Fall break
+    {'start': DateTime(2025, 12, 1), 'end': DateTime(2025, 12, 16)}, // Winter break
+  ];
+
+  // Map day of week to DateTime.weekday (1=Monday..7=Sunday)
+  final dayOffsetMap = {
+    DayOfWeek.M: 1,
+    DayOfWeek.T: 2,
+    DayOfWeek.W: 3,
+    DayOfWeek.Th: 4,
+    DayOfWeek.F: 5,
+    DayOfWeek.S: 6,
+  };
+
+  // Hour to start time mapping
+  final hourToTime = {
+    1: [8, 0], 2: [9, 0], 3: [10, 0], 4: [11, 0], 5: [12, 0], 6: [13, 0],
+    7: [14, 0], 8: [15, 0], 9: [16, 0], 10: [17, 0], 11: [18, 0], 12: [19, 0],
+  };
+
+  final targetWeekday = dayOffsetMap[day];
+  final timeSlot = hourToTime[hour];
+  if (targetWeekday == null || timeSlot == null) return '';
+
+  List<String> exDates = [];
+
+  for (var period in breakPeriods) {
+    DateTime current = period['start'] as DateTime;
+    final end = (period['end'] as DateTime).add(Duration(days: 1)); // inclusive
+    while (current.isBefore(end)) {
+      if (current.weekday == targetWeekday) {
+        final exDate = DateTime(
+          current.year,
+          current.month,
+          current.day,
+          timeSlot[0],
+          timeSlot[1],
+        );
+        exDates.add(_formatUtcForICS(exDate));
+      }
+      current = current.add(Duration(days: 1));
+    }
+  }
+
+  if (exDates.isEmpty) return '';
+  return 'EXDATE:${exDates.join(',')}';
 }
 
 class ExportService {
@@ -70,6 +101,10 @@ class ExportService {
       'METHOD:PUBLISH',
     ];
 
+    // Track processed courses to avoid duplicate exam events
+    Set<String> processedCourses = {};
+
+    // Add regular class events
     for (var selectedSection in selectedSections) {
       final course = courses.firstWhere((c) => c.courseCode == selectedSection.courseCode);
 
@@ -88,6 +123,7 @@ class ExportService {
             String rruleDay = _getDayAbbreviation(day);
             String dtStartStr = _formatUtcForICS(startTime);
             String dtEndStr = _formatUtcForICS(endTime);
+            String exDates = _generateExDates(day, hour);
 
             List<String> eventLines = [
               'BEGIN:VEVENT',
@@ -98,15 +134,32 @@ class ExportService {
               'SUMMARY:$summary',
               'DESCRIPTION:$description',
               'LOCATION:$location',
-              'RRULE:FREQ=WEEKLY;UNTIL=20250531T235959Z;BYDAY=$rruleDay',
-              'END:VEVENT'
+              'RRULE:FREQ=WEEKLY;UNTIL=20251216T235959Z;BYDAY=$rruleDay',
             ];
+
+            // Add exception dates if any exist
+            if (exDates.isNotEmpty) {
+              eventLines.add(exDates);
+            }
+
+            eventLines.add('END:VEVENT');
 
             // Add each line (folding can be done later if needed)
             lines.addAll(eventLines);
           }
         }
       }
+    }
+
+    // Add exam events (once per course, not per section)
+    for (var selectedSection in selectedSections) {
+      final course = courses.firstWhere((c) => c.courseCode == selectedSection.courseCode);
+      
+      // Skip if we've already processed this course's exams
+      if (processedCourses.contains(selectedSection.courseCode)) {
+        continue;
+      }
+      processedCourses.add(selectedSection.courseCode);
 
       // MidSem exam
       if (course.midSemExam != null) {
@@ -188,9 +241,9 @@ class ExportService {
   }
 
   static DateTime _getDateTime(DayOfWeek day, int hour, {bool endTime = false}) {
-    // Get the Monday of the current week (assuming semester starts on a Monday)
-    final now = DateTime.now();
-    final monday = now.subtract(Duration(days: now.weekday - 1));
+    // Use a fixed semester start date (Spring 2025 semester)
+    // Using January 6, 2025 as semester start (a Monday)
+    final monday = DateTime(2025, 8, 4);
     
     // Map day of week to offset from Monday
     final dayOffset = {
