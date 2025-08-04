@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:uuid/uuid.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 
@@ -11,79 +12,159 @@ import 'export_service_stub.dart'
     if (dart.library.html) 'export_service_web.dart'
     if (dart.library.io) 'export_service_io.dart';
 
+/// Escape text per RFC 5545: commas, semicolons, backslashes, and newlines
+String _escapeText(String input) {
+  return input
+      .replaceAll('\\', r'\\')
+      .replaceAll('\n', r'\n')
+      .replaceAll(',', r'\,')
+      .replaceAll(';', r'\;');
+}
+
+/// Fold lines longer than 75 bytes: insert CRLF + single space per RFC 5545
+String _foldLine(String line) {
+  final bytes = line.codeUnits;
+  const maxOctets = 75;
+  if (bytes.length <= maxOctets) return line;
+  StringBuffer buf = StringBuffer();
+  int i = 0;
+  while (i < bytes.length) {
+    int end = i + maxOctets;
+    if (end >= bytes.length) {
+      buf.write(String.fromCharCodes(bytes.sublist(i)));
+      break;
+    }
+    // Find slice up to end
+    buf.write(String.fromCharCodes(bytes.sublist(i, end)));
+    buf.write('\r\n ');
+    i = end;
+  }
+  return buf.toString();
+}
+
+/// Format a DateTime as UTC in the ICS format: YYYYMMDDTHHMMSSZ
+String _formatUtcForICS(DateTime dt) {
+  final utc = dt.toUtc();
+  String two(int n) => n.toString().padLeft(2, '0');
+  String year = utc.year.toString().padLeft(4, '0');
+  String month = two(utc.month);
+  String day = two(utc.day);
+  String hour = two(utc.hour);
+  String minute = two(utc.minute);
+  String second = two(utc.second);
+  return '${year}${month}${day}T${hour}${minute}${second}Z';
+}
+
 class ExportService {
   static Future<String> exportToICS(List<SelectedSection> selectedSections, List<Course> courses) async {
-    // Create manual ICS content since the library API is complex
-    String icsContent = '''BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//Tabulr//EN
-CALSCALE:GREGORIAN
-METHOD:PUBLISH
-''';
+    // Header
+    final now = DateTime.now();
+    final dtstamp = _formatUtcForICS(now);
+    final uuid = Uuid();
+
+    List<String> lines = [
+      'BEGIN:VCALENDAR',
+      'PRODID:-//Tabulr//EN',
+      'VERSION:2.0',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+    ];
 
     for (var selectedSection in selectedSections) {
       final course = courses.firstWhere((c) => c.courseCode == selectedSection.courseCode);
-      
-      // Add regular class events using new schedule structure
+
+      // Regular class events
       for (var scheduleEntry in selectedSection.section.schedule) {
         for (var day in scheduleEntry.days) {
           for (var hour in scheduleEntry.hours) {
             final startTime = _getDateTime(day, hour);
             final endTime = _getDateTime(day, hour, endTime: true);
-            
-            icsContent += '''BEGIN:VEVENT
-UID:${selectedSection.courseCode}-${selectedSection.sectionId}-$day-$hour
-DTSTART:${_formatDateTimeForICS(startTime)}
-DTEND:${_formatDateTimeForICS(endTime)}
-SUMMARY:${selectedSection.courseCode} - ${selectedSection.sectionId}
-DESCRIPTION:Course: ${course.courseTitle}\\nInstructor: ${selectedSection.section.instructor}\\nRoom: ${selectedSection.section.room}
-LOCATION:${selectedSection.section.room}
-RRULE:FREQ=WEEKLY;UNTIL=20250531T235959Z
-END:VEVENT
-''';
+
+            String uid = '${selectedSection.courseCode}-${selectedSection.sectionId}-$day-$hour-${uuid.v4()}@tabulr.app';
+            String summary = _escapeText('${selectedSection.courseCode} - ${selectedSection.sectionId}');
+            String description = _escapeText(
+                'Course: ${course.courseTitle}\nInstructor: ${selectedSection.section.instructor}\nRoom: ${selectedSection.section.room}');
+            String location = _escapeText(selectedSection.section.room);
+            String rruleDay = _getDayAbbreviation(day);
+            String dtStartStr = _formatUtcForICS(startTime);
+            String dtEndStr = _formatUtcForICS(endTime);
+
+            List<String> eventLines = [
+              'BEGIN:VEVENT',
+              'UID:$uid',
+              'DTSTAMP:$dtstamp',
+              'DTSTART:$dtStartStr',
+              'DTEND:$dtEndStr',
+              'SUMMARY:$summary',
+              'DESCRIPTION:$description',
+              'LOCATION:$location',
+              'RRULE:FREQ=WEEKLY;UNTIL=20250531T235959Z;BYDAY=$rruleDay',
+              'END:VEVENT'
+            ];
+
+            // Add each line (folding can be done later if needed)
+            lines.addAll(eventLines);
           }
         }
       }
-      
-      // Add exam events
+
+      // MidSem exam
       if (course.midSemExam != null) {
         final startTime = _getExamDateTime(course.midSemExam!);
         final endTime = _getExamDateTime(course.midSemExam!, endTime: true);
-        
-        icsContent += '''BEGIN:VEVENT
-UID:${selectedSection.courseCode}-midsem
-DTSTART:${_formatDateTimeForICS(startTime)}
-DTEND:${_formatDateTimeForICS(endTime)}
-SUMMARY:${selectedSection.courseCode} MidSem Exam
-DESCRIPTION:MidSem Examination for ${course.courseTitle}
-END:VEVENT
-''';
+
+        String uid = '${selectedSection.courseCode}-midsem-${uuid.v4()}@tabulr.app';
+        String summary = _escapeText('${selectedSection.courseCode} MidSem Exam');
+        String description = _escapeText('MidSem Examination for ${course.courseTitle}');
+        String dtStartStr = _formatUtcForICS(startTime);
+        String dtEndStr = _formatUtcForICS(endTime);
+
+        List<String> eventLines = [
+          'BEGIN:VEVENT',
+          'UID:$uid',
+          'DTSTAMP:$dtstamp',
+          'DTSTART:$dtStartStr',
+          'DTEND:$dtEndStr',
+          'SUMMARY:$summary',
+          'DESCRIPTION:$description',
+          'END:VEVENT'
+        ];
+        lines.addAll(eventLines);
       }
-      
+
+      // EndSem exam
       if (course.endSemExam != null) {
         final startTime = _getExamDateTime(course.endSemExam!);
         final endTime = _getExamDateTime(course.endSemExam!, endTime: true);
-        
-        icsContent += '''BEGIN:VEVENT
-UID:${selectedSection.courseCode}-endsem
-DTSTART:${_formatDateTimeForICS(startTime)}
-DTEND:${_formatDateTimeForICS(endTime)}
-SUMMARY:${selectedSection.courseCode} EndSem Exam
-DESCRIPTION:EndSem Examination for ${course.courseTitle}
-END:VEVENT
-''';
+
+        String uid = '${selectedSection.courseCode}-endsem-${uuid.v4()}@tabulr.app';
+        String summary = _escapeText('${selectedSection.courseCode} EndSem Exam');
+        String description = _escapeText('EndSem Examination for ${course.courseTitle}');
+        String dtStartStr = _formatUtcForICS(startTime);
+        String dtEndStr = _formatUtcForICS(endTime);
+
+        List<String> eventLines = [
+          'BEGIN:VEVENT',
+          'UID:$uid',
+          'DTSTAMP:$dtstamp',
+          'DTSTART:$dtStartStr',
+          'DTEND:$dtEndStr',
+          'SUMMARY:$summary',
+          'DESCRIPTION:$description',
+          'END:VEVENT'
+        ];
+        lines.addAll(eventLines);
       }
     }
-    
-    icsContent += 'END:VCALENDAR\n';
-    
-    // Use platform-specific implementation
+
+    lines.add('END:VCALENDAR');
+
+    // Join with CRLF line endings
+    final icsContent = lines.join('\r\n') + '\r\n';
+
     return await ExportServiceStub.saveIcsContent(icsContent);
   }
 
-  static String _formatDateTimeForICS(DateTime dateTime) {
-    return dateTime.toUtc().toIso8601String().replaceAll(RegExp(r'[-:]'), '').replaceAll('.000Z', 'Z');
-  }
 
   static Future<String> exportToPNG(GlobalKey key, {String? customPath}) async {
     try {
@@ -121,18 +202,42 @@ END:VEVENT
       DayOfWeek.S: 5,
     };
     
-    // Map hour to actual time (hour 1 = 8:00 AM)
-    final startHour = 7 + hour; // hour 1 = 8:00 AM
-    final endHour = endTime ? startHour + 1 : startHour;
+    // Map hour to actual time based on TimeSlotInfo.hourSlotNames
+    final hourToTime = {
+      1: [8, 0],   // 8:00-8:50 AM
+      2: [9, 0],   // 9:00-9:50 AM
+      3: [10, 0],  // 10:00-10:50 AM
+      4: [11, 0],  // 11:00-11:50 AM
+      5: [12, 0],  // 12:00-12:50 PM
+      6: [13, 0],  // 1:00-1:50 PM
+      7: [14, 0],  // 2:00-2:50 PM
+      8: [15, 0],  // 3:00-3:50 PM
+      9: [16, 0],  // 4:00-4:50 PM
+      10: [17, 0], // 5:00-5:50 PM
+      11: [18, 0], // 6:00-6:50 PM
+      12: [19, 0], // 7:00-7:50 PM
+    };
     
-    final targetDate = monday.add(Duration(days: dayOffset[day]!));
+    final timeSlot = hourToTime[hour];
+    if (timeSlot == null) {
+      throw Exception('Invalid hour: $hour');
+    }
+    
+    final dayOffsetValue = dayOffset[day];
+    if (dayOffsetValue == null) {
+      throw Exception('Invalid day: $day');
+    }
+    
+    final targetDate = monday.add(Duration(days: dayOffsetValue));
+    final startHour = timeSlot[0];
+    final startMinute = timeSlot[1];
     
     return DateTime(
       targetDate.year,
       targetDate.month,
       targetDate.day,
-      endTime ? endHour : startHour,
-      0,
+      startHour,
+      endTime ? startMinute + 50 : startMinute, // Each class is 50 minutes
     );
   }
 
@@ -146,5 +251,16 @@ END:VEVENT
     }
     
     return baseTime;
+  }
+
+  static String _getDayAbbreviation(DayOfWeek day) {
+    switch (day) {
+      case DayOfWeek.M: return 'MO';
+      case DayOfWeek.T: return 'TU';
+      case DayOfWeek.W: return 'WE';
+      case DayOfWeek.Th: return 'TH';
+      case DayOfWeek.F: return 'FR';
+      case DayOfWeek.S: return 'SA';
+    }
   }
 }
