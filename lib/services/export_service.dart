@@ -295,12 +295,35 @@ class ExportService {
   }
 
   static DateTime _getExamDateTime(ExamSchedule exam, {bool endTime = false}) {
-    final baseTime = exam.timeSlot == TimeSlot.FN 
-        ? DateTime(exam.date.year, exam.date.month, exam.date.day, 9, 30)
-        : DateTime(exam.date.year, exam.date.month, exam.date.day, 14, 0);
+    // Map time slots to their actual start times
+    final slotTimes = {
+      TimeSlot.FN: [9, 30],    // 9:30AM-12:30PM (EndSem - 3 hours)
+      TimeSlot.AN: [14, 0],    // 2:00PM-5:00PM (EndSem - 3 hours)
+      TimeSlot.MS1: [9, 30],   // 9:30AM-11:00AM (MidSem - 1.5 hours)
+      TimeSlot.MS2: [11, 30],  // 11:30AM-1:00PM (MidSem - 1.5 hours)
+      TimeSlot.MS3: [13, 30],  // 1:30PM-3:00PM (MidSem - 1.5 hours)
+      TimeSlot.MS4: [15, 30],  // 3:30PM-5:00PM (MidSem - 1.5 hours)
+    };
+    
+    final timeInfo = slotTimes[exam.timeSlot];
+    if (timeInfo == null) {
+      throw Exception('Unknown time slot: ${exam.timeSlot}');
+    }
+    
+    final baseTime = DateTime(
+      exam.date.year, 
+      exam.date.month, 
+      exam.date.day, 
+      timeInfo[0], 
+      timeInfo[1]
+    );
     
     if (endTime) {
-      return baseTime.add(const Duration(hours: 3));
+      // MidSem exams are 1.5 hours, EndSem exams are 3 hours
+      final duration = exam.timeSlot.toString().startsWith('TimeSlot.MS') 
+          ? Duration(minutes: 90)  // 1.5 hours for midsems
+          : Duration(hours: 3);    // 3 hours for endsems
+      return baseTime.add(duration);
     }
     
     return baseTime;
