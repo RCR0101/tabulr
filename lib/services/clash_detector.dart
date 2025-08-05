@@ -31,23 +31,21 @@ class ClashDetector {
 
     for (var entry in dayHourMap.entries) {
       if (entry.value.length > 1) {
-        // Check if the conflicting sections are from different courses
-        var uniqueCourses = entry.value.map((s) => s.courseCode).toSet();
+        // Always flag time conflicts, regardless of course
+        var conflictingSections = entry.value;
+        var dayHour = entry.key.split('_');
+        var day = dayHour[0];
+        var hour = int.parse(dayHour[1]);
         
-        if (uniqueCourses.length > 1) {
-          // Only flag as clash if sections are from different courses
-          var conflictingCourses = entry.value.map((s) => s.courseCode).toList();
-          var dayHour = entry.key.split('_');
-          var day = dayHour[0];
-          var hour = int.parse(dayHour[1]);
-          
-          warnings.add(ClashWarning(
-            type: ClashType.regularClass,
-            message: 'Class time clash on $day at ${TimeSlotInfo.getHourSlotName(hour)}',
-            conflictingCourses: conflictingCourses,
-            severity: ClashSeverity.error,
-          ));
-        }
+        // Create descriptive message with section details
+        var sectionDetails = conflictingSections.map((s) => '${s.courseCode}-${s.sectionId}').join(', ');
+        
+        warnings.add(ClashWarning(
+          type: ClashType.regularClass,
+          message: 'Class time clash on $day at ${TimeSlotInfo.getHourSlotName(hour)} between: $sectionDetails',
+          conflictingCourses: conflictingSections.map((s) => s.courseCode).toList(),
+          severity: ClashSeverity.error,
+        ));
       }
     }
 
