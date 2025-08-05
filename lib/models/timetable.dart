@@ -44,6 +44,8 @@ class Timetable {
         parsedCampus = Campus.pilani;
       } else if (campusCode == 'hyderabad') {
         parsedCampus = Campus.hyderabad;
+      } else if(campusCode == 'goa'){
+        parsedCampus = Campus.goa;
       }
     }
     

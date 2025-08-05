@@ -39,6 +39,8 @@ function detectCampusFromFilename(filename) {
     return { campus: 'hyderabad', displayName: 'Hyderabad' };
   } else if (name.includes('pil') || name.includes('pilani')) {
     return { campus: 'pilani', displayName: 'Pilani' };
+  } else if (name.includes('goa')) {
+    return { campus: 'goa', displayName: 'Goa' };
   }
   return { campus: 'default', displayName: 'Default' };
 }
@@ -93,6 +95,10 @@ async function processTimetableFile(timetableInfo, scriptsDir) {
     converterScript = 'pilani_conv.py';
     uploadScript = 'upload-timetable-pilani.js';
     csvFileName = 'pilani_courses.csv'; // Expected by the Pilani upload script
+  } else if (campus === 'goa') {
+    converterScript = 'goa-conv.py'; // Use Goa-specific converter
+    uploadScript = 'upload-timetable-goa.js';
+    csvFileName = `output-${campus}.csv`;
   } else {
     throw new Error(`Unknown campus: ${campus}`);
   }
@@ -121,8 +127,14 @@ async function processTimetableFile(timetableInfo, scriptsDir) {
     await runCommand('node', [
       path.join(scriptsDir, uploadScript)
     ], scriptsDir);
+  } else if (campus === 'goa') {
+    // Goa upload script needs CSV path
+    await runCommand('node', [
+      path.join(scriptsDir, uploadScript),
+      csvPath
+    ], scriptsDir);
   } else {
-    // Hyderabad upload script needs CSV path and campus parameter
+    // Hyderabad/default upload script needs CSV path and campus parameter
     await runCommand('node', [
       path.join(scriptsDir, uploadScript),
       csvPath,

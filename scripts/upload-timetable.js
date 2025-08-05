@@ -38,6 +38,7 @@ function getCampusCollection(campus) {
   const campusMap = {
     'hyderabad': 'hyd-courses',
     'hyd': 'hyd-courses',
+    'goa': 'goa-courses',
     'default': 'courses'
   };
   
@@ -50,6 +51,7 @@ function getCampusName(campus) {
   const campusMap = {
     'hyderabad': 'Hyderabad',
     'hyd': 'Hyderabad',
+    'goa': 'Goa',
     'default': 'Default'
   };
   
@@ -633,7 +635,7 @@ async function main() {
     } else {
       console.error('❌ Please provide the path to a CSV or XLSX file');
       console.log('Usage: npm run upload [path-to-file] [campus]');
-      console.log('Campus options: hyderabad, pilani, default');
+      console.log('Campus options: hyderabad, pilani, goa, default');
       console.log('Or place "output.csv" or "DRAFT TIMETABLE I SEM 2025 -26.xlsx" in the project root');
       process.exit(1);
     }

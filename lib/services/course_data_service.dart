@@ -65,7 +65,7 @@ class CourseDataService {
         try {
           final doc = snapshot.docs[i];
           final data = doc.data() as Map<String, dynamic>;
-          print('Processing course ${i + 1}/${snapshot.docs.length}: ${doc.id}');
+          // print('Processing course ${i + 1}/${snapshot.docs.length}: ${doc.id}');
           final course = Course.fromJson(data);
           courses.add(course);
         } catch (e) {
@@ -200,6 +200,9 @@ class CourseDataService {
           break;
         case Campus.pilani:
           docName = 'current-pilani';
+          break;
+        case Campus.goa:
+          docName = 'current-goa';
           break;
       }
       

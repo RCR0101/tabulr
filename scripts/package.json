@@ -5,6 +5,7 @@
   "main": "upload-timetable.js",
   "scripts": {
     "upload": "node upload-timetable.js",
+    "upload-goa": "node upload-timetable-goa.js",
     "upload-guide": "node upload_course_guide.js",
     "process": "node process-timetable.js"
   },
