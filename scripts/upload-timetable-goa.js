@@ -536,7 +536,7 @@ class XlsxParserGoa {
     } else if (typeof value === 'string') {
       try {
         const doubleValue = parseFloat(value);
-        return Math.round(doubleValue);
+        return isNaN(doubleValue) ? 0 : Math.round(doubleValue);
       } catch (error) {
         return 0;
       }

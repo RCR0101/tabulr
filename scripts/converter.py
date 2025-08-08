@@ -71,7 +71,7 @@ if __name__ == "__main__":
     print(f"Converting {input_pdf} to {output_csv}")
     
     # headers to remove from the table
-    headers: list[str] = ["COMP\nCODE", "DRAFT TIMETABLE I SEM 2025 - 26", "TIMETABLE I SEM 2025 -26"]
+    headers: list[str] = ["COMP\nCODE", "DRAFT TIMETABLE I SEM 2025 - 26", "TIMETABLE I SEM 2025 -26", "UPDATED TIMETABLE I SEMESTER 2025 -26 I YEAR COURSES"]
 
     # page range to extract the timetable from
     # [from, to] - extracting all pages

@@ -59,7 +59,7 @@ function getCampusName(campus) {
   return campusMap[campusKey] || 'Default Campus';
 }
 
-// Parser functions (copied from Flutter app)
+// Parser functions (same as regular upload script)
 class XlsxParser {
   static parseXlsxFile(filePath) {
     try {
@@ -534,7 +534,7 @@ class XlsxParser {
   }
 }
 
-async function uploadTimetableData(filePath, campus) {
+async function uploadSelectiveTimetableData(filePath, campus) {
   try {
     const fileExtension = path.extname(filePath).toLowerCase();
     let courses;
@@ -552,7 +552,7 @@ async function uploadTimetableData(filePath, campus) {
     console.log(`✅ Parsed ${courses.length} courses for ${campus}`);
     
     // Write course codes to text file
-    const courseCodesFile = path.join(__dirname, `course_codes_${campus}.txt`);
+    const courseCodesFile = path.join(__dirname, `course_codes_fresh_${campus}.txt`);
     const courseCodes = courses.map(course => course.courseCode).sort();
     fs.writeFileSync(courseCodesFile, courseCodes.join('\n'));
     console.log(`📝 Written ${courseCodes.length} course codes to ${courseCodesFile}`);
@@ -561,23 +561,12 @@ async function uploadTimetableData(filePath, campus) {
     const collectionName = getCampusCollection(campus);
     console.log(`📚 Using collection: ${collectionName}`);
     
-    // Clear existing data
-    console.log(`🔄 Clearing existing course data for ${campus}...`);
+    // SELECTIVE UPDATE: Only update the specific courses in our fresh data
+    console.log(`🔄 Selectively updating course data for ${campus} (${courses.length} courses)...`);
     const coursesRef = db.collection(collectionName);
-    const snapshot = await coursesRef.get();
     
-    const batch = db.batch();
-    snapshot.docs.forEach(doc => {
-      batch.delete(doc.ref);
-    });
-    
-    if (!snapshot.empty) {
-      await batch.commit();
-      console.log(`✅ Cleared ${snapshot.size} existing courses`);
-    }
-    
-    // Upload new data in batches
-    console.log('🔄 Uploading new course data...');
+    // Upload new data in batches (this will overwrite existing courses with same courseCode)
+    console.log('🔄 Uploading/updating course data...');
     const batchSize = 500; // Firestore batch limit
     
     for (let i = 0; i < courses.length; i += batchSize) {
@@ -586,12 +575,17 @@ async function uploadTimetableData(filePath, campus) {
       
       courseBatch.forEach(course => {
         const docRef = coursesRef.doc(course.courseCode);
-        batch.set(docRef, course);
+        batch.set(docRef, course); // This will overwrite if exists, create if not
       });
       
       await batch.commit();
-      console.log(`✅ Uploaded courses ${i + 1} to ${Math.min(i + batchSize, courses.length)}`);
+      console.log(`✅ Updated courses ${i + 1} to ${Math.min(i + batchSize, courses.length)}`);
     }
+    
+    // Get current total course count for metadata update
+    console.log('🔄 Getting updated course count...');
+    const allCoursesSnapshot = await coursesRef.get();
+    const totalCourses = allCoursesSnapshot.size;
     
     // Update metadata
     console.log(`🔄 Updating metadata for ${getCampusName(campus)}...`);
@@ -600,18 +594,25 @@ async function uploadTimetableData(filePath, campus) {
     const metadataRef = db.collection(metadataCollectionName).doc(metadataDocName);
     await metadataRef.set({
       lastUpdated: new Date().toISOString(),
-      totalCourses: courses.length,
+      totalCourses: totalCourses, // Total courses in collection after selective update
       uploadedAt: new Date().toISOString(),
       version: Date.now().toString(),
       campus: getCampusName(campus),
-      campusCode: campus
-    });
+      campusCode: campus,
+      lastSelectiveUpdate: {
+        coursesUpdated: courses.length,
+        updatedAt: new Date().toISOString(),
+        sourcefile: path.basename(filePath)
+      }
+    }, { merge: true }); // Use merge to preserve existing metadata fields
     
-    console.log(`🎉 Upload completed successfully for ${getCampusName(campus)}!`);
-    console.log(`📊 Total courses uploaded: ${courses.length}`);
+    console.log('🎉 Selective upload completed successfully!');
+    console.log(`📊 Courses updated: ${courses.length}`);
+    console.log(`📊 Total courses in collection: ${totalCourses}`);
+    console.log(`📝 Updated course codes saved to: ${courseCodesFile}`);
     
   } catch (error) {
-    console.error('❌ Error uploading timetable data:', error);
+    console.error('❌ Error uploading selective timetable data:', error);
     process.exit(1);
   }
 }
@@ -619,24 +620,24 @@ async function uploadTimetableData(filePath, campus) {
 // Main execution
 async function main() {
   let filePath = process.argv[2];
-  let campus = process.argv[3] || 'default';
+  let campus = process.argv[3] || 'hyderabad'; // Default to hyderabad for fresh updates
   
-  // If no path provided, look for default files in parent directory
+  // If no path provided, look for default files
   if (!filePath) {
-    const defaultCsvPath = path.join(__dirname, '.', 'output.csv');
-    const defaultXlsxPath = path.join(__dirname, '..', 'DRAFT TIMETABLE I SEM 2025 -26.xlsx');
+    const defaultCsvPath = path.join(__dirname, '.', 'output-fresh.csv');
+    const defaultXlsxPath = path.join(__dirname, '..', 'TIMETABLE-FRESH-HYD.xlsx');
     
     if (fs.existsSync(defaultCsvPath)) {
       filePath = defaultCsvPath;
-      console.log(`📂 Using default CSV file: ${path.basename(defaultCsvPath)}`);
+      console.log(`📂 Using default fresh CSV file: ${path.basename(defaultCsvPath)}`);
     } else if (fs.existsSync(defaultXlsxPath)) {
       filePath = defaultXlsxPath;
-      console.log(`📂 Using default XLSX file: ${path.basename(defaultXlsxPath)}`);
+      console.log(`📂 Using default fresh XLSX file: ${path.basename(defaultXlsxPath)}`);
     } else {
-      console.error('❌ Please provide the path to a CSV or XLSX file');
-      console.log('Usage: npm run upload [path-to-file] [campus]');
-      console.log('Campus options: hyderabad, pilani, goa, default');
-      console.log('Or place "output.csv" or "DRAFT TIMETABLE I SEM 2025 -26.xlsx" in the project root');
+      console.error('❌ Please provide the path to a fresh timetable CSV or XLSX file');
+      console.log('Usage: node upload-timetable-fresh-hyd.js [path-to-file] [campus]');
+      console.log('Campus options: hyderabad, hyd (default: hyderabad)');
+      console.log('Or place "output-fresh.csv" or "TIMETABLE-FRESH-HYD.xlsx" in the project root');
       process.exit(1);
     }
   }
@@ -646,8 +647,9 @@ async function main() {
     process.exit(1);
   }
   
-  console.log(`🏫 Processing for ${getCampusName(campus)} campus`);
-  await uploadTimetableData(filePath, campus);
+  console.log(`🏫 Processing SELECTIVE UPDATE for ${getCampusName(campus)} campus`);
+  console.log(`📄 Source: ${path.basename(filePath)}`);
+  await uploadSelectiveTimetableData(filePath, campus);
 }
 
 main().catch(console.error);

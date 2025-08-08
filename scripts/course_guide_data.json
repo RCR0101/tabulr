@@ -1,8 +1,8 @@
 {
   "semester_1_1": {
     "groups": {
-      "A3_A4_A7_A8_AA_AD_AJ": {
-        "branches": ["A3", "A4", "A7", "A8", "AA", "AD", "AJ"],
+      "A3_A4_A7_A8_AA_AJ": {
+        "branches": ["A3", "A4", "A7", "A8", "AA", "AJ"],
         "courses": [
           {
             "code": "BIO F101",
@@ -48,8 +48,8 @@
           }
         ]
       },
-      "A1_A2_B1_B2_B3_B4_B5_B7": {
-        "branches": ["A1", "A2", "B1", "B2", "B3", "B4", "B5", "B7"],
+      "A1_A2_B1_B2_B3_B4_B5_B7_AD": {
+        "branches": ["A1", "A2", "B1", "B2", "B3", "B4", "B5", "B7", "AD"],
         "courses": [
           {
             "code": "EEE F111",
