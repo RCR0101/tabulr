@@ -93,6 +93,26 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     try {
       final List<ValidationResult> results = [];
       
+      // Create a list of all newly selected sections for cross-checking
+      final List<SelectedSection> newlySelectedSections = [];
+      for (final entry in _selectedSections.entries) {
+        final courseCode = entry.key;
+        final sectionsByType = entry.value;
+        final course = _availableCourses.firstWhere((c) => c.courseCode == courseCode);
+        
+        for (final typeEntry in sectionsByType.entries) {
+          final sectionType = typeEntry.key;
+          final sectionId = typeEntry.value;
+          final section = course.sections.firstWhere((s) => s.sectionId == sectionId);
+          
+          newlySelectedSections.add(SelectedSection(
+            courseCode: courseCode,
+            sectionId: sectionId,
+            section: section,
+          ));
+        }
+      }
+      
       for (final entry in _selectedSections.entries) {
         final courseCode = entry.key;
         final sectionsByType = entry.value;
@@ -106,14 +126,17 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
           final section = course.sections.firstWhere((s) => s.sectionId == sectionId);
           
           final conflicts = _checkForConflicts(section);
+          final examConflicts = _checkForExamConflicts(course);
+          final newSelectionConflicts = _checkForNewSelectionConflicts(section, course, courseCode, sectionId, newlySelectedSections);
+          final allConflicts = [...conflicts, ...examConflicts, ...newSelectionConflicts];
           
           results.add(ValidationResult(
             courseCode: courseCode,
             sectionId: sectionId,
             sectionType: sectionType,
             courseTitle: course.courseTitle,
-            canBeAdded: conflicts.isEmpty,
-            conflicts: conflicts,
+            canBeAdded: allConflicts.isEmpty,
+            conflicts: allConflicts,
           ));
         }
       }
@@ -159,6 +182,179 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
               }
             }
           }
+        }
+      }
+    }
+    
+    return conflicts;
+  }
+
+  List<ConflictInfo> _checkForExamConflicts(Course newCourse) {
+    final conflicts = <ConflictInfo>[];
+    
+    // Check for mid-semester exam conflicts
+    if (newCourse.midSemExam != null) {
+      for (final currentSelected in widget.currentSelectedSections) {
+        final currentCourse = widget.availableCourses.firstWhere(
+          (c) => c.courseCode == currentSelected.courseCode,
+        );
+        
+        if (currentCourse.midSemExam != null) {
+          // Check if exams are on the same date and have overlapping time slots
+          if (_examDatesConflict(newCourse.midSemExam!, currentCourse.midSemExam!)) {
+            conflicts.add(ConflictInfo(
+              conflictingCourse: currentSelected.courseCode,
+              conflictingSectionId: 'Mid-Sem Exam',
+              day: DayOfWeek.M, // Placeholder, exams don't follow day structure
+              time: 'Mid-Sem Exam: ${TimeSlotInfo.getTimeSlotName(newCourse.midSemExam!.timeSlot)}',
+            ));
+          }
+        }
+      }
+    }
+    
+    // Check for comprehensive exam conflicts
+    if (newCourse.endSemExam != null) {
+      for (final currentSelected in widget.currentSelectedSections) {
+        final currentCourse = widget.availableCourses.firstWhere(
+          (c) => c.courseCode == currentSelected.courseCode,
+        );
+        
+        if (currentCourse.endSemExam != null) {
+          // Check if exams are on the same date and have overlapping time slots
+          if (_examDatesConflict(newCourse.endSemExam!, currentCourse.endSemExam!)) {
+            conflicts.add(ConflictInfo(
+              conflictingCourse: currentSelected.courseCode,
+              conflictingSectionId: 'Comprehensive Exam',
+              day: DayOfWeek.M, // Placeholder, exams don't follow day structure
+              time: 'Comprehensive Exam: ${TimeSlotInfo.getTimeSlotName(newCourse.endSemExam!.timeSlot)}',
+            ));
+          }
+        }
+      }
+    }
+    
+    return conflicts;
+  }
+
+  bool _examDatesConflict(ExamSchedule exam1, ExamSchedule exam2) {
+    // Check if exams are on the same date
+    if (exam1.date.year == exam2.date.year &&
+        exam1.date.month == exam2.date.month &&
+        exam1.date.day == exam2.date.day) {
+      
+      // Check if time slots overlap
+      return _examTimeSlotsOverlap(exam1.timeSlot, exam2.timeSlot);
+    }
+    return false;
+  }
+
+  bool _examTimeSlotsOverlap(TimeSlot slot1, TimeSlot slot2) {
+    // If they're the exact same slot, they definitely overlap
+    if (slot1 == slot2) return true;
+    
+    // Check for overlapping time ranges
+    // Note: This is a simplified check. In practice, you might want more sophisticated logic
+    // based on the actual times defined in TimeSlotInfo.timeSlotNames
+    
+    // For mid-semester exams (MS1-MS4), check for overlaps
+    final midSemSlots = [TimeSlot.MS1, TimeSlot.MS2, TimeSlot.MS3, TimeSlot.MS4];
+    if (midSemSlots.contains(slot1) && midSemSlots.contains(slot2)) {
+      // MS1: 9:30-11:00, MS2: 11:30-1:00, MS3: 1:30-3:00, MS4: 3:30-5:00
+      // These don't overlap as they have 30-minute gaps
+      return false;
+    }
+    
+    // For comprehensive exams (FN, AN), check for overlaps
+    final compSlots = [TimeSlot.FN, TimeSlot.AN];
+    if (compSlots.contains(slot1) && compSlots.contains(slot2)) {
+      // FN: 9:30AM-12:30PM, AN: 2:00PM-5:00PM
+      // These don't overlap
+      return false;
+    }
+    
+    // No overlap between different exam types (mid-sem vs comprehensive)
+    return false;
+  }
+
+  List<ConflictInfo> _checkForNewSelectionConflicts(
+    Section currentSection, 
+    Course currentCourse, 
+    String currentCourseCode, 
+    String currentSectionId, 
+    List<SelectedSection> allNewlySelected
+  ) {
+    final conflicts = <ConflictInfo>[];
+    
+    // Check class schedule conflicts with other newly selected sections
+    for (final scheduleEntry in currentSection.schedule) {
+      for (final day in scheduleEntry.days) {
+        for (final hour in scheduleEntry.hours) {
+          for (final otherSelected in allNewlySelected) {
+            // Skip checking against itself
+            if (otherSelected.courseCode == currentCourseCode && otherSelected.sectionId == currentSectionId) {
+              continue;
+            }
+            
+            for (final otherScheduleEntry in otherSelected.section.schedule) {
+              if (otherScheduleEntry.days.contains(day) && otherScheduleEntry.hours.contains(hour)) {
+                conflicts.add(ConflictInfo(
+                  conflictingCourse: otherSelected.courseCode,
+                  conflictingSectionId: otherSelected.sectionId,
+                  day: day,
+                  time: TimeSlotInfo.getHourSlotName(hour),
+                ));
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // Check exam conflicts with other newly selected courses
+    final examConflicts = _checkForExamConflictsBetweenNewSelections(currentCourse, currentCourseCode, allNewlySelected);
+    conflicts.addAll(examConflicts);
+    
+    return conflicts;
+  }
+
+  List<ConflictInfo> _checkForExamConflictsBetweenNewSelections(
+    Course currentCourse, 
+    String currentCourseCode, 
+    List<SelectedSection> allNewlySelected
+  ) {
+    final conflicts = <ConflictInfo>[];
+    
+    // Get unique courses from newly selected sections
+    final Set<String> otherCourseCodes = allNewlySelected
+        .map((s) => s.courseCode)
+        .where((code) => code != currentCourseCode)
+        .toSet();
+    
+    for (final otherCourseCode in otherCourseCodes) {
+      final otherCourse = _availableCourses.firstWhere((c) => c.courseCode == otherCourseCode);
+      
+      // Check mid-semester exam conflicts
+      if (currentCourse.midSemExam != null && otherCourse.midSemExam != null) {
+        if (_examDatesConflict(currentCourse.midSemExam!, otherCourse.midSemExam!)) {
+          conflicts.add(ConflictInfo(
+            conflictingCourse: otherCourseCode,
+            conflictingSectionId: 'Mid-Sem Exam',
+            day: DayOfWeek.M, // Placeholder
+            time: 'Mid-Sem Exam: ${TimeSlotInfo.getTimeSlotName(currentCourse.midSemExam!.timeSlot)}',
+          ));
+        }
+      }
+      
+      // Check comprehensive exam conflicts
+      if (currentCourse.endSemExam != null && otherCourse.endSemExam != null) {
+        if (_examDatesConflict(currentCourse.endSemExam!, otherCourse.endSemExam!)) {
+          conflicts.add(ConflictInfo(
+            conflictingCourse: otherCourseCode,
+            conflictingSectionId: 'Comprehensive Exam',
+            day: DayOfWeek.M, // Placeholder
+            time: 'Comprehensive Exam: ${TimeSlotInfo.getTimeSlotName(currentCourse.endSemExam!.timeSlot)}',
+          ));
         }
       }
     }
@@ -303,6 +499,50 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                                 ),
                               );
                             }),
+                            // Show exam information if available
+                            if (course.midSemExam != null || course.endSemExam != null) ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.schedule_outlined,
+                                          size: 14,
+                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Exams',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    if (course.midSemExam != null) ...[
+                                      _buildCompactExamInfo('Mid-Sem', course.midSemExam!),
+                                      if (course.endSemExam != null) const SizedBox(height: 3),
+                                    ],
+                                    if (course.endSemExam != null)
+                                      _buildCompactExamInfo('Comprehensive', course.endSemExam!),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -445,24 +685,69 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
             trailing: hasSelections
                 ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
                 : const Icon(Icons.radio_button_unchecked),
-            children: sectionsByType.entries.map((typeEntry) {
-              final sectionType = typeEntry.key;
-              final sections = typeEntry.value;
-              final selectedSectionId = courseSelections[sectionType];
-              
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Text(
-                      '${_getSectionTypeName(sectionType)} Sections',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
+            children: [
+              // Show exam information first
+              if (course.midSemExam != null || course.endSemExam != null)
+                Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
                     ),
                   ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.schedule_outlined,
+                            size: 16,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Exam Schedule',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      if (course.midSemExam != null) ...[
+                        _buildExamInfo('Mid-Sem', course.midSemExam!),
+                        if (course.endSemExam != null) const SizedBox(height: 4),
+                      ],
+                      if (course.endSemExam != null)
+                        _buildExamInfo('Comprehensive', course.endSemExam!),
+                    ],
+                  ),
+                ),
+              // Then show sections
+              ...sectionsByType.entries.map((typeEntry) {
+                final sectionType = typeEntry.key;
+                final sections = typeEntry.value;
+                final selectedSectionId = courseSelections[sectionType];
+                
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Text(
+                        '${_getSectionTypeName(sectionType)} Sections',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
                   ...sections.map((section) {
                     final isSelected = selectedSectionId == section.sectionId;
                     
@@ -511,11 +796,80 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                   const Divider(height: 1),
                 ],
               );
-            }).toList(),
+            }),
+            ],
           ),
         );
       },
     );
+  }
+
+  Widget _buildExamInfo(String examType, ExamSchedule exam) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: examType == 'Mid-Sem' ? Colors.purple : Colors.deepOrange,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            examType,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            '${_formatDate(exam.date)} - ${TimeSlotInfo.getTimeSlotName(exam.timeSlot)}',
+            style: const TextStyle(fontSize: 12),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompactExamInfo(String examType, ExamSchedule exam) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+          decoration: BoxDecoration(
+            color: examType == 'Mid-Sem' ? Colors.purple : Colors.deepOrange,
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: Text(
+            examType == 'Mid-Sem' ? 'MS' : 'CE',
+            style: const TextStyle(
+              fontSize: 8,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            '${_formatDate(exam.date)} - ${TimeSlotInfo.getTimeSlotName(exam.timeSlot)}',
+            style: const TextStyle(fontSize: 10),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
   String _getSectionTypeName(SectionType type) {
