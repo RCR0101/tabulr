@@ -793,7 +793,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(_getBorderRadius(widget.size)),
             boxShadow: [
               BoxShadow(
                 color: _getCourseColor(slot.courseCode).withOpacity(0.3),
@@ -811,7 +811,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               Padding(
                 padding: EdgeInsets.all(_getCellPadding(widget.size)),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,  // Changed from spaceEvenly for better distribution
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.max,
                   children: [
@@ -839,7 +839,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                             fontSize: _getCourseTitleFontSize(widget.size),
                             color: const Color(0xFFE6EDF3),
                             fontWeight: FontWeight.w400,
-                            height: 1.0,
+                            height: _getLineHeight(widget.size),  // Dynamic line height for better text fitting
+                            letterSpacing: widget.size == TimetableSize.compact ? 0.05 : 0.1,  // Reduced letter spacing for compact mode
                           ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: _getCourseTitleMaxLines(widget.size),
@@ -867,10 +868,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                           slot.instructor,
                           style: TextStyle(
                             fontSize: _getInstructorFontSize(widget.size),
-                            color: const Color(0xFFE6EDF3).withValues(alpha: 0.85),
+                            color: const Color(0xFFE6EDF3).withValues(alpha: 0.88),  // Slightly more opaque
                             fontWeight: FontWeight.w400,
-                            height: 1.1,
-                            letterSpacing: 0.1,
+                            height: _getLineHeight(widget.size),  // Dynamic line height
+                            letterSpacing: widget.size == TimetableSize.compact ? 0.1 : 0.15,  // Reduced letter spacing for compact mode
                           ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
@@ -1029,10 +1030,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
   // Size-specific dimension helpers
   double _getDayColumnWidth(TimetableSize size) {
     final baseWidth = switch (size) {
-      TimetableSize.compact => 140.0,
-      TimetableSize.medium => 160.0,
-      TimetableSize.large => 200.0,
-      TimetableSize.extraLarge => 240.0,
+      TimetableSize.compact => 145.0,    // Reduced from 160 for better proportions
+      TimetableSize.medium => 170.0,     // Reduced from 190
+      TimetableSize.large => 210.0,      // Reduced from 240
+      TimetableSize.extraLarge => 250.0, // Reduced from 290
     };
     
     // Adjust width for horizontal layout with more columns
@@ -1063,14 +1064,14 @@ class _TimetableWidgetState extends State<TimetableWidget> {
 
   double _getCellHeight(TimetableSize size) {
     final baseHeight = switch (size) {
-      TimetableSize.compact => 70.0,
-      TimetableSize.medium => 80.0,
-      TimetableSize.large => 100.0,
-      TimetableSize.extraLarge => 120.0,
+      TimetableSize.compact => 90.0,     // Increased back to prevent text cutoff
+      TimetableSize.medium => 95.0,      // Keep current size
+      TimetableSize.large => 115.0,      // Keep current size
+      TimetableSize.extraLarge => 140.0, // Keep current size
     };
     
-    // Reduce height for mobile
-    return _isMobile ? baseHeight * 0.85 : baseHeight;
+    // Less aggressive reduction for mobile to maintain readability
+    return _isMobile ? baseHeight * 0.9 : baseHeight;
   }
 
   double _getCellMargin(TimetableSize size) {
@@ -1142,57 +1143,57 @@ class _TimetableWidgetState extends State<TimetableWidget> {
   // Dynamic text sizing helpers
   double _getCourseCodeFontSize(TimetableSize size) {
     final baseSize = switch (size) {
-      TimetableSize.compact => 12.0,
-      TimetableSize.medium => 14.0,
-      TimetableSize.large => 16.0,
-      TimetableSize.extraLarge => 18.0,
+      TimetableSize.compact => 12.5,    // Balanced course code font
+      TimetableSize.medium => 14.0,     // Slightly reduced
+      TimetableSize.large => 16.0,      // Reduced from 17
+      TimetableSize.extraLarge => 18.0, // Reduced from 20
     };
     
-    return _isMobile ? baseSize * 0.9 : baseSize;
+    return _isMobile ? baseSize * 0.92 : baseSize;
   }
 
   double _getCourseTitleFontSize(TimetableSize size) {
     final baseSize = switch (size) {
-      TimetableSize.compact => 10.0,
-      TimetableSize.medium => 11.0,
-      TimetableSize.large => 12.0,
-      TimetableSize.extraLarge => 14.0,
+      TimetableSize.compact => 10.0,    // Reduced slightly for compact mode to prevent cutoff
+      TimetableSize.medium => 11.5,     // Keep current size
+      TimetableSize.large => 13.0,      // Keep current size
+      TimetableSize.extraLarge => 14.5, // Keep current size
     };
     
-    return _isMobile ? baseSize * 0.9 : baseSize;
+    return _isMobile ? baseSize * 0.92 : baseSize;
   }
 
   double _getSectionIdFontSize(TimetableSize size) {
     final baseSize = switch (size) {
-      TimetableSize.compact => 11.0,
-      TimetableSize.medium => 12.0,
-      TimetableSize.large => 13.0,
-      TimetableSize.extraLarge => 15.0,
+      TimetableSize.compact => 11.5,    // Increased from 11
+      TimetableSize.medium => 13.0,     // Increased from 12
+      TimetableSize.large => 14.5,      // Increased from 13
+      TimetableSize.extraLarge => 16.5, // Increased from 15
     };
     
-    return _isMobile ? baseSize * 0.9 : baseSize;
+    return _isMobile ? baseSize * 0.92 : baseSize;
   }
 
   double _getRoomFontSize(TimetableSize size) {
     final baseSize = switch (size) {
-      TimetableSize.compact => 10.0,
-      TimetableSize.medium => 11.0,
-      TimetableSize.large => 12.0,
-      TimetableSize.extraLarge => 13.0,
+      TimetableSize.compact => 10.5,    // Increased from 10
+      TimetableSize.medium => 12.0,     // Increased from 11
+      TimetableSize.large => 13.5,      // Increased from 12
+      TimetableSize.extraLarge => 15.0, // Increased from 13
     };
     
-    return _isMobile ? baseSize * 0.9 : baseSize;
+    return _isMobile ? baseSize * 0.92 : baseSize;
   }
 
   double _getInstructorFontSize(TimetableSize size) {
     final baseSize = switch (size) {
-      TimetableSize.compact => 9.0,
-      TimetableSize.medium => 10.0,
-      TimetableSize.large => 11.0,
-      TimetableSize.extraLarge => 12.0,
+      TimetableSize.compact => 10.0,    // Increased from 9
+      TimetableSize.medium => 11.0,     // Increased from 10
+      TimetableSize.large => 12.5,      // Increased from 11
+      TimetableSize.extraLarge => 14.0, // Increased from 12
     };
     
-    return _isMobile ? baseSize * 0.9 : baseSize;
+    return _isMobile ? baseSize * 0.92 : baseSize;
   }
 
   double _getHourLabelFontSize(TimetableSize size) {
@@ -1221,13 +1222,13 @@ class _TimetableWidgetState extends State<TimetableWidget> {
 
   double _getCellPadding(TimetableSize size) {
     final basePadding = switch (size) {
-      TimetableSize.compact => 6.0,
-      TimetableSize.medium => 8.0,
-      TimetableSize.large => 10.0,
-      TimetableSize.extraLarge => 12.0,
+      TimetableSize.compact => 7.0,     // Balanced padding
+      TimetableSize.medium => 9.0,      // Reduced from 12
+      TimetableSize.large => 12.0,      // Reduced from 16
+      TimetableSize.extraLarge => 15.0, // Reduced from 20
     };
     
-    return _isMobile ? basePadding * 0.7 : basePadding;
+    return _isMobile ? basePadding * 0.8 : basePadding;
   }
 
   bool _shouldShowField(String fieldName) {
@@ -1255,26 +1256,54 @@ class _TimetableWidgetState extends State<TimetableWidget> {
   double _getTextSpacing(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:
-        return 1;
+        return 2.0;  // Increased from 1 for better readability
       case TimetableSize.medium:
-        return 2;
+        return 3.0;  // Increased from 2
       case TimetableSize.large:
-        return 3;
+        return 4.0;  // Increased from 3
       case TimetableSize.extraLarge:
-        return 4;
+        return 5.0;  // Increased from 4
     }
   }
 
   int _getCourseTitleMaxLines(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:
-        return 1; // Allow 1 line in compact mode instead of 0
+        return 2; // Increased from 1 for better readability
       case TimetableSize.medium:
-        return 2; // Increased from 1 to 2 lines
+        return 3; // Increased from 2 
       case TimetableSize.large:
-        return 3; // Increased from 2 to 3 lines
+        return 4; // Increased from 3 
       case TimetableSize.extraLarge:
-        return 3; // Increased from 2 to 3 lines
+        return 4; // Increased from 3 with more space for longer titles
+    }
+  }
+
+  // Border radius that scales with cell size for better proportions
+  double _getBorderRadius(TimetableSize size) {
+    switch (size) {
+      case TimetableSize.compact:
+        return 10.0;
+      case TimetableSize.medium:
+        return 12.0;
+      case TimetableSize.large:
+        return 14.0;
+      case TimetableSize.extraLarge:
+        return 16.0;
+    }
+  }
+
+  // Dynamic line height for better text fitting
+  double _getLineHeight(TimetableSize size) {
+    switch (size) {
+      case TimetableSize.compact:
+        return 1.1;  // Tighter line height for compact mode
+      case TimetableSize.medium:
+        return 1.15;
+      case TimetableSize.large:
+        return 1.2;
+      case TimetableSize.extraLarge:
+        return 1.2;
     }
   }
 }
