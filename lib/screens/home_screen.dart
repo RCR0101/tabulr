@@ -27,6 +27,7 @@ import 'timetables_screen.dart';
 import 'course_guide_screen.dart';
 import 'discipline_electives_screen.dart';
 import 'humanities_electives_screen.dart';
+import 'add_swap_screen.dart';
 import '../models/timetable.dart' as timetable;
 
 class HomeScreen extends StatefulWidget {
@@ -433,6 +434,21 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _openAddSwap() {
+    if (_timetable == null) return;
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddSwapScreen(
+          currentSelectedSections: _timetable!.selectedSections,
+          availableCourses: _timetable!.availableCourses,
+          currentCampus: CampusService.currentCampusCode,
+        ),
+      ),
+    );
+  }
+
   Future<void> _openGitHub() async {
     // Replace with your GitHub repository URL
     const String githubUrl = 'https://github.com/RCR0101/timetable_maker';
@@ -759,19 +775,49 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
       floatingActionButton: isWideScreen
-          ? FloatingActionButton.extended(
-              onPressed: _openGenerator,
-              icon: const Icon(Icons.auto_awesome),
-              label: const Text('TT Generator'),
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton.extended(
+                  onPressed: _openAddSwap,
+                  icon: const Icon(Icons.swap_horiz),
+                  label: const Text('Add/Swap'),
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
+                  foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                  heroTag: 'add_swap',
+                ),
+                const SizedBox(width: 8),
+                FloatingActionButton.extended(
+                  onPressed: _openGenerator,
+                  icon: const Icon(Icons.auto_awesome),
+                  label: const Text('TT Generator'),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  heroTag: 'generator',
+                ),
+              ],
             )
-          : FloatingActionButton(
-              onPressed: _openGenerator,
-              child: const Icon(Icons.auto_awesome),
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              tooltip: 'TT Generator',
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton(
+                  onPressed: _openAddSwap,
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
+                  foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                  tooltip: 'Add/Swap Courses',
+                  heroTag: 'add_swap',
+                  child: const Icon(Icons.swap_horiz),
+                ),
+                const SizedBox(height: 8),
+                FloatingActionButton(
+                  onPressed: _openGenerator,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  tooltip: 'TT Generator',
+                  heroTag: 'generator',
+                  child: const Icon(Icons.auto_awesome),
+                ),
+              ],
             ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(12),
@@ -1232,6 +1278,19 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
     }
   }
 
+  void _openAddSwap() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddSwapScreen(
+          currentSelectedSections: _timetable.selectedSections,
+          availableCourses: _timetable.availableCourses,
+          currentCampus: CampusService.currentCampusCode,
+        ),
+      ),
+    );
+  }
+
   Future<void> _openGitHub() async {
     // Replace with your GitHub repository URL
     const String githubUrl = 'https://github.com/RCR0101/timetable_maker';
@@ -1545,19 +1604,49 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
               ),
             ),
       floatingActionButton: isWideScreen
-          ? FloatingActionButton.extended(
-              onPressed: _openGenerator,
-              icon: const Icon(Icons.auto_awesome),
-              label: const Text('TT Generator'),
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton.extended(
+                  onPressed: _openAddSwap,
+                  icon: const Icon(Icons.swap_horiz),
+                  label: const Text('Add/Swap'),
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
+                  foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                  heroTag: 'add_swap',
+                ),
+                const SizedBox(width: 8),
+                FloatingActionButton.extended(
+                  onPressed: _openGenerator,
+                  icon: const Icon(Icons.auto_awesome),
+                  label: const Text('TT Generator'),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  heroTag: 'generator',
+                ),
+              ],
             )
-          : FloatingActionButton(
-              onPressed: _openGenerator,
-              child: const Icon(Icons.auto_awesome),
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              tooltip: 'TT Generator',
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton(
+                  onPressed: _openAddSwap,
+                  backgroundColor: Theme.of(context).colorScheme.secondary,
+                  foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                  tooltip: 'Add/Swap Courses',
+                  heroTag: 'add_swap',
+                  child: const Icon(Icons.swap_horiz),
+                ),
+                const SizedBox(height: 8),
+                FloatingActionButton(
+                  onPressed: _openGenerator,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  tooltip: 'TT Generator',
+                  heroTag: 'generator',
+                  child: const Icon(Icons.auto_awesome),
+                ),
+              ],
             ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(12),
