@@ -14,20 +14,31 @@ enum AppTheme {
   solarizedDark,
 }
 
+enum ThemeMode {
+  dark,
+  light,
+}
+
 class ThemeService extends ChangeNotifier {
   static final ThemeService _instance = ThemeService._internal();
   factory ThemeService() => _instance;
   ThemeService._internal();
 
   AppTheme _currentTheme = AppTheme.githubDark;
+  ThemeMode _currentThemeMode = ThemeMode.dark;
   static const String _themeKey = 'selected_theme';
+  static const String _themeModeKey = 'theme_mode';
 
   AppTheme get currentTheme => _currentTheme;
+  ThemeMode get currentThemeMode => _currentThemeMode;
+  bool get isLightMode => _currentThemeMode == ThemeMode.light;
 
   Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
     final themeIndex = prefs.getInt(_themeKey) ?? 0;
+    final themeModeIndex = prefs.getInt(_themeModeKey) ?? 0;
     _currentTheme = AppTheme.values[themeIndex];
+    _currentThemeMode = ThemeMode.values[themeModeIndex];
     notifyListeners();
   }
 
@@ -36,6 +47,18 @@ class ThemeService extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_themeKey, theme.index);
     notifyListeners();
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    _currentThemeMode = mode;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_themeModeKey, mode.index);
+    notifyListeners();
+  }
+
+  Future<void> toggleThemeMode() async {
+    final newMode = _currentThemeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+    await setThemeMode(newMode);
   }
 
   String getThemeName(AppTheme theme) {
@@ -91,25 +114,25 @@ class ThemeService extends ChangeNotifier {
   ThemeData getThemeData(AppTheme theme) {
     switch (theme) {
       case AppTheme.githubDark:
-        return _buildGitHubTheme();
+        return isLightMode ? _buildGitHubLightTheme() : _buildGitHubTheme();
       case AppTheme.draculaDark:
-        return _buildDraculaTheme();
+        return isLightMode ? _buildDraculaLightTheme() : _buildDraculaTheme();
       case AppTheme.oceanicDark:
-        return _buildOceanicTheme();
+        return isLightMode ? _buildOceanicLightTheme() : _buildOceanicTheme();
       case AppTheme.cobaltDark:
-        return _buildCobaltTheme();
+        return isLightMode ? _buildCobaltLightTheme() : _buildCobaltTheme();
       case AppTheme.materialDark:
-        return _buildMaterialTheme();
+        return isLightMode ? _buildMaterialLightTheme() : _buildMaterialTheme();
       case AppTheme.nordDark:
-        return _buildNordTheme();
+        return isLightMode ? _buildNordLightTheme() : _buildNordTheme();
       case AppTheme.tokyoNightDark:
-        return _buildTokyoNightTheme();
+        return isLightMode ? _buildTokyoNightLightTheme() : _buildTokyoNightTheme();
       case AppTheme.gruvboxDark:
-        return _buildGruvboxTheme();
+        return isLightMode ? _buildGruvboxLightTheme() : _buildGruvboxTheme();
       case AppTheme.catppuccinDark:
-        return _buildCatppuccinTheme();
+        return isLightMode ? _buildCatppuccinLightTheme() : _buildCatppuccinTheme();
       case AppTheme.solarizedDark:
-        return _buildSolarizedTheme();
+        return isLightMode ? _buildSolarizedLightTheme() : _buildSolarizedTheme();
     }
   }
 
@@ -136,7 +159,7 @@ class ThemeService extends ChangeNotifier {
         foregroundColor: Color(0xFFF0F6FC),
         elevation: 0,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: const Color(0xFF161B22),
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -223,7 +246,7 @@ class ThemeService extends ChangeNotifier {
         foregroundColor: Color(0xFFF8F8F2),
         elevation: 0,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: const Color(0xFF44475A),
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -310,7 +333,7 @@ class ThemeService extends ChangeNotifier {
         foregroundColor: Color(0xFFECEFF1),
         elevation: 0,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: const Color(0xFF37474F),
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -398,7 +421,7 @@ class ThemeService extends ChangeNotifier {
         foregroundColor: Color(0xFFFFFFFF),
         elevation: 0,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: const Color(0xFF1E415E),
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -485,7 +508,7 @@ class ThemeService extends ChangeNotifier {
         foregroundColor: Color(0xFFFFFFFF),
         elevation: 0,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: const Color(0xFF1E1E1E),
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -572,7 +595,7 @@ class ThemeService extends ChangeNotifier {
         foregroundColor: Color(0xFFECEFF4),
         elevation: 0,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: const Color(0xFF3B4252),
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -659,7 +682,7 @@ class ThemeService extends ChangeNotifier {
         foregroundColor: Color(0xFFC0CAF5),
         elevation: 0,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: const Color(0xFF24283B),
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -746,7 +769,7 @@ class ThemeService extends ChangeNotifier {
         foregroundColor: Color(0xFFEBDBB2),
         elevation: 0,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: const Color(0xFF282828),
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -833,7 +856,7 @@ class ThemeService extends ChangeNotifier {
         foregroundColor: Color(0xFFCDD6F4),
         elevation: 0,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: const Color(0xFF313244),
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -920,7 +943,7 @@ class ThemeService extends ChangeNotifier {
         foregroundColor: Color(0xFFFDF6E3),
         elevation: 0,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: const Color(0xFF073642),
         elevation: 2,
         shape: RoundedRectangleBorder(
@@ -979,6 +1002,877 @@ class ThemeService extends ChangeNotifier {
         collapsedBackgroundColor: Color(0xFF002B36),
         iconColor: Color(0xFF268BD2),
         collapsedIconColor: Color(0xFF93A1A1),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  // Light theme variants
+  ThemeData _buildGitHubLightTheme() {
+    return ThemeData.light().copyWith(
+      primaryColor: const Color(0xFFFFFFFF),
+      scaffoldBackgroundColor: const Color(0xFFFFFFFF),
+      cardColor: const Color(0xFFF6F8FA),
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFF0969DA),
+        secondary: Color(0xFF1F883D),
+        surface: Color(0xFFF6F8FA),
+        background: Color(0xFFFFFFFF),
+        error: Color(0xFFDA3633),
+        onPrimary: Color(0xFFFFFFFF),
+        onSecondary: Color(0xFFFFFFFF),
+        onSurface: Color(0xFF24292F),
+        onBackground: Color(0xFF24292F),
+        onError: Color(0xFFFFFFFF),
+        outline: Color(0xFFD0D7DE),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFFFFFFF),
+        foregroundColor: Color(0xFF24292F),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFFF6F8FA),
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF0969DA),
+          foregroundColor: const Color(0xFFFFFFFF),
+          elevation: 1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF0969DA),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFFFFFFF),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFD0D7DE)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFD0D7DE)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF0969DA)),
+        ),
+        labelStyle: const TextStyle(color: Color(0xFF656D76)),
+        hintStyle: const TextStyle(color: Color(0xFF8C959F)),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: const Color(0xFFF6F8FA),
+        selectedColor: const Color(0xFF0969DA),
+        labelStyle: const TextStyle(color: Color(0xFF24292F)),
+        secondaryLabelStyle: const TextStyle(color: Color(0xFFFFFFFF)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      dataTableTheme: DataTableThemeData(
+        headingRowColor: MaterialStateProperty.all(const Color(0xFFF6F8FA)),
+        dataRowColor: MaterialStateProperty.all(const Color(0xFFFFFFFF)),
+        dividerThickness: 1,
+      ),
+      expansionTileTheme: const ExpansionTileThemeData(
+        backgroundColor: Color(0xFFF6F8FA),
+        collapsedBackgroundColor: Color(0xFFFFFFFF),
+        iconColor: Color(0xFF0969DA),
+        collapsedIconColor: Color(0xFF656D76),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildDraculaLightTheme() {
+    return ThemeData.light().copyWith(
+      primaryColor: const Color(0xFFF8F8F2),
+      scaffoldBackgroundColor: const Color(0xFFF8F8F2),
+      cardColor: const Color(0xFFFFFFFF),
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFF6272A4),
+        secondary: Color(0xFF50FA7B),
+        surface: Color(0xFFFFFFFF),
+        background: Color(0xFFF8F8F2),
+        error: Color(0xFFFF5555),
+        onPrimary: Color(0xFFFFFFFF),
+        onSecondary: Color(0xFF282A36),
+        onSurface: Color(0xFF282A36),
+        onBackground: Color(0xFF282A36),
+        onError: Color(0xFFFFFFFF),
+        outline: Color(0xFF44475A),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFF8F8F2),
+        foregroundColor: Color(0xFF282A36),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFFFFFFFF),
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF6272A4),
+          foregroundColor: const Color(0xFFFFFFFF),
+          elevation: 1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF6272A4),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFFFFFFF),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF44475A)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF44475A)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF6272A4)),
+        ),
+        labelStyle: const TextStyle(color: Color(0xFF6272A4)),
+        hintStyle: const TextStyle(color: Color(0xFF44475A)),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: const Color(0xFFFFFFFF),
+        selectedColor: const Color(0xFF6272A4),
+        labelStyle: const TextStyle(color: Color(0xFF282A36)),
+        secondaryLabelStyle: const TextStyle(color: Color(0xFFFFFFFF)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      dataTableTheme: DataTableThemeData(
+        headingRowColor: MaterialStateProperty.all(const Color(0xFFFFFFFF)),
+        dataRowColor: MaterialStateProperty.all(const Color(0xFFF8F8F2)),
+        dividerThickness: 1,
+      ),
+      expansionTileTheme: const ExpansionTileThemeData(
+        backgroundColor: Color(0xFFFFFFFF),
+        collapsedBackgroundColor: Color(0xFFF8F8F2),
+        iconColor: Color(0xFF6272A4),
+        collapsedIconColor: Color(0xFF44475A),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildOceanicLightTheme() {
+    return ThemeData.light().copyWith(
+      primaryColor: const Color(0xFFECEFF1),
+      scaffoldBackgroundColor: const Color(0xFFECEFF1),
+      cardColor: const Color(0xFFFFFFFF),
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFF00695C),
+        secondary: Color(0xFF00ACC1),
+        surface: Color(0xFFFFFFFF),
+        background: Color(0xFFECEFF1),
+        error: Color(0xFFD32F2F),
+        onPrimary: Color(0xFFFFFFFF),
+        onSecondary: Color(0xFFFFFFFF),
+        onSurface: Color(0xFF263238),
+        onBackground: Color(0xFF263238),
+        onError: Color(0xFFFFFFFF),
+        outline: Color(0xFF90A4AE),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFECEFF1),
+        foregroundColor: Color(0xFF263238),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFFFFFFFF),
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF00695C),
+          foregroundColor: const Color(0xFFFFFFFF),
+          elevation: 1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF00695C),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFFFFFFF),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF90A4AE)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF90A4AE)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF00695C)),
+        ),
+        labelStyle: const TextStyle(color: Color(0xFF546E7A)),
+        hintStyle: const TextStyle(color: Color(0xFF90A4AE)),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: const Color(0xFFFFFFFF),
+        selectedColor: const Color(0xFF00695C),
+        labelStyle: const TextStyle(color: Color(0xFF263238)),
+        secondaryLabelStyle: const TextStyle(color: Color(0xFFFFFFFF)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      dataTableTheme: DataTableThemeData(
+        headingRowColor: MaterialStateProperty.all(const Color(0xFFFFFFFF)),
+        dataRowColor: MaterialStateProperty.all(const Color(0xFFECEFF1)),
+        dividerThickness: 1,
+      ),
+      expansionTileTheme: const ExpansionTileThemeData(
+        backgroundColor: Color(0xFFFFFFFF),
+        collapsedBackgroundColor: Color(0xFFECEFF1),
+        iconColor: Color(0xFF00695C),
+        collapsedIconColor: Color(0xFF546E7A),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildCobaltLightTheme() {
+    return ThemeData.light().copyWith(
+      primaryColor: const Color(0xFFFFFFFF),
+      scaffoldBackgroundColor: const Color(0xFFFFFFFF),
+      cardColor: const Color(0xFFF5F9FC),
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFF0969DA),
+        secondary: Color(0xFFFF8800),
+        surface: Color(0xFFF5F9FC),
+        background: Color(0xFFFFFFFF),
+        error: Color(0xFFDA1E28),
+        onPrimary: Color(0xFFFFFFFF),
+        onSecondary: Color(0xFFFFFFFF),
+        onSurface: Color(0xFF193549),
+        onBackground: Color(0xFF193549),
+        onError: Color(0xFFFFFFFF),
+        outline: Color(0xFF8FA4B3),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFFFFFFF),
+        foregroundColor: Color(0xFF193549),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFFF5F9FC),
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF0969DA),
+          foregroundColor: const Color(0xFFFFFFFF),
+          elevation: 1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF0969DA),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFFFFFFF),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF8FA4B3)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF8FA4B3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF0969DA)),
+        ),
+        labelStyle: const TextStyle(color: Color(0xFF5A7A92)),
+        hintStyle: const TextStyle(color: Color(0xFF8FA4B3)),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: const Color(0xFFFFFFFF),
+        selectedColor: const Color(0xFF0969DA),
+        labelStyle: const TextStyle(color: Color(0xFF193549)),
+        secondaryLabelStyle: const TextStyle(color: Color(0xFFFFFFFF)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      dataTableTheme: DataTableThemeData(
+        headingRowColor: MaterialStateProperty.all(const Color(0xFFF5F9FC)),
+        dataRowColor: MaterialStateProperty.all(const Color(0xFFFFFFFF)),
+        dividerThickness: 1,
+      ),
+      expansionTileTheme: const ExpansionTileThemeData(
+        backgroundColor: Color(0xFFF5F9FC),
+        collapsedBackgroundColor: Color(0xFFFFFFFF),
+        iconColor: Color(0xFF0969DA),
+        collapsedIconColor: Color(0xFF5A7A92),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildMaterialLightTheme() {
+    return ThemeData.light().copyWith(
+      primaryColor: const Color(0xFFFFFFFF),
+      scaffoldBackgroundColor: const Color(0xFFFFFFFF),
+      cardColor: const Color(0xFFFAFAFA),
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFF6200EE),
+        secondary: Color(0xFF018786),
+        surface: Color(0xFFFAFAFA),
+        background: Color(0xFFFFFFFF),
+        error: Color(0xFFB00020),
+        onPrimary: Color(0xFFFFFFFF),
+        onSecondary: Color(0xFFFFFFFF),
+        onSurface: Color(0xFF000000),
+        onBackground: Color(0xFF000000),
+        onError: Color(0xFFFFFFFF),
+        outline: Color(0xFFE0E0E0),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFFFFFFF),
+        foregroundColor: Color(0xFF000000),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFFFAFAFA),
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF6200EE),
+          foregroundColor: const Color(0xFFFFFFFF),
+          elevation: 1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF6200EE),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFFFFFFF),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF6200EE)),
+        ),
+        labelStyle: const TextStyle(color: Color(0xFF757575)),
+        hintStyle: const TextStyle(color: Color(0xFF9E9E9E)),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: const Color(0xFFFFFFFF),
+        selectedColor: const Color(0xFF6200EE),
+        labelStyle: const TextStyle(color: Color(0xFF000000)),
+        secondaryLabelStyle: const TextStyle(color: Color(0xFFFFFFFF)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      dataTableTheme: DataTableThemeData(
+        headingRowColor: MaterialStateProperty.all(const Color(0xFFFAFAFA)),
+        dataRowColor: MaterialStateProperty.all(const Color(0xFFFFFFFF)),
+        dividerThickness: 1,
+      ),
+      expansionTileTheme: const ExpansionTileThemeData(
+        backgroundColor: Color(0xFFFAFAFA),
+        collapsedBackgroundColor: Color(0xFFFFFFFF),
+        iconColor: Color(0xFF6200EE),
+        collapsedIconColor: Color(0xFF757575),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildNordLightTheme() {
+    return ThemeData.light().copyWith(
+      primaryColor: const Color(0xFFECEFF4),
+      scaffoldBackgroundColor: const Color(0xFFECEFF4),
+      cardColor: const Color(0xFFFFFFFF),
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFF5E81AC),
+        secondary: Color(0xFF81A1C1),
+        surface: Color(0xFFFFFFFF),
+        background: Color(0xFFECEFF4),
+        error: Color(0xFFBF616A),
+        onPrimary: Color(0xFFFFFFFF),
+        onSecondary: Color(0xFF2E3440),
+        onSurface: Color(0xFF2E3440),
+        onBackground: Color(0xFF2E3440),
+        onError: Color(0xFFFFFFFF),
+        outline: Color(0xFFD8DEE9),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFECEFF4),
+        foregroundColor: Color(0xFF2E3440),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFFFFFFFF),
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF5E81AC),
+          foregroundColor: const Color(0xFFFFFFFF),
+          elevation: 1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF5E81AC),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFFFFFFF),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFD8DEE9)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFD8DEE9)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF5E81AC)),
+        ),
+        labelStyle: const TextStyle(color: Color(0xFF4C566A)),
+        hintStyle: const TextStyle(color: Color(0xFFD8DEE9)),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: const Color(0xFFFFFFFF),
+        selectedColor: const Color(0xFF5E81AC),
+        labelStyle: const TextStyle(color: Color(0xFF2E3440)),
+        secondaryLabelStyle: const TextStyle(color: Color(0xFFFFFFFF)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      dataTableTheme: DataTableThemeData(
+        headingRowColor: MaterialStateProperty.all(const Color(0xFFFFFFFF)),
+        dataRowColor: MaterialStateProperty.all(const Color(0xFFECEFF4)),
+        dividerThickness: 1,
+      ),
+      expansionTileTheme: const ExpansionTileThemeData(
+        backgroundColor: Color(0xFFFFFFFF),
+        collapsedBackgroundColor: Color(0xFFECEFF4),
+        iconColor: Color(0xFF5E81AC),
+        collapsedIconColor: Color(0xFF4C566A),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildTokyoNightLightTheme() {
+    return ThemeData.light().copyWith(
+      primaryColor: const Color(0xFFFFFFFF),
+      scaffoldBackgroundColor: const Color(0xFFFFFFFF),
+      cardColor: const Color(0xFFF7F7F7),
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFF3D59A1),
+        secondary: Color(0xFF33635C),
+        surface: Color(0xFFF7F7F7),
+        background: Color(0xFFFFFFFF),
+        error: Color(0xFFCC517A),
+        onPrimary: Color(0xFFFFFFFF),
+        onSecondary: Color(0xFFFFFFFF),
+        onSurface: Color(0xFF1A1B26),
+        onBackground: Color(0xFF1A1B26),
+        onError: Color(0xFFFFFFFF),
+        outline: Color(0xFFE1E2E7),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFFFFFFF),
+        foregroundColor: Color(0xFF1A1B26),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFFF7F7F7),
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF3D59A1),
+          foregroundColor: const Color(0xFFFFFFFF),
+          elevation: 1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF3D59A1),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFFFFFFF),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFE1E2E7)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFE1E2E7)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF3D59A1)),
+        ),
+        labelStyle: const TextStyle(color: Color(0xFF6172B0)),
+        hintStyle: const TextStyle(color: Color(0xFFA9B1D6)),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: const Color(0xFFFFFFFF),
+        selectedColor: const Color(0xFF3D59A1),
+        labelStyle: const TextStyle(color: Color(0xFF1A1B26)),
+        secondaryLabelStyle: const TextStyle(color: Color(0xFFFFFFFF)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      dataTableTheme: DataTableThemeData(
+        headingRowColor: MaterialStateProperty.all(const Color(0xFFF7F7F7)),
+        dataRowColor: MaterialStateProperty.all(const Color(0xFFFFFFFF)),
+        dividerThickness: 1,
+      ),
+      expansionTileTheme: const ExpansionTileThemeData(
+        backgroundColor: Color(0xFFF7F7F7),
+        collapsedBackgroundColor: Color(0xFFFFFFFF),
+        iconColor: Color(0xFF3D59A1),
+        collapsedIconColor: Color(0xFF6172B0),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildGruvboxLightTheme() {
+    return ThemeData.light().copyWith(
+      primaryColor: const Color(0xFFFBF1C7),
+      scaffoldBackgroundColor: const Color(0xFFFBF1C7),
+      cardColor: const Color(0xFFF2E5BC),
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFFB57614),
+        secondary: Color(0xFF79740E),
+        surface: Color(0xFFF2E5BC),
+        background: Color(0xFFFBF1C7),
+        error: Color(0xFF9D0006),
+        onPrimary: Color(0xFFFBF1C7),
+        onSecondary: Color(0xFFFBF1C7),
+        onSurface: Color(0xFF3C3836),
+        onBackground: Color(0xFF3C3836),
+        onError: Color(0xFFFBF1C7),
+        outline: Color(0xFFD5C4A1),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFFBF1C7),
+        foregroundColor: Color(0xFF3C3836),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFFF2E5BC),
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFB57614),
+          foregroundColor: const Color(0xFFFBF1C7),
+          elevation: 1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFFB57614),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFF2E5BC),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFD5C4A1)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFD5C4A1)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFB57614)),
+        ),
+        labelStyle: const TextStyle(color: Color(0xFF076678)),
+        hintStyle: const TextStyle(color: Color(0xFFBDAE93)),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: const Color(0xFFF2E5BC),
+        selectedColor: const Color(0xFFB57614),
+        labelStyle: const TextStyle(color: Color(0xFF3C3836)),
+        secondaryLabelStyle: const TextStyle(color: Color(0xFFFBF1C7)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      dataTableTheme: DataTableThemeData(
+        headingRowColor: MaterialStateProperty.all(const Color(0xFFF2E5BC)),
+        dataRowColor: MaterialStateProperty.all(const Color(0xFFFBF1C7)),
+        dividerThickness: 1,
+      ),
+      expansionTileTheme: const ExpansionTileThemeData(
+        backgroundColor: Color(0xFFF2E5BC),
+        collapsedBackgroundColor: Color(0xFFFBF1C7),
+        iconColor: Color(0xFFB57614),
+        collapsedIconColor: Color(0xFF076678),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildCatppuccinLightTheme() {
+    return ThemeData.light().copyWith(
+      primaryColor: const Color(0xFFEFF1F5),
+      scaffoldBackgroundColor: const Color(0xFFEFF1F5),
+      cardColor: const Color(0xFFE6E9EF),
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFF7C7F93),
+        secondary: Color(0xFF40A02B),
+        surface: Color(0xFFE6E9EF),
+        background: Color(0xFFEFF1F5),
+        error: Color(0xFFD20F39),
+        onPrimary: Color(0xFFFFFFFF),
+        onSecondary: Color(0xFFFFFFFF),
+        onSurface: Color(0xFF4C4F69),
+        onBackground: Color(0xFF4C4F69),
+        onError: Color(0xFFFFFFFF),
+        outline: Color(0xFFDCE0E8),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFEFF1F5),
+        foregroundColor: Color(0xFF4C4F69),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFFE6E9EF),
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF7C7F93),
+          foregroundColor: const Color(0xFFFFFFFF),
+          elevation: 1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF7C7F93),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFE6E9EF),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFDCE0E8)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFDCE0E8)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF7C7F93)),
+        ),
+        labelStyle: const TextStyle(color: Color(0xFF1E66F5)),
+        hintStyle: const TextStyle(color: Color(0xFF9CA0B0)),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: const Color(0xFFE6E9EF),
+        selectedColor: const Color(0xFF7C7F93),
+        labelStyle: const TextStyle(color: Color(0xFF4C4F69)),
+        secondaryLabelStyle: const TextStyle(color: Color(0xFFFFFFFF)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      dataTableTheme: DataTableThemeData(
+        headingRowColor: MaterialStateProperty.all(const Color(0xFFE6E9EF)),
+        dataRowColor: MaterialStateProperty.all(const Color(0xFFEFF1F5)),
+        dividerThickness: 1,
+      ),
+      expansionTileTheme: const ExpansionTileThemeData(
+        backgroundColor: Color(0xFFE6E9EF),
+        collapsedBackgroundColor: Color(0xFFEFF1F5),
+        iconColor: Color(0xFF7C7F93),
+        collapsedIconColor: Color(0xFF1E66F5),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildSolarizedLightTheme() {
+    return ThemeData.light().copyWith(
+      primaryColor: const Color(0xFFFDF6E3),
+      scaffoldBackgroundColor: const Color(0xFFFDF6E3),
+      cardColor: const Color(0xFFEEE8D5),
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFF268BD2),
+        secondary: Color(0xFF2AA198),
+        surface: Color(0xFFEEE8D5),
+        background: Color(0xFFFDF6E3),
+        error: Color(0xFFDC322F),
+        onPrimary: Color(0xFFFFFFFF),
+        onSecondary: Color(0xFFFFFFFF),
+        onSurface: Color(0xFF002B36),
+        onBackground: Color(0xFF002B36),
+        onError: Color(0xFFFFFFFF),
+        outline: Color(0xFF93A1A1),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFFDF6E3),
+        foregroundColor: Color(0xFF002B36),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFFEEE8D5),
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF268BD2),
+          foregroundColor: const Color(0xFFFFFFFF),
+          elevation: 1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF268BD2),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFEEE8D5),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF93A1A1)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF93A1A1)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF268BD2)),
+        ),
+        labelStyle: const TextStyle(color: Color(0xFF586E75)),
+        hintStyle: const TextStyle(color: Color(0xFF93A1A1)),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: const Color(0xFFEEE8D5),
+        selectedColor: const Color(0xFF268BD2),
+        labelStyle: const TextStyle(color: Color(0xFF002B36)),
+        secondaryLabelStyle: const TextStyle(color: Color(0xFFFFFFFF)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      dataTableTheme: DataTableThemeData(
+        headingRowColor: MaterialStateProperty.all(const Color(0xFFEEE8D5)),
+        dataRowColor: MaterialStateProperty.all(const Color(0xFFFDF6E3)),
+        dividerThickness: 1,
+      ),
+      expansionTileTheme: const ExpansionTileThemeData(
+        backgroundColor: Color(0xFFEEE8D5),
+        collapsedBackgroundColor: Color(0xFFFDF6E3),
+        iconColor: Color(0xFF268BD2),
+        collapsedIconColor: Color(0xFF586E75),
       ),
       visualDensity: VisualDensity.adaptivePlatformDensity,
     );

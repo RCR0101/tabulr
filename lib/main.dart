@@ -13,6 +13,7 @@ import 'screens/timetables_screen.dart';
 import 'services/auth_service.dart';
 import 'services/theme_service.dart';
 import 'services/campus_service.dart';
+import 'services/preferences_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +34,9 @@ void main() async {
   
   // Initialize Theme Service
   await ThemeService().initialize();
+  
+  // Initialize Preferences Service
+  await PreferencesService().initialize();
   
   if (kIsWeb) {
     setUrlStrategy(PathUrlStrategy());

@@ -13,110 +13,154 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-            'Choose Theme',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1.5,
-            ),
-            itemCount: AppTheme.values.length,
-            itemBuilder: (context, index) {
-              final theme = AppTheme.values[index];
-              final themeData = _themeService.getThemeData(theme);
-              final isSelected = _themeService.currentTheme == theme;
-
-              return GestureDetector(
-                onTap: () => _themeService.setTheme(theme),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  decoration: BoxDecoration(
-                    color: themeData.cardColor,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isSelected 
-                          ? themeData.colorScheme.primary 
-                          : themeData.colorScheme.outline,
-                      width: isSelected ? 3 : 1,
+    return ListenableBuilder(
+      listenable: _themeService,
+      builder: (context, child) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Theme Settings',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: themeData.colorScheme.primary.withOpacity(0.3),
-                              blurRadius: 8,
-                              spreadRadius: 2,
-                            ),
-                          ]
-                        : null,
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        _themeService.getThemeIcon(theme),
-                        color: themeData.colorScheme.primary,
-                        size: 32,
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _themeService.getThemeName(theme),
-                        style: TextStyle(
-                          color: themeData.colorScheme.onSurface,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          fontSize: 14,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 4),
-                      if (isSelected)
+                    ),
+                    child: Row(
+                      children: [
                         Icon(
-                          Icons.check_circle,
-                          color: themeData.colorScheme.primary,
-                          size: 16,
+                          _themeService.isLightMode ? Icons.light_mode : Icons.dark_mode,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 20,
                         ),
-                    ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _themeService.isLightMode ? 'Light Mode' : 'Dark Mode',
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        Switch(
+                          value: _themeService.isLightMode,
+                          onChanged: (value) => _themeService.toggleThemeMode(),
+                          activeColor: Theme.of(context).colorScheme.primary,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              Icon(
-                Icons.info_outline,
-                size: 16,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                ],
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Tap any theme to apply it instantly. Your selection will be saved.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            ),
+            Expanded(
+              child: GridView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 1.5,
+                ),
+                itemCount: AppTheme.values.length,
+                itemBuilder: (context, index) {
+                  final theme = AppTheme.values[index];
+                  final themeData = _themeService.getThemeData(theme);
+                  final isSelected = _themeService.currentTheme == theme;
+
+                  return GestureDetector(
+                    onTap: () => _themeService.setTheme(theme),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      decoration: BoxDecoration(
+                        color: themeData.cardColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected 
+                              ? themeData.colorScheme.primary 
+                              : themeData.colorScheme.outline,
+                          width: isSelected ? 3 : 1,
+                        ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: themeData.colorScheme.primary.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _themeService.getThemeIcon(theme),
+                            color: themeData.colorScheme.primary,
+                            size: 32,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _themeService.getThemeName(theme),
+                            style: TextStyle(
+                              color: themeData.colorScheme.onSurface,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 14,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 4),
+                          if (isSelected)
+                            Icon(
+                              Icons.check_circle,
+                              color: themeData.colorScheme.primary,
+                              size: 16,
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 16,
                     color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Toggle between light and dark modes, then choose your preferred theme.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-      ],
+            ),
+          ],
+        );
+      },
     );
   }
 }

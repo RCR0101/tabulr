@@ -39,7 +39,7 @@ class TimetableMakerApp extends StatelessWidget {
           foregroundColor: Colors.white,
           elevation: 0,
         ),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           color: const Color(0xFF1E1E1E),
           elevation: 4,
           shape: RoundedRectangleBorder(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
+import '../models/export_options.dart';
 
 enum TimetableSize {
   compact,
@@ -28,6 +29,7 @@ class TimetableWidget extends StatefulWidget {
   final bool hasUnsavedChanges;
   final bool isSaving;
   final VoidCallback? onSave;
+  final ExportOptions? exportOptions;
 
   const TimetableWidget({
     super.key,
@@ -44,6 +46,7 @@ class TimetableWidget extends StatefulWidget {
     this.hasUnsavedChanges = false,
     this.isSaving = false,
     this.onSave,
+    this.exportOptions,
   });
 
   @override
@@ -812,63 +815,81 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.max,
                   children: [
-                    Flexible(
-                      flex: 3,
-                      child: Text(
-                        slot.courseCode,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: _getCourseCodeFontSize(widget.size),
-                          color: Theme.of(context).colorScheme.onPrimary,
-                          height: 1.1,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
-                    ),
-                    if (widget.size != TimetableSize.compact) ...[
+                    if (_shouldShowField('courseCode'))
                       Flexible(
-                        flex: 2,
+                        flex: 3,
+                        child: Text(
+                          slot.courseCode,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: _getCourseCodeFontSize(widget.size),
+                            color: Theme.of(context).colorScheme.onPrimary,
+                            height: 1.1,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    if (_shouldShowField('courseTitle'))
+                      Flexible(
+                        flex: widget.size == TimetableSize.compact ? 1 : 2,
                         child: Text(
                           slot.courseTitle,
                           style: TextStyle(
                             fontSize: _getCourseTitleFontSize(widget.size),
                             color: const Color(0xFFE6EDF3),
                             fontWeight: FontWeight.w400,
-                            height: 1.1,
+                            height: 1.0,
                           ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: _getCourseTitleMaxLines(widget.size),
                         ),
                       ),
-                    ],
-                    Flexible(
-                      flex: 2,
-                      child: Text(
-                        slot.sectionId,
-                        style: TextStyle(
-                          fontSize: _getSectionIdFontSize(widget.size),
-                          color: const Color(0xFFE6EDF3),
-                          fontWeight: FontWeight.w500,
-                          height: 1.1,
+                    if (_shouldShowField('sectionId'))
+                      Flexible(
+                        flex: 2,
+                        child: Text(
+                          slot.sectionId,
+                          style: TextStyle(
+                            fontSize: _getSectionIdFontSize(widget.size),
+                            color: const Color(0xFFE6EDF3),
+                            fontWeight: FontWeight.w500,
+                            height: 1.1,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
                       ),
-                    ),
-                    Flexible(
-                      flex: 2,
-                      child: Text(
-                        slot.room,
-                        style: TextStyle(
-                          fontSize: _getRoomFontSize(widget.size),
-                          color: const Color(0xFFE6EDF3),
-                          height: 1.1,
+                    if (_shouldShowField('instructor') && widget.size != TimetableSize.compact)
+                      Flexible(
+                        flex: 2,
+                        child: Text(
+                          slot.instructor,
+                          style: TextStyle(
+                            fontSize: _getInstructorFontSize(widget.size),
+                            color: const Color(0xFFE6EDF3).withValues(alpha: 0.85),
+                            fontWeight: FontWeight.w400,
+                            height: 1.1,
+                            letterSpacing: 0.1,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
                       ),
-                    ),
+                    if (_shouldShowField('room'))
+                      Flexible(
+                        flex: 2,
+                        child: Text(
+                          slot.room,
+                          style: TextStyle(
+                            fontSize: _getRoomFontSize(widget.size),
+                            color: const Color(0xFFE6EDF3),
+                            height: 1.1,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -959,7 +980,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       }
     }
     
-    return '$courseCode ($sectionId)\\nInstructor: $instructor\\nSchedule:\\n${timeSlots.join('\\n')}';
+    return '$courseCode ($sectionId)\\n$instructor\\nSchedule:\\n${timeSlots.join('\\n')}';
   }
 
   String _getDayAbbreviation(DayOfWeek day) {
@@ -1163,6 +1184,17 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     return _isMobile ? baseSize * 0.9 : baseSize;
   }
 
+  double _getInstructorFontSize(TimetableSize size) {
+    final baseSize = switch (size) {
+      TimetableSize.compact => 9.0,
+      TimetableSize.medium => 10.0,
+      TimetableSize.large => 11.0,
+      TimetableSize.extraLarge => 12.0,
+    };
+    
+    return _isMobile ? baseSize * 0.9 : baseSize;
+  }
+
   double _getHourLabelFontSize(TimetableSize size) {
     final baseSize = switch (size) {
       TimetableSize.compact => 10.0,
@@ -1198,6 +1230,28 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     return _isMobile ? basePadding * 0.7 : basePadding;
   }
 
+  bool _shouldShowField(String fieldName) {
+    // If no export options are provided (normal view), show everything
+    if (widget.exportOptions == null) return true;
+    
+    // For export, check the specific field options
+    final options = widget.exportOptions!;
+    switch (fieldName) {
+      case 'courseCode':
+        return options.showCourseCode;
+      case 'courseTitle':
+        return options.showCourseTitle;
+      case 'sectionId':
+        return options.showSectionId;
+      case 'instructor':
+        return options.showInstructor;
+      case 'room':
+        return options.showRoom;
+      default:
+        return true;
+    }
+  }
+
   double _getTextSpacing(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:
@@ -1214,13 +1268,13 @@ class _TimetableWidgetState extends State<TimetableWidget> {
   int _getCourseTitleMaxLines(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:
-        return 0; // Hidden in compact mode
+        return 1; // Allow 1 line in compact mode instead of 0
       case TimetableSize.medium:
-        return 1;
+        return 2; // Increased from 1 to 2 lines
       case TimetableSize.large:
-        return 2;
+        return 3; // Increased from 2 to 3 lines
       case TimetableSize.extraLarge:
-        return 2;
+        return 3; // Increased from 2 to 3 lines
     }
   }
 }

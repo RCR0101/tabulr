@@ -14,7 +14,6 @@ class CampusService {
   static final StreamController<Campus> _campusChangeController = StreamController<Campus>.broadcast();
   
   static Campus get currentCampus {
-    print('CampusService: currentCampus accessed, returning $_currentCampus');
     return _currentCampus;
   }
   

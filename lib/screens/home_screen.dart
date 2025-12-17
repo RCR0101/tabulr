@@ -18,6 +18,9 @@ import '../services/page_leave_warning_service.dart';
 import '../services/toast_service.dart';
 import '../services/campus_service.dart';
 import '../services/course_data_service.dart';
+import '../services/preferences_service.dart';
+import '../models/export_options.dart';
+import '../widgets/export_options_dialog.dart';
 import '../widgets/campus_selector_widget.dart';
 import 'generator_screen.dart';
 import 'timetables_screen.dart';
@@ -51,14 +54,13 @@ class _HomeScreenState extends State<HomeScreen> {
   final TimetableService _timetableService = TimetableService();
   final AuthService _authService = AuthService();
   final PageLeaveWarningService _pageLeaveWarning = PageLeaveWarningService();
+  final PreferencesService _preferencesService = PreferencesService();
   final GlobalKey _timetableKey = GlobalKey();
   Timetable? _timetable;
   List<Course> _filteredCourses = [];
   bool _isLoading = true;
   bool _hasUnsavedChanges = false;
   bool _isSaving = false;
-  TimetableSize _timetableSize = TimetableSize.medium;
-  TimetableLayout _timetableLayout = TimetableLayout.vertical;
   StreamSubscription<Campus>? _campusSubscription;
 
   @override
@@ -332,6 +334,14 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
+    // Show export options dialog
+    final ExportOptions? exportOptions = await showDialog<ExportOptions>(
+      context: context,
+      builder: (context) => const ExportOptionsDialog(),
+    );
+    
+    if (exportOptions == null) return; // User cancelled
+
     try {
       GlobalKey tableExportKey = GlobalKey();
       
@@ -358,6 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 size: TimetableSize.extraLarge, // Use largest size for best quality
                 isForExport: true,
                 tableKey: tableExportKey,
+                exportOptions: exportOptions,
               ),
             ),
           ),
@@ -477,42 +488,45 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
+    return ListenableBuilder(
+      listenable: _preferencesService,
+      builder: (context, child) {
+        if (_isLoading) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
 
-    if (_timetable == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    'images/full_logo_bg.png',
-                    height: 50,
-                    fit: BoxFit.contain,
+        if (_timetable == null) {
+          return Scaffold(
+            appBar: AppBar(
+              title: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset(
+                        'images/full_logo_bg.png',
+                        height: 50,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-          centerTitle: true,
-        ),
-        body: const Center(
-          child: Text('Failed to load timetable'),
-        ),
-      );
-    }
+              centerTitle: true,
+            ),
+            body: const Center(
+              child: Text('Failed to load timetable'),
+            ),
+          );
+        }
 
-    final isWideScreen = MediaQuery.of(context).size.width > 800;
+        final isWideScreen = MediaQuery.of(context).size.width > 800;
 
-    return Scaffold(
+        return Scaffold(
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
@@ -790,6 +804,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+        );
+      },
     );
   }
 
@@ -849,20 +865,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       incompleteSelectionWarnings: _timetableService.getIncompleteSelectionWarnings(_timetable!.selectedSections, _timetable!.availableCourses),
                       onClear: _clearTimetable,
                       onRemoveSection: _removeSection,
-                      size: _timetableSize,
+                      size: _preferencesService.timetableSize,
                       hasUnsavedChanges: _hasUnsavedChanges,
                       isSaving: _isSaving,
                       onSave: _authService.isGuest ? null : _saveTimetable,
                       onSizeChanged: (newSize) {
-                        setState(() {
-                          _timetableSize = newSize;
-                        });
+                        _preferencesService.setTimetableSize(newSize);
                       },
-                      layout: _timetableLayout,
+                      layout: _preferencesService.timetableLayout,
                       onLayoutChanged: (newLayout) {
-                        setState(() {
-                          _timetableLayout = newLayout;
-                        });
+                        _preferencesService.setTimetableLayout(newLayout);
                       },
                     ),
                   ),
@@ -880,14 +892,13 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
   final TimetableService _timetableService = TimetableService();
   final AuthService _authService = AuthService();
   final PageLeaveWarningService _pageLeaveWarning = PageLeaveWarningService();
+  final PreferencesService _preferencesService = PreferencesService();
   final GlobalKey _timetableKey = GlobalKey();
   late Timetable _timetable;
   List<Course> _filteredCourses = [];
-  bool _isLoading = false;
+  final bool _isLoading = false;
   bool _hasUnsavedChanges = false;
   bool _isSaving = false;
-  TimetableSize _timetableSize = TimetableSize.medium;
-  TimetableLayout _timetableLayout = TimetableLayout.vertical;
 
   @override
   void initState() {
@@ -1121,6 +1132,14 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
       }
     }
 
+    // Show export options dialog
+    final ExportOptions? exportOptions = await showDialog<ExportOptions>(
+      context: context,
+      builder: (context) => const ExportOptionsDialog(),
+    );
+    
+    if (exportOptions == null) return; // User cancelled
+
     try {
       GlobalKey tableExportKey = GlobalKey();
       
@@ -1147,6 +1166,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                 size: TimetableSize.extraLarge, // Use largest size for best quality
                 isForExport: true,
                 tableKey: tableExportKey,
+                exportOptions: exportOptions,
               ),
             ),
           ),
@@ -1267,15 +1287,18 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
+    return ListenableBuilder(
+      listenable: _preferencesService,
+      builder: (context, child) {
+        if (_isLoading) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
 
-    final isWideScreen = MediaQuery.of(context).size.width > 800;
+        final isWideScreen = MediaQuery.of(context).size.width > 800;
 
-    return Scaffold(
+        return Scaffold(
       appBar: AppBar(
         title: Text(_timetable.name),
         centerTitle: true,
@@ -1567,6 +1590,8 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
           ],
         ),
       ),
+        );
+      },
     );
   }
 
@@ -1618,20 +1643,16 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                   incompleteSelectionWarnings: _timetableService.getIncompleteSelectionWarnings(_timetable.selectedSections, _timetable.availableCourses),
                   onClear: _clearTimetable,
                   onRemoveSection: _removeSection,
-                  size: _timetableSize,
+                  size: _preferencesService.timetableSize,
                   hasUnsavedChanges: _hasUnsavedChanges,
                   isSaving: _isSaving,
                   onSave: _authService.isGuest ? null : _saveTimetable,
                   onSizeChanged: (newSize) {
-                    setState(() {
-                      _timetableSize = newSize;
-                    });
+                    _preferencesService.setTimetableSize(newSize);
                   },
-                  layout: _timetableLayout,
+                  layout: _preferencesService.timetableLayout,
                   onLayoutChanged: (newLayout) {
-                    setState(() {
-                      _timetableLayout = newLayout;
-                    });
+                    _preferencesService.setTimetableLayout(newLayout);
                   },
                 ),
               ),
