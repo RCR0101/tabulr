@@ -20,6 +20,7 @@ import '../services/campus_service.dart';
 import '../services/course_data_service.dart';
 import '../services/user_settings_service.dart';
 import '../services/responsive_service.dart';
+import '../services/auto_load_cdc_service.dart';
 import '../models/export_options.dart';
 import '../widgets/export_options_dialog.dart';
 import '../widgets/campus_selector_widget.dart';
@@ -193,6 +194,44 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     } catch (e) {
       _showErrorDialog('Error removing section: $e');
+    }
+  }
+
+  Future<void> _autoLoadCDCs() async {
+    if (_timetable == null) return;
+
+    try {
+      final autoLoadService = AutoLoadCDCService();
+      final result = await autoLoadService.showBranchYearDialog(context);
+      
+      if (result != null) {
+        final selectedSections = await autoLoadService.loadCDCsForBranchAndSemester(
+          branch: result.branch,
+          semester: result.year,
+          availableCourses: _timetable!.availableCourses,
+        );
+
+        if (selectedSections.isNotEmpty) {
+          for (final selectedSection in selectedSections) {
+            _timetableService.addSectionWithoutSaving(
+              selectedSection.courseCode,
+              selectedSection.sectionId,
+              _timetable!,
+            );
+          }
+
+          setState(() {
+            _hasUnsavedChanges = true;
+          });
+          _pageLeaveWarning.enableWarning(true);
+
+          ToastService.showSuccess('Auto-loaded ${selectedSections.length} CDC courses');
+        } else {
+          ToastService.showInfo('No CDC courses found for the selected branch and year');
+        }
+      }
+    } catch (e) {
+      _showErrorDialog('Error auto-loading CDCs: $e');
     }
   }
 
@@ -960,6 +999,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       hasUnsavedChanges: _hasUnsavedChanges,
                       isSaving: _isSaving,
                       onSave: _authService.isGuest ? null : _saveTimetable,
+                      onAutoLoadCDCs: _autoLoadCDCs,
                       onSizeChanged: (newSize) {
                         _userSettingsService.updateTimetableSettings(_timetable!.id, newSize, null);
                       },
@@ -1079,6 +1119,43 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
       widget.onUnsavedChangesChanged?.call(true);
     } catch (e) {
       _showErrorDialog('Error removing section: $e');
+    }
+  }
+
+  Future<void> _autoLoadCDCs() async {
+    try {
+      final autoLoadService = AutoLoadCDCService();
+      final result = await autoLoadService.showBranchYearDialog(context);
+      
+      if (result != null) {
+        final selectedSections = await autoLoadService.loadCDCsForBranchAndSemester(
+          branch: result.branch,
+          semester: result.year,
+          availableCourses: _timetable.availableCourses,
+        );
+
+        if (selectedSections.isNotEmpty) {
+          for (final selectedSection in selectedSections) {
+            _timetableService.addSectionWithoutSaving(
+              selectedSection.courseCode,
+              selectedSection.sectionId,
+              _timetable,
+            );
+          }
+
+          setState(() {
+            _hasUnsavedChanges = true;
+          });
+          widget.onUnsavedChangesChanged?.call(true);
+          _pageLeaveWarning.enableWarning(true);
+
+          ToastService.showSuccess('Auto-loaded ${selectedSections.length} CDC courses');
+        } else {
+          ToastService.showInfo('No CDC courses found for the selected branch and year');
+        }
+      }
+    } catch (e) {
+      _showErrorDialog('Error auto-loading CDCs: $e');
     }
   }
 
@@ -1824,6 +1901,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                   hasUnsavedChanges: _hasUnsavedChanges,
                   isSaving: _isSaving,
                   onSave: _authService.isGuest ? null : _saveTimetable,
+                  onAutoLoadCDCs: _autoLoadCDCs,
                   onSizeChanged: (newSize) {
                     _userSettingsService.updateTimetableSettings(_timetable.id, newSize, null);
                   },

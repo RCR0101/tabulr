@@ -30,6 +30,7 @@ class TimetableWidget extends StatefulWidget {
   final bool hasUnsavedChanges;
   final bool isSaving;
   final VoidCallback? onSave;
+  final VoidCallback? onAutoLoadCDCs;
   final ExportOptions? exportOptions;
 
   const TimetableWidget({
@@ -47,6 +48,7 @@ class TimetableWidget extends StatefulWidget {
     this.hasUnsavedChanges = false,
     this.isSaving = false,
     this.onSave,
+    this.onAutoLoadCDCs,
     this.exportOptions,
   });
 
@@ -180,6 +182,32 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
+                      // Auto Load CDCs button (mobile)
+                      if (!widget.isForExport && widget.onAutoLoadCDCs != null)
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              ResponsiveService.triggerLightFeedback(context);
+                              widget.onAutoLoadCDCs!();
+                            },
+                            icon: Icon(
+                              Icons.school,
+                              size: ResponsiveService.getAdaptiveIconSize(context, 16),
+                            ),
+                            label: const Text('Auto Load CDCs'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(context).colorScheme.secondary,
+                              foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                              elevation: 2,
+                              minimumSize: Size(
+                                double.infinity,
+                                ResponsiveService.getTouchTargetSize(context),
+                              ),
+                            ),
+                          ),
+                        ),
+                      if (!widget.isForExport && widget.onAutoLoadCDCs != null && widget.onSave != null)
+                        const SizedBox(width: 8),
                       // Save button
                       if (!widget.isForExport && widget.onSave != null)
                         Expanded(
@@ -368,6 +396,30 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     ),
                   ),
                   const SizedBox(width: 16),
+                  // Auto Load CDCs button (desktop)
+                  if (!widget.isForExport && widget.onAutoLoadCDCs != null)
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        ResponsiveService.triggerLightFeedback(context);
+                        widget.onAutoLoadCDCs!();
+                      },
+                      icon: Icon(
+                        Icons.school,
+                        size: ResponsiveService.getAdaptiveIconSize(context, 16),
+                      ),
+                      label: const Text('Auto Load CDCs'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.secondary,
+                        foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                        elevation: 2,
+                        minimumSize: Size(
+                          0,
+                          ResponsiveService.getTouchTargetSize(context),
+                        ),
+                      ),
+                    ),
+                  if (!widget.isForExport && widget.onAutoLoadCDCs != null)
+                    const SizedBox(width: 8),
                   // Save button
                   if (!widget.isForExport && widget.onSave != null)
                     ElevatedButton.icon(
