@@ -275,6 +275,106 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     return '${date.day}/${date.month}/${date.year}';
   }
 
+  void _showClearAllDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              Icons.warning,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            const SizedBox(width: 8),
+            const Text('Clear All Timetables'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete all ${_sortedTimetables.length} timetables?',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'This action cannot be undone.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.error,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _clearAllTimetables();
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            child: const Text('Clear All'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _clearAllTimetables() async {
+    try {
+      // Show loading indicator
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+      }
+
+      // Delete all timetables
+      for (var timetable in _sortedTimetables) {
+        await _timetableService.deleteTimetable(timetable.id);
+        // Also remove from user settings if using custom order
+        await _userSettingsService.removeTimetableSettings(timetable.id);
+      }
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Reload timetables
+      await _loadTimetables();
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All timetables have been cleared'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog if still open
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      
+      _showErrorDialog('Error clearing timetables: $e');
+    }
+  }
+
   void _applySorting() {
     final sortOrder = _userSettingsService.sortOrder;
     final customOrder = _userSettingsService.customTimetableOrder;
@@ -669,47 +769,49 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body:
-          _sortedTimetables.isEmpty
-              ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.schedule,
-                      size: 64,
+      body: _sortedTimetables.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.schedule,
+                    size: 64,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No timetables yet',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.headlineSmall?.copyWith(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Create your first timetable to get started',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(
                         context,
                       ).colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No timetables yet',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.headlineSmall?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Create your first timetable to get started',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.5),
-                      ),
-                    ),
-                  ],
-                ),
-              )
-              : ReorderableListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: _sortedTimetables.length,
-                onReorder: _onReorder,
-                buildDefaultDragHandles: false,
+                  ),
+                ],
+              ),
+            )
+          : Column(
+              children: [
+                Expanded(
+                  child: ReorderableListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _sortedTimetables.length,
+                    onReorder: _onReorder,
+                    buildDefaultDragHandles: false,
                 itemBuilder: (context, index) {
                   final timetable = _sortedTimetables[index];
                   final isCustomSort = _userSettingsService.sortOrder == TimetableListSortOrder.custom;
@@ -822,7 +924,49 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                     ),
                   );
                 },
-              ),
+                  ),
+                ),
+                // Clear All button at bottom
+                if (_sortedTimetables.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      border: Border(
+                        top: BorderSide(
+                          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _showClearAllDialog,
+                            icon: Icon(
+                              Icons.clear_all,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                            label: Text(
+                              'Clear All Timetables',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(
+                                color: Theme.of(context).colorScheme.error.withValues(alpha: 0.5),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
