@@ -8,6 +8,7 @@ import '../services/toast_service.dart';
 import '../services/campus_service.dart';
 import '../services/course_data_service.dart';
 import '../services/user_settings_service.dart';
+import '../services/responsive_service.dart';
 import '../models/user_settings.dart';
 import '../widgets/theme_selector_widget.dart';
 import '../widgets/campus_selector_widget.dart';
@@ -456,15 +457,15 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
           ],
         ),
         content: SizedBox(
-          width: 480,
+          width: ResponsiveService.getValue(context, mobile: MediaQuery.of(context).size.width * 0.8, tablet: 400, desktop: 480),
           child: GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 2.2,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: ResponsiveService.getValue(context, mobile: 1, tablet: 2, desktop: 2),
+              childAspectRatio: ResponsiveService.getValue(context, mobile: 3.0, tablet: 2.2, desktop: 2.2),
+              crossAxisSpacing: ResponsiveService.getAdaptiveSpacing(context, 8),
+              mainAxisSpacing: ResponsiveService.getAdaptiveSpacing(context, 8),
             ),
             itemCount: TimetableListSortOrder.values.length,
             itemBuilder: (context, index) {
@@ -488,7 +489,10 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                     }
                   },
                   child: Container(
-                    padding: const EdgeInsets.all(12),
+                    constraints: BoxConstraints(
+                      minHeight: ResponsiveService.getTouchTargetSize(context),
+                    ),
+                    padding: ResponsiveService.getAdaptivePadding(context, const EdgeInsets.all(12)),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
@@ -687,9 +691,14 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.sort),
+            icon: Icon(
+              Icons.sort,
+              size: ResponsiveService.getAdaptiveIconSize(context, 24),
+            ),
             onPressed: _showSortDialog,
             tooltip: 'Sort Timetables',
+            iconSize: ResponsiveService.getTouchTargetSize(context),
+            padding: EdgeInsets.all(ResponsiveService.getValue(context, mobile: 12.0, tablet: 8.0, desktop: 8.0)),
           ),
           CampusSelectorWidget(
             onCampusChanged: (campus) {
@@ -702,8 +711,13 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
           ),
           const SizedBox(width: 8),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.apps),
+            icon: Icon(
+              Icons.apps,
+              size: ResponsiveService.getAdaptiveIconSize(context, 24),
+            ),
             tooltip: 'More Options',
+            iconSize: ResponsiveService.getTouchTargetSize(context),
+            padding: EdgeInsets.all(ResponsiveService.getValue(context, mobile: 12.0, tablet: 8.0, desktop: 8.0)),
             onSelected: (value) {
               switch (value) {
                 case 'course_guide':
@@ -777,9 +791,14 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
           ),
           const ThemeToggleButton(),
           IconButton(
-            icon: const Icon(Icons.star_border),
+            icon: Icon(
+              Icons.star_border,
+              size: ResponsiveService.getAdaptiveIconSize(context, 24),
+            ),
             onPressed: () => _openGitHub(),
             tooltip: 'Star on GitHub',
+            iconSize: ResponsiveService.getTouchTargetSize(context),
+            padding: EdgeInsets.all(ResponsiveService.getValue(context, mobile: 12.0, tablet: 8.0, desktop: 8.0)),
           ),
           // User info and logout
           if (_authService.isAuthenticated)
@@ -1046,26 +1065,58 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                 if (_sortedTimetables.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.all(16),
-                    child: Center(
-                      child: TextButton.icon(
-                        onPressed: _showClearAllDialog,
-                        icon: Icon(
-                          Icons.clear_all,
-                          size: 18,
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                        label: Text(
-                          'Clear All',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
+                    child: ResponsiveService.isMobile(context)
+                        ? Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: () {
+                                ResponsiveService.triggerHeavyFeedback(context);
+                                _showClearAllDialog();
+                              },
+                              icon: Icon(
+                                Icons.clear_all,
+                                size: ResponsiveService.getAdaptiveIconSize(context, 18),
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                              label: Text(
+                                'Clear All',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                              ),
+                              style: TextButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                minimumSize: Size(
+                                  0,
+                                  ResponsiveService.getTouchTargetSize(context),
+                                ),
+                                padding: ResponsiveService.getAdaptivePadding(
+                                  context,
+                                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                ),
+                              ),
+                            ),
+                          )
+                        : Center(
+                            child: TextButton.icon(
+                              onPressed: _showClearAllDialog,
+                              icon: Icon(
+                                Icons.clear_all,
+                                size: 18,
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                              label: Text(
+                                'Clear All',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                              ),
+                              style: TextButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              ),
+                            ),
                           ),
-                        ),
-                        style: TextButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        ),
-                      ),
-                    ),
                   ),
               ],
             ),
@@ -1102,34 +1153,67 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
           ],
         ),
       ),
-      floatingActionButton: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton.extended(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TimetableComparisonScreen(),
-                ),
-              );
-            },
-            icon: const Icon(Icons.compare),
-            label: const Text('Compare'),
-            backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-            foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
-            heroTag: "compare", // Required when multiple FABs are present
-          ),
-          const SizedBox(width: 16),
-          FloatingActionButton.extended(
-            onPressed: _createNewTimetable,
-            icon: const Icon(Icons.add),
-            label: const Text('New Timetable'),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Theme.of(context).colorScheme.onPrimary,
-            heroTag: "add", // Required when multiple FABs are present
-          ),
-        ],
+      floatingActionButton: ResponsiveService.buildResponsive(
+        context,
+        mobile: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            FloatingActionButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TimetableComparisonScreen(),
+                  ),
+                );
+              },
+              tooltip: 'Compare Timetables',
+              backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+              foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+              heroTag: "compare",
+              child: const Icon(Icons.compare),
+            ),
+            SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 16)),
+            FloatingActionButton.extended(
+              onPressed: _createNewTimetable,
+              icon: const Icon(Icons.add),
+              label: const Text('New Timetable'),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              heroTag: "add",
+            ),
+          ],
+        ),
+        desktop: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            FloatingActionButton.extended(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TimetableComparisonScreen(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.compare),
+              label: const Text('Compare'),
+              backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+              foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+              heroTag: "compare",
+            ),
+            const SizedBox(width: 16),
+            FloatingActionButton.extended(
+              onPressed: _createNewTimetable,
+              icon: const Icon(Icons.add),
+              label: const Text('New Timetable'),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              heroTag: "add",
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -3,6 +3,7 @@ import '../models/timetable.dart';
 import '../models/course.dart';
 import '../widgets/timetable_widget.dart';
 import '../services/timetable_service.dart';
+import '../services/responsive_service.dart';
 
 enum ComparisonViewMode { grid, list }
 
@@ -26,6 +27,17 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
   void initState() {
     super.initState();
     _loadTimetables();
+  }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Force list view on mobile
+    if (ResponsiveService.isMobile(context) && _viewMode == ComparisonViewMode.grid) {
+      setState(() {
+        _viewMode = ComparisonViewMode.list;
+      });
+    }
   }
 
   Future<void> _loadTimetables() async {
@@ -900,27 +912,30 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
       appBar: AppBar(
         title: const Text('Compare Timetables'),
         actions: [
-          SegmentedButton<ComparisonViewMode>(
-            segments: const [
-              ButtonSegment(
-                value: ComparisonViewMode.grid,
-                icon: Icon(Icons.grid_view),
-                label: Text('Grid'),
-              ),
-              ButtonSegment(
-                value: ComparisonViewMode.list,
-                icon: Icon(Icons.list),
-                label: Text('List'),
-              ),
-            ],
-            selected: {_viewMode},
-            onSelectionChanged: (Set<ComparisonViewMode> selection) {
-              setState(() {
-                _viewMode = selection.first;
-              });
-            },
-          ),
-          const SizedBox(width: 16),
+          // Hide grid/list toggle on mobile, show only on tablet/desktop
+          if (!ResponsiveService.isMobile(context))
+            SegmentedButton<ComparisonViewMode>(
+              segments: const [
+                ButtonSegment(
+                  value: ComparisonViewMode.grid,
+                  icon: Icon(Icons.grid_view),
+                  label: Text('Grid'),
+                ),
+                ButtonSegment(
+                  value: ComparisonViewMode.list,
+                  icon: Icon(Icons.list),
+                  label: Text('List'),
+                ),
+              ],
+              selected: {_viewMode},
+              onSelectionChanged: (Set<ComparisonViewMode> selection) {
+                ResponsiveService.triggerSelectionFeedback(context);
+                setState(() {
+                  _viewMode = selection.first;
+                });
+              },
+            ),
+          SizedBox(width: ResponsiveService.isMobile(context) ? 8 : 16),
         ],
       ),
       body: _isLoading
@@ -962,9 +977,9 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                   ),
                 ),
                 Expanded(
-                  child: _viewMode == ComparisonViewMode.grid
-                      ? _buildGridView()
-                      : _buildListView(),
+                  child: ResponsiveService.isMobile(context) || _viewMode == ComparisonViewMode.list
+                      ? _buildListView()
+                      : _buildGridView(),
                 ),
               ],
             ),

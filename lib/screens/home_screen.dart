@@ -19,6 +19,7 @@ import '../services/toast_service.dart';
 import '../services/campus_service.dart';
 import '../services/course_data_service.dart';
 import '../services/user_settings_service.dart';
+import '../services/responsive_service.dart';
 import '../models/export_options.dart';
 import '../widgets/export_options_dialog.dart';
 import '../widgets/campus_selector_widget.dart';
@@ -546,7 +547,7 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
 
-        final isWideScreen = MediaQuery.of(context).size.width > 800;
+        final isWideScreen = ResponsiveService.isDesktop(context);
 
         return Scaffold(
       appBar: AppBar(
@@ -926,7 +927,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTimetablePanel() {
-    final isMobile = MediaQuery.of(context).size.width <= 800;
+    final isMobile = ResponsiveService.isMobile(context) || ResponsiveService.isTablet(context);
     
     return Column(
       children: [
@@ -946,7 +947,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 scrollDirection: Axis.horizontal,
                 child: Container(
                   constraints: BoxConstraints(
-                    minWidth: isMobile ? MediaQuery.of(context).size.width - 32 : 800,
+                    minWidth: isMobile ? MediaQuery.of(context).size.width - 32 : ResponsiveService.getValue(context, mobile: 480, tablet: 768, desktop: 1000),
                   ),
                   child: RepaintBoundary(
                     key: _timetableKey,
@@ -1404,7 +1405,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
           );
         }
 
-        final isWideScreen = MediaQuery.of(context).size.width > 800;
+        final isWideScreen = ResponsiveService.isDesktop(context);
 
         return Scaffold(
       appBar: AppBar(

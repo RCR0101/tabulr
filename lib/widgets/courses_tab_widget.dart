@@ -3,6 +3,7 @@ import '../models/course.dart';
 import '../models/timetable.dart';
 import 'course_list_widget.dart';
 import 'exam_dates_widget.dart';
+import '../services/responsive_service.dart';
 
 class CoursesTabWidget extends StatefulWidget {
   final List<Course> courses;
@@ -214,7 +215,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width <= 800;
+    final isMobile = ResponsiveService.isMobile(context) || ResponsiveService.isTablet(context);
     
     return Column(
       children: [

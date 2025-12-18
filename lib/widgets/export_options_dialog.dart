@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/export_options.dart';
+import '../services/responsive_service.dart';
 
 class ExportOptionsDialog extends StatefulWidget {
   final ExportOptions initialOptions;
@@ -24,25 +25,41 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveService.isMobile(context);
+    final dialogWidth = ResponsiveService.getValue(context, 
+      mobile: MediaQuery.of(context).size.width - 32,
+      tablet: 500.0, 
+      desktop: 400.0
+    );
+    
     return AlertDialog(
-      title: const Row(
+      insetPadding: isMobile 
+        ? const EdgeInsets.symmetric(horizontal: 16, vertical: 24)
+        : null,
+      title: Row(
         children: [
-          Icon(Icons.image, size: 24),
-          SizedBox(width: 8),
-          Text('PNG Export Options'),
+          Icon(
+            Icons.image, 
+            size: ResponsiveService.getAdaptiveIconSize(context, 24),
+          ),
+          SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
+          const Text('PNG Export Options'),
         ],
       ),
       content: SizedBox(
-        width: 400,
+        width: dialogWidth,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Customize what information appears in each timetable cell:',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontSize: ResponsiveService.getAdaptiveFontSize(context, 14), 
+                fontWeight: FontWeight.w500
+              ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 16)),
             _buildOptionTile(
               title: 'Course Code',
               subtitle: 'e.g., MATH101, CS450',
@@ -88,9 +105,9 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
               }),
               icon: Icons.location_on,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 8)),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: ResponsiveService.getAdaptivePadding(context, const EdgeInsets.all(12)),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(8),
@@ -102,15 +119,15 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
                 children: [
                   Icon(
                     Icons.info_outline, 
-                    size: 16,
+                    size: ResponsiveService.getAdaptiveIconSize(context, 16),
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
                   Expanded(
                     child: Text(
                       'Course code is recommended to keep enabled for clarity',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
@@ -118,12 +135,97 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
                 ],
               ),
             ),
+            // Mobile-specific action buttons
+            if (isMobile) ...[
+              SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 20)),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () {
+                        ResponsiveService.triggerSelectionFeedback(context);
+                        Navigator.of(context).pop();
+                      },
+                      style: TextButton.styleFrom(
+                        minimumSize: Size(
+                          double.infinity,
+                          ResponsiveService.getTouchTargetSize(context),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 12)),
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () {
+                        ResponsiveService.triggerMediumFeedback(context);
+                        setState(() {
+                          _options = const ExportOptions();
+                        });
+                      },
+                      style: TextButton.styleFrom(
+                        minimumSize: Size(
+                          double.infinity,
+                          ResponsiveService.getTouchTargetSize(context),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ),
+                      child: const Text('Reset'),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    ResponsiveService.triggerMediumFeedback(context);
+                    Navigator.of(context).pop(_options);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    minimumSize: Size(
+                      double.infinity,
+                      ResponsiveService.getTouchTargetSize(context),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  icon: Icon(Icons.download, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
+                  label: const Text('Export PNG'),
+                ),
+              ),
+            ],
           ],
         ),
       ),
-      actions: [
+      actions: isMobile ? null : [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            ResponsiveService.triggerSelectionFeedback(context);
+            Navigator.of(context).pop();
+          },
+          style: TextButton.styleFrom(
+            minimumSize: Size(
+              0,
+              ResponsiveService.getTouchTargetSize(context),
+            ),
+          ),
           child: const Text('Cancel'),
         ),
         Row(
@@ -131,25 +233,45 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
           children: [
             TextButton(
               onPressed: () {
+                ResponsiveService.triggerMediumFeedback(context);
                 setState(() {
                   _options = const ExportOptions();
                 });
               },
+              style: TextButton.styleFrom(
+                minimumSize: Size(
+                  0,
+                  ResponsiveService.getTouchTargetSize(context),
+                ),
+              ),
               child: const Text('Reset'),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
             ElevatedButton.icon(
-              onPressed: () => Navigator.of(context).pop(_options),
-              icon: const Icon(Icons.download, size: 16),
+              onPressed: () {
+                ResponsiveService.triggerMediumFeedback(context);
+                Navigator.of(context).pop(_options);
+              },
+              icon: Icon(Icons.download, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
               label: const Text('Export PNG'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                minimumSize: Size(
+                  0,
+                  ResponsiveService.getTouchTargetSize(context),
+                ),
               ),
             ),
           ],
         ),
       ],
+      actionsPadding: isMobile 
+        ? EdgeInsets.zero 
+        : ResponsiveService.getAdaptivePadding(
+            context, 
+            const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          ),
     );
   }
 
@@ -161,22 +283,42 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
     required IconData icon,
   }) {
     return CheckboxListTile(
-      contentPadding: EdgeInsets.zero,
+      contentPadding: ResponsiveService.getAdaptivePadding(
+        context, 
+        EdgeInsets.zero,
+      ),
       value: value,
-      onChanged: (bool? newValue) => onChanged(newValue ?? false),
+      onChanged: (bool? newValue) {
+        ResponsiveService.triggerSelectionFeedback(context);
+        onChanged(newValue ?? false);
+      },
       title: Row(
         children: [
-          Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 8),
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+          Icon(
+            icon, 
+            size: ResponsiveService.getAdaptiveIconSize(context, 18.0), 
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
+          Expanded(
+            child: Text(
+              title, 
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
+              ),
+            ),
+          ),
         ],
       ),
       subtitle: Padding(
-        padding: const EdgeInsets.only(left: 26),
+        padding: EdgeInsets.only(
+          left: ResponsiveService.getValue(context, mobile: 30, tablet: 28, desktop: 26),
+        ),
         child: Text(
           subtitle,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: ResponsiveService.getAdaptiveFontSize(context, 12.0),
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),

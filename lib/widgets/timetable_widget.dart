@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 import '../models/export_options.dart';
+import '../services/responsive_service.dart';
 
 enum TimetableSize {
   compact,
@@ -60,8 +61,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     // Always use desktop layout for export
     if (widget.isForExport) return false;
     
-    final mediaQuery = MediaQuery.maybeOf(context);
-    return (mediaQuery?.size.width ?? 1000) <= 800;
+    return ResponsiveService.isMobile(context) || ResponsiveService.isTablet(context);
   }
 
   @override
@@ -70,7 +70,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     
     return ConstrainedBox(
       constraints: BoxConstraints(
-        minWidth: isMobile ? 280 : 800,
+        minWidth: isMobile ? 280 : ResponsiveService.getValue(context, mobile: 480, tablet: 768, desktop: 1000),
         maxWidth: isMobile ? MediaQuery.of(context).size.width - 16 : double.infinity,
       ),
       child: Column(
@@ -96,17 +96,20 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                       // Layout toggle button
                       IconButton(
                         onPressed: widget.onLayoutChanged != null 
-                          ? () => widget.onLayoutChanged!(
-                              widget.layout == TimetableLayout.vertical 
-                                ? TimetableLayout.horizontal 
-                                : TimetableLayout.vertical
-                            )
+                          ? () {
+                              ResponsiveService.triggerSelectionFeedback(context);
+                              widget.onLayoutChanged!(
+                                widget.layout == TimetableLayout.vertical 
+                                  ? TimetableLayout.horizontal 
+                                  : TimetableLayout.vertical
+                              );
+                            }
                           : null,
                         icon: Icon(
                           widget.layout == TimetableLayout.vertical 
                             ? Icons.view_column 
                             : Icons.view_stream,
-                          size: 18,
+                          size: ResponsiveService.getAdaptiveIconSize(context, 18),
                         ),
                         tooltip: widget.layout == TimetableLayout.vertical 
                           ? 'Switch to horizontal layout'
@@ -114,6 +117,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                         style: IconButton.styleFrom(
                           backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
                           side: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
+                          minimumSize: Size(
+                            ResponsiveService.getTouchTargetSize(context),
+                            ResponsiveService.getTouchTargetSize(context),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -123,38 +130,47 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                         itemBuilder: (context) => [
                           PopupMenuItem(
                             value: TimetableSize.compact,
+                            height: ResponsiveService.getTouchTargetSize(context),
                             child: Row(
                               children: [
-                                Icon(Icons.view_compact, size: 16),
-                                SizedBox(width: 8),
+                                Icon(Icons.view_compact, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
+                                SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
                                 Text('Compact'),
                               ],
                             ),
                           ),
                           PopupMenuItem(
                             value: TimetableSize.medium,
+                            height: ResponsiveService.getTouchTargetSize(context),
                             child: Row(
                               children: [
-                                Icon(Icons.view_module, size: 16),
-                                SizedBox(width: 8),
+                                Icon(Icons.view_module, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
+                                SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
                                 Text('Medium'),
                               ],
                             ),
                           ),
                         ],
                         child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          constraints: BoxConstraints(
+                            minHeight: ResponsiveService.getTouchTargetSize(context),
+                            minWidth: ResponsiveService.getTouchTargetSize(context),
+                          ),
+                          padding: ResponsiveService.getAdaptivePadding(
+                            context, 
+                            EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          ),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface.withOpacity(0.1),
+                            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.3)),
+                            border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(_getSizeIcon(widget.size), size: 14),
-                              SizedBox(width: 4),
-                              Icon(Icons.arrow_drop_down, size: 14),
+                              Icon(_getSizeIcon(widget.size), size: ResponsiveService.getAdaptiveIconSize(context, 14)),
+                              SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 4)),
+                              Icon(Icons.arrow_drop_down, size: ResponsiveService.getAdaptiveIconSize(context, 14)),
                             ],
                           ),
                         ),
@@ -168,16 +184,21 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                       if (!widget.isForExport && widget.onSave != null)
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: widget.hasUnsavedChanges && !widget.isSaving ? widget.onSave : null,
+                            onPressed: widget.hasUnsavedChanges && !widget.isSaving 
+                              ? () {
+                                  ResponsiveService.triggerMediumFeedback(context);
+                                  widget.onSave!();
+                                }
+                              : null,
                             icon: widget.isSaving 
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
+                              ? SizedBox(
+                                  width: ResponsiveService.getAdaptiveIconSize(context, 16),
+                                  height: ResponsiveService.getAdaptiveIconSize(context, 16),
                                   child: CircularProgressIndicator(strokeWidth: 2),
                                 )
                               : Icon(
                                   widget.hasUnsavedChanges ? Icons.save : Icons.check,
-                                  size: 16,
+                                  size: ResponsiveService.getAdaptiveIconSize(context, 16),
                                 ),
                             label: Text(
                               widget.isSaving ? 'Saving...' : 
@@ -189,6 +210,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                                 : Theme.of(context).colorScheme.tertiary,
                               foregroundColor: Theme.of(context).colorScheme.onPrimary,
                               elevation: 2,
+                              minimumSize: Size(
+                                double.infinity,
+                                ResponsiveService.getTouchTargetSize(context),
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -200,13 +225,23 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                       if (widget.timetableSlots.isNotEmpty && widget.onClear != null)
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: widget.onClear,
-                            icon: const Icon(Icons.clear_all, size: 16),
+                            onPressed: () {
+                              ResponsiveService.triggerHeavyFeedback(context);
+                              widget.onClear!();
+                            },
+                            icon: Icon(
+                              Icons.clear_all, 
+                              size: ResponsiveService.getAdaptiveIconSize(context, 16),
+                            ),
                             label: const Text('Clear'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Theme.of(context).colorScheme.error.withOpacity(0.2),
+                              backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.2),
                               foregroundColor: Theme.of(context).colorScheme.error,
                               elevation: 2,
+                              minimumSize: Size(
+                                double.infinity,
+                                ResponsiveService.getTouchTargetSize(context),
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -231,17 +266,20 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   // Layout toggle button
                   IconButton(
                     onPressed: widget.onLayoutChanged != null 
-                      ? () => widget.onLayoutChanged!(
-                          widget.layout == TimetableLayout.vertical 
-                            ? TimetableLayout.horizontal 
-                            : TimetableLayout.vertical
-                        )
+                      ? () {
+                          ResponsiveService.triggerSelectionFeedback(context);
+                          widget.onLayoutChanged!(
+                            widget.layout == TimetableLayout.vertical 
+                              ? TimetableLayout.horizontal 
+                              : TimetableLayout.vertical
+                          );
+                        }
                       : null,
                     icon: Icon(
                       widget.layout == TimetableLayout.vertical 
                         ? Icons.view_column 
                         : Icons.view_stream,
-                      size: 20,
+                      size: ResponsiveService.getAdaptiveIconSize(context, 20),
                     ),
                     tooltip: widget.layout == TimetableLayout.vertical 
                       ? 'Switch to horizontal layout'
@@ -249,6 +287,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     style: IconButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
                       side: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
+                      minimumSize: Size(
+                        ResponsiveService.getTouchTargetSize(context),
+                        ResponsiveService.getTouchTargetSize(context),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -258,58 +300,69 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     itemBuilder: (context) => [
                       PopupMenuItem(
                         value: TimetableSize.compact,
+                        height: ResponsiveService.getTouchTargetSize(context),
                         child: Row(
                           children: [
-                            Icon(Icons.view_compact, size: 16),
-                            SizedBox(width: 8),
+                            Icon(Icons.view_compact, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
+                            SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
                             Text('Compact'),
                           ],
                         ),
                       ),
                       PopupMenuItem(
                         value: TimetableSize.medium,
+                        height: ResponsiveService.getTouchTargetSize(context),
                         child: Row(
                           children: [
-                            Icon(Icons.view_module, size: 16),
-                            SizedBox(width: 8),
+                            Icon(Icons.view_module, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
+                            SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
                             Text('Medium'),
                           ],
                         ),
                       ),
                       PopupMenuItem(
                         value: TimetableSize.large,
+                        height: ResponsiveService.getTouchTargetSize(context),
                         child: Row(
                           children: [
-                            Icon(Icons.view_comfortable, size: 16),
-                            SizedBox(width: 8),
+                            Icon(Icons.view_comfortable, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
+                            SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
                             Text('Large'),
                           ],
                         ),
                       ),
                       PopupMenuItem(
                         value: TimetableSize.extraLarge,
+                        height: ResponsiveService.getTouchTargetSize(context),
                         child: Row(
                           children: [
-                            Icon(Icons.view_agenda, size: 16),
-                            SizedBox(width: 8),
+                            Icon(Icons.view_agenda, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
+                            SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
                             Text('Extra Large'),
                           ],
                         ),
                       ),
                     ],
                     child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      constraints: BoxConstraints(
+                        minHeight: ResponsiveService.getTouchTargetSize(context),
+                        minWidth: ResponsiveService.getTouchTargetSize(context),
+                      ),
+                      padding: ResponsiveService.getAdaptivePadding(
+                        context, 
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface.withOpacity(0.1),
+                        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.3)),
+                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(_getSizeIcon(widget.size), size: 16),
-                          SizedBox(width: 4),
-                          Icon(Icons.arrow_drop_down, size: 16),
+                          Icon(_getSizeIcon(widget.size), size: ResponsiveService.getAdaptiveIconSize(context, 16)),
+                          SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 4)),
+                          Icon(Icons.arrow_drop_down, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
                         ],
                       ),
                     ),
@@ -318,16 +371,21 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   // Save button
                   if (!widget.isForExport && widget.onSave != null)
                     ElevatedButton.icon(
-                      onPressed: widget.hasUnsavedChanges && !widget.isSaving ? widget.onSave : null,
+                      onPressed: widget.hasUnsavedChanges && !widget.isSaving 
+                        ? () {
+                            ResponsiveService.triggerMediumFeedback(context);
+                            widget.onSave!();
+                          }
+                        : null,
                       icon: widget.isSaving 
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
+                        ? SizedBox(
+                            width: ResponsiveService.getAdaptiveIconSize(context, 16),
+                            height: ResponsiveService.getAdaptiveIconSize(context, 16),
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : Icon(
                             widget.hasUnsavedChanges ? Icons.save : Icons.check,
-                            size: 16,
+                            size: ResponsiveService.getAdaptiveIconSize(context, 16),
                           ),
                       label: Text(
                         widget.isSaving ? 'Saving...' : 
@@ -339,6 +397,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                           : Theme.of(context).colorScheme.tertiary,
                         foregroundColor: Theme.of(context).colorScheme.onPrimary,
                         elevation: 2,
+                        minimumSize: Size(
+                          0,
+                          ResponsiveService.getTouchTargetSize(context),
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -347,13 +409,23 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   const SizedBox(width: 8),
                   if (widget.timetableSlots.isNotEmpty && widget.onClear != null)
                     ElevatedButton.icon(
-                      onPressed: widget.onClear,
-                      icon: const Icon(Icons.clear_all, size: 16),
+                      onPressed: () {
+                        ResponsiveService.triggerHeavyFeedback(context);
+                        widget.onClear!();
+                      },
+                      icon: Icon(
+                        Icons.clear_all, 
+                        size: ResponsiveService.getAdaptiveIconSize(context, 16),
+                      ),
                       label: const Text('Clear'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Theme.of(context).colorScheme.error.withOpacity(0.2),
                         foregroundColor: Theme.of(context).colorScheme.error,
                         elevation: 2,
+                        minimumSize: Size(
+                          0,
+                          ResponsiveService.getTouchTargetSize(context),
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -426,7 +498,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                           child: DataTable(
                             columnSpacing: _getColumnSpacing(widget.size),
                             horizontalMargin: _getHorizontalMargin(widget.size),
-                            dataRowHeight: _getDataRowHeight(widget.size),
+                            dataRowMinHeight: _getDataRowHeight(widget.size),
+                            dataRowMaxHeight: _getDataRowHeight(widget.size),
                             headingRowHeight: 60,
                             dividerThickness: 0,
                             border: TableBorder.all(color: Colors.transparent, width: 0),
@@ -670,7 +743,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                 ),
               ),
             );
-          }).toList(),
+          }),
         ],
       ));
     }
@@ -761,18 +834,20 @@ class _TimetableWidgetState extends State<TimetableWidget> {
         .where((s) => s.courseCode == slot.courseCode && s.sectionId == slot.sectionId)
         .toList();
     
-    return MouseRegion(
-      onEnter: (_) {
-        setState(() {
-          _hoveredCourse = '${slot.courseCode}-${slot.sectionId}';
-        });
-      },
-      onExit: (_) {
-        setState(() {
-          _hoveredCourse = null;
-        });
-      },
-      child: Tooltip(
+    // Use RepaintBoundary for performance on mobile
+    return RepaintBoundary(
+      child: MouseRegion(
+        onEnter: (_) {
+          setState(() {
+            _hoveredCourse = '${slot.courseCode}-${slot.sectionId}';
+          });
+        },
+        onExit: (_) {
+          setState(() {
+            _hoveredCourse = null;
+          });
+        },
+        child: Tooltip(
         message: _buildTooltipContent(sameCourseSlots),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
@@ -908,14 +983,14 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     ),
                     textStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12),
                     child: Container(
-                      width: 18,
-                      height: 18,
+                      width: ResponsiveService.getValue(context, mobile: 24, tablet: 20, desktop: 18),
+                      height: ResponsiveService.getValue(context, mobile: 24, tablet: 20, desktop: 18),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.secondary.withOpacity(0.9),
+                        color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.9),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Theme.of(context).shadowColor.withOpacity(0.3),
+                            color: Theme.of(context).shadowColor.withValues(alpha: 0.3),
                             blurRadius: 2,
                             offset: const Offset(0, 1),
                           ),
@@ -923,7 +998,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                       ),
                       child: Icon(
                         Icons.warning,
-                        size: 12,
+                        size: ResponsiveService.getValue(context, mobile: 16, tablet: 14, desktop: 12),
                         color: Theme.of(context).colorScheme.onSecondary,
                       ),
                     ),
@@ -934,24 +1009,27 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   top: 2,
                   right: 2,
                   child: GestureDetector(
-                    onTap: () => widget.onRemoveSection!(slot.courseCode, slot.sectionId),
+                    onTap: () {
+                      ResponsiveService.triggerHeavyFeedback(context);
+                      widget.onRemoveSection!(slot.courseCode, slot.sectionId);
+                    },
                     child: Container(
-                      width: 20,
-                      height: 20,
+                      width: ResponsiveService.getValue(context, mobile: 28, tablet: 24, desktop: 20),
+                      height: ResponsiveService.getValue(context, mobile: 28, tablet: 24, desktop: 20),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.error.withOpacity(0.8),
+                        color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Theme.of(context).shadowColor.withOpacity(0.3),
+                            color: Theme.of(context).shadowColor.withValues(alpha: 0.3),
                             blurRadius: 2,
                             offset: const Offset(0, 1),
                           ),
                         ],
                       ),
-                      child:  Icon(
+                      child: Icon(
                         Icons.close,
-                        size: 14,
+                        size: ResponsiveService.getValue(context, mobile: 18, tablet: 16, desktop: 14),
                         color: Theme.of(context).colorScheme.onSecondary,
                       ),
                     ),
@@ -960,8 +1038,9 @@ class _TimetableWidgetState extends State<TimetableWidget> {
             ],
           ),
         ),
+        ),
       ),
-      );
+    );
   }
 
   String _buildTooltipContent(List<TimetableSlot> slots) {
@@ -1253,18 +1332,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     }
   }
 
-  double _getTextSpacing(TimetableSize size) {
-    switch (size) {
-      case TimetableSize.compact:
-        return 2.0;  // Increased from 1 for better readability
-      case TimetableSize.medium:
-        return 3.0;  // Increased from 2
-      case TimetableSize.large:
-        return 4.0;  // Increased from 3
-      case TimetableSize.extraLarge:
-        return 5.0;  // Increased from 4
-    }
-  }
 
   int _getCourseTitleMaxLines(TimetableSize size) {
     switch (size) {

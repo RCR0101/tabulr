@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 import '../services/course_data_service.dart';
+import '../services/responsive_service.dart';
 import '../widgets/search_filter_widget.dart';
 
 class AddSwapScreen extends StatefulWidget {
@@ -81,6 +82,61 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     if (_selectedSections.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select at least one course section')),
+      );
+      return;
+    }
+
+    // Check for incomplete course selections
+    final incompleteSelections = <String>[];
+    for (final entry in _selectedSections.entries) {
+      final courseCode = entry.key;
+      final selectedSectionTypes = entry.value.keys.toSet();
+      
+      // Find all available section types for this course
+      final course = _availableCourses.firstWhere((c) => c.courseCode == courseCode);
+      final availableSectionTypes = course.sections.map((s) => s.type).toSet();
+      
+      // Check if user has selected from all available types
+      final missingSectionTypes = availableSectionTypes.difference(selectedSectionTypes);
+      if (missingSectionTypes.isNotEmpty) {
+        final missingTypeNames = missingSectionTypes.map((t) => _getSectionTypeName(t)).join(', ');
+        incompleteSelections.add('$courseCode: Missing $missingTypeNames');
+      }
+    }
+
+    if (incompleteSelections.isNotEmpty) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Incomplete Course Selection'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Please select sections from all available types for the following courses:'),
+                const SizedBox(height: 12),
+                ...incompleteSelections.map((incomplete) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.warning, color: Theme.of(context).colorScheme.error, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(incomplete, style: const TextStyle(fontSize: 14))),
+                    ],
+                  ),
+                )),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
       );
       return;
     }
@@ -364,6 +420,8 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveService.isMobile(context);
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add/Swap Courses'),
@@ -373,21 +431,60 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : Row(
+          : isMobile
+              ? _buildMobileLayout()
+              : _buildDesktopLayout(),
+    );
+  }
+  
+  Widget _buildMobileLayout() {
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          TabBar(
+            tabs: [
+              Tab(
+                icon: Icon(Icons.schedule, size: ResponsiveService.getAdaptiveIconSize(context, 20)),
+                text: 'Current',
+              ),
+              Tab(
+                icon: Icon(Icons.add_circle_outline, size: ResponsiveService.getAdaptiveIconSize(context, 20)),
+                text: 'Add/Swap',
+              ),
+            ],
+            labelColor: Theme.of(context).colorScheme.primary,
+            unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
+            indicatorColor: Theme.of(context).colorScheme.primary,
+          ),
+          Expanded(
+            child: TabBarView(
               children: [
-                // Current courses section
-                Expanded(
-                  flex: 1,
-                  child: _buildCurrentCoursesSection(),
-                ),
-                const VerticalDivider(width: 1),
-                // New courses selection section
-                Expanded(
-                  flex: 1,
-                  child: _buildNewCoursesSection(),
-                ),
+                _buildCurrentCoursesSection(),
+                _buildNewCoursesSection(),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildDesktopLayout() {
+    return Row(
+      children: [
+        // Current courses section
+        Expanded(
+          flex: 1,
+          child: _buildCurrentCoursesSection(),
+        ),
+        const VerticalDivider(width: 1),
+        // New courses selection section
+        Expanded(
+          flex: 1,
+          child: _buildNewCoursesSection(),
+        ),
+      ],
     );
   }
 
@@ -596,39 +693,128 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              // Action buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _selectedSections.isEmpty ? null : _clearSelection,
-                      icon: const Icon(Icons.clear),
-                      label: const Text('Clear Selection'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+              // Action buttons - responsive layout
+              ResponsiveService.buildResponsive(
+                context,
+                mobile: Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _selectedSections.isEmpty ? null : () {
+                          ResponsiveService.triggerSelectionFeedback(context);
+                          _clearSelection();
+                        },
+                        icon: Icon(Icons.clear, size: ResponsiveService.getAdaptiveIconSize(context, 18)),
+                        label: const Text('Clear Selection'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: Size(
+                            double.infinity,
+                            ResponsiveService.getTouchTargetSize(context),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _isValidating ? null : _validateSelection,
-                      icon: _isValidating
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.verified_user),
-                      label: Text(_isValidating ? 'Validating...' : 'Validate Selection'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                    SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _isValidating ? null : () {
+                          ResponsiveService.triggerMediumFeedback(context);
+                          _validateSelection();
+                        },
+                        icon: _isValidating
+                            ? SizedBox(
+                                width: ResponsiveService.getAdaptiveIconSize(context, 16),
+                                height: ResponsiveService.getAdaptiveIconSize(context, 16),
+                                child: const CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Icon(Icons.verified_user, size: ResponsiveService.getAdaptiveIconSize(context, 18)),
+                        label: Text(_isValidating ? 'Validating...' : 'Validate Selection'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                          minimumSize: Size(
+                            double.infinity,
+                            ResponsiveService.getTouchTargetSize(context),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                tablet: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _selectedSections.isEmpty ? null : () {
+                          ResponsiveService.triggerSelectionFeedback(context);
+                          _clearSelection();
+                        },
+                        icon: Icon(Icons.clear, size: ResponsiveService.getAdaptiveIconSize(context, 18)),
+                        label: const Text('Clear Selection'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: Size(0, ResponsiveService.getTouchTargetSize(context)),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 12)),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _isValidating ? null : () {
+                          ResponsiveService.triggerMediumFeedback(context);
+                          _validateSelection();
+                        },
+                        icon: _isValidating
+                            ? SizedBox(
+                                width: ResponsiveService.getAdaptiveIconSize(context, 16),
+                                height: ResponsiveService.getAdaptiveIconSize(context, 16),
+                                child: const CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Icon(Icons.verified_user, size: ResponsiveService.getAdaptiveIconSize(context, 18)),
+                        label: Text(_isValidating ? 'Validating...' : 'Validate Selection'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                          minimumSize: Size(0, ResponsiveService.getTouchTargetSize(context)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                desktop: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _selectedSections.isEmpty ? null : _clearSelection,
+                        icon: const Icon(Icons.clear),
+                        label: const Text('Clear Selection'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _isValidating ? null : _validateSelection,
+                        icon: _isValidating
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.verified_user),
+                        label: Text(_isValidating ? 'Validating...' : 'Validate Selection'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -658,6 +844,12 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
           sectionsByType.putIfAbsent(section.type, () => []).add(section);
         }
         
+        // Check completion status
+        final availableSectionTypes = sectionsByType.keys.toSet();
+        final selectedSectionTypes = courseSelections.keys.toSet();
+        final isCompleteSelection = availableSectionTypes.every((type) => selectedSectionTypes.contains(type));
+        final missingSectionTypes = availableSectionTypes.difference(selectedSectionTypes);
+        
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
           child: ExpansionTile(
@@ -675,16 +867,29 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                     'Selected: ${courseSelections.entries.map((e) => '${e.key.name}:${e.value}').join(', ')}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: isCompleteSelection ? Colors.green : Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+                if (missingSectionTypes.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Still needed: ${missingSectionTypes.map((t) => _getSectionTypeName(t)).join(', ')}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.orange,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
               ],
             ),
-            trailing: hasSelections
-                ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
-                : const Icon(Icons.radio_button_unchecked),
+            trailing: isCompleteSelection
+                ? Icon(Icons.check_circle, color: Colors.green)
+                : hasSelections
+                    ? Icon(Icons.warning, color: Colors.orange)
+                    : const Icon(Icons.radio_button_unchecked),
             children: [
               // Show exam information first
               if (course.midSemExam != null || course.endSemExam != null)
@@ -740,12 +945,54 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                   children: [
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Text(
-                        '${_getSectionTypeName(sectionType)} Sections',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
+                      child: Row(
+                        children: [
+                          Text(
+                            '${_getSectionTypeName(sectionType)} Sections',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          if (selectedSectionId != null) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                'Selected: $selectedSectionId',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onPrimary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ] else ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                                ),
+                              ),
+                              child: Text(
+                                'Choose one',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ...sections.map((section) {

@@ -4,6 +4,7 @@ import '../models/course.dart';
 import '../models/timetable_constraints.dart';
 import '../services/timetable_generator.dart';
 import '../services/toast_service.dart';
+import '../services/responsive_service.dart';
 import 'generated_timetable_card.dart';
 
 class TimetableGeneratorWidget extends StatefulWidget {
@@ -34,7 +35,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width <= 800;
+    final isMobile = ResponsiveService.isMobile(context) || ResponsiveService.isTablet(context);
     
     if (isMobile) {
       return DefaultTabController(

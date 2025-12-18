@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/theme_service.dart' as theme_service;
 import '../services/user_settings_service.dart';
+import '../services/responsive_service.dart';
 import '../models/user_settings.dart' as user_settings;
 
 class ThemeSelectorWidget extends StatefulWidget {
@@ -95,12 +96,12 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
             ),
             Expanded(
               child: GridView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 1.5,
+                padding: ResponsiveService.getAdaptivePadding(context, const EdgeInsets.symmetric(horizontal: 16.0)),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: ResponsiveService.getGridColumns(context, mobileColumns: 1, tabletColumns: 2, desktopColumns: 2),
+                  mainAxisSpacing: ResponsiveService.getAdaptiveSpacing(context, 12),
+                  crossAxisSpacing: ResponsiveService.getAdaptiveSpacing(context, 12),
+                  childAspectRatio: ResponsiveService.getValue(context, mobile: 2.5, tablet: 1.8, desktop: 1.5),
                 ),
                 itemCount: theme_service.AppTheme.values.length,
                 itemBuilder: (context, index) {
@@ -108,12 +109,17 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
                   final themeData = _themeService.getThemeData(theme);
                   final isSelected = _themeService.currentTheme == theme;
 
-                  return GestureDetector(
+                  return InkWell(
                     onTap: () async {
                       await _themeService.setTheme(theme);
                       await _userSettingsService.updateThemeVariant(theme);
                     },
-                    child: AnimatedContainer(
+                    borderRadius: BorderRadius.circular(ResponsiveService.getAdaptiveBorderRadius(context, 12)),
+                    child: Container(
+                      constraints: BoxConstraints(
+                        minHeight: ResponsiveService.getTouchTargetSize(context),
+                      ),
+                      child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
                         color: themeData.cardColor,
@@ -161,6 +167,7 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
                             ),
                         ],
                       ),
+                    ),
                     ),
                   );
                 },
@@ -325,8 +332,10 @@ class ThemeToggleButton extends StatelessWidget {
         
         return IconButton(
           onPressed: () => ThemeSelectorDialog.show(context),
-          icon: Icon(icon),
+          icon: Icon(icon, size: ResponsiveService.getAdaptiveIconSize(context, 24)),
           tooltip: '$tooltip (${themeService.getThemeName(themeService.currentTheme)})',
+          iconSize: ResponsiveService.getTouchTargetSize(context),
+          padding: EdgeInsets.all(ResponsiveService.getValue(context, mobile: 12.0, tablet: 8.0, desktop: 8.0)),
         );
       },
     );

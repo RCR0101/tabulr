@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 import '../services/course_utils.dart';
+import '../services/responsive_service.dart';
 
 class CourseListWidget extends StatelessWidget {
   final List<Course> courses;
@@ -77,7 +78,7 @@ class CourseListWidget extends StatelessWidget {
     }
     
     return ListView.builder(
-      padding: const EdgeInsets.all(8),
+      padding: ResponsiveService.getAdaptivePadding(context, const EdgeInsets.all(8)),
       itemCount: displayCourses.length,
       itemBuilder: (context, index) {
         final course = displayCourses[index];
@@ -158,13 +159,22 @@ class CourseListWidget extends StatelessWidget {
               final isTypeAlreadySelected = _isSectionTypeAlreadySelected(course.courseCode, section.type);
               final canSelect = isSelected || !isTypeAlreadySelected;
               
-              return ListTile(
-                title: Text(
-                  '${section.sectionId} - ${section.instructor}',
-                  style: TextStyle(
-                    color: canSelect ? null : Colors.grey,
-                  ),
+              return Container(
+                constraints: BoxConstraints(
+                  minHeight: ResponsiveService.getTouchTargetSize(context),
                 ),
+                child: ListTile(
+                  title: Text(
+                    '${section.sectionId} - ${section.instructor}',
+                    style: TextStyle(
+                      color: canSelect ? null : Colors.grey,
+                      fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
+                    ),
+                  ),
+                  contentPadding: ResponsiveService.getAdaptivePadding(
+                    context,
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -195,6 +205,7 @@ class CourseListWidget extends StatelessWidget {
                 tileColor: isSelected 
                   ? Theme.of(context).colorScheme.primary.withOpacity(0.15) 
                   : (!canSelect ? Theme.of(context).colorScheme.surface.withOpacity(0.3) : null),
+                ),
               );
             }).toList(),
           ),

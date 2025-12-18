@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/course.dart';
+import '../services/responsive_service.dart';
 
 class SearchFilterWidget extends StatefulWidget {
   final Function(String query, Map<String, dynamic> filters) onSearchChanged;
@@ -71,7 +72,70 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-            Row(
+            ResponsiveService.buildResponsive(
+              context,
+              mobile: Column(
+                children: [
+                  // Search field for mobile - full width
+                  TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      labelText: 'Search courses, instructors...',
+                      hintText: 'e.g., CS F211, Data Structures',
+                      prefixIcon: const Icon(Icons.search),
+                      border: const OutlineInputBorder(),
+                      suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              setState(() {
+                                _searchController.clear();
+                              });
+                              _updateSearch();
+                            },
+                          )
+                        : null,
+                    ),
+                    onChanged: (_) => _updateSearch(),
+                  ),
+                  SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
+                  // Action buttons row for mobile
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _showAdvancedFilters = !_showAdvancedFilters;
+                            });
+                          },
+                          icon: Icon(
+                            _showAdvancedFilters ? Icons.expand_less : Icons.expand_more,
+                            size: ResponsiveService.getAdaptiveIconSize(context, 20),
+                          ),
+                          label: Text(
+                            _showAdvancedFilters ? 'Hide Filters' : 'Show Filters',
+                            style: TextStyle(fontSize: ResponsiveService.getAdaptiveFontSize(context, 14)),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
+                      ElevatedButton.icon(
+                        onPressed: _clearFilters,
+                        icon: Icon(
+                          Icons.clear,
+                          size: ResponsiveService.getAdaptiveIconSize(context, 20),
+                        ),
+                        label: Text(
+                          'Clear',
+                          style: TextStyle(fontSize: ResponsiveService.getAdaptiveFontSize(context, 14)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              desktop: Row(
               children: [
                 Expanded(
                   child: TextField(
@@ -98,20 +162,31 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: Icon(_showAdvancedFilters ? Icons.expand_less : Icons.expand_more),
+                  icon: Icon(
+                    _showAdvancedFilters ? Icons.expand_less : Icons.expand_more,
+                    size: ResponsiveService.getAdaptiveIconSize(context, 24),
+                  ),
                   onPressed: () {
                     setState(() {
                       _showAdvancedFilters = !_showAdvancedFilters;
                     });
                   },
                   tooltip: 'Advanced Filters',
+                  iconSize: ResponsiveService.getTouchTargetSize(context),
+                  padding: EdgeInsets.all(ResponsiveService.getValue(context, mobile: 12.0, tablet: 8.0, desktop: 8.0)),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.clear),
+                  icon: Icon(
+                    Icons.clear,
+                    size: ResponsiveService.getAdaptiveIconSize(context, 24),
+                  ),
                   onPressed: _clearFilters,
                   tooltip: 'Clear Filters',
+                  iconSize: ResponsiveService.getTouchTargetSize(context),
+                  padding: EdgeInsets.all(ResponsiveService.getValue(context, mobile: 12.0, tablet: 8.0, desktop: 8.0)),
                 ),
               ],
+            ),
             ),
             if (_showAdvancedFilters) ...[
               const SizedBox(height: 16),
@@ -122,10 +197,11 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
               const SizedBox(height: 12),
               
               // Course Code and Instructor filters
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
+              ResponsiveService.buildResponsive(
+                context,
+                mobile: Column(
+                  children: [
+                    TextField(
                       controller: _courseCodeController,
                       decoration: const InputDecoration(
                         labelText: 'Filter by Course Code',
@@ -134,10 +210,8 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                       ),
                       onChanged: (_) => _updateSearch(),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
+                    SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
+                    TextField(
                       controller: _instructorController,
                       decoration: const InputDecoration(
                         labelText: 'Filter by Instructor',
@@ -145,8 +219,34 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                       ),
                       onChanged: (_) => _updateSearch(),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                desktop: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _courseCodeController,
+                        decoration: const InputDecoration(
+                          labelText: 'Filter by Course Code',
+                          hintText: 'e.g., CS F211, MATH F211',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (_) => _updateSearch(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _instructorController,
+                        decoration: const InputDecoration(
+                          labelText: 'Filter by Instructor',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (_) => _updateSearch(),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 12),
               
@@ -189,59 +289,121 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
               const SizedBox(height: 12),
               
               // Exam date filters
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        final date = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.now(),
-                          firstDate: DateTime(2025, 1, 1),
-                          lastDate: DateTime(2025, 12, 31),
-                        );
-                        setState(() {
-                          _selectedMidSemDate = date;
-                        });
-                        _updateSearch();
-                      },
-                      child: Text(_selectedMidSemDate == null
-                          ? 'MidSem Date'
-                          : 'MidSem: ${_selectedMidSemDate!.day}/${_selectedMidSemDate!.month}'),
+              ResponsiveService.buildResponsive(
+                context,
+                mobile: Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.now(),
+                            firstDate: DateTime(2025, 1, 1),
+                            lastDate: DateTime(2025, 12, 31),
+                          );
+                          setState(() {
+                            _selectedMidSemDate = date;
+                          });
+                          _updateSearch();
+                        },
+                        icon: const Icon(Icons.calendar_today),
+                        label: Text(_selectedMidSemDate == null
+                            ? 'Select MidSem Date'
+                            : 'MidSem: ${_selectedMidSemDate!.day}/${_selectedMidSemDate!.month}'),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        final date = await showDatePicker(
-                          context: context,
-                          initialDate: DateTime.now(),
-                          firstDate: DateTime(2025, 1, 1),
-                          lastDate: DateTime(2025, 12, 31),
-                        );
-                        setState(() {
-                          _selectedEndSemDate = date;
-                        });
-                        _updateSearch();
-                      },
-                      child: Text(_selectedEndSemDate == null
-                          ? 'EndSem Date'
-                          : 'EndSem: ${_selectedEndSemDate!.day}/${_selectedEndSemDate!.month}'),
+                    SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 8)),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.now(),
+                            firstDate: DateTime(2025, 1, 1),
+                            lastDate: DateTime(2025, 12, 31),
+                          );
+                          setState(() {
+                            _selectedEndSemDate = date;
+                          });
+                          _updateSearch();
+                        },
+                        icon: const Icon(Icons.calendar_today),
+                        label: Text(_selectedEndSemDate == null
+                            ? 'Select EndSem Date'
+                            : 'EndSem: ${_selectedEndSemDate!.day}/${_selectedEndSemDate!.month}'),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                desktop: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.now(),
+                            firstDate: DateTime(2025, 1, 1),
+                            lastDate: DateTime(2025, 12, 31),
+                          );
+                          setState(() {
+                            _selectedMidSemDate = date;
+                          });
+                          _updateSearch();
+                        },
+                        child: Text(_selectedMidSemDate == null
+                            ? 'MidSem Date'
+                            : 'MidSem: ${_selectedMidSemDate!.day}/${_selectedMidSemDate!.month}'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.now(),
+                            firstDate: DateTime(2025, 1, 1),
+                            lastDate: DateTime(2025, 12, 31),
+                          );
+                          setState(() {
+                            _selectedEndSemDate = date;
+                          });
+                          _updateSearch();
+                        },
+                        child: Text(_selectedEndSemDate == null
+                            ? 'EndSem Date'
+                            : 'EndSem: ${_selectedEndSemDate!.day}/${_selectedEndSemDate!.month}'),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 12),
               
               // Days filter
-              const Text('Filter by Days:', style: TextStyle(fontWeight: FontWeight.w500)),
-              const SizedBox(height: 8),
+              Text(
+                'Filter by Days:',
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
+                ),
+              ),
+              SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 8)),
               Wrap(
-                spacing: 8,
+                spacing: ResponsiveService.getAdaptiveSpacing(context, 8),
+                runSpacing: ResponsiveService.getAdaptiveSpacing(context, 4),
                 children: DayOfWeek.values.map((day) {
                   return FilterChip(
-                    label: Text(day.name),
+                    label: Text(
+                      day.name,
+                      style: TextStyle(
+                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
+                      ),
+                    ),
                     selected: _selectedDays.contains(day),
                     onSelected: (selected) {
                       setState(() {
@@ -253,6 +415,10 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                       });
                       _updateSearch();
                     },
+                    padding: ResponsiveService.getAdaptivePadding(
+                      context,
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
                   );
                 }).toList(),
               ),
