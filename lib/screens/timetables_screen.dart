@@ -436,44 +436,120 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Sort Timetables'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.sort,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text('Sort Timetables'),
+          ],
+        ),
         content: SizedBox(
-          width: double.minPositive,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: TimetableListSortOrder.values.map((sortOrder) {
+          width: 480,
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 2.2,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+            ),
+            itemCount: TimetableListSortOrder.values.length,
+            itemBuilder: (context, index) {
+              final sortOrder = TimetableListSortOrder.values[index];
               final isSelected = currentSort == sortOrder;
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                  color: isSelected ? Theme.of(context).colorScheme.primary : null,
-                ),
-                title: Text(
-                  _getSortOrderName(sortOrder),
-                  style: TextStyle(
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? Theme.of(context).colorScheme.primary : null,
+              return Material(
+                color: isSelected 
+                    ? Theme.of(context).colorScheme.primaryContainer
+                    : Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () async {
+                    print('Sort option tapped: $sortOrder');
+                    final navigator = Navigator.of(context);
+                    try {
+                      await _userSettingsService.updateSortOrder(sortOrder);
+                      navigator.pop();
+                    } catch (e) {
+                      print('Error updating sort order: $e');
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected 
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: isSelected 
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.surfaceVariant,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            _getSortIcon(sortOrder),
+                            size: 18,
+                            color: isSelected 
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _getSortOrderName(sortOrder),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                            fontSize: 12,
+                            color: isSelected 
+                                ? Theme.of(context).colorScheme.onPrimaryContainer
+                                : Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        if (isSelected)
+                          Icon(
+                            Icons.check_circle,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 16,
+                          ),
+                      ],
+                    ),
                   ),
                 ),
-                subtitle: Text(_getSortOrderDescription(sortOrder)),
-                onTap: () async {
-                  print('Sort option tapped: $sortOrder');
-                  final navigator = Navigator.of(context);
-                  try {
-                    await _userSettingsService.updateSortOrder(sortOrder);
-                    navigator.pop();
-                  } catch (e) {
-                    print('Error updating sort order: $e');
-                  }
-                },
               );
-            }).toList(),
+            },
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
             child: const Text('Cancel'),
           ),
         ],

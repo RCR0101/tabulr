@@ -343,12 +343,6 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                 : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
           ),
         ),
-        trailing: professor.chamber != 'Unavailable'
-            ? Icon(
-                Icons.location_on,
-                color: Theme.of(context).colorScheme.primary,
-              )
-            : null,
       ),
     );
   }

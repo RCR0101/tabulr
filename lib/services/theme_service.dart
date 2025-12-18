@@ -12,6 +12,12 @@ enum AppTheme {
   gruvboxDark,
   catppuccinDark,
   solarizedDark,
+  // New vibrant themes
+  sunsetOrange,
+  forestGreen,
+  royalPurple,
+  crimsonRed,
+  electricBlue,
 }
 
 
@@ -107,6 +113,16 @@ class ThemeService extends ChangeNotifier {
         return 'Catppuccin';
       case AppTheme.solarizedDark:
         return 'Solarized Dark';
+      case AppTheme.sunsetOrange:
+        return 'Sunset Orange';
+      case AppTheme.forestGreen:
+        return 'Forest Green';
+      case AppTheme.royalPurple:
+        return 'Royal Purple';
+      case AppTheme.crimsonRed:
+        return 'Crimson Red';
+      case AppTheme.electricBlue:
+        return 'Electric Blue';
     }
   }
 
@@ -132,6 +148,16 @@ class ThemeService extends ChangeNotifier {
         return Icons.pets;
       case AppTheme.solarizedDark:
         return Icons.wb_sunny;
+      case AppTheme.sunsetOrange:
+        return Icons.wb_twilight;
+      case AppTheme.forestGreen:
+        return Icons.forest;
+      case AppTheme.royalPurple:
+        return Icons.diamond;
+      case AppTheme.crimsonRed:
+        return Icons.local_fire_department;
+      case AppTheme.electricBlue:
+        return Icons.flash_on;
     }
   }
 
@@ -157,6 +183,16 @@ class ThemeService extends ChangeNotifier {
         return isLightMode ? _buildCatppuccinLightTheme() : _buildCatppuccinTheme();
       case AppTheme.solarizedDark:
         return isLightMode ? _buildSolarizedLightTheme() : _buildSolarizedTheme();
+      case AppTheme.sunsetOrange:
+        return isLightMode ? _buildSunsetOrangeLightTheme() : _buildSunsetOrangeDarkTheme();
+      case AppTheme.forestGreen:
+        return isLightMode ? _buildForestGreenLightTheme() : _buildForestGreenDarkTheme();
+      case AppTheme.royalPurple:
+        return isLightMode ? _buildRoyalPurpleLightTheme() : _buildRoyalPurpleDarkTheme();
+      case AppTheme.crimsonRed:
+        return isLightMode ? _buildCrimsonRedLightTheme() : _buildCrimsonRedDarkTheme();
+      case AppTheme.electricBlue:
+        return isLightMode ? _buildElectricBlueLightTheme() : _buildElectricBlueDarkTheme();
     }
   }
 
@@ -1897,6 +1933,479 @@ class ThemeService extends ChangeNotifier {
         collapsedBackgroundColor: Color(0xFFFDF6E3),
         iconColor: Color(0xFF268BD2),
         collapsedIconColor: Color(0xFF586E75),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  // Vibrant theme implementations
+  ThemeData _buildSunsetOrangeLightTheme() {
+    return ThemeData.light().copyWith(
+      primaryColor: const Color(0xFFFFF8F0),
+      scaffoldBackgroundColor: const Color(0xFFFFF8F0),
+      cardColor: const Color(0xFFFEF2E4),
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFFFF6B35),
+        secondary: Color(0xFFFF8C42),
+        surface: Color(0xFFFEF2E4),
+        background: Color(0xFFFFF8F0),
+        error: Color(0xFFE53E3E),
+        onPrimary: Color(0xFFFFFFFF),
+        onSecondary: Color(0xFFFFFFFF),
+        onSurface: Color(0xFF2D1B0D),
+        onBackground: Color(0xFF2D1B0D),
+        onError: Color(0xFFFFFFFF),
+        outline: Color(0xFFD4A574),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFFFF8F0),
+        foregroundColor: Color(0xFF2D1B0D),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFFFEF2E4),
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFFF6B35),
+          foregroundColor: const Color(0xFFFFFFFF),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFFFF6B35),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFFEF2E4),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFD4A574)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFD4A574)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFFF6B35), width: 2),
+        ),
+        labelStyle: const TextStyle(color: Color(0xFFCC5500)),
+        hintStyle: const TextStyle(color: Color(0xFFD4A574)),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: const Color(0xFFFEF2E4),
+        selectedColor: const Color(0xFFFF6B35),
+        labelStyle: const TextStyle(color: Color(0xFF2D1B0D)),
+        secondaryLabelStyle: const TextStyle(color: Color(0xFFFFFFFF)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildSunsetOrangeDarkTheme() {
+    return ThemeData.dark().copyWith(
+      primaryColor: const Color(0xFF1A0F0A),
+      scaffoldBackgroundColor: const Color(0xFF1A0F0A),
+      cardColor: const Color(0xFF2D1B10),
+      colorScheme: const ColorScheme.dark(
+        primary: Color(0xFFFF8A50),
+        secondary: Color(0xFFFFAB40),
+        surface: Color(0xFF2D1B10),
+        background: Color(0xFF1A0F0A),
+        error: Color(0xFFFF6B6B),
+        onPrimary: Color(0xFF1A0F0A),
+        onSecondary: Color(0xFF1A0F0A),
+        onSurface: Color(0xFFFFF8F0),
+        onBackground: Color(0xFFFFF8F0),
+        onError: Color(0xFF1A0F0A),
+        outline: Color(0xFF5C3D28),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF1A0F0A),
+        foregroundColor: Color(0xFFFFF8F0),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFF2D1B10),
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFFF8A50),
+          foregroundColor: const Color(0xFF1A0F0A),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildForestGreenLightTheme() {
+    return ThemeData.light().copyWith(
+      primaryColor: const Color(0xFFF0F8F0),
+      scaffoldBackgroundColor: const Color(0xFFF0F8F0),
+      cardColor: const Color(0xFFE8F5E8),
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFF2E7D32),
+        secondary: Color(0xFF4CAF50),
+        surface: Color(0xFFE8F5E8),
+        background: Color(0xFFF0F8F0),
+        error: Color(0xFFC62828),
+        onPrimary: Color(0xFFFFFFFF),
+        onSecondary: Color(0xFFFFFFFF),
+        onSurface: Color(0xFF1B5E20),
+        onBackground: Color(0xFF1B5E20),
+        onError: Color(0xFFFFFFFF),
+        outline: Color(0xFF81C784),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFF0F8F0),
+        foregroundColor: Color(0xFF1B5E20),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFFE8F5E8),
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2E7D32),
+          foregroundColor: const Color(0xFFFFFFFF),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildForestGreenDarkTheme() {
+    return ThemeData.dark().copyWith(
+      primaryColor: const Color(0xFF0A1A0A),
+      scaffoldBackgroundColor: const Color(0xFF0A1A0A),
+      cardColor: const Color(0xFF1B2D1B),
+      colorScheme: const ColorScheme.dark(
+        primary: Color(0xFF66BB6A),
+        secondary: Color(0xFF81C784),
+        surface: Color(0xFF1B2D1B),
+        background: Color(0xFF0A1A0A),
+        error: Color(0xFFEF5350),
+        onPrimary: Color(0xFF0A1A0A),
+        onSecondary: Color(0xFF0A1A0A),
+        onSurface: Color(0xFFF0F8F0),
+        onBackground: Color(0xFFF0F8F0),
+        onError: Color(0xFF0A1A0A),
+        outline: Color(0xFF2E5C2E),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF0A1A0A),
+        foregroundColor: Color(0xFFF0F8F0),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFF1B2D1B),
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF66BB6A),
+          foregroundColor: const Color(0xFF0A1A0A),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildRoyalPurpleLightTheme() {
+    return ThemeData.light().copyWith(
+      primaryColor: const Color(0xFFF8F0FF),
+      scaffoldBackgroundColor: const Color(0xFFF8F0FF),
+      cardColor: const Color(0xFFF0E4FF),
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFF7B1FA2),
+        secondary: Color(0xFF9C27B0),
+        surface: Color(0xFFF0E4FF),
+        background: Color(0xFFF8F0FF),
+        error: Color(0xFFAD1457),
+        onPrimary: Color(0xFFFFFFFF),
+        onSecondary: Color(0xFFFFFFFF),
+        onSurface: Color(0xFF4A148C),
+        onBackground: Color(0xFF4A148C),
+        onError: Color(0xFFFFFFFF),
+        outline: Color(0xFFBA68C8),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFF8F0FF),
+        foregroundColor: Color(0xFF4A148C),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFFF0E4FF),
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF7B1FA2),
+          foregroundColor: const Color(0xFFFFFFFF),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildRoyalPurpleDarkTheme() {
+    return ThemeData.dark().copyWith(
+      primaryColor: const Color(0xFF1A0A1A),
+      scaffoldBackgroundColor: const Color(0xFF1A0A1A),
+      cardColor: const Color(0xFF2D1B2D),
+      colorScheme: const ColorScheme.dark(
+        primary: Color(0xFFBA68C8),
+        secondary: Color(0xFFCE93D8),
+        surface: Color(0xFF2D1B2D),
+        background: Color(0xFF1A0A1A),
+        error: Color(0xFFF06292),
+        onPrimary: Color(0xFF1A0A1A),
+        onSecondary: Color(0xFF1A0A1A),
+        onSurface: Color(0xFFF8F0FF),
+        onBackground: Color(0xFFF8F0FF),
+        onError: Color(0xFF1A0A1A),
+        outline: Color(0xFF5C285C),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF1A0A1A),
+        foregroundColor: Color(0xFFF8F0FF),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFF2D1B2D),
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFBA68C8),
+          foregroundColor: const Color(0xFF1A0A1A),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildCrimsonRedLightTheme() {
+    return ThemeData.light().copyWith(
+      primaryColor: const Color(0xFFFFF0F0),
+      scaffoldBackgroundColor: const Color(0xFFFFF0F0),
+      cardColor: const Color(0xFFFFE4E4),
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFFD32F2F),
+        secondary: Color(0xFFE57373),
+        surface: Color(0xFFFFE4E4),
+        background: Color(0xFFFFF0F0),
+        error: Color(0xFFB71C1C),
+        onPrimary: Color(0xFFFFFFFF),
+        onSecondary: Color(0xFFFFFFFF),
+        onSurface: Color(0xFF8B0000),
+        onBackground: Color(0xFF8B0000),
+        onError: Color(0xFFFFFFFF),
+        outline: Color(0xFFEF9A9A),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFFFF0F0),
+        foregroundColor: Color(0xFF8B0000),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFFFFE4E4),
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFD32F2F),
+          foregroundColor: const Color(0xFFFFFFFF),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildCrimsonRedDarkTheme() {
+    return ThemeData.dark().copyWith(
+      primaryColor: const Color(0xFF1A0A0A),
+      scaffoldBackgroundColor: const Color(0xFF1A0A0A),
+      cardColor: const Color(0xFF2D1010),
+      colorScheme: const ColorScheme.dark(
+        primary: Color(0xFFEF5350),
+        secondary: Color(0xFFE57373),
+        surface: Color(0xFF2D1010),
+        background: Color(0xFF1A0A0A),
+        error: Color(0xFFFF5722),
+        onPrimary: Color(0xFF1A0A0A),
+        onSecondary: Color(0xFF1A0A0A),
+        onSurface: Color(0xFFFFF0F0),
+        onBackground: Color(0xFFFFF0F0),
+        onError: Color(0xFF1A0A0A),
+        outline: Color(0xFF5C2828),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF1A0A0A),
+        foregroundColor: Color(0xFFFFF0F0),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFF2D1010),
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFEF5350),
+          foregroundColor: const Color(0xFF1A0A0A),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildElectricBlueLightTheme() {
+    return ThemeData.light().copyWith(
+      primaryColor: const Color(0xFFF0F8FF),
+      scaffoldBackgroundColor: const Color(0xFFF0F8FF),
+      cardColor: const Color(0xFFE4F2FF),
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFF1976D2),
+        secondary: Color(0xFF42A5F5),
+        surface: Color(0xFFE4F2FF),
+        background: Color(0xFFF0F8FF),
+        error: Color(0xFF1565C0),
+        onPrimary: Color(0xFFFFFFFF),
+        onSecondary: Color(0xFFFFFFFF),
+        onSurface: Color(0xFF0D47A1),
+        onBackground: Color(0xFF0D47A1),
+        onError: Color(0xFFFFFFFF),
+        outline: Color(0xFF90CAF9),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFF0F8FF),
+        foregroundColor: Color(0xFF0D47A1),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFFE4F2FF),
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF1976D2),
+          foregroundColor: const Color(0xFFFFFFFF),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildElectricBlueDarkTheme() {
+    return ThemeData.dark().copyWith(
+      primaryColor: const Color(0xFF0A0F1A),
+      scaffoldBackgroundColor: const Color(0xFF0A0F1A),
+      cardColor: const Color(0xFF101B2D),
+      colorScheme: const ColorScheme.dark(
+        primary: Color(0xFF64B5F6),
+        secondary: Color(0xFF90CAF9),
+        surface: Color(0xFF101B2D),
+        background: Color(0xFF0A0F1A),
+        error: Color(0xFF2196F3),
+        onPrimary: Color(0xFF0A0F1A),
+        onSecondary: Color(0xFF0A0F1A),
+        onSurface: Color(0xFFF0F8FF),
+        onBackground: Color(0xFFF0F8FF),
+        onError: Color(0xFF0A0F1A),
+        outline: Color(0xFF28385C),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF0A0F1A),
+        foregroundColor: Color(0xFFF0F8FF),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFF101B2D),
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF64B5F6),
+          foregroundColor: const Color(0xFF0A0F1A),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
       ),
       visualDensity: VisualDensity.adaptivePlatformDensity,
     );
