@@ -240,6 +240,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     _userSettingsService.updateCustomTimetableOrder(newOrder);
   }
 
+
   void _openTimetable(Timetable timetable) {
     Navigator.push(
       context,
@@ -624,53 +625,79 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
             },
           ),
           const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.menu_book),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const CourseGuideScreen(),
-                ),
-              );
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.apps),
+            tooltip: 'More Options',
+            onSelected: (value) {
+              switch (value) {
+                case 'course_guide':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CourseGuideScreen(),
+                    ),
+                  );
+                  break;
+                case 'professors':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ProfessorsScreen(),
+                    ),
+                  );
+                  break;
+                case 'discipline_electives':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DisciplineElectivesScreen(),
+                    ),
+                  );
+                  break;
+                case 'humanities_electives':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const HumanitiesElectivesScreen(),
+                    ),
+                  );
+                  break;
+              }
             },
-            tooltip: 'Course Guide',
-          ),
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ProfessorsScreen(),
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'course_guide',
+                child: ListTile(
+                  leading: Icon(Icons.menu_book),
+                  title: Text('Course Guide'),
+                  contentPadding: EdgeInsets.zero,
                 ),
-              );
-            },
-            tooltip: 'Professors',
-          ),
-          IconButton(
-            icon: const Icon(Icons.school),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const DisciplineElectivesScreen(),
+              ),
+              const PopupMenuItem(
+                value: 'professors',
+                child: ListTile(
+                  leading: Icon(Icons.person),
+                  title: Text('Professors'),
+                  contentPadding: EdgeInsets.zero,
                 ),
-              );
-            },
-            tooltip: 'Discipline Electives',
-          ),
-          IconButton(
-            icon: const Icon(Icons.library_books),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const HumanitiesElectivesScreen(),
+              ),
+              const PopupMenuItem(
+                value: 'discipline_electives',
+                child: ListTile(
+                  leading: Icon(Icons.school),
+                  title: Text('Discipline Electives'),
+                  contentPadding: EdgeInsets.zero,
                 ),
-              );
-            },
-            tooltip: 'Humanities Electives',
+              ),
+              const PopupMenuItem(
+                value: 'humanities_electives',
+                child: ListTile(
+                  leading: Icon(Icons.library_books),
+                  title: Text('Humanities Electives'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
           const ThemeToggleButton(),
           IconButton(
@@ -943,39 +970,25 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                 if (_sortedTimetables.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      border: Border(
-                        top: BorderSide(
-                          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-                          width: 1,
+                    child: Center(
+                      child: TextButton.icon(
+                        onPressed: _showClearAllDialog,
+                        icon: Icon(
+                          Icons.clear_all,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.error,
                         ),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _showClearAllDialog,
-                            icon: Icon(
-                              Icons.clear_all,
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                            label: Text(
-                              'Clear All Timetables',
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(
-                                color: Theme.of(context).colorScheme.error.withValues(alpha: 0.5),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
+                        label: Text(
+                          'Clear All',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
                           ),
                         ),
-                      ],
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        ),
+                      ),
                     ),
                   ),
               ],

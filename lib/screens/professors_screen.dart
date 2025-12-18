@@ -46,60 +46,20 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      body: SafeArea(
-        child: Column(
+      appBar: AppBar(
+        title: Column(
           children: [
-            _buildHeader(),
-            _buildSearchBar(),
-            Expanded(
-              child: _buildContent(),
+            const Text('Professor Directory'),
+            Text(
+              'Credits: Pratyush Nair',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontSize: 10,
+              ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-        border: Border(
-          bottom: BorderSide(
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.school,
-            size: 28,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Professor Directory',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              Text(
-                'Credits: Pratyush Nair',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                  fontSize: 10,
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
+        centerTitle: true,
+        actions: [
           if (kIsWeb)
             IconButton(
               onPressed: _professorService.refresh,
@@ -108,68 +68,79 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
             ),
         ],
       ),
+      body: Column(
+        children: [
+          _buildSearchBar(),
+          Expanded(
+            child: _buildContent(),
+          ),
+        ],
+      ),
     );
   }
 
+
   Widget _buildSearchBar() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              focusNode: _searchFocusNode,
-              decoration: InputDecoration(
-                hintText: 'Search by professor name or chamber (e.g., "John" or "A101")',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        onPressed: _clearSearch,
-                        icon: const Icon(Icons.clear),
-                        tooltip: 'Clear search',
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).colorScheme.outline,
+    return Card(
+      margin: const EdgeInsets.all(16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text(
+                  'Search Professors',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).colorScheme.outline.withOpacity(0.5),
+                const Spacer(),
+                Text(
+                  '${_professorService.professors.length} professors found',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                   ),
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).colorScheme.primary,
-                    width: 2,
-                  ),
-                ),
-                filled: true,
-                fillColor: Theme.of(context).colorScheme.surface,
-              ),
-              onChanged: (value) => setState(() {}),
-              onSubmitted: (value) => _searchFocusNode.unfocus(),
+              ],
             ),
-          ),
-          const SizedBox(width: 12),
-          IconButton(
-            onPressed: _showSortDialog,
-            icon: const Icon(Icons.sort),
-            tooltip: 'Sort professors',
-            style: IconButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-              foregroundColor: Theme.of(context).colorScheme.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    decoration: InputDecoration(
+                      hintText: 'Search by professor name or chamber (e.g., "John" or "A101")',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              onPressed: _clearSearch,
+                              icon: const Icon(Icons.clear),
+                              tooltip: 'Clear search',
+                            )
+                          : null,
+                      border: const OutlineInputBorder(),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    onChanged: (value) => setState(() {}),
+                    onSubmitted: (value) => _searchFocusNode.unfocus(),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  onPressed: _showSortDialog,
+                  icon: const Icon(Icons.sort),
+                  label: const Text('Sort'),
+                ),
+              ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -295,76 +266,65 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
   Widget _buildProfessorList() {
     final professors = _professorService.professors;
     
-    return Column(
-      children: [
-        _buildResultsHeader(professors.length),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: professors.length,
-            itemBuilder: (context, index) {
-              return _buildProfessorCard(professors[index]);
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildResultsHeader(int count) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
+    return Card(
+      margin: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '$count ${count == 1 ? 'professor' : 'professors'} found',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-              fontWeight: FontWeight.w500,
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Text(
+                  'Professors',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${professors.length} results',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                ),
+              ],
             ),
           ),
-          if (_professorService.searchQuery.isNotEmpty) ...[
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                'for "${_professorService.searchQuery}"',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: professors.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                return _buildProfessorCard(professors[index]);
+              },
             ),
-          ],
+          ),
         ],
       ),
     );
   }
 
   Widget _buildProfessorCard(Professor professor) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(
           color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
         ),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        contentPadding: const EdgeInsets.all(16),
         leading: CircleAvatar(
-          backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
           child: Text(
             professor.name.isNotEmpty 
                 ? professor.name[0].toUpperCase()
                 : '?',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
+            style: const TextStyle(
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -375,27 +335,20 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        subtitle: Row(
-          children: [
-            Icon(
-              Icons.room,
-              size: 16,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              professor.chamber,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: professor.chamber == 'Unavailable'
-                    ? Theme.of(context).colorScheme.error
-                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                fontWeight: professor.chamber == 'Unavailable'
-                    ? FontWeight.w500
-                    : FontWeight.normal,
-              ),
-            ),
-          ],
+        subtitle: Text(
+          professor.chamber,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: professor.chamber == 'Unavailable'
+                ? Theme.of(context).colorScheme.error
+                : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+          ),
         ),
+        trailing: professor.chamber != 'Unavailable'
+            ? Icon(
+                Icons.location_on,
+                color: Theme.of(context).colorScheme.primary,
+              )
+            : null,
       ),
     );
   }

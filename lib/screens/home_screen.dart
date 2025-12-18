@@ -27,6 +27,7 @@ import 'timetables_screen.dart';
 import 'course_guide_screen.dart';
 import 'discipline_electives_screen.dart';
 import 'humanities_electives_screen.dart';
+import 'professors_screen.dart';
 import 'add_swap_screen.dart';
 import '../models/timetable.dart' as timetable;
 
@@ -570,41 +571,79 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
           const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.menu_book),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const CourseGuideScreen(),
-                ),
-              );
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.apps),
+            tooltip: 'More Options',
+            onSelected: (value) {
+              switch (value) {
+                case 'course_guide':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CourseGuideScreen(),
+                    ),
+                  );
+                  break;
+                case 'professors':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ProfessorsScreen(),
+                    ),
+                  );
+                  break;
+                case 'discipline_electives':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DisciplineElectivesScreen(),
+                    ),
+                  );
+                  break;
+                case 'humanities_electives':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const HumanitiesElectivesScreen(),
+                    ),
+                  );
+                  break;
+              }
             },
-            tooltip: 'Course Guide',
-          ),
-          IconButton(
-            icon: const Icon(Icons.school),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const DisciplineElectivesScreen(),
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'course_guide',
+                child: ListTile(
+                  leading: Icon(Icons.menu_book),
+                  title: Text('Course Guide'),
+                  contentPadding: EdgeInsets.zero,
                 ),
-              );
-            },
-            tooltip: 'Discipline Electives',
-          ),
-          IconButton(
-            icon: const Icon(Icons.library_books),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const HumanitiesElectivesScreen(),
+              ),
+              const PopupMenuItem(
+                value: 'professors',
+                child: ListTile(
+                  leading: Icon(Icons.person),
+                  title: Text('Professors'),
+                  contentPadding: EdgeInsets.zero,
                 ),
-              );
-            },
-            tooltip: 'Humanities Electives',
+              ),
+              const PopupMenuItem(
+                value: 'discipline_electives',
+                child: ListTile(
+                  leading: Icon(Icons.school),
+                  title: Text('Discipline Electives'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'humanities_electives',
+                child: ListTile(
+                  leading: Icon(Icons.library_books),
+                  title: Text('Humanities Electives'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
           const ThemeToggleButton(),
           if (isWideScreen) ...[
@@ -1404,41 +1443,79 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
             },
           ),
           const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.menu_book),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const CourseGuideScreen(),
-                ),
-              );
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.apps),
+            tooltip: 'More Options',
+            onSelected: (value) {
+              switch (value) {
+                case 'course_guide':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CourseGuideScreen(),
+                    ),
+                  );
+                  break;
+                case 'professors':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ProfessorsScreen(),
+                    ),
+                  );
+                  break;
+                case 'discipline_electives':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DisciplineElectivesScreen(),
+                    ),
+                  );
+                  break;
+                case 'humanities_electives':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const HumanitiesElectivesScreen(),
+                    ),
+                  );
+                  break;
+              }
             },
-            tooltip: 'Course Guide',
-          ),
-          IconButton(
-            icon: const Icon(Icons.school),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const DisciplineElectivesScreen(),
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'course_guide',
+                child: ListTile(
+                  leading: Icon(Icons.menu_book),
+                  title: Text('Course Guide'),
+                  contentPadding: EdgeInsets.zero,
                 ),
-              );
-            },
-            tooltip: 'Discipline Electives',
-          ),
-          IconButton(
-            icon: const Icon(Icons.library_books),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const HumanitiesElectivesScreen(),
+              ),
+              const PopupMenuItem(
+                value: 'professors',
+                child: ListTile(
+                  leading: Icon(Icons.person),
+                  title: Text('Professors'),
+                  contentPadding: EdgeInsets.zero,
                 ),
-              );
-            },
-            tooltip: 'Humanities Electives',
+              ),
+              const PopupMenuItem(
+                value: 'discipline_electives',
+                child: ListTile(
+                  leading: Icon(Icons.school),
+                  title: Text('Discipline Electives'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'humanities_electives',
+                child: ListTile(
+                  leading: Icon(Icons.library_books),
+                  title: Text('Humanities Electives'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
           const ThemeToggleButton(),
           if (isWideScreen) ...[
