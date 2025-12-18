@@ -16,6 +16,7 @@ import 'course_guide_screen.dart';
 import 'timetable_comparison_screen.dart';
 import 'humanities_electives_screen.dart';
 import 'discipline_electives_screen.dart';
+import 'professors_screen.dart';
 
 class TimetablesScreen extends StatefulWidget {
   const TimetablesScreen({super.key});
@@ -634,6 +635,18 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
               );
             },
             tooltip: 'Course Guide',
+          ),
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ProfessorsScreen(),
+                ),
+              );
+            },
+            tooltip: 'Professors',
           ),
           IconButton(
             icon: const Icon(Icons.school),
