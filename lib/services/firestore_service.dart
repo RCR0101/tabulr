@@ -333,4 +333,39 @@ class FirestoreService {
       return false;
     }
   }
+
+  // Generic document operations for user settings
+  Future<DocumentSnapshot<Map<String, dynamic>>?> getDocument(String collection, String documentId) async {
+    try {
+      final doc = await _firestore.collection(collection).doc(documentId).get();
+      return doc;
+    } catch (e) {
+      print('Error getting document from $collection/$documentId: $e');
+      return null;
+    }
+  }
+
+  Future<bool> saveDocument(String collection, String documentId, Map<String, dynamic> data) async {
+    try {
+      await _firestore.collection(collection).doc(documentId).set(data, SetOptions(merge: true));
+      return true;
+    } catch (e) {
+      print('Error saving document to $collection/$documentId: $e');
+      return false;
+    }
+  }
+
+  Future<bool> deleteDocument(String collection, String documentId) async {
+    try {
+      await _firestore.collection(collection).doc(documentId).delete();
+      return true;
+    } catch (e) {
+      print('Error deleting document from $collection/$documentId: $e');
+      return false;
+    }
+  }
+
+  Stream<DocumentSnapshot<Map<String, dynamic>>> watchDocument(String collection, String documentId) {
+    return _firestore.collection(collection).doc(documentId).snapshots();
+  }
 }

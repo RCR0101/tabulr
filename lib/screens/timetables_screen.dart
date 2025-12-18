@@ -7,6 +7,8 @@ import '../services/auth_service.dart';
 import '../services/toast_service.dart';
 import '../services/campus_service.dart';
 import '../services/course_data_service.dart';
+import '../services/user_settings_service.dart';
+import '../models/user_settings.dart';
 import '../widgets/theme_selector_widget.dart';
 import '../widgets/campus_selector_widget.dart';
 import 'home_screen.dart';
@@ -24,13 +26,35 @@ class TimetablesScreen extends StatefulWidget {
 class _TimetablesScreenState extends State<TimetablesScreen> {
   final TimetableService _timetableService = TimetableService();
   final AuthService _authService = AuthService();
+  final UserSettingsService _userSettingsService = UserSettingsService();
   List<Timetable> _timetables = [];
+  List<Timetable> _sortedTimetables = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadTimetables();
+    _userSettingsService.addListener(_onSettingsChanged);
+    _initializeAndLoadData();
+  }
+
+  Future<void> _initializeAndLoadData() async {
+    // Initialize user settings first
+    await _userSettingsService.initializeSettings();
+    // Then load timetables
+    await _loadTimetables();
+  }
+
+  @override
+  void dispose() {
+    _userSettingsService.removeListener(_onSettingsChanged);
+    super.dispose();
+  }
+
+  void _onSettingsChanged() {
+    if (mounted) {
+      _applySorting();
+    }
   }
 
   Future<void> _loadTimetables() async {
@@ -40,6 +64,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
         _timetables = timetables;
         _isLoading = false;
       });
+      _applySorting();
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -56,6 +81,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
         setState(() {
           _timetables.add(newTimetable);
         });
+        _applySorting();
         _openTimetable(newTimetable);
       } catch (e) {
         _showErrorDialog('Error creating timetable: $e');
@@ -140,6 +166,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
             );
           }
         });
+        _applySorting();
       } catch (e) {
         _showErrorDialog('Error renaming timetable: $e');
       }
@@ -147,7 +174,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   }
 
   Future<void> _deleteTimetable(Timetable timetable) async {
-    if (_timetables.length <= 1) {
+    if (_sortedTimetables.length <= 1) {
       _showErrorDialog('Cannot delete the last timetable');
       return;
     }
@@ -183,6 +210,9 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
         setState(() {
           _timetables.removeWhere((t) => t.id == timetable.id);
         });
+        // Remove from user settings as well
+        await _userSettingsService.removeTimetableSettings(timetable.id);
+        _applySorting();
       } catch (e) {
         _showErrorDialog('Error deleting timetable: $e');
       }
@@ -190,13 +220,22 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   }
 
   void _onReorder(int oldIndex, int newIndex) {
+    // Only allow reordering if custom sort is enabled
+    if (_userSettingsService.sortOrder != TimetableListSortOrder.custom) {
+      return;
+    }
+    
     setState(() {
       if (newIndex > oldIndex) {
         newIndex -= 1;
       }
-      final item = _timetables.removeAt(oldIndex);
-      _timetables.insert(newIndex, item);
+      final item = _sortedTimetables.removeAt(oldIndex);
+      _sortedTimetables.insert(newIndex, item);
     });
+    
+    // Update custom sort order in settings
+    final newOrder = _sortedTimetables.map((t) => t.id).toList();
+    _userSettingsService.updateCustomTimetableOrder(newOrder);
   }
 
   void _openTimetable(Timetable timetable) {
@@ -233,6 +272,161 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
 
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
+  }
+
+  void _applySorting() {
+    final sortOrder = _userSettingsService.sortOrder;
+    final customOrder = _userSettingsService.customTimetableOrder;
+    print('Applying sort: $sortOrder, timetables count: ${_timetables.length}');
+
+    List<Timetable> sorted = List.from(_timetables);
+
+    switch (sortOrder) {
+      case TimetableListSortOrder.dateCreatedAsc:
+        sorted.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        break;
+      case TimetableListSortOrder.dateCreatedDesc:
+        sorted.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        break;
+      case TimetableListSortOrder.dateModifiedAsc:
+        sorted.sort((a, b) => a.updatedAt.compareTo(b.updatedAt));
+        break;
+      case TimetableListSortOrder.dateModifiedDesc:
+        sorted.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+        break;
+      case TimetableListSortOrder.alphabeticalAsc:
+        sorted.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        break;
+      case TimetableListSortOrder.alphabeticalDesc:
+        sorted.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+        break;
+      case TimetableListSortOrder.custom:
+        if (customOrder.isNotEmpty) {
+          sorted.sort((a, b) {
+            final indexA = customOrder.indexOf(a.id);
+            final indexB = customOrder.indexOf(b.id);
+            // If item not in custom order, put it at the end
+            if (indexA == -1) return 1;
+            if (indexB == -1) return -1;
+            return indexA.compareTo(indexB);
+          });
+        }
+        break;
+    }
+
+    setState(() {
+      _sortedTimetables = sorted;
+    });
+  }
+
+  Future<void> _showSortDialog() async {
+    // Ensure user settings are initialized
+    if (_userSettingsService.userSettings == null) {
+      await _userSettingsService.initializeSettings();
+    }
+    
+    final currentSort = _userSettingsService.sortOrder;
+    print('Current sort order: $currentSort');
+    
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sort Timetables'),
+        content: SizedBox(
+          width: double.minPositive,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: TimetableListSortOrder.values.map((sortOrder) {
+              final isSelected = currentSort == sortOrder;
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  color: isSelected ? Theme.of(context).colorScheme.primary : null,
+                ),
+                title: Text(
+                  _getSortOrderName(sortOrder),
+                  style: TextStyle(
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? Theme.of(context).colorScheme.primary : null,
+                  ),
+                ),
+                subtitle: Text(_getSortOrderDescription(sortOrder)),
+                onTap: () async {
+                  print('Sort option tapped: $sortOrder');
+                  final navigator = Navigator.of(context);
+                  try {
+                    await _userSettingsService.updateSortOrder(sortOrder);
+                    navigator.pop();
+                  } catch (e) {
+                    print('Error updating sort order: $e');
+                  }
+                },
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getSortOrderName(TimetableListSortOrder sortOrder) {
+    switch (sortOrder) {
+      case TimetableListSortOrder.dateCreatedAsc:
+        return 'Date Created (Oldest First)';
+      case TimetableListSortOrder.dateCreatedDesc:
+        return 'Date Created (Newest First)';
+      case TimetableListSortOrder.dateModifiedAsc:
+        return 'Date Modified (Oldest First)';
+      case TimetableListSortOrder.dateModifiedDesc:
+        return 'Date Modified (Newest First)';
+      case TimetableListSortOrder.alphabeticalAsc:
+        return 'Name (A-Z)';
+      case TimetableListSortOrder.alphabeticalDesc:
+        return 'Name (Z-A)';
+      case TimetableListSortOrder.custom:
+        return 'Custom Order';
+    }
+  }
+
+  String _getSortOrderDescription(TimetableListSortOrder sortOrder) {
+    switch (sortOrder) {
+      case TimetableListSortOrder.dateCreatedAsc:
+      case TimetableListSortOrder.dateCreatedDesc:
+        return 'Sort by creation date';
+      case TimetableListSortOrder.dateModifiedAsc:
+      case TimetableListSortOrder.dateModifiedDesc:
+        return 'Sort by last modification';
+      case TimetableListSortOrder.alphabeticalAsc:
+      case TimetableListSortOrder.alphabeticalDesc:
+        return 'Sort alphabetically by name';
+      case TimetableListSortOrder.custom:
+        return 'Drag to reorder manually';
+    }
+  }
+
+  IconData _getSortIcon(TimetableListSortOrder sortOrder) {
+    switch (sortOrder) {
+      case TimetableListSortOrder.dateCreatedAsc:
+      case TimetableListSortOrder.dateCreatedDesc:
+        return Icons.schedule;
+      case TimetableListSortOrder.dateModifiedAsc:
+      case TimetableListSortOrder.dateModifiedDesc:
+        return Icons.history;
+      case TimetableListSortOrder.alphabeticalAsc:
+      case TimetableListSortOrder.alphabeticalDesc:
+        return Icons.sort_by_alpha;
+      case TimetableListSortOrder.custom:
+        return Icons.drag_handle;
+    }
   }
 
   Future<void> _openGitHub() async {
@@ -313,6 +507,11 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.sort),
+            onPressed: _showSortDialog,
+            tooltip: 'Sort Timetables',
+          ),
           CampusSelectorWidget(
             onCampusChanged: (campus) {
               // Clear course cache when campus changes
@@ -470,7 +669,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
         ],
       ),
       body:
-          _timetables.isEmpty
+          _sortedTimetables.isEmpty
               ? Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -507,11 +706,12 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
               )
               : ReorderableListView.builder(
                 padding: const EdgeInsets.all(16),
-                itemCount: _timetables.length,
+                itemCount: _sortedTimetables.length,
                 onReorder: _onReorder,
                 buildDefaultDragHandles: false,
                 itemBuilder: (context, index) {
-                  final timetable = _timetables[index];
+                  final timetable = _sortedTimetables[index];
+                  final isCustomSort = _userSettingsService.sortOrder == TimetableListSortOrder.custom;
                   return Card(
                     key: ValueKey(timetable.id),
                     margin: const EdgeInsets.only(bottom: 12),
@@ -520,13 +720,19 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                       leading: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          ReorderableDragStartListener(
-                            index: index,
-                            child: const Icon(
-                              Icons.drag_handle,
+                          if (isCustomSort)
+                            ReorderableDragStartListener(
+                              index: index,
+                              child: const Icon(
+                                Icons.drag_handle,
+                                color: Colors.grey,
+                              ),
+                            )
+                          else
+                            Icon(
+                              _getSortIcon(_userSettingsService.sortOrder),
                               color: Colors.grey,
                             ),
-                          ),
                           const SizedBox(width: 8),
                           CircleAvatar(
                             backgroundColor: Theme.of(context).colorScheme.primary,
@@ -594,7 +800,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                   contentPadding: EdgeInsets.zero,
                                 ),
                               ),
-                              if (_timetables.length > 1)
+                              if (_sortedTimetables.length > 1)
                                 const PopupMenuItem(
                                   value: 'delete',
                                   child: ListTile(

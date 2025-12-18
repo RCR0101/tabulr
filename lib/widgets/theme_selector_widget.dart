@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../services/theme_service.dart';
+import '../services/theme_service.dart' as theme_service;
+import '../services/user_settings_service.dart';
+import '../models/user_settings.dart' as user_settings;
 
 class ThemeSelectorWidget extends StatefulWidget {
   const ThemeSelectorWidget({super.key});
@@ -9,13 +11,15 @@ class ThemeSelectorWidget extends StatefulWidget {
 }
 
 class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
-  final ThemeService _themeService = ThemeService();
+  final theme_service.ThemeService _themeService = theme_service.ThemeService();
+  final UserSettingsService _userSettingsService = UserSettingsService();
 
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: _themeService,
+      listenable: Listenable.merge([_themeService, _userSettingsService]),
       builder: (context, child) {
+        final themeMode = _userSettingsService.themeMode;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -43,23 +47,45 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
                     child: Row(
                       children: [
                         Icon(
-                          _themeService.isLightMode ? Icons.light_mode : Icons.dark_mode,
+                          _getThemeModeIcon(themeMode),
                           color: Theme.of(context).colorScheme.primary,
                           size: 20,
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: Text(
-                            _themeService.isLightMode ? 'Light Mode' : 'Dark Mode',
-                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.w500,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getThemeModeName(themeMode),
+                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                _getThemeModeDescription(themeMode),
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        Switch(
-                          value: _themeService.isLightMode,
-                          onChanged: (value) => _themeService.toggleThemeMode(),
-                          activeColor: Theme.of(context).colorScheme.primary,
+                        DropdownButton<user_settings.ThemeMode>(
+                          value: themeMode,
+                          onChanged: (value) {
+                            if (value != null) {
+                              _userSettingsService.updateThemeMode(value);
+                              _updateThemeServiceMode(value);
+                            }
+                          },
+                          underline: Container(),
+                          items: user_settings.ThemeMode.values.map((mode) {
+                            return DropdownMenuItem(
+                              value: mode,
+                              child: Text(_getThemeModeName(mode)),
+                            );
+                          }).toList(),
                         ),
                       ],
                     ),
@@ -76,14 +102,17 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
                   crossAxisSpacing: 12,
                   childAspectRatio: 1.5,
                 ),
-                itemCount: AppTheme.values.length,
+                itemCount: theme_service.AppTheme.values.length,
                 itemBuilder: (context, index) {
-                  final theme = AppTheme.values[index];
+                  final theme = theme_service.AppTheme.values[index];
                   final themeData = _themeService.getThemeData(theme);
                   final isSelected = _themeService.currentTheme == theme;
 
                   return GestureDetector(
-                    onTap: () => _themeService.setTheme(theme),
+                    onTap: () async {
+                      await _themeService.setTheme(theme);
+                      await _userSettingsService.updateThemeVariant(theme);
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
@@ -149,7 +178,7 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Toggle between light and dark modes, then choose your preferred theme.',
+                      'Choose your theme mode (light, dark, or system), then select your preferred theme style.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       ),
@@ -162,6 +191,53 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
         );
       },
     );
+  }
+
+  IconData _getThemeModeIcon(user_settings.ThemeMode mode) {
+    switch (mode) {
+      case user_settings.ThemeMode.light:
+        return Icons.light_mode;
+      case user_settings.ThemeMode.dark:
+        return Icons.dark_mode;
+      case user_settings.ThemeMode.system:
+        return Icons.brightness_auto;
+    }
+  }
+
+  String _getThemeModeName(user_settings.ThemeMode mode) {
+    switch (mode) {
+      case user_settings.ThemeMode.light:
+        return 'Light Mode';
+      case user_settings.ThemeMode.dark:
+        return 'Dark Mode';
+      case user_settings.ThemeMode.system:
+        return 'System Mode';
+    }
+  }
+
+  String _getThemeModeDescription(user_settings.ThemeMode mode) {
+    switch (mode) {
+      case user_settings.ThemeMode.light:
+        return 'Always use light theme';
+      case user_settings.ThemeMode.dark:
+        return 'Always use dark theme';
+      case user_settings.ThemeMode.system:
+        return 'Follow system settings';
+    }
+  }
+
+  void _updateThemeServiceMode(user_settings.ThemeMode mode) {
+    switch (mode) {
+      case user_settings.ThemeMode.light:
+        _themeService.setThemeMode(ThemeMode.light);
+        break;
+      case user_settings.ThemeMode.dark:
+        _themeService.setThemeMode(ThemeMode.dark);
+        break;
+      case user_settings.ThemeMode.system:
+        _themeService.setThemeMode(ThemeMode.system);
+        break;
+    }
   }
 }
 
@@ -222,14 +298,35 @@ class ThemeToggleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeService = theme_service.ThemeService();
+    final userSettingsService = UserSettingsService();
+    
     return ListenableBuilder(
-      listenable: ThemeService(),
+      listenable: Listenable.merge([themeService, userSettingsService]),
       builder: (context, child) {
-        final themeService = ThemeService();
+        final themeMode = userSettingsService.themeMode;
+        IconData icon;
+        String tooltip;
+        
+        switch (themeMode) {
+          case user_settings.ThemeMode.light:
+            icon = Icons.light_mode;
+            tooltip = 'Theme: Light Mode';
+            break;
+          case user_settings.ThemeMode.dark:
+            icon = Icons.dark_mode;
+            tooltip = 'Theme: Dark Mode';
+            break;
+          case user_settings.ThemeMode.system:
+            icon = Icons.brightness_auto;
+            tooltip = 'Theme: System Mode';
+            break;
+        }
+        
         return IconButton(
           onPressed: () => ThemeSelectorDialog.show(context),
-          icon: Icon(themeService.getThemeIcon(themeService.currentTheme)),
-          tooltip: 'Change Theme (${themeService.getThemeName(themeService.currentTheme)})',
+          icon: Icon(icon),
+          tooltip: '$tooltip (${themeService.getThemeName(themeService.currentTheme)})',
         );
       },
     );
@@ -237,7 +334,7 @@ class ThemeToggleButton extends StatelessWidget {
 }
 
 class ThemePreviewCard extends StatelessWidget {
-  final AppTheme theme;
+  final theme_service.AppTheme theme;
   final bool isSelected;
   final VoidCallback onTap;
 
@@ -250,7 +347,7 @@ class ThemePreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeService = ThemeService();
+    final themeService = theme_service.ThemeService();
     final themeData = themeService.getThemeData(theme);
     
     return GestureDetector(

@@ -11,9 +11,11 @@ import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/timetables_screen.dart';
 import 'services/auth_service.dart';
-import 'services/theme_service.dart';
+import 'services/theme_service.dart' as theme_service;
 import 'services/campus_service.dart';
 import 'services/preferences_service.dart';
+import 'services/user_settings_service.dart';
+import 'models/user_settings.dart' as user_settings;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,10 +34,19 @@ void main() async {
   // Initialize Auth Service
   await AuthService().initialize();
   
-  // Initialize Theme Service
-  await ThemeService().initialize();
+  // Initialize User Settings Service
+  final userSettingsService = UserSettingsService();
+  await userSettingsService.initializeSettings();
   
-  // Initialize Preferences Service
+  // Initialize Theme Service with settings from UserSettingsService
+  final themeService = theme_service.ThemeService();
+  await themeService.initialize();
+  
+  // Sync ThemeService with UserSettingsService settings
+  await themeService.setTheme(userSettingsService.themeVariant);
+  await themeService.setThemeMode(_convertToFlutterThemeMode(userSettingsService.themeMode));
+  
+  // Initialize Preferences Service  
   await PreferencesService().initialize();
   
   if (kIsWeb) {
@@ -90,9 +101,9 @@ class TimetableMakerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: ThemeService(),
+      listenable: theme_service.ThemeService(),
       builder: (context, child) {
-        final themeService = ThemeService();
+        final themeService = theme_service.ThemeService();
         return MaterialApp(
           title: 'Tabulr',
           theme: themeService.getThemeData(themeService.currentTheme),
@@ -164,5 +175,16 @@ class _AuthWrapperState extends State<AuthWrapper> {
         return const AuthScreen();
       },
     );
+  }
+}
+
+ThemeMode _convertToFlutterThemeMode(user_settings.ThemeMode userThemeMode) {
+  switch (userThemeMode) {
+    case user_settings.ThemeMode.light:
+      return ThemeMode.light;
+    case user_settings.ThemeMode.dark:
+      return ThemeMode.dark;
+    case user_settings.ThemeMode.system:
+      return ThemeMode.system;
   }
 }

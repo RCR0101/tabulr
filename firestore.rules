@@ -60,6 +60,11 @@ service cloud.firestore {
       }
     }
     
+    // User settings - only authenticated users can access their own settings
+    match /user-settings/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
     // Deny access to all other collections
     match /{document=**} {
       allow read, write: if false;

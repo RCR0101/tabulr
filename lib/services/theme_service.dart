@@ -14,10 +14,6 @@ enum AppTheme {
   solarizedDark,
 }
 
-enum ThemeMode {
-  dark,
-  light,
-}
 
 class ThemeService extends ChangeNotifier {
   static final ThemeService _instance = ThemeService._internal();
@@ -38,7 +34,20 @@ class ThemeService extends ChangeNotifier {
     final themeIndex = prefs.getInt(_themeKey) ?? 0;
     final themeModeIndex = prefs.getInt(_themeModeKey) ?? 0;
     _currentTheme = AppTheme.values[themeIndex];
-    _currentThemeMode = ThemeMode.values[themeModeIndex];
+    
+    // Map stored index to Flutter's ThemeMode
+    switch (themeModeIndex) {
+      case 0:
+        _currentThemeMode = ThemeMode.dark;
+        break;
+      case 1:
+        _currentThemeMode = ThemeMode.light;
+        break;
+      default:
+        _currentThemeMode = ThemeMode.system;
+        break;
+    }
+    
     notifyListeners();
   }
 
@@ -52,7 +61,22 @@ class ThemeService extends ChangeNotifier {
   Future<void> setThemeMode(ThemeMode mode) async {
     _currentThemeMode = mode;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_themeModeKey, mode.index);
+    
+    // Map Flutter's ThemeMode to storage index
+    int modeIndex;
+    switch (mode) {
+      case ThemeMode.dark:
+        modeIndex = 0;
+        break;
+      case ThemeMode.light:
+        modeIndex = 1;
+        break;
+      case ThemeMode.system:
+        modeIndex = 2;
+        break;
+    }
+    
+    await prefs.setInt(_themeModeKey, modeIndex);
     notifyListeners();
   }
 

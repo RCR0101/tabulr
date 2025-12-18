@@ -18,7 +18,7 @@ import '../services/page_leave_warning_service.dart';
 import '../services/toast_service.dart';
 import '../services/campus_service.dart';
 import '../services/course_data_service.dart';
-import '../services/preferences_service.dart';
+import '../services/user_settings_service.dart';
 import '../models/export_options.dart';
 import '../widgets/export_options_dialog.dart';
 import '../widgets/campus_selector_widget.dart';
@@ -55,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final TimetableService _timetableService = TimetableService();
   final AuthService _authService = AuthService();
   final PageLeaveWarningService _pageLeaveWarning = PageLeaveWarningService();
-  final PreferencesService _preferencesService = PreferencesService();
+  final UserSettingsService _userSettingsService = UserSettingsService();
   final GlobalKey _timetableKey = GlobalKey();
   Timetable? _timetable;
   List<Course> _filteredCourses = [];
@@ -68,12 +68,17 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadTimetable();
+    _initializeUserSettings();
     
     // Listen for campus changes
     _campusSubscription = CampusService.campusChangeStream.listen((_) {
       print('Campus changed, reloading timetable...');
       _loadTimetable();
     });
+  }
+
+  Future<void> _initializeUserSettings() async {
+    await _userSettingsService.initializeSettings();
   }
   
   @override
@@ -505,7 +510,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: _preferencesService,
+      listenable: _userSettingsService,
       builder: (context, child) {
         if (_isLoading) {
           return const Scaffold(
@@ -911,16 +916,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       incompleteSelectionWarnings: _timetableService.getIncompleteSelectionWarnings(_timetable!.selectedSections, _timetable!.availableCourses),
                       onClear: _clearTimetable,
                       onRemoveSection: _removeSection,
-                      size: _preferencesService.timetableSize,
+                      size: _userSettingsService.getTimetableSize(_timetable!.id),
                       hasUnsavedChanges: _hasUnsavedChanges,
                       isSaving: _isSaving,
                       onSave: _authService.isGuest ? null : _saveTimetable,
                       onSizeChanged: (newSize) {
-                        _preferencesService.setTimetableSize(newSize);
+                        _userSettingsService.updateTimetableSettings(_timetable!.id, newSize, null);
                       },
-                      layout: _preferencesService.timetableLayout,
+                      layout: _userSettingsService.getTimetableLayout(_timetable!.id),
                       onLayoutChanged: (newLayout) {
-                        _preferencesService.setTimetableLayout(newLayout);
+                        _userSettingsService.updateTimetableSettings(_timetable!.id, null, newLayout);
                       },
                     ),
                   ),
@@ -938,7 +943,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
   final TimetableService _timetableService = TimetableService();
   final AuthService _authService = AuthService();
   final PageLeaveWarningService _pageLeaveWarning = PageLeaveWarningService();
-  final PreferencesService _preferencesService = PreferencesService();
+  final UserSettingsService _userSettingsService = UserSettingsService();
   final GlobalKey _timetableKey = GlobalKey();
   late Timetable _timetable;
   List<Course> _filteredCourses = [];
@@ -951,6 +956,11 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
     super.initState();
     _timetable = widget.timetable;
     _filteredCourses = _timetable.availableCourses;
+    _initializeUserSettings();
+  }
+
+  Future<void> _initializeUserSettings() async {
+    await _userSettingsService.initializeSettings();
   }
 
   void _onSearchChanged(String query, Map<String, dynamic> filters) {
@@ -1347,7 +1357,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: _preferencesService,
+      listenable: _userSettingsService,
       builder: (context, child) {
         if (_isLoading) {
           return const Scaffold(
@@ -1732,16 +1742,16 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                   incompleteSelectionWarnings: _timetableService.getIncompleteSelectionWarnings(_timetable.selectedSections, _timetable.availableCourses),
                   onClear: _clearTimetable,
                   onRemoveSection: _removeSection,
-                  size: _preferencesService.timetableSize,
+                  size: _userSettingsService.getTimetableSize(_timetable.id),
                   hasUnsavedChanges: _hasUnsavedChanges,
                   isSaving: _isSaving,
                   onSave: _authService.isGuest ? null : _saveTimetable,
                   onSizeChanged: (newSize) {
-                    _preferencesService.setTimetableSize(newSize);
+                    _userSettingsService.updateTimetableSettings(_timetable.id, newSize, null);
                   },
-                  layout: _preferencesService.timetableLayout,
+                  layout: _userSettingsService.getTimetableLayout(_timetable.id),
                   onLayoutChanged: (newLayout) {
-                    _preferencesService.setTimetableLayout(newLayout);
+                    _userSettingsService.updateTimetableSettings(_timetable.id, null, newLayout);
                   },
                 ),
               ),
