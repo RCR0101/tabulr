@@ -13,6 +13,7 @@ import '../widgets/theme_selector_widget.dart';
 import '../widgets/campus_selector_widget.dart';
 import 'home_screen.dart';
 import 'course_guide_screen.dart';
+import 'timetable_comparison_screen.dart';
 import 'humanities_electives_screen.dart';
 import 'discipline_electives_screen.dart';
 
@@ -855,12 +856,34 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _createNewTimetable,
-        icon: const Icon(Icons.add),
-        label: const Text('New Timetable'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TimetableComparisonScreen(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.compare),
+            label: const Text('Compare'),
+            backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+            foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+            heroTag: "compare", // Required when multiple FABs are present
+          ),
+          const SizedBox(width: 16),
+          FloatingActionButton.extended(
+            onPressed: _createNewTimetable,
+            icon: const Icon(Icons.add),
+            label: const Text('New Timetable'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
+            heroTag: "add", // Required when multiple FABs are present
+          ),
+        ],
       ),
     );
   }

@@ -1,5 +1,19 @@
 import 'course.dart';
 import '../services/campus_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Helper function to parse DateTime from both String and Firestore Timestamp
+DateTime _parseDateTime(dynamic value) {
+  if (value == null) {
+    return DateTime.now();
+  } else if (value is String) {
+    return DateTime.parse(value);
+  } else if (value is Timestamp) {
+    return value.toDate();
+  } else {
+    return DateTime.now();
+  }
+}
 
 class Timetable {
   final String id;
@@ -52,12 +66,8 @@ class Timetable {
     return Timetable(
       id: json['id'] ?? '',
       name: json['name'] ?? 'Untitled Timetable',
-      createdAt: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt']) 
-          : DateTime.now(),
-      updatedAt: json['updatedAt'] != null 
-          ? DateTime.parse(json['updatedAt']) 
-          : DateTime.now(),
+      createdAt: _parseDateTime(json['createdAt']),
+      updatedAt: _parseDateTime(json['updatedAt']),
       campus: parsedCampus,
       availableCourses: (json['availableCourses'] as List)
           .map((c) => Course.fromJson(c))
