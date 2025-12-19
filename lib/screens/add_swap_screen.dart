@@ -523,7 +523,12 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    16,
+                    16,
+                    ResponsiveService.isMobile(context) ? 100 : 16,
+                  ),
                   itemCount: currentCourses.length,
                   itemBuilder: (context, index) {
                     final courseCode = currentCourses.keys.elementAt(index);
@@ -831,7 +836,12 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
 
   Widget _buildCourseSelection() {
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        0,
+        16,
+        ResponsiveService.isMobile(context) ? 100 : 16,
+      ),
       itemCount: _filteredCourses.length,
       itemBuilder: (context, index) {
         final course = _filteredCourses[index];
@@ -1153,7 +1163,12 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
         // Validation results
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              ResponsiveService.isMobile(context) ? 100 : 16,
+            ),
             itemCount: _validationResults.length,
             itemBuilder: (context, index) {
               final result = _validationResults[index];

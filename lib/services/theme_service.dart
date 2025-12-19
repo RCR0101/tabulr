@@ -27,7 +27,7 @@ class ThemeService extends ChangeNotifier {
   ThemeService._internal();
 
   AppTheme _currentTheme = AppTheme.githubDark;
-  ThemeMode _currentThemeMode = ThemeMode.dark;
+  ThemeMode _currentThemeMode = ThemeMode.system;
   static const String _themeKey = 'selected_theme';
   static const String _themeModeKey = 'theme_mode';
 
@@ -38,7 +38,7 @@ class ThemeService extends ChangeNotifier {
   Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
     final themeIndex = prefs.getInt(_themeKey) ?? 0;
-    final themeModeIndex = prefs.getInt(_themeModeKey) ?? 0;
+    final themeModeIndex = prefs.getInt(_themeModeKey) ?? 2; // Default to system mode
     _currentTheme = AppTheme.values[themeIndex];
     
     // Map stored index to Flutter's ThemeMode

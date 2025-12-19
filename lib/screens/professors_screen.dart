@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../services/professor_service.dart';
+import '../services/responsive_service.dart';
 
 class ProfessorsScreen extends StatefulWidget {
   const ProfessorsScreen({super.key});
@@ -348,83 +349,153 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
   }
 
   void _showSortDialog() {
+    final currentSort = _professorService.sortType;
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Sort Professors'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
           children: [
-            ListTile(
-              leading: Icon(
-                _professorService.sortType == ProfessorSortType.nameAsc
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_unchecked,
-                color: _professorService.sortType == ProfessorSortType.nameAsc
-                    ? Theme.of(context).colorScheme.primary
-                    : null,
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(8),
               ),
-              title: const Text('Name (A-Z)'),
-              onTap: () {
-                _professorService.setSortType(ProfessorSortType.nameAsc);
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: Icon(
-                _professorService.sortType == ProfessorSortType.nameDesc
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_unchecked,
-                color: _professorService.sortType == ProfessorSortType.nameDesc
-                    ? Theme.of(context).colorScheme.primary
-                    : null,
+              child: Icon(
+                Icons.sort,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                size: 20,
               ),
-              title: const Text('Name (Z-A)'),
-              onTap: () {
-                _professorService.setSortType(ProfessorSortType.nameDesc);
-                Navigator.pop(context);
-              },
             ),
-            ListTile(
-              leading: Icon(
-                _professorService.sortType == ProfessorSortType.chamberAsc
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_unchecked,
-                color: _professorService.sortType == ProfessorSortType.chamberAsc
-                    ? Theme.of(context).colorScheme.primary
-                    : null,
-              ),
-              title: const Text('Chamber (A-Z)'),
-              onTap: () {
-                _professorService.setSortType(ProfessorSortType.chamberAsc);
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: Icon(
-                _professorService.sortType == ProfessorSortType.chamberDesc
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_unchecked,
-                color: _professorService.sortType == ProfessorSortType.chamberDesc
-                    ? Theme.of(context).colorScheme.primary
-                    : null,
-              ),
-              title: const Text('Chamber (Z-A)'),
-              onTap: () {
-                _professorService.setSortType(ProfessorSortType.chamberDesc);
-                Navigator.pop(context);
-              },
-            ),
+            const SizedBox(width: 12),
+            const Text('Sort Professors'),
           ],
+        ),
+        content: Container(
+          width: ResponsiveService.getValue(context, mobile: MediaQuery.of(context).size.width * 0.9, tablet: 400, desktop: 480),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Wrap(
+                spacing: ResponsiveService.getValue(context, mobile: 8, tablet: 8, desktop: 8),
+                runSpacing: ResponsiveService.getValue(context, mobile: 8, tablet: 8, desktop: 8),
+                alignment: WrapAlignment.spaceEvenly,
+                children: ProfessorSortType.values.map((sortType) {
+                  final isSelected = currentSort == sortType;
+                  return Container(
+                    width: ResponsiveService.getValue(context, mobile: (MediaQuery.of(context).size.width * 0.9 - 24) / 2, tablet: 180, desktop: 220),
+                    child: Material(
+                      color: isSelected 
+                          ? Theme.of(context).colorScheme.primaryContainer
+                          : Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          _professorService.setSortType(sortType);
+                          Navigator.pop(context);
+                        },
+                        child: Container(
+                          constraints: BoxConstraints(
+                            minHeight: ResponsiveService.getTouchTargetSize(context),
+                          ),
+                          padding: ResponsiveService.getAdaptivePadding(context, EdgeInsets.all(ResponsiveService.isMobile(context) ? 8 : 12)),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected 
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                              width: isSelected ? 2 : 1,
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(ResponsiveService.isMobile(context) ? 8 : 8),
+                                decoration: BoxDecoration(
+                                  color: isSelected 
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Theme.of(context).colorScheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  _getSortIcon(sortType),
+                                  size: ResponsiveService.isMobile(context) ? 18 : 18,
+                                  color: isSelected 
+                                      ? Theme.of(context).colorScheme.onPrimary
+                                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              SizedBox(height: ResponsiveService.isMobile(context) ? 6 : 8),
+                              Text(
+                                _getSortOrderName(sortType),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                  fontSize: ResponsiveService.isMobile(context) ? 10 : 12,
+                                  color: isSelected 
+                                      ? Theme.of(context).colorScheme.onPrimaryContainer
+                                      : Theme.of(context).colorScheme.onSurface,
+                                ),
+                              ),
+                              if (isSelected) ...[
+                                const SizedBox(height: 4),
+                                Icon(
+                                  Icons.check_circle,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: ResponsiveService.isMobile(context) ? 14 : 16,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text('Close'),
           ),
         ],
       ),
     );
+  }
+
+  String _getSortOrderName(ProfessorSortType sortType) {
+    switch (sortType) {
+      case ProfessorSortType.nameAsc:
+        return 'Name (A-Z)';
+      case ProfessorSortType.nameDesc:
+        return 'Name (Z-A)';
+      case ProfessorSortType.chamberAsc:
+        return 'Chamber (A-Z)';
+      case ProfessorSortType.chamberDesc:
+        return 'Chamber (Z-A)';
+    }
+  }
+
+  IconData _getSortIcon(ProfessorSortType sortType) {
+    switch (sortType) {
+      case ProfessorSortType.nameAsc:
+      case ProfessorSortType.nameDesc:
+        return Icons.person;
+      case ProfessorSortType.chamberAsc:
+      case ProfessorSortType.chamberDesc:
+        return Icons.room;
+    }
   }
 
 }

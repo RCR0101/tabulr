@@ -78,7 +78,15 @@ class CourseListWidget extends StatelessWidget {
     }
     
     return ListView.builder(
-      padding: ResponsiveService.getAdaptivePadding(context, const EdgeInsets.all(8)),
+      padding: ResponsiveService.getAdaptivePadding(
+        context, 
+        EdgeInsets.fromLTRB(
+          8, 
+          8, 
+          8, 
+          ResponsiveService.isMobile(context) ? 100 : 8
+        ),
+      ),
       itemCount: displayCourses.length,
       itemBuilder: (context, index) {
         final course = displayCourses[index];

@@ -456,96 +456,101 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
             const Text('Sort Timetables'),
           ],
         ),
-        content: SizedBox(
-          width: ResponsiveService.getValue(context, mobile: MediaQuery.of(context).size.width * 0.8, tablet: 400, desktop: 480),
-          child: GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: ResponsiveService.getValue(context, mobile: 1, tablet: 2, desktop: 2),
-              childAspectRatio: ResponsiveService.getValue(context, mobile: 3.0, tablet: 2.2, desktop: 2.2),
-              crossAxisSpacing: ResponsiveService.getAdaptiveSpacing(context, 8),
-              mainAxisSpacing: ResponsiveService.getAdaptiveSpacing(context, 8),
-            ),
-            itemCount: TimetableListSortOrder.values.length,
-            itemBuilder: (context, index) {
-              final sortOrder = TimetableListSortOrder.values[index];
-              final isSelected = currentSort == sortOrder;
-              return Material(
-                color: isSelected 
-                    ? Theme.of(context).colorScheme.primaryContainer
-                    : Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () async {
-                    print('Sort option tapped: $sortOrder');
-                    final navigator = Navigator.of(context);
-                    try {
-                      await _userSettingsService.updateSortOrder(sortOrder);
-                      navigator.pop();
-                    } catch (e) {
-                      print('Error updating sort order: $e');
-                    }
-                  },
-                  child: Container(
-                    constraints: BoxConstraints(
-                      minHeight: ResponsiveService.getTouchTargetSize(context),
-                    ),
-                    padding: ResponsiveService.getAdaptivePadding(context, const EdgeInsets.all(12)),
-                    decoration: BoxDecoration(
+        content: Container(
+          width: ResponsiveService.getValue(context, mobile: MediaQuery.of(context).size.width * 0.9, tablet: 400, desktop: 480),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Wrap(
+                spacing: ResponsiveService.getValue(context, mobile: 8, tablet: 8, desktop: 8),
+                runSpacing: ResponsiveService.getValue(context, mobile: 8, tablet: 8, desktop: 8),
+                alignment: WrapAlignment.spaceEvenly,
+                children: TimetableListSortOrder.values.map((sortOrder) {
+                  final isSelected = currentSort == sortOrder;
+                  return Container(
+                    width: ResponsiveService.getValue(context, mobile: (MediaQuery.of(context).size.width * 0.9 - 24) / 2, tablet: 180, desktop: 220),
+                    child: Material(
+                      color: isSelected 
+                          ? Theme.of(context).colorScheme.primaryContainer
+                          : Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isSelected 
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                        width: isSelected ? 2 : 1,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () async {
+                          print('Sort option tapped: $sortOrder');
+                          final navigator = Navigator.of(context);
+                          try {
+                            await _userSettingsService.updateSortOrder(sortOrder);
+                            navigator.pop();
+                          } catch (e) {
+                            print('Error updating sort order: $e');
+                          }
+                        },
+                        child: Container(
+                          constraints: BoxConstraints(
+                            minHeight: ResponsiveService.getTouchTargetSize(context),
+                          ),
+                          padding: ResponsiveService.getAdaptivePadding(context, EdgeInsets.all(ResponsiveService.isMobile(context) ? 8 : 12)),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected 
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                              width: isSelected ? 2 : 1,
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(ResponsiveService.isMobile(context) ? 8 : 8),
+                                decoration: BoxDecoration(
+                                  color: isSelected 
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Theme.of(context).colorScheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  _getSortIcon(sortOrder),
+                                  size: ResponsiveService.isMobile(context) ? 18 : 18,
+                                  color: isSelected 
+                                      ? Theme.of(context).colorScheme.onPrimary
+                                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              SizedBox(height: ResponsiveService.isMobile(context) ? 6 : 8),
+                              Text(
+                                _getSortOrderName(sortOrder),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                  fontSize: ResponsiveService.isMobile(context) ? 10 : 12,
+                                  color: isSelected 
+                                      ? Theme.of(context).colorScheme.onPrimaryContainer
+                                      : Theme.of(context).colorScheme.onSurface,
+                                ),
+                              ),
+                              if (isSelected) ...[
+                                const SizedBox(height: 4),
+                                Icon(
+                                  Icons.check_circle,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: ResponsiveService.isMobile(context) ? 14 : 16,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: isSelected 
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context).colorScheme.surfaceVariant,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            _getSortIcon(sortOrder),
-                            size: 18,
-                            color: isSelected 
-                                ? Theme.of(context).colorScheme.onPrimary
-                                : Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _getSortOrderName(sortOrder),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                            fontSize: 12,
-                            color: isSelected 
-                                ? Theme.of(context).colorScheme.onPrimaryContainer
-                                : Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        if (isSelected)
-                          Icon(
-                            Icons.check_circle,
-                            color: Theme.of(context).colorScheme.primary,
-                            size: 16,
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
+                  );
+                }).toList(),
+              ),
+            ],
           ),
         ),
         actions: [

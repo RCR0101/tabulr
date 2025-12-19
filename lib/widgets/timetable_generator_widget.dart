@@ -21,7 +21,8 @@ class TimetableGeneratorWidget extends StatefulWidget {
   State<TimetableGeneratorWidget> createState() => _TimetableGeneratorWidgetState();
 }
 
-class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
+class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> 
+    with SingleTickerProviderStateMixin {
   final List<String> _selectedCourses = [];
   final List<TimeAvoidance> _avoidTimes = [];
   final List<LabAvoidance> _avoidLabs = [];
@@ -32,19 +33,31 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
   TimeSlot? _preferredExamSlot;
   List<GeneratedTimetable> _generatedTimetables = [];
   bool _isGenerating = false;
+  TabController? _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final isMobile = ResponsiveService.isMobile(context) || ResponsiveService.isTablet(context);
     
     if (isMobile) {
-      return DefaultTabController(
-        length: 2,
-        child: Column(
+      return Column(
           children: [
             Material(
               color: Theme.of(context).colorScheme.surface,
               child: TabBar(
+                controller: _tabController,
                 tabs: const [
                   Tab(icon: Icon(Icons.settings), text: 'Configure'),
                   Tab(icon: Icon(Icons.view_list), text: 'Results'),
@@ -56,6 +69,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
             ),
             Expanded(
               child: TabBarView(
+                controller: _tabController,
                 children: [
                   // Configuration Tab
                   Padding(
@@ -87,8 +101,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
               ),
             ),
           ],
-        ),
-      );
+        );
     }
     
     // Desktop layout
@@ -1016,6 +1029,12 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> {
     setState(() {
       _isGenerating = true;
     });
+    
+    // Switch to results tab on mobile when starting generation
+    final isMobile = ResponsiveService.isMobile(context) || ResponsiveService.isTablet(context);
+    if (isMobile && _tabController != null) {
+      _tabController!.animateTo(1);
+    }
 
     try {
       final constraints = TimetableConstraints(

@@ -927,7 +927,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 'Disclaimer: This software may make mistakes or suggest classes you might not be eligible for. Please double-check all course selections with your academic advisor.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                  fontSize: 11,
+                  fontSize: ResponsiveService.isMobile(context) ? 9 : 11,
                 ),
               ),
             ),
@@ -1488,6 +1488,13 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
       appBar: AppBar(
         title: Text(_timetable.name),
         centerTitle: true,
+        leading: ResponsiveService.isMobile(context)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.of(context).pop(),
+                tooltip: 'Back',
+              )
+            : null,
         actions: [
           CampusSelectorWidget(
             onCampusChanged: (campus) async {
@@ -1837,7 +1844,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                 'Disclaimer: This software may make mistakes or suggest classes you might not be eligible for. Please double-check all course selections with your academic advisor.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                  fontSize: 11,
+                  fontSize: ResponsiveService.isMobile(context) ? 9 : 11,
                 ),
               ),
             ),
