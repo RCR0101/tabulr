@@ -345,46 +345,62 @@ class XlsxParser {
     // Clean up the time part and handle different formats
     String cleanTimePart = timePart.replaceAll('.', ':').replaceAll(' ', '');
     
-    // Handle various time formats
-    if (cleanTimePart.contains('9:30') && cleanTimePart.contains('11:00')) {
+    // Handle various time formats - Updated for new midsem timeslots
+    if (cleanTimePart.contains('9:30') && (cleanTimePart.contains('11:00') || cleanTimePart.contains('11'))) {
       timeSlot = TimeSlot.MS1;
-    } else if (cleanTimePart.contains('11:30') && cleanTimePart.contains('1:00')) {
+    } else if (cleanTimePart.contains('11:30') && (cleanTimePart.contains('1:00') || cleanTimePart.contains('1'))) {
       timeSlot = TimeSlot.MS2;
-    } else if (cleanTimePart.contains('1:30') && cleanTimePart.contains('3:00')) {
+    } else if ((cleanTimePart.contains('2:00') || cleanTimePart.contains('2')) && cleanTimePart.contains('3:30')) {
       timeSlot = TimeSlot.MS3;
-    } else if (cleanTimePart.contains('3:30') && cleanTimePart.contains('5:00')) {
+    } else if ((cleanTimePart.contains('4:00') || cleanTimePart.contains('4')) && cleanTimePart.contains('5:30')) {
       timeSlot = TimeSlot.MS4;
     } else {
-      // Try to parse by looking for key time indicators
+      // Try to parse by looking for key time indicators - Updated for new midsem timeslots
       if (cleanTimePart.contains('9:30') || cleanTimePart.contains('930')) {
         timeSlot = TimeSlot.MS1;
       } else if (cleanTimePart.contains('11:30') || cleanTimePart.contains('1130')) {
         timeSlot = TimeSlot.MS2;
-      } else if (cleanTimePart.contains('1:30') || cleanTimePart.contains('130')) {
+      } else if (cleanTimePart.contains('2:00') || cleanTimePart.contains('200') || cleanTimePart.contains('2.00') || cleanTimePart.contains('2')) {
         timeSlot = TimeSlot.MS3;
-      } else if (cleanTimePart.contains('3:30') || cleanTimePart.contains('330')) {
+      } else if (cleanTimePart.contains('4:00') || cleanTimePart.contains('400') || cleanTimePart.contains('4.00') || cleanTimePart.contains('4')) {
         timeSlot = TimeSlot.MS4;
       } else {
-        // Try parsing the original format as fallback
+        // Try parsing the original format as fallback - Updated for new midsem timeslots
         switch (timePart) {
           case '9:30-11:00AM':
           case '9:30AM-11:00AM':
           case '9.30-11.00AM':
+          case '9:30-11':
+          case '9:30-11AM':
+          case '9.30-11':
             timeSlot = TimeSlot.MS1;
             break;
           case '11:30AM-1:00PM':
           case '11:30-1:00PM':
           case '11.30AM-1.00PM':
+          case '11:30-1':
+          case '11:30-1PM':
+          case '11.30-1':
             timeSlot = TimeSlot.MS2;
             break;
           case '1:30-3:00PM':
           case '1:30PM-3:00PM':
           case '1.30-3.00PM':
+          case '2-3:30':
+          case '2:00-3:30':
+          case '2-3:30PM':
+          case '2.00-3.30PM':
+          case '2.00':
             timeSlot = TimeSlot.MS3;
             break;
           case '3:30-5:00PM':
           case '3:30PM-5:00PM':
           case '3.30-5.00PM':
+          case '4-5:30':
+          case '4:00-5:30':
+          case '4-5:30PM':
+          case '4.00-5.30PM':
+          case '4.00':
             timeSlot = TimeSlot.MS4;
             break;
           default:

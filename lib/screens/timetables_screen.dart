@@ -882,22 +882,24 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     return Scaffold(
       drawer: _buildDrawer(),
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  'images/full_logo_bg.png',
-                  height: 50,
-                  fit: BoxFit.contain,
-                ),
+        title: ResponsiveService.isMobile(context)
+            ? null
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset(
+                        'images/full_logo_bg.png',
+                        height: 50,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
         centerTitle: true,
         actions: [
           IconButton(
@@ -907,27 +909,34 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
             ),
             onPressed: _showSortDialog,
             tooltip: 'Sort Timetables',
-            iconSize: ResponsiveService.getTouchTargetSize(context),
-            padding: EdgeInsets.all(ResponsiveService.getValue(context, mobile: 12.0, tablet: 8.0, desktop: 8.0)),
+            iconSize: ResponsiveService.getValue(context, mobile: 40.0, tablet: 48.0, desktop: 48.0),
+            padding: ResponsiveService.getAdaptivePadding(
+              context, 
+              EdgeInsets.all(ResponsiveService.getValue(context, mobile: 8.0, tablet: 8.0, desktop: 8.0))
+            ),
           ),
-          CampusSelectorWidget(
-            onCampusChanged: (campus) {
-              // Clear course cache when campus changes
-              CourseDataService().clearCache();
-              ToastService.showInfo(
-                'Switched to ${CampusService.getCampusDisplayName(campus)} campus',
-              );
-            },
-          ),
-          const SizedBox(width: 8),
+          if (!ResponsiveService.isMobile(context))
+            CampusSelectorWidget(
+              onCampusChanged: (campus) {
+                // Clear course cache when campus changes
+                CourseDataService().clearCache();
+                ToastService.showInfo(
+                  'Switched to ${CampusService.getCampusDisplayName(campus)} campus',
+                );
+              },
+            ),
+          SizedBox(width: ResponsiveService.getValue(context, mobile: 4, tablet: 8, desktop: 8)),
           PopupMenuButton<String>(
             icon: Icon(
               Icons.apps,
               size: ResponsiveService.getAdaptiveIconSize(context, 24),
             ),
             tooltip: 'More Options',
-            iconSize: ResponsiveService.getTouchTargetSize(context),
-            padding: EdgeInsets.all(ResponsiveService.getValue(context, mobile: 12.0, tablet: 8.0, desktop: 8.0)),
+            iconSize: ResponsiveService.getValue(context, mobile: 40.0, tablet: 48.0, desktop: 48.0),
+            padding: ResponsiveService.getAdaptivePadding(
+              context, 
+              EdgeInsets.all(ResponsiveService.getValue(context, mobile: 8.0, tablet: 8.0, desktop: 8.0))
+            ),
             onSelected: (value) {
               switch (value) {
                 case 'course_guide':
@@ -965,6 +974,39 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
               }
             },
             itemBuilder: (context) => [
+              // Campus selector for mobile
+              if (ResponsiveService.isMobile(context))
+                PopupMenuItem(
+                  enabled: false,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Campus',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        CampusSelectorWidget(
+                          onCampusChanged: (campus) {
+                            Navigator.pop(context);
+                            CourseDataService().clearCache();
+                            ToastService.showInfo(
+                              'Switched to ${CampusService.getCampusDisplayName(campus)} campus',
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              if (ResponsiveService.isMobile(context))
+                const PopupMenuDivider(),
               const PopupMenuItem(
                 value: 'course_guide',
                 child: ListTile(
@@ -1111,7 +1153,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                 ),
               ),
             ),
-          const SizedBox(width: 8),
+          SizedBox(width: ResponsiveService.getValue(context, mobile: 4, tablet: 8, desktop: 8)),
         ],
       ),
       body: _sortedTimetables.isEmpty

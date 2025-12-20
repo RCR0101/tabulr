@@ -74,8 +74,8 @@ if __name__ == "__main__":
     headers: list[str] = ["COMP\nCODE", "DRAFT TIMETABLE I SEM 2025 - 26", "TIMETABLE I SEM 2025 -26", "UPDATED TIMETABLE I SEMESTER 2025 -26 I YEAR COURSES"]
 
     # page range to extract the timetable from
-    # [from, to] - extracting all pages
-    page_range: list[int] = [7, 53]
+    # [from, to] - Updated to process pages 1-62 for Hyderabad
+    page_range: list[int] = [1, 62]
 
     try:
         pdf: pdfplumber.pdf.PDF = pdfplumber.open(input_pdf)

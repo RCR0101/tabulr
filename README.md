@@ -144,10 +144,10 @@ The app comes with **380+ courses** pre-loaded from an Excel file. You can:
 - Hour 12: 7:00PM-7:50PM
 
 **MidSem Exam Slots:**
-- MS1: 9:30AM-11:00AM
-- MS2: 11:30AM-1:00PM
-- MS3: 1:30PM-3:00PM
-- MS4: 3:30PM-5:00PM
+- MS1: 9:30-11:00
+- MS2: 11:30-1:00  
+- MS3: 2:00-3:30
+- MS4: 4:00-5:30
 
 **EndSem Exam Slots:**
 - FN (Forenoon): 9:30AM-12:30PM

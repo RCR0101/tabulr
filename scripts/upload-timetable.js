@@ -434,22 +434,23 @@ class XlsxParser {
     let timeSlot;
     const cleanTimePart = timePart.replaceAll('.', ':').replaceAll(' ', '');
     
-    if (cleanTimePart.includes('9:30') && cleanTimePart.includes('11:00')) {
+    // Updated for new midsem timeslots: 9:30-11, 11:30-1, 2-3:30, 4-5:30
+    if (cleanTimePart.includes('9:30') && (cleanTimePart.includes('11:00') || cleanTimePart.includes('11'))) {
       timeSlot = 'TimeSlot.MS1';
-    } else if (cleanTimePart.includes('11:30') && cleanTimePart.includes('1:00')) {
+    } else if (cleanTimePart.includes('11:30') && (cleanTimePart.includes('1:00') || cleanTimePart.includes('1'))) {
       timeSlot = 'TimeSlot.MS2';
-    } else if (cleanTimePart.includes('1:30') && cleanTimePart.includes('3:00')) {
+    } else if ((cleanTimePart.includes('2:00') || cleanTimePart.includes('2')) && cleanTimePart.includes('3:30')) {
       timeSlot = 'TimeSlot.MS3';
-    } else if (cleanTimePart.includes('3:30') && cleanTimePart.includes('5:00')) {
+    } else if ((cleanTimePart.includes('4:00') || cleanTimePart.includes('4')) && cleanTimePart.includes('5:30')) {
       timeSlot = 'TimeSlot.MS4';
     } else {
       if (cleanTimePart.includes('9:30') || cleanTimePart.includes('930')) {
         timeSlot = 'TimeSlot.MS1';
       } else if (cleanTimePart.includes('11:30') || cleanTimePart.includes('1130')) {
         timeSlot = 'TimeSlot.MS2';
-      } else if (cleanTimePart.includes('1:30') || cleanTimePart.includes('130')) {
+      } else if (cleanTimePart.includes('2:00') || cleanTimePart.includes('200') || cleanTimePart.includes('2.00') || timePart === '2.00') {
         timeSlot = 'TimeSlot.MS3';
-      } else if (cleanTimePart.includes('3:30') || cleanTimePart.includes('330')) {
+      } else if (cleanTimePart.includes('4:00') || cleanTimePart.includes('400') || cleanTimePart.includes('4.00') || timePart === '4.00') {
         timeSlot = 'TimeSlot.MS4';
       } else {
         console.log(`Unknown MidSem time format: ${timePart}`);
