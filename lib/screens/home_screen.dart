@@ -1195,11 +1195,10 @@ class _HomeScreenState extends State<HomeScreen> {
         if (CampusService.currentCampus != importedTimetable.campus) {
           await CampusService.setCampus(importedTimetable.campus);
         }
-
-        // Recalculate clash warnings for the imported timetable
+        final reloadedTimetable = await _timetableService.loadTimetable();
         final clashWarnings = ClashDetector.detectClashes(
           importedTimetable.selectedSections,
-          importedTimetable.availableCourses,
+          reloadedTimetable.availableCourses,
         );
 
         final updatedImportedTimetable = Timetable(
@@ -1208,7 +1207,7 @@ class _HomeScreenState extends State<HomeScreen> {
           createdAt: importedTimetable.createdAt,
           updatedAt: importedTimetable.updatedAt,
           campus: importedTimetable.campus,
-          availableCourses: importedTimetable.availableCourses,
+          availableCourses: reloadedTimetable.availableCourses, // Use full course list
           selectedSections: importedTimetable.selectedSections,
           clashWarnings: clashWarnings,
         );
@@ -2339,10 +2338,14 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
           await CampusService.setCampus(importedTimetable.campus);
         }
 
-        // Recalculate clash warnings for the imported timetable
+        // Load the full course list for the new campus by reloading the timetable
+        // This ensures we have all available courses, not just the ones in the import file
+        final reloadedTimetable = await _timetableService.loadTimetable();
+        
+        // Create updated timetable with the reloaded course list and imported selections
         final clashWarnings = ClashDetector.detectClashes(
           importedTimetable.selectedSections,
-          importedTimetable.availableCourses,
+          reloadedTimetable.availableCourses,
         );
 
         final updatedImportedTimetable = Timetable(
@@ -2351,7 +2354,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
           createdAt: importedTimetable.createdAt,
           updatedAt: importedTimetable.updatedAt,
           campus: importedTimetable.campus,
-          availableCourses: importedTimetable.availableCourses,
+          availableCourses: reloadedTimetable.availableCourses, // Use full course list
           selectedSections: importedTimetable.selectedSections,
           clashWarnings: clashWarnings,
         );
