@@ -22,6 +22,7 @@ class AutoLoadCDCService {
     'A8': 'Electronics and Instrumentation',
     'AA': 'Electronics and Communication',
     'AB': 'Manufacturing',
+    'AD': 'Math and Computing',
     'AJ': 'Biotechnology',
     'B1': 'MSc Biology',
     'B2': 'MSc Chemistry',
