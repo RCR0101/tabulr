@@ -18,6 +18,7 @@ import 'timetable_comparison_screen.dart';
 import 'humanities_electives_screen.dart';
 import 'discipline_electives_screen.dart';
 import 'professors_screen.dart';
+import 'cgpa_calculator_screen.dart';
 
 class TimetablesScreen extends StatefulWidget {
   const TimetablesScreen({super.key});
@@ -669,6 +670,209 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     }
   }
 
+  Widget _buildDrawer() {
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Drawer Header
+            Container(
+              width: double.infinity,
+              padding: ResponsiveService.getAdaptivePadding(
+                context,
+                const EdgeInsets.all(24),
+              ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+                  ],
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.school,
+                      size: ResponsiveService.getAdaptiveIconSize(context, 32),
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    ),
+                  ),
+                  SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
+                  Text(
+                    'Tabulr',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Menu Items
+            Expanded(
+              child: ListView(
+                padding: ResponsiveService.getAdaptivePadding(
+                  context,
+                  const EdgeInsets.symmetric(vertical: 16),
+                ),
+                children: [
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.schedule,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        size: ResponsiveService.getAdaptiveIconSize(context, 20),
+                      ),
+                    ),
+                    title: Text(
+                      'TT Builder',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Current timetable builder',
+                      style: TextStyle(
+                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.secondary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'ACTIVE',
+                        style: TextStyle(
+                          fontSize: ResponsiveService.getAdaptiveFontSize(context, 10),
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSecondary,
+                        ),
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      // Already on timetables screen, just close drawer
+                    },
+                  ),
+                  
+                  const Divider(),
+                  
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.calculate,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        size: ResponsiveService.getAdaptiveIconSize(context, 20),
+                      ),
+                    ),
+                    title: Text(
+                      'CGPA Calculator',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Track your academic performance',
+                      style: TextStyle(
+                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.tertiary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'SOON',
+                        style: TextStyle(
+                          fontSize: ResponsiveService.getAdaptiveFontSize(context, 10),
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onTertiary,
+                        ),
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CGPACalculatorScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            
+            // Footer
+            Container(
+              padding: ResponsiveService.getAdaptivePadding(
+                context,
+                const EdgeInsets.all(16),
+              ),
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: ResponsiveService.getAdaptiveIconSize(context, 16),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                  SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
+                  Expanded(
+                    child: Text(
+                      'Made with ❤️ for students',
+                      style: TextStyle(
+                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -676,6 +880,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     }
 
     return Scaffold(
+      drawer: _buildDrawer(),
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
