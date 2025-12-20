@@ -228,7 +228,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     if (_userSettingsService.sortOrder != TimetableListSortOrder.custom) {
       return;
     }
-    
+
     setState(() {
       if (newIndex > oldIndex) {
         newIndex -= 1;
@@ -236,12 +236,11 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
       final item = _sortedTimetables.removeAt(oldIndex);
       _sortedTimetables.insert(newIndex, item);
     });
-    
+
     // Update custom sort order in settings
     final newOrder = _sortedTimetables.map((t) => t.id).toList();
     _userSettingsService.updateCustomTimetableOrder(newOrder);
   }
-
 
   void _openTimetable(Timetable timetable) {
     Navigator.push(
@@ -282,53 +281,51 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   void _showClearAllDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(
-              Icons.warning,
-              color: Theme.of(context).colorScheme.error,
+      builder:
+          (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.warning, color: Theme.of(context).colorScheme.error),
+                const SizedBox(width: 8),
+                const Text('Clear All Timetables'),
+              ],
             ),
-            const SizedBox(width: 8),
-            const Text('Clear All Timetables'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Are you sure you want to delete all ${_sortedTimetables.length} timetables?',
-              style: Theme.of(context).textTheme.bodyLarge,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Are you sure you want to delete all ${_sortedTimetables.length} timetables?',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'This action cannot be undone.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              'This action cannot be undone.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.error,
-                fontWeight: FontWeight.w500,
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _clearAllTimetables();
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                ),
+                child: const Text('Clear All'),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _clearAllTimetables();
-            },
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-              foregroundColor: Theme.of(context).colorScheme.onError,
-            ),
-            child: const Text('Clear All'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -339,9 +336,8 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (context) => const Center(
-            child: CircularProgressIndicator(),
-          ),
+          builder:
+              (context) => const Center(child: CircularProgressIndicator()),
         );
       }
 
@@ -374,7 +370,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
       if (mounted) {
         Navigator.of(context).pop();
       }
-      
+
       _showErrorDialog('Error clearing timetables: $e');
     }
   }
@@ -400,10 +396,14 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
         sorted.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
         break;
       case TimetableListSortOrder.alphabeticalAsc:
-        sorted.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        sorted.sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        );
         break;
       case TimetableListSortOrder.alphabeticalDesc:
-        sorted.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+        sorted.sort(
+          (a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()),
+        );
         break;
       case TimetableListSortOrder.custom:
         if (customOrder.isNotEmpty) {
@@ -429,141 +429,239 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     if (_userSettingsService.userSettings == null) {
       await _userSettingsService.initializeSettings();
     }
-    
+
     final currentSort = _userSettingsService.sortOrder;
     print('Current sort order: $currentSort');
-    
+
     if (!mounted) return;
-    
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(8),
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.sort,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Text('Sort Timetables'),
+              ],
+            ),
+            content: Container(
+              width: ResponsiveService.getValue(
+                context,
+                mobile: MediaQuery.of(context).size.width * 0.9,
+                tablet: 400,
+                desktop: 480,
               ),
-              child: Icon(
-                Icons.sort,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                size: 20,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Wrap(
+                    spacing: ResponsiveService.getValue(
+                      context,
+                      mobile: 8,
+                      tablet: 8,
+                      desktop: 8,
+                    ),
+                    runSpacing: ResponsiveService.getValue(
+                      context,
+                      mobile: 8,
+                      tablet: 8,
+                      desktop: 8,
+                    ),
+                    alignment: WrapAlignment.spaceEvenly,
+                    children:
+                        TimetableListSortOrder.values.map((sortOrder) {
+                          final isSelected = currentSort == sortOrder;
+                          return Container(
+                            width: ResponsiveService.getValue(
+                              context,
+                              mobile:
+                                  (MediaQuery.of(context).size.width * 0.9 -
+                                      24) /
+                                  2,
+                              tablet: 180,
+                              desktop: 220,
+                            ),
+                            child: Material(
+                              color:
+                                  isSelected
+                                      ? Theme.of(
+                                        context,
+                                      ).colorScheme.primaryContainer
+                                      : Theme.of(context).colorScheme.surface,
+                              borderRadius: BorderRadius.circular(12),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(12),
+                                onTap: () async {
+                                  print('Sort option tapped: $sortOrder');
+                                  final navigator = Navigator.of(context);
+                                  try {
+                                    await _userSettingsService.updateSortOrder(
+                                      sortOrder,
+                                    );
+                                    navigator.pop();
+                                  } catch (e) {
+                                    print('Error updating sort order: $e');
+                                  }
+                                },
+                                child: Container(
+                                  constraints: BoxConstraints(
+                                    minHeight:
+                                        ResponsiveService.getTouchTargetSize(
+                                          context,
+                                        ),
+                                  ),
+                                  padding: ResponsiveService.getAdaptivePadding(
+                                    context,
+                                    EdgeInsets.all(
+                                      ResponsiveService.isMobile(context)
+                                          ? 8
+                                          : 12,
+                                    ),
+                                  ),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color:
+                                          isSelected
+                                              ? Theme.of(
+                                                context,
+                                              ).colorScheme.primary
+                                              : Theme.of(context)
+                                                  .colorScheme
+                                                  .outline
+                                                  .withOpacity(0.3),
+                                      width: isSelected ? 2 : 1,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: EdgeInsets.all(
+                                          ResponsiveService.isMobile(context)
+                                              ? 8
+                                              : 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              isSelected
+                                                  ? Theme.of(
+                                                    context,
+                                                  ).colorScheme.primary
+                                                  : Theme.of(context)
+                                                      .colorScheme
+                                                      .surfaceContainerHighest,
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          _getSortIcon(sortOrder),
+                                          size:
+                                              ResponsiveService.isMobile(
+                                                    context,
+                                                  )
+                                                  ? 18
+                                                  : 18,
+                                          color:
+                                              isSelected
+                                                  ? Theme.of(
+                                                    context,
+                                                  ).colorScheme.onPrimary
+                                                  : Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        height:
+                                            ResponsiveService.isMobile(context)
+                                                ? 6
+                                                : 8,
+                                      ),
+                                      Text(
+                                        _getSortOrderName(sortOrder),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontWeight:
+                                              isSelected
+                                                  ? FontWeight.w600
+                                                  : FontWeight.w500,
+                                          fontSize:
+                                              ResponsiveService.isMobile(
+                                                    context,
+                                                  )
+                                                  ? 10
+                                                  : 12,
+                                          color:
+                                              isSelected
+                                                  ? Theme.of(context)
+                                                      .colorScheme
+                                                      .onPrimaryContainer
+                                                  : Theme.of(
+                                                    context,
+                                                  ).colorScheme.onSurface,
+                                        ),
+                                      ),
+                                      if (isSelected) ...[
+                                        const SizedBox(height: 4),
+                                        Icon(
+                                          Icons.check_circle,
+                                          color:
+                                              Theme.of(
+                                                context,
+                                              ).colorScheme.primary,
+                                          size:
+                                              ResponsiveService.isMobile(
+                                                    context,
+                                                  )
+                                                  ? 14
+                                                  : 16,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 12),
-            const Text('Sort Timetables'),
-          ],
-        ),
-        content: Container(
-          width: ResponsiveService.getValue(context, mobile: MediaQuery.of(context).size.width * 0.9, tablet: 400, desktop: 480),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Wrap(
-                spacing: ResponsiveService.getValue(context, mobile: 8, tablet: 8, desktop: 8),
-                runSpacing: ResponsiveService.getValue(context, mobile: 8, tablet: 8, desktop: 8),
-                alignment: WrapAlignment.spaceEvenly,
-                children: TimetableListSortOrder.values.map((sortOrder) {
-                  final isSelected = currentSort == sortOrder;
-                  return Container(
-                    width: ResponsiveService.getValue(context, mobile: (MediaQuery.of(context).size.width * 0.9 - 24) / 2, tablet: 180, desktop: 220),
-                    child: Material(
-                      color: isSelected 
-                          ? Theme.of(context).colorScheme.primaryContainer
-                          : Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () async {
-                          print('Sort option tapped: $sortOrder');
-                          final navigator = Navigator.of(context);
-                          try {
-                            await _userSettingsService.updateSortOrder(sortOrder);
-                            navigator.pop();
-                          } catch (e) {
-                            print('Error updating sort order: $e');
-                          }
-                        },
-                        child: Container(
-                          constraints: BoxConstraints(
-                            minHeight: ResponsiveService.getTouchTargetSize(context),
-                          ),
-                          padding: ResponsiveService.getAdaptivePadding(context, EdgeInsets.all(ResponsiveService.isMobile(context) ? 8 : 12)),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSelected 
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                              width: isSelected ? 2 : 1,
-                            ),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(ResponsiveService.isMobile(context) ? 8 : 8),
-                                decoration: BoxDecoration(
-                                  color: isSelected 
-                                      ? Theme.of(context).colorScheme.primary
-                                      : Theme.of(context).colorScheme.surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  _getSortIcon(sortOrder),
-                                  size: ResponsiveService.isMobile(context) ? 18 : 18,
-                                  color: isSelected 
-                                      ? Theme.of(context).colorScheme.onPrimary
-                                      : Theme.of(context).colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                              SizedBox(height: ResponsiveService.isMobile(context) ? 6 : 8),
-                              Text(
-                                _getSortOrderName(sortOrder),
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                  fontSize: ResponsiveService.isMobile(context) ? 10 : 12,
-                                  color: isSelected 
-                                      ? Theme.of(context).colorScheme.onPrimaryContainer
-                                      : Theme.of(context).colorScheme.onSurface,
-                                ),
-                              ),
-                              if (isSelected) ...[
-                                const SizedBox(height: 4),
-                                Icon(
-                                  Icons.check_circle,
-                                  color: Theme.of(context).colorScheme.primary,
-                                  size: ResponsiveService.isMobile(context) ? 14 : 16,
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                ),
+                child: const Text('Cancel'),
               ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            ),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -688,7 +786,9 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                   end: Alignment.bottomRight,
                   colors: [
                     Theme.of(context).colorScheme.primary,
-                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+                    Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.8),
                   ],
                 ),
               ),
@@ -698,7 +798,9 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onPrimary.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -707,7 +809,9 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                       color: Theme.of(context).colorScheme.onPrimary,
                     ),
                   ),
-                  SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
+                  SizedBox(
+                    height: ResponsiveService.getAdaptiveSpacing(context, 12),
+                  ),
                   Text(
                     'Tabulr',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -718,7 +822,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                 ],
               ),
             ),
-            
+
             // Menu Items
             Expanded(
               child: ListView(
@@ -737,25 +841,39 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                       child: Icon(
                         Icons.schedule,
                         color: Theme.of(context).colorScheme.onPrimaryContainer,
-                        size: ResponsiveService.getAdaptiveIconSize(context, 20),
+                        size: ResponsiveService.getAdaptiveIconSize(
+                          context,
+                          20,
+                        ),
                       ),
                     ),
                     title: Text(
                       'TT Builder',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
+                        fontSize: ResponsiveService.getAdaptiveFontSize(
+                          context,
+                          16,
+                        ),
                       ),
                     ),
                     subtitle: Text(
                       'Current timetable builder',
                       style: TextStyle(
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                        fontSize: ResponsiveService.getAdaptiveFontSize(
+                          context,
+                          12,
+                        ),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                     ),
                     trailing: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.secondary,
                         borderRadius: BorderRadius.circular(12),
@@ -763,7 +881,10 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                       child: Text(
                         'ACTIVE',
                         style: TextStyle(
-                          fontSize: ResponsiveService.getAdaptiveFontSize(context, 10),
+                          fontSize: ResponsiveService.getAdaptiveFontSize(
+                            context,
+                            10,
+                          ),
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.onSecondary,
                         ),
@@ -774,48 +895,68 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                       // Already on timetables screen, just close drawer
                     },
                   ),
-                  
+
                   const Divider(),
-                  
+
                   ListTile(
                     leading: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        color:
+                            Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
                         Icons.calculate,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        size: ResponsiveService.getAdaptiveIconSize(context, 20),
+                        size: ResponsiveService.getAdaptiveIconSize(
+                          context,
+                          20,
+                        ),
                       ),
                     ),
                     title: Text(
                       'CGPA Calculator',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
+                        fontSize: ResponsiveService.getAdaptiveFontSize(
+                          context,
+                          16,
+                        ),
                       ),
                     ),
                     subtitle: Text(
                       'Track your academic performance',
                       style: TextStyle(
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                        fontSize: ResponsiveService.getAdaptiveFontSize(
+                          context,
+                          12,
+                        ),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                     ),
                     trailing: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.tertiary,
+                        color: Colors.green.shade100,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        'SOON',
+                        'ACTIVE',
                         style: TextStyle(
-                          fontSize: ResponsiveService.getAdaptiveFontSize(context, 10),
+                          fontSize: ResponsiveService.getAdaptiveFontSize(
+                            context,
+                            10,
+                          ),
                           fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onTertiary,
+                          color: Colors.green.shade800,
                         ),
                       ),
                     ),
@@ -832,7 +973,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                 ],
               ),
             ),
-            
+
             // Footer
             Container(
               padding: ResponsiveService.getAdaptivePadding(
@@ -842,7 +983,9 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
               decoration: BoxDecoration(
                 border: Border(
                   top: BorderSide(
-                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outline.withValues(alpha: 0.2),
                     width: 1,
                   ),
                 ),
@@ -852,15 +995,24 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                   Icon(
                     Icons.info_outline,
                     size: ResponsiveService.getAdaptiveIconSize(context, 16),
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
-                  SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
+                  SizedBox(
+                    width: ResponsiveService.getAdaptiveSpacing(context, 8),
+                  ),
                   Expanded(
                     child: Text(
                       'Made with ❤️ for students',
                       style: TextStyle(
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                        fontSize: ResponsiveService.getAdaptiveFontSize(
+                          context,
+                          12,
+                        ),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                   ),
@@ -882,24 +1034,25 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     return Scaffold(
       drawer: _buildDrawer(),
       appBar: AppBar(
-        title: ResponsiveService.isMobile(context)
-            ? null
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.asset(
-                        'images/full_logo_bg.png',
-                        height: 50,
-                        fit: BoxFit.contain,
+        title:
+            ResponsiveService.isMobile(context)
+                ? null
+                : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.asset(
+                          'images/full_logo_bg.png',
+                          height: 50,
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
         centerTitle: true,
         actions: [
           IconButton(
@@ -909,10 +1062,22 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
             ),
             onPressed: _showSortDialog,
             tooltip: 'Sort Timetables',
-            iconSize: ResponsiveService.getValue(context, mobile: 40.0, tablet: 48.0, desktop: 48.0),
+            iconSize: ResponsiveService.getValue(
+              context,
+              mobile: 40.0,
+              tablet: 48.0,
+              desktop: 48.0,
+            ),
             padding: ResponsiveService.getAdaptivePadding(
-              context, 
-              EdgeInsets.all(ResponsiveService.getValue(context, mobile: 8.0, tablet: 8.0, desktop: 8.0))
+              context,
+              EdgeInsets.all(
+                ResponsiveService.getValue(
+                  context,
+                  mobile: 8.0,
+                  tablet: 8.0,
+                  desktop: 8.0,
+                ),
+              ),
             ),
           ),
           if (!ResponsiveService.isMobile(context))
@@ -925,17 +1090,36 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                 );
               },
             ),
-          SizedBox(width: ResponsiveService.getValue(context, mobile: 4, tablet: 8, desktop: 8)),
+          SizedBox(
+            width: ResponsiveService.getValue(
+              context,
+              mobile: 4,
+              tablet: 8,
+              desktop: 8,
+            ),
+          ),
           PopupMenuButton<String>(
             icon: Icon(
               Icons.apps,
               size: ResponsiveService.getAdaptiveIconSize(context, 24),
             ),
             tooltip: 'More Options',
-            iconSize: ResponsiveService.getValue(context, mobile: 40.0, tablet: 48.0, desktop: 48.0),
+            iconSize: ResponsiveService.getValue(
+              context,
+              mobile: 40.0,
+              tablet: 48.0,
+              desktop: 48.0,
+            ),
             padding: ResponsiveService.getAdaptivePadding(
-              context, 
-              EdgeInsets.all(ResponsiveService.getValue(context, mobile: 8.0, tablet: 8.0, desktop: 8.0))
+              context,
+              EdgeInsets.all(
+                ResponsiveService.getValue(
+                  context,
+                  mobile: 8.0,
+                  tablet: 8.0,
+                  desktop: 8.0,
+                ),
+              ),
             ),
             onSelected: (value) {
               switch (value) {
@@ -973,73 +1157,78 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                   break;
               }
             },
-            itemBuilder: (context) => [
-              // Campus selector for mobile
-              if (ResponsiveService.isMobile(context))
-                PopupMenuItem(
-                  enabled: false,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Campus',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                            fontWeight: FontWeight.w600,
-                          ),
+            itemBuilder:
+                (context) => [
+                  // Campus selector for mobile
+                  if (ResponsiveService.isMobile(context))
+                    PopupMenuItem(
+                      enabled: false,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Campus',
+                              style: Theme.of(
+                                context,
+                              ).textTheme.labelSmall?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.6),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            CampusSelectorWidget(
+                              onCampusChanged: (campus) {
+                                Navigator.pop(context);
+                                CourseDataService().clearCache();
+                                ToastService.showInfo(
+                                  'Switched to ${CampusService.getCampusDisplayName(campus)} campus',
+                                );
+                              },
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        CampusSelectorWidget(
-                          onCampusChanged: (campus) {
-                            Navigator.pop(context);
-                            CourseDataService().clearCache();
-                            ToastService.showInfo(
-                              'Switched to ${CampusService.getCampusDisplayName(campus)} campus',
-                            );
-                          },
-                        ),
-                      ],
+                      ),
+                    ),
+                  if (ResponsiveService.isMobile(context))
+                    const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: 'course_guide',
+                    child: ListTile(
+                      leading: Icon(Icons.menu_book),
+                      title: Text('Course Guide'),
+                      contentPadding: EdgeInsets.zero,
                     ),
                   ),
-                ),
-              if (ResponsiveService.isMobile(context))
-                const PopupMenuDivider(),
-              const PopupMenuItem(
-                value: 'course_guide',
-                child: ListTile(
-                  leading: Icon(Icons.menu_book),
-                  title: Text('Course Guide'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'professors',
-                child: ListTile(
-                  leading: Icon(Icons.person),
-                  title: Text('Professors'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'discipline_electives',
-                child: ListTile(
-                  leading: Icon(Icons.school),
-                  title: Text('Discipline Electives'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'humanities_electives',
-                child: ListTile(
-                  leading: Icon(Icons.library_books),
-                  title: Text('Humanities Electives'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-            ],
+                  const PopupMenuItem(
+                    value: 'professors',
+                    child: ListTile(
+                      leading: Icon(Icons.person),
+                      title: Text('Professors'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'discipline_electives',
+                    child: ListTile(
+                      leading: Icon(Icons.school),
+                      title: Text('Discipline Electives'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'humanities_electives',
+                    child: ListTile(
+                      leading: Icon(Icons.library_books),
+                      title: Text('Humanities Electives'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
           ),
           const ThemeToggleButton(),
           IconButton(
@@ -1050,7 +1239,14 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
             onPressed: () => _openGitHub(),
             tooltip: 'Star on GitHub',
             iconSize: ResponsiveService.getTouchTargetSize(context),
-            padding: EdgeInsets.all(ResponsiveService.getValue(context, mobile: 12.0, tablet: 8.0, desktop: 8.0)),
+            padding: EdgeInsets.all(
+              ResponsiveService.getValue(
+                context,
+                mobile: 12.0,
+                tablet: 8.0,
+                desktop: 8.0,
+              ),
+            ),
           ),
           // User info and logout
           if (_authService.isAuthenticated)
@@ -1153,232 +1349,269 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                 ),
               ),
             ),
-          SizedBox(width: ResponsiveService.getValue(context, mobile: 4, tablet: 8, desktop: 8)),
+          SizedBox(
+            width: ResponsiveService.getValue(
+              context,
+              mobile: 4,
+              tablet: 8,
+              desktop: 8,
+            ),
+          ),
         ],
       ),
-      body: _sortedTimetables.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.schedule,
-                    size: 64,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No timetables yet',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.headlineSmall?.copyWith(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Create your first timetable to get started',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+      body:
+          _sortedTimetables.isEmpty
+              ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.schedule,
+                      size: 64,
                       color: Theme.of(
                         context,
                       ).colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
-                  ),
-                ],
-              ),
-            )
-          : Column(
-              children: [
-                Expanded(
-                  child: ReorderableListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _sortedTimetables.length,
-                    onReorder: _onReorder,
-                    buildDefaultDragHandles: false,
-                itemBuilder: (context, index) {
-                  final timetable = _sortedTimetables[index];
-                  final isCustomSort = _userSettingsService.sortOrder == TimetableListSortOrder.custom;
-                  return Card(
-                    key: ValueKey(timetable.id),
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.all(16),
-                      leading: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (isCustomSort)
-                            ReorderableDragStartListener(
-                              index: index,
-                              child: const Icon(
-                                Icons.drag_handle,
-                                color: Colors.grey,
-                              ),
-                            )
-                          else
-                            Icon(
-                              _getSortIcon(_userSettingsService.sortOrder),
-                              color: Colors.grey,
-                            ),
-                          const SizedBox(width: 8),
-                          CircleAvatar(
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            child: Text(
-                              timetable.name.isNotEmpty
-                                  ? timetable.name[0].toUpperCase()
-                                  : 'T',
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.onPrimary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 16),
+                    Text(
+                      'No timetables yet',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.headlineSmall?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
-                      title: Text(
-                        timetable.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Create your first timetable to get started',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.5),
                       ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 4),
-                          Text(
-                            '${timetable.selectedSections.map((s) => s.courseCode).toSet().length} courses selected',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.7),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Created: ${_formatDate(timetable.createdAt)}',
-                            style: TextStyle(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.5),
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                      trailing: PopupMenuButton<String>(
-                        onSelected: (value) {
-                          switch (value) {
-                            case 'rename':
-                              _renameTimetable(timetable);
-                              break;
-                            case 'delete':
-                              _deleteTimetable(timetable);
-                              break;
-                          }
-                        },
-                        itemBuilder:
-                            (context) => [
-                              const PopupMenuItem(
-                                value: 'rename',
-                                child: ListTile(
-                                  leading: Icon(Icons.edit),
-                                  title: Text('Rename'),
-                                  contentPadding: EdgeInsets.zero,
-                                ),
-                              ),
-                              if (_sortedTimetables.length > 1)
-                                const PopupMenuItem(
-                                  value: 'delete',
-                                  child: ListTile(
-                                    leading: Icon(
-                                      Icons.delete,
-                                      color: Colors.red,
+                    ),
+                  ],
+                ),
+              )
+              : Column(
+                children: [
+                  Expanded(
+                    child: ReorderableListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _sortedTimetables.length,
+                      onReorder: _onReorder,
+                      buildDefaultDragHandles: false,
+                      itemBuilder: (context, index) {
+                        final timetable = _sortedTimetables[index];
+                        final isCustomSort =
+                            _userSettingsService.sortOrder ==
+                            TimetableListSortOrder.custom;
+                        return Card(
+                          key: ValueKey(timetable.id),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.all(16),
+                            leading: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isCustomSort)
+                                  ReorderableDragStartListener(
+                                    index: index,
+                                    child: const Icon(
+                                      Icons.drag_handle,
+                                      color: Colors.grey,
                                     ),
-                                    title: Text(
-                                      'Delete',
-                                      style: TextStyle(color: Colors.red),
+                                  )
+                                else
+                                  Icon(
+                                    _getSortIcon(
+                                      _userSettingsService.sortOrder,
                                     ),
-                                    contentPadding: EdgeInsets.zero,
+                                    color: Colors.grey,
+                                  ),
+                                const SizedBox(width: 8),
+                                CircleAvatar(
+                                  backgroundColor:
+                                      Theme.of(context).colorScheme.primary,
+                                  child: Text(
+                                    timetable.name.isNotEmpty
+                                        ? timetable.name[0].toUpperCase()
+                                        : 'T',
+                                    style: TextStyle(
+                                      color:
+                                          Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
-                            ],
-                      ),
-                      onTap: () => _openTimetable(timetable),
-                    ),
-                  );
-                },
-                  ),
-                ),
-                // Clear All button at bottom
-                if (_sortedTimetables.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    child: ResponsiveService.isMobile(context)
-                        ? Align(
-                            alignment: Alignment.centerLeft,
-                            child: TextButton.icon(
-                              onPressed: () {
-                                ResponsiveService.triggerHeavyFeedback(context);
-                                _showClearAllDialog();
+                              ],
+                            ),
+                            title: Text(
+                              timetable.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${timetable.selectedSections.map((s) => s.courseCode).toSet().length} courses selected',
+                                  style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.7),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Created: ${_formatDate(timetable.createdAt)}',
+                                  style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withValues(alpha: 0.5),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            trailing: PopupMenuButton<String>(
+                              onSelected: (value) {
+                                switch (value) {
+                                  case 'rename':
+                                    _renameTimetable(timetable);
+                                    break;
+                                  case 'delete':
+                                    _deleteTimetable(timetable);
+                                    break;
+                                }
                               },
-                              icon: Icon(
-                                Icons.clear_all,
-                                size: ResponsiveService.getAdaptiveIconSize(context, 18),
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                              label: Text(
-                                'Clear All',
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.error,
-                                ),
-                              ),
-                              style: TextButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                minimumSize: Size(
-                                  0,
-                                  ResponsiveService.getTouchTargetSize(context),
-                                ),
-                                padding: ResponsiveService.getAdaptivePadding(
-                                  context,
-                                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                ),
-                              ),
+                              itemBuilder:
+                                  (context) => [
+                                    const PopupMenuItem(
+                                      value: 'rename',
+                                      child: ListTile(
+                                        leading: Icon(Icons.edit),
+                                        title: Text('Rename'),
+                                        contentPadding: EdgeInsets.zero,
+                                      ),
+                                    ),
+                                    if (_sortedTimetables.length > 1)
+                                      const PopupMenuItem(
+                                        value: 'delete',
+                                        child: ListTile(
+                                          leading: Icon(
+                                            Icons.delete,
+                                            color: Colors.red,
+                                          ),
+                                          title: Text(
+                                            'Delete',
+                                            style: TextStyle(color: Colors.red),
+                                          ),
+                                          contentPadding: EdgeInsets.zero,
+                                        ),
+                                      ),
+                                  ],
                             ),
-                          )
-                        : Center(
-                            child: TextButton.icon(
-                              onPressed: _showClearAllDialog,
-                              icon: Icon(
-                                Icons.clear_all,
-                                size: 18,
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                              label: Text(
-                                'Clear All',
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.error,
-                                ),
-                              ),
-                              style: TextButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              ),
-                            ),
+                            onTap: () => _openTimetable(timetable),
                           ),
+                        );
+                      },
+                    ),
                   ),
-              ],
-            ),
+                  // Clear All button at bottom
+                  if (_sortedTimetables.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      child:
+                          ResponsiveService.isMobile(context)
+                              ? Align(
+                                alignment: Alignment.centerLeft,
+                                child: TextButton.icon(
+                                  onPressed: () {
+                                    ResponsiveService.triggerHeavyFeedback(
+                                      context,
+                                    );
+                                    _showClearAllDialog();
+                                  },
+                                  icon: Icon(
+                                    Icons.clear_all,
+                                    size: ResponsiveService.getAdaptiveIconSize(
+                                      context,
+                                      18,
+                                    ),
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                                  label: Text(
+                                    'Clear All',
+                                    style: TextStyle(
+                                      color:
+                                          Theme.of(context).colorScheme.error,
+                                    ),
+                                  ),
+                                  style: TextButton.styleFrom(
+                                    backgroundColor: Colors.transparent,
+                                    minimumSize: Size(
+                                      0,
+                                      ResponsiveService.getTouchTargetSize(
+                                        context,
+                                      ),
+                                    ),
+                                    padding:
+                                        ResponsiveService.getAdaptivePadding(
+                                          context,
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 8,
+                                          ),
+                                        ),
+                                  ),
+                                ),
+                              )
+                              : Center(
+                                child: TextButton.icon(
+                                  onPressed: _showClearAllDialog,
+                                  icon: Icon(
+                                    Icons.clear_all,
+                                    size: 18,
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                                  label: Text(
+                                    'Clear All',
+                                    style: TextStyle(
+                                      color:
+                                          Theme.of(context).colorScheme.error,
+                                    ),
+                                  ),
+                                  style: TextButton.styleFrom(
+                                    backgroundColor: Colors.transparent,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                    ),
+                ],
+              ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           border: Border(
             top: BorderSide(
-              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+              color: Theme.of(
+                context,
+              ).colorScheme.outline.withValues(alpha: 0.2),
               width: 1,
             ),
           ),
@@ -1388,7 +1621,9 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
             Icon(
               Icons.info_outline,
               size: 16,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -1422,7 +1657,8 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
               },
               tooltip: 'Compare Timetables',
               backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-              foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+              foregroundColor:
+                  Theme.of(context).colorScheme.onSecondaryContainer,
               heroTag: "compare",
               child: const Icon(Icons.compare),
             ),
@@ -1452,7 +1688,8 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
               icon: const Icon(Icons.compare),
               label: const Text('Compare'),
               backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-              foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+              foregroundColor:
+                  Theme.of(context).colorScheme.onSecondaryContainer,
               heroTag: "compare",
             ),
             const SizedBox(width: 16),

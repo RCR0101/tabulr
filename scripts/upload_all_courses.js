@@ -70,30 +70,25 @@ async function uploadAllCourses() {
     const dataLines = lines.slice(1);
     
     console.log('📖 Courses data loaded successfully');
-    console.log(`📊 Total courses to upload: ${dataLines.length}`);
+    console.log(`📊 Total courses to process: ${dataLines.length}`);
 
-    // Clear existing data
-    console.log('🔄 Clearing existing all_courses data...');
+    // Fetch existing courses to check what needs to be uploaded
+    console.log('🔍 Checking existing courses in database...');
     const allCoursesRef = db.collection('all_courses');
     const snapshot = await allCoursesRef.get();
     
-    const deleteBatch = db.batch();
-    snapshot.docs.forEach(doc => {
-      deleteBatch.delete(doc.ref);
-    });
-    
-    if (!snapshot.empty) {
-      await deleteBatch.commit();
-      console.log(`✅ Cleared ${snapshot.size} existing all_courses documents`);
-    }
+    // Create a set of existing course document IDs
+    const existingCourseIds = new Set(snapshot.docs.map(doc => doc.id));
+    console.log(`📦 Found ${existingCourseIds.size} existing courses in database`);
 
     // Upload new data in batches (Firestore limit is 500 operations per batch)
-    console.log('🔄 Uploading new all_courses data...');
+    console.log('🔄 Uploading new courses...');
     
     let batchCount = 0;
     let currentBatch = db.batch();
     let operationCount = 0;
     let documentCount = 0;
+    let skippedCount = 0;
     
     for (const line of dataLines) {
       if (!line.trim()) continue;
@@ -110,6 +105,13 @@ async function uploadAllCourses() {
       
       // Use course_code as document ID (remove special characters for safety)
       const docId = course_code.replace(/[^a-zA-Z0-9]/g, '_');
+      
+      // Skip if course already exists
+      if (existingCourseIds.has(docId)) {
+        skippedCount++;
+        continue;
+      }
+      
       const docRef = allCoursesRef.doc(docId);
       
       const documentData = {
@@ -148,15 +150,18 @@ async function uploadAllCourses() {
     const metadataRef = db.collection('metadata').doc('all_courses');
     await metadataRef.set({
       lastUpdated: new Date().toISOString(),
-      totalCourses: documentCount,
+      totalCourses: existingCourseIds.size + documentCount,
+      newCoursesAdded: documentCount,
       uploadedBy: 'upload_all_courses.js',
       uploadDate: new Date().toISOString()
     });
 
     console.log('\n✨ Upload completed successfully!');
-    console.log(`📊 Total documents uploaded: ${documentCount}`);
+    console.log(`📊 New courses uploaded: ${documentCount}`);
+    console.log(`⏭️  Existing courses skipped: ${skippedCount}`);
+    console.log(`📦 Total courses in database: ${existingCourseIds.size + documentCount}`);
     console.log(`📦 Total batches committed: ${batchCount}`);
-    console.log('📝 Metadata document created');
+    console.log('📝 Metadata document updated');
     
   } catch (error) {
     console.error('❌ Error uploading all courses:', error);
