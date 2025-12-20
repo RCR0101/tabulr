@@ -62,6 +62,12 @@ service cloud.firestore {
       allow write: if false; // Only admin can write via script
     }
     
+    // Allow read access to prerequisites collection for everyone
+    match /prerequisites/{document} {
+      allow read: if true;
+      allow write: if false; // Only admin can write via script
+    }
+    
     // Allow read access to metadata collection for everyone
     match /metadata/{document} {
       allow read: if true;

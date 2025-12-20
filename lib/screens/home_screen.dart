@@ -31,6 +31,7 @@ import 'course_guide_screen.dart';
 import 'discipline_electives_screen.dart';
 import 'humanities_electives_screen.dart';
 import 'professors_screen.dart';
+import 'prerequisites_screen.dart';
 import 'add_swap_screen.dart';
 import '../models/timetable.dart' as timetable;
 
@@ -686,6 +687,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       );
                       break;
+                    case 'prerequisites':
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PrerequisitesScreen(),
+                        ),
+                      );
+                      break;
                     case 'professors':
                       Navigator.push(
                         context,
@@ -721,6 +730,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: ListTile(
                           leading: Icon(Icons.menu_book),
                           title: Text('Course Guide'),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'prerequisites',
+                        child: ListTile(
+                          leading: Icon(Icons.account_tree),
+                          title: Text('Prerequisites'),
                           contentPadding: EdgeInsets.zero,
                         ),
                       ),
@@ -1850,6 +1867,14 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                         ),
                       );
                       break;
+                    case 'prerequisites':
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PrerequisitesScreen(),
+                        ),
+                      );
+                      break;
                     case 'professors':
                       Navigator.push(
                         context,
@@ -1885,6 +1910,14 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                         child: ListTile(
                           leading: Icon(Icons.menu_book),
                           title: Text('Course Guide'),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'prerequisites',
+                        child: ListTile(
+                          leading: Icon(Icons.account_tree),
+                          title: Text('Prerequisites'),
                           contentPadding: EdgeInsets.zero,
                         ),
                       ),

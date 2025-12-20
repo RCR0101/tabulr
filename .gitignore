@@ -54,3 +54,4 @@ scripts/*.json
 output.csv
 coursewise_timetable.csv
 scripts/compare_courses.py
+courses.txt
