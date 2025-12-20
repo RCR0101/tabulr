@@ -161,7 +161,7 @@ class AutoLoadCDCDialog extends StatefulWidget {
 
 class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
   final List<String> _branches = [
-    'A1', 'A2', 'A3', 'A4', 'A5', 'A7', 'A8', 'AA', 'AB', 'AJ', 'B1', 'B2', 'B3', 'B4', 'B5'
+    'A1', 'A2', 'A3', 'A4', 'A5', 'A7', 'A8', 'AA', 'AB', 'AD', 'AJ', 'B1', 'B2', 'B3', 'B4', 'B5'
   ];
 
   final List<String> _semesters = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'];
