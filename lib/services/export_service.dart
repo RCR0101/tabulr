@@ -38,8 +38,8 @@ String _formatUtcForICS(DateTime dt) {
 /// Generate EXDATE entries for holiday breaks
 String _generateExDates(DayOfWeek day, int hour) {
   final breakPeriods = [
-    {'start': DateTime(2025, 10, 6), 'end': DateTime(2025, 10, 11)}, // Fall break
-    {'start': DateTime(2025, 12, 1), 'end': DateTime(2025, 12, 16)}, // Winter break
+    {'start': DateTime(2026, 3, 9), 'end': DateTime(2026, 3, 14)}, // MidSem exams
+    {'start': DateTime(2026, 5, 2), 'end': DateTime(2026, 5, 16)}, // EndSem exams
   ];
 
   // Map day of week to DateTime.weekday (1=Monday..7=Sunday)
@@ -134,7 +134,7 @@ class ExportService {
               'SUMMARY:$summary',
               'DESCRIPTION:$description',
               'LOCATION:$location',
-              'RRULE:FREQ=WEEKLY;UNTIL=20251216T235959Z;BYDAY=$rruleDay',
+              'RRULE:FREQ=WEEKLY;UNTIL=20260516T235959Z;BYDAY=$rruleDay',
             ];
 
             // Add exception dates if any exist
@@ -241,9 +241,9 @@ class ExportService {
   }
 
   static DateTime _getDateTime(DayOfWeek day, int hour, {bool endTime = false}) {
-    // Use a fixed semester start date (Spring 2025 semester)
-    // Using January 6, 2025 as semester start (a Monday)
-    final monday = DateTime(2025, 8, 4);
+    // Use a fixed semester start date (Spring 2026 semester)
+    // Using January 5, 2026 as semester start (a Monday)
+    final monday = DateTime(2026, 1, 5);
     
     // Map day of week to offset from Monday
     final dayOffset = {

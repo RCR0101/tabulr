@@ -175,10 +175,10 @@ class TimeSlotInfo {
   static const Map<TimeSlot, String> timeSlotNames = {
     TimeSlot.FN: '9:30AM-12:30PM',
     TimeSlot.AN: '2:00PM-5:00PM',
-    TimeSlot.MS1: '9:30-11:00',
-    TimeSlot.MS2: '11:30-1:00',
-    TimeSlot.MS3: '2:00-3:30',
-    TimeSlot.MS4: '4:00-5:30',
+    TimeSlot.MS1: '9:30AM-11:00AM',
+    TimeSlot.MS2: '11:30AM-1:00PM',
+    TimeSlot.MS3: '2:00PM-3:30PM',
+    TimeSlot.MS4: '4:00PM-5:30PM',
   };
 
   static const Map<int, String> hourSlotNames = {
