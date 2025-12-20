@@ -715,6 +715,56 @@ class TimetableService {
     }
   }
 
+  Future<Timetable> duplicateTimetable(Timetable sourceTimetable, String newName) async {
+    final now = DateTime.now();
+    final newId = now.millisecondsSinceEpoch.toString();
+    
+    print('Duplicating timetable "${sourceTimetable.name}" to "$newName" with id: $newId');
+    
+    final duplicatedTimetable = Timetable(
+      id: newId,
+      name: newName,
+      createdAt: now,
+      updatedAt: now,
+      campus: sourceTimetable.campus,
+      availableCourses: List.from(sourceTimetable.availableCourses),
+      selectedSections: List.from(sourceTimetable.selectedSections),
+      clashWarnings: List.from(sourceTimetable.clashWarnings),
+    );
+    
+    try {
+      if (_authService.isAuthenticated) {
+        print('Saving duplicated timetable to Firestore...');
+        final success = await _firestoreService.saveTimetable(duplicatedTimetable);
+        if (success) {
+          print('Duplicated timetable saved successfully to Firestore');
+        } else {
+          print('Failed to save to Firestore, falling back to local storage');
+          await saveTimetableToStorage(duplicatedTimetable);
+          await _addTimetableToList(newId);
+        }
+      } else {
+        print('Guest user - saving duplicated timetable to local storage');
+        await saveTimetableToStorage(duplicatedTimetable);
+        await _addTimetableToList(newId);
+      }
+      
+      // Verify it was saved properly
+      final savedTimetable = await getTimetableById(newId);
+      if (savedTimetable != null) {
+        print('Verification: Duplicated timetable saved successfully');
+      } else {
+        print('Verification: Failed to save duplicated timetable');
+      }
+      
+    } catch (e) {
+      print('Error saving duplicated timetable: $e');
+      throw e;
+    }
+    
+    return duplicatedTimetable;
+  }
+
   Future<void> updateTimetableName(String id, String newName) async {
     final timetable = await getTimetableById(id);
     if (timetable != null) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:html' as html;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/timetable.dart';
 import '../services/timetable_service.dart';
 import '../services/auth_service.dart';
@@ -173,6 +174,47 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
         _applySorting();
       } catch (e) {
         _showErrorDialog('Error renaming timetable: $e');
+      }
+    }
+  }
+
+  Future<void> _duplicateTimetable(Timetable timetable) async {
+    final controller = TextEditingController(text: '${timetable.name} (Copy)');
+    final newName = await showDialog<String>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Duplicate Timetable'),
+            content: TextField(
+              controller: controller,
+              decoration: const InputDecoration(labelText: 'New Timetable Name'),
+              autofocus: true,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context, controller.text.trim());
+                },
+                child: const Text('Duplicate'),
+              ),
+            ],
+          ),
+    );
+
+    if (newName != null && newName.isNotEmpty) {
+      try {
+        final duplicatedTimetable = await _timetableService.duplicateTimetable(timetable, newName);
+        
+        setState(() {
+          _timetables.add(duplicatedTimetable);
+        });
+        _applySorting();
+      } catch (e) {
+        _showErrorDialog('Error duplicating timetable: $e');
       }
     }
   }
@@ -1489,6 +1531,9 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                   case 'rename':
                                     _renameTimetable(timetable);
                                     break;
+                                  case 'duplicate':
+                                    _duplicateTimetable(timetable);
+                                    break;
                                   case 'delete':
                                     _deleteTimetable(timetable);
                                     break;
@@ -1501,6 +1546,14 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                       child: ListTile(
                                         leading: Icon(Icons.edit),
                                         title: Text('Rename'),
+                                        contentPadding: EdgeInsets.zero,
+                                      ),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'duplicate',
+                                      child: ListTile(
+                                        leading: Icon(Icons.copy),
+                                        title: Text('Duplicate'),
                                         contentPadding: EdgeInsets.zero,
                                       ),
                                     ),
