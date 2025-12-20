@@ -11,22 +11,23 @@ class DisciplineElectivesScreen extends StatefulWidget {
   const DisciplineElectivesScreen({super.key});
 
   @override
-  State<DisciplineElectivesScreen> createState() => _DisciplineElectivesScreenState();
+  State<DisciplineElectivesScreen> createState() =>
+      _DisciplineElectivesScreenState();
 }
 
 class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
-  final DisciplineElectivesService _disciplineElectivesService = DisciplineElectivesService();
+  final DisciplineElectivesService _disciplineElectivesService =
+      DisciplineElectivesService();
   final CourseDataService _courseDataService = CourseDataService();
-  
+
   List<BranchInfo> _availableBranches = [];
   List<DisciplineElective> _disciplineElectives = [];
   List<Course> _availableCourses = [];
-  
+
   BranchInfo? _selectedPrimaryBranch;
   BranchInfo? _selectedSecondaryBranch;
-  String? _selectedPrimarySemester;
-  String? _selectedSecondarySemester;
-  
+  String? _selectedSemester;
+
   bool _isLoading = true;
   bool _isSearching = false;
   String _errorMessage = '';
@@ -34,21 +35,26 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
 
   // Semester options from 2-1 to 4-2
   final List<String> _semesterOptions = [
-    '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'
+    '2-1',
+    '2-2',
+    '3-1',
+    '3-2',
+    '4-1',
+    '4-2',
   ];
 
   @override
   void initState() {
     super.initState();
     _loadInitialData();
-    
+
     // Listen for campus changes
     _campusSubscription = CampusService.campusChangeStream.listen((_) {
       print('Campus changed, reloading disciplinary electives data...');
       _loadInitialData();
     });
   }
-  
+
   @override
   void dispose() {
     _campusSubscription?.cancel();
@@ -61,18 +67,23 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
         _isLoading = true;
         _errorMessage = '';
       });
-      
+
       // Load available branches
       print('Loading available branches...');
-      final branches = await _disciplineElectivesService.getAvailableBranches()
+      final branches = await _disciplineElectivesService
+          .getAvailableBranches()
           .timeout(Duration(seconds: 15));
-      print('Loaded ${branches.length} branches: ${branches.map((b) => b.name).join(', ')}');
-      
+      print(
+        'Loaded ${branches.length} branches: ${branches.map((b) => b.name).join(', ')}',
+      );
+
       // Load courses for current campus
       print('Loading courses for current campus...');
       final courses = await _courseDataService.fetchCourses();
-      print('Loaded ${courses.length} courses for ${CampusService.getCampusDisplayName(CampusService.currentCampus)} campus');
-      
+      print(
+        'Loaded ${courses.length} courses for ${CampusService.getCampusDisplayName(CampusService.currentCampus)} campus',
+      );
+
       setState(() {
         _availableBranches = branches;
         _availableCourses = courses;
@@ -103,12 +114,13 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
       });
 
       print('Fetching all discipline electives without clash filtering');
-      
-      final electives = await _disciplineElectivesService.getAllDisciplineElectives(
-        _selectedPrimaryBranch!.name,
-        _selectedSecondaryBranch?.name,
-        _availableCourses,
-      );
+
+      final electives = await _disciplineElectivesService
+          .getAllDisciplineElectives(
+            _selectedPrimaryBranch!.name,
+            _selectedSecondaryBranch?.name,
+            _availableCourses,
+          );
 
       setState(() {
         _disciplineElectives = electives;
@@ -117,20 +129,22 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
 
       if (electives.isEmpty) {
         setState(() {
-          _errorMessage = 'No discipline electives found for the selected branch(es).';
+          _errorMessage =
+              'No discipline electives found for the selected branch(es).';
         });
       }
     } catch (e) {
       print('Error in _viewAllDisciplineElectives: $e');
       setState(() {
-        _errorMessage = 'Unable to load discipline electives at this time. Please try again later.';
+        _errorMessage =
+            'Unable to load discipline electives at this time. Please try again later.';
         _isSearching = false;
       });
     }
   }
 
   Future<void> _searchDisciplineElectives() async {
-    if (_selectedPrimaryBranch == null || _selectedPrimarySemester == null) {
+    if (_selectedPrimaryBranch == null || _selectedSemester == null) {
       setState(() {
         _errorMessage = 'Please select primary branch and semester';
       });
@@ -144,15 +158,19 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
         _disciplineElectives = [];
       });
 
-      print('Searching electives for: ${_selectedPrimaryBranch!.name} ${_selectedPrimarySemester!}${_selectedSecondaryBranch != null && _selectedSecondarySemester != null ? ' and ${_selectedSecondaryBranch!.name} ${_selectedSecondarySemester!}' : ''}');
+      print(
+        'Searching electives for: ${_selectedPrimaryBranch!.name} ${_selectedSemester!}${_selectedSecondaryBranch != null ? ' and ${_selectedSecondaryBranch!.name} ${_selectedSemester!}' : ''}',
+      );
 
-      final electives = await _disciplineElectivesService.getFilteredDisciplineElectivesWithClashDetection(
-        _selectedPrimaryBranch!.name,
-        _selectedSecondaryBranch?.name,
-        _selectedPrimarySemester!,
-        _selectedSecondarySemester,
-        _availableCourses,
-      ).timeout(Duration(seconds: 20));
+      final electives = await _disciplineElectivesService
+          .getFilteredDisciplineElectivesWithClashDetection(
+            _selectedPrimaryBranch!.name,
+            _selectedSecondaryBranch?.name,
+            _selectedSemester!,
+            _selectedSemester,
+            _availableCourses,
+          )
+          .timeout(Duration(seconds: 20));
 
       print('Found ${electives.length} electives');
 
@@ -163,13 +181,15 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
 
       if (electives.isEmpty) {
         setState(() {
-          _errorMessage = 'No discipline electives found for the selected branch(es) and semester(s) that are available and don\'t clash with core courses.';
+          _errorMessage =
+              'No discipline electives found for the selected branch(es) and semester(s) that are available and don\'t clash with core courses.';
         });
       }
     } catch (e) {
       print('Error in _searchDisciplineElectives: $e');
       setState(() {
-        _errorMessage = 'Unable to load discipline electives at this time. Please try again later.';
+        _errorMessage =
+            'Unable to load discipline electives at this time. Please try again later.';
         _isSearching = false;
       });
     }
@@ -178,19 +198,22 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
   void _clearSecondarySelections() {
     setState(() {
       _selectedSecondaryBranch = null;
-      _selectedSecondarySemester = null;
     });
   }
 
-
-
   Widget _buildBranchSelector() {
     final isMobile = ResponsiveService.isMobile(context);
-    
+
     return Card(
-      margin: ResponsiveService.getAdaptivePadding(context, const EdgeInsets.all(16)),
+      margin: ResponsiveService.getAdaptivePadding(
+        context,
+        const EdgeInsets.all(16),
+      ),
       child: Padding(
-        padding: ResponsiveService.getAdaptivePadding(context, const EdgeInsets.all(16)),
+        padding: ResponsiveService.getAdaptivePadding(
+          context,
+          const EdgeInsets.all(16),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -202,16 +225,26 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                   Text(
                     'Select Branches & Semesters',
                     style: TextStyle(
-                      fontSize: ResponsiveService.getAdaptiveFontSize(context, 18),
+                      fontSize: ResponsiveService.getAdaptiveFontSize(
+                        context,
+                        18,
+                      ),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 4)),
+                  SizedBox(
+                    height: ResponsiveService.getAdaptiveSpacing(context, 4),
+                  ),
                   Text(
                     '${_availableBranches.length} branches loaded',
                     style: TextStyle(
-                      fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                      fontSize: ResponsiveService.getAdaptiveFontSize(
+                        context,
+                        12,
+                      ),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -221,7 +254,10 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                   Text(
                     'Select Branch(es) and Semester(s)',
                     style: TextStyle(
-                      fontSize: ResponsiveService.getAdaptiveFontSize(context, 18),
+                      fontSize: ResponsiveService.getAdaptiveFontSize(
+                        context,
+                        18,
+                      ),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -229,8 +265,13 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                   Text(
                     '${_availableBranches.length} branches loaded',
                     style: TextStyle(
-                      fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                      fontSize: ResponsiveService.getAdaptiveFontSize(
+                        context,
+                        12,
+                      ),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -239,27 +280,62 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                 children: [
                   const Text(
                     'Select Branch(es) and Semester(s)',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const Spacer(),
                   Text(
                     '${_availableBranches.length} branches loaded',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
               ),
             ),
             SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 16)),
-            
-            // Primary Selection
+
+            // Semester Selection
             Text(
-              'Primary Branch and Semester *',
+              'Semester *',
+              style: TextStyle(
+                fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 8)),
+            DropdownButtonFormField<String>(
+              value: _selectedSemester,
+              decoration: InputDecoration(
+                labelText: 'Semester',
+                border: const OutlineInputBorder(),
+                contentPadding: ResponsiveService.getAdaptivePadding(
+                  context,
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                ),
+              ),
+              items:
+                  _semesterOptions.map((semester) {
+                    return DropdownMenuItem<String>(
+                      value: semester,
+                      child: Text(semester),
+                    );
+                  }).toList(),
+              onChanged: (String? newValue) {
+                ResponsiveService.triggerSelectionFeedback(context);
+                setState(() {
+                  _selectedSemester = newValue;
+                });
+              },
+              isExpanded: true,
+            ),
+            SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 16)),
+
+            // Primary Branch Selection
+            Text(
+              'Primary Branch *',
               style: TextStyle(
                 fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
                 fontWeight: FontWeight.w500,
@@ -268,68 +344,48 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
             SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 8)),
             ResponsiveService.buildResponsive(
               context,
-              mobile: Column(
-                children: [
-                  DropdownButtonFormField<BranchInfo>(
-                    value: _selectedPrimaryBranch,
-                    decoration: InputDecoration(
-                      labelText: 'Primary Branch',
-                      border: const OutlineInputBorder(),
-                      contentPadding: ResponsiveService.getAdaptivePadding(
-                        context,
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                      ),
-                    ),
-                    items: _availableBranches.isEmpty ? [] : _availableBranches.map((branch) {
-                      return DropdownMenuItem<BranchInfo>(
-                        value: branch,
-                        child: Text(
-                          branch.name,
-                          style: TextStyle(fontSize: ResponsiveService.getAdaptiveFontSize(context, 14)),
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (BranchInfo? newValue) {
-                      ResponsiveService.triggerSelectionFeedback(context);
-                      setState(() {
-                        _selectedPrimaryBranch = newValue;
-                        // Clear secondary branch if it's same as primary
-                        if (_selectedSecondaryBranch == newValue) {
-                          _selectedSecondaryBranch = null;
-                        }
-                      });
-                    },
-                    isExpanded: true,
-                    hint: _availableBranches.isEmpty 
+              mobile: DropdownButtonFormField<BranchInfo>(
+                value: _selectedPrimaryBranch,
+                decoration: InputDecoration(
+                  labelText: 'Primary Branch',
+                  border: const OutlineInputBorder(),
+                  contentPadding: ResponsiveService.getAdaptivePadding(
+                    context,
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                  ),
+                ),
+                items:
+                    _availableBranches.isEmpty
+                        ? []
+                        : _availableBranches.map((branch) {
+                          return DropdownMenuItem<BranchInfo>(
+                            value: branch,
+                            child: Text(
+                              branch.name,
+                              style: TextStyle(
+                                fontSize: ResponsiveService.getAdaptiveFontSize(
+                                  context,
+                                  14,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                onChanged: (BranchInfo? newValue) {
+                  ResponsiveService.triggerSelectionFeedback(context);
+                  setState(() {
+                    _selectedPrimaryBranch = newValue;
+                    // Clear secondary branch if it's same as primary
+                    if (_selectedSecondaryBranch == newValue) {
+                      _selectedSecondaryBranch = null;
+                    }
+                  });
+                },
+                isExpanded: true,
+                hint:
+                    _availableBranches.isEmpty
                         ? const Text('Loading branches...')
                         : const Text('Select primary branch'),
-                  ),
-                  SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
-                  DropdownButtonFormField<String>(
-                    value: _selectedPrimarySemester,
-                    decoration: InputDecoration(
-                      labelText: 'Semester',
-                      border: const OutlineInputBorder(),
-                      contentPadding: ResponsiveService.getAdaptivePadding(
-                        context,
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                      ),
-                    ),
-                    items: _semesterOptions.map((semester) {
-                      return DropdownMenuItem<String>(
-                        value: semester,
-                        child: Text(semester),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      ResponsiveService.triggerSelectionFeedback(context);
-                      setState(() {
-                        _selectedPrimarySemester = newValue;
-                      });
-                    },
-                    isExpanded: true,
-                  ),
-                ],
               ),
               tablet: Row(
                 children: [
@@ -340,15 +396,18 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                         labelText: 'Primary Branch',
                         border: OutlineInputBorder(),
                       ),
-                      items: _availableBranches.isEmpty ? [] : _availableBranches.map((branch) {
-                        return DropdownMenuItem<BranchInfo>(
-                          value: branch,
-                          child: Text(
-                            branch.name,
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                        );
-                      }).toList(),
+                      items:
+                          _availableBranches.isEmpty
+                              ? []
+                              : _availableBranches.map((branch) {
+                                return DropdownMenuItem<BranchInfo>(
+                                  value: branch,
+                                  child: Text(
+                                    branch.name,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                );
+                              }).toList(),
                       onChanged: (BranchInfo? newValue) {
                         ResponsiveService.triggerSelectionFeedback(context);
                         setState(() {
@@ -359,32 +418,10 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                         });
                       },
                       isExpanded: true,
-                      hint: _availableBranches.isEmpty 
-                          ? const Text('Loading branches...')
-                          : const Text('Select primary branch'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedPrimarySemester,
-                      decoration: const InputDecoration(
-                        labelText: 'Semester',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: _semesterOptions.map((semester) {
-                        return DropdownMenuItem<String>(
-                          value: semester,
-                          child: Text(semester),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        ResponsiveService.triggerSelectionFeedback(context);
-                        setState(() {
-                          _selectedPrimarySemester = newValue;
-                        });
-                      },
-                      isExpanded: true,
+                      hint:
+                          _availableBranches.isEmpty
+                              ? const Text('Loading branches...')
+                              : const Text('Select primary branch'),
                     ),
                   ),
                 ],
@@ -398,15 +435,18 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                         labelText: 'Primary Branch',
                         border: OutlineInputBorder(),
                       ),
-                      items: _availableBranches.isEmpty ? [] : _availableBranches.map((branch) {
-                        return DropdownMenuItem<BranchInfo>(
-                          value: branch,
-                          child: Text(
-                            branch.name,
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                        );
-                      }).toList(),
+                      items:
+                          _availableBranches.isEmpty
+                              ? []
+                              : _availableBranches.map((branch) {
+                                return DropdownMenuItem<BranchInfo>(
+                                  value: branch,
+                                  child: Text(
+                                    branch.name,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                );
+                              }).toList(),
                       onChanged: (BranchInfo? newValue) {
                         setState(() {
                           _selectedPrimaryBranch = newValue;
@@ -416,39 +456,18 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                         });
                       },
                       isExpanded: true,
-                      hint: _availableBranches.isEmpty 
-                          ? const Text('Loading branches...')
-                          : const Text('Select primary branch'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedPrimarySemester,
-                      decoration: const InputDecoration(
-                        labelText: 'Semester',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: _semesterOptions.map((semester) {
-                        return DropdownMenuItem<String>(
-                          value: semester,
-                          child: Text(semester),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedPrimarySemester = newValue;
-                        });
-                      },
-                      isExpanded: true,
+                      hint:
+                          _availableBranches.isEmpty
+                              ? const Text('Loading branches...')
+                              : const Text('Select primary branch'),
                     ),
                   ),
                 ],
               ),
             ),
-            
+
             SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 16)),
-            
+
             // Secondary Selection (Optional)
             ResponsiveService.buildResponsive(
               context,
@@ -456,14 +475,19 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Secondary Branch & Semester (Optional)',
+                    'Secondary Branch (Optional)',
                     style: TextStyle(
-                      fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
+                      fontSize: ResponsiveService.getAdaptiveFontSize(
+                        context,
+                        14,
+                      ),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  if (_selectedSecondaryBranch != null || _selectedSecondarySemester != null) ...[
-                    SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 8)),
+                  if (_selectedSecondaryBranch != null) ...[
+                    SizedBox(
+                      height: ResponsiveService.getAdaptiveSpacing(context, 8),
+                    ),
                     Align(
                       alignment: Alignment.centerLeft,
                       child: TextButton.icon(
@@ -471,14 +495,23 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                           ResponsiveService.triggerSelectionFeedback(context);
                           _clearSecondarySelections();
                         },
-                        icon: Icon(Icons.clear, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
+                        icon: Icon(
+                          Icons.clear,
+                          size: ResponsiveService.getAdaptiveIconSize(
+                            context,
+                            16,
+                          ),
+                        ),
                         label: const Text('Clear'),
                         style: TextButton.styleFrom(
                           padding: ResponsiveService.getAdaptivePadding(
                             context,
                             const EdgeInsets.symmetric(horizontal: 8),
                           ),
-                          minimumSize: Size(0, ResponsiveService.getTouchTargetSize(context)),
+                          minimumSize: Size(
+                            0,
+                            ResponsiveService.getTouchTargetSize(context),
+                          ),
                         ),
                       ),
                     ),
@@ -488,24 +521,36 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
               tablet: Row(
                 children: [
                   Text(
-                    'Secondary Branch and Semester (Optional)',
+                    'Secondary Branch (Optional)',
                     style: TextStyle(
-                      fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
+                      fontSize: ResponsiveService.getAdaptiveFontSize(
+                        context,
+                        14,
+                      ),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   const Spacer(),
-                  if (_selectedSecondaryBranch != null || _selectedSecondarySemester != null)
+                  if (_selectedSecondaryBranch != null)
                     TextButton.icon(
                       onPressed: () {
                         ResponsiveService.triggerSelectionFeedback(context);
                         _clearSecondarySelections();
                       },
-                      icon: Icon(Icons.clear, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
+                      icon: Icon(
+                        Icons.clear,
+                        size: ResponsiveService.getAdaptiveIconSize(
+                          context,
+                          16,
+                        ),
+                      ),
                       label: const Text('Clear'),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
-                        minimumSize: Size(0, ResponsiveService.getTouchTargetSize(context)),
+                        minimumSize: Size(
+                          0,
+                          ResponsiveService.getTouchTargetSize(context),
+                        ),
                       ),
                     ),
                 ],
@@ -513,14 +558,11 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
               desktop: Row(
                 children: [
                   const Text(
-                    'Secondary Branch and Semester (Optional)',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    'Secondary Branch (Optional)',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                   ),
                   const Spacer(),
-                  if (_selectedSecondaryBranch != null || _selectedSecondarySemester != null)
+                  if (_selectedSecondaryBranch != null)
                     TextButton.icon(
                       onPressed: _clearSecondarySelections,
                       icon: const Icon(Icons.clear, size: 16),
@@ -544,20 +586,33 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                       border: const OutlineInputBorder(),
                       contentPadding: ResponsiveService.getAdaptivePadding(
                         context,
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                        const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 16,
+                        ),
                       ),
                     ),
-                    items: _availableBranches.where((branch) {
-                      return branch != _selectedPrimaryBranch;
-                    }).map((branch) {
-                      return DropdownMenuItem<BranchInfo>(
-                        value: branch,
-                        child: Text(
-                          branch.name,
-                          style: TextStyle(fontSize: ResponsiveService.getAdaptiveFontSize(context, 14)),
-                        ),
-                      );
-                    }).toList(),
+                    items:
+                        _availableBranches
+                            .where((branch) {
+                              return branch != _selectedPrimaryBranch;
+                            })
+                            .map((branch) {
+                              return DropdownMenuItem<BranchInfo>(
+                                value: branch,
+                                child: Text(
+                                  branch.name,
+                                  style: TextStyle(
+                                    fontSize:
+                                        ResponsiveService.getAdaptiveFontSize(
+                                          context,
+                                          14,
+                                        ),
+                                  ),
+                                ),
+                              );
+                            })
+                            .toList(),
                     onChanged: (BranchInfo? newValue) {
                       ResponsiveService.triggerSelectionFeedback(context);
                       setState(() {
@@ -567,33 +622,6 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                     isExpanded: true,
                     hint: const Text('Select secondary branch'),
                   ),
-                  SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
-                  DropdownButtonFormField<String>(
-                    value: _selectedSecondarySemester,
-                    decoration: InputDecoration(
-                      labelText: 'Semester',
-                      border: const OutlineInputBorder(),
-                      contentPadding: ResponsiveService.getAdaptivePadding(
-                        context,
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                      ),
-                    ),
-                    items: _semesterOptions.where((semester) {
-                      return semester != _selectedPrimarySemester;
-                    }).map((semester) {
-                      return DropdownMenuItem<String>(
-                        value: semester,
-                        child: Text(semester),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      ResponsiveService.triggerSelectionFeedback(context);
-                      setState(() {
-                        _selectedSecondarySemester = newValue;
-                      });
-                    },
-                    isExpanded: true,
-                  ),
                 ],
               ),
               tablet: Row(
@@ -605,17 +633,21 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                         labelText: 'Secondary Branch',
                         border: OutlineInputBorder(),
                       ),
-                      items: _availableBranches.where((branch) {
-                        return branch != _selectedPrimaryBranch;
-                      }).map((branch) {
-                        return DropdownMenuItem<BranchInfo>(
-                          value: branch,
-                          child: Text(
-                            branch.name,
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                        );
-                      }).toList(),
+                      items:
+                          _availableBranches
+                              .where((branch) {
+                                return branch != _selectedPrimaryBranch;
+                              })
+                              .map((branch) {
+                                return DropdownMenuItem<BranchInfo>(
+                                  value: branch,
+                                  child: Text(
+                                    branch.name,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                );
+                              })
+                              .toList(),
                       onChanged: (BranchInfo? newValue) {
                         ResponsiveService.triggerSelectionFeedback(context);
                         setState(() {
@@ -624,31 +656,6 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                       },
                       isExpanded: true,
                       hint: const Text('Select secondary branch'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedSecondarySemester,
-                      decoration: const InputDecoration(
-                        labelText: 'Semester',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: _semesterOptions.where((semester) {
-                        return semester != _selectedPrimarySemester;
-                      }).map((semester) {
-                        return DropdownMenuItem<String>(
-                          value: semester,
-                          child: Text(semester),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        ResponsiveService.triggerSelectionFeedback(context);
-                        setState(() {
-                          _selectedSecondarySemester = newValue;
-                        });
-                      },
-                      isExpanded: true,
                     ),
                   ),
                 ],
@@ -662,17 +669,21 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                         labelText: 'Secondary Branch',
                         border: OutlineInputBorder(),
                       ),
-                      items: _availableBranches.where((branch) {
-                        return branch != _selectedPrimaryBranch;
-                      }).map((branch) {
-                        return DropdownMenuItem<BranchInfo>(
-                          value: branch,
-                          child: Text(
-                            branch.name,
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                        );
-                      }).toList(),
+                      items:
+                          _availableBranches
+                              .where((branch) {
+                                return branch != _selectedPrimaryBranch;
+                              })
+                              .map((branch) {
+                                return DropdownMenuItem<BranchInfo>(
+                                  value: branch,
+                                  child: Text(
+                                    branch.name,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                );
+                              })
+                              .toList(),
                       onChanged: (BranchInfo? newValue) {
                         setState(() {
                           _selectedSecondaryBranch = newValue;
@@ -682,36 +693,12 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                       hint: const Text('Select secondary branch'),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedSecondarySemester,
-                      decoration: const InputDecoration(
-                        labelText: 'Semester',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: _semesterOptions.where((semester) {
-                        return semester != _selectedPrimarySemester;
-                      }).map((semester) {
-                        return DropdownMenuItem<String>(
-                          value: semester,
-                          child: Text(semester),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedSecondarySemester = newValue;
-                        });
-                      },
-                      isExpanded: true,
-                    ),
-                  ),
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Search Buttons
             ResponsiveService.buildResponsive(
               context,
@@ -720,37 +707,54 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: (_selectedPrimaryBranch == null || _selectedPrimarySemester == null || _isSearching)
-                          ? null
-                          : () {
-                              ResponsiveService.triggerMediumFeedback(context);
-                              _searchDisciplineElectives();
-                            },
+                      onPressed:
+                          (_selectedPrimaryBranch == null ||
+                                  _selectedSemester == null ||
+                                  _isSearching)
+                              ? null
+                              : () {
+                                ResponsiveService.triggerMediumFeedback(
+                                  context,
+                                );
+                                _searchDisciplineElectives();
+                              },
                       style: ElevatedButton.styleFrom(
                         minimumSize: Size(
                           double.infinity,
                           ResponsiveService.getTouchTargetSize(context),
                         ),
                       ),
-                      child: _isSearching
-                          ? SizedBox(
-                              height: ResponsiveService.getAdaptiveIconSize(context, 20),
-                              width: ResponsiveService.getAdaptiveIconSize(context, 20),
-                              child: const CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Search (No Clashes)'),
+                      child:
+                          _isSearching
+                              ? SizedBox(
+                                height: ResponsiveService.getAdaptiveIconSize(
+                                  context,
+                                  20,
+                                ),
+                                width: ResponsiveService.getAdaptiveIconSize(
+                                  context,
+                                  20,
+                                ),
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : const Text('Search (No Clashes)'),
                     ),
                   ),
-                  SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
+                  SizedBox(
+                    height: ResponsiveService.getAdaptiveSpacing(context, 12),
+                  ),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
-                      onPressed: (_selectedPrimaryBranch == null || _isSearching) 
-                        ? null 
-                        : () {
-                            ResponsiveService.triggerLightFeedback(context);
-                            _viewAllDisciplineElectives();
-                          },
+                      onPressed:
+                          (_selectedPrimaryBranch == null || _isSearching)
+                              ? null
+                              : () {
+                                ResponsiveService.triggerLightFeedback(context);
+                                _viewAllDisciplineElectives();
+                              },
                       style: OutlinedButton.styleFrom(
                         minimumSize: Size(
                           double.infinity,
@@ -767,36 +771,59 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                   Expanded(
                     flex: 3,
                     child: ElevatedButton(
-                      onPressed: (_selectedPrimaryBranch == null || _selectedPrimarySemester == null || _isSearching)
-                          ? null
-                          : () {
-                              ResponsiveService.triggerMediumFeedback(context);
-                              _searchDisciplineElectives();
-                            },
+                      onPressed:
+                          (_selectedPrimaryBranch == null ||
+                                  _selectedSemester == null ||
+                                  _isSearching)
+                              ? null
+                              : () {
+                                ResponsiveService.triggerMediumFeedback(
+                                  context,
+                                );
+                                _searchDisciplineElectives();
+                              },
                       style: ElevatedButton.styleFrom(
-                        minimumSize: Size(0, ResponsiveService.getTouchTargetSize(context)),
+                        minimumSize: Size(
+                          0,
+                          ResponsiveService.getTouchTargetSize(context),
+                        ),
                       ),
-                      child: _isSearching
-                          ? SizedBox(
-                              height: ResponsiveService.getAdaptiveIconSize(context, 20),
-                              width: ResponsiveService.getAdaptiveIconSize(context, 20),
-                              child: const CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Search (No Clashes)'),
+                      child:
+                          _isSearching
+                              ? SizedBox(
+                                height: ResponsiveService.getAdaptiveIconSize(
+                                  context,
+                                  20,
+                                ),
+                                width: ResponsiveService.getAdaptiveIconSize(
+                                  context,
+                                  20,
+                                ),
+                                child: const CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : const Text('Search (No Clashes)'),
                     ),
                   ),
-                  SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
+                  SizedBox(
+                    width: ResponsiveService.getAdaptiveSpacing(context, 8),
+                  ),
                   Expanded(
                     flex: 2,
                     child: OutlinedButton(
-                      onPressed: (_selectedPrimaryBranch == null || _isSearching) 
-                        ? null 
-                        : () {
-                            ResponsiveService.triggerLightFeedback(context);
-                            _viewAllDisciplineElectives();
-                          },
+                      onPressed:
+                          (_selectedPrimaryBranch == null || _isSearching)
+                              ? null
+                              : () {
+                                ResponsiveService.triggerLightFeedback(context);
+                                _viewAllDisciplineElectives();
+                              },
                       style: OutlinedButton.styleFrom(
-                        minimumSize: Size(0, ResponsiveService.getTouchTargetSize(context)),
+                        minimumSize: Size(
+                          0,
+                          ResponsiveService.getTouchTargetSize(context),
+                        ),
                       ),
                       child: const Text('View All'),
                     ),
@@ -808,26 +835,35 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                   Expanded(
                     flex: 3,
                     child: ElevatedButton(
-                      onPressed: (_selectedPrimaryBranch == null || _selectedPrimarySemester == null || _isSearching)
-                          ? null
-                          : _searchDisciplineElectives,
+                      onPressed:
+                          (_selectedPrimaryBranch == null ||
+                                  _selectedSemester == null ||
+                                  _isSearching)
+                              ? null
+                              : _searchDisciplineElectives,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                      child: _isSearching
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Search (No Clashes)'),
+                      child:
+                          _isSearching
+                              ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : const Text('Search (No Clashes)'),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     flex: 2,
                     child: OutlinedButton(
-                      onPressed: (_selectedPrimaryBranch == null || _isSearching) ? null : _viewAllDisciplineElectives,
+                      onPressed:
+                          (_selectedPrimaryBranch == null || _isSearching)
+                              ? null
+                              : _viewAllDisciplineElectives,
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
@@ -849,37 +885,58 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
     }
 
     // Convert discipline electives to courses for display
-    final courses = _disciplineElectives.map((elective) {
-      final course = _disciplineElectivesService.getCourseDetails(
-        elective.courseCode,
-        _availableCourses,
-      );
-      return course;
-    }).where((course) => course != null).cast<Course>().toList();
+    final courses =
+        _disciplineElectives
+            .map((elective) {
+              final course = _disciplineElectivesService.getCourseDetails(
+                elective.courseCode,
+                _availableCourses,
+              );
+              return course;
+            })
+            .where((course) => course != null)
+            .cast<Course>()
+            .toList();
 
     return Card(
-      margin: ResponsiveService.getAdaptivePadding(context, const EdgeInsets.all(16)),
+      margin: ResponsiveService.getAdaptivePadding(
+        context,
+        const EdgeInsets.all(16),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: ResponsiveService.getAdaptivePadding(context, const EdgeInsets.all(16)),
+            padding: ResponsiveService.getAdaptivePadding(
+              context,
+              const EdgeInsets.all(16),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Discipline Electives',
                   style: TextStyle(
-                    fontSize: ResponsiveService.getAdaptiveFontSize(context, 18),
+                    fontSize: ResponsiveService.getAdaptiveFontSize(
+                      context,
+                      18,
+                    ),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 8)),
+                SizedBox(
+                  height: ResponsiveService.getAdaptiveSpacing(context, 8),
+                ),
                 Text(
-                  'Found ${_disciplineElectives.length} discipline electives for ${_selectedPrimaryBranch?.name} ${_selectedPrimarySemester ?? ''}${_selectedSecondaryBranch != null && _selectedSecondarySemester != null ? ' and ${_selectedSecondaryBranch?.name} ${_selectedSecondarySemester!}' : ''}',
+                  'Found ${_disciplineElectives.length} discipline electives for ${_selectedPrimaryBranch?.name} ${_selectedSemester ?? ''}${_selectedSecondaryBranch != null ? ' and ${_selectedSecondaryBranch?.name} ${_selectedSemester ?? ''}' : ''}',
                   style: TextStyle(
-                    fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    fontSize: ResponsiveService.getAdaptiveFontSize(
+                      context,
+                      14,
+                    ),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -899,10 +956,11 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
           if (courses.isNotEmpty) ...[
             const Divider(height: 1),
             SizedBox(
-              height: ResponsiveService.getValue(context, 
-                mobile: 300, 
-                tablet: 350, 
-                desktop: 400
+              height: ResponsiveService.getValue(
+                context,
+                mobile: 300,
+                tablet: 350,
+                desktop: 400,
               ),
               child: CourseListWidget(
                 courses: courses,
@@ -917,9 +975,7 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
               padding: EdgeInsets.all(16),
               child: Text(
                 'No discipline electives are available in the current semester.',
-                style: TextStyle(
-                  fontStyle: FontStyle.italic,
-                ),
+                style: TextStyle(fontStyle: FontStyle.italic),
               ),
             ),
           ],
@@ -935,41 +991,42 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
         title: const Text('Discipline Electives'),
         centerTitle: true,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  if (_errorMessage.isNotEmpty)
-                    Card(
-                      margin: const EdgeInsets.all(16),
-                      color: Theme.of(context).colorScheme.errorContainer,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _errorMessage,
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.error,
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : SingleChildScrollView(
+                child: Column(
+                  children: [
+                    if (_errorMessage.isNotEmpty)
+                      Card(
+                        margin: const EdgeInsets.all(16),
+                        color: Theme.of(context).colorScheme.errorContainer,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                color: Theme.of(context).colorScheme.error,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _errorMessage,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  _buildBranchSelector(),
-                  _buildResultsSection(),
-                ],
+                    _buildBranchSelector(),
+                    _buildResultsSection(),
+                  ],
+                ),
               ),
-            ),
     );
   }
 }

@@ -20,9 +20,8 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
   List<Course> _huelCourses = [];
   List<Course> _availableCourses = [];
   
-  String? _selectedPrimarySemester;
+  String? _selectedSemester;
   String? _selectedPrimaryBranch;
-  String? _selectedSecondarySemester;
   String? _selectedSecondaryBranch;
   
   bool _isLoading = true;
@@ -118,9 +117,9 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
   }
 
   Future<void> _searchHumanitiesElectives() async {
-    if (_selectedPrimarySemester == null || _selectedPrimaryBranch == null) {
+    if (_selectedSemester == null || _selectedPrimaryBranch == null) {
       setState(() {
-        _errorMessage = 'Please select primary semester and branch';
+        _errorMessage = 'Please select semester and primary branch';
       });
       return;
     }
@@ -132,12 +131,12 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
         _huelCourses = [];
       });
 
-      print('Searching HUEL courses for: ${_selectedPrimaryBranch!} ${_selectedPrimarySemester!}${_selectedSecondaryBranch != null && _selectedSecondarySemester != null ? ' and ${_selectedSecondaryBranch!} ${_selectedSecondarySemester!}' : ''}');
+      print('Searching HUEL courses for: ${_selectedPrimaryBranch!} ${_selectedSemester!}${_selectedSecondaryBranch != null ? ' and ${_selectedSecondaryBranch!} ${_selectedSemester!}' : ''}');
 
       final huelCourses = await _humanitiesElectivesService.getFilteredHumanitiesElectives(
-        _selectedPrimarySemester!,
+        _selectedSemester!,
         _selectedPrimaryBranch!,
-        _selectedSecondarySemester,
+        _selectedSemester,
         _selectedSecondaryBranch,
         _availableCourses,
       ).timeout(Duration(seconds: 20));
@@ -166,7 +165,6 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
   void _clearSecondarySelections() {
     setState(() {
       _selectedSecondaryBranch = null;
-      _selectedSecondarySemester = null;
     });
   }
 
@@ -187,77 +185,79 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
             ),
             const SizedBox(height: 16),
             
-            // Primary Selection
+            // Semester Selection
             const Text(
-              'Primary Branch and Semester *',
+              'Semester *',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedPrimaryBranch,
-                    decoration: const InputDecoration(
-                      labelText: 'Primary Branch',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: _branchOptions.map((branch) {
-                      return DropdownMenuItem<String>(
-                        value: branch,
-                        child: Text(branch),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        _selectedPrimaryBranch = newValue;
-                      });
-                    },
-                    isExpanded: true,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedPrimarySemester,
-                    decoration: const InputDecoration(
-                      labelText: 'Semester',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: _semesterOptions.map((semester) {
-                      return DropdownMenuItem<String>(
-                        value: semester,
-                        child: Text(semester),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        _selectedPrimarySemester = newValue;
-                      });
-                    },
-                    isExpanded: true,
-                  ),
-                ),
-              ],
+            DropdownButtonFormField<String>(
+              value: _selectedSemester,
+              decoration: const InputDecoration(
+                labelText: 'Semester',
+                border: OutlineInputBorder(),
+              ),
+              items: _semesterOptions.map((semester) {
+                return DropdownMenuItem<String>(
+                  value: semester,
+                  child: Text(semester),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                setState(() {
+                  _selectedSemester = newValue;
+                });
+              },
+              isExpanded: true,
+            ),
+            const SizedBox(height: 16),
+            
+            // Primary Branch Selection
+            const Text(
+              'Primary Branch *',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _selectedPrimaryBranch,
+              decoration: const InputDecoration(
+                labelText: 'Primary Branch',
+                border: OutlineInputBorder(),
+              ),
+              items: _branchOptions.map((branch) {
+                return DropdownMenuItem<String>(
+                  value: branch,
+                  child: Text(branch),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                setState(() {
+                  _selectedPrimaryBranch = newValue;
+                });
+              },
+              isExpanded: true,
             ),
             
             const SizedBox(height: 16),
             
-            // Secondary Selection (Optional)
+            // Secondary Branch Selection (Optional)
             Row(
               children: [
                 const Text(
-                  'Secondary Branch and Semester (Optional)',
+                  'Secondary Branch (Optional)',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 const Spacer(),
-                if (_selectedSecondaryBranch != null || _selectedSecondarySemester != null)
+                if (_selectedSecondaryBranch != null)
                   TextButton.icon(
                     onPressed: _clearSecondarySelections,
                     icon: const Icon(Icons.clear, size: 16),
@@ -269,56 +269,26 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedSecondaryBranch,
-                    decoration: const InputDecoration(
-                      labelText: 'Secondary Branch',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: _branchOptions.where((branch) {
-                      return branch != _selectedPrimaryBranch;
-                    }).map((branch) {
-                      return DropdownMenuItem<String>(
-                        value: branch,
-                        child: Text(branch),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        _selectedSecondaryBranch = newValue;
-                      });
-                    },
-                    isExpanded: true,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: _selectedSecondarySemester,
-                    decoration: const InputDecoration(
-                      labelText: 'Semester',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: _semesterOptions.where((semester) {
-                      return semester != _selectedPrimarySemester;
-                    }).map((semester) {
-                      return DropdownMenuItem<String>(
-                        value: semester,
-                        child: Text(semester),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        _selectedSecondarySemester = newValue;
-                      });
-                    },
-                    isExpanded: true,
-                  ),
-                ),
-              ],
+            DropdownButtonFormField<String>(
+              value: _selectedSecondaryBranch,
+              decoration: const InputDecoration(
+                labelText: 'Secondary Branch',
+                border: OutlineInputBorder(),
+              ),
+              items: _branchOptions.where((branch) {
+                return branch != _selectedPrimaryBranch;
+              }).map((branch) {
+                return DropdownMenuItem<String>(
+                  value: branch,
+                  child: Text(branch),
+                );
+              }).toList(),
+              onChanged: (String? newValue) {
+                setState(() {
+                  _selectedSecondaryBranch = newValue;
+                });
+              },
+              isExpanded: true,
             ),
             
             const SizedBox(height: 16),
@@ -329,7 +299,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
                 Expanded(
                   flex: 3,
                   child: ElevatedButton(
-                    onPressed: (_selectedPrimaryBranch == null || _selectedPrimarySemester == null || _isSearching)
+                    onPressed: (_selectedPrimaryBranch == null || _selectedSemester == null || _isSearching)
                         ? null
                         : _searchHumanitiesElectives,
                     style: ElevatedButton.styleFrom(
@@ -387,7 +357,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Found ${_huelCourses.length} humanities electives for ${_selectedPrimaryBranch!} ${_selectedPrimarySemester!}${_selectedSecondaryBranch != null && _selectedSecondarySemester != null ? ' and ${_selectedSecondaryBranch!} ${_selectedSecondarySemester!}' : ''}',
+                  'Found ${_huelCourses.length} humanities electives for ${_selectedPrimaryBranch!} ${_selectedSemester!}${_selectedSecondaryBranch != null ? ' and ${_selectedSecondaryBranch!} ${_selectedSemester!}' : ''}',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                   ),
