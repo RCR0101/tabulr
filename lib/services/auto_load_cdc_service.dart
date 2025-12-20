@@ -23,11 +23,11 @@ class AutoLoadCDCService {
     'AA': 'Electronics and Communication',
     'AB': 'Manufacturing',
     'AJ': 'Biotechnology',
-    'B1': 'Economics',
-    'B2': 'Mathematics',
-    'B3': 'Physics',
-    'B4': 'Chemistry',
-    'B5': 'Biology',
+    'B1': 'MSc Economics',
+    'B2': 'MSc Mathematics',
+    'B3': 'MSc Physics',
+    'B4': 'MSc Chemistry',
+    'B5': 'MSc Biology',
   };
 
   Future<AutoLoadCDCResult?> showBranchYearDialog(BuildContext context) async {
