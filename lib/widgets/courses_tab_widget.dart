@@ -127,68 +127,136 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                     height: 1,
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.assignment,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Projects:',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                      const Spacer(),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            onPressed: _projectCount > 0 ? () {
-                              setState(() {
-                                _projectCount--;
-                              });
-                            } : null,
-                            icon: const Icon(Icons.remove_circle_outline),
-                            iconSize: 20,
-                            constraints: const BoxConstraints(
-                              minWidth: 32,
-                              minHeight: 32,
+                  ResponsiveService.isMobile(context)
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.assignment,
+                                  color: Theme.of(context).colorScheme.primary,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Projects:',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: Theme.of(context).colorScheme.primary,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          Container(
-                            constraints: const BoxConstraints(minWidth: 40),
-                            child: Text(
-                              '$_projectCount',
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  onPressed: _projectCount > 0 ? () {
+                                    setState(() {
+                                      _projectCount--;
+                                    });
+                                  } : null,
+                                  icon: const Icon(Icons.remove_circle_outline),
+                                  iconSize: 20,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 32,
+                                    minHeight: 32,
+                                  ),
+                                ),
+                                Container(
+                                  constraints: const BoxConstraints(minWidth: 40),
+                                  child: Text(
+                                    '$_projectCount',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: _projectCount < 8 ? () { // Max 8 projects (24 credits)
+                                    setState(() {
+                                      _projectCount++;
+                                    });
+                                  } : null,
+                                  icon: const Icon(Icons.add_circle_outline),
+                                  iconSize: 20,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 32,
+                                    minHeight: 32,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            Icon(
+                              Icons.assignment,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Projects:',
                               style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
                                 color: Theme.of(context).colorScheme.primary,
                               ),
-                              textAlign: TextAlign.center,
                             ),
-                          ),
-                          IconButton(
-                            onPressed: _projectCount < 8 ? () { // Max 8 projects (24 credits)
-                              setState(() {
-                                _projectCount++;
-                              });
-                            } : null,
-                            icon: const Icon(Icons.add_circle_outline),
-                            iconSize: 20,
-                            constraints: const BoxConstraints(
-                              minWidth: 32,
-                              minHeight: 32,
+                            const Spacer(),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  onPressed: _projectCount > 0 ? () {
+                                    setState(() {
+                                      _projectCount--;
+                                    });
+                                  } : null,
+                                  icon: const Icon(Icons.remove_circle_outline),
+                                  iconSize: 20,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 32,
+                                    minHeight: 32,
+                                  ),
+                                ),
+                                Container(
+                                  constraints: const BoxConstraints(minWidth: 40),
+                                  child: Text(
+                                    '$_projectCount',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: _projectCount < 8 ? () { // Max 8 projects (24 credits)
+                                    setState(() {
+                                      _projectCount++;
+                                    });
+                                  } : null,
+                                  icon: const Icon(Icons.add_circle_outline),
+                                  iconSize: 20,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 32,
+                                    minHeight: 32,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                          ],
+                        ),
                   if (_projectCount > 0) ...[
                     const SizedBox(height: 8),
                     Text(

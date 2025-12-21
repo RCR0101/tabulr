@@ -2426,7 +2426,7 @@ class ThemeService extends ChangeNotifier {
       cardColor: const Color(0xFFFFFAF0),
       colorScheme: const ColorScheme.light(
         primary: Color(0xFFD4A574),
-        secondary: Color(0xFFFFD700),
+        secondary: Color(0xFFD4AF37),
         surface: Color(0xFFFFFAF0),
         onPrimary: Color(0xFF1A1A1A),
         onSecondary: Color(0xFF1A1A1A),
@@ -2500,7 +2500,7 @@ class ThemeService extends ChangeNotifier {
       scaffoldBackgroundColor: const Color(0xFF000000),
       cardColor: const Color(0xFF1A1A1A),
       colorScheme: const ColorScheme.dark(
-        primary: Color(0xFFFFD700),
+        primary: Color(0xFFD4AF37),
         secondary: Color(0xFFD4A574),
         surface: Color(0xFF1A1A1A),
         onPrimary: Color(0xFF000000),
@@ -2515,7 +2515,7 @@ class ThemeService extends ChangeNotifier {
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Color(0xFF000000),
-        foregroundColor: Color(0xFFFFD700),
+        foregroundColor: Color(0xFFD4AF37),
         elevation: 0,
       ),
       cardTheme: CardThemeData(
@@ -2524,14 +2524,14 @@ class ThemeService extends ChangeNotifier {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        shadowColor: const Color(0xFFFFD700).withValues(alpha: 0.2),
+        shadowColor: const Color(0xFFD4AF37).withValues(alpha: 0.2),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFFFD700),
+          backgroundColor: const Color(0xFFD4AF37),
           foregroundColor: const Color(0xFF000000),
           elevation: 4,
-          shadowColor: const Color(0xFFFFD700).withValues(alpha: 0.4),
+          shadowColor: const Color(0xFFD4AF37).withValues(alpha: 0.4),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
@@ -2539,7 +2539,7 @@ class ThemeService extends ChangeNotifier {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: const Color(0xFFFFD700),
+          foregroundColor: const Color(0xFFD4AF37),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -2555,14 +2555,14 @@ class ThemeService extends ChangeNotifier {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFFFFD700), width: 2),
+          borderSide: const BorderSide(color: Color(0xFFD4AF37), width: 2),
         ),
         labelStyle: const TextStyle(color: Color(0xFFD4A574)),
         hintStyle: const TextStyle(color: Color(0xFF666666)),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: const Color(0xFF1A1A1A),
-        selectedColor: const Color(0xFFFFD700),
+        selectedColor: const Color(0xFFD4AF37),
         labelStyle: const TextStyle(color: Color(0xFFFFFFFF)),
         secondaryLabelStyle: const TextStyle(color: Color(0xFF000000)),
         shape: RoundedRectangleBorder(
@@ -2577,7 +2577,7 @@ class ThemeService extends ChangeNotifier {
       expansionTileTheme: const ExpansionTileThemeData(
         backgroundColor: Color(0xFF2C2C2C),
         collapsedBackgroundColor: Color(0xFF1A1A1A),
-        iconColor: Color(0xFFFFD700),
+        iconColor: Color(0xFFD4AF37),
         collapsedIconColor: Color(0xFFD4A574),
       ),
       visualDensity: VisualDensity.adaptivePlatformDensity,
