@@ -3,8 +3,12 @@ import 'package:flutter_typeahead/flutter_typeahead.dart';
 import '../services/cgpa_service.dart';
 import '../services/all_courses_service.dart';
 import '../services/auth_service.dart';
+import '../services/responsive_service.dart';
+import '../services/timetable_service.dart';
 import '../models/cgpa_data.dart';
 import '../models/all_course.dart';
+import '../models/course.dart';
+import '../models/timetable.dart';
 
 class CGPACalculatorScreen extends StatefulWidget {
   const CGPACalculatorScreen({super.key});
@@ -18,6 +22,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
   final CGPAService _cgpaService = CGPAService();
   final AllCoursesService _coursesService = AllCoursesService();
   final AuthService _authService = AuthService();
+  final TimetableService _timetableService = TimetableService();
 
   late TabController _tabController;
   List<String> _semesters = [];
@@ -124,64 +129,168 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     });
   }
 
+  Future<void> _importCoursesFromTimetable() async {
+    try {
+      // Load all user's timetables
+      final allTimetables = await _timetableService.getAllTimetables();
+
+      if (allTimetables.isEmpty) {
+        _showErrorDialog(
+          'No timetables found. Please create a timetable first.',
+        );
+        return;
+      }
+
+      if (!mounted) return;
+
+      // Show course selection dialog
+      final selectedCourses = await showDialog<Map<String, List<AllCourse>>>(
+        context: context,
+        builder:
+            (context) => _CourseSelectionDialog(
+              timetables: allTimetables,
+              semesters: _semesters,
+            ),
+      );
+
+      if (selectedCourses == null || selectedCourses.isEmpty) {
+        return; // User cancelled or selected nothing
+      }
+
+      // Import the selected courses
+      int importedCount = 0;
+
+      for (final entry in selectedCourses.entries) {
+        final semesterName = entry.key;
+        final courses = entry.value;
+
+        // Ensure semester exists
+        if (!_semesters.contains(semesterName)) {
+          setState(() {
+            _semesters.add(semesterName);
+            _tabController.dispose();
+            _tabController = TabController(
+              length: _semesters.length,
+              vsync: this,
+            );
+          });
+        }
+
+        // Add courses to semester
+        for (final course in courses) {
+          // Check if course already exists in this semester
+          final existingSemester = _cgpaData.semesters[semesterName];
+          final courseExists =
+              existingSemester?.courses.any(
+                (c) => c.courseCode == course.courseCode,
+              ) ??
+              false;
+
+          if (!courseExists) {
+            _addCourseToSemester(semesterName, course);
+            importedCount++;
+          }
+        }
+      }
+
+      if (mounted && importedCount > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Successfully imported $importedCount course${importedCount != 1 ? 's' : ''}!',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorDialog('Error importing courses: $e');
+      }
+    }
+  }
+
   void _addCustomSemester() {
     final controller = TextEditingController();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        title: Row(
-          children: [
-            Icon(
-              Icons.add_outlined,
-              color: Theme.of(context).colorScheme.primary,
-              size: 24,
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(
+                ResponsiveService.getAdaptiveBorderRadius(context, 12),
+              ),
             ),
-            const SizedBox(width: 12),
-            const Text('Add Custom Semester'),
-          ],
-        ),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            labelText: 'Semester Name',
-            hintText: 'e.g., 5-2, ST 4',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+            contentPadding: ResponsiveService.getAdaptivePadding(
+              context,
+              const EdgeInsets.fromLTRB(24, 20, 24, 24),
             ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 12,
+            titlePadding: ResponsiveService.getAdaptivePadding(
+              context,
+              const EdgeInsets.fromLTRB(24, 24, 24, 0),
             ),
+            actionsPadding: ResponsiveService.getAdaptivePadding(
+              context,
+              const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            ),
+            title: Row(
+              children: [
+                Icon(
+                  Icons.add_outlined,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                const Text('Add Custom Semester'),
+              ],
+            ),
+            content: TextField(
+              controller: controller,
+              decoration: InputDecoration(
+                labelText: 'Semester Name',
+                labelStyle: TextStyle(
+                  fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
+                ),
+                hintText: 'e.g., 5-2, ST 4',
+                hintStyle: TextStyle(
+                  fontSize: ResponsiveService.getAdaptiveFontSize(context, 13),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(
+                    ResponsiveService.getAdaptiveBorderRadius(context, 8),
+                  ),
+                ),
+                contentPadding: ResponsiveService.getAdaptivePadding(
+                  context,
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+              ),
+              autofocus: true,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (controller.text.isNotEmpty &&
+                      !_semesters.contains(controller.text)) {
+                    setState(() {
+                      _semesters.add(controller.text);
+                      _tabController.dispose();
+                      _tabController = TabController(
+                        length: _semesters.length,
+                        vsync: this,
+                      );
+                    });
+                  }
+                  Navigator.pop(context);
+                },
+                child: const Text('Add'),
+              ),
+            ],
           ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (controller.text.isNotEmpty &&
-                  !_semesters.contains(controller.text)) {
-                setState(() {
-                  _semesters.add(controller.text);
-                  _tabController.dispose();
-                  _tabController = TabController(
-                    length: _semesters.length,
-                    vsync: this,
-                  );
-                });
-              }
-              Navigator.pop(context);
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -226,12 +335,55 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       appBar: AppBar(
         title: const Text('CGPA Calculator'),
         centerTitle: true,
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabs: _semesters.map((sem) => Tab(text: sem)).toList(),
-        ),
+        bottom:
+            ResponsiveService.isMobile(context)
+                ? TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  labelStyle: TextStyle(
+                    fontSize: ResponsiveService.getAdaptiveFontSize(
+                      context,
+                      12,
+                    ),
+                    fontWeight: FontWeight.w600,
+                  ),
+                  unselectedLabelStyle: TextStyle(
+                    fontSize: ResponsiveService.getAdaptiveFontSize(
+                      context,
+                      12,
+                    ),
+                  ),
+                  tabAlignment: TabAlignment.center,
+                  tabs:
+                      _semesters
+                          .map(
+                            (sem) => Tab(
+                              child: Padding(
+                                padding: ResponsiveService.getAdaptivePadding(
+                                  context,
+                                  const EdgeInsets.symmetric(horizontal: 4),
+                                ),
+                                child: Text(sem),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                )
+                : TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+                  tabs: _semesters.map((sem) => Tab(text: sem)).toList(),
+                ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.file_download_outlined),
+            tooltip: 'Import Courses from Timetable',
+            onPressed:
+                _authService.isAuthenticated
+                    ? _importCoursesFromTimetable
+                    : null,
+          ),
           IconButton(
             icon: const Icon(Icons.add),
             tooltip: 'Add Custom Semester',
@@ -260,50 +412,182 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
   }
 
   Widget _buildCGPASummary() {
+    final isMobile = ResponsiveService.isMobile(context);
+
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildSummaryCard('Overall CGPA', _cgpaData.cgpa.toStringAsFixed(2)),
-          _buildSummaryCard(
-            'Total Credits',
-            _cgpaData.semesters.values
-                .fold<double>(0.0, (sum, sem) => sum + sem.totalCredits)
-                .toStringAsFixed(1),
-          ),
-          _buildSummaryCard('Semesters', _cgpaData.semesters.length.toString()),
-        ],
-      ),
+      margin: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 20, vertical: 6),
+      child:
+          isMobile
+              ? Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: _buildSummaryCard(
+                      'CGPA',
+                      _cgpaData.cgpa.toStringAsFixed(2),
+                      Icons.grade_rounded,
+                      isPrimary: true,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildSummaryCard(
+                      'Credits',
+                      _cgpaData.semesters.values
+                          .fold<double>(
+                            0.0,
+                            (sum, sem) => sum + sem.totalCredits,
+                          )
+                          .toStringAsFixed(0),
+                      Icons.school_rounded,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildSummaryCard(
+                      'Semesters',
+                      _cgpaData.semesters.length.toString(),
+                      Icons.calendar_view_month_rounded,
+                    ),
+                  ),
+                ],
+              )
+              : Row(
+                children: [
+                  Expanded(
+                    child: _buildSummaryCard(
+                      'Overall CGPA',
+                      _cgpaData.cgpa.toStringAsFixed(2),
+                      Icons.grade_rounded,
+                      isPrimary: true,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildSummaryCard(
+                      'Total Credits',
+                      _cgpaData.semesters.values
+                          .fold<double>(
+                            0.0,
+                            (sum, sem) => sum + sem.totalCredits,
+                          )
+                          .toStringAsFixed(0),
+                      Icons.school_rounded,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildSummaryCard(
+                      'Semesters',
+                      _cgpaData.semesters.length.toString(),
+                      Icons.calendar_view_month_rounded,
+                    ),
+                  ),
+                ],
+              ),
     );
   }
 
-  Widget _buildSummaryCard(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.onPrimaryContainer,
-          ),
+  Widget _buildSummaryCard(
+    String label,
+    String value,
+    IconData icon, {
+    bool isPrimary = false,
+  }) {
+    final isMobile = ResponsiveService.isMobile(context);
+
+    return Container(
+      padding: EdgeInsets.all(isMobile ? 8 : 12),
+      decoration: BoxDecoration(
+        gradient:
+            isPrimary
+                ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                  ],
+                )
+                : LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHigh.withOpacity(0.7),
+                    Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainer.withOpacity(0.4),
+                  ],
+                ),
+        borderRadius: BorderRadius.circular(isMobile ? 10 : 12),
+        border: Border.all(
+          color:
+              isPrimary
+                  ? Theme.of(context).colorScheme.primary.withOpacity(0.4)
+                  : Theme.of(context).colorScheme.outline.withOpacity(0.2),
+          width: 1,
         ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
+        boxShadow: [
+          BoxShadow(
+            color:
+                isPrimary
+                    ? Theme.of(context).colorScheme.primary.withOpacity(0.25)
+                    : Theme.of(context).colorScheme.shadow.withOpacity(0.08),
+            blurRadius: isPrimary ? 8 : 6,
+            offset: Offset(0, isPrimary ? 2 : 1),
           ),
-        ),
-      ],
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: isMobile ? 16 : 18,
+            color:
+                isPrimary
+                    ? Colors.white.withOpacity(0.9)
+                    : Theme.of(context).colorScheme.primary.withOpacity(0.8),
+          ),
+          SizedBox(height: isMobile ? 4 : 6),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontSize: isMobile ? 18 : 22,
+              fontWeight: FontWeight.bold,
+              color:
+                  isPrimary
+                      ? Colors.white
+                      : Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withOpacity(0.85),
+              letterSpacing: -0.3,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontSize: isMobile ? 10 : 11,
+              color:
+                  isPrimary
+                      ? Colors.white.withOpacity(0.85)
+                      : Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withOpacity(0.6),
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.2,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 
@@ -315,29 +599,35 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       children: [
         // Semester stats
         Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
-            ),
+          margin: EdgeInsets.symmetric(
+            horizontal: ResponsiveService.isMobile(context) ? 12 : 20,
+            vertical: 6,
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildStatItem(
-                'SGPA',
-                semester?.sgpa.toStringAsFixed(2) ?? '0.00',
-                Icons.trending_up_outlined,
+              Expanded(
+                child: _buildStatItem(
+                  'SGPA',
+                  semester?.sgpa.toStringAsFixed(2) ?? '0.00',
+                  Icons.trending_up_rounded,
+                ),
               ),
-              _buildStatItem(
-                'Credits',
-                semester?.totalCredits.toStringAsFixed(1) ?? '0.0',
-                Icons.school_outlined,
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildStatItem(
+                  'Credits',
+                  semester?.totalCredits.toStringAsFixed(0) ?? '0',
+                  Icons.school_rounded,
+                ),
               ),
-              _buildStatItem('Courses', courses.length.toString(), Icons.book_outlined),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildStatItem(
+                  'Courses',
+                  courses.length.toString(),
+                  Icons.book_rounded,
+                ),
+              ),
             ],
           ),
         ),
@@ -347,38 +637,84 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
           child:
               courses.isEmpty
                   ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.book_outlined,
-                          size: 48,
-                          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No courses added yet',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.outline,
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primary.withOpacity(0.08),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.book_rounded,
+                              size:
+                                  ResponsiveService.isMobile(context) ? 48 : 56,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primary.withOpacity(0.7),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Tap "Add Course" to get started',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.7),
+                          const SizedBox(height: 20),
+                          Text(
+                            'No courses added yet',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.headlineSmall?.copyWith(
+                              fontSize:
+                                  ResponsiveService.isMobile(context) ? 18 : 20,
+                              color: Theme.of(context).colorScheme.onSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 8),
+                          Text(
+                            'Add courses to start calculating your SGPA',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyLarge?.copyWith(
+                              fontSize:
+                                  ResponsiveService.isMobile(context) ? 14 : 15,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withOpacity(0.7),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
                   )
-                  : ListView.builder(
-                    itemCount: courses.length,
-                    itemBuilder: (context, index) {
-                      return _buildCourseCard(
-                        semesterName,
-                        index,
-                        courses[index],
+                  : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isMobile = ResponsiveService.isMobile(context);
+                      final crossAxisCount =
+                          isMobile ? 1 : (constraints.maxWidth > 1200 ? 3 : 2);
+
+                      return GridView.builder(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isMobile ? 12 : 16,
+                          vertical: 8,
+                        ),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          childAspectRatio: isMobile ? 3.0 : 3.4,
+                          crossAxisSpacing: isMobile ? 8 : 12,
+                          mainAxisSpacing: isMobile ? 8 : 12,
+                        ),
+                        itemCount: courses.length,
+                        itemBuilder: (context, index) {
+                          return _buildCourseCard(
+                            semesterName,
+                            index,
+                            courses[index],
+                          );
+                        },
                       );
                     },
                   ),
@@ -386,102 +722,235 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
 
         // Action buttons
         Container(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: () => _showAddCourseDialog(semesterName),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Add Course'),
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              FilledButton.icon(
-                onPressed: _isSaving ? null : () => _saveSemester(semesterName),
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Icon(Icons.save_outlined, size: 18),
-                label: const Text('Save'),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
-                  backgroundColor: Theme.of(context).colorScheme.secondary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ],
+          padding: EdgeInsets.fromLTRB(
+            ResponsiveService.isMobile(context) ? 12 : 20,
+            12,
+            ResponsiveService.isMobile(context) ? 12 : 20,
+            ResponsiveService.isMobile(context) ? 16 : 20,
           ),
+          child:
+              ResponsiveService.isMobile(context)
+                  ? Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: SizedBox(
+                          height: 44,
+                          child: FilledButton.icon(
+                            onPressed: () => _showAddCourseDialog(semesterName),
+                            icon: const Icon(Icons.add_rounded, size: 18),
+                            label: const Text(
+                              'Add Course',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: FilledButton.styleFrom(
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.primary,
+                              foregroundColor:
+                                  Theme.of(context).colorScheme.onPrimary,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 2,
+                        child: SizedBox(
+                          height: 44,
+                          child: FilledButton.icon(
+                            onPressed:
+                                _isSaving
+                                    ? null
+                                    : () => _saveSemester(semesterName),
+                            icon:
+                                _isSaving
+                                    ? SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Theme.of(
+                                                context,
+                                              ).colorScheme.onSecondary,
+                                            ),
+                                      ),
+                                    )
+                                    : const Icon(Icons.save_rounded, size: 16),
+                            label: const Text(
+                              'Save',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: FilledButton.styleFrom(
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.secondary,
+                              foregroundColor:
+                                  Theme.of(context).colorScheme.onSecondary,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                  : Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: FilledButton.icon(
+                            onPressed: () => _showAddCourseDialog(semesterName),
+                            icon: const Icon(Icons.add_rounded, size: 20),
+                            label: const Text(
+                              'Add Course',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: FilledButton.styleFrom(
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.primary,
+                              foregroundColor:
+                                  Theme.of(context).colorScheme.onPrimary,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      SizedBox(
+                        width: 140,
+                        height: 48,
+                        child: FilledButton.icon(
+                          onPressed:
+                              _isSaving
+                                  ? null
+                                  : () => _saveSemester(semesterName),
+                          icon:
+                              _isSaving
+                                  ? SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Theme.of(
+                                          context,
+                                        ).colorScheme.onSecondary,
+                                      ),
+                                    ),
+                                  )
+                                  : const Icon(Icons.save_rounded, size: 18),
+                          label: const Text(
+                            'Save',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: FilledButton.styleFrom(
+                            backgroundColor:
+                                Theme.of(context).colorScheme.secondary,
+                            foregroundColor:
+                                Theme.of(context).colorScheme.onSecondary,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
         ),
       ],
     );
   }
 
   Widget _buildStatItem(String label, String value, IconData icon) {
-    return Column(
-      children: [
-        Icon(
-          icon,
-          size: 18,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-        const SizedBox(height: 6),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-          ),
-        ),
-      ],
-    );
-  }
+    final isMobile = ResponsiveService.isMobile(context);
 
-  Widget _buildInfoChip(String label, IconData icon) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.all(isMobile ? 8 : 10),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Theme.of(
+              context,
+            ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+            Theme.of(
+              context,
+            ).colorScheme.surfaceContainer.withValues(alpha: 0.2),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(isMobile ? 8 : 10),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             icon,
-            size: 14,
-            color: Theme.of(context).colorScheme.onSecondaryContainer,
+            size: isMobile ? 14 : 16,
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
           ),
-          const SizedBox(width: 4),
+          SizedBox(height: isMobile ? 3 : 4),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontSize: isMobile ? 14 : 16,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.8),
+              letterSpacing: -0.2,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 1),
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSecondaryContainer,
+              fontSize: isMobile ? 9 : 10,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
               fontWeight: FontWeight.w500,
             ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -493,284 +962,1143 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
         course.courseType == 'ATC'
             ? CGPAService.atcGrades
             : CGPAService.normalGrades;
+    final isMobile = ResponsiveService.isMobile(context);
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
+          color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.3),
+          width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: EdgeInsets.zero,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.book_outlined,
-                  size: 20,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        course.courseCode,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        course.courseTitle,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: EdgeInsets.all(isMobile ? 10 : 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.book_rounded,
+                      size: isMobile ? 20 : 22,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          course.courseCode,
+                          style: Theme.of(
                             context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.7),
+                          ).textTheme.titleMedium?.copyWith(
+                            fontSize: isMobile ? 14 : 15,
+                            fontWeight: FontWeight.w700,
+                            color: Theme.of(context).colorScheme.onSurface,
+                            letterSpacing: 0.2,
+                          ),
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                        const SizedBox(height: 2),
+                        Text(
+                          course.courseTitle,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.copyWith(
+                            fontSize: isMobile ? 11 : 12,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withOpacity(0.7),
+                            height: 1.2,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    icon: Icon(Icons.close_rounded, size: 18),
+                    color: Theme.of(context).colorScheme.error.withOpacity(0.7),
+                    onPressed:
+                        () => _removeCourseFromSemester(semesterName, index),
+                    tooltip: 'Remove course',
+                    style: IconButton.styleFrom(
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.errorContainer.withOpacity(0.1),
+                      foregroundColor: Theme.of(
+                        context,
+                      ).colorScheme.error.withOpacity(0.8),
+                      padding: const EdgeInsets.all(6),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.secondaryContainer.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.stars_rounded,
+                          size: 14,
+                          color:
+                              Theme.of(
+                                context,
+                              ).colorScheme.onSecondaryContainer,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${course.credits}',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.labelMedium?.copyWith(
+                            fontSize: 12,
+                            color:
+                                Theme.of(
+                                  context,
+                                ).colorScheme.onSecondaryContainer,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildGradeSelector(
+                      course.grade,
+                      gradeOptions,
+                      (value) => _updateGrade(semesterName, index, value),
+                    ),
+                  ),
+                ],
+              ),
+              if (course.grade != null && course.courseType == 'Normal')
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.outline.withOpacity(0.15),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.calculate_outlined,
+                        size: 13,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.4),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '${course.gradePoints.toStringAsFixed(1)} × ${course.credits} = ${course.totalGradePoints.toStringAsFixed(2)} pts',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(
+                            fontSize: 10,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withOpacity(0.45),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  iconSize: 18,
-                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.6),
-                  onPressed:
-                      () => _removeCourseFromSemester(semesterName, index),
-                  tooltip: 'Remove course',
-                ),
-              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGradeSelector(
+    String? selectedGrade,
+    List<String> gradeOptions,
+    Function(String?) onChanged,
+  ) {
+    final isMobile = ResponsiveService.isMobile(context);
+    final gradeColor =
+        selectedGrade != null ? _getGradeColor(selectedGrade) : null;
+
+    return Container(
+      height: 38,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color:
+            selectedGrade != null
+                ? gradeColor!.withValues(alpha: 0.12)
+                : Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color:
+              selectedGrade != null
+                  ? gradeColor!.withValues(alpha: 0.5)
+                  : Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.3),
+          width: selectedGrade != null ? 1.5 : 1,
+        ),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: ButtonTheme(
+          alignedDropdown: true,
+          child: DropdownButton<String>(
+            value: selectedGrade,
+            isExpanded: true,
+            isDense: true,
+            focusColor: Colors.transparent,
+            hint: Text(
+              'Select Grade',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontSize: isMobile ? 13 : 14,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                fontWeight: FontWeight.w500,
+              ),
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Row(
-                  children: [
-                    _buildInfoChip('${course.credits} Credits', Icons.star_outline),
-                    const SizedBox(width: 8),
-                    _buildInfoChip(
-                      course.courseType,
-                      course.courseType == 'ATC' ? Icons.auto_awesome_outlined : Icons.grade_outlined,
+            selectedItemBuilder: (context) {
+              return gradeOptions.map((grade) {
+                return Container(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 3,
                     ),
-                  ],
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Grade',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                          fontWeight: FontWeight.w500,
+                    decoration: BoxDecoration(
+                      color: _getGradeColor(grade).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: _getGradeColor(grade).withValues(alpha: 0.5),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      grade,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontSize: isMobile ? 13 : 14,
+                        fontWeight: FontWeight.w700,
+                        color: _getGradeColor(grade),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList();
+            },
+            icon: Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 20,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+            borderRadius: BorderRadius.circular(12),
+            elevation: 8,
+            dropdownColor: Theme.of(context).colorScheme.surface,
+            menuMaxHeight: 300,
+            items:
+                gradeOptions.map((grade) {
+                  final gradeColor = _getGradeColor(grade);
+                  return DropdownMenuItem<String>(
+                    value: grade,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 6,
+                        horizontal: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: gradeColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: gradeColor.withValues(alpha: 0.3),
+                          width: 1,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      DropdownButtonFormField<String>(
-                        initialValue: course.grade,
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          isDense: true,
-                        ),
-                        items: gradeOptions.map((grade) {
-                          return DropdownMenuItem(
-                            value: grade,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: gradeColor,
+                              borderRadius: BorderRadius.circular(4),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: gradeColor.withValues(alpha: 0.3),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
+                            ),
                             child: Text(
                               grade,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _getGradeDescription(grade),
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodySmall?.copyWith(
+                                fontSize: isMobile ? 11 : 12,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.8),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                          );
-                        }).toList(),
-                        onChanged: (value) => _updateGrade(semesterName, index, value),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            if (course.grade != null && course.courseType == 'Normal')
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.calculate_outlined,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.secondary,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Grade Points: ${course.gradePoints.toStringAsFixed(1)} × ${course.credits} = ${course.totalGradePoints.toStringAsFixed(2)}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSecondaryContainer,
-                        ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-          ],
+                  );
+                }).toList(),
+            onChanged: onChanged,
+          ),
         ),
       ),
+    );
+  }
+
+  Color _getGradeColor(String grade) {
+    switch (grade) {
+      case 'A':
+        return const Color(0xFF0D9488); // Vibrant teal-green (excellence)
+      case 'A-':
+        return const Color(0xFF14B8A6); // Bright teal (very good)
+      case 'B':
+        return const Color(0xFF3B82F6); // Vivid blue (good)
+      case 'B-':
+        return const Color(0xFF60A5FA); // Sky blue (good)
+      case 'C':
+        return const Color(0xFFF59E0B); // Bright amber (average)
+      case 'C-':
+        return const Color(0xFFFBBF24); // Golden yellow (average)
+      case 'D':
+        return const Color(0xFFEF4444); // Vibrant red (below average)
+      case 'D-':
+        return const Color(0xFFF87171); // Bright red (poor)
+      case 'E':
+        return const Color(0xFFDC2626); // Deep red (fail)
+      case 'GD':
+        return const Color(0xFF06B6D4); // Cyan (deferred)
+      case 'PR':
+        return const Color(0xFFA855F7); // Vivid purple (progress)
+      case 'NC':
+        return const Color(0xFF6B7280); // Neutral grey (no credit)
+      default:
+        return Theme.of(context).colorScheme.onSurface;
+    }
+  }
+
+  String _getGradeDescription(String grade) {
+    switch (grade) {
+      case 'A':
+        return '10 Grade Points';
+      case 'A-':
+        return '9 Grade Points';
+      case 'B':
+        return '8 Grade Points';
+      case 'B-':
+        return '7 Grade Points';
+      case 'C':
+        return '6 Grade Points';
+      case 'C-':
+        return '5 Grade Points';
+      case 'D':
+        return '4 Grade Points';
+      case 'D-':
+        return '3 Grade Points';
+      case 'E':
+        return '2 Grade Points';
+      case 'GD':
+        return 'Good';
+      case 'PR':
+        return 'Poor';
+      case 'NC':
+        return 'Not Cleared';
+      default:
+        return '';
+    }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(
+                ResponsiveService.getAdaptiveBorderRadius(context, 12),
+              ),
+            ),
+            title: Row(
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  color: Theme.of(context).colorScheme.error,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                const Text('Error'),
+              ],
+            ),
+            content: Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
     );
   }
 
   void _showAddCourseDialog(String semesterName) {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 500, maxHeight: 500),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+      builder:
+          (context) => Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: ResponsiveService.isMobile(context) ? 320 : 500,
+                maxHeight: ResponsiveService.isMobile(context) ? 400 : 500,
+              ),
+              child: Padding(
+                padding: ResponsiveService.getAdaptivePadding(
+                  context,
+                  const EdgeInsets.all(20),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.add_outlined,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 24,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Add Course',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.add_outlined,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 24,
                         ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'For $semesterName',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                TypeAheadField<AllCourse>(
-                  builder: (context, controller, focusNode) {
-                    return TextField(
-                      controller: controller,
-                      focusNode: focusNode,
-                      decoration: InputDecoration(
-                        labelText: 'Search Course',
-                        hintText: 'Enter course code or title',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        prefixIcon: const Icon(Icons.search_outlined, size: 20),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                      ),
-                    );
-                  },
-                  suggestionsCallback: (pattern) {
-                    return _coursesService.searchCourses(_allCourses, pattern);
-                  },
-                  itemBuilder: (context, course) {
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      title: Text(
-                        course.courseCode,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      subtitle: Text(
-                        course.courseTitle,
-                        style: Theme.of(context).textTheme.bodySmall,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: course.type == 'ATC'
-                              ? Theme.of(context).colorScheme.tertiaryContainer
-                              : Theme.of(context).colorScheme.secondaryContainer,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          course.type,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w500,
-                            color: course.type == 'ATC'
-                                ? Theme.of(context).colorScheme.onTertiaryContainer
-                                : Theme.of(context).colorScheme.onSecondaryContainer,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Add Course',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w600),
                           ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'For $semesterName',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
-                    );
-                  },
-                  onSelected: (course) {
-                    _addCourseToSemester(semesterName, course);
-                    Navigator.pop(context);
-                  },
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Start typing to search for courses',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(height: 20),
+                    TypeAheadField<AllCourse>(
+                      builder: (context, controller, focusNode) {
+                        return TextField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          decoration: InputDecoration(
+                            labelText: 'Search Course',
+                            hintText: 'Enter course code or title',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search_outlined,
+                              size: 20,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 12,
+                            ),
+                          ),
+                        );
+                      },
+                      suggestionsCallback: (pattern) {
+                        return _coursesService.searchCourses(
+                          _allCourses,
+                          pattern,
+                        );
+                      },
+                      itemBuilder: (context, course) {
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
+                          ),
+                          title: Text(
+                            course.courseCode,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.w500),
+                          ),
+                          subtitle: Text(
+                            course.courseTitle,
+                            style: Theme.of(context).textTheme.bodySmall,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  course.type == 'ATC'
+                                      ? Theme.of(
+                                        context,
+                                      ).colorScheme.tertiaryContainer
+                                      : Theme.of(
+                                        context,
+                                      ).colorScheme.secondaryContainer,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              course.type,
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w500,
+                                color:
+                                    course.type == 'ATC'
+                                        ? Theme.of(
+                                          context,
+                                        ).colorScheme.onTertiaryContainer
+                                        : Theme.of(
+                                          context,
+                                        ).colorScheme.onSecondaryContainer,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      onSelected: (course) {
+                        _addCourseToSemester(semesterName, course);
+                        Navigator.pop(context);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Start typing to search for courses',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
+    );
+  }
+}
+
+// Dialog for selecting courses from timetables
+class _CourseSelectionDialog extends StatefulWidget {
+  final List<Timetable> timetables;
+  final List<String> semesters;
+
+  const _CourseSelectionDialog({
+    required this.timetables,
+    required this.semesters,
+  });
+
+  @override
+  State<_CourseSelectionDialog> createState() => _CourseSelectionDialogState();
+}
+
+class _CourseSelectionDialogState extends State<_CourseSelectionDialog> {
+  Timetable? _selectedTimetable;
+  final Map<String, Set<String>> _selectedCourses =
+      {}; // semester -> course codes
+  final Map<String, String> _courseSemesters = {}; // course code -> semester
+
+  @override
+  Widget build(BuildContext context) {
+    final isMobile = ResponsiveService.isMobile(context);
+
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(
+          ResponsiveService.getAdaptiveBorderRadius(context, 16),
+        ),
+      ),
+      child: Container(
+        width: isMobile ? double.infinity : 600,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Container(
+              padding: ResponsiveService.getAdaptivePadding(
+                context,
+                const EdgeInsets.all(20),
+              ),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(
+                    ResponsiveService.getAdaptiveBorderRadius(context, 16),
+                  ),
+                  topRight: Radius.circular(
+                    ResponsiveService.getAdaptiveBorderRadius(context, 16),
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.file_download_outlined,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Import Courses from Timetable',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Content
+            Expanded(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: ResponsiveService.getAdaptivePadding(
+                    context,
+                    const EdgeInsets.all(20),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Timetable selector
+                      Text(
+                        'Select Timetable',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                          borderRadius: BorderRadius.circular(
+                            ResponsiveService.getAdaptiveBorderRadius(
+                              context,
+                              8,
+                            ),
+                          ),
+                        ),
+                        child: DropdownButton<Timetable>(
+                          value: _selectedTimetable,
+                          isExpanded: true,
+                          underline: Container(),
+                          hint: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text('Choose a timetable'),
+                          ),
+                          onChanged: (timetable) {
+                            setState(() {
+                              _selectedTimetable = timetable;
+                              _selectedCourses.clear();
+                              _courseSemesters.clear();
+                            });
+                          },
+                          items:
+                              widget.timetables.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final timetable = entry.value;
+
+                                String displayName =
+                                    timetable.name.isNotEmpty &&
+                                            timetable.name !=
+                                                'Untitled Timetable'
+                                        ? timetable.name
+                                        : 'Timetable ${index + 1}';
+
+                                final courseCount =
+                                    timetable.selectedSections.length;
+
+                                return DropdownMenuItem<Timetable>(
+                                  value: timetable,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(child: Text(displayName)),
+                                        Text(
+                                          '$courseCount course${courseCount != 1 ? 's' : ''}',
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.bodySmall?.copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface
+                                                .withValues(alpha: 0.6),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                        ),
+                      ),
+
+                      if (_selectedTimetable != null) ...[
+                        const SizedBox(height: 24),
+                        Text(
+                          'Select Courses',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Choose courses and assign them to semesters',
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // List of courses from selected timetable
+                        ..._buildCourseList(),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Footer with action buttons
+            Container(
+              padding: ResponsiveService.getAdaptivePadding(
+                context,
+                const EdgeInsets.all(16),
+              ),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                border: Border(
+                  top: BorderSide(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outline.withValues(alpha: 0.2),
+                  ),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${_selectedCourses.values.fold(0, (sum, set) => sum + set.length)} selected',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed:
+                            _selectedCourses.isEmpty ? null : _importCourses,
+                        child: const Text('Import'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  List<Widget> _buildCourseList() {
+    if (_selectedTimetable == null) return [];
+
+    // Get unique courses from the timetable
+    final uniqueCourses = <String, Course>{};
+    for (final selectedSection in _selectedTimetable!.selectedSections) {
+      if (!uniqueCourses.containsKey(selectedSection.courseCode)) {
+        final course = _selectedTimetable!.availableCourses.firstWhere(
+          (c) => c.courseCode == selectedSection.courseCode,
+          orElse:
+              () => Course(
+                courseCode: selectedSection.courseCode,
+                courseTitle: 'Unknown Course',
+                lectureCredits: 0,
+                practicalCredits: 0,
+                totalCredits: 3,
+                sections: [],
+              ),
+        );
+        uniqueCourses[selectedSection.courseCode] = course;
+      }
+    }
+
+    if (uniqueCourses.isEmpty) {
+      return [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'No courses found in this timetable',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.6),
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
+      ];
+    }
+
+    return uniqueCourses.entries.map((entry) {
+      final courseCode = entry.key;
+      final course = entry.value;
+      final isSelected = _courseSemesters.containsKey(courseCode);
+      final selectedSemester = _courseSemesters[courseCode];
+
+      return Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        elevation: isSelected ? 2 : 0,
+        color:
+            isSelected
+                ? Theme.of(
+                  context,
+                ).colorScheme.primaryContainer.withValues(alpha: 0.3)
+                : Theme.of(context).colorScheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(
+            ResponsiveService.getAdaptiveBorderRadius(context, 8),
+          ),
+          side: BorderSide(
+            color:
+                isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(
+                      context,
+                    ).colorScheme.outline.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              // Checkbox
+              Checkbox(
+                value: isSelected,
+                onChanged: (value) {
+                  setState(() {
+                    if (value == true && !isSelected) {
+                      // Show semester selector
+                      _showSemesterSelector(courseCode, course);
+                    } else {
+                      // Remove from selected courses
+                      if (selectedSemester != null) {
+                        _selectedCourses[selectedSemester]?.remove(courseCode);
+                        if (_selectedCourses[selectedSemester]?.isEmpty ??
+                            false) {
+                          _selectedCourses.remove(selectedSemester);
+                        }
+                      }
+                      _courseSemesters.remove(courseCode);
+                    }
+                  });
+                },
+              ),
+              const SizedBox(width: 12),
+
+              // Course info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      courseCode,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      course.courseTitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (isSelected && selectedSemester != null) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          selectedSemester,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              // Credits badge
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${course.totalCredits}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSecondaryContainer,
+                  ),
+                ),
+              ),
+
+              // Edit semester button
+              if (isSelected)
+                IconButton(
+                  icon: Icon(
+                    Icons.edit_outlined,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  onPressed: () => _showSemesterSelector(courseCode, course),
+                  tooltip: 'Change semester',
+                ),
+            ],
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  Future<void> _showSemesterSelector(String courseCode, Course course) async {
+    final selectedSemester = await showDialog<String>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: Text('Select Semester for ${course.courseCode}'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children:
+                  widget.semesters.map((semester) {
+                    return ListTile(
+                      title: Text(semester),
+                      trailing:
+                          _courseSemesters[courseCode] == semester
+                              ? Icon(
+                                Icons.check,
+                                color: Theme.of(context).colorScheme.primary,
+                              )
+                              : null,
+                      onTap: () => Navigator.pop(context, semester),
+                    );
+                  }).toList(),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
+    );
+
+    if (selectedSemester != null) {
+      setState(() {
+        // Remove from previous semester if exists
+        final previousSemester = _courseSemesters[courseCode];
+        if (previousSemester != null) {
+          _selectedCourses[previousSemester]?.remove(courseCode);
+          if (_selectedCourses[previousSemester]?.isEmpty ?? false) {
+            _selectedCourses.remove(previousSemester);
+          }
+        }
+
+        // Add to new semester
+        _courseSemesters[courseCode] = selectedSemester;
+        _selectedCourses[selectedSemester] ??= {};
+        _selectedCourses[selectedSemester]!.add(courseCode);
+      });
+    }
+  }
+
+  void _importCourses() {
+    if (_selectedTimetable == null || _selectedCourses.isEmpty) return;
+
+    // Convert selected courses to AllCourse objects grouped by semester
+    final coursesToImport = <String, List<AllCourse>>{};
+
+    for (final semesterEntry in _selectedCourses.entries) {
+      final semester = semesterEntry.key;
+      final courseCodes = semesterEntry.value;
+
+      coursesToImport[semester] = [];
+
+      for (final courseCode in courseCodes) {
+        final course = _selectedTimetable!.availableCourses.firstWhere(
+          (c) => c.courseCode == courseCode,
+          orElse:
+              () => Course(
+                courseCode: courseCode,
+                courseTitle: 'Unknown Course',
+                lectureCredits: 0,
+                practicalCredits: 0,
+                totalCredits: 3,
+                sections: [],
+              ),
+        );
+
+        coursesToImport[semester]!.add(
+          AllCourse(
+            courseCode: course.courseCode,
+            courseTitle: course.courseTitle,
+            u: course.totalCredits.toString(),
+            type: 'Normal',
+          ),
+        );
+      }
+    }
+
+    Navigator.pop(context, coursesToImport);
   }
 }
