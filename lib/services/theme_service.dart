@@ -18,6 +18,7 @@ enum AppTheme {
   royalPurple,
   crimsonRed,
   electricBlue,
+  blackGold,
 }
 
 
@@ -123,6 +124,8 @@ class ThemeService extends ChangeNotifier {
         return 'Crimson Red';
       case AppTheme.electricBlue:
         return 'Electric Blue';
+      case AppTheme.blackGold:
+        return 'Black Gold';
     }
   }
 
@@ -158,6 +161,8 @@ class ThemeService extends ChangeNotifier {
         return Icons.local_fire_department;
       case AppTheme.electricBlue:
         return Icons.flash_on;
+      case AppTheme.blackGold:
+        return Icons.auto_awesome;
     }
   }
 
@@ -193,6 +198,8 @@ class ThemeService extends ChangeNotifier {
         return isLightMode ? _buildCrimsonRedLightTheme() : _buildCrimsonRedDarkTheme();
       case AppTheme.electricBlue:
         return isLightMode ? _buildElectricBlueLightTheme() : _buildElectricBlueDarkTheme();
+      case AppTheme.blackGold:
+        return isLightMode ? _buildBlackGoldLightTheme() : _buildBlackGoldDarkTheme();
     }
   }
 
@@ -2406,6 +2413,172 @@ class ThemeService extends ChangeNotifier {
             borderRadius: BorderRadius.circular(8),
           ),
         ),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  // Black Gold Theme
+  ThemeData _buildBlackGoldLightTheme() {
+    return ThemeData.light().copyWith(
+      primaryColor: const Color(0xFFFFFDF7),
+      scaffoldBackgroundColor: const Color(0xFFFFFDF7),
+      cardColor: const Color(0xFFFFFAF0),
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFFD4A574),
+        secondary: Color(0xFFFFD700),
+        surface: Color(0xFFFFFAF0),
+        onPrimary: Color(0xFF1A1A1A),
+        onSecondary: Color(0xFF1A1A1A),
+        onSurface: Color(0xFF2C2C2C),
+        onError: Color(0xFFFFFFFF),
+        outline: Color(0xFFE6C68A),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFFFFDF7),
+        foregroundColor: Color(0xFF2C2C2C),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFFFFFAF0),
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        shadowColor: const Color(0xFFD4A574).withValues(alpha: 0.3),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFD4A574),
+          foregroundColor: const Color(0xFF1A1A1A),
+          elevation: 3,
+          shadowColor: const Color(0xFFD4A574).withValues(alpha: 0.5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFFD4A574),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFFFFAF0),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFE6C68A)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFE6C68A)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFD4A574), width: 2),
+        ),
+        labelStyle: const TextStyle(color: Color(0xFFB8860B)),
+        hintStyle: const TextStyle(color: Color(0xFFE6C68A)),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: const Color(0xFFFFFAF0),
+        selectedColor: const Color(0xFFD4A574),
+        labelStyle: const TextStyle(color: Color(0xFF2C2C2C)),
+        secondaryLabelStyle: const TextStyle(color: Color(0xFF1A1A1A)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      visualDensity: VisualDensity.adaptivePlatformDensity,
+    );
+  }
+
+  ThemeData _buildBlackGoldDarkTheme() {
+    return ThemeData.dark().copyWith(
+      primaryColor: const Color(0xFF000000),
+      scaffoldBackgroundColor: const Color(0xFF000000),
+      cardColor: const Color(0xFF1A1A1A),
+      colorScheme: const ColorScheme.dark(
+        primary: Color(0xFFFFD700),
+        secondary: Color(0xFFD4A574),
+        surface: Color(0xFF1A1A1A),
+        onPrimary: Color(0xFF000000),
+        onSecondary: Color(0xFF000000),
+        onSurface: Color(0xFFFFFFFF),
+        onError: Color(0xFF000000),
+        outline: Color(0xFF333333),
+        surfaceContainerHighest: Color(0xFF2C2C2C),
+        surfaceContainer: Color(0xFF1F1F1F),
+        surfaceContainerHigh: Color(0xFF262626),
+        surfaceContainerLow: Color(0xFF141414),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF000000),
+        foregroundColor: Color(0xFFFFD700),
+        elevation: 0,
+      ),
+      cardTheme: CardThemeData(
+        color: const Color(0xFF1A1A1A),
+        elevation: 6,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        shadowColor: const Color(0xFFFFD700).withValues(alpha: 0.2),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFFFD700),
+          foregroundColor: const Color(0xFF000000),
+          elevation: 4,
+          shadowColor: const Color(0xFFFFD700).withValues(alpha: 0.4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFFFFD700),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFF1A1A1A),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF333333)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF333333)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFFFD700), width: 2),
+        ),
+        labelStyle: const TextStyle(color: Color(0xFFD4A574)),
+        hintStyle: const TextStyle(color: Color(0xFF666666)),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: const Color(0xFF1A1A1A),
+        selectedColor: const Color(0xFFFFD700),
+        labelStyle: const TextStyle(color: Color(0xFFFFFFFF)),
+        secondaryLabelStyle: const TextStyle(color: Color(0xFF000000)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      dataTableTheme: DataTableThemeData(
+        headingRowColor: WidgetStateProperty.all(const Color(0xFF2C2C2C)),
+        dataRowColor: WidgetStateProperty.all(const Color(0xFF1A1A1A)),
+        dividerThickness: 1,
+      ),
+      expansionTileTheme: const ExpansionTileThemeData(
+        backgroundColor: Color(0xFF2C2C2C),
+        collapsedBackgroundColor: Color(0xFF1A1A1A),
+        iconColor: Color(0xFFFFD700),
+        collapsedIconColor: Color(0xFFD4A574),
       ),
       visualDensity: VisualDensity.adaptivePlatformDensity,
     );

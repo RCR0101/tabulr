@@ -210,6 +210,520 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     }
   }
 
+  void _showSemesterSGPADetails() {
+    if (_cgpaData.semesters.isEmpty) return;
+
+    final semestersWithData = _cgpaData.semesters.entries
+        .where((entry) => entry.value.courses.isNotEmpty)
+        .toList();
+
+    if (semestersWithData.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: ResponsiveService.isMobile(context) ? 340 : 400,
+            maxHeight: ResponsiveService.isMobile(context) ? 500 : 600,
+          ),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.15),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+                    ],
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.analytics_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Semester Breakdown',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'SGPA for each semester',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.white.withValues(alpha: 0.9),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Content
+              Flexible(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  shrinkWrap: true,
+                  itemCount: semestersWithData.length,
+                  itemBuilder: (context, index) {
+                    final entry = semestersWithData[index];
+                    final semesterName = entry.key;
+                    final semesterData = entry.value;
+                    final sgpa = semesterData.sgpa;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainer.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+                                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.6),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${index + 1}',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  semesterName,
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.school_rounded,
+                                      size: 16,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${semesterData.courses.length} courses • ${semesterData.totalCredits.toStringAsFixed(0)} credits',
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: _getSGPAColor(sgpa).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _getSGPAColor(sgpa).withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  sgpa.toStringAsFixed(2),
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: _getSGPAColor(sgpa),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  'SGPA',
+                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: _getSGPAColor(sgpa),
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              // Footer
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(24),
+                    bottomRight: Radius.circular(24),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.calculate_rounded,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Overall CGPA: ${_cgpaData.cgpa.toStringAsFixed(2)}',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _getSGPAColor(double sgpa) {
+    if (sgpa >= 9.0) return const Color(0xFF0D9488); // Excellent - Teal
+    if (sgpa >= 8.0) return const Color(0xFF3B82F6); // Very Good - Blue
+    if (sgpa >= 7.0) return const Color(0xFF059669); // Good - Green
+    if (sgpa >= 6.0) return const Color(0xFFF59E0B); // Average - Amber
+    if (sgpa >= 5.0) return const Color(0xFFEF4444); // Below Average - Red
+    return const Color(0xFFDC2626); // Poor - Deep Red
+  }
+
+  void _showSemesterCreditsDetails() {
+    if (_cgpaData.semesters.isEmpty) return;
+
+    final semestersWithData = _cgpaData.semesters.entries
+        .where((entry) => entry.value.courses.isNotEmpty)
+        .toList();
+
+    if (semestersWithData.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: ResponsiveService.isMobile(context) ? 340 : 400,
+            maxHeight: ResponsiveService.isMobile(context) ? 500 : 600,
+          ),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.15),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Theme.of(context).colorScheme.secondary,
+                      Theme.of(context).colorScheme.secondary.withValues(alpha: 0.8),
+                    ],
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.school_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Credits Breakdown',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Credits for each semester',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.white.withValues(alpha: 0.9),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Content
+              Flexible(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  shrinkWrap: true,
+                  itemCount: semestersWithData.length,
+                  itemBuilder: (context, index) {
+                    final entry = semestersWithData[index];
+                    final semesterName = entry.key;
+                    final semesterData = entry.value;
+                    final credits = semesterData.totalCredits;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainer.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Theme.of(context).colorScheme.secondary.withValues(alpha: 0.8),
+                                  Theme.of(context).colorScheme.secondary.withValues(alpha: 0.6),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${index + 1}',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  semesterName,
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.book_rounded,
+                                      size: 16,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${semesterData.courses.length} courses enrolled',
+                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: _getCreditsColor(credits).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _getCreditsColor(credits).withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  credits.toStringAsFixed(0),
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: _getCreditsColor(credits),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  'Credits',
+                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: _getCreditsColor(credits),
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              // Footer
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(24),
+                    bottomRight: Radius.circular(24),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.school_rounded,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.secondary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Total Credits: ${_cgpaData.semesters.values.fold<double>(0.0, (sum, sem) => sum + sem.totalCredits).toStringAsFixed(0)}',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.secondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _getCreditsColor(double credits) {
+    if (credits >= 24) return const Color(0xFF0D9488); // High load - Teal
+    if (credits >= 20) return const Color(0xFF059669); // Good load - Green
+    if (credits >= 16) return const Color(0xFF3B82F6); // Normal load - Blue
+    if (credits >= 12) return const Color(0xFFF59E0B); // Light load - Amber
+    if (credits >= 8) return const Color(0xFFEF4444); // Very light - Red
+    return const Color(0xFFDC2626); // Minimal - Deep Red
+  }
+
   void _addCustomSemester() {
     final controller = TextEditingController();
     showDialog(
@@ -422,24 +936,30 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                 children: [
                   Expanded(
                     flex: 2,
-                    child: _buildSummaryCard(
-                      'CGPA',
-                      _cgpaData.cgpa.toStringAsFixed(2),
-                      Icons.grade_rounded,
-                      isPrimary: true,
+                    child: GestureDetector(
+                      onTap: () => _showSemesterSGPADetails(),
+                      child: _buildSummaryCard(
+                        'CGPA',
+                        _cgpaData.cgpa.toStringAsFixed(2),
+                        Icons.grade_rounded,
+                        isPrimary: true,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: _buildSummaryCard(
-                      'Credits',
-                      _cgpaData.semesters.values
-                          .fold<double>(
-                            0.0,
-                            (sum, sem) => sum + sem.totalCredits,
-                          )
-                          .toStringAsFixed(0),
-                      Icons.school_rounded,
+                    child: GestureDetector(
+                      onTap: () => _showSemesterCreditsDetails(),
+                      child: _buildSummaryCard(
+                        'Credits',
+                        _cgpaData.semesters.values
+                            .fold<double>(
+                              0.0,
+                              (sum, sem) => sum + sem.totalCredits,
+                            )
+                            .toStringAsFixed(0),
+                        Icons.school_rounded,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -455,24 +975,30 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
               : Row(
                 children: [
                   Expanded(
-                    child: _buildSummaryCard(
-                      'Overall CGPA',
-                      _cgpaData.cgpa.toStringAsFixed(2),
-                      Icons.grade_rounded,
-                      isPrimary: true,
+                    child: GestureDetector(
+                      onTap: () => _showSemesterSGPADetails(),
+                      child: _buildSummaryCard(
+                        'Overall CGPA',
+                        _cgpaData.cgpa.toStringAsFixed(2),
+                        Icons.grade_rounded,
+                        isPrimary: true,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildSummaryCard(
-                      'Total Credits',
-                      _cgpaData.semesters.values
-                          .fold<double>(
-                            0.0,
-                            (sum, sem) => sum + sem.totalCredits,
-                          )
-                          .toStringAsFixed(0),
-                      Icons.school_rounded,
+                    child: GestureDetector(
+                      onTap: () => _showSemesterCreditsDetails(),
+                      child: _buildSummaryCard(
+                        'Total Credits',
+                        _cgpaData.semesters.values
+                            .fold<double>(
+                              0.0,
+                              (sum, sem) => sum + sem.totalCredits,
+                            )
+                            .toStringAsFixed(0),
+                        Icons.school_rounded,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1171,153 +1697,196 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     Function(String?) onChanged,
   ) {
     final isMobile = ResponsiveService.isMobile(context);
-    final gradeColor =
-        selectedGrade != null ? _getGradeColor(selectedGrade) : null;
+    final colorScheme = Theme.of(context).colorScheme;
+    final gradeColor = selectedGrade != null ? _getGradeColor(selectedGrade) : null;
 
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color:
-            selectedGrade != null
-                ? gradeColor!.withValues(alpha: 0.12)
-                : Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color:
-              selectedGrade != null
-                  ? gradeColor!.withValues(alpha: 0.5)
-                  : Theme.of(
-                    context,
-                  ).colorScheme.outline.withValues(alpha: 0.3),
-          width: selectedGrade != null ? 1.5 : 1,
+    return Material(
+      elevation: 0,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        height: isMobile ? 44 : 48,
+        decoration: BoxDecoration(
+          color: selectedGrade != null
+              ? gradeColor!.withValues(alpha: 0.08)
+              : colorScheme.surfaceContainer,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selectedGrade != null
+                ? gradeColor!.withValues(alpha: 0.4)
+                : colorScheme.outline.withValues(alpha: 0.2),
+            width: selectedGrade != null ? 2 : 1,
+          ),
+          boxShadow: selectedGrade != null
+              ? [
+                  BoxShadow(
+                    color: gradeColor!.withValues(alpha: 0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [],
         ),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: ButtonTheme(
-          alignedDropdown: true,
+        child: DropdownButtonHideUnderline(
           child: DropdownButton<String>(
             value: selectedGrade,
             isExpanded: true,
-            isDense: true,
+            isDense: false,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             focusColor: Colors.transparent,
-            hint: Text(
-              'Select Grade',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontSize: isMobile ? 13 : 14,
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
-                fontWeight: FontWeight.w500,
-              ),
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              fontSize: isMobile ? 14 : 16,
+              fontWeight: FontWeight.w600,
+            ),
+            hint: Row(
+              children: [
+                Icon(
+                  Icons.grade_outlined,
+                  size: isMobile ? 18 : 20,
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Select Grade',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontSize: isMobile ? 14 : 16,
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
             selectedItemBuilder: (context) {
               return gradeOptions.map((grade) {
-                return Container(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _getGradeColor(grade).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: _getGradeColor(grade).withValues(alpha: 0.5),
-                        width: 1,
-                      ),
-                    ),
-                    child: Text(
-                      grade,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontSize: isMobile ? 13 : 14,
-                        fontWeight: FontWeight.w700,
-                        color: _getGradeColor(grade),
-                      ),
-                    ),
-                  ),
-                );
-              }).toList();
-            },
-            icon: Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 20,
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
-            borderRadius: BorderRadius.circular(12),
-            elevation: 8,
-            dropdownColor: Theme.of(context).colorScheme.surface,
-            menuMaxHeight: 300,
-            items:
-                gradeOptions.map((grade) {
-                  final gradeColor = _getGradeColor(grade);
-                  return DropdownMenuItem<String>(
-                    value: grade,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 6,
-                        horizontal: 8,
-                      ),
+                final color = _getGradeColor(grade);
+                return Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
                       decoration: BoxDecoration(
-                        color: gradeColor.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: gradeColor.withValues(alpha: 0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 40,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: gradeColor,
-                              borderRadius: BorderRadius.circular(4),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: gradeColor.withValues(alpha: 0.3),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 1),
-                                ),
-                              ],
-                            ),
-                            child: Text(
-                              grade,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              _getGradeDescription(grade),
-                              style: Theme.of(
-                                context,
-                              ).textTheme.bodySmall?.copyWith(
-                                fontSize: isMobile ? 11 : 12,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurface.withValues(alpha: 0.8),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
+                        color: color,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: color.withValues(alpha: 0.3),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
+                      child: Center(
+                        child: Text(
+                          grade,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: isMobile ? 12 : 13,
+                          ),
+                        ),
+                      ),
                     ),
-                  );
-                }).toList(),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        grade,
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontSize: isMobile ? 14 : 16,
+                          fontWeight: FontWeight.w700,
+                          color: color,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }).toList();
+            },
+            icon: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.expand_more_rounded,
+                size: 20,
+                color: colorScheme.primary,
+              ),
+            ),
+            borderRadius: BorderRadius.circular(16),
+            elevation: 12,
+            dropdownColor: colorScheme.surfaceContainer,
+            menuMaxHeight: 320,
+            items: gradeOptions.map((grade) {
+              final gradeColor = _getGradeColor(grade);
+              final description = _getGradeDescription(grade);
+              
+              return DropdownMenuItem<String>(
+                value: grade,
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        gradeColor.withValues(alpha: 0.05),
+                        gradeColor.withValues(alpha: 0.02),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: gradeColor.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: gradeColor,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: gradeColor.withValues(alpha: 0.4),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            grade,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          description,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontSize: isMobile ? 13 : 14,
+                            color: colorScheme.onSurface.withValues(alpha: 0.9),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
             onChanged: onChanged,
           ),
         ),
@@ -1601,9 +2170,8 @@ class _CourseSelectionDialog extends StatefulWidget {
 
 class _CourseSelectionDialogState extends State<_CourseSelectionDialog> {
   Timetable? _selectedTimetable;
-  final Map<String, Set<String>> _selectedCourses =
-      {}; // semester -> course codes
-  final Map<String, String> _courseSemesters = {}; // course code -> semester
+  String? _selectedSemester;
+  final Set<String> _selectedCourses = {}; // selected course codes
 
   @override
   Widget build(BuildContext context) {
@@ -1703,7 +2271,7 @@ class _CourseSelectionDialogState extends State<_CourseSelectionDialog> {
                             setState(() {
                               _selectedTimetable = timetable;
                               _selectedCourses.clear();
-                              _courseSemesters.clear();
+                              _selectedSemester = null;
                             });
                           },
                           items:
@@ -1751,26 +2319,74 @@ class _CourseSelectionDialogState extends State<_CourseSelectionDialog> {
 
                       if (_selectedTimetable != null) ...[
                         const SizedBox(height: 24),
+                        
+                        // Semester selector
                         Text(
-                          'Select Courses',
+                          'Select Semester',
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          'Choose courses and assign them to semesters',
-                          style: Theme.of(
-                            context,
-                          ).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.6),
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                            borderRadius: BorderRadius.circular(
+                              ResponsiveService.getAdaptiveBorderRadius(
+                                context,
+                                8,
+                              ),
+                            ),
+                          ),
+                          child: DropdownButton<String>(
+                            value: _selectedSemester,
+                            isExpanded: true,
+                            underline: Container(),
+                            hint: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              child: Text('Choose a semester for all courses'),
+                            ),
+                            onChanged: (semester) {
+                              setState(() {
+                                _selectedSemester = semester;
+                              });
+                            },
+                            items: widget.semesters.map((semester) {
+                              return DropdownMenuItem<String>(
+                                value: semester,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  child: Text(semester),
+                                ),
+                              );
+                            }).toList(),
                           ),
                         ),
-                        const SizedBox(height: 16),
 
-                        // List of courses from selected timetable
-                        ..._buildCourseList(),
+                        if (_selectedSemester != null) ...[
+                          const SizedBox(height: 24),
+                          Text(
+                            'Select Courses',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'All selected courses will be added to $_selectedSemester',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.6),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // List of courses from selected timetable
+                          ..._buildCourseList(),
+                        ],
                       ],
                     ],
                   ),
@@ -1798,7 +2414,7 @@ class _CourseSelectionDialogState extends State<_CourseSelectionDialog> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '${_selectedCourses.values.fold(0, (sum, set) => sum + set.length)} selected',
+                    '${_selectedCourses.length} selected',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(
                         context,
@@ -1871,8 +2487,7 @@ class _CourseSelectionDialogState extends State<_CourseSelectionDialog> {
     return uniqueCourses.entries.map((entry) {
       final courseCode = entry.key;
       final course = entry.value;
-      final isSelected = _courseSemesters.containsKey(courseCode);
-      final selectedSemester = _courseSemesters[courseCode];
+      final isSelected = _selectedCourses.contains(courseCode);
 
       return Card(
         margin: const EdgeInsets.only(bottom: 12),
@@ -1905,19 +2520,10 @@ class _CourseSelectionDialogState extends State<_CourseSelectionDialog> {
                 value: isSelected,
                 onChanged: (value) {
                   setState(() {
-                    if (value == true && !isSelected) {
-                      // Show semester selector
-                      _showSemesterSelector(courseCode, course);
+                    if (value == true) {
+                      _selectedCourses.add(courseCode);
                     } else {
-                      // Remove from selected courses
-                      if (selectedSemester != null) {
-                        _selectedCourses[selectedSemester]?.remove(courseCode);
-                        if (_selectedCourses[selectedSemester]?.isEmpty ??
-                            false) {
-                          _selectedCourses.remove(selectedSemester);
-                        }
-                      }
-                      _courseSemesters.remove(courseCode);
+                      _selectedCourses.remove(courseCode);
                     }
                   });
                 },
@@ -1946,30 +2552,6 @@ class _CourseSelectionDialogState extends State<_CourseSelectionDialog> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (isSelected && selectedSemester != null) ...[
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          selectedSemester,
-                          style: Theme.of(
-                            context,
-                          ).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -1992,18 +2574,6 @@ class _CourseSelectionDialogState extends State<_CourseSelectionDialog> {
                   ),
                 ),
               ),
-
-              // Edit semester button
-              if (isSelected)
-                IconButton(
-                  icon: Icon(
-                    Icons.edit_outlined,
-                    size: 20,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  onPressed: () => _showSemesterSelector(courseCode, course),
-                  tooltip: 'Change semester',
-                ),
             ],
           ),
         ),
@@ -2011,92 +2581,36 @@ class _CourseSelectionDialogState extends State<_CourseSelectionDialog> {
     }).toList();
   }
 
-  Future<void> _showSemesterSelector(String courseCode, Course course) async {
-    final selectedSemester = await showDialog<String>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Text('Select Semester for ${course.courseCode}'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children:
-                  widget.semesters.map((semester) {
-                    return ListTile(
-                      title: Text(semester),
-                      trailing:
-                          _courseSemesters[courseCode] == semester
-                              ? Icon(
-                                Icons.check,
-                                color: Theme.of(context).colorScheme.primary,
-                              )
-                              : null,
-                      onTap: () => Navigator.pop(context, semester),
-                    );
-                  }).toList(),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-            ],
-          ),
-    );
-
-    if (selectedSemester != null) {
-      setState(() {
-        // Remove from previous semester if exists
-        final previousSemester = _courseSemesters[courseCode];
-        if (previousSemester != null) {
-          _selectedCourses[previousSemester]?.remove(courseCode);
-          if (_selectedCourses[previousSemester]?.isEmpty ?? false) {
-            _selectedCourses.remove(previousSemester);
-          }
-        }
-
-        // Add to new semester
-        _courseSemesters[courseCode] = selectedSemester;
-        _selectedCourses[selectedSemester] ??= {};
-        _selectedCourses[selectedSemester]!.add(courseCode);
-      });
-    }
-  }
 
   void _importCourses() {
-    if (_selectedTimetable == null || _selectedCourses.isEmpty) return;
+    if (_selectedTimetable == null || _selectedCourses.isEmpty || _selectedSemester == null) return;
 
-    // Convert selected courses to AllCourse objects grouped by semester
+    // Convert selected courses to AllCourse objects for the selected semester
     final coursesToImport = <String, List<AllCourse>>{};
+    coursesToImport[_selectedSemester!] = [];
 
-    for (final semesterEntry in _selectedCourses.entries) {
-      final semester = semesterEntry.key;
-      final courseCodes = semesterEntry.value;
+    for (final courseCode in _selectedCourses) {
+      final course = _selectedTimetable!.availableCourses.firstWhere(
+        (c) => c.courseCode == courseCode,
+        orElse:
+            () => Course(
+              courseCode: courseCode,
+              courseTitle: 'Unknown Course',
+              lectureCredits: 0,
+              practicalCredits: 0,
+              totalCredits: 3,
+              sections: [],
+            ),
+      );
 
-      coursesToImport[semester] = [];
-
-      for (final courseCode in courseCodes) {
-        final course = _selectedTimetable!.availableCourses.firstWhere(
-          (c) => c.courseCode == courseCode,
-          orElse:
-              () => Course(
-                courseCode: courseCode,
-                courseTitle: 'Unknown Course',
-                lectureCredits: 0,
-                practicalCredits: 0,
-                totalCredits: 3,
-                sections: [],
-              ),
-        );
-
-        coursesToImport[semester]!.add(
-          AllCourse(
-            courseCode: course.courseCode,
-            courseTitle: course.courseTitle,
-            u: course.totalCredits.toString(),
-            type: 'Normal',
-          ),
-        );
-      }
+      coursesToImport[_selectedSemester!]!.add(
+        AllCourse(
+          courseCode: course.courseCode,
+          courseTitle: course.courseTitle,
+          u: course.totalCredits.toString(),
+          type: 'Normal',
+        ),
+      );
     }
 
     Navigator.pop(context, coursesToImport);

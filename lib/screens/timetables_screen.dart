@@ -530,7 +530,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                     children:
                         TimetableListSortOrder.values.map((sortOrder) {
                           final isSelected = currentSort == sortOrder;
-                          return Container(
+                          return SizedBox(
                             width: ResponsiveService.getValue(
                               context,
                               mobile:
@@ -912,27 +912,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                         ).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                     ),
-                    trailing: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.secondary,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'ACTIVE',
-                        style: TextStyle(
-                          fontSize: ResponsiveService.getAdaptiveFontSize(
-                            context,
-                            10,
-                          ),
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.onSecondary,
-                        ),
-                      ),
-                    ),
+                    trailing: null,
                     onTap: () {
                       Navigator.pop(context);
                       // Already on timetables screen, just close drawer
@@ -982,27 +962,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                         ).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                     ),
-                    trailing: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'ACTIVE',
-                        style: TextStyle(
-                          fontSize: ResponsiveService.getAdaptiveFontSize(
-                            context,
-                            10,
-                          ),
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green.shade800,
-                        ),
-                      ),
-                    ),
+                    trailing: null,
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(
