@@ -4,6 +4,7 @@ import 'dart:html' as html;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/responsive_service.dart';
 import '../services/toast_service.dart';
+import '../services/auth_service.dart';
 import 'timetables_screen.dart';
 import 'cgpa_calculator_screen.dart';
 
@@ -47,9 +48,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   // Submit form controllers
   final TextEditingController _driveLinkController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _tagsController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _contributorController = TextEditingController();
 
   @override
   void initState() {
@@ -62,9 +61,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     _searchController.dispose();
     _driveLinkController.dispose();
     _titleController.dispose();
-    _descriptionController.dispose();
-    _tagsController.dispose();
-    _emailController.dispose();
+    _contributorController.dispose();
     super.dispose();
   }
 
@@ -413,29 +410,10 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                 ),
                 const SizedBox(height: 16),
                 TextField(
-                  controller: _descriptionController,
-                  maxLines: 3,
+                  controller: _contributorController,
                   decoration: const InputDecoration(
-                    labelText: 'Description',
-                    hintText: 'Brief description of the content...',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _tagsController,
-                  decoration: const InputDecoration(
-                    labelText: 'Suggested Tags (comma-separated)',
-                    hintText: 'e.g., CS F211, Algorithms, Lecture Notes',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Your Email (optional)',
-                    hintText: 'your@email.com',
+                    labelText: 'Contributor Name *',
+                    hintText: 'Your name as it should appear',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -464,8 +442,10 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   }
 
   Future<void> _submitLink() async {
-    if (_driveLinkController.text.isEmpty || _titleController.text.isEmpty) {
-      ToastService.showError('Please fill in required fields');
+    if (_driveLinkController.text.isEmpty || 
+        _titleController.text.isEmpty || 
+        _contributorController.text.isEmpty) {
+      ToastService.showError('Please fill in all required fields');
       return;
     }
 
@@ -474,16 +454,15 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     });
 
     try {
+      // Get user email from auth service
+      final authService = AuthService();
+      final userEmail = authService.userEmail;
+      
       final submissionData = {
-        'driveLink': _driveLinkController.text,
-        'title': _titleController.text,
-        'description': _descriptionController.text,
-        'suggestedTags': _tagsController.text
-            .split(',')
-            .map((e) => e.trim())
-            .where((e) => e.isNotEmpty)
-            .toList(),
-        'submittedBy': _emailController.text.isEmpty ? 'anonymous' : _emailController.text,
+        'driveLink': _driveLinkController.text.trim(),
+        'title': _titleController.text.trim(),
+        'contributorName': _contributorController.text.trim(),
+        'submittedBy': userEmail ?? 'anonymous',
         'status': 'pending',
         'submittedAt': FieldValue.serverTimestamp(),
       };
@@ -499,9 +478,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       // Clear form
       _driveLinkController.clear();
       _titleController.clear();
-      _descriptionController.clear();
-      _tagsController.clear();
-      _emailController.clear();
+      _contributorController.clear();
     } catch (e) {
       ToastService.showError('Failed to submit: $e');
     } finally {
