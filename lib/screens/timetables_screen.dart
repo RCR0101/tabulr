@@ -21,6 +21,7 @@ import 'discipline_electives_screen.dart';
 import 'professors_screen.dart';
 import 'prerequisites_screen.dart';
 import 'cgpa_calculator_screen.dart';
+import 'acad_drives_screen.dart';
 
 class TimetablesScreen extends StatefulWidget {
   const TimetablesScreen({super.key});
@@ -41,6 +42,11 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   void initState() {
     super.initState();
     _userSettingsService.addListener(_onSettingsChanged);
+    _authService.authStateChanges.listen((_) {
+      if (mounted) {
+        setState(() {}); // Rebuild to update drawer visibility
+      }
+    });
     _initializeAndLoadData();
   }
 
@@ -921,58 +927,113 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
 
                   const Divider(),
 
-                  ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color:
-                            Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.calculate,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        size: ResponsiveService.getAdaptiveIconSize(
-                          context,
-                          20,
+                  // Show CGPA Calculator only if user is signed in
+                  if (_authService.isAuthenticated)
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color:
+                              Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.calculate,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          size: ResponsiveService.getAdaptiveIconSize(
+                            context,
+                            20,
+                          ),
                         ),
                       ),
+                      title: Text(
+                        'CGPA Calculator',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: ResponsiveService.getAdaptiveFontSize(
+                            context,
+                            16,
+                          ),
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Track your academic performance',
+                        style: TextStyle(
+                          fontSize: ResponsiveService.getAdaptiveFontSize(
+                            context,
+                            12,
+                          ),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      trailing: null,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const CGPACalculatorScreen(),
+                          ),
+                        );
+                      },
                     ),
-                    title: Text(
-                      'CGPA Calculator',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: ResponsiveService.getAdaptiveFontSize(
-                          context,
-                          16,
+                  if (_authService.isAuthenticated)
+                    ListTile(
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color:
+                              Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.cloud_circle,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          size: ResponsiveService.getAdaptiveIconSize(
+                            context,
+                            20,
+                          ),
                         ),
                       ),
-                    ),
-                    subtitle: Text(
-                      'Track your academic performance',
-                      style: TextStyle(
-                        fontSize: ResponsiveService.getAdaptiveFontSize(
-                          context,
-                          12,
+                      title: Text(
+                        'Academic Drives',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: ResponsiveService.getAdaptiveFontSize(
+                            context,
+                            16,
+                          ),
                         ),
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
-                    ),
-                    trailing: null,
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const CGPACalculatorScreen(),
+                      subtitle: Text(
+                        'Browse & share academic resources',
+                        style: TextStyle(
+                          fontSize: ResponsiveService.getAdaptiveFontSize(
+                            context,
+                            12,
+                          ),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                      trailing: null,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AcadDrivesScreen(),
+                          ),
+                        );
+                      },
+                    ),
                 ],
               ),
             ),

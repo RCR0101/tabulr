@@ -98,6 +98,27 @@ service cloud.firestore {
     match /user-settings/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+
+    match /files/{fileId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    
+    match /tags/{tagId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    
+    match /metadataAcad/{metaId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    
+    match /submissions/{submissionId} {
+      allow read: if false; // Only admin can read
+      allow create: if true; // Anyone can submit new resources
+      allow update, delete: if false; // Only admin can modify
+    }
     
     // Deny access to all other collections
     match /{document=**} {

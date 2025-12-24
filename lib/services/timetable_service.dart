@@ -727,9 +727,15 @@ class TimetableService {
       createdAt: now,
       updatedAt: now,
       campus: sourceTimetable.campus,
-      availableCourses: List.from(sourceTimetable.availableCourses),
-      selectedSections: List.from(sourceTimetable.selectedSections),
-      clashWarnings: List.from(sourceTimetable.clashWarnings),
+      availableCourses: sourceTimetable.availableCourses
+          .map((course) => Course.fromJson(course.toJson()))
+          .toList(),
+      selectedSections: sourceTimetable.selectedSections
+          .map((section) => SelectedSection.fromJson(section.toJson()))
+          .toList(),
+      clashWarnings: sourceTimetable.clashWarnings
+          .map((warning) => ClashWarning.fromJson(warning.toJson()))
+          .toList(),
     );
     
     try {
