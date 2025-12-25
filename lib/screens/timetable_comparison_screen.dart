@@ -3,6 +3,7 @@ import '../models/timetable.dart';
 import '../models/course.dart';
 import '../widgets/timetable_widget.dart';
 import '../services/timetable_service.dart';
+import '../services/all_course_service.dart';
 import '../services/responsive_service.dart';
 
 enum ComparisonViewMode { grid, list }
@@ -16,6 +17,7 @@ class TimetableComparisonScreen extends StatefulWidget {
 
 class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
   final TimetableService _timetableService = TimetableService();
+  final AllCourseService _allCourseService = AllCourseService();
   
   List<Timetable> _allTimetables = [];
   Timetable? _leftTimetable;
@@ -72,30 +74,36 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
     List<TimetableSlot> slots = [];
     
     for (var selectedSection in timetable.selectedSections) {
-      // Find the course title
-      String courseTitle = selectedSection.courseCode;
-      final course = timetable.availableCourses.firstWhere(
-        (c) => c.courseCode == selectedSection.courseCode,
-        orElse: () => Course(
-          courseCode: selectedSection.courseCode,
-          courseTitle: selectedSection.courseCode,
-          lectureCredits: 0,
-          practicalCredits: 0,
-          totalCredits: 0,
-          sections: [],
-        ),
-      );
-      courseTitle = course.courseTitle;
+      // Find the course title with improved fallback
+      String baseTitle = selectedSection.courseCode; // Default fallback
+      
+      try {
+        final course = timetable.availableCourses.firstWhere(
+          (c) => c.courseCode == selectedSection.courseCode,
+        );
+        baseTitle = course.courseTitle;
+      } catch (e) {
+        // Course not found in current semester
+        // Try to get from cache or use course code as fallback
+        final cachedTitle = _allCourseService.getCachedCourseTitle(selectedSection.courseCode, campus: timetable.campus);
+        if (cachedTitle != null) {
+          baseTitle = cachedTitle;
+        }
+        // If no cached title, baseTitle remains as courseCode
+      }
       
       for (var scheduleEntry in selectedSection.section.schedule) {
         for (var day in scheduleEntry.days) {
+          // Add section type info for non-lecture sections
+          final courseTitle = selectedSection.section.type == SectionType.L 
+            ? baseTitle
+            : '$baseTitle (${selectedSection.section.type.name})';
+            
           slots.add(TimetableSlot(
             day: day,
             hours: scheduleEntry.hours,
             courseCode: selectedSection.courseCode,
-            courseTitle: selectedSection.section.type == SectionType.L 
-              ? courseTitle
-              : '$courseTitle (${selectedSection.section.type.name})',
+            courseTitle: courseTitle,
             sectionId: selectedSection.sectionId,
             instructor: selectedSection.section.instructor,
             room: selectedSection.section.room,
@@ -184,7 +192,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                           Text(
                             _formatDateTime(timetable.createdAt),
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                               fontSize: 10,
                             ),
                           ),
@@ -229,7 +237,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                           Text(
                             'Created ${_formatDateTime(_leftTimetable!.createdAt)}',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -270,7 +278,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                           Text(
                             'Created ${_formatDateTime(_rightTimetable!.createdAt)}',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -575,7 +583,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                               Text(
                                 'No courses found',
                                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                 ),
                               ),
                             ],
@@ -863,18 +871,17 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
   }
 
   String _getCourseTitle(String courseCode, Timetable timetable) {
-    final course = timetable.availableCourses.firstWhere(
-      (c) => c.courseCode == courseCode,
-      orElse: () => Course(
-        courseCode: courseCode,
-        courseTitle: courseCode,
-        lectureCredits: 0,
-        practicalCredits: 0,
-        totalCredits: 0,
-        sections: [],
-      ),
-    );
-    return course.courseTitle;
+    // First try to find in available courses
+    try {
+      final course = timetable.availableCourses.firstWhere(
+        (c) => c.courseCode == courseCode,
+      );
+      return course.courseTitle;
+    } catch (e) {
+      // Course not found in current semester, return course code for now
+      // The grid view will handle the proper fallback with async loading
+      return courseCode;
+    }
   }
 
   String _formatDateTime(DateTime dateTime) {

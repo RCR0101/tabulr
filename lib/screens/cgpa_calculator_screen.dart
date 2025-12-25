@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import '../services/cgpa_service.dart';
 import '../services/all_courses_service.dart';
 import '../services/auth_service.dart';
 import '../services/responsive_service.dart';
 import '../services/timetable_service.dart';
+import '../services/auto_load_cdc_service.dart';
+import '../services/toast_service.dart';
+import '../services/course_guide_service.dart';
 import '../models/cgpa_data.dart';
 import '../models/all_course.dart';
 import '../models/course.dart';
@@ -208,6 +212,142 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     } catch (e) {
       if (mounted) {
         _showErrorDialog('Error importing courses: $e');
+      }
+    }
+  }
+
+  Future<void> _loadCDCs() async {
+    try {
+      print('Starting Load CDCs process...');
+      if (kDebugMode) {
+        print('Debug mode enabled');
+      }
+      
+      // Show branch and semester selection dialog
+      final autoLoadService = AutoLoadCDCService();
+      final result = await autoLoadService.showBranchYearDialog(context);
+      
+      if (result == null) {
+        print('User cancelled CDC loading');
+        return; // User cancelled
+      }
+
+      print('Selected branch: ${result.branch}, semester: ${result.year}');
+
+      if (!mounted) return;
+
+      // Get CDC courses directly from course guide data
+      final courseGuideService = CourseGuideService();
+      final semesters = await courseGuideService.getAllSemesters();
+      
+      print('Loaded ${semesters.length} semesters from course guide');
+      
+      // Convert semester format (e.g., "3-1" to "semester_3_1")
+      final semesterId = 'semester_${result.year.replaceAll('-', '_')}';
+      print('Looking for semester ID: $semesterId');
+      
+      final cdcCourses = <CourseGuideEntry>[];
+      
+      // Find the specific semester
+      final targetSemester = semesters.where((s) => s.semesterId == semesterId).firstOrNull;
+      if (targetSemester != null) {
+        print('Found target semester: ${targetSemester.name}');
+        // Get the full branch name for searching
+        final branchCodeToName = {
+          'A1': 'Chemical',
+          'A2': 'Civil',
+          'A3': 'Electrical and Electronics',
+          'A4': 'Mechanical',
+          'A5': 'Pharma',
+          'A7': 'Computer Science',
+          'A8': 'Electronics and Instrumentation',
+          'AA': 'Electronics and Communication',
+          'AB': 'Manufacturing',
+          'AD': 'Math and Computing',
+          'AJ': 'Biotechnology',
+          'B1': 'MSc Biology',
+          'B2': 'MSc Chemistry',
+          'B3': 'MSc Economics',
+          'B4': 'MSc Mathematics',
+          'B5': 'MSc Physics',
+        };
+        
+        final branchFullName = branchCodeToName[result.branch];
+        
+        for (final group in targetSemester.groups) {
+          print('Checking group ${group.groupId} with branches: ${group.branches}');
+          // Check if group contains either the branch code or the full branch name
+          bool containsBranch = group.branches.contains(result.branch) || 
+                               (branchFullName != null && group.branches.contains(branchFullName));
+          
+          if (containsBranch) {
+            print('Group matches! Adding ${group.courses.length} courses');
+            cdcCourses.addAll(group.courses);
+          }
+        }
+      } else {
+        print('Target semester not found!');
+      }
+
+      print('Found ${cdcCourses.length} CDC courses total');
+
+      if (cdcCourses.isEmpty) {
+        ToastService.showInfo(
+          'No CDC courses found for the selected branch and year',
+        );
+        return;
+      }
+
+      // Convert to AllCourse objects and add to semester
+      int importedCount = 0;
+      // Use the currently selected semester instead of creating a new one
+      final semesterName = _semesters[_tabController.index];
+      
+      print('Adding courses to currently selected semester: $semesterName');
+      print('CDC courses are from semester: ${result.year}');
+
+      // Add courses to semester
+      for (final cdcCourse in cdcCourses) {
+        print('Processing course: ${cdcCourse.code} - ${cdcCourse.name}');
+        
+        // Check if course already exists in this semester
+        final existingSemester = _cgpaData.semesters[semesterName];
+        final courseExists = existingSemester?.courses.any(
+          (c) => c.courseCode == cdcCourse.code,
+        ) ?? false;
+
+        if (!courseExists) {
+          print('Adding new course: ${cdcCourse.code}');
+          final allCourse = AllCourse(
+            courseCode: cdcCourse.code,
+            courseTitle: cdcCourse.name,
+            u: cdcCourse.credits.toString(),
+            type: 'Normal',
+          );
+          _addCourseToSemester(semesterName, allCourse);
+          importedCount++;
+        } else {
+          print('Course ${cdcCourse.code} already exists, skipping');
+        }
+      }
+
+      print('Successfully imported $importedCount courses');
+
+      if (mounted) {
+        if (importedCount > 0) {
+          ToastService.showSuccess(
+            'Added $importedCount CDC course${importedCount != 1 ? 's' : ''} from ${result.year} to $semesterName!',
+          );
+        } else {
+          final totalCourses = cdcCourses.length;
+          ToastService.showInfo(
+            'All $totalCourses CDC course${totalCourses != 1 ? 's' : ''} from ${result.year} already exist in $semesterName',
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorDialog('Error loading CDCs: $e');
       }
     }
   }
@@ -867,17 +1007,10 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                 ),
                 children: [
                   ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.schedule,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        size: ResponsiveService.getAdaptiveIconSize(context, 20),
-                      ),
+                    leading: Icon(
+                      Icons.schedule,
+                      color: Theme.of(context).colorScheme.onSurface,
+                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
                     ),
                     title: Text(
                       'TT Builder',
@@ -905,18 +1038,13 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                   const Divider(),
                   
                   ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.calculate,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                        size: ResponsiveService.getAdaptiveIconSize(context, 20),
-                      ),
+                    leading: Icon(
+                      Icons.calculate,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
                     ),
+                    tileColor: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     title: Text(
                       'CGPA Calculator',
                       style: TextStyle(
@@ -925,7 +1053,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                       ),
                     ),
                     subtitle: Text(
-                      'Current - Calculate your GPA',
+                      'Calculate your GPA',
                       style: TextStyle(
                         fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
                         color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
@@ -939,17 +1067,10 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                   ),
                   
                   ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.folder_shared,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        size: ResponsiveService.getAdaptiveIconSize(context, 20),
-                      ),
+                    leading: Icon(
+                      Icons.folder_shared,
+                      color: Theme.of(context).colorScheme.onSurface,
+                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
                     ),
                     title: Text(
                       'Academic Drives',
@@ -1065,6 +1186,11 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                   tabs: _semesters.map((sem) => Tab(text: sem)).toList(),
                 ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.school_outlined),
+            tooltip: 'Load CDCs',
+            onPressed: _authService.isAuthenticated ? _loadCDCs : null,
+          ),
           IconButton(
             icon: const Icon(Icons.file_download_outlined),
             tooltip: 'Import Courses from Timetable',

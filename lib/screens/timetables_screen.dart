@@ -881,21 +881,16 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                 ),
                 children: [
                   ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.schedule,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                        size: ResponsiveService.getAdaptiveIconSize(
-                          context,
-                          20,
-                        ),
+                    leading: Icon(
+                      Icons.schedule,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: ResponsiveService.getAdaptiveIconSize(
+                        context,
+                        24,
                       ),
                     ),
+                    tileColor: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     title: Text(
                       'TT Builder',
                       style: TextStyle(
@@ -907,7 +902,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                       ),
                     ),
                     subtitle: Text(
-                      'Current timetable builder',
+                      'Create timetables',
                       style: TextStyle(
                         fontSize: ResponsiveService.getAdaptiveFontSize(
                           context,
@@ -930,22 +925,12 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                   // Show CGPA Calculator only if user is signed in
                   if (_authService.isAuthenticated)
                     ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color:
-                              Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.calculate,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          size: ResponsiveService.getAdaptiveIconSize(
-                            context,
-                            20,
-                          ),
+                      leading: Icon(
+                        Icons.calculate,
+                        color: Theme.of(context).colorScheme.onSurface,
+                        size: ResponsiveService.getAdaptiveIconSize(
+                          context,
+                          24,
                         ),
                       ),
                       title: Text(
@@ -983,22 +968,12 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                     ),
                   if (_authService.isAuthenticated)
                     ListTile(
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color:
-                              Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.cloud_circle,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          size: ResponsiveService.getAdaptiveIconSize(
-                            context,
-                            20,
-                          ),
+                      leading: Icon(
+                        Icons.folder_shared,
+                        color: Theme.of(context).colorScheme.onSurface,
+                        size: ResponsiveService.getAdaptiveIconSize(
+                          context,
+                          24,
                         ),
                       ),
                       title: Text(

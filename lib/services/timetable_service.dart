@@ -9,6 +9,7 @@ import 'auth_service.dart';
 import 'firestore_service.dart';
 import 'course_data_service.dart';
 import 'campus_service.dart';
+import 'all_course_service.dart';
 
 class TimetableService {
   static const String _storageKey = 'user_timetable_data';
@@ -16,6 +17,7 @@ class TimetableService {
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
   final CourseDataService _courseDataService = CourseDataService();
+  final AllCourseService _allCourseService = AllCourseService();
   
   // Save timetable using Firestore for authenticated users or local storage for guests
   Future<void> saveTimetable(Timetable timetable) async {
@@ -335,22 +337,27 @@ class TimetableService {
     );
   }
 
-  List<TimetableSlot> generateTimetableSlots(List<SelectedSection> selectedSections, List<Course> availableCourses) {
+  List<TimetableSlot> generateTimetableSlots(List<SelectedSection> selectedSections, List<Course> availableCourses, {Campus? campus}) {
     List<TimetableSlot> slots = [];
     
     for (var selectedSection in selectedSections) {
-      // Find the course title
-      final course = availableCourses.firstWhere(
-        (c) => c.courseCode == selectedSection.courseCode,
-        orElse: () => Course(
-          courseCode: selectedSection.courseCode,
-          courseTitle: 'Unknown Course',
-          lectureCredits: 0,
-          practicalCredits: 0,
-          totalCredits: 0,
-          sections: [],
-        ),
-      );
+      // Find the course title with improved fallback
+      String courseTitle = selectedSection.courseCode; // Default fallback
+      
+      try {
+        final course = availableCourses.firstWhere(
+          (c) => c.courseCode == selectedSection.courseCode,
+        );
+        courseTitle = course.courseTitle;
+      } catch (e) {
+        // Course not found in current semester
+        // Try to get from cache or use course code as fallback
+        final cachedTitle = _allCourseService.getCachedCourseTitle(selectedSection.courseCode, campus: campus);
+        if (cachedTitle != null) {
+          courseTitle = cachedTitle;
+        }
+        // If no cached title, courseTitle remains as courseCode (better than 'Unknown Course')
+      }
       
       // Use the new schedule structure to handle different hours for different days
       for (var scheduleEntry in selectedSection.section.schedule) {
@@ -359,7 +366,7 @@ class TimetableService {
             day: day,
             hours: scheduleEntry.hours,
             courseCode: selectedSection.courseCode,
-            courseTitle: course.courseTitle,
+            courseTitle: courseTitle,
             sectionId: selectedSection.sectionId,
             instructor: selectedSection.section.instructor,
             room: selectedSection.section.room,

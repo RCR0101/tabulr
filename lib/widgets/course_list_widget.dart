@@ -30,6 +30,30 @@ class CourseListWidget extends StatelessWidget {
     );
   }
 
+  String _getSelectedSectionsText(String courseCode) {
+    final courseSections = selectedSections
+        .where((s) => s.courseCode == courseCode)
+        .toList();
+    
+    if (courseSections.isEmpty) return '';
+    
+    // Group by section type and get the section IDs
+    final Map<SectionType, String> typeToSection = {};
+    for (final section in courseSections) {
+      typeToSection[section.section.type] = section.sectionId;
+    }
+    
+    // Build the display string (e.g., "L1 T2 P3")
+    final List<String> parts = [];
+    for (final type in [SectionType.L, SectionType.T, SectionType.P]) {
+      if (typeToSection.containsKey(type)) {
+        parts.add('${typeToSection[type]}');
+      }
+    }
+    
+    return parts.join(' ');
+  }
+
   @override
   Widget build(BuildContext context) {
     List<Course> displayCourses;
@@ -160,6 +184,16 @@ class CourseListWidget extends StatelessWidget {
                   Text('MidSem: ${course.midSemExam!.date.day}/${course.midSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot)}'),
                 if (course.endSemExam != null)
                   Text('EndSem: ${course.endSemExam!.date.day}/${course.endSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot)}'),
+                if (_getSelectedSectionsText(course.courseCode).isNotEmpty)
+                  Text(
+                    'Selected: ${_getSelectedSectionsText(course.courseCode)}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).brightness == Brightness.dark
+                        ? Theme.of(context).colorScheme.primaryContainer
+                        : Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
               ],
             ),
             children: course.sections.map((section) {

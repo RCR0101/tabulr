@@ -24,6 +24,32 @@ enum FileSortOption {
   sizeDesc,
 }
 
+int _naturalSort(String a, String b) {
+  final regex = RegExp(r'(\d+|\D+)');
+  final aParts = regex.allMatches(a.toLowerCase()).map((m) => m.group(0)!).toList();
+  final bParts = regex.allMatches(b.toLowerCase()).map((m) => m.group(0)!).toList();
+  
+  final minLength = aParts.length < bParts.length ? aParts.length : bParts.length;
+  
+  for (int i = 0; i < minLength; i++) {
+    final aPart = aParts[i];
+    final bPart = bParts[i];
+    
+    final aNum = int.tryParse(aPart);
+    final bNum = int.tryParse(bPart);
+    
+    if (aNum != null && bNum != null) {
+      final comparison = aNum.compareTo(bNum);
+      if (comparison != 0) return comparison;
+    } else {
+      final comparison = aPart.compareTo(bPart);
+      if (comparison != 0) return comparison;
+    }
+  }
+  
+  return aParts.length.compareTo(bParts.length);
+}
+
 class AcadDrivesScreen extends StatefulWidget {
   const AcadDrivesScreen({super.key});
 
@@ -83,6 +109,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         final data = doc.data();
         final courseCodes = data['courseCodes'] as List<dynamic>? ?? [];
         final primaryCourse = data['primaryCourse'] as String?;
+        final contributor = data['folderMetadata']?['contributor'] ?? 'Unknown Contributor';
         
         // Use primary course or first course code
         String courseKey = primaryCourse ?? (courseCodes.isNotEmpty ? courseCodes[0].toString() : 'Uncategorized');
@@ -93,11 +120,20 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
             'name': courseKey,
             'fileCount': 0,
             'files': [],
+            'contributors': <String>{},
           };
         }
         
         coursesMap[courseKey]!['fileCount'] = (coursesMap[courseKey]!['fileCount'] as int) + 1;
         coursesMap[courseKey]!['files'].add(doc.id);
+        (coursesMap[courseKey]!['contributors'] as Set<String>).add(contributor);
+      }
+
+      // Convert contributors set to count for each course
+      for (final course in coursesMap.values) {
+        final contributorsSet = course['contributors'] as Set<String>;
+        course['contributorCount'] = contributorsSet.length;
+        course.remove('contributors'); // Remove the set, keep only the count
       }
 
       // Convert to list and sort by file count
@@ -274,21 +310,10 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Text(
-              _getFileIcon(file['mimeType'] ?? ''),
-              style: const TextStyle(fontSize: 24),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                file['name'] ?? 'Unknown File',
-                style: Theme.of(context).textTheme.titleMedium,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
+        title: Text(
+          file['name'] ?? 'Unknown File',
+          style: Theme.of(context).textTheme.titleMedium,
+          overflow: TextOverflow.ellipsis,
         ),
         content: SizedBox(
           width: ResponsiveService.getValue(
@@ -489,15 +514,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   }
 
   String _getFileIcon(String mimeType) {
-    if (mimeType.contains('pdf')) return '📕';
-    if (mimeType.contains('presentation') || mimeType.contains('ppt')) return '📊';
-    if (mimeType.contains('spreadsheet') || mimeType.contains('excel')) return '📈';
-    if (mimeType.contains('document') || mimeType.contains('word')) return '📝';
-    if (mimeType.contains('image')) return '🖼️';
-    if (mimeType.contains('video')) return '🎥';
-    if (mimeType.contains('audio')) return '🎵';
-    if (mimeType.contains('zip') || mimeType.contains('archive')) return '🗜️';
-    return '📄';
+    // Return empty string to remove emojis for files
+    return '';
   }
 
   String _formatFileSize(int bytes) {
@@ -714,17 +732,10 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                 ),
                 children: [
                   ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.schedule,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                        size: ResponsiveService.getAdaptiveIconSize(context, 20),
-                      ),
+                    leading: Icon(
+                      Icons.schedule,
+                      color: Theme.of(context).colorScheme.onSurface,
+                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
                     ),
                     title: Text(
                       'TT Builder',
@@ -752,17 +763,10 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                   const Divider(),
                   
                   ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.calculate,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        size: ResponsiveService.getAdaptiveIconSize(context, 20),
-                      ),
+                    leading: Icon(
+                      Icons.calculate,
+                      color: Theme.of(context).colorScheme.onSurface,
+                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
                     ),
                     title: Text(
                       'CGPA Calculator',
@@ -788,18 +792,13 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                   ),
                   
                   ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.folder_shared,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                        size: ResponsiveService.getAdaptiveIconSize(context, 20),
-                      ),
+                    leading: Icon(
+                      Icons.folder_shared,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
                     ),
+                    tileColor: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     title: Text(
                       'Academic Drives',
                       style: TextStyle(
@@ -808,7 +807,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                       ),
                     ),
                     subtitle: Text(
-                      'Current - Browse course files',
+                      'Browse course files',
                       style: TextStyle(
                         fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
                         color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
@@ -833,13 +832,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            const Icon(Icons.school, size: 24),
-            const SizedBox(width: 8),
-            Text(_selectedCourse ?? 'Academic Drives'),
-          ],
-        ),
+        title: Text(_selectedCourse ?? 'Academic Drives'),
         backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         leading: _selectedCourse != null
@@ -1049,7 +1042,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       contributorTrees[contributor]!.addFile(folderPath, file);
     }
 
-    final contributors = contributorTrees.keys.toList()..sort();
+    final contributors = contributorTrees.keys.toList()..sort(_naturalSort);
 
     return ListView.builder(
       itemCount: contributors.length,
@@ -1071,7 +1064,6 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   }
 }
 
-// Contributor Section Widget
 class _ContributorSection extends StatefulWidget {
   final String contributor;
   final Map<String, List<Map<String, dynamic>>> subfolders;
@@ -1096,14 +1088,14 @@ class _ContributorSection extends StatefulWidget {
 }
 
 class _ContributorSectionState extends State<_ContributorSection> {
-  bool _isExpanded = true;
+  bool _isExpanded = false;
   final Map<String, bool> _subfolderExpanded = {};
 
   int get _totalFiles => widget.subfolders.values.fold(0, (total, files) => total + files.length);
 
   @override
   Widget build(BuildContext context) {
-    final subfolderNames = widget.subfolders.keys.toList()..sort();
+    final subfolderNames = widget.subfolders.keys.toList()..sort(_naturalSort);
     
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1283,18 +1275,10 @@ class _CourseCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.folder,
-                    size: 32,
-                    color: Colors.amber,
-                  ),
+                const Icon(
+                  Icons.folder,
+                  size: 32,
+                  color: Colors.amber,
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -1309,7 +1293,7 @@ class _CourseCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${course['fileCount']} files',
+                        '${course['contributorCount'] ?? 0} contributor${(course['contributorCount'] ?? 0) == 1 ? '' : 's'} • ${course['fileCount']} file${course['fileCount'] == 1 ? '' : 's'}',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
@@ -1362,22 +1346,6 @@ class _FileCard extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-            // File Icon
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainer,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Center(
-                child: Text(
-                  getFileIcon(file['mimeType'] ?? ''),
-                  style: const TextStyle(fontSize: 20),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
 
             // File Info
             Expanded(
@@ -1504,7 +1472,7 @@ class _ContributorHierarchySection extends StatefulWidget {
 }
 
 class _ContributorHierarchySectionState extends State<_ContributorHierarchySection> {
-  bool _isExpanded = true;
+  bool _isExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -1616,7 +1584,7 @@ class _FolderNodeState extends State<_FolderNode> {
 
   @override
   Widget build(BuildContext context) {
-    final subfolderNames = widget.folderTree.subfolders.keys.toList()..sort();
+    final subfolderNames = widget.folderTree.subfolders.keys.toList()..sort(_naturalSort);
     
     return Column(
       children: [
