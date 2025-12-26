@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:html' as html;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
 import '../services/responsive_service.dart';
 import '../services/toast_service.dart';
 import '../services/auth_service.dart';
@@ -289,7 +290,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     return filtered;
   }
 
-  void _openFile(Map<String, dynamic> file, String type) {
+  void _openFile(Map<String, dynamic> file, String type) async {
     if (kIsWeb) {
       String? url;
       if (type == 'drive' && file['driveLink'] != null) {
@@ -299,12 +300,12 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       }
       
       if (url != null) {
-        html.window.open(url, '_blank');
-      } else {
+              html.window.open(url, '_blank');
+            } else {
         ToastService.showError('File URL not available');
       }
     }
-  }
+    }
 
   Future<void> _showFileInfo(Map<String, dynamic> file) async {
     return showDialog(
@@ -1332,6 +1333,8 @@ class _FileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasDriveLink = file['driveLink'] != null && file['driveLink'] != 'NA';
+    final hasDownloadUrl = (file['storageUrl'] != null && file['storageUrl'] != 'NA' && file['storageUrl'].toString().trim().isNotEmpty) || 
+                          (file['firebaseUrl'] != null && file['firebaseUrl'] != 'NA' && file['firebaseUrl'].toString().trim().isNotEmpty);
     
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -1408,12 +1411,13 @@ class _FileCard extends StatelessWidget {
                     tooltip: 'Open in Drive',
                   ),
                 
-                // Download Button
-                IconButton(
-                  onPressed: () => onOpen('download'),
-                  icon: const Icon(Icons.download, size: 20),
-                  tooltip: 'Download',
-                ),
+                // Download Button (conditional)
+                if (hasDownloadUrl)
+                  IconButton(
+                    onPressed: () => onOpen('download'),
+                    icon: const Icon(Icons.download, size: 20),
+                    tooltip: 'Download',
+                  ),
               ],
             ),
           ],

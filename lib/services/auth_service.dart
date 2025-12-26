@@ -4,6 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'config_service.dart';
+import 'secure_logger.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
@@ -53,23 +54,23 @@ class AuthService {
         try {
           SharedPreferences.setMockInitialValues({});
         } catch (e) {
-          print('SharedPreferences mock already set or not needed: $e');
+          SecureLogger.debug('AUTH', 'SharedPreferences mock setup status', {'info': 'Already set or not needed'});
         }
         
         // Check for redirect result on web
         try {
           final redirectResult = await _firebaseAuth.getRedirectResult();
           if (redirectResult.user != null) {
-            print('Google Sign-In redirect successful for user: ${redirectResult.user!.email}');
+            SecureLogger.authEvent('Google Sign-In redirect successful');
             // Store auth preference
             final prefs = await SharedPreferences.getInstance();
             await prefs.setBool('is_authenticated', true);
             await prefs.remove('is_guest');
           } else {
-            print('No redirect result found');
+            SecureLogger.debug('AUTH', 'No redirect result found');
           }
         } catch (e) {
-          print('No redirect result or error: $e');
+          SecureLogger.debug('AUTH', 'No redirect result available');
         }
       }
 
@@ -82,21 +83,21 @@ class AuthService {
       
       // Check current Firebase auth state
       if (currentUser != null) {
-        print('Current user found: ${currentUser!.email}');
+        SecureLogger.info('AUTH', 'Current user found during initialization');
         if (!wasAuthenticated) {
           // User is signed in but not marked as authenticated in our app
-          print('Marking user as authenticated in preferences');
+          SecureLogger.debug('AUTH', 'Marking user as authenticated in preferences');
           await prefs.setBool('is_authenticated', true);
         }
       } else {
-        print('No current user found');
+        SecureLogger.debug('AUTH', 'No current user found during initialization');
         if (wasAuthenticated) {
           // Clear stale auth preference
           await prefs.remove('is_authenticated');
         }
       }
     } catch (e) {
-      print('Error initializing AuthService: $e');
+      SecureLogger.error('AUTH', 'Failed to initialize AuthService', e);
     }
   }
 
@@ -117,14 +118,14 @@ class AuthService {
         
         try {
           // Try popup first (more reliable for testing)
-          print('Starting Google Sign-In popup...');
+          SecureLogger.info('AUTH', 'Starting Google Sign-In popup');
           userCredential = await _firebaseAuth.signInWithPopup(googleProvider);
           
           if (userCredential?.user == null) {
             return null;
           }
           
-          print('Google Sign-In popup successful for user: ${userCredential!.user!.email}');
+          SecureLogger.authEvent('Google Sign-In popup successful');
           
           // Store auth preference
           final prefs = await SharedPreferences.getInstance();
@@ -133,18 +134,18 @@ class AuthService {
           
           return userCredential;
         } catch (popupError) {
-          print('Popup sign-in failed: $popupError');
+          SecureLogger.warning('AUTH', 'Popup sign-in failed', {'method': 'popup'});
           
           // If popup fails, try redirect
           try {
-            print('Trying redirect fallback...');
+            SecureLogger.info('AUTH', 'Trying redirect fallback method');
             await _firebaseAuth.signInWithRedirect(googleProvider);
             
             // The app will reload after redirect, so this won't execute
             // The redirect result will be handled in the initialize method
             return null;
           } catch (redirectError) {
-            print('Redirect also failed: $redirectError');
+            SecureLogger.error('AUTH', 'Redirect sign-in also failed', redirectError);
             throw Exception('Google Sign-In failed. Please ensure this domain is authorized in Firebase Console and try again.');
           }
         }
@@ -171,7 +172,7 @@ class AuthService {
         return userCredential;
       }
     } catch (e) {
-      print('Error signing in with Google: $e');
+      SecureLogger.error('AUTH', 'Failed to sign in with Google', e);
       // Return more specific error information
       if (e.toString().contains('popup')) {
         throw Exception('Sign-in popup was blocked. Please allow popups for this site and try again.');
@@ -196,9 +197,9 @@ class AuthService {
       // Notify listeners that auth method has been chosen
       _authStateController.add(true);
       
-      print('Guest mode activated for this session only');
+      SecureLogger.authEvent('Guest mode activated');
     } catch (e) {
-      print('Error setting guest mode: $e');
+      SecureLogger.error('AUTH', 'Failed to set guest mode', e);
     }
   }
 
@@ -229,9 +230,9 @@ class AuthService {
       // Notify auth method chosen listeners after clearing guest mode
       _authStateController.add(false);
       
-      print('User signed out successfully');
+      SecureLogger.authEvent('User signed out successfully');
     } catch (e) {
-      print('Error signing out: $e');
+      SecureLogger.error('AUTH', 'Failed to sign out', e);
     }
   }
 
@@ -253,7 +254,7 @@ class AuthService {
       
       return isAuthenticated || isGuest;
     } catch (e) {
-      print('Error checking auth state: $e');
+      SecureLogger.error('AUTH', 'Failed to check auth state', e);
       return false;
     }
   }
@@ -265,7 +266,7 @@ class AuthService {
       await prefs.remove('is_authenticated');
       await prefs.remove('is_guest');
     } catch (e) {
-      print('Error clearing auth data: $e');
+      SecureLogger.error('AUTH', 'Failed to clear auth data', e);
     }
   }
 }

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
 import '../models/cgpa_data.dart';
 import 'auth_service.dart';
+import 'secure_logger.dart';
 
 class CGPAService {
   static final CGPAService _instance = CGPAService._internal();
@@ -73,7 +74,7 @@ class CGPAService {
 
       return base64Encode(encrypted);
     } catch (e) {
-      print('Error encrypting data: $e');
+      SecureLogger.error('CGPA', 'Failed to encrypt data', e);
       rethrow;
     }
   }
@@ -92,7 +93,7 @@ class CGPAService {
 
       return utf8.decode(decrypted);
     } catch (e) {
-      print('Error decrypting data: $e');
+      SecureLogger.error('CGPA', 'Failed to decrypt data', e);
       rethrow;
     }
   }
@@ -105,7 +106,7 @@ class CGPAService {
     try {
       final user = _authService.currentUser;
       if (user == null) {
-        print('User not authenticated, cannot save CGPA data');
+        SecureLogger.warning('CGPA', 'Save semester data operation attempted without authentication');
         return false;
       }
 
@@ -127,12 +128,10 @@ class CGPAService {
         'lastUpdated': FieldValue.serverTimestamp(),
       });
 
-      print(
-        'Semester $semesterName saved successfully for user: ${user.email}',
-      );
+      SecureLogger.dataOperation('save', 'semester_data', true, {'semesterName': semesterName});
       return true;
     } catch (e) {
-      print('Error saving semester data: $e');
+      SecureLogger.error('CGPA', 'Failed to save semester data', e);
       return false;
     }
   }
@@ -142,7 +141,7 @@ class CGPAService {
     try {
       final user = _authService.currentUser;
       if (user == null) {
-        print('User not authenticated, cannot load CGPA data');
+        SecureLogger.warning('CGPA', 'Load semester data operation attempted without authentication');
         return null;
       }
 
@@ -155,13 +154,13 @@ class CGPAService {
       final doc = await docRef.get();
 
       if (!doc.exists) {
-        print('No saved data found for semester: $semesterName');
+        SecureLogger.info('CGPA', 'No saved data found for semester', {'semesterName': semesterName});
         return null;
       }
 
       final data = doc.data();
       if (data == null || !data.containsKey('encryptedData')) {
-        print('No encrypted data found in document');
+        SecureLogger.warning('CGPA', 'No encrypted data found in document');
         return null;
       }
 
@@ -176,7 +175,7 @@ class CGPAService {
 
       return SemesterData.fromJson(jsonData);
     } catch (e) {
-      print('Error loading semester data: $e');
+      SecureLogger.error('CGPA', 'Failed to load semester data', e);
       return null;
     }
   }
@@ -186,7 +185,7 @@ class CGPAService {
     try {
       final user = _authService.currentUser;
       if (user == null) {
-        print('User not authenticated, cannot load CGPA data');
+        SecureLogger.warning('CGPA', 'Load all CGPA data operation attempted without authentication');
         return CGPAData();
       }
 
@@ -212,14 +211,14 @@ class CGPAService {
             semesters[doc.id] = semesterData;
           }
         } catch (e) {
-          print('Error loading semester ${doc.id}: $e');
+          SecureLogger.error('CGPA', 'Failed to load semester data', e, null, {'semesterId': doc.id});
         }
       }
 
-      print('Loaded ${semesters.length} semesters for user: ${user.email}');
+      SecureLogger.dataOperation('load', 'all_semester_data', true, {'semesterCount': semesters.length});
       return CGPAData(semesters: semesters);
     } catch (e) {
-      print('Error loading all CGPA data: $e');
+      SecureLogger.error('CGPA', 'Failed to load all CGPA data', e);
       return CGPAData();
     }
   }
@@ -229,7 +228,7 @@ class CGPAService {
     try {
       final user = _authService.currentUser;
       if (user == null) {
-        print('User not authenticated, cannot delete CGPA data');
+        SecureLogger.warning('CGPA', 'Delete semester data operation attempted without authentication');
         return false;
       }
 
@@ -240,10 +239,10 @@ class CGPAService {
           .doc(semesterName)
           .delete();
 
-      print('Semester $semesterName deleted successfully');
+      SecureLogger.dataOperation('delete', 'semester_data', true, {'semesterName': semesterName});
       return true;
     } catch (e) {
-      print('Error deleting semester data: $e');
+      SecureLogger.error('CGPA', 'Failed to delete semester data', e);
       return false;
     }
   }
@@ -253,7 +252,7 @@ class CGPAService {
     try {
       final user = _authService.currentUser;
       if (user == null) {
-        print('User not authenticated, cannot delete CGPA data');
+        SecureLogger.warning('CGPA', 'Delete all CGPA data operation attempted without authentication');
         return false;
       }
 
@@ -270,10 +269,10 @@ class CGPAService {
       }
 
       await batch.commit();
-      print('All CGPA data deleted successfully');
+      SecureLogger.dataOperation('delete', 'all_cgpa_data', true);
       return true;
     } catch (e) {
-      print('Error deleting all CGPA data: $e');
+      SecureLogger.error('CGPA', 'Failed to delete all CGPA data', e);
       return false;
     }
   }

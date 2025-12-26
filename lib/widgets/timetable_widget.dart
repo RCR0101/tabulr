@@ -3,6 +3,7 @@ import '../models/course.dart';
 import '../models/timetable.dart';
 import '../models/export_options.dart';
 import '../services/responsive_service.dart';
+import '../screens/quick_replace_screen.dart';
 
 enum TimetableSize {
   compact,
@@ -32,6 +33,9 @@ class TimetableWidget extends StatefulWidget {
   final VoidCallback? onSave;
   final VoidCallback? onAutoLoadCDCs;
   final ExportOptions? exportOptions;
+  final List<Course>? availableCourses;
+  final List<SelectedSection>? selectedSections;
+  final Function(Course selectedCourse, Course replacementCourse)? onQuickReplace;
 
   const TimetableWidget({
     super.key,
@@ -50,6 +54,9 @@ class TimetableWidget extends StatefulWidget {
     this.onSave,
     this.onAutoLoadCDCs,
     this.exportOptions,
+    this.availableCourses,
+    this.selectedSections,
+    this.onQuickReplace,
   });
 
   @override
@@ -64,6 +71,137 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     if (widget.isForExport) return false;
     
     return ResponsiveService.isMobile(context) || ResponsiveService.isTablet(context);
+  }
+
+  bool get _canShowQuickReplace {
+    return !widget.isForExport && 
+           widget.onQuickReplace != null &&
+           widget.availableCourses != null &&
+           widget.selectedSections != null &&
+           widget.selectedSections!.isNotEmpty;
+  }
+
+  void _showQuickReplaceDialog() {
+    if (!_canShowQuickReplace) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => QuickReplaceScreen(
+          availableCourses: widget.availableCourses!,
+          selectedSections: widget.selectedSections!,
+          onReplace: widget.onQuickReplace!,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileButtonRow() {
+    final buttons = <Widget>[];
+    
+    // Auto Load CDCs button
+    if (!widget.isForExport && widget.onAutoLoadCDCs != null) {
+      buttons.add(_buildMobileButton(
+        onPressed: () {
+          ResponsiveService.triggerLightFeedback(context);
+          widget.onAutoLoadCDCs!();
+        },
+        icon: Icons.school,
+        label: 'Auto Load CDCs',
+        color: Theme.of(context).colorScheme.secondary,
+      ));
+    }
+    
+    // Save button
+    if (!widget.isForExport && widget.onSave != null) {
+      buttons.add(_buildMobileButton(
+        onPressed: widget.hasUnsavedChanges && !widget.isSaving 
+          ? () {
+              ResponsiveService.triggerMediumFeedback(context);
+              widget.onSave!();
+            }
+          : null,
+        icon: widget.isSaving 
+          ? null // Special case for loading spinner
+          : (widget.hasUnsavedChanges ? Icons.save : Icons.check),
+        label: widget.isSaving ? 'Saving...' : 
+               widget.hasUnsavedChanges ? 'Save' : 'Saved',
+        color: widget.hasUnsavedChanges 
+          ? Theme.of(context).colorScheme.primary 
+          : Theme.of(context).colorScheme.tertiary,
+        isLoading: widget.isSaving,
+      ));
+    }
+    
+    // Quick Replace button (only if conditions are met)
+    if (_canShowQuickReplace) {
+      buttons.add(_buildMobileButton(
+        onPressed: _showQuickReplaceDialog,
+        icon: Icons.swap_horiz,
+        label: 'Replace',
+        color: Theme.of(context).colorScheme.tertiary,
+      ));
+    }
+    
+    // Clear button
+    if (widget.timetableSlots.isNotEmpty && widget.onClear != null) {
+      buttons.add(_buildMobileButton(
+        onPressed: () {
+          ResponsiveService.triggerHeavyFeedback(context);
+          widget.onClear!();
+        },
+        icon: Icons.clear_all,
+        label: 'Clear',
+        color: Theme.of(context).colorScheme.error,
+      ));
+    }
+    
+    if (buttons.isEmpty) return const SizedBox.shrink();
+    
+    List<Widget> spacedButtons = [];
+    for (int i = 0; i < buttons.length; i++) {
+      spacedButtons.add(Expanded(child: buttons[i]));
+      if (i < buttons.length - 1) {
+        spacedButtons.add(const SizedBox(width: 8));
+      }
+    }
+    
+    return Row(children: spacedButtons);
+  }
+
+  Widget _buildMobileButton({
+    required VoidCallback? onPressed,
+    required IconData? icon,
+    required String label,
+    required Color color,
+    bool isLoading = false,
+  }) {
+    return ElevatedButton.icon(
+      onPressed: onPressed,
+      icon: isLoading 
+        ? SizedBox(
+            width: ResponsiveService.getAdaptiveIconSize(context, 16),
+            height: ResponsiveService.getAdaptiveIconSize(context, 16),
+            child: const CircularProgressIndicator(strokeWidth: 2),
+          )
+        : icon != null 
+          ? Icon(icon, size: ResponsiveService.getAdaptiveIconSize(context, 16))
+          : const SizedBox.shrink(),
+      label: Text(label),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color.withValues(alpha: 0.1),
+        foregroundColor: color,
+        side: BorderSide(color: color.withValues(alpha: 0.3)),
+        elevation: 0,
+        minimumSize: Size(
+          0,
+          ResponsiveService.getTouchTargetSize(context),
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
   }
 
   @override
@@ -180,104 +318,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      // Auto Load CDCs button (mobile)
-                      if (!widget.isForExport && widget.onAutoLoadCDCs != null)
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              ResponsiveService.triggerLightFeedback(context);
-                              widget.onAutoLoadCDCs!();
-                            },
-                            icon: Icon(
-                              Icons.school,
-                              size: ResponsiveService.getAdaptiveIconSize(context, 16),
-                            ),
-                            label: const Text('Auto Load CDCs'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Theme.of(context).colorScheme.secondary,
-                              foregroundColor: Theme.of(context).colorScheme.onSecondary,
-                              elevation: 2,
-                              minimumSize: Size(
-                                double.infinity,
-                                ResponsiveService.getTouchTargetSize(context),
-                              ),
-                            ),
-                          ),
-                        ),
-                      if (!widget.isForExport && widget.onAutoLoadCDCs != null && widget.onSave != null)
-                        const SizedBox(width: 8),
-                      // Save button
-                      if (!widget.isForExport && widget.onSave != null)
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: widget.hasUnsavedChanges && !widget.isSaving 
-                              ? () {
-                                  ResponsiveService.triggerMediumFeedback(context);
-                                  widget.onSave!();
-                                }
-                              : null,
-                            icon: widget.isSaving 
-                              ? SizedBox(
-                                  width: ResponsiveService.getAdaptiveIconSize(context, 16),
-                                  height: ResponsiveService.getAdaptiveIconSize(context, 16),
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : Icon(
-                                  widget.hasUnsavedChanges ? Icons.save : Icons.check,
-                                  size: ResponsiveService.getAdaptiveIconSize(context, 16),
-                                ),
-                            label: Text(
-                              widget.isSaving ? 'Saving...' : 
-                              widget.hasUnsavedChanges ? 'Save' : 'Saved',
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: widget.hasUnsavedChanges 
-                                ? Theme.of(context).colorScheme.primary 
-                                : Theme.of(context).colorScheme.tertiary,
-                              foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                              elevation: 2,
-                              minimumSize: Size(
-                                double.infinity,
-                                ResponsiveService.getTouchTargetSize(context),
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          ),
-                        ),
-                      if (!widget.isForExport && widget.onSave != null && widget.timetableSlots.isNotEmpty && widget.onClear != null)
-                        const SizedBox(width: 8),
-                      if (widget.timetableSlots.isNotEmpty && widget.onClear != null)
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              ResponsiveService.triggerHeavyFeedback(context);
-                              widget.onClear!();
-                            },
-                            icon: Icon(
-                              Icons.clear_all, 
-                              size: ResponsiveService.getAdaptiveIconSize(context, 16),
-                            ),
-                            label: const Text('Clear'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.2),
-                              foregroundColor: Theme.of(context).colorScheme.error,
-                              elevation: 2,
-                              minimumSize: Size(
-                                double.infinity,
-                                ResponsiveService.getTouchTargetSize(context),
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+                  // Mobile button row - clean and evenly spaced
+                  _buildMobileButtonRow(),
                 ],
               )
             : Row(
@@ -409,12 +451,16 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                       ),
                       label: const Text('Auto Load CDCs'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.secondary,
-                        foregroundColor: Theme.of(context).colorScheme.onSecondary,
-                        elevation: 2,
+                        backgroundColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+                        foregroundColor: Theme.of(context).colorScheme.secondary,
+                        side: BorderSide(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3)),
+                        elevation: 0,
                         minimumSize: Size(
                           0,
                           ResponsiveService.getTouchTargetSize(context),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                     ),
@@ -445,10 +491,17 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: widget.hasUnsavedChanges 
-                          ? Theme.of(context).colorScheme.primary 
+                          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                          : Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.1),
+                        foregroundColor: widget.hasUnsavedChanges 
+                          ? Theme.of(context).colorScheme.primary
                           : Theme.of(context).colorScheme.tertiary,
-                        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                        elevation: 2,
+                        side: BorderSide(
+                          color: widget.hasUnsavedChanges 
+                            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
+                            : Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3)
+                        ),
+                        elevation: 0,
                         minimumSize: Size(
                           0,
                           ResponsiveService.getTouchTargetSize(context),
@@ -458,7 +511,33 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                         ),
                       ),
                     ),
-                  const SizedBox(width: 8),
+                  if (!widget.isForExport && widget.onSave != null)
+                    const SizedBox(width: 8),
+                  // Quick Replace Button (desktop)
+                  if (_canShowQuickReplace)
+                    ElevatedButton.icon(
+                      onPressed: _showQuickReplaceDialog,
+                      icon: Icon(
+                        Icons.swap_horiz, 
+                        size: ResponsiveService.getAdaptiveIconSize(context, 16),
+                      ),
+                      label: const Text('Quick Replace'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.1),
+                        foregroundColor: Theme.of(context).colorScheme.tertiary,
+                        side: BorderSide(color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3)),
+                        elevation: 0,
+                        minimumSize: Size(
+                          0,
+                          ResponsiveService.getTouchTargetSize(context),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  if (_canShowQuickReplace)
+                    const SizedBox(width: 8),
                   if (widget.timetableSlots.isNotEmpty && widget.onClear != null)
                     ElevatedButton.icon(
                       onPressed: () {
@@ -471,9 +550,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                       ),
                       label: const Text('Clear'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.error.withOpacity(0.2),
+                        backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
                         foregroundColor: Theme.of(context).colorScheme.error,
-                        elevation: 2,
+                        side: BorderSide(color: Theme.of(context).colorScheme.error.withValues(alpha: 0.3)),
+                        elevation: 0,
                         minimumSize: Size(
                           0,
                           ResponsiveService.getTouchTargetSize(context),

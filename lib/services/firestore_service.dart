@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/timetable.dart';
 import 'auth_service.dart';
 import 'config_service.dart';
+import 'secure_logger.dart';
 
 class FirestoreService {
   static final FirestoreService _instance = FirestoreService._internal();
@@ -20,7 +21,7 @@ class FirestoreService {
     try {
       final user = _authService.currentUser;
       if (user == null) {
-        print('User not authenticated, cannot save timetable');
+        SecureLogger.warning('FIRESTORE', 'Save operation attempted without authentication');
         return false;
       }
 
@@ -41,10 +42,10 @@ class FirestoreService {
 
       await docRef.set(timetableData, SetOptions(merge: true));
 
-      print('Timetable ${timetable.id} saved successfully for user: ${user.email}');
+      SecureLogger.dataOperation('save', 'timetable', true, {'timetableId': timetable.id});
       return true;
     } catch (e) {
-      print('Error saving timetable: $e');
+      SecureLogger.error('FIRESTORE', 'Failed to save timetable', e);
       return false;
     }
   }
@@ -53,7 +54,7 @@ class FirestoreService {
     try {
       final user = _authService.currentUser;
       if (user == null) {
-        print('User not authenticated, cannot load timetable');
+        SecureLogger.warning('FIRESTORE', 'Load operation attempted without authentication');
         return null;
       }
 
@@ -63,26 +64,26 @@ class FirestoreService {
           .get();
 
       if (!doc.exists) {
-        print('No saved timetable found for user: ${user.email}');
+        SecureLogger.info('FIRESTORE', 'No saved timetable found for user');
         return null;
       }
 
       final data = doc.data();
       if (data == null) {
-        print('Document exists but has no data for user: ${user.email}');
+        SecureLogger.warning('FIRESTORE', 'Document exists but contains no data');
         return null;
       }
 
       final timetableData = data['timetableData'];
       if (timetableData == null) {
-        print('No timetable data found in document for user: ${user.email}');
+        SecureLogger.warning('FIRESTORE', 'No timetable data found in document');
         return null;
       }
 
-      print('Timetable loaded successfully for user: ${user.email}');
+      SecureLogger.dataOperation('load', 'timetable', true);
       return Timetable.fromJson(timetableData as Map<String, dynamic>);
     } catch (e) {
-      print('Error loading timetable: $e');
+      SecureLogger.error('FIRESTORE', 'Failed to load timetable', e);
       return null;
     }
   }
@@ -91,7 +92,7 @@ class FirestoreService {
     try {
       final user = _authService.currentUser;
       if (user == null) {
-        print('User not authenticated, cannot delete timetable');
+        SecureLogger.warning('FIRESTORE', 'Delete operation attempted without authentication');
         return false;
       }
 
@@ -100,10 +101,10 @@ class FirestoreService {
           .doc(user.uid)
           .delete();
 
-      print('Timetable deleted successfully for user: ${user.email}');
+      SecureLogger.dataOperation('delete', 'timetable', true);
       return true;
     } catch (e) {
-      print('Error deleting timetable: $e');
+      SecureLogger.error('FIRESTORE', 'Failed to delete timetable', e);
       return false;
     }
   }
@@ -132,7 +133,7 @@ class FirestoreService {
       final timestamp = data['lastUpdated'] as Timestamp?;
       return timestamp?.toDate();
     } catch (e) {
-      print('Error getting last updated time: $e');
+      SecureLogger.error('FIRESTORE', 'Failed to get last updated time', e);
       return null;
     }
   }
@@ -151,7 +152,7 @@ class FirestoreService {
 
       return doc.exists && doc.data() != null && doc.data()!['timetableData'] != null;
     } catch (e) {
-      print('Error checking for saved timetable: $e');
+      SecureLogger.error('FIRESTORE', 'Failed to check for saved timetable', e);
       return false;
     }
   }
@@ -197,7 +198,7 @@ class FirestoreService {
         'createdAt': data['createdAt'],
       };
     } catch (e) {
-      print('Error getting timetable metadata: $e');
+      SecureLogger.error('FIRESTORE', 'Failed to get timetable metadata', e);
       return null;
     }
   }
@@ -207,11 +208,11 @@ class FirestoreService {
     try {
       final user = _authService.currentUser;
       if (user == null) {
-        print('User not authenticated, cannot load timetables');
+        SecureLogger.warning('FIRESTORE', 'Load timetables operation attempted without authentication');
         return [];
       }
 
-      print('🔥 FIRESTORE READ: Loading timetables for user: ${user.uid}');
+      SecureLogger.debug('FIRESTORE', 'Loading timetables for user');
 
       final querySnapshot = await _firestore
           .collection(_collectionName)
@@ -230,14 +231,14 @@ class FirestoreService {
             timetables.add(timetable);
           }
         } catch (e) {
-          print('Error parsing timetable ${doc.id}: $e');
+          SecureLogger.error('FIRESTORE', 'Failed to parse timetable document', e, null, {'documentId': doc.id});
         }
       }
 
-      print('Loaded ${timetables.length} timetables from Firestore for user: ${user.email}');
+      SecureLogger.dataOperation('load', 'timetables', true, {'count': timetables.length});
       return timetables;
     } catch (e) {
-      print('Error loading timetables: $e');
+      SecureLogger.error('FIRESTORE', 'Failed to load timetables', e);
       return [];
     }
   }
@@ -246,7 +247,7 @@ class FirestoreService {
     try {
       final user = _authService.currentUser;
       if (user == null) {
-        print('User not authenticated, cannot load timetable');
+        SecureLogger.warning('FIRESTORE', 'Get timetable by ID operation attempted without authentication');
         return null;
       }
 
@@ -258,26 +259,26 @@ class FirestoreService {
           .get();
 
       if (!doc.exists) {
-        print('Timetable $timetableId not found for user: ${user.email}');
+        SecureLogger.info('FIRESTORE', 'Timetable not found', {'timetableId': timetableId});
         return null;
       }
 
       final data = doc.data();
       if (data == null) {
-        print('Document exists but has no data for timetable: $timetableId');
+        SecureLogger.warning('FIRESTORE', 'Document exists but has no data', {'timetableId': timetableId});
         return null;
       }
 
       final timetableData = data['timetableData'];
       if (timetableData == null) {
-        print('No timetable data found in document for timetable: $timetableId');
+        SecureLogger.warning('FIRESTORE', 'No timetable data found in document', {'timetableId': timetableId});
         return null;
       }
 
-      print('Timetable $timetableId loaded successfully for user: ${user.email}');
+      SecureLogger.dataOperation('load', 'timetable', true, {'timetableId': timetableId});
       return Timetable.fromJson(timetableData as Map<String, dynamic>);
     } catch (e) {
-      print('Error loading timetable $timetableId: $e');
+      SecureLogger.error('FIRESTORE', 'Failed to load timetable by ID', e, null, {'timetableId': timetableId});
       return null;
     }
   }
@@ -286,7 +287,7 @@ class FirestoreService {
     try {
       final user = _authService.currentUser;
       if (user == null) {
-        print('User not authenticated, cannot delete timetable');
+        SecureLogger.warning('FIRESTORE', 'Delete timetable operation attempted without authentication');
         return false;
       }
 
@@ -297,10 +298,10 @@ class FirestoreService {
           .doc(timetableId)
           .delete();
 
-      print('Timetable $timetableId deleted successfully for user: ${user.email}');
+      SecureLogger.dataOperation('delete', 'timetable', true, {'timetableId': timetableId});
       return true;
     } catch (e) {
-      print('Error deleting timetable $timetableId: $e');
+      SecureLogger.error('FIRESTORE', 'Failed to delete timetable by ID', e, null, {'timetableId': timetableId});
       return false;
     }
   }
@@ -326,10 +327,10 @@ class FirestoreService {
       }
 
       await batch.commit();
-      print('Batch save completed for ${userTimetables.length} timetables');
+      SecureLogger.dataOperation('batch_save', 'timetables', true, {'count': userTimetables.length});
       return true;
     } catch (e) {
-      print('Error in batch save: $e');
+      SecureLogger.error('FIRESTORE', 'Failed to batch save timetables', e);
       return false;
     }
   }
@@ -340,7 +341,7 @@ class FirestoreService {
       final doc = await _firestore.collection(collection).doc(documentId).get();
       return doc;
     } catch (e) {
-      print('Error getting document from $collection/$documentId: $e');
+      SecureLogger.error('FIRESTORE', 'Failed to get document', e, null, {'collection': collection, 'documentId': documentId});
       return null;
     }
   }
@@ -350,7 +351,7 @@ class FirestoreService {
       await _firestore.collection(collection).doc(documentId).set(data, SetOptions(merge: true));
       return true;
     } catch (e) {
-      print('Error saving document to $collection/$documentId: $e');
+      SecureLogger.error('FIRESTORE', 'Failed to save document', e, null, {'collection': collection, 'documentId': documentId});
       return false;
     }
   }
@@ -360,7 +361,7 @@ class FirestoreService {
       await _firestore.collection(collection).doc(documentId).delete();
       return true;
     } catch (e) {
-      print('Error deleting document from $collection/$documentId: $e');
+      SecureLogger.error('FIRESTORE', 'Failed to delete document', e, null, {'collection': collection, 'documentId': documentId});
       return false;
     }
   }

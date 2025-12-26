@@ -238,6 +238,81 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _quickReplaceCourse(Course selectedCourse, Course replacementCourse) {
+    if (_timetable == null) return;
+
+    try {
+      // Remove all sections of the selected course
+      final sectionsToRemove = _timetable!.selectedSections
+          .where((section) => section.courseCode == selectedCourse.courseCode)
+          .toList();
+      
+      for (var section in sectionsToRemove) {
+        _timetableService.removeSectionWithoutSaving(
+          section.courseCode,
+          section.sectionId,
+          _timetable!,
+        );
+      }
+
+      // Add the replacement course (first available section of each type)
+      final replacementSections = replacementCourse.sections;
+      final lectureSection = replacementSections
+          .where((s) => s.type == SectionType.L)
+          .isNotEmpty ? replacementSections.firstWhere((s) => s.type == SectionType.L) : null;
+      
+      final tutorialSection = replacementSections
+          .where((s) => s.type == SectionType.T)
+          .isNotEmpty ? replacementSections.firstWhere((s) => s.type == SectionType.T) : null;
+      
+      final practicalSection = replacementSections
+          .where((s) => s.type == SectionType.P)
+          .isNotEmpty ? replacementSections.firstWhere((s) => s.type == SectionType.P) : null;
+
+      // Add lecture section (required for most courses)
+      if (lectureSection != null) {
+        _timetableService.addSectionWithoutSaving(
+          replacementCourse.courseCode,
+          lectureSection.sectionId,
+          _timetable!,
+        );
+      }
+
+      // Add tutorial section if exists
+      if (tutorialSection != null) {
+        _timetableService.addSectionWithoutSaving(
+          replacementCourse.courseCode,
+          tutorialSection.sectionId,
+          _timetable!,
+        );
+      }
+
+      // Add practical section if exists
+      if (practicalSection != null) {
+        _timetableService.addSectionWithoutSaving(
+          replacementCourse.courseCode,
+          practicalSection.sectionId,
+          _timetable!,
+        );
+      }
+
+      setState(() {
+        _hasUnsavedChanges = true;
+      });
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Replaced ${selectedCourse.courseCode} with ${replacementCourse.courseCode}'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      _showErrorDialog('Error replacing course: $e');
+    }
+  }
+
   Future<void> _autoLoadCDCs() async {
     if (_timetable == null) return;
 
@@ -1163,6 +1238,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           newLayout,
                         );
                       },
+                      availableCourses: _timetable!.availableCourses,
+                      selectedSections: _timetable!.selectedSections,
+                      onQuickReplace: _quickReplaceCourse,
                     ),
                   ),
                 ),
@@ -1419,6 +1497,80 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
       widget.onUnsavedChangesChanged?.call(true);
     } catch (e) {
       _showErrorDialog('Error removing section: $e');
+    }
+  }
+
+  void _quickReplaceCourse(Course selectedCourse, Course replacementCourse) {
+    try {
+      // Remove all sections of the selected course
+      final sectionsToRemove = _timetable.selectedSections
+          .where((section) => section.courseCode == selectedCourse.courseCode)
+          .toList();
+      
+      for (var section in sectionsToRemove) {
+        _timetableService.removeSectionWithoutSaving(
+          section.courseCode,
+          section.sectionId,
+          _timetable,
+        );
+      }
+
+      // Add the replacement course (first available section of each type)
+      final replacementSections = replacementCourse.sections;
+      final lectureSection = replacementSections
+          .where((s) => s.type == SectionType.L)
+          .isNotEmpty ? replacementSections.firstWhere((s) => s.type == SectionType.L) : null;
+      
+      final tutorialSection = replacementSections
+          .where((s) => s.type == SectionType.T)
+          .isNotEmpty ? replacementSections.firstWhere((s) => s.type == SectionType.T) : null;
+      
+      final practicalSection = replacementSections
+          .where((s) => s.type == SectionType.P)
+          .isNotEmpty ? replacementSections.firstWhere((s) => s.type == SectionType.P) : null;
+
+      // Add lecture section (required for most courses)
+      if (lectureSection != null) {
+        _timetableService.addSectionWithoutSaving(
+          replacementCourse.courseCode,
+          lectureSection.sectionId,
+          _timetable,
+        );
+      }
+
+      // Add tutorial section if exists
+      if (tutorialSection != null) {
+        _timetableService.addSectionWithoutSaving(
+          replacementCourse.courseCode,
+          tutorialSection.sectionId,
+          _timetable,
+        );
+      }
+
+      // Add practical section if exists
+      if (practicalSection != null) {
+        _timetableService.addSectionWithoutSaving(
+          replacementCourse.courseCode,
+          practicalSection.sectionId,
+          _timetable,
+        );
+      }
+
+      setState(() {
+        _hasUnsavedChanges = true;
+      });
+      widget.onUnsavedChangesChanged?.call(true);
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Replaced \${selectedCourse.courseCode} with \${replacementCourse.courseCode}'),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      _showErrorDialog('Error replacing course: $e');
     }
   }
 
@@ -2323,6 +2475,9 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                       newLayout,
                     );
                   },
+                  availableCourses: _timetable.availableCourses,
+                  selectedSections: _timetable.selectedSections,
+                  onQuickReplace: _quickReplaceCourse,
                 ),
               ),
             ),
