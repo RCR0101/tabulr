@@ -180,7 +180,6 @@ class CGPAService {
     }
   }
 
-  // Load all semester data for the user
   Future<CGPAData> loadAllCGPAData() async {
     try {
       final user = _authService.currentUser;
@@ -189,16 +188,21 @@ class CGPAService {
         return CGPAData();
       }
 
-      final snapshot =
-          await _firestore
-              .collection(_collectionName)
-              .doc(user.uid)
-              .collection('semesters')
-              .get();
+      final snapshot = await _firestore
+          .collection(_collectionName)
+          .doc(user.uid)
+          .collection('semesters')
+          .get();
+
+      if (snapshot.docs.isEmpty) {
+        SecureLogger.info('CGPA', 'No semester data found for user');
+        return CGPAData();
+      }
 
       final semesters = <String, SemesterData>{};
+      final failedSemesters = <String>[];
 
-      for (final doc in snapshot.docs) {
+      final processingFutures = snapshot.docs.map((doc) async {
         try {
           final data = doc.data();
           if (data.containsKey('encryptedData')) {
@@ -208,14 +212,40 @@ class CGPAService {
             );
             final jsonData = jsonDecode(decryptedData) as Map<String, dynamic>;
             final semesterData = SemesterData.fromJson(jsonData);
-            semesters[doc.id] = semesterData;
+            return MapEntry(doc.id, semesterData);
           }
+          return null;
         } catch (e) {
           SecureLogger.error('CGPA', 'Failed to load semester data', e, null, {'semesterId': doc.id});
+          failedSemesters.add(doc.id);
+          return null;
+        }
+      });
+
+      // Wait for all processing to complete
+      final results = await Future.wait(processingFutures);
+      
+      // Add successful results to semesters map
+      for (final result in results) {
+        if (result != null) {
+          semesters[result.key] = result.value;
         }
       }
 
-      SecureLogger.dataOperation('load', 'all_semester_data', true, {'semesterCount': semesters.length});
+      if (failedSemesters.isNotEmpty) {
+        SecureLogger.warning('CGPA', 'Some semester data failed to load', {
+          'failedSemesters': failedSemesters,
+          'totalAttempted': snapshot.docs.length,
+          'successful': semesters.length,
+        });
+      }
+
+      SecureLogger.dataOperation('load', 'all_semester_data', true, {
+        'semesterCount': semesters.length,
+        'failedCount': failedSemesters.length,
+        'totalDocuments': snapshot.docs.length,
+      });
+      
       return CGPAData(semesters: semesters);
     } catch (e) {
       SecureLogger.error('CGPA', 'Failed to load all CGPA data', e);

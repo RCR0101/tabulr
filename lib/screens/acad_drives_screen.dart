@@ -293,8 +293,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   void _openFile(Map<String, dynamic> file, String type) async {
     if (kIsWeb) {
       String? url;
-      if (type == 'drive' && file['driveLink'] != null) {
-        url = file['driveLink'];
+      if (type == 'drive') {
+        url = file['driveLink'] ?? file['folderMetadata']?['drive_link'];
       } else if (type == 'download') {
         url = file['storageUrl'] ?? file['firebaseUrl'];
       }
@@ -1332,7 +1332,8 @@ class _FileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasDriveLink = file['driveLink'] != null && file['driveLink'] != 'NA';
+    final hasDriveLink = (file['driveLink'] != null && file['driveLink'] != 'NA') || 
+                          (file['folderMetadata']?['drive_link'] != null && file['folderMetadata']?['drive_link'] != 'NA');
     final hasDownloadUrl = (file['storageUrl'] != null && file['storageUrl'] != 'NA' && file['storageUrl'].toString().trim().isNotEmpty) || 
                           (file['firebaseUrl'] != null && file['firebaseUrl'] != 'NA' && file['firebaseUrl'].toString().trim().isNotEmpty);
     

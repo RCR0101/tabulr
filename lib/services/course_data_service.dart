@@ -24,8 +24,50 @@ class CourseDataService {
   Campus? _cachedCampus;
   String? _cachedVersion; // Track the version of cached data
   static const Duration _cacheTimeout = Duration(hours: 24);
+  
+  // Pagination constants
+  static const int _pageSize = 100;
+  bool _isLoadingAllCourses = false;
 
-  /// Fetch all courses from Firestore
+  /// Fetch courses with pagination support
+  Future<List<Course>> fetchCoursesWithPagination({
+    DocumentSnapshot? startAfter,
+    int limit = 100,
+  }) async {
+    try {
+      print('🔥 FIRESTORE READ: Fetching courses with pagination (limit: $limit)');
+      
+      Query query = _firestore
+          .collection(_config.coursesCollection)
+          .limit(limit);
+      
+      if (startAfter != null) {
+        query = query.startAfterDocument(startAfter);
+      }
+      
+      final QuerySnapshot snapshot = await query.get();
+      print('Firestore paginated query completed. Docs count: ${snapshot.docs.length}');
+
+      final courses = <Course>[];
+      for (int i = 0; i < snapshot.docs.length; i++) {
+        try {
+          final doc = snapshot.docs[i];
+          final data = doc.data() as Map<String, dynamic>;
+          final course = Course.fromJson(data);
+          courses.add(course);
+        } catch (e) {
+          print('Error parsing course at index $i: $e');
+        }
+      }
+
+      return courses;
+    } catch (e) {
+      print('Error fetching courses with pagination: $e');
+      throw Exception('Failed to fetch courses: $e');
+    }
+  }
+
+  /// Fetch all courses from Firestore using pagination (optimized)
   Future<List<Course>> fetchCourses() async {
     try {
       final currentCampus = CampusService.currentCampus;
@@ -33,64 +75,80 @@ class CourseDataService {
       // Check if cache is valid by comparing version with database
       final cacheValid = await _isCacheValid(currentCampus);
       
-      print('🔍 Cache validation result: $cacheValid');
-      print('🔍 Cached courses count: ${_cachedCourses?.length ?? 0}');
-      print('🔍 Cached campus: $_cachedCampus');
-      print('🔍 Current campus: $currentCampus');
-      print('🔍 Cached version: $_cachedVersion');
-      
       if (cacheValid && _cachedCourses != null) {
         print('✅ Using cached courses for ${CampusService.getCampusDisplayName(currentCampus)} (${_cachedCourses!.length} courses)');
         return _cachedCourses!;
       }
       
-      print('❌ Cache invalid, fetching fresh data from Firestore...');
-
-      print('🔥 FIRESTORE READ: Fetching courses from Firestore...');
-      print('Collection: ${_config.coursesCollection}');
+      print('❌ Cache invalid, fetching fresh data with pagination...');
       
-      final QuerySnapshot snapshot = await _firestore
-          .collection(_config.coursesCollection)
-          .get();
-
-      print('Firestore query completed. Docs count: ${snapshot.docs.length}');
-
-      if (snapshot.docs.isEmpty) {
-        print('No courses found in Firestore');
-        return [];
-      }
-
-      final courses = <Course>[];
-      for (int i = 0; i < snapshot.docs.length; i++) {
-        try {
-          final doc = snapshot.docs[i];
-          final data = doc.data() as Map<String, dynamic>;
-          // print('Processing course ${i + 1}/${snapshot.docs.length}: ${doc.id}');
-          final course = Course.fromJson(data);
-          courses.add(course);
-        } catch (e) {
-          print('Error parsing course at index $i: $e');
-          print('Document ID: ${snapshot.docs[i].id}');
-          // Continue with other courses instead of failing completely
+      if (_isLoadingAllCourses) {
+        // If already loading, wait for completion by checking cache periodically
+        while (_isLoadingAllCourses) {
+          await Future.delayed(const Duration(milliseconds: 100));
         }
+        if (_cachedCourses != null) return _cachedCourses!;
       }
+      
+      _isLoadingAllCourses = true;
+      
+      try {
+        final allCourses = <Course>[];
+        DocumentSnapshot? lastDocument;
+        bool hasMore = true;
+        
+        while (hasMore) {
+          Query query = _firestore
+              .collection(_config.coursesCollection)
+              .limit(_pageSize);
+          
+          if (lastDocument != null) {
+            query = query.startAfterDocument(lastDocument);
+          }
+          
+          final snapshot = await query.get();
+          
+          if (snapshot.docs.isEmpty) {
+            hasMore = false;
+          } else {
+            // Parse courses from this batch
+            for (final doc in snapshot.docs) {
+              try {
+                final data = doc.data() as Map<String, dynamic>;
+                final course = Course.fromJson(data);
+                allCourses.add(course);
+              } catch (e) {
+                print('Error parsing course ${doc.id}: $e');
+              }
+            }
+            
+            if (snapshot.docs.length < _pageSize) {
+              hasMore = false;
+            } else {
+              lastDocument = snapshot.docs.last;
+            }
+          }
+        }
 
-      print('Successfully parsed ${courses.length} courses from Firestore');
-      
-      // Get the current version to cache alongside the courses
-      final metadata = await _getCurrentMetadata(currentCampus);
-      final currentVersion = metadata?['version'] as String?;
-      
-      // Update cache with current campus and version
-      _cachedCourses = courses;
-      _lastFetchTime = DateTime.now();
-      _cachedCampus = currentCampus;
-      _cachedVersion = currentVersion;
-      
-      return courses;
+        print('Successfully fetched ${allCourses.length} courses using pagination');
+        
+        // Get the current version to cache alongside the courses
+        final metadata = await _getCurrentMetadata(currentCampus);
+        final currentVersion = metadata?['version'] as String?;
+        
+        // Update cache with current campus and version
+        _cachedCourses = allCourses;
+        _lastFetchTime = DateTime.now();
+        _cachedCampus = currentCampus;
+        _cachedVersion = currentVersion;
+        
+        return allCourses;
+      } finally {
+        _isLoadingAllCourses = false;
+      }
     } catch (e) {
+      _isLoadingAllCourses = false;
       print('Error fetching courses from Firestore: $e');
-      print('Error type: ${e.runtimeType}');
       
       // If it's a network/connection error, provide a clearer message
       if (e.toString().contains('PERMISSION_DENIED')) {
