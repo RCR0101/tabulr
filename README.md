@@ -96,7 +96,7 @@ flutter run -d linux
 
 ### 1. Course Data
 
-The app comes with **380+ courses** pre-loaded from an Excel file. You can:
+The app comes with **350+ courses** pre-loaded from an Excel file. You can:
 - **Search & Filter**: Use the search bar to find courses by code, name, or instructor
 - **Advanced Filters**: Filter by credits, days, exam dates, etc.
 - **Course Selection**: Browse courses in a clean interface with selected courses at the top
