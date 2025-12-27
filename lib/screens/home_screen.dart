@@ -1564,7 +1564,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Replaced \${selectedCourse.courseCode} with \${replacementCourse.courseCode}'),
+          content: Text('Replaced ${selectedCourse.courseCode} with ${replacementCourse.courseCode}'),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 3),
         ),

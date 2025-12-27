@@ -4,6 +4,7 @@ import '../models/timetable.dart';
 import '../services/course_comparison_service.dart';
 import '../services/humanities_electives_service.dart';
 import '../services/discipline_electives_service.dart';
+import '../services/clash_detector.dart';
 
 enum CourseCategory { huel, del, other }
 
@@ -254,13 +255,138 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
       return;
     }
 
+    final clashCheckResult = _checkForClashes(replacementCourse);
+    if (clashCheckResult.hasClashes) {
+      _showClashDialog(replacementCourse, clashCheckResult.clashWarnings);
+      return;
+    }
+
     widget.onReplace(_selectedCourse!, replacementCourse);
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Successfully replaced ${_selectedCourse!.courseCode} with ${replacementCourse.courseCode}'),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+    
     Navigator.of(context).pop();
   }
 
   bool _canReplaceCourses(Course selectedCourse, Course replacementCourse) {
     return CourseComparisonService.hasOnlyLectureSections(selectedCourse) && 
            CourseComparisonService.hasOnlyLectureSections(replacementCourse);
+  }
+
+  ClashCheckResult _checkForClashes(Course replacementCourse) {
+    final tempSelectedSections = widget.selectedSections
+        .where((section) => section.courseCode != _selectedCourse!.courseCode)
+        .toList();
+    
+    final replacementSections = replacementCourse.sections;
+    final lectureSection = replacementSections
+        .where((s) => s.type == SectionType.L)
+        .isNotEmpty ? replacementSections.firstWhere((s) => s.type == SectionType.L) : null;
+    
+    final tutorialSection = replacementSections
+        .where((s) => s.type == SectionType.T)
+        .isNotEmpty ? replacementSections.firstWhere((s) => s.type == SectionType.T) : null;
+    
+    final practicalSection = replacementSections
+        .where((s) => s.type == SectionType.P)
+        .isNotEmpty ? replacementSections.firstWhere((s) => s.type == SectionType.P) : null;
+
+    if (lectureSection != null) {
+      tempSelectedSections.add(SelectedSection(
+        courseCode: replacementCourse.courseCode,
+        sectionId: lectureSection.sectionId,
+        section: lectureSection,
+      ));
+    }
+    
+    if (tutorialSection != null) {
+      tempSelectedSections.add(SelectedSection(
+        courseCode: replacementCourse.courseCode,
+        sectionId: tutorialSection.sectionId,
+        section: tutorialSection,
+      ));
+    }
+    
+    if (practicalSection != null) {
+      tempSelectedSections.add(SelectedSection(
+        courseCode: replacementCourse.courseCode,
+        sectionId: practicalSection.sectionId,
+        section: practicalSection,
+      ));
+    }
+
+    final clashes = ClashDetector.detectClashes(tempSelectedSections, widget.availableCourses);
+    final errorClashes = clashes.where((clash) => clash.severity == ClashSeverity.error).toList();
+    
+    return ClashCheckResult(
+      hasClashes: errorClashes.isNotEmpty,
+      clashWarnings: errorClashes,
+    );
+  }
+
+  void _showClashDialog(Course replacementCourse, List<ClashWarning> clashes) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                Icons.warning,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              const SizedBox(width: 8),
+              const Text('Clash Detected'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Replacing ${_selectedCourse!.courseCode} with ${replacementCourse.courseCode} would cause the following clashes:',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              ...clashes.map((clash) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.error,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        clash.message,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Continue Browsing'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -1406,4 +1532,15 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     );
   }
 
+}
+
+// Helper class for clash checking results
+class ClashCheckResult {
+  final bool hasClashes;
+  final List<ClashWarning> clashWarnings;
+
+  ClashCheckResult({
+    required this.hasClashes,
+    required this.clashWarnings,
+  });
 }

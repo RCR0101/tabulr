@@ -39,10 +39,11 @@ class ClashDetector {
         
         // Create descriptive message with section details
         var sectionDetails = conflictingSections.map((s) => '${s.courseCode}-${s.sectionId}').join(', ');
+        var dayName = _getDayName(day);
         
         warnings.add(ClashWarning(
           type: ClashType.regularClass,
-          message: 'Class time clash on $day at ${TimeSlotInfo.getHourSlotName(hour)} between: $sectionDetails',
+          message: 'Class time clash on $dayName at ${TimeSlotInfo.getHourSlotName(hour)} between: $sectionDetails',
           conflictingCourses: conflictingSections.map((s) => s.courseCode).toList(),
           severity: ClashSeverity.error,
         ));
@@ -207,5 +208,24 @@ class ClashDetector {
            exam1.date.month == exam2.date.month && 
            exam1.date.year == exam2.date.year &&
            exam1.timeSlot == exam2.timeSlot;
+  }
+
+  static String _getDayName(String dayEnumString) {
+    switch (dayEnumString) {
+      case 'DayOfWeek.M':
+        return 'Monday';
+      case 'DayOfWeek.T':
+        return 'Tuesday';
+      case 'DayOfWeek.W':
+        return 'Wednesday';
+      case 'DayOfWeek.Th':
+        return 'Thursday';
+      case 'DayOfWeek.F':
+        return 'Friday';
+      case 'DayOfWeek.S':
+        return 'Saturday';
+      default:
+        return dayEnumString;
+    }
   }
 }
