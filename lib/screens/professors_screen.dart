@@ -103,7 +103,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                   '${_professorService.professors.length} professors found',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -230,7 +230,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
           Icon(
             hasSearch ? Icons.search_off : Icons.school_outlined,
             size: 64,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
@@ -238,7 +238,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                 ? 'No professors found'
                 : 'No professors available',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 8),
@@ -248,7 +248,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                 : 'Professor data is not available yet',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
           if (hasSearch) ...[
@@ -286,7 +286,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                 Text(
                   '${professors.length} results',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -312,7 +312,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
     return Container(
       decoration: BoxDecoration(
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
         ),
         borderRadius: BorderRadius.circular(8),
       ),
@@ -341,7 +341,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: professor.chamber == 'Unavailable'
                 ? Theme.of(context).colorScheme.error
-                : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
           ),
         ),
       ),
@@ -407,7 +407,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                             border: Border.all(
                               color: isSelected 
                                   ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                                  : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
                               width: isSelected ? 2 : 1,
                             ),
                           ),

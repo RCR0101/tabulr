@@ -5,6 +5,7 @@ import '../models/timetable_constraints.dart';
 import '../models/timetable.dart' as timetable;
 import '../services/course_data_service.dart';
 import '../services/campus_service.dart';
+import '../services/secure_logger.dart';
 import '../widgets/timetable_generator_widget.dart';
 
 class GeneratorScreen extends StatefulWidget {
@@ -27,7 +28,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     
     // Listen for campus changes
     _campusSubscription = CampusService.campusChangeStream.listen((_) {
-      print('Campus changed in generator, reloading courses...');
+      SecureLogger.info('CAMPUS', 'Campus changed in generator, reloading courses');
       _loadCourses();
     });
   }
@@ -128,7 +129,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
@@ -153,7 +154,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                   'Automatic Scheduling',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -177,7 +178,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                   Text(
                     'Loading courses...',
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -192,7 +193,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                       Icon(
                         Icons.school_outlined,
                         size: 64,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                       const SizedBox(height: 16),
                       Text(
@@ -207,7 +208,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                       Text(
                         'Please ensure course data is loaded',
                         style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                           fontSize: 14,
                         ),
                       ),

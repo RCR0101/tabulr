@@ -190,8 +190,8 @@ class ExportTimetableWidget extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            _getCourseColor(slot.courseCode).withOpacity(0.9),
-            _getCourseColor(slot.courseCode).withOpacity(0.7),
+            _getCourseColor(slot.courseCode).withValues(alpha: 0.9),
+            _getCourseColor(slot.courseCode).withValues(alpha: 0.7),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

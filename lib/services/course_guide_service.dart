@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'secure_logger.dart';
 
 class CourseGuideService {
   static final CourseGuideService _instance = CourseGuideService._internal();
@@ -11,7 +12,7 @@ class CourseGuideService {
 
   Future<List<CourseGuideSemester>> getAllSemesters() async {
     try {
-      print('Loading course guide data from Firestore...');
+      SecureLogger.info('COURSE_GUIDE', 'Loading course guide data from Firestore');
       
       final querySnapshot = await _firestore
           .collection(_collectionName)
@@ -25,17 +26,17 @@ class CourseGuideService {
           final semester = CourseGuideSemester.fromFirestore(doc.id, data);
           semesters.add(semester);
         } catch (e) {
-          print('Error parsing semester ${doc.id}: $e');
+          SecureLogger.error('COURSE_GUIDE', 'Error parsing semester ${doc.id}', e);
         }
       }
 
       // Sort semesters by ID
       semesters.sort((a, b) => a.semesterId.compareTo(b.semesterId));
       
-      print('Loaded ${semesters.length} semesters from course guide');
+      SecureLogger.info('COURSE_GUIDE', 'Loaded ${semesters.length} semesters from course guide');
       return semesters;
     } catch (e) {
-      print('Error loading course guide: $e');
+      SecureLogger.error('COURSE_GUIDE', 'Error loading course guide', e);
       return [];
     }
   }
@@ -48,19 +49,19 @@ class CourseGuideService {
           .get();
 
       if (!doc.exists) {
-        print('Course guide metadata not found');
+        SecureLogger.warning('COURSE_GUIDE', 'Course guide metadata not found');
         return null;
       }
 
       final data = doc.data();
       if (data == null) {
-        print('Course guide metadata document is empty');
+        SecureLogger.warning('COURSE_GUIDE', 'Course guide metadata document is empty');
         return null;
       }
 
       return CourseGuideMetadata.fromFirestore(data);
     } catch (e) {
-      print('Error loading course guide metadata: $e');
+      SecureLogger.error('COURSE_GUIDE', 'Error loading course guide metadata', e);
       return null;
     }
   }
@@ -78,7 +79,7 @@ class CourseGuideService {
               final semester = CourseGuideSemester.fromFirestore(doc.id, data);
               semesters.add(semester);
             } catch (e) {
-              print('Error parsing semester ${doc.id}: $e');
+              SecureLogger.error('COURSE_GUIDE', 'Error parsing semester ${doc.id}', e);
             }
           }
           semesters.sort((a, b) => a.semesterId.compareTo(b.semesterId));
@@ -109,7 +110,7 @@ class CourseGuideSemester {
         final group = CourseGuideGroup.fromFirestore(entry.key, entry.value);
         groups.add(group);
       } catch (e) {
-        print('Error parsing group ${entry.key}: $e');
+        SecureLogger.error('COURSE_GUIDE', 'Error parsing group ${entry.key}', e);
       }
     }
 
@@ -159,7 +160,7 @@ class CourseGuideGroup {
           final course = CourseGuideEntry.fromFirestore(courseData);
           courses.add(course);
         } catch (e) {
-          print('Error parsing course: $e');
+          SecureLogger.error('COURSE_GUIDE', 'Error parsing course', e);
         }
       }
     }

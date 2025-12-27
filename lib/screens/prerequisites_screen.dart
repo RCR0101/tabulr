@@ -136,7 +136,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
         color: colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -229,7 +229,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
             Icon(
               Icons.school_outlined,
               size: 80,
-              color: colorScheme.onSurfaceVariant.withOpacity(0.3),
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 24),
             Text(
@@ -243,7 +243,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
             Text(
               'Showing all courses in alphabetical order',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
               ),
               textAlign: TextAlign.center,
             ),
@@ -263,7 +263,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
             Icon(
               Icons.search_off,
               size: 64,
-              color: colorScheme.onSurfaceVariant.withOpacity(0.3),
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 16),
             Text(
@@ -276,7 +276,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
             Text(
               'Try searching with a different course code or name',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant.withOpacity(0.7),
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
               ),
               textAlign: TextAlign.center,
             ),
@@ -459,10 +459,10 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
               margin: const EdgeInsets.only(bottom: 16),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: colorScheme.secondaryContainer.withOpacity(0.5),
+                color: colorScheme.secondaryContainer.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: colorScheme.secondary.withOpacity(0.3),
+                  color: colorScheme.secondary.withValues(alpha: 0.3),
                 ),
               ),
               child: Row(
@@ -598,7 +598,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: containerColor.withOpacity(0.5),
+          color: containerColor.withValues(alpha: 0.5),
           width: 1,
         ),
       ),

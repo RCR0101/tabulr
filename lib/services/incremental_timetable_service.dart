@@ -26,7 +26,7 @@ class IncrementalTimetableService {
         await _saveFirestoreTimetable(timetable, userId);
       }
     } catch (e) {
-      print('Error saving timetable: $e');
+      // Error saving timetable: $e
       // Ensure local save succeeded even if Firestore fails
       await _saveLocalTimetable(timetable);
     }
@@ -60,14 +60,14 @@ class IncrementalTimetableService {
         await _applyFirestoreUpdate(updateBatch, userId);
       }
     } catch (e) {
-      print('Error applying incremental update: $e');
+      // Error applying incremental update: $e
       
       // Rollback local changes if Firestore update failed
       if (originalTimetable != null && userId != null) {
         try {
           await _saveLocalTimetable(originalTimetable);
         } catch (rollbackError) {
-          print('Failed to rollback local changes: $rollbackError');
+          // Failed to rollback local changes: $rollbackError
         }
       }
       
@@ -117,7 +117,7 @@ class IncrementalTimetableService {
       // Fallback to local storage
       return await _getLocalTimetable(timetableId);
     } catch (e) {
-      print('Error getting timetable: $e');
+      // Error getting timetable: $e
       return await _getLocalTimetable(timetableId);
     }
   }
@@ -131,7 +131,7 @@ class IncrementalTimetableService {
         return await _getAllLocalTimetables();
       }
     } catch (e) {
-      print('Error getting all timetables: $e');
+      // Error getting all timetables: $e
       return await _getAllLocalTimetables();
     }
   }
@@ -167,7 +167,7 @@ class IncrementalTimetableService {
       final metadata = await _getCurrentCourseMetadata();
       return currentVersion != metadata.version;
     } catch (e) {
-      print('Error checking course data update: $e');
+      // Error checking course data update: $e
       // If we can't check, assume update is needed
       return true;
     }
@@ -178,7 +178,7 @@ class IncrementalTimetableService {
     try {
       return await getAllTimetables(userId);
     } catch (e) {
-      print('Error getting timetables safely: $e');
+      // Error getting timetables safely: $e
       // Return empty list as fallback
       return [];
     }
@@ -399,7 +399,7 @@ class IncrementalTimetableService {
         // Cache locally for offline access
         await _saveLocalTimetable(timetable);
       } catch (e) {
-        print('Error parsing timetable ${doc.id}: $e');
+        // Error parsing timetable ${doc.id}: $e
         // Skip invalid timetables but continue with others
       }
     }
@@ -441,7 +441,7 @@ class IncrementalTimetableService {
         }
       }
     } catch (e) {
-      print('Section validation error: $e');
+      // Section validation error: $e
       // In production, you might want to be more lenient here
       // For now, we'll allow invalid sections but log the error
     }
@@ -471,7 +471,7 @@ class IncrementalTimetableService {
       await prefs.setStringList(_timetableListKey, timetableIds);
       
     } catch (e) {
-      print('Error deleting timetable: $e');
+      // Error deleting timetable: $e
       throw Exception('Failed to delete timetable: $e');
     }
   }
@@ -494,7 +494,7 @@ class IncrementalTimetableService {
         }
       }
     } catch (e) {
-      print('Error getting cached course metadata: $e');
+      // Error getting cached course metadata: $e
     }
     
     return null;
@@ -506,7 +506,7 @@ class IncrementalTimetableService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_courseMetadataKey, json.encode(metadata.toJson()));
     } catch (e) {
-      print('Error saving course metadata: $e');
+      // Error saving course metadata: $e
     }
   }
 
@@ -527,7 +527,7 @@ class IncrementalTimetableService {
           final hash = md5.convert(utf8.encode(courseJson)).toString();
           courseHashes[course.courseCode] = hash;
         } catch (e) {
-          print('Error hashing course ${course.courseCode}: $e');
+          // Error hashing course ${course.courseCode}: $e
           // Use course code as fallback hash
           courseHashes[course.courseCode] = course.courseCode;
         }
@@ -546,7 +546,7 @@ class IncrementalTimetableService {
       
       return metadata;
     } catch (e) {
-      print('Error generating course metadata: $e');
+      // Error generating course metadata: $e
       // Return fallback metadata
       return CourseMetadata(
         version: 'fallback_${DateTime.now().millisecondsSinceEpoch}',

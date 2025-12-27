@@ -66,10 +66,10 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
       width: double.infinity,
       margin: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -123,7 +123,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
               child: Column(
                 children: [
                   Divider(
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                     height: 1,
                   ),
                   const SizedBox(height: 12),
@@ -263,7 +263,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                       '$_projectCount project${_projectCount == 1 ? '' : 's'} = +$projectCredits credits',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
                         fontStyle: FontStyle.italic,
                       ),
                     ),
@@ -298,7 +298,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
           child: TabBar(
             controller: _tabController,
             labelColor: Theme.of(context).colorScheme.primary,
-            unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             indicatorColor: Theme.of(context).colorScheme.primary,
             dividerColor: Theme.of(context).colorScheme.outline,
             isScrollable: false,
@@ -437,14 +437,14 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                           Icon(
                             Icons.event_busy,
                             size: 64,
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                           ),
                           SizedBox(height: 16),
                           Text(
                             'No courses selected',
                             style: TextStyle(
                               fontSize: 16,
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                             ),
                           ),
                           SizedBox(height: 8),
@@ -452,7 +452,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                             'Add courses to see exam schedules',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                             ),
                           ),
                         ],

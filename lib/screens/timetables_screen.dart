@@ -10,9 +10,11 @@ import '../services/campus_service.dart';
 import '../services/course_data_service.dart';
 import '../services/user_settings_service.dart';
 import '../services/responsive_service.dart';
+import '../services/secure_logger.dart';
 import '../models/user_settings.dart';
 import '../widgets/theme_selector_widget.dart';
 import '../widgets/campus_selector_widget.dart';
+import '../widgets/app_drawer_widget.dart';
 import 'home_screen.dart';
 import 'course_guide_screen.dart';
 import 'timetable_comparison_screen.dart';
@@ -427,7 +429,11 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   void _applySorting() {
     final sortOrder = _userSettingsService.sortOrder;
     final customOrder = _userSettingsService.customTimetableOrder;
-    print('Applying sort: $sortOrder, timetables count: ${_timetables.length}');
+    SecureLogger.info('UI', 'Applying timetable sort', {
+      'sort_order': sortOrder.toString(),
+      'timetable_count': _timetables.length,
+      'operation': 'sort_timetables'
+    });
 
     List<Timetable> sorted = List.from(_timetables);
 
@@ -480,7 +486,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     }
 
     final currentSort = _userSettingsService.sortOrder;
-    print('Current sort order: $currentSort');
+    SecureLogger.debug('UI', 'Current sort order', {'sort_order': currentSort.toString()});
 
     if (!mounted) return;
 
@@ -557,7 +563,10 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(12),
                                 onTap: () async {
-                                  print('Sort option tapped: $sortOrder');
+                                  SecureLogger.info('UI', 'Sort option tapped', {
+                                    'sort_order': sortOrder.toString(),
+                                    'user_action': 'sort_select'
+                                  });
                                   final navigator = Navigator.of(context);
                                   try {
                                     await _userSettingsService.updateSortOrder(
@@ -565,7 +574,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                     );
                                     navigator.pop();
                                   } catch (e) {
-                                    print('Error updating sort order: $e');
+                                    SecureLogger.error('UI', 'Error updating sort order', e, null, {'operation': 'sort_update'});
                                   }
                                 },
                                 child: Container(
@@ -594,7 +603,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                               : Theme.of(context)
                                                   .colorScheme
                                                   .outline
-                                                  .withOpacity(0.3),
+                                                  .withValues(alpha: 0.3),
                                       width: isSelected ? 2 : 1,
                                     ),
                                   ),
@@ -776,10 +785,10 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
       } else {
         // For mobile, you'd need url_launcher package
         // await launchUrl(Uri.parse(githubUrl));
-        print('Open GitHub: $githubUrl');
+        SecureLogger.info('NETWORK', 'Opening GitHub URL', {'url': githubUrl});
       }
     } catch (e) {
-      print('Error opening GitHub: $e');
+      SecureLogger.error('NETWORK', 'Error opening GitHub', e, null, {'operation': 'open_github'});
     }
   }
 
@@ -817,252 +826,6 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     }
   }
 
-  Widget _buildDrawer() {
-    return Drawer(
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Drawer Header
-            Container(
-              width: double.infinity,
-              padding: ResponsiveService.getAdaptivePadding(
-                context,
-                const EdgeInsets.all(24),
-              ),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Theme.of(context).colorScheme.primary,
-                    Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.8),
-                  ],
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onPrimary.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.school,
-                      size: ResponsiveService.getAdaptiveIconSize(context, 32),
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    ),
-                  ),
-                  SizedBox(
-                    height: ResponsiveService.getAdaptiveSpacing(context, 12),
-                  ),
-                  Text(
-                    'Tabulr',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Menu Items
-            Expanded(
-              child: ListView(
-                padding: ResponsiveService.getAdaptivePadding(
-                  context,
-                  const EdgeInsets.symmetric(vertical: 16),
-                ),
-                children: [
-                  ListTile(
-                    leading: Icon(
-                      Icons.schedule,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: ResponsiveService.getAdaptiveIconSize(
-                        context,
-                        24,
-                      ),
-                    ),
-                    tileColor: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    title: Text(
-                      'TT Builder',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: ResponsiveService.getAdaptiveFontSize(
-                          context,
-                          16,
-                        ),
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Create timetables',
-                      style: TextStyle(
-                        fontSize: ResponsiveService.getAdaptiveFontSize(
-                          context,
-                          12,
-                        ),
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    trailing: null,
-                    onTap: () {
-                      Navigator.pop(context);
-                      // Already on timetables screen, just close drawer
-                    },
-                  ),
-
-                  const Divider(),
-
-                  // Show CGPA Calculator only if user is signed in
-                  if (_authService.isAuthenticated)
-                    ListTile(
-                      leading: Icon(
-                        Icons.calculate,
-                        color: Theme.of(context).colorScheme.onSurface,
-                        size: ResponsiveService.getAdaptiveIconSize(
-                          context,
-                          24,
-                        ),
-                      ),
-                      title: Text(
-                        'CGPA Calculator',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: ResponsiveService.getAdaptiveFontSize(
-                            context,
-                            16,
-                          ),
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Track your academic performance',
-                        style: TextStyle(
-                          fontSize: ResponsiveService.getAdaptiveFontSize(
-                            context,
-                            12,
-                          ),
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.7),
-                        ),
-                      ),
-                      trailing: null,
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const CGPACalculatorScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  if (_authService.isAuthenticated)
-                    ListTile(
-                      leading: Icon(
-                        Icons.folder_shared,
-                        color: Theme.of(context).colorScheme.onSurface,
-                        size: ResponsiveService.getAdaptiveIconSize(
-                          context,
-                          24,
-                        ),
-                      ),
-                      title: Text(
-                        'Academic Drives',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: ResponsiveService.getAdaptiveFontSize(
-                            context,
-                            16,
-                          ),
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Browse & share academic resources',
-                        style: TextStyle(
-                          fontSize: ResponsiveService.getAdaptiveFontSize(
-                            context,
-                            12,
-                          ),
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.7),
-                        ),
-                      ),
-                      trailing: null,
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AcadDrivesScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                ],
-              ),
-            ),
-
-            // Footer
-            Container(
-              padding: ResponsiveService.getAdaptivePadding(
-                context,
-                const EdgeInsets.all(16),
-              ),
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.outline.withValues(alpha: 0.2),
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: ResponsiveService.getAdaptiveIconSize(context, 16),
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                  SizedBox(
-                    width: ResponsiveService.getAdaptiveSpacing(context, 8),
-                  ),
-                  Expanded(
-                    child: Text(
-                      'Made with ❤️ for students',
-                      style: TextStyle(
-                        fontSize: ResponsiveService.getAdaptiveFontSize(
-                          context,
-                          12,
-                        ),
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1071,7 +834,10 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     }
 
     return Scaffold(
-      drawer: _buildDrawer(),
+      drawer: const AppDrawerWidget(
+        currentScreen: DrawerScreen.timetables,
+        showFooter: true,
+      ),
       appBar: AppBar(
         title:
             ResponsiveService.isMobile(context)
@@ -1797,25 +1563,37 @@ class _TimetableEditorScreenState extends State<TimetableEditorScreen> {
 
   Future<void> _loadTimetable() async {
     try {
-      print('Loading timetable with ID: ${widget.timetableId}');
+      SecureLogger.info('DATA', 'Loading timetable with ID', {
+        'timetable_id': widget.timetableId,
+        'operation': 'load_timetable'
+      });
       final timetable = await _timetableService.getTimetableById(
         widget.timetableId,
       );
       if (timetable != null) {
-        print('Timetable loaded successfully: ${timetable.name}');
+        SecureLogger.dataOperation('load', 'timetable', true, {
+          'timetable_name': timetable.name,
+          'timetable_id': widget.timetableId
+        });
         setState(() {
           _timetable = timetable;
           _isLoading = false;
         });
       } else {
-        print('Timetable not found, going back');
+        SecureLogger.warning('DATA', 'Timetable not found, going back', {
+          'timetable_id': widget.timetableId,
+          'operation': 'load_timetable'
+        });
         if (mounted) {
           Navigator.pop(context);
           ToastService.showError('Timetable not found');
         }
       }
     } catch (e) {
-      print('Error loading timetable: $e');
+      SecureLogger.error('DATA', 'Error loading timetable', e, null, {
+        'timetable_id': widget.timetableId,
+        'operation': 'load_timetable'
+      });
       if (mounted) {
         Navigator.pop(context);
         ToastService.showError('Error loading timetable: $e');

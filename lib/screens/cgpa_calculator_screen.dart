@@ -9,6 +9,8 @@ import '../services/timetable_service.dart';
 import '../services/auto_load_cdc_service.dart';
 import '../services/toast_service.dart';
 import '../services/course_guide_service.dart';
+import '../services/secure_logger.dart';
+import '../widgets/app_drawer_widget.dart';
 import '../models/cgpa_data.dart';
 import '../models/all_course.dart';
 import '../models/course.dart';
@@ -218,9 +220,9 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
 
   Future<void> _loadCDCs() async {
     try {
-      print('Starting Load CDCs process...');
+      SecureLogger.info('DATA', 'Starting Load CDCs process', {'operation': 'load_cdcs'});
       if (kDebugMode) {
-        print('Debug mode enabled');
+        SecureLogger.debug('DATA', 'Debug mode enabled', {'mode': 'debug'});
       }
       
       // Show branch and semester selection dialog
@@ -228,11 +230,15 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       final result = await autoLoadService.showBranchYearDialog(context);
       
       if (result == null) {
-        print('User cancelled CDC loading');
+        SecureLogger.info('UI', 'User cancelled CDC loading', {'user_action': 'cancel'});
         return; // User cancelled
       }
 
-      print('Selected branch: ${result.branch}, semester: ${result.year}');
+      SecureLogger.info('DATA', 'Selected branch and semester for CDC loading', {
+        'branch': result.branch,
+        'semester': result.year,
+        'operation': 'load_cdcs'
+      });
 
       if (!mounted) return;
 
@@ -240,18 +246,27 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       final courseGuideService = CourseGuideService();
       final semesters = await courseGuideService.getAllSemesters();
       
-      print('Loaded ${semesters.length} semesters from course guide');
+      SecureLogger.dataOperation('load', 'semesters_course_guide', true, {
+        'semester_count': semesters.length,
+        'source': 'course_guide'
+      });
       
       // Convert semester format (e.g., "3-1" to "semester_3_1")
       final semesterId = 'semester_${result.year.replaceAll('-', '_')}';
-      print('Looking for semester ID: $semesterId');
+      SecureLogger.info('DATA', 'Looking for semester ID', {
+        'semester_id': semesterId,
+        'operation': 'find_semester'
+      });
       
       final cdcCourses = <CourseGuideEntry>[];
       
       // Find the specific semester
       final targetSemester = semesters.where((s) => s.semesterId == semesterId).firstOrNull;
       if (targetSemester != null) {
-        print('Found target semester: ${targetSemester.name}');
+        SecureLogger.info('DATA', 'Found target semester', {
+          'semester_name': targetSemester.name,
+          'operation': 'find_semester'
+        });
         // Get the full branch name for searching
         final branchCodeToName = {
           'A1': 'Chemical',
@@ -275,21 +290,35 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
         final branchFullName = branchCodeToName[result.branch];
         
         for (final group in targetSemester.groups) {
-          print('Checking group ${group.groupId} with branches: ${group.branches}');
+          SecureLogger.debug('DATA', 'Checking course group', {
+            'group_id': group.groupId,
+            'branches': group.branches.toString(),
+            'operation': 'filter_groups'
+          });
           // Check if group contains either the branch code or the full branch name
           bool containsBranch = group.branches.contains(result.branch) || 
                                (branchFullName != null && group.branches.contains(branchFullName));
           
           if (containsBranch) {
-            print('Group matches! Adding ${group.courses.length} courses');
+            SecureLogger.info('DATA', 'Group matches, adding courses', {
+              'course_count': group.courses.length,
+              'group_id': group.groupId,
+              'operation': 'add_group_courses'
+            });
             cdcCourses.addAll(group.courses);
           }
         }
       } else {
-        print('Target semester not found!');
+        SecureLogger.warning('DATA', 'Target semester not found', {
+          'semester_id': semesterId,
+          'operation': 'find_semester'
+        });
       }
 
-      print('Found ${cdcCourses.length} CDC courses total');
+      SecureLogger.dataOperation('load', 'cdc_courses', true, {
+        'course_count': cdcCourses.length,
+        'operation': 'load_cdcs'
+      });
 
       if (cdcCourses.isEmpty) {
         ToastService.showInfo(
@@ -303,12 +332,22 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       // Use the currently selected semester instead of creating a new one
       final semesterName = _semesters[_tabController.index];
       
-      print('Adding courses to currently selected semester: $semesterName');
-      print('CDC courses are from semester: ${result.year}');
+      SecureLogger.info('DATA', 'Adding courses to currently selected semester', {
+        'semester_name': semesterName,
+        'operation': 'add_to_semester'
+      });
+      SecureLogger.info('DATA', 'CDC courses source semester', {
+        'source_semester': result.year,
+        'operation': 'load_cdcs'
+      });
 
       // Add courses to semester
       for (final cdcCourse in cdcCourses) {
-        print('Processing course: ${cdcCourse.code} - ${cdcCourse.name}');
+        SecureLogger.debug('DATA', 'Processing CDC course', {
+          'course_code': cdcCourse.code,
+          'course_name': cdcCourse.name,
+          'operation': 'add_course'
+        });
         
         // Check if course already exists in this semester
         final existingSemester = _cgpaData.semesters[semesterName];
@@ -317,7 +356,10 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
         ) ?? false;
 
         if (!courseExists) {
-          print('Adding new course: ${cdcCourse.code}');
+          SecureLogger.info('DATA', 'Adding new CDC course', {
+            'course_code': cdcCourse.code,
+            'operation': 'add_course'
+          });
           final allCourse = AllCourse(
             courseCode: cdcCourse.code,
             courseTitle: cdcCourse.name,
@@ -327,11 +369,17 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
           _addCourseToSemester(semesterName, allCourse);
           importedCount++;
         } else {
-          print('Course ${cdcCourse.code} already exists, skipping');
+          SecureLogger.info('DATA', 'Course already exists, skipping', {
+            'course_code': cdcCourse.code,
+            'operation': 'skip_duplicate'
+          });
         }
       }
 
-      print('Successfully imported $importedCount courses');
+      SecureLogger.dataOperation('import', 'cdc_courses', true, {
+        'imported_count': importedCount,
+        'operation': 'load_cdcs'
+      });
 
       if (mounted) {
         if (importedCount > 0) {
@@ -950,158 +998,6 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     );
   }
 
-  Widget _buildDrawer(BuildContext context) {
-    return Drawer(
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Drawer Header
-            Container(
-              width: double.infinity,
-              padding: ResponsiveService.getAdaptivePadding(
-                context,
-                const EdgeInsets.all(24),
-              ),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Theme.of(context).colorScheme.primary,
-                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
-                  ],
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.school,
-                      size: ResponsiveService.getAdaptiveIconSize(context, 32),
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    ),
-                  ),
-                  SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
-                  Text(
-                    'Tabulr',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Menu Items
-            Expanded(
-              child: ListView(
-                padding: ResponsiveService.getAdaptivePadding(
-                  context,
-                  const EdgeInsets.symmetric(vertical: 16),
-                ),
-                children: [
-                  ListTile(
-                    leading: Icon(
-                      Icons.schedule,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
-                    ),
-                    title: Text(
-                      'TT Builder',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Create timetables',
-                      style: TextStyle(
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => const TimetablesScreen()),
-                      );
-                    },
-                  ),
-                  
-                  const Divider(),
-                  
-                  ListTile(
-                    leading: Icon(
-                      Icons.calculate,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
-                    ),
-                    tileColor: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    title: Text(
-                      'CGPA Calculator',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Calculate your GPA',
-                      style: TextStyle(
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    trailing: null,
-                    onTap: () {
-                      Navigator.pop(context);
-                      // Already on CGPA calculator screen
-                    },
-                  ),
-                  
-                  ListTile(
-                    leading: Icon(
-                      Icons.folder_shared,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
-                    ),
-                    title: Text(
-                      'Academic Drives',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Browse course files',
-                      style: TextStyle(
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const AcadDrivesScreen()),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1141,7 +1037,9 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     }
 
     return Scaffold(
-      drawer: _buildDrawer(context),
+      drawer: const AppDrawerWidget(
+        currentScreen: DrawerScreen.cgpaCalculator,
+      ),
       appBar: AppBar(
         title: const Text('CGPA Calculator'),
         centerTitle: true,
@@ -1333,7 +1231,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                   end: Alignment.bottomRight,
                   colors: [
                     Theme.of(context).colorScheme.primary,
-                    Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
                   ],
                 )
                 : LinearGradient(
@@ -1342,26 +1240,26 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                   colors: [
                     Theme.of(
                       context,
-                    ).colorScheme.surfaceContainerHigh.withOpacity(0.7),
+                    ).colorScheme.surfaceContainerHigh.withValues(alpha: 0.7),
                     Theme.of(
                       context,
-                    ).colorScheme.surfaceContainer.withOpacity(0.4),
+                    ).colorScheme.surfaceContainer.withValues(alpha: 0.4),
                   ],
                 ),
         borderRadius: BorderRadius.circular(isMobile ? 10 : 12),
         border: Border.all(
           color:
               isPrimary
-                  ? Theme.of(context).colorScheme.primary.withOpacity(0.4)
-                  : Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.4)
+                  : Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
             color:
                 isPrimary
-                    ? Theme.of(context).colorScheme.primary.withOpacity(0.25)
-                    : Theme.of(context).colorScheme.shadow.withOpacity(0.08),
+                    ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.25)
+                    : Theme.of(context).colorScheme.shadow.withValues(alpha: 0.08),
             blurRadius: isPrimary ? 8 : 6,
             offset: Offset(0, isPrimary ? 2 : 1),
           ),
@@ -1375,8 +1273,8 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
             size: isMobile ? 16 : 18,
             color:
                 isPrimary
-                    ? Colors.white.withOpacity(0.9)
-                    : Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                    ? Colors.white.withValues(alpha: 0.9)
+                    : Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
           ),
           SizedBox(height: isMobile ? 4 : 6),
           Text(
@@ -1389,7 +1287,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                       ? Colors.white
                       : Theme.of(
                         context,
-                      ).colorScheme.onSurface.withOpacity(0.85),
+                      ).colorScheme.onSurface.withValues(alpha: 0.85),
               letterSpacing: -0.3,
             ),
             maxLines: 1,
@@ -1402,10 +1300,10 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
               fontSize: isMobile ? 10 : 11,
               color:
                   isPrimary
-                      ? Colors.white.withOpacity(0.85)
+                      ? Colors.white.withValues(alpha: 0.85)
                       : Theme.of(
                         context,
-                      ).colorScheme.onSurface.withOpacity(0.6),
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
               fontWeight: FontWeight.w500,
               letterSpacing: 0.2,
             ),
@@ -1474,7 +1372,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                             decoration: BoxDecoration(
                               color: Theme.of(
                                 context,
-                              ).colorScheme.primary.withOpacity(0.08),
+                              ).colorScheme.primary.withValues(alpha: 0.08),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
@@ -1483,7 +1381,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                                   ResponsiveService.isMobile(context) ? 48 : 56,
                               color: Theme.of(
                                 context,
-                              ).colorScheme.primary.withOpacity(0.7),
+                              ).colorScheme.primary.withValues(alpha: 0.7),
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -1509,7 +1407,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                                   ResponsiveService.isMobile(context) ? 14 : 15,
                               color: Theme.of(
                                 context,
-                              ).colorScheme.onSurface.withOpacity(0.7),
+                              ).colorScheme.onSurface.withValues(alpha: 0.7),
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -1796,12 +1694,12 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
         color: Theme.of(context).colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.3),
+          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withOpacity(0.08),
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.08),
             blurRadius: 12,
             offset: const Offset(0, 2),
           ),
@@ -1823,7 +1721,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                     decoration: BoxDecoration(
                       color: Theme.of(
                         context,
-                      ).colorScheme.primary.withOpacity(0.1),
+                      ).colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
@@ -1857,7 +1755,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                             fontSize: isMobile ? 11 : 12,
                             color: Theme.of(
                               context,
-                            ).colorScheme.onSurface.withOpacity(0.7),
+                            ).colorScheme.onSurface.withValues(alpha: 0.7),
                             height: 1.2,
                           ),
                           maxLines: 1,
@@ -1869,17 +1767,17 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                   const SizedBox(width: 4),
                   IconButton(
                     icon: Icon(Icons.close_rounded, size: 18),
-                    color: Theme.of(context).colorScheme.error.withOpacity(0.7),
+                    color: Theme.of(context).colorScheme.error.withValues(alpha: 0.7),
                     onPressed:
                         () => _removeCourseFromSemester(semesterName, index),
                     tooltip: 'Remove course',
                     style: IconButton.styleFrom(
                       backgroundColor: Theme.of(
                         context,
-                      ).colorScheme.errorContainer.withOpacity(0.1),
+                      ).colorScheme.errorContainer.withValues(alpha: 0.1),
                       foregroundColor: Theme.of(
                         context,
-                      ).colorScheme.error.withOpacity(0.8),
+                      ).colorScheme.error.withValues(alpha: 0.8),
                       padding: const EdgeInsets.all(6),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -1898,7 +1796,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                     decoration: BoxDecoration(
                       color: Theme.of(
                         context,
-                      ).colorScheme.secondaryContainer.withOpacity(0.6),
+                      ).colorScheme.secondaryContainer.withValues(alpha: 0.6),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Row(
@@ -1949,12 +1847,12 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                   decoration: BoxDecoration(
                     color: Theme.of(
                       context,
-                    ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
                       color: Theme.of(
                         context,
-                      ).colorScheme.outline.withOpacity(0.15),
+                      ).colorScheme.outline.withValues(alpha: 0.15),
                     ),
                   ),
                   child: Row(
@@ -1965,7 +1863,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                         size: 13,
                         color: Theme.of(
                           context,
-                        ).colorScheme.onSurface.withOpacity(0.4),
+                        ).colorScheme.onSurface.withValues(alpha: 0.4),
                       ),
                       const SizedBox(width: 6),
                       Expanded(
@@ -1977,7 +1875,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                             fontSize: 10,
                             color: Theme.of(
                               context,
-                            ).colorScheme.onSurface.withOpacity(0.45),
+                            ).colorScheme.onSurface.withValues(alpha: 0.45),
                             fontWeight: FontWeight.w500,
                           ),
                         ),

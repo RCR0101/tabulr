@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'secure_logger.dart';
 
 enum Campus {
   hyderabad,
@@ -66,14 +67,21 @@ class CampusService {
   static Future<void> initializeCampus() async {
     final prefs = await SharedPreferences.getInstance();
     final campusIndex = prefs.getInt(_campusKey) ?? Campus.hyderabad.index;
-    print('CampusService: Loading campus with index $campusIndex');
+    SecureLogger.info('CAMPUS', 'Loading campus with index', {
+      'campusIndex': campusIndex
+    });
     
     // Validate the index to prevent out-of-bounds errors
     if (campusIndex >= 0 && campusIndex < Campus.values.length) {
       _currentCampus = Campus.values[campusIndex];
-      print('CampusService: Loaded campus ${_currentCampus.toString()}');
+      SecureLogger.info('CAMPUS', 'Loaded campus', {
+        'campus': _currentCampus.toString()
+      });
     } else {
-      print('CampusService: Invalid campus index $campusIndex, defaulting to Hyderabad');
+      SecureLogger.warning('CAMPUS', 'Invalid campus index, defaulting to Hyderabad', {
+        'invalidIndex': campusIndex,
+        'maxIndex': Campus.values.length - 1
+      });
       _currentCampus = Campus.hyderabad;
     }
     
@@ -83,7 +91,10 @@ class CampusService {
   static Future<void> setCampus(Campus campus) async {
     _currentCampus = campus;
     final prefs = await SharedPreferences.getInstance();
-    print('CampusService: Saving campus ${campus.toString()} with index ${campus.index}');
+    SecureLogger.info('CAMPUS', 'Saving campus', {
+      'campus': campus.toString(),
+      'index': campus.index
+    });
     await prefs.setInt(_campusKey, campus.index);
     _campusChangeController.add(campus); // Notify listeners
   }

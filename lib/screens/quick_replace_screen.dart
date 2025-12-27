@@ -4,6 +4,7 @@ import '../models/timetable.dart';
 import '../services/course_comparison_service.dart';
 import '../services/humanities_electives_service.dart';
 import '../services/discipline_electives_service.dart';
+import '../services/secure_logger.dart';
 
 enum CourseCategory { huel, del, other }
 
@@ -77,9 +78,9 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
       // Don't load DEL courses automatically - only when DEL category is selected
       // and user has configured branch/semester
       
-      print('Loaded ${_huelCourses.length} HUEL courses. DEL courses will load when configured.');
+      SecureLogger.info('COURSE', 'Loaded course categories', {'huel_count': _huelCourses.length});
     } catch (e) {
-      print('Error loading course categories: $e');
+      SecureLogger.error('COURSE', 'Failed to load course categories', e);
     } finally {
       setState(() {
         _isLoadingCategories = false;
@@ -101,7 +102,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
         );
         _delCourses = delElectives.map((del) => del.courseCode).toSet();
       } catch (e) {
-        print('Error loading filtered DEL courses: $e');
+        SecureLogger.error('COURSE', 'Failed to load DEL courses', e);
         // Fallback to all DEL courses
         await _loadAllDelCourses();
       }

@@ -4,6 +4,7 @@ import '../models/timetable.dart';
 import '../services/course_guide_service.dart';
 import '../services/course_data_service.dart';
 import '../services/responsive_service.dart';
+import 'secure_logger.dart';
 
 class AutoLoadCDCService {
   static final AutoLoadCDCService _instance = AutoLoadCDCService._internal();
@@ -44,7 +45,10 @@ class AutoLoadCDCService {
     required List<Course> availableCourses,
   }) async {
     try {
-      print('Loading CDCs for branch: $branch, semester: $semester');
+      SecureLogger.info('CDC', 'Loading CDCs for branch and semester', {
+        'branch': branch,
+        'semester': semester
+      });
 
       // Load course guide data
       final semesters = await _courseGuideService.getAllSemesters();
@@ -67,14 +71,25 @@ class AutoLoadCDCService {
           
           if (containsBranch) {
             cdcCourses.addAll(group.courses);
-            print('Found group ${group.groupId} with ${group.courses.length} courses for branch $branch (${branchFullName ?? branch})');
+            SecureLogger.info('CDC', 'Found group for branch', {
+              'groupId': group.groupId,
+              'courseCount': group.courses.length,
+              'branch': branch,
+              'branchFullName': branchFullName
+            });
           }
         }
       } else {
-        print('Semester $semesterId not found in course guide');
+        SecureLogger.warning('CDC', 'Semester not found in course guide', {
+          'semesterId': semesterId
+        });
       }
 
-      print('Found ${cdcCourses.length} CDC courses for $branch semester $semester');
+      SecureLogger.info('CDC', 'Found CDC courses', {
+        'courseCount': cdcCourses.length,
+        'branch': branch,
+        'semester': semester
+      });
 
       // Convert to SelectedSection objects by finding available lecture sections
       final selectedSections = <SelectedSection>[];
@@ -105,22 +120,29 @@ class AutoLoadCDCService {
             
             if (!hasConflict) {
               selectedSections.add(tempSection);
-              print('Auto-loaded: ${course.courseCode} - ${lectureSection.sectionId}');
+              SecureLogger.info('CDC', 'Auto-loaded course section', {
+                'courseCode': course.courseCode,
+                'sectionId': lectureSection.sectionId
+              });
               added = true;
               break;
             }
           }
           
           if (!added && lectureSections.isNotEmpty) {
-            print('Could not add ${course.courseCode} - all lecture sections have conflicts');
+            SecureLogger.warning('CDC', 'Could not add course - all sections have conflicts', {
+              'courseCode': course.courseCode
+            });
           }
         }
       }
 
-      print('Successfully loaded ${selectedSections.length} CDC sections');
+      SecureLogger.info('CDC', 'Successfully loaded CDC sections', {
+        'sectionCount': selectedSections.length
+      });
       return selectedSections;
     } catch (e) {
-      print('Error loading CDCs: $e');
+      SecureLogger.error('CDC', 'Error loading CDCs', e);
       rethrow;
     }
   }

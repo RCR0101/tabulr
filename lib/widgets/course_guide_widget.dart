@@ -110,20 +110,20 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
               Icon(
                 Icons.book_outlined,
                 size: 48,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
               ),
               const SizedBox(height: 16),
               Text(
                 'No Course Guide Available',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 'The course guide data is not yet available.',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -142,7 +142,7 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
             width: double.infinity,
             padding: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
@@ -178,7 +178,7 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
                   Text(
                     'Last updated: ${_formatDateTime(_metadata!.lastUpdated)}',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                 ],
@@ -227,7 +227,7 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
         subtitle: Text(
           '${semester.groups.length} group${semester.groups.length != 1 ? 's' : ''}',
           style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
           ),
         ),
         children: semester.groups.map((group) => _buildGroupCard(group)).toList(),
@@ -255,7 +255,7 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
           subtitle: Text(
             '${group.courses.length} courses',
             style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               fontSize: 12,
             ),
           ),
@@ -282,7 +282,7 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
         // Header
         TableRow(
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
           ),
           children: [

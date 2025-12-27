@@ -32,8 +32,8 @@ class ClashWarningsWidget extends StatelessWidget {
               final warning = warnings[index];
               return Card(
                 color: warning.severity == ClashSeverity.error
-                    ? Colors.red.withOpacity(0.1)
-                    : Colors.orange.withOpacity(0.1),
+                    ? Colors.red.withValues(alpha: 0.1)
+                    : Colors.orange.withValues(alpha: 0.1),
                 child: ListTile(
                   leading: Icon(
                     warning.severity == ClashSeverity.error
@@ -53,8 +53,8 @@ class ClashWarningsWidget extends StatelessWidget {
                       style: const TextStyle(fontSize: 12),
                     ),
                     backgroundColor: warning.severity == ClashSeverity.error
-                        ? Colors.red.withOpacity(0.2)
-                        : Colors.orange.withOpacity(0.2),
+                        ? Colors.red.withValues(alpha: 0.2)
+                        : Colors.orange.withValues(alpha: 0.2),
                   ),
                 ),
               );

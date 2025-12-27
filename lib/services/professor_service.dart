@@ -103,14 +103,8 @@ class ProfessorService extends ChangeNotifier {
 
       _applyFilters();
       
-      if (kDebugMode) {
-        print('ProfessorService: Loaded ${_professors.length} professors');
-      }
     } catch (e) {
       _error = 'Failed to load professors: ${e.toString()}';
-      if (kDebugMode) {
-        print('ProfessorService error: $_error');
-      }
     } finally {
       _isLoading = false;
       notifyListeners();

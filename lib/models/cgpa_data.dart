@@ -1,11 +1,9 @@
-// Model representing a single course entry in a semester
 class CourseEntry {
   final String courseCode;
   final String courseTitle;
-  final double credits; // The 'u' field from all_courses
-  final String courseType; // 'Normal' or 'ATC'
-  String?
-  grade; // For Normal: A, A-, B, B-, C, C-, D, D-, E, NC; For ATC: GD, PR, NC
+  final double credits;
+  final String courseType;
+  String? grade;
 
   CourseEntry({
     required this.courseCode,
@@ -15,9 +13,8 @@ class CourseEntry {
     this.grade,
   });
 
-  // Get grade points based on grade and course type
   double get gradePoints {
-    if (courseType == 'ATC') return 0.0; // ATC courses don't carry grade points
+    if (courseType == 'ATC') return 0.0;
 
     switch (grade) {
       case 'A':
@@ -45,7 +42,6 @@ class CourseEntry {
     }
   }
 
-  // Get total grade points (credits * grade points)
   double get totalGradePoints => credits * gradePoints;
 
   Map<String, dynamic> toJson() {
@@ -85,7 +81,6 @@ class CourseEntry {
   }
 }
 
-// Model representing a single semester
 class SemesterData {
   final String semesterName;
   final List<CourseEntry> courses;
@@ -93,11 +88,8 @@ class SemesterData {
   SemesterData({required this.semesterName, List<CourseEntry>? courses})
     : courses = courses ?? [];
 
-  // Calculate SGPA for this semester
   double get sgpa {
     if (courses.isEmpty) return 0.0;
-
-    // Only consider Normal courses with grades
     final normalCourses =
         courses
             .where(
@@ -123,7 +115,6 @@ class SemesterData {
     return totalCredits > 0 ? totalGradePoints / totalCredits : 0.0;
   }
 
-  // Get total credits for this semester (only Normal courses)
   double get totalCredits {
     return courses
         .where(
@@ -135,7 +126,6 @@ class SemesterData {
         .fold<double>(0.0, (sum, course) => sum + course.credits);
   }
 
-  // Get total grade points for this semester (only Normal courses)
   double get totalGradePoints {
     return courses
         .where(
@@ -172,7 +162,6 @@ class SemesterData {
   }
 }
 
-// Model representing the complete CGPA data
 class CGPAData {
   final Map<String, SemesterData> semesters;
   final DateTime lastUpdated;
@@ -181,7 +170,6 @@ class CGPAData {
     : semesters = semesters ?? {},
       lastUpdated = lastUpdated ?? DateTime.now();
 
-  // Calculate overall CGPA
   double get cgpa {
     if (semesters.isEmpty) return 0.0;
 

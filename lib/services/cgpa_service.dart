@@ -13,10 +13,8 @@ class CGPAService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AuthService _authService = AuthService();
 
-  // Collection name for CGPA data
   static const String _collectionName = 'cgpa';
 
-  // Default semesters list
   static const List<String> defaultSemesters = [
     '1-1',
     '1-2',
@@ -33,7 +31,6 @@ class CGPAService {
     '5-2',
   ];
 
-  // Grade options for Normal courses
   static const List<String> normalGrades = [
     'A',
     'A-',
@@ -47,10 +44,8 @@ class CGPAService {
     'NC',
   ];
 
-  // Grade options for ATC courses
   static const List<String> atcGrades = ['GD', 'PR', 'NC'];
 
-  // Generate encryption key from user ID
   String _generateEncryptionKey(String userId) {
     // Use HMAC-SHA256 to derive a consistent key from user ID
     final key = utf8.encode('tabulr_cgpa_encryption_key_v1');
@@ -60,7 +55,6 @@ class CGPAService {
     return digest.toString();
   }
 
-  // Encrypt data using simple XOR cipher (for basic obfuscation)
   String _encryptData(String data, String userId) {
     try {
       final key = _generateEncryptionKey(userId);
@@ -79,7 +73,6 @@ class CGPAService {
     }
   }
 
-  // Decrypt data
   String _decryptData(String encryptedData, String userId) {
     try {
       final key = _generateEncryptionKey(userId);
@@ -98,7 +91,6 @@ class CGPAService {
     }
   }
 
-  // Save semester data to Firestore (encrypted)
   Future<bool> saveSemesterData(
     String semesterName,
     SemesterData semesterData,
@@ -110,13 +102,8 @@ class CGPAService {
         return false;
       }
 
-      // Convert semester data to JSON
       final jsonData = jsonEncode(semesterData.toJson());
-
-      // Encrypt the data
       final encryptedData = _encryptData(jsonData, user.uid);
-
-      // Save to Firestore
       final docRef = _firestore
           .collection(_collectionName)
           .doc(user.uid)
@@ -136,7 +123,6 @@ class CGPAService {
     }
   }
 
-  // Load semester data from Firestore (decrypted)
   Future<SemesterData?> loadSemesterData(String semesterName) async {
     try {
       final user = _authService.currentUser;
@@ -164,13 +150,10 @@ class CGPAService {
         return null;
       }
 
-      // Decrypt the data
       final decryptedData = _decryptData(
         data['encryptedData'] as String,
         user.uid,
       );
-
-      // Parse JSON
       final jsonData = jsonDecode(decryptedData) as Map<String, dynamic>;
 
       return SemesterData.fromJson(jsonData);
@@ -222,10 +205,7 @@ class CGPAService {
         }
       });
 
-      // Wait for all processing to complete
       final results = await Future.wait(processingFutures);
-      
-      // Add successful results to semesters map
       for (final result in results) {
         if (result != null) {
           semesters[result.key] = result.value;
@@ -253,7 +233,6 @@ class CGPAService {
     }
   }
 
-  // Delete semester data
   Future<bool> deleteSemesterData(String semesterName) async {
     try {
       final user = _authService.currentUser;
@@ -277,7 +256,6 @@ class CGPAService {
     }
   }
 
-  // Delete all CGPA data for the user
   Future<bool> deleteAllCGPAData() async {
     try {
       final user = _authService.currentUser;

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:html' as html;
+import 'package:url_launcher/url_launcher.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 import '../services/timetable_service.dart';
@@ -78,7 +79,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Listen for campus changes
     _campusSubscription = CampusService.campusChangeStream.listen((_) {
-      print('Campus changed, reloading timetable...');
       _loadTimetable();
     });
   }
@@ -633,19 +633,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openGitHub() async {
-    // Replace with your GitHub repository URL
     const String githubUrl = 'https://github.com/RCR0101/timetable_maker';
 
     try {
-      // For web, open in new tab
       if (kIsWeb) {
         html.window.open(githubUrl, '_blank');
       } else {
-        // For mobile, you'd need url_launcher package
-        print('Open GitHub: $githubUrl');
+        final uri = Uri.parse(githubUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
       }
     } catch (e) {
-      print('Error opening GitHub: $e');
+      // Error opening GitHub: $e
     }
   }
 
@@ -995,7 +995,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Icons.person_outline,
                         color: Theme.of(
                           context,
-                        ).colorScheme.onSurface.withOpacity(0.7),
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -1003,7 +1003,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: TextStyle(
                           color: Theme.of(
                             context,
-                          ).colorScheme.onSurface.withOpacity(0.7),
+                          ).colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
                       ),
                     ],
@@ -1030,7 +1030,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             labelColor: Theme.of(context).colorScheme.primary,
                             unselectedLabelColor: Theme.of(
                               context,
-                            ).colorScheme.onSurface.withOpacity(0.6),
+                            ).colorScheme.onSurface.withValues(alpha: 0.6),
                             indicatorColor:
                                 Theme.of(context).colorScheme.primary,
                             tabs: const [
@@ -1111,7 +1111,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: Theme.of(context).colorScheme.surface,
               border: Border(
                 top: BorderSide(
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
@@ -1123,7 +1123,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   size: 14,
                   color: Theme.of(
                     context,
-                  ).colorScheme.onSurface.withOpacity(0.7),
+                  ).colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
                 const SizedBox(width: 6),
                 Expanded(
@@ -1132,7 +1132,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(
                         context,
-                      ).colorScheme.onSurface.withOpacity(0.7),
+                      ).colorScheme.onSurface.withValues(alpha: 0.7),
                       fontSize: ResponsiveService.isMobile(context) ? 9 : 11,
                     ),
                   ),
@@ -1892,19 +1892,19 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
   }
 
   Future<void> _openGitHub() async {
-    // Replace with your GitHub repository URL
     const String githubUrl = 'https://github.com/RCR0101/timetable_maker';
 
     try {
-      // For web, open in new tab
       if (kIsWeb) {
         html.window.open(githubUrl, '_blank');
       } else {
-        // For mobile, you'd need url_launcher package
-        print('Open GitHub: $githubUrl');
+        final uri = Uri.parse(githubUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
       }
     } catch (e) {
-      print('Error opening GitHub: $e');
+      // Error opening GitHub: $e
     }
   }
 
@@ -2252,7 +2252,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                         Icons.person_outline,
                         color: Theme.of(
                           context,
-                        ).colorScheme.onSurface.withOpacity(0.7),
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -2260,7 +2260,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                         style: TextStyle(
                           color: Theme.of(
                             context,
-                          ).colorScheme.onSurface.withOpacity(0.7),
+                          ).colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
                       ),
                     ],
@@ -2287,7 +2287,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                             labelColor: Theme.of(context).colorScheme.primary,
                             unselectedLabelColor: Theme.of(
                               context,
-                            ).colorScheme.onSurface.withOpacity(0.6),
+                            ).colorScheme.onSurface.withValues(alpha: 0.6),
                             indicatorColor:
                                 Theme.of(context).colorScheme.primary,
                             tabs: const [
@@ -2368,7 +2368,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
               color: Theme.of(context).colorScheme.surface,
               border: Border(
                 top: BorderSide(
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
@@ -2380,7 +2380,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                   size: 14,
                   color: Theme.of(
                     context,
-                  ).colorScheme.onSurface.withOpacity(0.7),
+                  ).colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
                 const SizedBox(width: 6),
                 Expanded(
@@ -2389,7 +2389,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(
                         context,
-                      ).colorScheme.onSurface.withOpacity(0.7),
+                      ).colorScheme.onSurface.withValues(alpha: 0.7),
                       fontSize: ResponsiveService.isMobile(context) ? 9 : 11,
                     ),
                   ),

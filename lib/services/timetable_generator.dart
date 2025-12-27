@@ -10,25 +10,18 @@ class TimetableGenerator {
     TimetableConstraints constraints, {
     int maxTimetables = 30,
   }) {
-    
-    
     final requiredCourses = availableCourses
         .where((course) => constraints.requiredCourses.contains(course.courseCode))
         .toList();
 
-    
     for (final course in requiredCourses) {
-      
     }
 
     if (requiredCourses.length != constraints.requiredCourses.length) {
-      
       throw Exception('Some required courses not found in available courses');
     }
 
     final allCombinations = _generateAllCombinations(requiredCourses);
-    
-    
     final validTimetables = <GeneratedTimetable>[];
 
     for (int i = 0; i < allCombinations.length && validTimetables.length < maxTimetables; i++) {
@@ -47,15 +40,10 @@ class TimetableGenerator {
           hoursPerDay: _calculateHoursPerDay(combination),
         ));
       } else {
-        if (i < 5) { // Log first few invalid combinations
-          
+        if (i < 5) {
         }
       }
     }
-
-    
-
-    // No fallback - only return conflict-free timetables
 
     // Sort by score (highest first)
     validTimetables.sort((a, b) => b.score.compareTo(a.score));
@@ -71,12 +59,9 @@ class TimetableGenerator {
     for (final course in courses) {
       final newCombinations = <List<ConstraintSelectedSection>>[];
       
-      // Group sections by type for this course
       final lectureSection = course.sections.where((s) => s.type == SectionType.L).toList();
       final practicalSections = course.sections.where((s) => s.type == SectionType.P).toList();
       final tutorialSections = course.sections.where((s) => s.type == SectionType.T).toList();
-      
-      
 
       for (final combination in combinations) {
         // Handle courses with lecture sections
@@ -89,7 +74,6 @@ class TimetableGenerator {
               section: lSection,
             ));
 
-            // Add practical if available
             if (practicalSections.isNotEmpty) {
               for (final pSection in practicalSections) {
                 final withPractical = [...newCombination];
@@ -99,7 +83,6 @@ class TimetableGenerator {
                   section: pSection,
                 ));
 
-                // Add tutorial if available
                 if (tutorialSections.isNotEmpty) {
                   for (final tSection in tutorialSections) {
                     final withTutorial = [...withPractical];
@@ -115,7 +98,6 @@ class TimetableGenerator {
                 }
               }
             } else if (tutorialSections.isNotEmpty) {
-              // Add tutorial without practical
               for (final tSection in tutorialSections) {
                 final withTutorial = [...newCombination];
                 withTutorial.add(ConstraintSelectedSection(
@@ -126,12 +108,10 @@ class TimetableGenerator {
                 newCombinations.add(withTutorial);
               }
             } else {
-              // Only lecture
               newCombinations.add(newCombination);
             }
           }
         } else if (practicalSections.isNotEmpty) {
-          // Handle practical-only courses (no lecture sections)
           for (final pSection in practicalSections) {
             final newCombination = [...combination];
             newCombination.add(ConstraintSelectedSection(
@@ -146,32 +126,26 @@ class TimetableGenerator {
       
       combinations = newCombinations;
       
-      
       // Limit combinations to prevent exponential explosion
       if (combinations.length > 10000) {
-        
         combinations = combinations.take(10000).toList();
       }
       
       if (combinations.isEmpty) {
-        
-        return []; // Return empty if no combinations possible
+        return [];
       }
     }
 
-    
     return combinations;
   }
 
   static bool _isValidCombination(List<ConstraintSelectedSection> sections, List<Course> courses) {
-    // Basic validation - check if sections have valid time slots
     for (final section in sections) {
       if (section.section.days.isEmpty || section.section.hours.isEmpty) {
-        return false; // Invalid section with no scheduled time
+        return false;
       }
     }
     
-    // Convert to timetable.dart SelectedSection for clash detection
     try {
       final timetableSections = sections.map((s) => timetable.SelectedSection(
         courseCode: s.courseCode,
@@ -180,29 +154,25 @@ class TimetableGenerator {
       )).toList();
       
       final clashes = ClashDetector.detectClashes(timetableSections, courses);
-      // Reject ANY clashes (both warnings and errors) to prevent conflict timetables
       final isValid = clashes.isEmpty;
       
       return isValid;
     } catch (e) {
-      
       return false;
     }
   }
 
   static double _scoreTimetable(List<ConstraintSelectedSection> sections, TimetableConstraints constraints) {
-    double score = 100.0; // Base score
+    double score = 100.0;
 
     final hoursPerDay = _calculateHoursPerDay(sections);
     
-    // Penalty for exceeding max hours per day
     for (final hours in hoursPerDay.values) {
       if (hours > constraints.maxHoursPerDay) {
         score -= (hours - constraints.maxHoursPerDay) * 10;
       }
     }
 
-    // Penalty for time conflicts with avoidTimes
     for (final avoidTime in constraints.avoidTimes) {
       for (final section in sections) {
         for (final scheduleEntry in section.section.schedule) {
@@ -216,44 +186,38 @@ class TimetableGenerator {
       }
     }
 
-    // Heavy penalty for lab conflicts with avoidLabs (only applies to practical sections)
     for (final avoidLab in constraints.avoidLabs) {
       for (final section in sections) {
-        // Only apply lab avoidance to practical sections (P1, P2, etc.)
         if (section.section.type == SectionType.P) {
           for (final scheduleEntry in section.section.schedule) {
             if (scheduleEntry.days.contains(avoidLab.day)) {
               final conflictingHours = scheduleEntry.hours
                   .where((hour) => avoidLab.hours.contains(hour))
                   .length;
-              score -= conflictingHours * 25; // Higher penalty for lab conflicts
+              score -= conflictingHours * 25;
             }
           }
         }
       }
     }
 
-    // Bonus for preferred instructors
     for (final section in sections) {
       if (constraints.preferredInstructors.contains(section.section.instructor)) {
         score += 5;
       }
     }
 
-    // Heavy penalty for avoided instructors
     for (final section in sections) {
       if (constraints.avoidedInstructors.contains(section.section.instructor)) {
-        score -= 50; // Heavy penalty to strongly discourage avoided instructors
+        score -= 50;
       }
     }
 
-    // Bonus for avoiding back-to-back classes
     if (constraints.avoidBackToBackClasses) {
       final backToBackPenalty = _calculateBackToBackPenalty(sections);
       score -= backToBackPenalty * 8;
     }
 
-    // Bonus for compact schedule (fewer days with classes)
     final daysWithClasses = hoursPerDay.values.where((hours) => hours > 0).length;
     if (daysWithClasses <= 4) {
       score += (5 - daysWithClasses) * 3;
@@ -300,7 +264,6 @@ class TimetableGenerator {
     final maxHours = hoursPerDay.values.reduce(max);
     final minHours = hoursPerDay.values.where((h) => h > 0).reduce(min);
     
-    // Analyze schedule distribution
     if (maxHours <= constraints.maxHoursPerDay) {
       pros.add('Stays within max hours per day limit');
     } else {
@@ -311,7 +274,6 @@ class TimetableGenerator {
       pros.add('Well-balanced daily schedule');
     }
 
-    // Check for preferred instructors
     final preferredCount = sections
         .where((s) => constraints.preferredInstructors.contains(s.section.instructor))
         .length;
@@ -319,7 +281,6 @@ class TimetableGenerator {
       pros.add('Includes $preferredCount preferred instructor(s)');
     }
 
-    // Check for time conflicts
     bool hasConflicts = false;
     for (final avoidTime in constraints.avoidTimes) {
       for (final section in sections) {
@@ -341,7 +302,6 @@ class TimetableGenerator {
       cons.add('Has some time conflicts with preferences');
     }
 
-    // Check for lab conflicts
     bool hasLabConflicts = false;
     for (final avoidLab in constraints.avoidLabs) {
       for (final section in sections) {
@@ -365,7 +325,6 @@ class TimetableGenerator {
       cons.add('Has lab conflicts with specified preferences');
     }
 
-    // Analyze compactness
     final daysWithClasses = hoursPerDay.values.where((hours) => hours > 0).length;
     if (daysWithClasses <= 4) {
       pros.add('Compact schedule ($daysWithClasses days)');

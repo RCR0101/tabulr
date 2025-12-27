@@ -21,7 +21,6 @@ class _AuthScreenState extends State<AuthScreen> {
       final userCredential = await _authService.signInWithGoogle();
       if (userCredential != null) {
         // Authentication successful, AuthWrapper will handle navigation
-        print('Google sign-in successful');
       } else {
         // User cancelled the sign-in
         _showErrorDialog('Sign-in was cancelled. Please try again if you want to sign in.');
@@ -56,7 +55,6 @@ class _AuthScreenState extends State<AuthScreen> {
     try {
       await _authService.signInAsGuest();
       // Guest mode set, AuthWrapper will handle navigation
-      print('Guest mode activated');
     } catch (e) {
       _showErrorDialog('Failed to continue as guest: $e');
     } finally {
@@ -113,7 +111,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     Text(
                       'Create and manage your class timetables',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.onBackground.withOpacity(0.7),
+                        color: Theme.of(context).colorScheme.onBackground.withValues(alpha: 0.7),
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -147,7 +145,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         color: Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Theme.of(context).colorScheme.outline.withOpacity(0.5),
+                          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
                         ),
                       ),
                       child: Column(
@@ -176,7 +174,7 @@ class _AuthScreenState extends State<AuthScreen> {
                             '• Access from any device\n'
                             '• Never lose your data',
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                             ),
                           ),
                         ],
@@ -189,7 +187,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       children: [
                         Expanded(
                           child: Divider(
-                            color: Theme.of(context).colorScheme.outline.withOpacity(0.5),
+                            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
                           ),
                         ),
                         Padding(
@@ -197,13 +195,13 @@ class _AuthScreenState extends State<AuthScreen> {
                           child: Text(
                             'OR',
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onBackground.withOpacity(0.6),
+                              color: Theme.of(context).colorScheme.onBackground.withValues(alpha: 0.6),
                             ),
                           ),
                         ),
                         Expanded(
                           child: Divider(
-                            color: Theme.of(context).colorScheme.outline.withOpacity(0.5),
+                            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
                           ),
                         ),
                       ],
@@ -234,7 +232,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     Text(
                       'Note: Guest mode data will be cleared when you close the app',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onBackground.withOpacity(0.6),
+                        color: Theme.of(context).colorScheme.onBackground.withValues(alpha: 0.6),
                       ),
                       textAlign: TextAlign.center,
                     ),

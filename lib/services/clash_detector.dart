@@ -1,5 +1,6 @@
 import '../models/course.dart';
 import '../models/timetable.dart';
+import 'secure_logger.dart';
 
 class ClashDetector {
   static List<ClashWarning> detectClashes(List<SelectedSection> selectedSections, List<Course> courses) {
@@ -191,11 +192,18 @@ class ClashDetector {
     var tempSections = [...currentSections, newSection];
     var clashes = detectClashes(tempSections, courses);
     
-    // Debug: Print clashes to understand what's blocking
+    // Debug: Log clashes to understand what's blocking
     if (clashes.any((clash) => clash.severity == ClashSeverity.error)) {
-      print('DEBUG: Blocking ${newSection.courseCode} ${newSection.sectionId} due to clashes:');
+      SecureLogger.debug('CLASH', 'Blocking ${newSection.courseCode} ${newSection.sectionId} due to clashes', {
+        'courseCode': newSection.courseCode,
+        'sectionId': newSection.sectionId,
+        'clashCount': clashes.where((c) => c.severity == ClashSeverity.error).length
+      });
       for (var clash in clashes.where((c) => c.severity == ClashSeverity.error)) {
-        print('  - ${clash.type}: ${clash.message} (${clash.conflictingCourses})');
+        SecureLogger.debug('CLASH', 'Clash details: ${clash.type} - ${clash.message}', {
+          'clashType': clash.type.toString(),
+          'conflictingCourses': clash.conflictingCourses
+        });
       }
     }
     

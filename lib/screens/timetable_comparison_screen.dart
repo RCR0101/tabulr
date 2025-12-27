@@ -5,6 +5,7 @@ import '../widgets/timetable_widget.dart';
 import '../services/timetable_service.dart';
 import '../services/all_course_service.dart';
 import '../services/responsive_service.dart';
+import '../services/secure_logger.dart';
 
 enum ComparisonViewMode { grid, list }
 
@@ -49,16 +50,23 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
     
     try {
       final timetables = await _timetableService.getAllTimetables();
-      print('Found ${timetables.length} timetables');
+      SecureLogger.dataOperation('load', 'timetables_for_comparison', true, {
+        'timetable_count': timetables.length
+      });
       
       setState(() {
         _allTimetables = timetables;
         _isLoading = false;
       });
       
-      print('Loaded ${timetables.length} timetables for comparison');
+      SecureLogger.dataOperation('load', 'comparison_timetables', true, {
+        'timetable_count': timetables.length,
+        'operation': 'load_for_comparison'
+      });
     } catch (e) {
-      print('Error loading timetables: $e');
+      SecureLogger.error('DATA', 'Error loading timetables for comparison', e, null, {
+        'operation': 'load_comparison_timetables'
+      });
       setState(() {
         _isLoading = false;
       });
@@ -475,9 +483,9 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
       child: Container(
         padding: const EdgeInsets.all(12.0),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Column(
           children: [
@@ -500,7 +508,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
             Icon(
               Icons.touch_app,
               size: 12,
-              color: color.withOpacity(0.6),
+              color: color.withValues(alpha: 0.6),
             ),
           ],
         ),
@@ -527,11 +535,11 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                     border: Border(
                       bottom: BorderSide(
-                        color: color.withOpacity(0.3),
+                        color: color.withValues(alpha: 0.3),
                       ),
                     ),
                   ),
@@ -553,7 +561,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                             Text(
                               '${items.length} courses',
                               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                               ),
                             ),
                           ],
@@ -562,7 +570,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),
                         icon: const Icon(Icons.close),
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                     ],
                   ),
@@ -577,7 +585,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                               Icon(
                                 Icons.inbox_outlined,
                                 size: 64,
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
                               ),
                               const SizedBox(height: 16),
                               Text(
@@ -611,10 +619,10 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: color.withOpacity(0.2),
+          color: color.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -625,7 +633,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
+                  color: color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -659,7 +667,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                 const SizedBox(width: 12),
                 Icon(
                   Icons.arrow_forward,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                   size: 16,
                 ),
                 const SizedBox(width: 12),
@@ -701,7 +709,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
         Text(
           section.section.instructor,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
           ),
         ),
       ],
@@ -765,9 +773,9 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: statusColor.withOpacity(0.3)),
+                    border: Border.all(color: statusColor.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -842,7 +850,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
         Container(
           padding: const EdgeInsets.all(8.0),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Column(
@@ -952,10 +960,10 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                 Container(
                   padding: const EdgeInsets.all(16.0),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                     border: Border(
                       bottom: BorderSide(
-                        color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
                       ),
                     ),
                   ),

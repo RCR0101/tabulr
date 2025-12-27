@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/all_course.dart';
+import 'secure_logger.dart';
 
 class AllCoursesService {
   static final AllCoursesService _instance = AllCoursesService._internal();
@@ -20,11 +21,11 @@ class AllCoursesService {
           _cachedCourses != null &&
           _lastFetchTime != null &&
           DateTime.now().difference(_lastFetchTime!) < _cacheExpiration) {
-        print('Returning cached courses (${_cachedCourses!.length} courses)');
+        SecureLogger.debug('CACHE', 'Using cached courses', {'count': _cachedCourses!.length});
         return _cachedCourses!;
       }
 
-      print('Fetching all courses from Firestore...');
+      SecureLogger.dataOperation('FETCH', 'all_courses', true, {'source': 'firestore'});
       final snapshot = await _firestore.collection('all_courses').get();
 
       final courses =
@@ -39,13 +40,18 @@ class AllCoursesService {
       _cachedCourses = courses;
       _lastFetchTime = DateTime.now();
 
-      print('Fetched ${courses.length} courses from Firestore');
+      SecureLogger.dataOperation('FETCH', 'all_courses', true, {
+        'count': courses.length,
+        'cached': true
+      });
       return courses;
     } catch (e) {
-      print('Error fetching all courses: $e');
+      SecureLogger.error('DATA', 'Failed to fetch all courses', e, null, {
+        'fallback_available': _cachedCourses != null
+      });
       // Return cached data if available, even if expired
       if (_cachedCourses != null) {
-        print('Returning cached courses due to error');
+        SecureLogger.warning('DATA', 'Using expired cache due to fetch error');
         return _cachedCourses!;
       }
       return [];
@@ -67,6 +73,6 @@ class AllCoursesService {
   void clearCache() {
     _cachedCourses = null;
     _lastFetchTime = null;
-    print('All courses cache cleared');
+    SecureLogger.debug('CACHE', 'All courses cache cleared');
   }
 }

@@ -47,7 +47,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -160,7 +160,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF7C3AED).withOpacity(0.2),
+                                      color: const Color(0xFF7C3AED).withValues(alpha: 0.2),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
@@ -201,7 +201,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFDA3633).withOpacity(0.2),
+                                      color: const Color(0xFFDA3633).withValues(alpha: 0.2),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
@@ -340,7 +340,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
             color: isCurrentColumn 
-              ? const Color(0xFF58A6FF).withOpacity(0.1)
+              ? const Color(0xFF58A6FF).withValues(alpha: 0.1)
               : Colors.transparent,
             borderRadius: BorderRadius.circular(4),
           ),
@@ -422,7 +422,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
               padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
                 color: isCurrentColumn 
-                  ? const Color(0xFF58A6FF).withOpacity(0.1)
+                  ? const Color(0xFF58A6FF).withValues(alpha: 0.1)
                   : Colors.transparent,
                 borderRadius: BorderRadius.circular(4),
               ),

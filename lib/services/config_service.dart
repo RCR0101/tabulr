@@ -1,5 +1,6 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'campus_service.dart';
+import 'secure_logger.dart';
 
 class ConfigService {
   static final ConfigService _instance = ConfigService._internal();
@@ -28,14 +29,14 @@ class ConfigService {
 
   void printConfiguration() {
     if (debugMode) {
-      print('=== Configuration ===');
-      print('App Name: $appName');
-      print('App Version: $appVersion');
-      print('Debug Mode: $debugMode');
-      print('Enable Analytics: $enableAnalytics');
-      print('Firestore Collection: $firestoreTimetablesCollection');
-      print('Google Web Client ID: ${googleWebClientId.isNotEmpty ? "Set" : "Missing"}');
-      print('=====================');
+      SecureLogger.info('CONFIG', 'App configuration initialized', {
+        'app_name': appName,
+        'app_version': appVersion,
+        'debug_mode': debugMode,
+        'enable_analytics': enableAnalytics,
+        'firestore_collection': firestoreTimetablesCollection,
+        'google_client_id_configured': googleWebClientId.isNotEmpty
+      });
     }
   }
 }

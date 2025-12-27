@@ -121,13 +121,13 @@ class _CourseGuideScreenState extends State<CourseGuideScreen> {
                 children: [
                   Icon(
                     Icons.person_outline,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                   const SizedBox(width: 4),
                   Text(
                     'Guest',
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                 ],

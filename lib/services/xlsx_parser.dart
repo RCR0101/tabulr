@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:excel/excel.dart';
 import '../models/course.dart';
+import 'secure_logger.dart';
 
 class XlsxParser {
   static Future<List<Course>> parseXlsxFile(String filePath) async {
@@ -36,7 +37,6 @@ class XlsxParser {
       throw Exception('Invalid sheet format');
     }
     
-    // Skip the first two rows (title and header)
     int currentRow = 2;
     
     while (currentRow < rows.length) {
@@ -143,7 +143,6 @@ class XlsxParser {
     final sectionIdStr = sectionId.toString().trim();
     final sectionType = _parseSectionType(sectionIdStr);
     
-    // Collect all instructors, rooms, and paired day-hour entries for this section
     List<String> instructors = [];
     List<String> rooms = [];
     List<ScheduleEntry> schedule = [];
@@ -153,19 +152,16 @@ class XlsxParser {
     while (currentRow < rows.length) {
       final currentRowData = rows[currentRow];
       
-      // Check if we've reached the next section or course
       if (currentRow > startRow) {
         final nextSectionId = _getCellValue(currentRowData, 6);
         final nextCompCode = _getCellValue(currentRowData, 0);
         
-        // Break if we find a new section or new course
         if ((nextSectionId != null && nextSectionId.toString().isNotEmpty) ||
             (nextCompCode != null && nextCompCode.toString().isNotEmpty)) {
           break;
         }
       }
       
-      // Collect data from current row
       final instructor = _getCellValue(currentRowData, 7);
       final room = _getCellValue(currentRowData, 8);
       final days = _getCellValue(currentRowData, 9);
@@ -185,7 +181,6 @@ class XlsxParser {
         }
       }
       
-      // Create paired day-hour entries
       if (days != null && days.toString().trim().isNotEmpty && 
           hours != null && hours.toString().trim().isNotEmpty) {
         final daysStr = days.toString().trim();
@@ -208,8 +203,8 @@ class XlsxParser {
     final section = Section(
       sectionId: sectionIdStr,
       type: sectionType,
-      instructor: instructors.join(', '), // Join multiple instructors with comma
-      room: rooms.join(', '), // Join multiple rooms with comma
+      instructor: instructors.join(', '),
+      room: rooms.join(', '),
       schedule: schedule,
     );
     
@@ -250,18 +245,15 @@ class XlsxParser {
   static List<int> _parseHours(String hoursStr) {
     if (hoursStr.isEmpty) return [];
     
-    // Remove thousands separator if present (e.g., "1,011" -> "1011")
     final cleaned = hoursStr.replaceAll(',', '').trim();
     
     try {
       final hourValue = int.parse(cleaned);
       
-      // Handle single digit or 10
       if (hourValue >= 1 && hourValue <= 10) {
         return [hourValue];
       }
       
-      // Handle multi-digit values with smart parsing
       if (hourValue > 10) {
         final str = cleaned;
         
@@ -270,19 +262,17 @@ class XlsxParser {
         int i = 0;
         
         while (i < str.length) {
-          // Try to parse as two-digit number first (10, 11, 12)
           if (i + 1 < str.length) {
             final twoDigitStr = str.substring(i, i + 2);
             final twoDigitValue = int.tryParse(twoDigitStr);
             
             if (twoDigitValue != null && twoDigitValue >= 10 && twoDigitValue <= 12) {
               hours.add(twoDigitValue);
-              i += 2; // Skip next character
+              i += 2;
               continue;
             }
           }
           
-          // Parse as single digit (1-9)
           final singleDigitStr = str.substring(i, i + 1);
           final singleDigitValue = int.tryParse(singleDigitStr);
           
@@ -290,7 +280,6 @@ class XlsxParser {
             hours.add(singleDigitValue);
             i += 1;
           } else {
-            // Invalid character, stop parsing
             break;
           }
         }
@@ -300,10 +289,10 @@ class XlsxParser {
         }
       }
       
-      print('Hour value $hourValue could not be parsed');
+      SecureLogger.warning('PARSE', 'Hour value could not be parsed', {'hour_value': hourValue.toString()});
       return [];
     } catch (e) {
-      print('Error parsing hours "$hoursStr": $e');
+      SecureLogger.error('PARSE', 'Error parsing hours', e, null, {'hours_string': hoursStr});
       return [];
     }
   }
@@ -339,13 +328,10 @@ class XlsxParser {
     final month = int.parse(dateComponents[1]);
     final year = 2025;
     
-    // Parse MidSem time slot based on time string
     TimeSlot timeSlot;
     
-    // Clean up the time part and handle different formats
     String cleanTimePart = timePart.replaceAll('.', ':').replaceAll(' ', '');
     
-    // Handle various time formats - Updated for new midsem timeslots
     if (cleanTimePart.contains('9:30') && (cleanTimePart.contains('11:00') || cleanTimePart.contains('11'))) {
       timeSlot = TimeSlot.MS1;
     } else if (cleanTimePart.contains('11:30') && (cleanTimePart.contains('1:00') || cleanTimePart.contains('1'))) {
@@ -355,7 +341,6 @@ class XlsxParser {
     } else if ((cleanTimePart.contains('4:00') || cleanTimePart.contains('4')) && cleanTimePart.contains('5:30')) {
       timeSlot = TimeSlot.MS4;
     } else {
-      // Try to parse by looking for key time indicators - Updated for new midsem timeslots
       if (cleanTimePart.contains('9:30') || cleanTimePart.contains('930')) {
         timeSlot = TimeSlot.MS1;
       } else if (cleanTimePart.contains('11:30') || cleanTimePart.contains('1130')) {
@@ -365,7 +350,6 @@ class XlsxParser {
       } else if (cleanTimePart.contains('4:00') || cleanTimePart.contains('400') || cleanTimePart.contains('4.00') || cleanTimePart.contains('4')) {
         timeSlot = TimeSlot.MS4;
       } else {
-        // Try parsing the original format as fallback - Updated for new midsem timeslots
         switch (timePart) {
           case '9:30-11:00AM':
           case '9:30AM-11:00AM':
@@ -404,8 +388,8 @@ class XlsxParser {
             timeSlot = TimeSlot.MS4;
             break;
           default:
-            print('Unknown MidSem time format: $timePart');
-            timeSlot = TimeSlot.MS1; // Default fallback
+            SecureLogger.warning('PARSE', 'Unknown MidSem time format', {'time_part': timePart});
+            timeSlot = TimeSlot.MS1;
         }
       }
     }

@@ -67,7 +67,7 @@ class GeneratedTimetableCard extends StatelessWidget {
               runSpacing: 4,
               children: timetable.sections.map((section) => Chip(
                 label: Text('${section.courseCode}-${section.sectionId}'),
-                backgroundColor: Colors.blue.withOpacity(0.1),
+                backgroundColor: Colors.blue.withValues(alpha: 0.1),
               )).toList(),
             ),
             

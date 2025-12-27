@@ -500,7 +500,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
       children: [
         Container(
           padding: const EdgeInsets.all(16),
-          color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           child: Row(
             children: [
               Icon(Icons.schedule, color: Theme.of(context).colorScheme.primary),
@@ -607,10 +607,10 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                                   borderRadius: BorderRadius.circular(6),
                                   border: Border.all(
-                                    color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
                                   ),
                                 ),
                                 child: Column(
@@ -672,7 +672,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
       children: [
         Container(
           padding: const EdgeInsets.all(16),
-          color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           child: Row(
             children: [
               Icon(Icons.add_circle_outline, color: Theme.of(context).colorScheme.primary),
@@ -907,10 +907,10 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                   margin: const EdgeInsets.all(16),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                    color: Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                      color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
                     ),
                   ),
                   child: Column(
@@ -1208,13 +1208,13 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: result.canBeAdded
-                              ? Colors.green.withOpacity(0.1)
-                              : Colors.red.withOpacity(0.1),
+                              ? Colors.green.withValues(alpha: 0.1)
+                              : Colors.red.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: result.canBeAdded
-                                ? Colors.green.withOpacity(0.3)
-                                : Colors.red.withOpacity(0.3),
+                                ? Colors.green.withValues(alpha: 0.3)
+                                : Colors.red.withValues(alpha: 0.3),
                           ),
                         ),
                         child: Row(

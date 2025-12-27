@@ -33,7 +33,7 @@ class UserSettingsService extends ChangeNotifier {
         await _loadFromLocalStorage();
       }
     } catch (e) {
-      print('Error initializing user settings: $e');
+      // Error initializing user settings: $e
       // Fall back to default settings
       _userSettings = UserSettings.defaultSettings(_authService.currentUser?.uid ?? 'guest');
     }
@@ -57,7 +57,7 @@ class UserSettingsService extends ChangeNotifier {
         await _saveToFirestore();
       }
     } catch (e) {
-      print('Error loading settings from Firestore: $e');
+      // Error loading settings from Firestore: $e
       _userSettings = UserSettings.defaultSettings(_authService.currentUser?.uid ?? 'guest');
     }
   }
@@ -77,7 +77,7 @@ class UserSettingsService extends ChangeNotifier {
         await _saveToLocalStorage();
       }
     } catch (e) {
-      print('Error loading settings from local storage: $e');
+      // Error loading settings from local storage: $e
       _userSettings = UserSettings.defaultSettings('guest');
     }
   }
@@ -99,7 +99,7 @@ class UserSettingsService extends ChangeNotifier {
         throw Exception('Failed to save to Firestore');
       }
     } catch (e) {
-      print('Error saving settings to Firestore: $e');
+      // Error saving settings to Firestore: $e
       // Fall back to local storage
       await _saveToLocalStorage();
     }
@@ -114,7 +114,7 @@ class UserSettingsService extends ChangeNotifier {
       final settingsJson = jsonEncode(_userSettings!.toJson());
       await prefs.setString(_localStorageKey, settingsJson);
     } catch (e) {
-      print('Error saving settings to local storage: $e');
+      // Error saving settings to local storage: $e
     }
   }
 
@@ -126,7 +126,7 @@ class UserSettingsService extends ChangeNotifier {
     }
     
     if (_userSettings == null) {
-      print('Warning: Failed to initialize user settings');
+      // Warning: Failed to initialize user settings
       return;
     }
 
@@ -148,7 +148,7 @@ class UserSettingsService extends ChangeNotifier {
     }
     
     if (_userSettings == null) {
-      print('Warning: Failed to initialize user settings');
+      // Warning: Failed to initialize user settings
       return;
     }
 
@@ -170,7 +170,7 @@ class UserSettingsService extends ChangeNotifier {
     }
     
     if (_userSettings == null) {
-      print('Warning: Failed to initialize user settings');
+      // Warning: Failed to initialize user settings
       return;
     }
 
@@ -275,7 +275,7 @@ class UserSettingsService extends ChangeNotifier {
   Future<void> migrateFromOldPreferences() async {
     // This can be implemented to migrate existing preferences
     // from the old PreferencesService to the new UserSettingsService
-    print('Migration from old preferences not implemented yet');
+    // Migration from old preferences not implemented yet
   }
 
   // Clear all settings (useful for logout)
@@ -286,7 +286,7 @@ class UserSettingsService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_localStorageKey);
     } catch (e) {
-      print('Error clearing local settings: $e');
+      // Error clearing local settings: $e
     }
     
     notifyListeners();

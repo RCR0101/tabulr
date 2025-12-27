@@ -13,8 +13,8 @@ enum TimetableSize {
 }
 
 enum TimetableLayout {
-  horizontal, // Days on Y-axis, Hours on X-axis
-  vertical,   // Hours on Y-axis, Days on X-axis (current default)
+  horizontal,
+  vertical,
 }
 
 class TimetableWidget extends StatefulWidget {
@@ -64,10 +64,9 @@ class TimetableWidget extends StatefulWidget {
 }
 
 class _TimetableWidgetState extends State<TimetableWidget> {
-  String? _hoveredCourse; // Track which course is being hovered
+  String? _hoveredCourse;
 
   bool get _isMobile {
-    // Always use desktop layout for export
     if (widget.isForExport) return false;
     
     return ResponsiveService.isMobile(context) || ResponsiveService.isTablet(context);
@@ -99,7 +98,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
   Widget _buildMobileButtonRow() {
     final buttons = <Widget>[];
     
-    // Auto Load CDCs button
     if (!widget.isForExport && widget.onAutoLoadCDCs != null) {
       buttons.add(_buildMobileButton(
         onPressed: () {
@@ -112,7 +110,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       ));
     }
     
-    // Save button
     if (!widget.isForExport && widget.onSave != null) {
       buttons.add(_buildMobileButton(
         onPressed: widget.hasUnsavedChanges && !widget.isSaving 
@@ -133,7 +130,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       ));
     }
     
-    // Quick Replace button (only if conditions are met)
     if (_canShowQuickReplace) {
       buttons.add(_buildMobileButton(
         onPressed: _showQuickReplaceDialog,
@@ -143,7 +139,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       ));
     }
     
-    // Clear button
     if (widget.timetableSlots.isNotEmpty && widget.onClear != null) {
       buttons.add(_buildMobileButton(
         onPressed: () {
@@ -233,7 +228,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                         ),
                       ),
                       const Spacer(),
-                      // Layout toggle button
                       IconButton(
                         onPressed: widget.onLayoutChanged != null 
                           ? () {
@@ -318,7 +312,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  // Mobile button row - clean and evenly spaced
                   _buildMobileButtonRow(),
                 ],
               )
@@ -333,7 +326,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  // Layout toggle button
                   IconButton(
                     onPressed: widget.onLayoutChanged != null 
                       ? () {
@@ -438,7 +430,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  // Auto Load CDCs button (desktop)
                   if (!widget.isForExport && widget.onAutoLoadCDCs != null)
                     ElevatedButton.icon(
                       onPressed: () {
@@ -466,7 +457,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     ),
                   if (!widget.isForExport && widget.onAutoLoadCDCs != null)
                     const SizedBox(width: 8),
-                  // Save button
                   if (!widget.isForExport && widget.onSave != null)
                     ElevatedButton.icon(
                       onPressed: widget.hasUnsavedChanges && !widget.isSaving 
@@ -513,7 +503,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     ),
                   if (!widget.isForExport && widget.onSave != null)
                     const SizedBox(width: 8),
-                  // Quick Replace Button (desktop)
                   if (_canShowQuickReplace)
                     ElevatedButton.icon(
                       onPressed: _showQuickReplaceDialog,
@@ -607,7 +596,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Theme.of(context).shadowColor.withOpacity(0.2),
+                        color: Theme.of(context).shadowColor.withValues(alpha: 0.2),
                         blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
@@ -650,7 +639,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
 
   List<DataColumn> _buildColumns(BuildContext context) {
     if (widget.layout == TimetableLayout.horizontal) {
-      // Horizontal layout: Days on Y-axis, Hours on X-axis
       return [
         DataColumn(
           label: SizedBox(
@@ -698,7 +686,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
         )),
       ];
     } else {
-      // Vertical layout: Hours on Y-axis, Days on X-axis (default)
       return [
         DataColumn(
           label: SizedBox(
@@ -961,12 +948,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
   }
 
   Widget _buildTimetableCell(BuildContext context, TimetableSlot slot, int hour, DayOfWeek day) {
-    // Find all slots for the same course to show in hover
     final sameCourseSlots = widget.timetableSlots
         .where((s) => s.courseCode == slot.courseCode && s.sectionId == slot.sectionId)
         .toList();
     
-    // Use RepaintBoundary for performance on mobile
     return RepaintBoundary(
       child: MouseRegion(
         onEnter: (_) {
@@ -994,8 +979,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                _getCourseColor(slot.courseCode).withOpacity(0.9),
-                _getCourseColor(slot.courseCode).withOpacity(0.7),
+                _getCourseColor(slot.courseCode).withValues(alpha: 0.9),
+                _getCourseColor(slot.courseCode).withValues(alpha: 0.7),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -1003,13 +988,13 @@ class _TimetableWidgetState extends State<TimetableWidget> {
             borderRadius: BorderRadius.circular(_getBorderRadius(widget.size)),
             boxShadow: [
               BoxShadow(
-                color: _getCourseColor(slot.courseCode).withOpacity(0.3),
+                color: _getCourseColor(slot.courseCode).withValues(alpha: 0.3),
                 blurRadius: 6,
                 offset: const Offset(0, 3),
               ),
             ],
             border: Border.all(
-              color: _getCourseColor(slot.courseCode).withOpacity(0.5),
+              color: _getCourseColor(slot.courseCode).withValues(alpha: 0.5),
               width: 1,
             ),
           ),
@@ -1101,7 +1086,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   ],
                 ),
               ),
-              // Warning icon for incomplete course selections
               if (_hasIncompleteSelection(slot.courseCode))
                 Positioned(
                   top: 2,
@@ -1238,7 +1222,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     return warnings.join('\n');
   }
 
-  // Size-specific dimension helpers
   double _getDayColumnWidth(TimetableSize size) {
     final baseWidth = switch (size) {
       TimetableSize.compact => 145.0,    // Reduced from 160 for better proportions
@@ -1247,20 +1230,18 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       TimetableSize.extraLarge => 250.0, // Reduced from 290
     };
     
-    // Adjust width for horizontal layout with more columns
     if (widget.layout == TimetableLayout.horizontal) {
       final adjustedWidth = _isMobile ? baseWidth * 0.6 : baseWidth * 0.8;
       return adjustedWidth.clamp(100.0, 180.0);
     }
     
-    // Make cells bigger on mobile for better readability
     if (_isMobile) {
       final screenWidth = MediaQuery.maybeOf(context)?.size.width ?? 400;
-      final availableWidth = screenWidth - 48; // Account for padding and margins
+      final availableWidth = screenWidth - 48;
       final timeColumnWidth = _getTimeColumnWidth(size);
       final remainingWidth = availableWidth - timeColumnWidth;
-      final columnWidth = remainingWidth / 6; // 6 day columns
-      return columnWidth.clamp(80.0, baseWidth * 0.8); // Increased minimum from 60px to 80px
+      final columnWidth = remainingWidth / 6;
+      return columnWidth.clamp(80.0, baseWidth * 0.8);
     }
     
     return baseWidth;
@@ -1268,7 +1249,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
 
   double _getTimeColumnWidth(TimetableSize size) {
     if (_isMobile) {
-      return 65.0; // Increased from 50px for better readability
+      return 65.0;
     }
     return _getDayColumnWidth(size) * 0.75;
   }
@@ -1281,7 +1262,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       TimetableSize.extraLarge => 140.0, // Keep current size
     };
     
-    // Less aggressive reduction for mobile to maintain readability
     return _isMobile ? baseHeight * 0.9 : baseHeight;
   }
 
@@ -1293,7 +1273,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       TimetableSize.extraLarge => 3.0,
     };
     
-    // Reduce margin for mobile
     return _isMobile ? 0.5 : baseMargin;
   }
 
@@ -1305,12 +1284,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       TimetableSize.extraLarge => 24.0,
     };
     
-    // Reduce spacing for horizontal layout to fit more columns
     if (widget.layout == TimetableLayout.horizontal) {
       return _isMobile ? 8.0 : baseSpacing * 0.7;
     }
     
-    // Better spacing for mobile readability
     return _isMobile ? 12.0 : baseSpacing;
   }
 
@@ -1322,7 +1299,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       TimetableSize.extraLarge => 20.0,
     };
     
-    // Minimal margin for mobile
     return _isMobile ? 4.0 : baseMargin;
   }
 
@@ -1334,7 +1310,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       TimetableSize.extraLarge => 140.0,
     };
     
-    // Make rows taller on mobile for better touch targets
     return _isMobile ? baseHeight * 1.1 : baseHeight;
   }
 
@@ -1351,7 +1326,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     }
   }
 
-  // Dynamic text sizing helpers
   double _getCourseCodeFontSize(TimetableSize size) {
     final baseSize = switch (size) {
       TimetableSize.compact => 12.5,    // Balanced course code font
@@ -1443,10 +1417,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
   }
 
   bool _shouldShowField(String fieldName) {
-    // If no export options are provided (normal view), show everything
     if (widget.exportOptions == null) return true;
-    
-    // For export, check the specific field options
     final options = widget.exportOptions!;
     switch (fieldName) {
       case 'courseCode':
@@ -1478,7 +1449,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     }
   }
 
-  // Border radius that scales with cell size for better proportions
   double _getBorderRadius(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:
@@ -1492,7 +1462,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     }
   }
 
-  // Dynamic line height for better text fitting
   double _getLineHeight(TimetableSize size) {
     switch (size) {
       case TimetableSize.compact:

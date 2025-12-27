@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/course.dart';
+import 'secure_logger.dart';
 
 class DisciplineElectivesService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -26,41 +27,48 @@ class DisciplineElectivesService {
   // Get all available branches
   Future<List<BranchInfo>> getAvailableBranches() async {
     try {
-      print('Fetching metadata from Firestore...');
+      SecureLogger.info('DISCIPLINE', 'Fetching metadata from Firestore');
       final metadataDoc = await _firestore
           .collection('discipline_electives')
           .doc('_metadata')
           .get()
           .timeout(Duration(seconds: 10));
       
-      print('Metadata doc exists: ${metadataDoc.exists}');
+      SecureLogger.info('DISCIPLINE', 'Metadata document status', {
+        'exists': metadataDoc.exists
+      });
       
       if (!metadataDoc.exists) {
-        print('Metadata not found, using fallback data');
+        SecureLogger.warning('DISCIPLINE', 'Metadata not found, using fallback data');
         return _getFallbackBranches();
       }
       
       final data = metadataDoc.data()!;
-      print('Metadata data keys: ${data.keys.toList()}');
+      SecureLogger.debug('DISCIPLINE', 'Metadata keys found', {
+        'keyCount': data.keys.length
+      });
       
       if (data.containsKey('branchCodes')) {
         final branchCodes = data['branchCodes'] as List<dynamic>;
-        print('Branch codes count: ${branchCodes.length}');
+        SecureLogger.info('DISCIPLINE', 'Branch codes loaded', {
+          'branchCount': branchCodes.length
+        });
         
         final branches = branchCodes.map((branch) => BranchInfo(
           name: branch['name'] as String,
           code: branch['code'] as String,
         )).toList();
         
-        print('Parsed branches: ${branches.map((b) => b.name).join(', ')}');
+        SecureLogger.info('DISCIPLINE', 'Branches parsed successfully', {
+          'branchCount': branches.length
+        });
         return branches;
       } else {
-        print('branchCodes key not found, using fallback');
+        SecureLogger.warning('DISCIPLINE', 'branchCodes key not found, using fallback');
         return _getFallbackBranches();
       }
     } catch (e) {
-      print('Error loading branches: $e');
-      print('Using fallback data due to error');
+      SecureLogger.error('DISCIPLINE', 'Error loading branches, using fallback data', e);
       return _getFallbackBranches();
     }
   }
@@ -115,7 +123,9 @@ class DisciplineElectivesService {
       final result = uniqueElectives.values.toList()
         ..sort((a, b) => a.courseCode.compareTo(b.courseCode));
       
-      print('Found ${result.length} discipline electives without clash filtering');
+      SecureLogger.info('DISCIPLINE', 'Found discipline electives without clash filtering', {
+        'electiveCount': result.length
+      });
       return result;
     } catch (e) {
       throw Exception('Failed to get all discipline electives: $e');
@@ -125,14 +135,18 @@ class DisciplineElectivesService {
   // Get discipline electives for a branch
   Future<List<DisciplineElective>> getDisciplineElectives(String branchName) async {
     try {
-      print('Fetching discipline electives for: $branchName');
+      SecureLogger.info('DISCIPLINE', 'Fetching discipline electives for branch', {
+        'branchName': branchName
+      });
       
       // Convert branch name to document ID
       final branchId = branchName.toLowerCase()
           .replaceAll(RegExp(r'[^a-z0-9\s]'), '')
           .replaceAll(RegExp(r'\s+'), '-');
       
-      print('Branch ID: $branchId');
+      SecureLogger.debug('DISCIPLINE', 'Branch ID generated', {
+        'branchId': branchId
+      });
       
       final doc = await _firestore
           .collection('discipline_electives')
@@ -140,23 +154,29 @@ class DisciplineElectivesService {
           .get()
           .timeout(Duration(seconds: 10));
       
-      print('Document exists: ${doc.exists}');
+      SecureLogger.debug('DISCIPLINE', 'Document existence check', {
+        'exists': doc.exists
+      });
       
       if (!doc.exists) {
-        print('Document not found, returning empty list');
+        SecureLogger.warning('DISCIPLINE', 'Document not found, returning empty list');
         return [];
       }
       
       final data = doc.data()!;
-      print('Document data keys: ${data.keys.toList()}');
+      SecureLogger.debug('DISCIPLINE', 'Document data keys', {
+        'keyCount': data.keys.length
+      });
       
       if (!data.containsKey('courses')) {
-        print('No courses field found, returning empty list');
+        SecureLogger.warning('DISCIPLINE', 'No courses field found, returning empty list');
         return [];
       }
       
       final courses = data['courses'] as List<dynamic>;
-      print('Found ${courses.length} courses');
+      SecureLogger.info('DISCIPLINE', 'Found courses for branch', {
+        'courseCount': courses.length
+      });
       
       return courses.map((course) => DisciplineElective(
         courseCode: course['course_code'] as String,
@@ -164,7 +184,7 @@ class DisciplineElectivesService {
         branchName: branchName,
       )).toList();
     } catch (e) {
-      print('Error in getDisciplineElectives: $e');
+      SecureLogger.error('DISCIPLINE', 'Error in getDisciplineElectives', e);
       // Return empty list instead of throwing
       return [];
     }
@@ -229,7 +249,9 @@ class DisciplineElectivesService {
       String? secondaryBranchCode = secondaryBranch != null ? _getBranchCodeFromName(secondaryBranch) : null;
       
       if (primaryBranchCode == null) {
-        print('Could not find branch code for: $primaryBranch');
+        SecureLogger.warning('DISCIPLINE', 'Could not find branch code', {
+        'primaryBranch': primaryBranch
+      });
         // Fallback to original filtering without clash detection
         return getFilteredDisciplineElectives(primaryBranch, secondaryBranch, availableCourses);
       }
@@ -242,7 +264,9 @@ class DisciplineElectivesService {
         secondaryBranchCode,
       );
       
-      print('Found ${coreCourseCodes.length} core courses for clash detection');
+      SecureLogger.info('DISCIPLINE', 'Found core courses for clash detection', {
+        'coreCoursesCount': coreCourseCodes.length
+      });
       
       // Filter to only include courses that exist in the available courses and don't clash
       final availableCourseCodes = availableCourses.map((c) => c.courseCode).toSet();
@@ -258,7 +282,9 @@ class DisciplineElectivesService {
         if (coreCourseCodes.isNotEmpty) {
           final course = availableCourses.firstWhere((c) => c.courseCode == elective.courseCode);
           if (_doesCourseClashWithCore(course, coreCourseCodes, availableCourses)) {
-            print('Discipline elective ${elective.courseCode} clashes with core courses, excluding');
+            SecureLogger.debug('DISCIPLINE', 'Discipline elective clashes with core courses, excluding', {
+              'courseCode': elective.courseCode
+            });
             continue;
           }
         }
@@ -275,7 +301,9 @@ class DisciplineElectivesService {
       final result = uniqueElectives.values.toList()
         ..sort((a, b) => a.courseCode.compareTo(b.courseCode));
       
-      print('Filtered to ${result.length} non-clashing discipline electives');
+      SecureLogger.info('DISCIPLINE', 'Filtered to non-clashing discipline electives', {
+        'filteredCount': result.length
+      });
       return result;
     } catch (e) {
       throw Exception('Failed to filter discipline electives with clash detection: $e');
@@ -336,13 +364,17 @@ class DisciplineElectivesService {
           .get();
 
       if (!courseGuideDoc.exists) {
-        print('Course guide not found for semester: $semesterDocId');
+        SecureLogger.warning('DISCIPLINE', 'Course guide not found for semester', {
+          'semesterDocId': semesterDocId
+        });
         return;
       }
 
       final data = courseGuideDoc.data();
       if (data == null || !data.containsKey('groups')) {
-        print('No groups found in course guide for semester: $semesterDocId');
+        SecureLogger.warning('DISCIPLINE', 'No groups found in course guide for semester', {
+          'semesterDocId': semesterDocId
+        });
         return;
       }
 
@@ -351,7 +383,9 @@ class DisciplineElectivesService {
       // Convert branch code to branch name
       final branchName = _branchCodeToName[branch];
       if (branchName == null) {
-        print('Unknown branch code: $branch');
+        SecureLogger.warning('DISCIPLINE', 'Unknown branch code', {
+          'branchCode': branch
+        });
         return;
       }
 
@@ -371,13 +405,24 @@ class DisciplineElectivesService {
               }
             }
           }
-          print('Found group for $branch ($branchName) with ${courses.length} courses');
+          SecureLogger.info('DISCIPLINE', 'Found group for branch', {
+            'branchCode': branch,
+            'branchName': branchName,
+            'courseCount': courses.length
+          });
         }
       }
 
-      print('Added ${coreCourseCodes.length} total core courses for $branch $semester');
+      SecureLogger.info('DISCIPLINE', 'Added core courses for branch and semester', {
+        'totalCoreCoursesCount': coreCourseCodes.length,
+        'branchCode': branch,
+        'semester': semester
+      });
     } catch (e) {
-      print('Error getting core courses for $branch $semester: $e');
+      SecureLogger.error('DISCIPLINE', 'Error getting core courses', e, null, {
+        'branchCode': branch,
+        'semester': semester
+      });
     }
   }
 
@@ -395,7 +440,10 @@ class DisciplineElectivesService {
     // First check exam clashes
     for (final coreCourse in coreCourses) {
       if (_hasExamClash(electiveCourse, coreCourse)) {
-        print('Discipline elective ${electiveCourse.courseCode} has exam clash with core course ${coreCourse.courseCode}');
+        SecureLogger.debug('DISCIPLINE', 'Discipline elective has exam clash with core course', {
+          'electiveCourseCode': electiveCourse.courseCode,
+          'coreCourseCode': coreCourse.courseCode
+        });
         return true;
       }
     }
@@ -416,7 +464,10 @@ class DisciplineElectivesService {
       if (_allSectionsClash(electiveLectures, coreLectures) ||
           _allSectionsClash(electivePracticals, corePracticals) ||
           _allSectionsClash(electiveTutorials, coreTutorials)) {
-        print('Discipline elective ${electiveCourse.courseCode} has unavoidable time clash with core course ${coreCourse.courseCode}');
+        SecureLogger.debug('DISCIPLINE', 'Discipline elective has unavoidable time clash with core course', {
+          'electiveCourseCode': electiveCourse.courseCode,
+          'coreCourseCode': coreCourse.courseCode
+        });
         return true;
       }
     }

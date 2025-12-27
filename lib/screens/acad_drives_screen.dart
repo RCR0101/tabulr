@@ -6,8 +6,8 @@ import 'package:http/http.dart' as http;
 import '../services/responsive_service.dart';
 import '../services/toast_service.dart';
 import '../services/auth_service.dart';
-import 'timetables_screen.dart';
-import 'cgpa_calculator_screen.dart';
+import '../services/secure_logger.dart';
+import '../widgets/app_drawer_widget.dart';
 
 enum CourseSortOption {
   nameAsc,
@@ -186,7 +186,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         _isLoadingFiles = false;
       });
       ToastService.showError('Failed to load course files: $e');
-      print(e);
+      SecureLogger.error('DATA', 'Failed to load course files', e, null, {'operation': 'load_course_files'});
     }
   }
 
@@ -676,158 +676,6 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  Widget _buildDrawer(BuildContext context) {
-    return Drawer(
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Drawer Header
-            Container(
-              width: double.infinity,
-              padding: ResponsiveService.getAdaptivePadding(
-                context,
-                const EdgeInsets.all(24),
-              ),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Theme.of(context).colorScheme.primary,
-                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
-                  ],
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.school,
-                      size: ResponsiveService.getAdaptiveIconSize(context, 32),
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    ),
-                  ),
-                  SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
-                  Text(
-                    'Tabulr',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Menu Items
-            Expanded(
-              child: ListView(
-                padding: ResponsiveService.getAdaptivePadding(
-                  context,
-                  const EdgeInsets.symmetric(vertical: 16),
-                ),
-                children: [
-                  ListTile(
-                    leading: Icon(
-                      Icons.schedule,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
-                    ),
-                    title: Text(
-                      'TT Builder',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Create timetables',
-                      style: TextStyle(
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => const TimetablesScreen()),
-                      );
-                    },
-                  ),
-                  
-                  const Divider(),
-                  
-                  ListTile(
-                    leading: Icon(
-                      Icons.calculate,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
-                    ),
-                    title: Text(
-                      'CGPA Calculator',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Calculate your GPA',
-                      style: TextStyle(
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const CGPACalculatorScreen()),
-                      );
-                    },
-                  ),
-                  
-                  ListTile(
-                    leading: Icon(
-                      Icons.folder_shared,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
-                    ),
-                    tileColor: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    title: Text(
-                      'Academic Drives',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Browse course files',
-                      style: TextStyle(
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    trailing: null,
-                    onTap: () {
-                      Navigator.pop(context);
-                      // Already on academic drives screen
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -844,7 +692,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
               )
             : null, // This will show the hamburger menu for main screen
       ),
-      drawer: _selectedCourse == null ? _buildDrawer(context) : null,
+      drawer: _selectedCourse == null ? const AppDrawerWidget(
+        currentScreen: DrawerScreen.academicDrives,
+      ) : null,
       body: Column(
         children: [
           // Header Section

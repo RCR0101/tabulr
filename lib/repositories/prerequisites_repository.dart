@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/prerequisite.dart';
+import '../services/secure_logger.dart';
 
 class PrerequisitesRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -45,7 +46,7 @@ class PrerequisitesRepository {
 
       return results;
     } catch (e) {
-      print('Error searching courses: $e');
+      SecureLogger.error('PREREQUISITES', 'Failed to search courses', e);
       return [];
     }
   }
@@ -64,7 +65,7 @@ class PrerequisitesRepository {
       }
       return null;
     } catch (e) {
-      print('Error getting course prerequisites: $e');
+      SecureLogger.error('PREREQUISITES', 'Failed to get course prerequisites', e);
       return null;
     }
   }
@@ -83,7 +84,7 @@ class PrerequisitesRepository {
           .map((doc) => CoursePrerequisites.fromMap(doc.data()))
           .toList();
     } catch (e) {
-      print('Error getting courses with prerequisites: $e');
+      SecureLogger.error('PREREQUISITES', 'Failed to get courses with prerequisites', e);
       return [];
     }
   }
@@ -101,7 +102,7 @@ class PrerequisitesRepository {
           .map((doc) => CoursePrerequisites.fromMap(doc.data()))
           .toList();
     } catch (e) {
-      print('Error getting all courses: $e');
+      SecureLogger.error('PREREQUISITES', 'Failed to get all courses', e);
       return [];
     }
   }

@@ -63,7 +63,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).shadowColor.withOpacity(0.3),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

@@ -122,15 +122,15 @@ class CourseListWidget extends StatelessWidget {
           margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
           decoration: BoxDecoration(
             color: (isSelectedCourse && !showOnlySelected) 
-              ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
               : Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(12),
             border: (isSelectedCourse && !showOnlySelected) 
-              ? Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.3))
+              ? Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3))
               : null,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
+                color: Colors.black.withValues(alpha: 0.2),
                 blurRadius: (isSelectedCourse && !showOnlySelected) ? 6 : 4,
                 offset: const Offset(0, 2),
               ),
@@ -148,7 +148,7 @@ class CourseListWidget extends StatelessWidget {
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Theme.of(context).colorScheme.secondary.withOpacity(0.5),
+                          color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.5),
                           blurRadius: 4,
                           spreadRadius: 1,
                         ),
@@ -232,7 +232,7 @@ class CourseListWidget extends StatelessWidget {
                       Text(
                         'Already selected ${section.type.name} section for this course',
                         style: TextStyle(
-                          color: Theme.of(context).colorScheme.error.withOpacity(0.8), 
+                          color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8), 
                           fontSize: 12
                         ),
                       ),
@@ -245,8 +245,8 @@ class CourseListWidget extends StatelessWidget {
                   } : null,
                 ),
                 tileColor: isSelected 
-                  ? Theme.of(context).colorScheme.primary.withOpacity(0.15) 
-                  : (!canSelect ? Theme.of(context).colorScheme.surface.withOpacity(0.3) : null),
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15) 
+                  : (!canSelect ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.3) : null),
                 ),
               );
             }).toList(),

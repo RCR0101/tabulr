@@ -57,7 +57,7 @@ class _CampusSelectorWidgetState extends State<CampusSelectorWidget> {
                   size: 20,
                   color: isSelected 
                     ? Theme.of(context).colorScheme.primary 
-                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -86,7 +86,7 @@ class _CampusSelectorWidgetState extends State<CampusSelectorWidget> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           border: Border.all(
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
             width: 1,
           ),
           borderRadius: BorderRadius.circular(20),

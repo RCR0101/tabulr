@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/all_course.dart';
 import '../models/course.dart';
 import 'campus_service.dart';
+import 'secure_logger.dart';
 
 class AllCourseService {
   static final AllCourseService _instance = AllCourseService._internal();
@@ -62,7 +63,8 @@ class AllCourseService {
       
       return courseCode;
     } catch (e) {
-      print('Error fetching course title for $courseCode: $e');
+      SecureLogger.error('COURSE', 'Failed to fetch course title', e, null, 
+        {'courseCode': courseCode, 'campus': campus?.toString()});
       // Return course code if there's an error
       return courseCode;
     }
@@ -123,7 +125,8 @@ class AllCourseService {
         
         _cacheExpiry = DateTime.now().add(const Duration(hours: 1));
       } catch (e) {
-        print('Error fetching course titles: $e');
+        SecureLogger.error('COURSE', 'Failed to fetch multiple course titles', e, null, 
+          {'courseCount': uncachedCodes.length});
         // For any remaining uncached codes, use the course code itself
         for (final courseCode in uncachedCodes) {
           if (!results.containsKey(courseCode)) {

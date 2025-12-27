@@ -31,7 +31,6 @@ class HumanitiesElectivesService {
       final huelSnapshot = await _firestore.collection('huel_guide').get();
       
       if (huelSnapshot.docs.isEmpty) {
-        print('No HUEL courses found in database');
         return [];
       }
 
@@ -47,18 +46,16 @@ class HumanitiesElectivesService {
         }
       }
 
-      print('Found ${huelCourseCodes.length} HUEL courses in database');
 
       // Filter to only HUEL courses that are available in current semester timetable
       final allHuelCourses = availableCourses
           .where((course) => huelCourseCodes.contains(course.courseCode))
           .toList();
 
-      print('Found ${allHuelCourses.length} available HUEL courses without clash filtering');
       return allHuelCourses;
 
     } catch (e) {
-      print('Error in getAllHumanitiesElectives: $e');
+      // Error in getAllHumanitiesElectives: $e
       rethrow;
     }
   }
@@ -76,7 +73,6 @@ class HumanitiesElectivesService {
       final huelSnapshot = await _firestore.collection('huel_guide').get();
       
       if (huelSnapshot.docs.isEmpty) {
-        print('No HUEL courses found in database');
         return [];
       }
 
@@ -92,7 +88,6 @@ class HumanitiesElectivesService {
         }
       }
 
-      print('Found ${huelCourseCodes.length} HUEL courses in database');
 
       // Get core courses for the specified branches and semesters
       final coreCourseCodes = await _getCoreCourseCodes(
@@ -102,7 +97,6 @@ class HumanitiesElectivesService {
         secondaryBranch,
       );
 
-      print('Found ${coreCourseCodes.length} core courses for filtering');
 
       // Filter HUEL courses that:
       // 1. Are available in current semester timetable
@@ -117,18 +111,16 @@ class HumanitiesElectivesService {
 
         // Check if this HUEL course clashes with any core course
         if (_doesCourseClashWithCore(course, coreCourseCodes, availableCourses)) {
-          print('HUEL course ${course.courseCode} clashes with core courses, excluding');
           continue;
         }
 
         filteredHuelCourses.add(course);
       }
 
-      print('Filtered to ${filteredHuelCourses.length} non-clashing HUEL courses');
       return filteredHuelCourses;
 
     } catch (e) {
-      print('Error in getFilteredHumanitiesElectives: $e');
+      // Error in getFilteredHumanitiesElectives: $e
       rethrow;
     }
   }
@@ -177,13 +169,11 @@ class HumanitiesElectivesService {
           .get();
 
       if (!courseGuideDoc.exists) {
-        print('Course guide not found for semester: $semesterDocId');
         return;
       }
 
       final data = courseGuideDoc.data();
       if (data == null || !data.containsKey('groups')) {
-        print('No groups found in course guide for semester: $semesterDocId');
         return;
       }
 
@@ -192,7 +182,6 @@ class HumanitiesElectivesService {
       // Convert branch code to branch name
       final branchName = _branchCodeToName[branch];
       if (branchName == null) {
-        print('Unknown branch code: $branch');
         return;
       }
 
@@ -212,13 +201,11 @@ class HumanitiesElectivesService {
               }
             }
           }
-          print('Found group for $branch ($branchName) with ${courses.length} courses');
         }
       }
 
-      print('Added ${coreCourseCodes.length} total core courses for $branch $semester');
     } catch (e) {
-      print('Error getting core courses for $branch $semester: $e');
+      // Error getting core courses for $branch $semester: $e
     }
   }
 
@@ -236,7 +223,6 @@ class HumanitiesElectivesService {
     // First check exam clashes
     for (final coreCourse in coreCourses) {
       if (_hasExamClash(huelCourse, coreCourse)) {
-        print('HUEL ${huelCourse.courseCode} has exam clash with core course ${coreCourse.courseCode}');
         return true;
       }
     }
@@ -257,7 +243,6 @@ class HumanitiesElectivesService {
       if (_allSectionsClash(huelLectures, coreLectures) ||
           _allSectionsClash(huelPracticals, corePracticals) ||
           _allSectionsClash(huelTutorials, coreTutorials)) {
-        print('HUEL ${huelCourse.courseCode} has unavoidable time clash with core course ${coreCourse.courseCode}');
         return true;
       }
     }

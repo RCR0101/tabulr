@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/humanities_electives_service.dart';
 import '../services/course_data_service.dart';
 import '../services/campus_service.dart';
+import '../services/secure_logger.dart';
 import '../models/course.dart';
 import '../widgets/course_list_widget.dart';
 
@@ -47,7 +48,6 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
     
     // Listen for campus changes
     _campusSubscription = CampusService.campusChangeStream.listen((_) {
-      print('Campus changed, reloading humanities electives data...');
       _loadInitialData();
     });
   }
@@ -66,16 +66,14 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
       });
       
       // Load courses for current campus
-      print('Loading courses for current campus...');
       final courses = await _courseDataService.fetchCourses();
-      print('Loaded ${courses.length} courses for ${CampusService.getCampusDisplayName(CampusService.currentCampus)} campus');
       
       setState(() {
         _availableCourses = courses;
         _isLoading = false;
       });
     } catch (e) {
-      print('Error in _loadInitialData: $e');
+      SecureLogger.error('HUMANITIES', 'Failed to load initial data', e);
       setState(() {
         _errorMessage = 'Failed to load data: $e';
         _isLoading = false;
@@ -91,7 +89,6 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
         _huelCourses = [];
       });
 
-      print('Fetching all HUEL courses without clash filtering');
       
       final huelCourses = await _humanitiesElectivesService.getAllHumanitiesElectives(
         _availableCourses,
@@ -108,7 +105,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
         });
       }
     } catch (e) {
-      print('Error in _viewAllHumanitiesElectives: $e');
+      SecureLogger.error('HUMANITIES', 'Failed to load all humanities electives', e);
       setState(() {
         _errorMessage = 'Unable to load humanities electives at this time. Please try again later.';
         _isSearching = false;
@@ -131,7 +128,6 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
         _huelCourses = [];
       });
 
-      print('Searching HUEL courses for: ${_selectedPrimaryBranch!} ${_selectedSemester!}${_selectedSecondaryBranch != null ? ' and ${_selectedSecondaryBranch!} ${_selectedSemester!}' : ''}');
 
       final huelCourses = await _humanitiesElectivesService.getFilteredHumanitiesElectives(
         _selectedSemester!,
@@ -141,7 +137,6 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
         _availableCourses,
       ).timeout(Duration(seconds: 20));
 
-      print('Found ${huelCourses.length} HUEL courses');
 
       setState(() {
         _huelCourses = huelCourses;
@@ -154,7 +149,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
         });
       }
     } catch (e) {
-      print('Error in _searchHumanitiesElectives: $e');
+      SecureLogger.error('HUMANITIES', 'Failed to search humanities electives', e);
       setState(() {
         _errorMessage = 'Unable to load humanities electives at this time. Please try again later.';
         _isSearching = false;
@@ -359,7 +354,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
                 Text(
                   'Found ${_huelCourses.length} humanities electives for ${_selectedPrimaryBranch!} ${_selectedSemester!}${_selectedSecondaryBranch != null ? ' and ${_selectedSecondaryBranch!} ${_selectedSemester!}' : ''}',
                   style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: 4),
