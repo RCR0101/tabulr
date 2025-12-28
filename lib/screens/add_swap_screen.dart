@@ -9,12 +9,14 @@ class AddSwapScreen extends StatefulWidget {
   final List<SelectedSection> currentSelectedSections;
   final List<Course> availableCourses;
   final String currentCampus;
+  final Function(List<SelectedSection>)? onTimetableUpdated;
 
   const AddSwapScreen({
     super.key,
     required this.currentSelectedSections,
     required this.availableCourses,
     required this.currentCampus,
+    this.onTimetableUpdated,
   });
 
   @override
@@ -28,15 +30,21 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
   List<Course> _filteredCourses = [];
   Map<String, Map<SectionType, String>> _selectedSections = {}; // courseCode -> {type -> sectionId}
   List<ValidationResult> _validationResults = [];
+  List<SafeCourseResult> _safeCourseResults = [];
+  List<SafeCourseResult> _filteredSafeCourseResults = [];
+  List<SelectedSection> _currentTimetableSections = [];
   bool _isLoading = true;
   bool _isValidating = false;
+  bool _isCheckingAll = false;
   String _searchQuery = '';
+  String _safeCourseSearchQuery = '';
   String? _selectedDiscipline;
   String? _selectedLevel;
 
   @override
   void initState() {
     super.initState();
+    _currentTimetableSections = List.from(widget.currentSelectedSections);
     _loadCourses();
   }
 
@@ -217,6 +225,21 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     setState(() {
       _selectedSections.clear();
       _validationResults.clear();
+      _safeCourseResults.clear();
+      _filteredSafeCourseResults.clear();
+      _safeCourseSearchQuery = '';
+    });
+  }
+
+  void _filterSafeCourseResults() {
+    setState(() {
+      _filteredSafeCourseResults = _safeCourseResults.where((result) {
+        return _safeCourseSearchQuery.isEmpty ||
+            result.courseCode.toLowerCase().contains(_safeCourseSearchQuery.toLowerCase()) ||
+            result.courseTitle.toLowerCase().contains(_safeCourseSearchQuery.toLowerCase()) ||
+            result.instructors.any((instructor) =>
+                instructor.toLowerCase().contains(_safeCourseSearchQuery.toLowerCase()));
+      }).toList();
     });
   }
 
@@ -226,7 +249,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     for (final scheduleEntry in section.schedule) {
       for (final day in scheduleEntry.days) {
         for (final hour in scheduleEntry.hours) {
-          for (final currentSelected in widget.currentSelectedSections) {
+          for (final currentSelected in _currentTimetableSections) {
             for (final currentScheduleEntry in currentSelected.section.schedule) {
               if (currentScheduleEntry.days.contains(day) && currentScheduleEntry.hours.contains(hour)) {
                 conflicts.add(ConflictInfo(
@@ -250,8 +273,8 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     
     // Check for mid-semester exam conflicts
     if (newCourse.midSemExam != null) {
-      for (final currentSelected in widget.currentSelectedSections) {
-        final currentCourse = widget.availableCourses.firstWhere(
+      for (final currentSelected in _currentTimetableSections) {
+        final currentCourse = _availableCourses.firstWhere(
           (c) => c.courseCode == currentSelected.courseCode,
         );
         
@@ -271,8 +294,8 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     
     // Check for comprehensive exam conflicts
     if (newCourse.endSemExam != null) {
-      for (final currentSelected in widget.currentSelectedSections) {
-        final currentCourse = widget.availableCourses.firstWhere(
+      for (final currentSelected in _currentTimetableSections) {
+        final currentCourse = _availableCourses.firstWhere(
           (c) => c.courseCode == currentSelected.courseCode,
         );
         
@@ -418,6 +441,178 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     return conflicts;
   }
 
+  Future<void> _checkAllCourses() async {
+    setState(() {
+      _isCheckingAll = true;
+      _safeCourseResults.clear();
+      _validationResults.clear();
+    });
+
+    try {
+      final List<SafeCourseResult> safeCourses = [];
+      
+      for (final course in _availableCourses) {
+        final safeCombination = _findSafeCombination(course);
+        if (safeCombination != null) {
+          // Get additional info for display
+          final List<String> instructors = [];
+          final List<String> rooms = [];
+          final List<String> scheduleEntries = [];
+          
+          for (final entry in safeCombination.entries) {
+            final sectionType = entry.key;
+            final sectionId = entry.value;
+            final section = course.sections.firstWhere((s) => s.sectionId == sectionId);
+            
+            if (section.instructor.isNotEmpty && !instructors.contains(section.instructor)) {
+              instructors.add(section.instructor);
+            }
+            if (section.room.isNotEmpty && !rooms.contains(section.room)) {
+              rooms.add(section.room);
+            }
+            
+            for (final scheduleEntry in section.schedule) {
+              final days = scheduleEntry.days.map(_getDayName).join('/');
+              final hours = scheduleEntry.hours.map((h) => TimeSlotInfo.getHourSlotName(h)).join(', ');
+              scheduleEntries.add('${_getSectionTypeName(sectionType)}: $days: $hours');
+            }
+          }
+          
+          safeCourses.add(SafeCourseResult(
+            courseCode: course.courseCode,
+            courseTitle: course.courseTitle,
+            safeCombination: safeCombination,
+            instructors: instructors,
+            rooms: rooms,
+            scheduleDescription: scheduleEntries.join(' | '),
+            course: course,
+          ));
+        }
+      }
+      
+      setState(() {
+        _safeCourseResults = safeCourses;
+        _filteredSafeCourseResults = safeCourses;
+        _isCheckingAll = false;
+      });
+
+      if (safeCourses.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No courses found that can be safely added without conflicts')),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _isCheckingAll = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error checking courses: $e')),
+        );
+      }
+    }
+  }
+
+  Map<SectionType, String>? _findSafeCombination(Course course) {
+    // Group sections by type
+    final Map<SectionType, List<Section>> sectionsByType = {};
+    for (final section in course.sections) {
+      sectionsByType.putIfAbsent(section.type, () => []).add(section);
+    }
+    
+    // Get all required section types (ignore T and P if they don't exist)
+    final requiredTypes = sectionsByType.keys.toSet();
+    
+    // Generate all possible combinations
+    final combinations = _generateCombinations(sectionsByType, requiredTypes.toList());
+    
+    // Check each combination for conflicts
+    for (final combination in combinations) {
+      if (_isCombinationSafe(course, combination)) {
+        return combination;
+      }
+    }
+    
+    return null;
+  }
+
+  List<Map<SectionType, String>> _generateCombinations(
+    Map<SectionType, List<Section>> sectionsByType, 
+    List<SectionType> types
+  ) {
+    if (types.isEmpty) return [{}];
+    
+    final currentType = types.first;
+    final remainingTypes = types.sublist(1);
+    final sectionsForType = sectionsByType[currentType] ?? [];
+    
+    final subCombinations = _generateCombinations(sectionsByType, remainingTypes);
+    final allCombinations = <Map<SectionType, String>>[];
+    
+    for (final section in sectionsForType) {
+      for (final subCombination in subCombinations) {
+        final newCombination = Map<SectionType, String>.from(subCombination);
+        newCombination[currentType] = section.sectionId;
+        allCombinations.add(newCombination);
+      }
+    }
+    
+    return allCombinations;
+  }
+
+  bool _isCombinationSafe(Course course, Map<SectionType, String> combination) {
+    // Check for conflicts with existing selected sections
+    for (final entry in combination.entries) {
+      final sectionType = entry.key;
+      final sectionId = entry.value;
+      final section = course.sections.firstWhere((s) => s.sectionId == sectionId);
+      
+      // Check class schedule conflicts with current timetable
+      final classConflicts = _checkForConflicts(section);
+      if (classConflicts.isNotEmpty) return false;
+    }
+    
+    // Check exam conflicts with current timetable
+    final examConflicts = _checkForExamConflicts(course);
+    if (examConflicts.isNotEmpty) return false;
+    
+    // Check for internal conflicts within the combination
+    final sectionsInCombination = combination.entries.map((entry) {
+      final sectionId = entry.value;
+      return course.sections.firstWhere((s) => s.sectionId == sectionId);
+    }).toList();
+    
+    for (int i = 0; i < sectionsInCombination.length; i++) {
+      for (int j = i + 1; j < sectionsInCombination.length; j++) {
+        if (_sectionsConflict(sectionsInCombination[i], sectionsInCombination[j])) {
+          return false;
+        }
+      }
+    }
+    
+    return true;
+  }
+
+  bool _sectionsConflict(Section section1, Section section2) {
+    for (final schedule1 in section1.schedule) {
+      for (final schedule2 in section2.schedule) {
+        // Check for day and time overlaps
+        for (final day1 in schedule1.days) {
+          if (schedule2.days.contains(day1)) {
+            for (final hour1 in schedule1.hours) {
+              if (schedule2.hours.contains(hour1)) {
+                return true;
+              }
+            }
+          }
+        }
+      }
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isMobile = ResponsiveService.isMobile(context);
@@ -491,7 +686,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
   Widget _buildCurrentCoursesSection() {
     // Group selected sections by course code
     final currentCourses = <String, List<SelectedSection>>{};
-    for (final selectedSection in widget.currentSelectedSections) {
+    for (final selectedSection in _currentTimetableSections) {
       currentCourses.putIfAbsent(selectedSection.courseCode, () => []).add(selectedSection);
     }
 
@@ -698,6 +893,33 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                 },
               ),
               const SizedBox(height: 16),
+              // Check All button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _isCheckingAll ? null : () {
+                    ResponsiveService.triggerMediumFeedback(context);
+                    _checkAllCourses();
+                  },
+                  icon: _isCheckingAll
+                      ? SizedBox(
+                          width: ResponsiveService.getAdaptiveIconSize(context, 16),
+                          height: ResponsiveService.getAdaptiveIconSize(context, 16),
+                          child: const CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(Icons.checklist, size: ResponsiveService.getAdaptiveIconSize(context, 18)),
+                  label: Text(_isCheckingAll ? 'Checking All Courses...' : 'Check All'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.secondary,
+                    foregroundColor: Theme.of(context).colorScheme.onSecondary,
+                    minimumSize: Size(
+                      double.infinity,
+                      ResponsiveService.getTouchTargetSize(context),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               // Action buttons - responsive layout
               ResponsiveService.buildResponsive(
                 context,
@@ -824,11 +1046,13 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
             ],
           ),
         ),
-        // Course selection and validation results
+        // Course selection, validation results, or safe course results
         Expanded(
-          child: _validationResults.isNotEmpty
-              ? _buildValidationResults()
-              : _buildCourseSelection(),
+          child: _safeCourseResults.isNotEmpty
+              ? _buildSafeCourseResults()
+              : _validationResults.isNotEmpty
+                  ? _buildValidationResults()
+                  : _buildCourseSelection(),
         ),
       ],
     );
@@ -1134,10 +1358,356 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
       case SectionType.L:
         return 'Lecture';
       case SectionType.P:
-        return 'Practical/Lab';
+        return 'Practical';
       case SectionType.T:
         return 'Tutorial';
     }
+  }
+
+  Widget _buildSafeCourseResults() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _safeCourseResults.clear();
+                    });
+                  },
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Back to Course Selection'),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Found ${_safeCourseResults.length} courses that can be safely added',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                onChanged: (query) {
+                  _safeCourseSearchQuery = query;
+                  _filterSafeCourseResults();
+                },
+                decoration: InputDecoration(
+                  hintText: 'Search safe courses...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _safeCourseSearchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            setState(() {
+                              _safeCourseSearchQuery = '';
+                              _filteredSafeCourseResults = _safeCourseResults;
+                            });
+                          },
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+              ),
+              if (_filteredSafeCourseResults.length != _safeCourseResults.length) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Showing ${_filteredSafeCourseResults.length} of ${_safeCourseResults.length} safe courses',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const Divider(),
+        // Safe course results
+        Expanded(
+          child: ListView.builder(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              ResponsiveService.isMobile(context) ? 100 : 16,
+            ),
+            itemCount: _filteredSafeCourseResults.length,
+            itemBuilder: (context, index) {
+              final result = _filteredSafeCourseResults[index];
+              
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Course header
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.school,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  result.courseCode,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                Text(
+                                  result.courseTitle,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Action button to add this combination
+                          ElevatedButton.icon(
+                            onPressed: () => _addSafeCombination(result),
+                            icon: const Icon(Icons.add, size: 16),
+                            label: const Text('Add'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(context).colorScheme.primary,
+                              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                              minimumSize: const Size(0, 32),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      // Safe combination details
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.green.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.check_circle,
+                                  size: 16,
+                                  color: Colors.green,
+                                ),
+                                const SizedBox(width: 6),
+                                const Text(
+                                  'Safe Combination:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            
+                            // Show sections in the combination
+                            ...result.safeCombination.entries.map((entry) {
+                              final sectionType = entry.key;
+                              final sectionId = entry.value;
+                              final section = result.course.sections.firstWhere(
+                                (s) => s.sectionId == sectionId
+                              );
+                              
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: _getSectionTypeColor(sectionType),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        sectionType.name,
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Section $sectionId',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                          if (section.instructor.isNotEmpty)
+                                            Text(
+                                              'Instructor: ${section.instructor}',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                              ),
+                                            ),
+                                          if (section.room.isNotEmpty)
+                                            Text(
+                                              'Room: ${section.room}',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                              ),
+                                            ),
+                                          Text(
+                                            'Schedule: ${_formatSchedule(section.schedule)}',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                      
+                      // Show exam information if available
+                      if (result.course.midSemExam != null || result.course.endSemExam != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.schedule_outlined,
+                                    size: 14,
+                                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Exams',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              if (result.course.midSemExam != null) ...[
+                                _buildCompactExamInfo('Mid-Sem', result.course.midSemExam!),
+                                if (result.course.endSemExam != null) const SizedBox(height: 3),
+                              ],
+                              if (result.course.endSemExam != null)
+                                _buildCompactExamInfo('Comprehensive', result.course.endSemExam!),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _addSafeCombination(SafeCourseResult result) {
+    // Create SelectedSection objects from the safe combination
+    final List<SelectedSection> newSections = [];
+    for (final entry in result.safeCombination.entries) {
+      final sectionType = entry.key;
+      final sectionId = entry.value;
+      final section = result.course.sections.firstWhere((s) => s.sectionId == sectionId);
+      
+      newSections.add(SelectedSection(
+        courseCode: result.courseCode,
+        sectionId: sectionId,
+        section: section,
+      ));
+    }
+    
+    // Add to current timetable
+    setState(() {
+      _currentTimetableSections.addAll(newSections);
+      _selectedSections[result.courseCode] = Map.from(result.safeCombination);
+      _safeCourseResults.clear();
+      _filteredSafeCourseResults.clear();
+      _safeCourseSearchQuery = '';
+    });
+    
+    // Notify parent widget about the timetable update
+    if (widget.onTimetableUpdated != null) {
+      widget.onTimetableUpdated!(_currentTimetableSections);
+    }
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${result.courseCode} added to your timetable!'),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   Widget _buildValidationResults() {
@@ -1323,5 +1893,25 @@ class ConflictInfo {
     required this.conflictingSectionId,
     required this.day,
     required this.time,
+  });
+}
+
+class SafeCourseResult {
+  final String courseCode;
+  final String courseTitle;
+  final Map<SectionType, String> safeCombination;
+  final List<String> instructors;
+  final List<String> rooms;
+  final String scheduleDescription;
+  final Course course;
+
+  SafeCourseResult({
+    required this.courseCode,
+    required this.courseTitle,
+    required this.safeCombination,
+    required this.instructors,
+    required this.rooms,
+    required this.scheduleDescription,
+    required this.course,
   });
 }

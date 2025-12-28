@@ -616,10 +616,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _openAddSwap() {
+  void _openAddSwap() async {
     if (_timetable == null) return;
 
-    Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder:
@@ -627,6 +627,15 @@ class _HomeScreenState extends State<HomeScreen> {
               currentSelectedSections: _timetable!.selectedSections,
               availableCourses: _timetable!.availableCourses,
               currentCampus: CampusService.currentCampusCode,
+              onTimetableUpdated: (updatedSections) {
+                // Update the main timetable with the new sections
+                setState(() {
+                  _timetable!.selectedSections.clear();
+                  _timetable!.selectedSections.addAll(updatedSections);
+                  _hasUnsavedChanges = true;
+                });
+                _pageLeaveWarning.enableWarning(true);
+              },
             ),
       ),
     );
@@ -1877,8 +1886,8 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
     }
   }
 
-  void _openAddSwap() {
-    Navigator.push(
+  void _openAddSwap() async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder:
@@ -1886,6 +1895,16 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
               currentSelectedSections: _timetable.selectedSections,
               availableCourses: _timetable.availableCourses,
               currentCampus: CampusService.currentCampusCode,
+              onTimetableUpdated: (updatedSections) {
+                // Update the main timetable with the new sections
+                setState(() {
+                  _timetable.selectedSections.clear();
+                  _timetable.selectedSections.addAll(updatedSections);
+                  _hasUnsavedChanges = true;
+                });
+                widget.onUnsavedChangesChanged?.call(true);
+                _pageLeaveWarning.enableWarning(true);
+              },
             ),
       ),
     );

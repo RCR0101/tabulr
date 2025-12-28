@@ -156,10 +156,12 @@ async function main() {
     const projectRoot = path.join(__dirname, '..');
     const scriptsDir = __dirname;
     
-    // Find all campus timetable files
-    const timetableFiles = findCampusTimetables(projectRoot);
+    const requestedCampus = process.argv[2];
     
-    if (timetableFiles.length === 0) {
+    // Find all campus timetable files
+    const allTimetableFiles = findCampusTimetables(projectRoot);
+    
+    if (allTimetableFiles.length === 0) {
       console.error('❌ No timetable PDF files found in the project root');
       console.log('Please place your timetable PDF files in the timetable_maker folder:');
       console.log('  - timetable-hyd.pdf (for Hyderabad campus)');
@@ -168,7 +170,30 @@ async function main() {
       process.exit(1);
     }
     
-    console.log(`📋 Found ${timetableFiles.length} timetable file(s):`);
+    let timetableFiles = allTimetableFiles;
+    if (requestedCampus) {
+      const normalizedRequest = requestedCampus.toLowerCase();
+      timetableFiles = allTimetableFiles.filter(file => {
+        const normalizedCampus = file.campus.toLowerCase();
+        return normalizedCampus === normalizedRequest || 
+               (normalizedRequest === 'hyd' && normalizedCampus === 'hyderabad') ||
+               (normalizedRequest === 'hyderabad' && normalizedCampus === 'hyd');
+      });
+      
+      if (timetableFiles.length === 0) {
+        console.error(`❌ No timetable files found for campus: ${requestedCampus}`);
+        console.log('\nAvailable campuses:');
+        allTimetableFiles.forEach(file => {
+          console.log(`  - ${file.filename} → ${file.displayName} campus`);
+        });
+        process.exit(1);
+      }
+      
+      console.log(`📋 Processing only ${requestedCampus} campus as requested`);
+    } else {
+      console.log(`📋 Found ${timetableFiles.length} timetable file(s):`);
+    }
+    
     timetableFiles.forEach(file => {
       console.log(`  - ${file.filename} → ${file.displayName} campus`);
     });
