@@ -13,6 +13,7 @@ import '../services/responsive_service.dart';
 import '../models/user_settings.dart';
 import '../widgets/theme_selector_widget.dart';
 import '../widgets/campus_selector_widget.dart';
+import '../widgets/disclaimer_widget.dart';
 import 'home_screen.dart';
 import 'course_guide_screen.dart';
 import 'timetable_comparison_screen.dart';
@@ -1414,9 +1415,15 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
           ),
         ],
       ),
-      body:
-          _sortedTimetables.isEmpty
-              ? Center(
+      body: Column(
+        children: [
+          // Top announcement widget
+          const TopAnnouncementWidget(),
+          
+          // Main content
+          Expanded(
+            child: _sortedTimetables.isEmpty
+                ? Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -1450,9 +1457,9 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                   ],
                 ),
               )
-              : Column(
-                children: [
-                  Expanded(
+                : Column(
+                  children: [
+                    Expanded(
                     child: ReorderableListView.builder(
                       padding: const EdgeInsets.all(16),
                       itemCount: _sortedTimetables.length,
@@ -1667,45 +1674,12 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                 ),
                               ),
                     ),
-                ],
-              ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          border: Border(
-            top: BorderSide(
-              color: Theme.of(
-                context,
-              ).colorScheme.outline.withValues(alpha: 0.2),
-              width: 1,
-            ),
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.info_outline,
-              size: 16,
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Disclaimer: This software may make mistakes or suggest classes you might not be eligible for. Please double-check all course selections with your academic advisor.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.7),
-                  fontSize: 12,
+                  ],
                 ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
+      bottomNavigationBar: const BottomDisclaimerWidget(),
       floatingActionButton: ResponsiveService.buildResponsive(
         context,
         mobile: Column(

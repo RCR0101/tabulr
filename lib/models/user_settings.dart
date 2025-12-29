@@ -81,6 +81,8 @@ class UserSettings {
   final TimetableListSortOrder sortOrder;
   final Map<String, TimetableSettings> timetableSettings; // timetableId -> settings
   final List<String> customTimetableOrder; // for custom sorting
+  final bool dontShowBottomDisclaimer; // whether to hide the bottom disclaimer permanently
+  final DateTime? dontShowTopUpdated; // when the user last dismissed the top announcement
   final DateTime lastUpdated;
 
   const UserSettings({
@@ -90,6 +92,8 @@ class UserSettings {
     required this.sortOrder,
     required this.timetableSettings,
     required this.customTimetableOrder,
+    this.dontShowBottomDisclaimer = false,
+    this.dontShowTopUpdated,
     required this.lastUpdated,
   });
 
@@ -103,6 +107,8 @@ class UserSettings {
         (key, value) => MapEntry(key, value.toJson()),
       ),
       'customTimetableOrder': customTimetableOrder,
+      'dontShowBottomDisclaimer': dontShowBottomDisclaimer,
+      'dontShowTopUpdated': dontShowTopUpdated?.toIso8601String(),
       'lastUpdated': lastUpdated.toIso8601String(),
     };
   }
@@ -128,6 +134,8 @@ class UserSettings {
                 TimetableSettings.fromJson(value as Map<String, dynamic>),
               )),
       customTimetableOrder: List<String>.from(json['customTimetableOrder'] ?? []),
+      dontShowBottomDisclaimer: json['dontShowBottomDisclaimer'] ?? false,
+      dontShowTopUpdated: json['dontShowTopUpdated'] != null ? _parseDateTime(json['dontShowTopUpdated']) : null,
       lastUpdated: _parseDateTime(json['lastUpdated']),
     );
   }
@@ -140,6 +148,8 @@ class UserSettings {
       sortOrder: TimetableListSortOrder.dateModifiedDesc,
       timetableSettings: {},
       customTimetableOrder: [],
+      dontShowBottomDisclaimer: false,
+      dontShowTopUpdated: null,
       lastUpdated: DateTime.now(),
     );
   }
@@ -151,6 +161,8 @@ class UserSettings {
     TimetableListSortOrder? sortOrder,
     Map<String, TimetableSettings>? timetableSettings,
     List<String>? customTimetableOrder,
+    bool? dontShowBottomDisclaimer,
+    DateTime? dontShowTopUpdated,
     DateTime? lastUpdated,
   }) {
     return UserSettings(
@@ -160,6 +172,8 @@ class UserSettings {
       sortOrder: sortOrder ?? this.sortOrder,
       timetableSettings: timetableSettings ?? this.timetableSettings,
       customTimetableOrder: customTimetableOrder ?? this.customTimetableOrder,
+      dontShowBottomDisclaimer: dontShowBottomDisclaimer ?? this.dontShowBottomDisclaimer,
+      dontShowTopUpdated: dontShowTopUpdated ?? this.dontShowTopUpdated,
       lastUpdated: lastUpdated ?? DateTime.now(),
     );
   }

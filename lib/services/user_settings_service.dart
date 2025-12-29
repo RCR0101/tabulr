@@ -206,6 +206,76 @@ class UserSettingsService extends ChangeNotifier {
     }
   }
 
+  // Update dont show bottom disclaimer setting
+  Future<void> updateDontShowBottomDisclaimer(bool dontShow) async {
+    // Ensure settings are initialized
+    if (_userSettings == null) {
+      await initializeSettings();
+    }
+    
+    if (_userSettings == null) {
+      print('Warning: Failed to initialize user settings');
+      return;
+    }
+
+    _userSettings = _userSettings!.copyWith(dontShowBottomDisclaimer: dontShow);
+    notifyListeners();
+
+    if (_authService.isAuthenticated) {
+      await _saveToFirestore();
+    } else {
+      await _saveToLocalStorage();
+    }
+  }
+
+  // Reset disclaimer setting (useful for testing)
+  Future<void> resetDisclaimerSetting() async {
+    await updateDontShowBottomDisclaimer(false);
+  }
+
+  // Update dont show top announcement setting
+  Future<void> updateDontShowTopUpdated() async {
+    // Ensure settings are initialized
+    if (_userSettings == null) {
+      await initializeSettings();
+    }
+    
+    if (_userSettings == null) {
+      print('Warning: Failed to initialize user settings');
+      return;
+    }
+
+    _userSettings = _userSettings!.copyWith(dontShowTopUpdated: DateTime.now());
+    notifyListeners();
+
+    if (_authService.isAuthenticated) {
+      await _saveToFirestore();
+    } else {
+      await _saveToLocalStorage();
+    }
+  }
+
+  // Reset top announcement setting (useful for testing)
+  Future<void> resetTopAnnouncementSetting() async {
+    if (_userSettings == null) {
+      await initializeSettings();
+    }
+    
+    if (_userSettings == null) {
+      print('Warning: Failed to initialize user settings');
+      return;
+    }
+
+    _userSettings = _userSettings!.copyWith(dontShowTopUpdated: null);
+    notifyListeners();
+
+    if (_authService.isAuthenticated) {
+      await _saveToFirestore();
+    } else {
+      await _saveToLocalStorage();
+    }
+  }
+
   // Update timetable-specific settings
   Future<void> updateTimetableSettings(
     String timetableId,
@@ -255,6 +325,12 @@ class UserSettingsService extends ChangeNotifier {
 
   // Get custom timetable order
   List<String> get customTimetableOrder => _userSettings?.customTimetableOrder ?? [];
+  
+  // Get dont show bottom disclaimer setting
+  bool get dontShowBottomDisclaimer => _userSettings?.dontShowBottomDisclaimer ?? false;
+  
+  // Get dont show top announcement dismissal time
+  DateTime? get dontShowTopUpdated => _userSettings?.dontShowTopUpdated;
 
   // Get timetable settings
   TimetableSettings getTimetableSettings(String timetableId) {

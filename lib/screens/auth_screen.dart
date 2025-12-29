@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../widgets/disclaimer_widget.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -231,13 +232,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     const SizedBox(height: 16),
 
                     // Guest mode disclaimer
-                    Text(
-                      'Note: Guest mode data will be cleared when you close the app',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onBackground.withOpacity(0.6),
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
+                    const GuestModeDisclaimerWidget(),
                     const Spacer(flex: 1),
                   ],
                 ),

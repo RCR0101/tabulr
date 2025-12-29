@@ -25,6 +25,7 @@ import '../services/auto_load_cdc_service.dart';
 import '../models/export_options.dart';
 import '../widgets/export_options_dialog.dart';
 import '../widgets/campus_selector_widget.dart';
+import '../widgets/disclaimer_widget.dart';
 import 'generator_screen.dart';
 import 'timetables_screen.dart';
 import 'course_guide_screen.dart';
@@ -1114,41 +1115,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-          bottomNavigationBar: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              border: Border(
-                top: BorderSide(
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.info_outline,
-                  size: 14,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withOpacity(0.7),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Disclaimer: This software may make mistakes or suggest classes you might not be eligible for. Please double-check all course selections with your academic advisor.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withOpacity(0.7),
-                      fontSize: ResponsiveService.isMobile(context) ? 9 : 11,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          bottomNavigationBar: const BottomDisclaimerWidget(),
         );
       },
     );
@@ -2381,41 +2348,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                       ),
                     ],
                   ),
-          bottomNavigationBar: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              border: Border(
-                top: BorderSide(
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.info_outline,
-                  size: 14,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withOpacity(0.7),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Disclaimer: This software may make mistakes or suggest classes you might not be eligible for. Please double-check all course selections with your academic advisor.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withOpacity(0.7),
-                      fontSize: ResponsiveService.isMobile(context) ? 9 : 11,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          bottomNavigationBar: const BottomDisclaimerWidget(),
         );
       },
     );
