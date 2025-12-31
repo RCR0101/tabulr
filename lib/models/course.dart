@@ -172,6 +172,35 @@ enum TimeSlot {
 }
 
 class TimeSlotInfo {
+  // Campus-specific time slot mappings for EndSem exams
+  static const Map<String, Map<TimeSlot, String>> _campusTimeSlotNames = {
+    'pilani': {
+      TimeSlot.FN: '8:00AM-11:00AM',
+      TimeSlot.AN: '3:00PM-6:00PM',
+      TimeSlot.MS1: '9:30AM-11:00AM',
+      TimeSlot.MS2: '11:30AM-1:00PM',
+      TimeSlot.MS3: '2:00PM-3:30PM',
+      TimeSlot.MS4: '4:00PM-5:30PM',
+    },
+    'goa': {
+      TimeSlot.FN: '9:30AM-12:30PM',
+      TimeSlot.AN: '2:00PM-5:00PM',
+      TimeSlot.MS1: '9:30AM-11:00AM',
+      TimeSlot.MS2: '11:30AM-1:00PM',
+      TimeSlot.MS3: '2:00PM-3:30PM',
+      TimeSlot.MS4: '4:00PM-5:30PM',
+    },
+    'hyderabad': {
+      TimeSlot.FN: '9:30AM-12:30PM',
+      TimeSlot.AN: '2:00PM-5:00PM',
+      TimeSlot.MS1: '9:30AM-11:00AM',
+      TimeSlot.MS2: '11:30AM-1:00PM',
+      TimeSlot.MS3: '2:00PM-3:30PM',
+      TimeSlot.MS4: '4:00PM-5:30PM',
+    },
+  };
+  
+  // Default time slot names (fallback)
   static const Map<TimeSlot, String> timeSlotNames = {
     TimeSlot.FN: '8:00AM-11:00AM',
     TimeSlot.AN: '3:00PM-6:00PM',
@@ -196,7 +225,10 @@ class TimeSlotInfo {
     12: '7:00-7:50 PM',
   };
 
-  static String getTimeSlotName(TimeSlot slot) {
+  static String getTimeSlotName(TimeSlot slot, {String? campus}) {
+    if (campus != null && _campusTimeSlotNames.containsKey(campus)) {
+      return _campusTimeSlotNames[campus]![slot] ?? '';
+    }
     return timeSlotNames[slot] ?? '';
   }
 
@@ -254,5 +286,31 @@ class TimeSlotInfo {
 
   static List<TimeSlot> getEndSemSlots() {
     return [TimeSlot.FN, TimeSlot.AN];
+  }
+  
+  // Get campus-specific exam time data for export services
+  static Map<TimeSlot, List<int>> getCampusExamTimes(String campus) {
+    switch (campus) {
+      case 'pilani':
+        return {
+          TimeSlot.FN: [8, 0], // 8:00AM-11:00AM
+          TimeSlot.AN: [15, 0], // 3:00PM-6:00PM
+          TimeSlot.MS1: [9, 30], // 9:30-11:00
+          TimeSlot.MS2: [11, 30], // 11:30-1:00
+          TimeSlot.MS3: [14, 0], // 2:00-3:30
+          TimeSlot.MS4: [16, 0], // 4:00-5:30
+        };
+      case 'goa':
+      case 'hyderabad':
+      default:
+        return {
+          TimeSlot.FN: [9, 30], // 9:30AM-12:30PM
+          TimeSlot.AN: [14, 0], // 2:00PM-5:00PM
+          TimeSlot.MS1: [9, 30], // 9:30-11:00
+          TimeSlot.MS2: [11, 30], // 11:30-1:00
+          TimeSlot.MS3: [14, 0], // 2:00-3:30
+          TimeSlot.MS4: [16, 0], // 4:00-5:30
+        };
+    }
   }
 }

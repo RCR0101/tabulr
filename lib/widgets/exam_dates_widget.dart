@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
+import '../services/campus_service.dart';
 
 enum SortColumn { course, midSem, endSem }
 enum SortDirection { ascending, descending }
@@ -266,7 +267,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
         : '';
       
       final midSemTime = course.midSemExam != null 
-        ? TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot)
+        ? TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot, campus: CampusService.currentCampusCode)
         : '';
 
       final endSemText = course.endSemExam != null 
@@ -274,7 +275,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
         : '';
       
       final endSemTime = course.endSemExam != null 
-        ? TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot)
+        ? TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot, campus: CampusService.currentCampusCode)
         : '';
 
       examDataList.add(ExamData(

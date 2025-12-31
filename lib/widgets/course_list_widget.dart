@@ -3,6 +3,7 @@ import '../models/course.dart';
 import '../models/timetable.dart';
 import '../services/course_utils.dart';
 import '../services/responsive_service.dart';
+import '../services/campus_service.dart';
 
 class CourseListWidget extends StatelessWidget {
   final List<Course> courses;
@@ -181,9 +182,9 @@ class CourseListWidget extends StatelessWidget {
                      )),
                 Text('Credits: L${course.lectureCredits} P${course.practicalCredits} U${course.totalCredits}'),
                 if (course.midSemExam != null)
-                  Text('MidSem: ${course.midSemExam!.date.day}/${course.midSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot)}'),
+                  Text('MidSem: ${course.midSemExam!.date.day}/${course.midSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot, campus: CampusService.currentCampusCode)}'),
                 if (course.endSemExam != null)
-                  Text('EndSem: ${course.endSemExam!.date.day}/${course.endSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot)}'),
+                  Text('EndSem: ${course.endSemExam!.date.day}/${course.endSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot, campus: CampusService.currentCampusCode)}'),
                 if (_getSelectedSectionsText(course.courseCode).isNotEmpty)
                   Text(
                     'Selected: ${_getSelectedSectionsText(course.courseCode)}',

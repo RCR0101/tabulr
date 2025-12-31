@@ -5,6 +5,7 @@ import '../models/timetable_constraints.dart';
 import '../services/timetable_generator.dart';
 import '../services/toast_service.dart';
 import '../services/responsive_service.dart';
+import '../services/campus_service.dart';
 import 'generated_timetable_card.dart';
 
 class TimetableGeneratorWidget extends StatefulWidget {
@@ -601,7 +602,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                     ...TimeSlot.values.map((slot) => DropdownMenuItem(
                       value: slot,
                       child: Text(
-                        TimeSlotInfo.getTimeSlotName(slot),
+                        TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode),
                         style: TextStyle(fontSize: 14),
                       ),
                     )),

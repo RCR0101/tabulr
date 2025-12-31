@@ -5,6 +5,7 @@ import '../services/course_comparison_service.dart';
 import '../services/humanities_electives_service.dart';
 import '../services/discipline_electives_service.dart';
 import '../services/clash_detector.dart';
+import '../services/campus_service.dart';
 
 enum CourseCategory { huel, del, other }
 
@@ -811,10 +812,10 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     if (course.midSemExam != null || course.endSemExam != null) {
       final examTexts = <String>[];
       if (course.midSemExam != null) {
-        examTexts.add('MidSem: ${course.midSemExam!.date.day}/${course.midSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot)}');
+        examTexts.add('MidSem: ${course.midSemExam!.date.day}/${course.midSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot, campus: CampusService.currentCampusCode)}');
       }
       if (course.endSemExam != null) {
-        examTexts.add('EndSem: ${course.endSemExam!.date.day}/${course.endSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot)}');
+        examTexts.add('EndSem: ${course.endSemExam!.date.day}/${course.endSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot, campus: CampusService.currentCampusCode)}');
       }
       items.add(
         Row(

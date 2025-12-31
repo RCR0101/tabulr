@@ -4,6 +4,7 @@ import '../models/timetable.dart';
 import '../services/course_data_service.dart';
 import '../services/responsive_service.dart';
 import '../widgets/search_filter_widget.dart';
+import '../services/campus_service.dart';
 
 class AddSwapScreen extends StatefulWidget {
   final List<SelectedSection> currentSelectedSections;
@@ -285,7 +286,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
               conflictingCourse: currentSelected.courseCode,
               conflictingSectionId: 'Mid-Sem Exam',
               day: DayOfWeek.M, // Placeholder, exams don't follow day structure
-              time: 'Mid-Sem Exam: ${TimeSlotInfo.getTimeSlotName(newCourse.midSemExam!.timeSlot)}',
+              time: 'Mid-Sem Exam: ${TimeSlotInfo.getTimeSlotName(newCourse.midSemExam!.timeSlot, campus: CampusService.currentCampusCode)}',
             ));
           }
         }
@@ -306,7 +307,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
               conflictingCourse: currentSelected.courseCode,
               conflictingSectionId: 'Comprehensive Exam',
               day: DayOfWeek.M, // Placeholder, exams don't follow day structure
-              time: 'Comprehensive Exam: ${TimeSlotInfo.getTimeSlotName(newCourse.endSemExam!.timeSlot)}',
+              time: 'Comprehensive Exam: ${TimeSlotInfo.getTimeSlotName(newCourse.endSemExam!.timeSlot, campus: CampusService.currentCampusCode)}',
             ));
           }
         }
@@ -347,7 +348,9 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     // For comprehensive exams (FN, AN), check for overlaps
     final compSlots = [TimeSlot.FN, TimeSlot.AN];
     if (compSlots.contains(slot1) && compSlots.contains(slot2)) {
-      // FN: 8:00AM-11:00AM, AN: 3:00PM-6:00PM
+      // EndSem time slots (campus-specific):
+      // Pilani: FN: 8:00AM-11:00AM, AN: 3:00PM-6:00PM
+      // Goa/Hyd: FN: 9:30AM-12:30PM, AN: 2:00PM-5:00PM
       // These don't overlap
       return false;
     }
@@ -420,7 +423,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
             conflictingCourse: otherCourseCode,
             conflictingSectionId: 'Mid-Sem Exam',
             day: DayOfWeek.M, // Placeholder
-            time: 'Mid-Sem Exam: ${TimeSlotInfo.getTimeSlotName(currentCourse.midSemExam!.timeSlot)}',
+            time: 'Mid-Sem Exam: ${TimeSlotInfo.getTimeSlotName(currentCourse.midSemExam!.timeSlot, campus: CampusService.currentCampusCode)}',
           ));
         }
       }
@@ -432,7 +435,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
             conflictingCourse: otherCourseCode,
             conflictingSectionId: 'Comprehensive Exam',
             day: DayOfWeek.M, // Placeholder
-            time: 'Comprehensive Exam: ${TimeSlotInfo.getTimeSlotName(currentCourse.endSemExam!.timeSlot)}',
+            time: 'Comprehensive Exam: ${TimeSlotInfo.getTimeSlotName(currentCourse.endSemExam!.timeSlot, campus: CampusService.currentCampusCode)}',
           ));
         }
       }
@@ -1306,7 +1309,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
         const SizedBox(width: 8),
         Expanded(
           child: Text(
-            '${_formatDate(exam.date)} - ${TimeSlotInfo.getTimeSlotName(exam.timeSlot)}',
+            '${_formatDate(exam.date)} - ${TimeSlotInfo.getTimeSlotName(exam.timeSlot, campus: CampusService.currentCampusCode)}',
             style: const TextStyle(fontSize: 12),
           ),
         ),
@@ -1336,7 +1339,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
         const SizedBox(width: 6),
         Expanded(
           child: Text(
-            '${_formatDate(exam.date)} - ${TimeSlotInfo.getTimeSlotName(exam.timeSlot)}',
+            '${_formatDate(exam.date)} - ${TimeSlotInfo.getTimeSlotName(exam.timeSlot, campus: CampusService.currentCampusCode)}',
             style: const TextStyle(fontSize: 10),
             overflow: TextOverflow.ellipsis,
           ),

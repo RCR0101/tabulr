@@ -1,5 +1,6 @@
 import '../models/course.dart';
 import '../models/timetable.dart';
+import 'campus_service.dart';
 
 class ClashDetector {
   static List<ClashWarning> detectClashes(List<SelectedSection> selectedSections, List<Course> courses) {
@@ -86,7 +87,7 @@ class ClashDetector {
         
         warnings.add(ClashWarning(
           type: ClashType.midSemExam,
-          message: 'MidSem exam clash on ${date.day}/${date.month} ${TimeSlotInfo.getTimeSlotName(timeSlot)}',
+          message: 'MidSem exam clash on ${date.day}/${date.month} ${TimeSlotInfo.getTimeSlotName(timeSlot, campus: CampusService.currentCampusCode)}',
           conflictingCourses: entry.value.toList(),
           severity: ClashSeverity.error,
         ));
@@ -101,7 +102,7 @@ class ClashDetector {
         
         warnings.add(ClashWarning(
           type: ClashType.endSemExam,
-          message: 'EndSem exam clash on ${date.day}/${date.month} ${TimeSlotInfo.getTimeSlotName(timeSlot)}',
+          message: 'EndSem exam clash on ${date.day}/${date.month} ${TimeSlotInfo.getTimeSlotName(timeSlot, campus: CampusService.currentCampusCode)}',
           conflictingCourses: entry.value.toList(),
           severity: ClashSeverity.error,
         ));
