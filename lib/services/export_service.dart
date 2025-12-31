@@ -598,8 +598,8 @@ class ExportService {
   static DateTime _getExamDateTime(ExamSchedule exam, {bool endTime = false}) {
     // Map time slots to their actual start times - Updated for new midsem schedule
     final slotTimes = {
-      TimeSlot.FN: [9, 30], // 9:30AM-12:30PM (EndSem - 3 hours)
-      TimeSlot.AN: [14, 0], // 2:00PM-5:00PM (EndSem - 3 hours)
+      TimeSlot.FN: [8, 0], // 8:00AM-11:00AM (EndSem - 3 hours)
+      TimeSlot.AN: [15, 0], // 3:00PM-6:00PM (EndSem - 3 hours)
       TimeSlot.MS1: [9, 30], // 9:30-11:00 (MidSem - 1.5 hours)
       TimeSlot.MS2: [11, 30], // 11:30-1:00 (MidSem - 1.5 hours)
       TimeSlot.MS3: [14, 0], // 2:00-3:30 (MidSem - 1.5 hours)

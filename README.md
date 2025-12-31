@@ -150,8 +150,8 @@ The app comes with **380+ courses** pre-loaded from an Excel file. You can:
 - MS4: 4:00-5:30
 
 **EndSem Exam Slots:**
-- FN (Forenoon): 9:30AM-12:30PM
-- AN (Afternoon): 2:00PM-5:00PM
+- FN (Forenoon): 8:00AM-11:00AM
+- AN (Afternoon): 3:00PM-6:00PM
 
 ### 5. Export Features
 

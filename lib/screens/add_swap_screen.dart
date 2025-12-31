@@ -347,7 +347,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     // For comprehensive exams (FN, AN), check for overlaps
     final compSlots = [TimeSlot.FN, TimeSlot.AN];
     if (compSlots.contains(slot1) && compSlots.contains(slot2)) {
-      // FN: 9:30AM-12:30PM, AN: 2:00PM-5:00PM
+      // FN: 8:00AM-11:00AM, AN: 3:00PM-6:00PM
       // These don't overlap
       return false;
     }

@@ -163,8 +163,8 @@ enum SectionType { L, P, T }
 enum DayOfWeek { M, T, W, Th, F, S }
 
 enum TimeSlot {
-  FN, // 9:30AM-12:30PM (EndSem only)
-  AN, // 2:00PM-5:00PM (EndSem only)
+  FN, // 8:00AM-11:00AM (EndSem only)
+  AN, // 3:00PM-6:00PM (EndSem only)
   MS1, // 9:30-11:00 (MidSem - Updated)
   MS2, // 11:30-1:00 (MidSem - Updated)
   MS3, // 2:00-3:30 (MidSem - Updated)
@@ -173,8 +173,8 @@ enum TimeSlot {
 
 class TimeSlotInfo {
   static const Map<TimeSlot, String> timeSlotNames = {
-    TimeSlot.FN: '9:30AM-12:30PM',
-    TimeSlot.AN: '2:00PM-5:00PM',
+    TimeSlot.FN: '8:00AM-11:00AM',
+    TimeSlot.AN: '3:00PM-6:00PM',
     TimeSlot.MS1: '9:30AM-11:00AM',
     TimeSlot.MS2: '11:30AM-1:00PM',
     TimeSlot.MS3: '2:00PM-3:30PM',
