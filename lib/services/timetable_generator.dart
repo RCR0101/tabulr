@@ -4,37 +4,78 @@ import '../models/timetable_constraints.dart';
 import '../models/timetable.dart' as timetable;
 import 'clash_detector.dart';
 
+class ValidationResult {
+  final bool isValid;
+  final List<String> rejectionReasons;
+
+  ValidationResult({
+    required this.isValid,
+    required this.rejectionReasons,
+  });
+}
+
 class TimetableGenerator {
-  static List<GeneratedTimetable> generateTimetables(
+  static TimetableGenerationResult generateTimetables(
     List<Course> availableCourses,
     TimetableConstraints constraints, {
     int maxTimetables = 30,
   }) {
+    final issues = <TimetableIssue>[];
+    final statistics = <String, dynamic>{};
     
-    
-    final requiredCourses = availableCourses
-        .where((course) => constraints.requiredCourses.contains(course.courseCode))
-        .toList();
-
-    
-    for (final course in requiredCourses) {
-      
+    // Check for missing courses
+    final requiredCourses = <Course>[];
+    for (final courseCode in constraints.requiredCourses) {
+      final course = availableCourses.where((c) => c.courseCode == courseCode).firstOrNull;
+      if (course == null) {
+        issues.add(TimetableIssue(
+          type: TimetableIssueType.courseNotFound,
+          message: 'Course $courseCode not found in available courses',
+          affectedCourses: [courseCode],
+          suggestion: 'Check if the course code is correct or if the course is offered this semester',
+        ));
+      } else {
+        requiredCourses.add(course);
+      }
     }
 
-    if (requiredCourses.length != constraints.requiredCourses.length) {
-      
-      throw Exception('Some required courses not found in available courses');
+    // Check for courses with no sections
+    for (final course in requiredCourses) {
+      if (course.sections.isEmpty) {
+        issues.add(TimetableIssue(
+          type: TimetableIssueType.noSectionsAvailable,
+          message: 'Course ${course.courseCode} has no available sections',
+          affectedCourses: [course.courseCode],
+          suggestion: 'This course may not be offered this semester or all sections may be full',
+        ));
+      }
+    }
+
+    // If we have critical errors, return early
+    final hasErrors = issues.any((issue) => _isErrorType(issue.type));
+    if (hasErrors) {
+      return TimetableGenerationResult(
+        timetables: [],
+        issues: issues,
+        statistics: {'totalCombinationsChecked': 0, 'validCombinationsFound': 0},
+      );
     }
 
     final allCombinations = _generateAllCombinations(requiredCourses);
-    
+    statistics['totalCombinationsChecked'] = allCombinations.length;
     
     final validTimetables = <GeneratedTimetable>[];
+    int combinationsChecked = 0;
+    int validCombinationsFound = 0;
+    final rejectionReasons = <String, int>{};
 
     for (int i = 0; i < allCombinations.length && validTimetables.length < maxTimetables; i++) {
       final combination = allCombinations[i];
+      combinationsChecked++;
       
-      if (_isValidCombination(combination, availableCourses)) {
+      final validationResult = _validateCombination(combination, constraints);
+      if (validationResult.isValid) {
+        validCombinationsFound++;
         final score = _scoreTimetable(combination, constraints);
         final analysis = _analyzeTimetable(combination, constraints);
         
@@ -47,20 +88,29 @@ class TimetableGenerator {
           hoursPerDay: _calculateHoursPerDay(combination),
         ));
       } else {
-        if (i < 5) { // Log first few invalid combinations
-          
+        // Track rejection reasons
+        for (final reason in validationResult.rejectionReasons) {
+          rejectionReasons[reason] = (rejectionReasons[reason] ?? 0) + 1;
         }
       }
     }
 
-    
-
-    // No fallback - only return conflict-free timetables
+    // Add issues based on rejection reasons
+    if (validCombinationsFound == 0 && rejectionReasons.isNotEmpty) {
+      _addIssuesFromRejections(issues, rejectionReasons, constraints);
+    }
 
     // Sort by score (highest first)
     validTimetables.sort((a, b) => b.score.compareTo(a.score));
     
-    return validTimetables.take(maxTimetables).toList();
+    statistics['validCombinationsFound'] = validCombinationsFound;
+    statistics['rejectionReasons'] = rejectionReasons;
+    
+    return TimetableGenerationResult(
+      timetables: validTimetables.take(maxTimetables).toList(),
+      issues: issues,
+      statistics: statistics,
+    );
   }
 
   static List<List<ConstraintSelectedSection>> _generateAllCombinations(List<Course> courses) {
@@ -279,6 +329,145 @@ class TimetableGenerator {
     }
 
     return max(0, score);
+  }
+
+  static bool _isErrorType(TimetableIssueType type) {
+    return [
+      TimetableIssueType.courseNotFound,
+      TimetableIssueType.noSectionsAvailable,
+      TimetableIssueType.noValidCombinations,
+    ].contains(type);
+  }
+
+  static ValidationResult _validateCombination(List<ConstraintSelectedSection> sections, TimetableConstraints constraints) {
+    final rejectionReasons = <String>[];
+    
+    // Check for schedule conflicts
+    final clashes = ClashDetector.detectClashes(sections.map((s) => timetable.SelectedSection(
+      courseCode: s.courseCode,
+      sectionId: s.sectionId,
+      section: s.section,
+    )).toList(), []);
+    
+    if (clashes.isNotEmpty) {
+      rejectionReasons.add('Schedule conflicts: ${clashes.map((c) => c.message).join(', ')}');
+    }
+    
+    // Check instructor avoidance
+    for (final section in sections) {
+      if (constraints.avoidedInstructors.contains(section.section.instructor)) {
+        rejectionReasons.add('Contains avoided instructor: ${section.section.instructor}');
+      }
+    }
+    
+    // Check time constraints
+    final hoursPerDay = _calculateHoursPerDay(sections);
+    for (final entry in hoursPerDay.entries) {
+      if (entry.value > constraints.maxHoursPerDay) {
+        rejectionReasons.add('Exceeds max hours per day (${entry.value} > ${constraints.maxHoursPerDay}) on ${entry.key}');
+      }
+    }
+    
+    // Check time avoidance
+    for (final avoidTime in constraints.avoidTimes) {
+      for (final section in sections) {
+        for (final scheduleEntry in section.section.schedule) {
+          if (scheduleEntry.days.contains(avoidTime.day)) {
+            final conflictingHours = scheduleEntry.hours
+                .where((hour) => avoidTime.hours.contains(hour))
+                .toList();
+            if (conflictingHours.isNotEmpty) {
+              rejectionReasons.add('Conflicts with time avoidance: ${avoidTime.day} ${conflictingHours.join(', ')}');
+            }
+          }
+        }
+      }
+    }
+    
+    // Check lab avoidance
+    for (final avoidLab in constraints.avoidLabs) {
+      for (final section in sections) {
+        if (section.section.type == SectionType.P) {
+          for (final scheduleEntry in section.section.schedule) {
+            if (scheduleEntry.days.contains(avoidLab.day)) {
+              final conflictingHours = scheduleEntry.hours
+                  .where((hour) => avoidLab.hours.contains(hour))
+                  .toList();
+              if (conflictingHours.isNotEmpty) {
+                rejectionReasons.add('Lab conflicts with lab avoidance: ${avoidLab.day} ${conflictingHours.join(', ')}');
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    return ValidationResult(
+      isValid: rejectionReasons.isEmpty,
+      rejectionReasons: rejectionReasons,
+    );
+  }
+
+  static void _addIssuesFromRejections(List<TimetableIssue> issues, Map<String, int> rejectionReasons, TimetableConstraints constraints) {
+    final totalRejections = rejectionReasons.values.fold(0, (sum, count) => sum + count);
+    
+    if (rejectionReasons.containsKey('Schedule conflicts')) {
+      issues.add(TimetableIssue(
+        type: TimetableIssueType.scheduleConflict,
+        message: 'All combinations have schedule conflicts',
+        suggestion: 'Try reducing the number of courses or selecting different sections',
+        details: {'rejectionCount': rejectionReasons['Schedule conflicts']!},
+      ));
+    }
+    
+    if (rejectionReasons.keys.any((reason) => reason.contains('avoided instructor'))) {
+      final avoidedInstructorRejections = rejectionReasons.entries
+          .where((entry) => entry.key.contains('avoided instructor'))
+          .fold(0, (sum, entry) => sum + entry.value);
+      
+      issues.add(TimetableIssue(
+        type: TimetableIssueType.instructorConflict,
+        message: 'Many combinations contain avoided instructors',
+        suggestion: 'Consider reducing instructor restrictions or selecting different courses',
+        details: {'rejectionCount': avoidedInstructorRejections},
+      ));
+    }
+    
+    if (rejectionReasons.keys.any((reason) => reason.contains('max hours per day'))) {
+      issues.add(TimetableIssue(
+        type: TimetableIssueType.hourLimitExceeded,
+        message: 'Selected courses exceed daily hour limits',
+        suggestion: 'Increase max hours per day or reduce the number of courses',
+        details: {'maxHoursPerDay': constraints.maxHoursPerDay},
+      ));
+    }
+    
+    if (rejectionReasons.keys.any((reason) => reason.contains('time avoidance'))) {
+      issues.add(TimetableIssue(
+        type: TimetableIssueType.timeConstraintConflict,
+        message: 'Selected courses conflict with time constraints',
+        suggestion: 'Adjust time avoidance settings or select different courses',
+        details: {'avoidTimesCount': constraints.avoidTimes.length},
+      ));
+    }
+    
+    if (rejectionReasons.keys.any((reason) => reason.contains('lab avoidance'))) {
+      issues.add(TimetableIssue(
+        type: TimetableIssueType.labConstraintConflict,
+        message: 'Lab sections conflict with lab time constraints',
+        suggestion: 'Adjust lab avoidance settings or select different practical sections',
+        details: {'avoidLabsCount': constraints.avoidLabs.length},
+      ));
+    }
+    
+    if (totalRejections > 0 && issues.isEmpty) {
+      issues.add(TimetableIssue(
+        type: TimetableIssueType.incompatibleCombination,
+        message: 'Selected courses are incompatible',
+        suggestion: 'Try different course combinations or relax constraints',
+        details: {'totalRejections': totalRejections, 'reasons': rejectionReasons},
+      ));
+    }
   }
 
   static int _calculateBackToBackPenalty(List<ConstraintSelectedSection> sections) {

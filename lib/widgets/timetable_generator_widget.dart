@@ -36,6 +36,8 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   bool _isGenerating = false;
   final Map<String, InstructorRankings> _instructorRankings = {};
   TabController? _tabController;
+  List<TimetableIssue> _generationIssues = [];
+  Map<String, dynamic> _generationStatistics = {};
 
   @override
   void initState() {
@@ -1350,20 +1352,22 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         instructorRankings: _instructorRankings,
       );
 
-      final timetables = TimetableGenerator.generateTimetables(
+      final result = TimetableGenerator.generateTimetables(
         widget.availableCourses,
         constraints,
         maxTimetables: 30,
       );
 
       setState(() {
-        _generatedTimetables = timetables;
+        _generatedTimetables = result.timetables;
+        _generationIssues = result.issues;
+        _generationStatistics = result.statistics;
         _isGenerating = false;
       });
 
-      // Show alert if no timetables were generated
-      if (timetables.isEmpty) {
-        _showNoTimetablesDialog();
+      // Show alert if no timetables were generated or there are issues
+      if (result.timetables.isEmpty || result.hasErrors || result.hasWarnings) {
+        _showGenerationResultDialog(result);
       }
     } catch (e) {
       setState(() {
@@ -1405,70 +1409,247 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     );
   }
 
-  void _showNoTimetablesDialog() {
+  void _showGenerationResultDialog(TimetableGenerationResult result) {
+    final hasErrors = result.hasErrors;
+    final hasWarnings = result.hasWarnings;
+    final hasTimetables = result.timetables.isNotEmpty;
+    
+    String title;
+    IconData icon;
+    Color iconColor = Theme.of(context).colorScheme.primary;
+    
+    if (hasErrors || !hasTimetables) {
+      title = 'Generation Issues Found';
+      icon = Icons.error_outline;
+      iconColor = Theme.of(context).colorScheme.error;
+    } else if (hasWarnings) {
+      title = 'Generation Completed with Warnings';
+      icon = Icons.warning_amber;
+      iconColor = Colors.orange;
+    } else {
+      title = 'Generation Successful';
+      icon = Icons.check_circle_outline;
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Row(
           children: [
             Icon(
-              Icons.warning_amber,
-              color: Theme.of(context).colorScheme.primary,
+              icon,
+              color: iconColor,
               size: 24,
             ),
             const SizedBox(width: 8),
-            const Text('No Valid Timetables Found'),
+            Expanded(child: Text(title)),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'No conflict-free timetable combinations could be generated with your selected courses and constraints.',
-              style: TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Try the following:',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text('• Remove some time constraints'),
-            const Text('• Select fewer courses'),
-            const Text('• Choose courses with more section options'),
-            const Text('• Adjust your preferences'),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 16,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'All generated timetables are now conflict-free for better scheduling.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+        content: SizedBox(
+          width: 500,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (hasTimetables) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ],
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Generated ${result.timetables.length} valid timetable${result.timetables.length == 1 ? '' : 's'}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (result.issues.isNotEmpty) const SizedBox(height: 16),
+              ],
+              if (result.issues.isNotEmpty) ...[
+                Text(
+                  hasErrors ? 'Issues Preventing Generation:' : 'Issues and Warnings:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: hasErrors ? Theme.of(context).colorScheme.error : Colors.orange,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 300),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline),
+                  ),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.all(12),
+                    itemCount: result.issues.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final issue = result.issues[index];
+                      final isError = [
+                        TimetableIssueType.courseNotFound,
+                        TimetableIssueType.noSectionsAvailable,
+                        TimetableIssueType.noValidCombinations,
+                      ].contains(issue.type);
+                      
+                      return Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: isError 
+                              ? Theme.of(context).colorScheme.errorContainer.withOpacity(0.3)
+                              : Colors.orange.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: isError 
+                                ? Theme.of(context).colorScheme.error.withOpacity(0.3)
+                                : Colors.orange.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  isError ? Icons.error : Icons.warning,
+                                  size: 16,
+                                  color: isError ? Theme.of(context).colorScheme.error : Colors.orange,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    issue.message,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: Theme.of(context).colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (issue.affectedCourses.isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              Text(
+                                'Affected courses: ${issue.affectedCourses.join(", ")}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                ),
+                              ),
+                            ],
+                            if (issue.suggestion != null) ...[
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(
+                                      Icons.lightbulb_outline,
+                                      size: 14,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        issue.suggestion!,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Theme.of(context).colorScheme.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+              if (!hasTimetables && result.issues.isEmpty) ...[
+                Text(
+                  'No conflict-free timetable combinations could be generated.',
+                  style: TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Try the following:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                Text('• Remove some time or instructor constraints'),
+                Text('• Select fewer courses'),
+                Text('• Choose courses with more section options'),
+                Text('• Adjust your preferences'),
+              ],
+              if (result.statistics.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Generation Statistics',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      ...result.statistics.entries.map((entry) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 1),
+                        child: Text(
+                          '${entry.key}: ${entry.value}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                          ),
+                        ),
+                      )),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
         actions: [
           TextButton(

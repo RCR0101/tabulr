@@ -447,6 +447,9 @@ class _TopAnnouncementWidgetState extends State<TopAnnouncementWidget> {
               ),
               TextButton(
                 onPressed: () async {
+                  setState(() {
+                    _isTemporarilyHidden = true;
+                  });
                   await _userSettingsService.updateDontShowTopUpdated();
                 },
                 style: TextButton.styleFrom(

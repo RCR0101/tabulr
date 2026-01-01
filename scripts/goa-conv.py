@@ -76,12 +76,13 @@ if __name__ == "__main__":
         "TIMETABLE FIRST SEMESTER 2025- 2026", 
         "BIRLA INSTITUTE",  # Keep this as fallback for partial matches
         "COMCODE",  # Remove repeated header rows
-        "COURSE NO"  # Remove column header rows
+        "COURSE NO",
+        "TIMETABLE SECOND SEMESTER 2025- 2026" # Remove column header rows
     ]
 
     # Goa page range to extract the timetable from
     # TODO: Update these page numbers based on actual Goa PDF structure
-    page_range: list[int] = [1,39]  # Extract all pages for now
+    page_range: list[int] = [3,35]  # Extract all pages for now
 
     try:
         pdf: pdfplumber.pdf.PDF = pdfplumber.open(input_pdf)

@@ -301,6 +301,14 @@ class TimeSlotInfo {
           TimeSlot.MS4: [16, 0], // 4:00-5:30
         };
       case 'goa':
+      return {
+          TimeSlot.FN: [10, 0], // 10:00AM-1PM
+          TimeSlot.AN: [14, 0], // 2:00PM-5:00PM
+          TimeSlot.MS1: [9, 30], // 9:30-11:00
+          TimeSlot.MS2: [11, 30], // 11:30-1:00
+          TimeSlot.MS3: [14, 0], // 2:00-3:30
+          TimeSlot.MS4: [16, 0], // 4:00-5:30
+        };
       case 'hyderabad':
       default:
         return {

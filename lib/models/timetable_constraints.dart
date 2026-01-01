@@ -97,7 +97,6 @@ class InstructorRankings {
     );
   }
 
-
   int getInstructorRank(String instructor, SectionType sectionType) {
     List<String> relevantList;
     switch (sectionType) {
@@ -117,5 +116,57 @@ class InstructorRankings {
     
     // Higher rank for earlier position (most preferred first)
     return relevantList.length - index;
+  }
+}
+
+enum TimetableIssueType {
+  courseNotFound,
+  noSectionsAvailable,
+  scheduleConflict,
+  examConflict,
+  instructorConflict,
+  timeConstraintConflict,
+  labConstraintConflict,
+  hourLimitExceeded,
+  incompatibleCombination,
+  noValidCombinations,
+}
+
+class TimetableIssue {
+  final TimetableIssueType type;
+  final String message;
+  final List<String> affectedCourses;
+  final String? suggestion;
+  final Map<String, dynamic> details;
+
+  TimetableIssue({
+    required this.type,
+    required this.message,
+    this.affectedCourses = const [],
+    this.suggestion,
+    this.details = const {},
+  });
+}
+
+class TimetableGenerationResult {
+  final List<GeneratedTimetable> timetables;
+  final List<TimetableIssue> issues;
+  final Map<String, dynamic> statistics;
+  final bool hasErrors;
+  final bool hasWarnings;
+
+  TimetableGenerationResult({
+    required this.timetables,
+    required this.issues,
+    this.statistics = const {},
+  }) : hasErrors = issues.any((issue) => _isErrorType(issue.type)),
+       hasWarnings = issues.any((issue) => !_isErrorType(issue.type));
+
+  static bool _isErrorType(TimetableIssueType type) {
+    return [
+      TimetableIssueType.courseNotFound,
+      TimetableIssueType.noSectionsAvailable,
+      TimetableIssueType.noValidCombinations,
+    ].contains(type);
   }
 }
