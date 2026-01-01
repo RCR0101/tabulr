@@ -247,6 +247,25 @@ class TimetableGenerator {
       }
     }
 
+    // Bonus for instructor rankings
+    for (final section in sections) {
+      final courseCode = section.courseCode;
+      final instructor = section.section.instructor;
+      final sectionType = section.section.type;
+      
+      if (constraints.instructorRankings.containsKey(courseCode)) {
+        final rankings = constraints.instructorRankings[courseCode]!;
+        final rank = rankings.getInstructorRank(instructor, sectionType);
+        
+        if (rank > 0) {
+          // Higher rank = higher score bonus
+          // Maximum bonus of 15 points for top-ranked instructor
+          final bonus = (rank * 3.0).clamp(0, 15);
+          score += bonus;
+        }
+      }
+    }
+
     // Bonus for avoiding back-to-back classes
     if (constraints.avoidBackToBackClasses) {
       final backToBackPenalty = _calculateBackToBackPenalty(sections);

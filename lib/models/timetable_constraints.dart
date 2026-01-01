@@ -9,6 +9,7 @@ class TimetableConstraints {
   final List<String> avoidedInstructors;
   final bool avoidBackToBackClasses;
   final TimeSlot? preferredExamSlot;
+  final Map<String, InstructorRankings> instructorRankings;
 
   TimetableConstraints({
     required this.requiredCourses,
@@ -19,6 +20,7 @@ class TimetableConstraints {
     this.avoidedInstructors = const [],
     this.avoidBackToBackClasses = false,
     this.preferredExamSlot,
+    this.instructorRankings = const {},
   });
 }
 
@@ -70,4 +72,50 @@ class ConstraintSelectedSection {
     required this.sectionId,
     required this.section,
   });
+}
+
+class InstructorRankings {
+  final List<String> lectureInstructors;
+  final List<String> practicalInstructors;
+  final List<String> tutorialInstructors;
+
+  InstructorRankings({
+    this.lectureInstructors = const [],
+    this.practicalInstructors = const [],
+    this.tutorialInstructors = const [],
+  });
+
+  InstructorRankings copyWith({
+    List<String>? lectureInstructors,
+    List<String>? practicalInstructors,
+    List<String>? tutorialInstructors,
+  }) {
+    return InstructorRankings(
+      lectureInstructors: lectureInstructors ?? this.lectureInstructors,
+      practicalInstructors: practicalInstructors ?? this.practicalInstructors,
+      tutorialInstructors: tutorialInstructors ?? this.tutorialInstructors,
+    );
+  }
+
+
+  int getInstructorRank(String instructor, SectionType sectionType) {
+    List<String> relevantList;
+    switch (sectionType) {
+      case SectionType.L:
+        relevantList = lectureInstructors;
+        break;
+      case SectionType.P:
+        relevantList = practicalInstructors;
+        break;
+      case SectionType.T:
+        relevantList = tutorialInstructors;
+        break;
+    }
+    
+    final index = relevantList.indexOf(instructor);
+    if (index == -1) return 0; // Not ranked
+    
+    // Higher rank for earlier position (most preferred first)
+    return relevantList.length - index;
+  }
 }

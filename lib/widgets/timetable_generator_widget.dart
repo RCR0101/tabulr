@@ -34,6 +34,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   TimeSlot? _preferredExamSlot;
   List<GeneratedTimetable> _generatedTimetables = [];
   bool _isGenerating = false;
+  final Map<String, InstructorRankings> _instructorRankings = {};
   TabController? _tabController;
 
   @override
@@ -623,6 +624,8 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         _buildLabAvoidance(),
         const SizedBox(height: 16),
         _buildInstructorAvoidance(),
+        const SizedBox(height: 16),
+        _buildInstructorRanking(),
       ],
     );
   }
@@ -814,6 +817,259 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     );
   }
 
+  Widget _buildInstructorRanking() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text('Rank instructors:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            const Spacer(),
+            ElevatedButton(
+              onPressed: _selectedCourses.isNotEmpty ? _showInstructorRankingDialog : null,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                minimumSize: const Size(0, 32),
+              ),
+              child: const Text('Rank', style: TextStyle(fontSize: 12)),
+            ),
+          ],
+        ),
+        if (_instructorRankings.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Container(
+            constraints: const BoxConstraints(maxHeight: 160),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.3)),
+            ),
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.star,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Current Rankings',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${_instructorRankings.length} course${_instructorRankings.length == 1 ? '' : 's'}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _instructorRankings.clear();
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.errorContainer,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Icon(
+                          Icons.clear_all,
+                          size: 14,
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _instructorRankings.entries.map((entry) {
+                        final courseCode = entry.key;
+                        final rankings = entry.value;
+                        final totalRanked = rankings.lectureInstructors.length + 
+                                          rankings.practicalInstructors.length + 
+                                          rankings.tutorialInstructors.length;
+                        
+                        return GestureDetector(
+                          onTap: () => _showInstructorRankingDialog(),
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7),
+                                  Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      courseCode,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context).colorScheme.primary,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        totalRanked.toString(),
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: Theme.of(context).colorScheme.onPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (rankings.lectureInstructors.isNotEmpty)
+                                      _buildSectionTypeBadge('L', rankings.lectureInstructors.length),
+                                    if (rankings.practicalInstructors.isNotEmpty) ...[
+                                      const SizedBox(width: 3),
+                                      _buildSectionTypeBadge('P', rankings.practicalInstructors.length),
+                                    ],
+                                    if (rankings.tutorialInstructors.isNotEmpty) ...[
+                                      const SizedBox(width: 3),
+                                      _buildSectionTypeBadge('T', rankings.tutorialInstructors.length),
+                                    ],
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _getTopInstructorSummary(rankings),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.8),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ] else if (_selectedCourses.isEmpty) ...[
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Theme.of(context).colorScheme.outline),
+            ),
+            child: Text(
+              'Select courses first to rank instructors',
+              style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSectionTypeBadge(String sectionType, int count) {
+    Color badgeColor;
+    switch (sectionType) {
+      case 'L':
+        badgeColor = Colors.blue;
+        break;
+      case 'P':
+        badgeColor = Colors.green;
+        break;
+      case 'T':
+        badgeColor = Colors.orange;
+        break;
+      default:
+        badgeColor = Colors.grey;
+    }
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: badgeColor.withOpacity(0.8),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        '$sectionType:$count',
+        style: const TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  String _getTopInstructorSummary(InstructorRankings rankings) {
+    final topInstructors = <String>[];
+    
+    if (rankings.lectureInstructors.isNotEmpty) {
+      topInstructors.add('L: ${rankings.lectureInstructors.first}');
+    }
+    if (rankings.practicalInstructors.isNotEmpty) {
+      topInstructors.add('P: ${rankings.practicalInstructors.first}');
+    }
+    if (rankings.tutorialInstructors.isNotEmpty) {
+      topInstructors.add('T: ${rankings.tutorialInstructors.first}');
+    }
+    
+    if (topInstructors.isEmpty) return 'No rankings set';
+    return topInstructors.join(' • ');
+  }
+
   String _formatAvoidTimeHours(List<int> hours) {
     if (hours.isEmpty) return '';
     if (hours.length == 1) {
@@ -950,6 +1206,50 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     }
   }
 
+  Future<void> _showInstructorRankingDialog() async {
+    // Get instructors organized by course and section type
+    final Map<String, Map<String, List<String>>> courseSectionInstructors = {};
+    
+    for (final courseCode in _selectedCourses) {
+      final course = widget.availableCourses.firstWhere(
+        (c) => c.courseCode == courseCode,
+        orElse: () => throw Exception('Course not found: $courseCode'),
+      );
+      
+      courseSectionInstructors[courseCode] = {
+        'L': [],
+        'P': [],
+        'T': [],
+      };
+      
+      for (final section in course.sections) {
+        final sectionTypeStr = section.type.toString().split('.').last;
+        if (courseSectionInstructors[courseCode]!.containsKey(sectionTypeStr)) {
+          final instructor = section.instructor.trim();
+          if (instructor.isNotEmpty && 
+              !courseSectionInstructors[courseCode]![sectionTypeStr]!.contains(instructor)) {
+            courseSectionInstructors[courseCode]![sectionTypeStr]!.add(instructor);
+          }
+        }
+      }
+    }
+
+    final result = await showDialog<Map<String, InstructorRankings>>(
+      context: context,
+      builder: (context) => _InstructorRankingDialog(
+        courseSectionInstructors: courseSectionInstructors,
+        currentRankings: Map.from(_instructorRankings),
+      ),
+    );
+    
+    if (result != null && mounted) {
+      setState(() {
+        _instructorRankings.clear();
+        _instructorRankings.addAll(result);
+      });
+    }
+  }
+
   Widget _buildGenerateButton() {
     return Container(
       width: double.infinity,
@@ -1047,6 +1347,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         avoidedInstructors: _avoidedInstructors,
         avoidBackToBackClasses: _avoidBackToBack,
         preferredExamSlot: _preferredExamSlot,
+        instructorRankings: _instructorRankings,
       );
 
       final timetables = TimetableGenerator.generateTimetables(
@@ -1613,6 +1914,329 @@ class _InstructorAvoidanceDialogState extends State<_InstructorAvoidanceDialog> 
           child: Text('Add ${_selectedInstructors.length} Instructor${_selectedInstructors.length == 1 ? '' : 's'}'),
         ),
       ],
+    );
+  }
+}
+
+class _InstructorRankingDialog extends StatefulWidget {
+  final Map<String, Map<String, List<String>>> courseSectionInstructors;
+  final Map<String, InstructorRankings> currentRankings;
+
+  const _InstructorRankingDialog({
+    required this.courseSectionInstructors,
+    required this.currentRankings,
+  });
+
+  @override
+  State<_InstructorRankingDialog> createState() => _InstructorRankingDialogState();
+}
+
+class _InstructorRankingDialogState extends State<_InstructorRankingDialog>
+    with TickerProviderStateMixin {
+  late Map<String, InstructorRankings> _rankings;
+  late TabController _tabController;
+  late List<String> _courseList;
+
+  @override
+  void initState() {
+    super.initState();
+    _rankings = Map.from(widget.currentRankings);
+    _courseList = widget.courseSectionInstructors.keys.toList()..sort();
+    _tabController = TabController(length: _courseList.length, vsync: this);
+    
+    // Initialize empty rankings for courses that don't have any yet
+    for (final courseCode in widget.courseSectionInstructors.keys) {
+      if (!_rankings.containsKey(courseCode)) {
+        _rankings[courseCode] = InstructorRankings();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Rank Instructors by Preference'),
+      content: SizedBox(
+        width: 650,
+        height: 550,
+        child: Column(
+          children: [
+            Text(
+              'Drag to reorder instructors from most preferred (top) to least preferred (bottom)',
+              style: TextStyle(
+                fontSize: 14,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            // Tab bar for courses
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.3)),
+              ),
+              child: TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                labelColor: Theme.of(context).colorScheme.primary,
+                unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                indicatorColor: Theme.of(context).colorScheme.primary,
+                indicatorWeight: 2,
+                tabs: _courseList.map((courseCode) {
+                  return Tab(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Text(
+                        courseCode,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Tab view content
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: _courseList.map((courseCode) {
+                  final instructorsByType = widget.courseSectionInstructors[courseCode]!;
+                  
+                  return SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            courseCode,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          if (instructorsByType['L']!.isNotEmpty)
+                            _buildSectionTypeRanking(courseCode, 'Lecture', 'L', instructorsByType['L']!),
+                          if (instructorsByType['P']!.isNotEmpty)
+                            _buildSectionTypeRanking(courseCode, 'Practical', 'P', instructorsByType['P']!),
+                          if (instructorsByType['T']!.isNotEmpty)
+                            _buildSectionTypeRanking(courseCode, 'Tutorial', 'T', instructorsByType['T']!),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, _rankings),
+          child: const Text('Save Rankings'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionTypeRanking(String courseCode, String typeName, String typeKey, List<String> availableInstructors) {
+    final currentRankings = _rankings[courseCode]!;
+    List<String> rankedInstructors;
+    
+    switch (typeKey) {
+      case 'L':
+        rankedInstructors = List.from(currentRankings.lectureInstructors);
+        break;
+      case 'P':
+        rankedInstructors = List.from(currentRankings.practicalInstructors);
+        break;
+      case 'T':
+        rankedInstructors = List.from(currentRankings.tutorialInstructors);
+        break;
+      default:
+        rankedInstructors = [];
+    }
+    
+    // Add any new instructors that aren't ranked yet
+    for (final instructor in availableInstructors) {
+      if (!rankedInstructors.contains(instructor)) {
+        rankedInstructors.add(instructor);
+      }
+    }
+    
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    typeKey,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '$typeName Instructors',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${rankedInstructors.length} instructor${rankedInstructors.length == 1 ? '' : 's'}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface.withOpacity(0.5),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)),
+              ),
+              child: ReorderableListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: rankedInstructors.length,
+                onReorder: (oldIndex, newIndex) {
+                  setState(() {
+                    if (newIndex > oldIndex) newIndex--;
+                    final instructor = rankedInstructors.removeAt(oldIndex);
+                    rankedInstructors.insert(newIndex, instructor);
+                    
+                    // Update the rankings
+                    switch (typeKey) {
+                      case 'L':
+                        _rankings[courseCode] = _rankings[courseCode]!.copyWith(
+                          lectureInstructors: rankedInstructors,
+                        );
+                        break;
+                      case 'P':
+                        _rankings[courseCode] = _rankings[courseCode]!.copyWith(
+                          practicalInstructors: rankedInstructors,
+                        );
+                        break;
+                      case 'T':
+                        _rankings[courseCode] = _rankings[courseCode]!.copyWith(
+                          tutorialInstructors: rankedInstructors,
+                        );
+                        break;
+                    }
+                  });
+                },
+                itemBuilder: (context, index) {
+                  final instructor = rankedInstructors[index];
+                  final position = index + 1;
+                  final isTopRank = position <= 3;
+                  
+                  return Container(
+                    key: ValueKey('$courseCode-$typeKey-$instructor'),
+                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: isTopRank 
+                        ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3)
+                        : Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(6),
+                      border: isTopRank 
+                        ? Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.3))
+                        : null,
+                    ),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      leading: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: isTopRank 
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.outline.withOpacity(0.6),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            position.toString(),
+                            style: TextStyle(
+                              color: isTopRank 
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      title: Text(
+                        instructor,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: isTopRank ? FontWeight.w600 : FontWeight.normal,
+                          color: isTopRank 
+                            ? Theme.of(context).colorScheme.onSurface
+                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                        ),
+                      ),
+                      subtitle: isTopRank ? Text(
+                        position == 1 ? 'Most preferred' : 
+                        position == 2 ? '2nd preference' : 
+                        '3rd preference',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ) : null,
+                      trailing: Icon(
+                        Icons.drag_handle,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
