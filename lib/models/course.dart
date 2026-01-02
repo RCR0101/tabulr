@@ -183,7 +183,7 @@ class TimeSlotInfo {
       TimeSlot.MS4: '4:00PM-5:30PM',
     },
     'goa': {
-      TimeSlot.FN: '9:30AM-12:30PM',
+      TimeSlot.FN: '10:00AM-1:00PM',
       TimeSlot.AN: '2:00PM-5:00PM',
       TimeSlot.MS1: '9:30AM-11:00AM',
       TimeSlot.MS2: '11:30AM-1:00PM',

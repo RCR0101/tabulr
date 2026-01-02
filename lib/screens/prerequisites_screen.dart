@@ -156,7 +156,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
             controller: _searchController,
             focusNode: _searchFocusNode,
             decoration: InputDecoration(
-              hintText: 'Enter course code or name (e.g., CS F111)',
+              hintText: 'Search by course code, name, or department (e.g., CS F111, CS, Biology)',
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
@@ -176,7 +176,8 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
             ),
             onChanged: (value) {
               setState(() {}); // To update suffix icon
-              if (value.length >= 2) {
+              // Start searching after 1 character for better UX
+              if (value.length >= 1) {
                 _performSearch(value);
               } else if (value.isEmpty) {
                 _clearSearch();
@@ -241,7 +242,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Showing all courses in alphabetical order',
+              'Showing all courses in alphabetical order\nSearch by course code, name, or department',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant.withOpacity(0.7),
               ),
@@ -274,7 +275,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Try searching with a different course code or name',
+              'Try searching with:\n• Course code (e.g., CS F111)\n• Department (e.g., CS, BIO)\n• Course name (e.g., Programming)',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant.withOpacity(0.7),
               ),

@@ -293,11 +293,12 @@ class XlsxParserGoa {
       return [];
     }
     
-    // Similar to Pilani logic - parse days and hours together
-    // Format might be like "M W F 2-3" or "T Th 4-5"
+    // Parse days and hours separately, creating individual day-hour combinations
+    // Format like "T TH 5 M 10" should create separate schedule entries
     const parts = daysHrStr.trim().split(/\s+/);
-    const days = [];
-    const hours = [];
+    const scheduleEntries = [];
+    let currentDays = [];
+    let pendingHour = null;
     
     for (const part of parts) {
       // Check if it's a day
@@ -312,36 +313,61 @@ class XlsxParserGoa {
       };
       
       if (dayMapping[part]) {
-        days.push(dayMapping[part]);
+        // If we have a pending hour from previous days, create schedule entries
+        if (pendingHour !== null && currentDays.length > 0) {
+          scheduleEntries.push({
+            days: [...currentDays],
+            hours: [pendingHour]
+          });
+          currentDays = [];
+        }
+        currentDays.push(dayMapping[part]);
       } else if (part.includes('-')) {
         // Parse hour range like "2-3" or "4-5"
         const hourRange = part.split('-');
         if (hourRange.length === 2) {
           const startHour = parseInt(hourRange[0]);
           const endHour = parseInt(hourRange[1]);
+          const rangeHours = [];
           for (let h = startHour; h <= endHour; h++) {
             if (h >= 1 && h <= 12) {
-              hours.push(h);
+              rangeHours.push(h);
             }
           }
+          if (currentDays.length > 0 && rangeHours.length > 0) {
+            scheduleEntries.push({
+              days: [...currentDays],
+              hours: rangeHours
+            });
+            currentDays = [];
+          }
         }
+        pendingHour = null;
       } else {
         // Single hour
         const hour = parseInt(part);
         if (hour >= 1 && hour <= 12) {
-          hours.push(hour);
+          if (currentDays.length > 0) {
+            scheduleEntries.push({
+              days: [...currentDays],
+              hours: [hour]
+            });
+            currentDays = [];
+          }
+          pendingHour = hour;
         }
       }
     }
     
-    if (days.length > 0 && hours.length > 0) {
-      return [{
-        days: days,
-        hours: hours
-      }];
+    // Handle any remaining pending hour
+    if (pendingHour !== null && currentDays.length > 0) {
+      scheduleEntries.push({
+        days: [...currentDays],
+        hours: [pendingHour]
+      });
     }
     
-    return [];
+    return scheduleEntries;
   }
   
   // These methods are kept for compatibility but not used in Goa parsing
