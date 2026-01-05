@@ -300,8 +300,8 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                           final date = await showDatePicker(
                             context: context,
                             initialDate: DateTime.now(),
-                            firstDate: DateTime(2025, 1, 1),
-                            lastDate: DateTime(2025, 12, 31),
+                            firstDate: DateTime(2026, 1, 1),
+                            lastDate: DateTime(2026, 12, 31),
                           );
                           setState(() {
                             _selectedMidSemDate = date;
@@ -322,8 +322,8 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                           final date = await showDatePicker(
                             context: context,
                             initialDate: DateTime.now(),
-                            firstDate: DateTime(2025, 1, 1),
-                            lastDate: DateTime(2025, 12, 31),
+                            firstDate: DateTime(2026, 1, 1),
+                            lastDate: DateTime(2026, 12, 31),
                           );
                           setState(() {
                             _selectedEndSemDate = date;
@@ -346,8 +346,8 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                           final date = await showDatePicker(
                             context: context,
                             initialDate: DateTime.now(),
-                            firstDate: DateTime(2025, 1, 1),
-                            lastDate: DateTime(2025, 12, 31),
+                            firstDate: DateTime(2026, 1, 1),
+                            lastDate: DateTime(2026, 12, 31),
                           );
                           setState(() {
                             _selectedMidSemDate = date;
@@ -366,8 +366,8 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                           final date = await showDatePicker(
                             context: context,
                             initialDate: DateTime.now(),
-                            firstDate: DateTime(2025, 1, 1),
-                            lastDate: DateTime(2025, 12, 31),
+                            firstDate: DateTime(2026, 1, 1),
+                            lastDate: DateTime(2026, 12, 31),
                           );
                           setState(() {
                             _selectedEndSemDate = date;

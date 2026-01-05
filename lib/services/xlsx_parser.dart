@@ -337,7 +337,7 @@ class XlsxParser {
     
     final day = int.parse(dateComponents[0]);
     final month = int.parse(dateComponents[1]);
-    final year = 2025;
+    final year = 2026;
     
     // Parse MidSem time slot based on time string
     TimeSlot timeSlot;
@@ -428,7 +428,7 @@ class XlsxParser {
     
     final day = int.parse(dateComponents[0]);
     final month = int.parse(dateComponents[1]);
-    final year = 2025;
+    final year = 2026;
     
     TimeSlot timeSlot;
     if (timeSlotPart == 'FN') {
