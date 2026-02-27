@@ -3,6 +3,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../services/professor_service.dart';
 import '../services/responsive_service.dart';
+import '../services/auth_service.dart';
+import 'timetables_screen.dart';
+import 'cgpa_calculator_screen.dart';
+import 'acad_drives_screen.dart';
 
 class ProfessorsScreen extends StatefulWidget {
   const ProfessorsScreen({super.key});
@@ -13,6 +17,7 @@ class ProfessorsScreen extends StatefulWidget {
 
 class _ProfessorsScreenState extends State<ProfessorsScreen> {
   final ProfessorService _professorService = ProfessorService();
+  final AuthService _authService = AuthService();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
@@ -44,13 +49,196 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
     _searchFocusNode.unfocus();
   }
 
+  Widget _buildDrawer(BuildContext context) {
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Drawer Header
+            Container(
+              width: double.infinity,
+              padding: ResponsiveService.getAdaptivePadding(
+                context,
+                const EdgeInsets.all(24),
+              ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+                  ],
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.school,
+                      size: ResponsiveService.getAdaptiveIconSize(context, 32),
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    ),
+                  ),
+                  SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
+                  Text(
+                    'Tabulr',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Menu Items
+            Expanded(
+              child: ListView(
+                padding: ResponsiveService.getAdaptivePadding(
+                  context,
+                  const EdgeInsets.symmetric(vertical: 16),
+                ),
+                children: [
+                  ListTile(
+                    leading: Icon(
+                      Icons.schedule,
+                      color: Theme.of(context).colorScheme.onSurface,
+                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
+                    ),
+                    title: Text(
+                      'TT Builder',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Create timetables',
+                      style: TextStyle(
+                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => const TimetablesScreen()),
+                      );
+                    },
+                  ),
+
+                  const Divider(),
+
+                  if (_authService.isAuthenticated)
+                    ListTile(
+                      leading: Icon(
+                        Icons.calculate,
+                        color: Theme.of(context).colorScheme.onSurface,
+                        size: ResponsiveService.getAdaptiveIconSize(context, 24),
+                      ),
+                      title: Text(
+                        'CGPA Calculator',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Calculate your GPA',
+                        style: TextStyle(
+                          fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const CGPACalculatorScreen()),
+                        );
+                      },
+                    ),
+                  if (_authService.isAuthenticated)
+                    ListTile(
+                      leading: Icon(
+                        Icons.folder_shared,
+                        color: Theme.of(context).colorScheme.onSurface,
+                        size: ResponsiveService.getAdaptiveIconSize(context, 24),
+                      ),
+                      title: Text(
+                        'Academic Drives',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Browse course files',
+                        style: TextStyle(
+                          fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AcadDrivesScreen()),
+                        );
+                      },
+                    ),
+                  if (_authService.isAuthenticated)
+                    ListTile(
+                      leading: Icon(
+                        Icons.person,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: ResponsiveService.getAdaptiveIconSize(context, 24),
+                      ),
+                      tileColor: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      title: Text(
+                        'Prof Chambers',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Find professor offices',
+                        style: TextStyle(
+                          fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        // Already on professors screen
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: _buildDrawer(context),
       appBar: AppBar(
         title: Column(
           children: [
-            const Text('Professor Directory'),
+            const Text('Prof Chambers'),
             Text(
               'Credits: Pratyush Nair',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(

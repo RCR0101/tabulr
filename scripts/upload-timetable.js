@@ -429,7 +429,7 @@ class XlsxParser {
     
     const day = parseInt(dateComponents[0]);
     const month = parseInt(dateComponents[1]);
-    const year = 2025;
+    const year = 2026;
     
     let timeSlot;
     const cleanTimePart = timePart.replaceAll('.', ':').replaceAll(' ', '');
@@ -479,7 +479,7 @@ class XlsxParser {
     
     const day = parseInt(dateComponents[0]);
     const month = parseInt(dateComponents[1]);
-    const year = 2025;
+    const year = 2026;
     
     let timeSlot;
     if (timeSlotPart === 'FN') {

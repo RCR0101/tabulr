@@ -23,6 +23,7 @@ import 'professors_screen.dart';
 import 'prerequisites_screen.dart';
 import 'cgpa_calculator_screen.dart';
 import 'acad_drives_screen.dart';
+import 'exam_seating_screen.dart';
 
 class TimetablesScreen extends StatefulWidget {
   const TimetablesScreen({super.key});
@@ -967,6 +968,47 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                         );
                       },
                     ),
+                  ListTile(
+                    leading: Icon(
+                      Icons.event_seat,
+                      color: Theme.of(context).colorScheme.onSurface,
+                      size: ResponsiveService.getAdaptiveIconSize(
+                        context,
+                        24,
+                      ),
+                    ),
+                    title: Text(
+                      'Exam Seating',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: ResponsiveService.getAdaptiveFontSize(
+                          context,
+                          16,
+                        ),
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Find your Exam Hall',
+                      style: TextStyle(
+                        fontSize: ResponsiveService.getAdaptiveFontSize(
+                          context,
+                          12,
+                        ),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ExamSeatingScreen(),
+                        ),
+                      );
+                    },
+                  ),
                   if (_authService.isAuthenticated)
                     ListTile(
                       leading: Icon(
@@ -1006,6 +1048,49 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => const AcadDrivesScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  if (_authService.isAuthenticated)
+                    ListTile(
+                      leading: Icon(
+                        Icons.person,
+                        color: Theme.of(context).colorScheme.onSurface,
+                        size: ResponsiveService.getAdaptiveIconSize(
+                          context,
+                          24,
+                        ),
+                      ),
+                      title: Text(
+                        'Prof Chambers',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: ResponsiveService.getAdaptiveFontSize(
+                            context,
+                            16,
+                          ),
+                        ),
+                      ),
+                      subtitle: Text(
+                        'Find professor offices',
+                        style: TextStyle(
+                          fontSize: ResponsiveService.getAdaptiveFontSize(
+                            context,
+                            12,
+                          ),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      trailing: null,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ProfessorsScreen(),
                           ),
                         );
                       },
@@ -1179,14 +1264,6 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                     ),
                   );
                   break;
-                case 'professors':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ProfessorsScreen(),
-                    ),
-                  );
-                  break;
                 case 'discipline_electives':
                   Navigator.push(
                     context,
@@ -1257,14 +1334,6 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                     child: ListTile(
                       leading: Icon(Icons.account_tree),
                       title: Text('Prerequisites'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'professors',
-                    child: ListTile(
-                      leading: Icon(Icons.person),
-                      title: Text('Professors'),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),

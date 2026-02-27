@@ -15,6 +15,8 @@ import '../models/course.dart';
 import '../models/timetable.dart';
 import 'timetables_screen.dart';
 import 'acad_drives_screen.dart';
+import 'professors_screen.dart';
+import 'exam_seating_screen.dart';
 
 class CGPACalculatorScreen extends StatefulWidget {
   const CGPACalculatorScreen({super.key});
@@ -1065,7 +1067,36 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                       // Already on CGPA calculator screen
                     },
                   ),
-                  
+
+                  ListTile(
+                    leading: Icon(
+                      Icons.event_seat,
+                      color: Theme.of(context).colorScheme.onSurface,
+                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
+                    ),
+                    title: Text(
+                      'Exam Seating',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Find your Exam Hall',
+                      style: TextStyle(
+                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ExamSeatingScreen()),
+                      );
+                    },
+                  ),
+
                   ListTile(
                     leading: Icon(
                       Icons.folder_shared,
@@ -1091,6 +1122,34 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const AcadDrivesScreen()),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(
+                      Icons.person,
+                      color: Theme.of(context).colorScheme.onSurface,
+                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
+                    ),
+                    title: Text(
+                      'Prof Chambers',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Find professor chambers',
+                      style: TextStyle(
+                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ProfessorsScreen()),
                       );
                     },
                   ),

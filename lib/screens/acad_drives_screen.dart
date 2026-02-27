@@ -8,6 +8,7 @@ import '../services/toast_service.dart';
 import '../services/auth_service.dart';
 import 'timetables_screen.dart';
 import 'cgpa_calculator_screen.dart';
+import 'professors_screen.dart';
 
 enum CourseSortOption {
   nameAsc,
@@ -818,6 +819,34 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                     onTap: () {
                       Navigator.pop(context);
                       // Already on academic drives screen
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(
+                      Icons.person,
+                      color: Theme.of(context).colorScheme.onSurface,
+                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
+                    ),
+                    title: Text(
+                      'Prof Chambers',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Find professor offices',
+                      style: TextStyle(
+                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ProfessorsScreen()),
+                      );
                     },
                   ),
                 ],
