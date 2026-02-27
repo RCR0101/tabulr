@@ -872,6 +872,13 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                 tooltip: 'Back to Courses',
               )
             : null, // This will show the hamburger menu for main screen
+        actions: [
+          IconButton(
+            onPressed: _showSubmitDialog,
+            icon: const Icon(Icons.cloud_upload_outlined),
+            tooltip: 'Submit Resource',
+          ),
+        ],
       ),
       drawer: _selectedCourse == null ? _buildDrawer(context) : null,
       body: Column(
@@ -976,13 +983,6 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                 : _buildFilesView(),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showSubmitDialog,
-        icon: const Icon(Icons.cloud_upload),
-        label: const Text('Submit Resource'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
       ),
     );
   }
