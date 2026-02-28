@@ -69,7 +69,8 @@ if __name__ == "__main__":
         "Seating Arrangement",
         "SEATING ARRANGEMENT FOR THE I SEMESTER 2025 -26",
         "COMPREHENSIVE EXAMINATION",
-        "MIDSEMESTER EXAMINATION"
+        "MIDSEMESTER EXAMINATION",
+        "MID SEMSTER EXAMINATIONS"
     ]
 
     try:

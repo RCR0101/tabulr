@@ -14,6 +14,7 @@ import '../models/all_course.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 import '../widgets/app_drawer.dart';
+import 'grade_planner_screen.dart';
 
 class CGPACalculatorScreen extends StatefulWidget {
   const CGPACalculatorScreen({super.key});
@@ -1035,6 +1036,18 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                   tabs: _semesters.map((sem) => Tab(text: sem)).toList(),
                 ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.calculate_outlined),
+            tooltip: 'Grade Planner',
+            onPressed: _authService.isAuthenticated
+                ? () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => GradePlannerScreen(cgpaData: _cgpaData),
+                      ),
+                    )
+                : null,
+          ),
           IconButton(
             icon: const Icon(Icons.school_outlined),
             tooltip: 'Load CDCs',

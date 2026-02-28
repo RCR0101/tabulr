@@ -397,16 +397,67 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
   }
 
   /// Parse exam date string to DateTime for comparison
-  /// Handles formats like "03/12/2024 AN", "03/12/2024 FN", "3/12/2024"
+  /// Handles formats like:
+  /// - "03/12/2024 AN", "03/12/2024 FN", "3/12/2024"
+  /// - "09 March 26 - 04:00 PM to 05:30 PM"
+  /// - "09 March 26 - 09:30 AM to 11:00 AM"
   DateTime? _parseExamDateTime(String dateStr) {
     try {
-      final normalized = dateStr.trim().toUpperCase();
+      final normalized = dateStr.trim();
 
-      // Check for AN (morning) or FN (afternoon) suffix
-      final isAfternoon = normalized.contains('FN');
+      // Try format: "DD Month YY - HH:MM AM/PM to HH:MM AM/PM"
+      // Example: "09 March 26 - 04:00 PM to 05:30 PM"
+      final monthNames = {
+        'JANUARY': 1, 'JAN': 1,
+        'FEBRUARY': 2, 'FEB': 2,
+        'MARCH': 3, 'MAR': 3,
+        'APRIL': 4, 'APR': 4,
+        'MAY': 5,
+        'JUNE': 6, 'JUN': 6,
+        'JULY': 7, 'JUL': 7,
+        'AUGUST': 8, 'AUG': 8,
+        'SEPTEMBER': 9, 'SEP': 9,
+        'OCTOBER': 10, 'OCT': 10,
+        'NOVEMBER': 11, 'NOV': 11,
+        'DECEMBER': 12, 'DEC': 12,
+      };
+
+      // Pattern: DD Month YY - HH:MM AM/PM
+      final newFormatRegex = RegExp(
+        r'(\d{1,2})\s+(\w+)\s+(\d{2,4})\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)',
+        caseSensitive: false,
+      );
+      final newMatch = newFormatRegex.firstMatch(normalized);
+      if (newMatch != null) {
+        final day = int.tryParse(newMatch.group(1)!);
+        final monthStr = newMatch.group(2)!.toUpperCase();
+        var year = int.tryParse(newMatch.group(3)!);
+        var hour = int.tryParse(newMatch.group(4)!);
+        final minute = int.tryParse(newMatch.group(5)!);
+        final ampm = newMatch.group(6)!.toUpperCase();
+        final month = monthNames[monthStr];
+
+        if (day != null && month != null && year != null && hour != null && minute != null) {
+          // Handle 2-digit year
+          if (year < 100) {
+            year += 2000;
+          }
+          // Convert to 24-hour format
+          if (ampm == 'PM' && hour != 12) {
+            hour += 12;
+          } else if (ampm == 'AM' && hour == 12) {
+            hour = 0;
+          }
+          return DateTime(year, month, day, hour, minute);
+        }
+      }
+
+      // Fallback: Try DD/MM/YYYY AN/FN format
+      final upperNormalized = normalized.toUpperCase();
+      final isAfternoon = upperNormalized.contains('FN');
 
       // Extract date part (remove AN/FN)
-      final datePart = normalized
+      final datePart = upperNormalized
           .replaceAll('AN', '')
           .replaceAll('FN', '')
           .replaceAll('(', '')

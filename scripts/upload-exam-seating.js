@@ -232,6 +232,36 @@ async function uploadExamSeating(csvPath, campus = 'default') {
 
   console.log(`\nUploading to collection: ${collectionName} (${campusDisplayName})`);
 
+  // Clear existing collection before uploading
+  console.log(`\nClearing existing ${collectionName} collection...`);
+  const existingDocs = await db.collection(collectionName).get();
+
+  if (!existingDocs.empty) {
+    let deleteBatch = db.batch();
+    let deleteCount = 0;
+
+    for (const doc of existingDocs.docs) {
+      deleteBatch.delete(doc.ref);
+      deleteCount++;
+
+      // Commit in batches of 450
+      if (deleteCount % 450 === 0) {
+        await deleteBatch.commit();
+        console.log(`  Deleted ${deleteCount} documents...`);
+        deleteBatch = db.batch();
+      }
+    }
+
+    // Commit remaining deletes
+    if (deleteCount % 450 !== 0) {
+      await deleteBatch.commit();
+    }
+
+    console.log(`  Cleared ${deleteCount} existing documents`);
+  } else {
+    console.log('  Collection was already empty');
+  }
+
   // Upload in batches (Firestore limit is 500 operations per batch)
   let batch = db.batch();
   let operationCount = 0;
