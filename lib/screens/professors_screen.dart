@@ -4,9 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../services/professor_service.dart';
 import '../services/responsive_service.dart';
 import '../services/auth_service.dart';
-import 'timetables_screen.dart';
-import 'cgpa_calculator_screen.dart';
-import 'acad_drives_screen.dart';
+import '../widgets/app_drawer.dart';
 
 class ProfessorsScreen extends StatefulWidget {
   const ProfessorsScreen({super.key});
@@ -49,192 +47,13 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
     _searchFocusNode.unfocus();
   }
 
-  Widget _buildDrawer(BuildContext context) {
-    return Drawer(
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Drawer Header
-            Container(
-              width: double.infinity,
-              padding: ResponsiveService.getAdaptivePadding(
-                context,
-                const EdgeInsets.all(24),
-              ),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Theme.of(context).colorScheme.primary,
-                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
-                  ],
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.school,
-                      size: ResponsiveService.getAdaptiveIconSize(context, 32),
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    ),
-                  ),
-                  SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
-                  Text(
-                    'Tabulr',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Menu Items
-            Expanded(
-              child: ListView(
-                padding: ResponsiveService.getAdaptivePadding(
-                  context,
-                  const EdgeInsets.symmetric(vertical: 16),
-                ),
-                children: [
-                  ListTile(
-                    leading: Icon(
-                      Icons.schedule,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
-                    ),
-                    title: Text(
-                      'TT Builder',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Create timetables',
-                      style: TextStyle(
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => const TimetablesScreen()),
-                      );
-                    },
-                  ),
-
-                  const Divider(),
-
-                  if (_authService.isAuthenticated)
-                    ListTile(
-                      leading: Icon(
-                        Icons.calculate,
-                        color: Theme.of(context).colorScheme.onSurface,
-                        size: ResponsiveService.getAdaptiveIconSize(context, 24),
-                      ),
-                      title: Text(
-                        'CGPA Calculator',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Calculate your GPA',
-                        style: TextStyle(
-                          fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                        ),
-                      ),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const CGPACalculatorScreen()),
-                        );
-                      },
-                    ),
-                  if (_authService.isAuthenticated)
-                    ListTile(
-                      leading: Icon(
-                        Icons.folder_shared,
-                        color: Theme.of(context).colorScheme.onSurface,
-                        size: ResponsiveService.getAdaptiveIconSize(context, 24),
-                      ),
-                      title: Text(
-                        'Academic Drives',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Browse course files',
-                        style: TextStyle(
-                          fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                        ),
-                      ),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const AcadDrivesScreen()),
-                        );
-                      },
-                    ),
-                  if (_authService.isAuthenticated)
-                    ListTile(
-                      leading: Icon(
-                        Icons.person,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: ResponsiveService.getAdaptiveIconSize(context, 24),
-                      ),
-                      tileColor: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      title: Text(
-                        'Prof Chambers',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Find professor offices',
-                        style: TextStyle(
-                          fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                        ),
-                      ),
-                      onTap: () {
-                        Navigator.pop(context);
-                        // Already on professors screen
-                      },
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: _buildDrawer(context),
+      drawer: AppDrawer(
+        currentScreen: DrawerScreen.profChambers,
+        authService: _authService,
+      ),
       appBar: AppBar(
         title: Column(
           children: [
@@ -497,6 +316,10 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
   }
 
   Widget _buildProfessorCard(Professor professor) {
+    final isOccupied = professor.isCurrentlyOccupied();
+    final currentClass = professor.getCurrentClass();
+    final hasSchedule = professor.schedule.isNotEmpty;
+
     return Container(
       decoration: BoxDecoration(
         border: Border.all(
@@ -510,7 +333,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
           backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Theme.of(context).colorScheme.onPrimary,
           child: Text(
-            professor.name.isNotEmpty 
+            professor.name.isNotEmpty
                 ? professor.name[0].toUpperCase()
                 : '?',
             style: const TextStyle(
@@ -521,19 +344,307 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
         title: Text(
           professor.name,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+                fontWeight: FontWeight.w600,
+              ),
         ),
-        subtitle: Text(
-          professor.chamber,
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: professor.chamber == 'Unavailable'
-                ? Theme.of(context).colorScheme.error
-                : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-          ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              professor.chamber,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: professor.chamber == 'Unavailable'
+                        ? Theme.of(context).colorScheme.error
+                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  ),
+            ),
+            if (isOccupied && currentClass != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'In: ${currentClass.courseCode} @ ${currentClass.room}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.error.withOpacity(0.8),
+                      fontStyle: FontStyle.italic,
+                    ),
+              ),
+            ],
+          ],
+        ),
+        trailing: hasSchedule
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildStatusBadge(isOccupied, currentClass),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: Icon(
+                      Icons.info_outline,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    tooltip: 'View schedule',
+                    onPressed: () => _showScheduleDialog(professor),
+                  ),
+                ],
+              )
+            : null,
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(bool isOccupied, ProfessorScheduleEntry? currentClass) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isOccupied
+            ? Theme.of(context).colorScheme.error.withOpacity(0.1)
+            : Theme.of(context).colorScheme.primary.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isOccupied
+              ? Theme.of(context).colorScheme.error.withOpacity(0.3)
+              : Theme.of(context).colorScheme.primary.withOpacity(0.3),
+        ),
+      ),
+      child: Text(
+        isOccupied ? 'Occupied' : 'Free',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: isOccupied
+              ? Theme.of(context).colorScheme.error
+              : Theme.of(context).colorScheme.primary,
         ),
       ),
     );
+  }
+
+  void _showScheduleDialog(Professor professor) {
+    final scheduleByDay = professor.getScheduleByDay();
+    final dayOrder = ['M', 'T', 'W', 'Th', 'F', 'S'];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+        contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.calendar_month,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        professor.name,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on_outlined,
+                            size: 14,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            professor.chamber,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                                ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+          ],
+        ),
+        content: scheduleByDay.isEmpty
+            ? Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.event_busy,
+                        size: 40,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'No schedule data available',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: dayOrder
+                      .where((day) => scheduleByDay.containsKey(day))
+                      .map((day) => _buildDaySchedule(day, scheduleByDay[day]!))
+                      .toList(),
+                ),
+              ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDaySchedule(String day, List<ProfessorScheduleEntry> entries) {
+    final dayNames = {
+      'M': 'Monday',
+      'T': 'Tuesday',
+      'W': 'Wednesday',
+      'Th': 'Thursday',
+      'F': 'Friday',
+      'S': 'Saturday',
+    };
+
+    final dayColors = {
+      'M': Colors.blue,
+      'T': Colors.green,
+      'W': Colors.orange,
+      'Th': Colors.purple,
+      'F': Colors.teal,
+      'S': Colors.pink,
+    };
+
+    final dayColor = dayColors[day] ?? Theme.of(context).colorScheme.primary;
+
+    // Group entries by time slot
+    final groupedByTime = <String, List<ProfessorScheduleEntry>>{};
+    for (final entry in entries) {
+      final timeKey = entry.hourRangeString;
+      groupedByTime.putIfAbsent(timeKey, () => []);
+      groupedByTime[timeKey]!.add(entry);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Day header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: dayColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              dayNames[day] ?? day,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: dayColor,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Classes for this day grouped by time
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: groupedByTime.entries
+                .map((e) => _buildTimeSlotChip(e.key, e.value, dayColor))
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimeSlotChip(String timeSlot, List<ProfessorScheduleEntry> entries, Color accentColor) {
+    final time = _formatTimeCompact(timeSlot);
+
+    // Combine course codes and rooms
+    final courses = entries.map((e) {
+      if (e.room.isNotEmpty) {
+        return '${e.courseCode} @ ${e.room}';
+      }
+      return e.courseCode;
+    }).join(', ');
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: accentColor.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.access_time,
+            size: 12,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            time,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  fontSize: 11,
+                ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            courses,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatTimeCompact(String hourRange) {
+    // Convert "8:00-9:50 AM" to "8-9:50"
+    return hourRange
+        .replaceAll(' AM', '')
+        .replaceAll(' PM', '')
+        .replaceAll(':00', '');
   }
 
   void _showSortDialog() {

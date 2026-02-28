@@ -13,10 +13,7 @@ import '../models/cgpa_data.dart';
 import '../models/all_course.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
-import 'timetables_screen.dart';
-import 'acad_drives_screen.dart';
-import 'professors_screen.dart';
-import 'exam_seating_screen.dart';
+import '../widgets/app_drawer.dart';
 
 class CGPACalculatorScreen extends StatefulWidget {
   const CGPACalculatorScreen({super.key});
@@ -952,216 +949,6 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     );
   }
 
-  Widget _buildDrawer(BuildContext context) {
-    return Drawer(
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Drawer Header
-            Container(
-              width: double.infinity,
-              padding: ResponsiveService.getAdaptivePadding(
-                context,
-                const EdgeInsets.all(24),
-              ),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Theme.of(context).colorScheme.primary,
-                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
-                  ],
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.school,
-                      size: ResponsiveService.getAdaptiveIconSize(context, 32),
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    ),
-                  ),
-                  SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
-                  Text(
-                    'Tabulr',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Menu Items
-            Expanded(
-              child: ListView(
-                padding: ResponsiveService.getAdaptivePadding(
-                  context,
-                  const EdgeInsets.symmetric(vertical: 16),
-                ),
-                children: [
-                  ListTile(
-                    leading: Icon(
-                      Icons.schedule,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
-                    ),
-                    title: Text(
-                      'TT Builder',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Create timetables',
-                      style: TextStyle(
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => const TimetablesScreen()),
-                      );
-                    },
-                  ),
-                  
-                  const Divider(),
-                  
-                  ListTile(
-                    leading: Icon(
-                      Icons.calculate,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
-                    ),
-                    tileColor: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    title: Text(
-                      'CGPA Calculator',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Calculate your GPA',
-                      style: TextStyle(
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    trailing: null,
-                    onTap: () {
-                      Navigator.pop(context);
-                      // Already on CGPA calculator screen
-                    },
-                  ),
-
-                  ListTile(
-                    leading: Icon(
-                      Icons.event_seat,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
-                    ),
-                    title: Text(
-                      'Exam Seating',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Find your Exam Hall',
-                      style: TextStyle(
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const ExamSeatingScreen()),
-                      );
-                    },
-                  ),
-
-                  ListTile(
-                    leading: Icon(
-                      Icons.folder_shared,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
-                    ),
-                    title: Text(
-                      'Academic Drives',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Browse course files',
-                      style: TextStyle(
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const AcadDrivesScreen()),
-                      );
-                    },
-                  ),
-                  ListTile(
-                    leading: Icon(
-                      Icons.person,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      size: ResponsiveService.getAdaptiveIconSize(context, 24),
-                    ),
-                    title: Text(
-                      'Prof Chambers',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 16),
-                      ),
-                    ),
-                    subtitle: Text(
-                      'Find professor chambers',
-                      style: TextStyle(
-                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const ProfessorsScreen()),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     if (!_authService.isAuthenticated) {
@@ -1200,7 +987,10 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     }
 
     return Scaffold(
-      drawer: _buildDrawer(context),
+      drawer: AppDrawer(
+        currentScreen: DrawerScreen.cgpaCalculator,
+        authService: _authService,
+      ),
       appBar: AppBar(
         title: const Text('CGPA Calculator'),
         centerTitle: true,
