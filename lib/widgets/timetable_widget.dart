@@ -65,20 +65,91 @@ class TimetableWidget extends StatefulWidget {
 
 class _TimetableWidgetState extends State<TimetableWidget> {
   String? _hoveredCourse; // Track which course is being hovered
+  double _zoomLevel = 1.0; // Current zoom level (0.5x to 3.0x)
+  final TransformationController _transformationController = TransformationController();
+  final ScrollController _verticalScrollController = ScrollController();
+  final ScrollController _horizontalScrollController = ScrollController();
 
   bool get _isMobile {
     // Always use desktop layout for export
     if (widget.isForExport) return false;
-    
+
     return ResponsiveService.isMobile(context) || ResponsiveService.isTablet(context);
   }
 
+  @override
+  void dispose() {
+    _transformationController.dispose();
+    _verticalScrollController.dispose();
+    _horizontalScrollController.dispose();
+    super.dispose();
+  }
+
   bool get _canShowQuickReplace {
-    return !widget.isForExport && 
+    return !widget.isForExport &&
            widget.onQuickReplace != null &&
            widget.availableCourses != null &&
            widget.selectedSections != null &&
            widget.selectedSections!.isNotEmpty;
+  }
+
+  void _handleZoomChange(double newZoom) {
+    setState(() {
+      _zoomLevel = newZoom;
+      // Apply the zoom transformation using non-deprecated method
+      final matrix = Matrix4.identity();
+      matrix.setEntry(0, 0, _zoomLevel); // Scale X
+      matrix.setEntry(1, 1, _zoomLevel); // Scale Y
+      matrix.setEntry(2, 2, _zoomLevel); // Scale Z
+      _transformationController.value = matrix;
+    });
+  }
+
+  void _fitToScreen(BuildContext context, Size tableSize) {
+    // Get the available viewport size
+    final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+
+    // Calculate the zoom level needed to fit the entire timetable
+    final viewportWidth = renderBox.size.width;
+    final viewportHeight = renderBox.size.height;
+
+    // Account for padding and margins
+    final availableWidth = viewportWidth - 40;
+    final availableHeight = viewportHeight - 120; // Reserve space for controls
+
+    final scaleX = availableWidth / tableSize.width;
+    final scaleY = availableHeight / tableSize.height;
+
+    // Use the smaller scale to ensure the entire table fits
+    final optimalZoom = (scaleX < scaleY ? scaleX : scaleY).clamp(0.5, 3.0);
+
+    setState(() {
+      _zoomLevel = optimalZoom;
+
+      // Center the timetable using non-deprecated methods
+      final scaledWidth = tableSize.width * optimalZoom;
+      final scaledHeight = tableSize.height * optimalZoom;
+
+      final offsetX = (viewportWidth - scaledWidth) / 2;
+      final offsetY = (viewportHeight - scaledHeight) / 2;
+
+      final matrix = Matrix4.identity();
+      matrix.setEntry(0, 3, offsetX > 0 ? offsetX : 0); // Translate X
+      matrix.setEntry(1, 3, offsetY > 0 ? offsetY : 0); // Translate Y
+      matrix.setEntry(0, 0, optimalZoom); // Scale X
+      matrix.setEntry(1, 1, optimalZoom); // Scale Y
+      matrix.setEntry(2, 2, optimalZoom); // Scale Z
+      _transformationController.value = matrix;
+    });
+
+    // Reset scroll positions to top-left
+    if (_verticalScrollController.hasClients) {
+      _verticalScrollController.jumpTo(0);
+    }
+    if (_horizontalScrollController.hasClients) {
+      _horizontalScrollController.jumpTo(0);
+    }
   }
 
   void _showQuickReplaceDialog() {
@@ -94,6 +165,137 @@ class _TimetableWidgetState extends State<TimetableWidget> {
         ),
       ),
     );
+  }
+
+  Widget _buildZoomControls() {
+    return Positioned(
+      left: 8,
+      bottom: 8,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).shadowColor.withValues(alpha: 0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Fit to screen button
+            IconButton(
+              onPressed: () {
+                ResponsiveService.triggerSelectionFeedback(context);
+                _fitToScreen(context, _calculateTableSize());
+              },
+              icon: Icon(
+                Icons.fit_screen,
+                size: ResponsiveService.getAdaptiveIconSize(context, 20),
+              ),
+              tooltip: 'Fit to Screen',
+              style: IconButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.1),
+                foregroundColor: Theme.of(context).colorScheme.tertiary,
+                side: BorderSide(
+                  color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Zoom in button
+            IconButton(
+              onPressed: () {
+                ResponsiveService.triggerSelectionFeedback(context);
+                final newZoom = (_zoomLevel + 0.1).clamp(0.5, 3.0);
+                _handleZoomChange(newZoom);
+              },
+              icon: Icon(
+                Icons.add,
+                size: ResponsiveService.getAdaptiveIconSize(context, 20),
+              ),
+              tooltip: 'Zoom In',
+              style: IconButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
+              ),
+            ),
+            const SizedBox(height: 4),
+            // Zoom percentage display
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '${(_zoomLevel * 100).toStringAsFixed(0)}%',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            // Zoom out button
+            IconButton(
+              onPressed: () {
+                ResponsiveService.triggerSelectionFeedback(context);
+                final newZoom = (_zoomLevel - 0.1).clamp(0.5, 3.0);
+                _handleZoomChange(newZoom);
+              },
+              icon: Icon(
+                Icons.remove,
+                size: ResponsiveService.getAdaptiveIconSize(context, 20),
+              ),
+              tooltip: 'Zoom Out',
+              style: IconButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Reset zoom button
+            IconButton(
+              onPressed: () {
+                ResponsiveService.triggerSelectionFeedback(context);
+                _handleZoomChange(1.0);
+              },
+              icon: Icon(
+                Icons.refresh,
+                size: ResponsiveService.getAdaptiveIconSize(context, 18),
+              ),
+              tooltip: 'Reset Zoom (100%)',
+              style: IconButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Size _calculateTableSize() {
+    // Calculate the approximate size of the timetable based on current settings
+    if (widget.layout == TimetableLayout.horizontal) {
+      // Horizontal: 6 rows (days) + 13 columns (day label + 12 hours)
+      final width = _getTimeColumnWidth(widget.size) + (_getDayColumnWidth(widget.size) * 12) + (_getColumnSpacing(widget.size) * 13) + (_getHorizontalMargin(widget.size) * 2);
+      final height = (_getCellHeight(widget.size) * 6) + 60 + 40; // 6 rows + header + padding
+      return Size(width, height);
+    } else {
+      // Vertical: 12 rows (hours) + 7 columns (time + 6 days)
+      final width = _getTimeColumnWidth(widget.size) + (_getDayColumnWidth(widget.size) * 6) + (_getColumnSpacing(widget.size) * 7) + (_getHorizontalMargin(widget.size) * 2);
+      final height = (_getCellHeight(widget.size) * 12) + 60 + 40; // 12 rows + header + padding
+      return Size(width, height);
+    }
   }
 
   Widget _buildMobileButtonRow() {
@@ -204,154 +406,44 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildAppBar() {
     final isMobile = _isMobile;
-    
-    return ConstrainedBox(
-      constraints: BoxConstraints(
-        minWidth: isMobile ? 280 : ResponsiveService.getValue(context, mobile: 480, tablet: 768, desktop: 1000),
-        maxWidth: isMobile ? MediaQuery.of(context).size.width - 16 : double.infinity,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-        Padding(
-          padding: const EdgeInsets.all(8),
-          child: isMobile 
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        'Weekly Timetable',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Spacer(),
-                      // Layout toggle button
-                      IconButton(
-                        onPressed: widget.onLayoutChanged != null 
-                          ? () {
-                              ResponsiveService.triggerSelectionFeedback(context);
-                              widget.onLayoutChanged!(
-                                widget.layout == TimetableLayout.vertical 
-                                  ? TimetableLayout.horizontal 
-                                  : TimetableLayout.vertical
-                              );
-                            }
-                          : null,
-                        icon: Icon(
-                          widget.layout == TimetableLayout.vertical 
-                            ? Icons.view_column 
-                            : Icons.view_stream,
-                          size: ResponsiveService.getAdaptiveIconSize(context, 18),
-                        ),
-                        tooltip: widget.layout == TimetableLayout.vertical 
-                          ? 'Switch to horizontal layout'
-                          : 'Switch to vertical layout',
-                        style: IconButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
-                          side: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
-                          minimumSize: Size(
-                            ResponsiveService.getTouchTargetSize(context),
-                            ResponsiveService.getTouchTargetSize(context),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      PopupMenuButton<TimetableSize>(
-                        onSelected: widget.onSizeChanged,
-                        enabled: widget.onSizeChanged != null,
-                        itemBuilder: (context) => [
-                          PopupMenuItem(
-                            value: TimetableSize.compact,
-                            height: ResponsiveService.getTouchTargetSize(context),
-                            child: Row(
-                              children: [
-                                Icon(Icons.view_compact, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
-                                SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
-                                Text('Compact'),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: TimetableSize.medium,
-                            height: ResponsiveService.getTouchTargetSize(context),
-                            child: Row(
-                              children: [
-                                Icon(Icons.view_module, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
-                                SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
-                                Text('Medium'),
-                              ],
-                            ),
-                          ),
-                        ],
-                        child: Container(
-                          constraints: BoxConstraints(
-                            minHeight: ResponsiveService.getTouchTargetSize(context),
-                            minWidth: ResponsiveService.getTouchTargetSize(context),
-                          ),
-                          padding: ResponsiveService.getAdaptivePadding(
-                            context, 
-                            EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(_getSizeIcon(widget.size), size: ResponsiveService.getAdaptiveIconSize(context, 14)),
-                              SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 4)),
-                              Icon(Icons.arrow_drop_down, size: ResponsiveService.getAdaptiveIconSize(context, 14)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // Mobile button row - clean and evenly spaced
-                  _buildMobileButtonRow(),
-                ],
-              )
-            : Row(
-                mainAxisSize: MainAxisSize.min,
+
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: isMobile
+        ? Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
                   const Text(
                     'Weekly Timetable',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const Spacer(),
                   // Layout toggle button
                   IconButton(
-                    onPressed: widget.onLayoutChanged != null 
+                    onPressed: widget.onLayoutChanged != null
                       ? () {
                           ResponsiveService.triggerSelectionFeedback(context);
                           widget.onLayoutChanged!(
-                            widget.layout == TimetableLayout.vertical 
-                              ? TimetableLayout.horizontal 
+                            widget.layout == TimetableLayout.vertical
+                              ? TimetableLayout.horizontal
                               : TimetableLayout.vertical
                           );
                         }
                       : null,
                     icon: Icon(
-                      widget.layout == TimetableLayout.vertical 
-                        ? Icons.view_column 
+                      widget.layout == TimetableLayout.vertical
+                        ? Icons.view_column
                         : Icons.view_stream,
-                      size: ResponsiveService.getAdaptiveIconSize(context, 20),
+                      size: ResponsiveService.getAdaptiveIconSize(context, 18),
                     ),
-                    tooltip: widget.layout == TimetableLayout.vertical 
+                    tooltip: widget.layout == TimetableLayout.vertical
                       ? 'Switch to horizontal layout'
                       : 'Switch to vertical layout',
                     style: IconButton.styleFrom(
@@ -390,28 +482,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                           ],
                         ),
                       ),
-                      PopupMenuItem(
-                        value: TimetableSize.large,
-                        height: ResponsiveService.getTouchTargetSize(context),
-                        child: Row(
-                          children: [
-                            Icon(Icons.view_comfortable, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
-                            SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
-                            Text('Large'),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: TimetableSize.extraLarge,
-                        height: ResponsiveService.getTouchTargetSize(context),
-                        child: Row(
-                          children: [
-                            Icon(Icons.view_agenda, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
-                            SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
-                            Text('Extra Large'),
-                          ],
-                        ),
-                      ),
                     ],
                     child: Container(
                       constraints: BoxConstraints(
@@ -419,8 +489,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                         minWidth: ResponsiveService.getTouchTargetSize(context),
                       ),
                       padding: ResponsiveService.getAdaptivePadding(
-                        context, 
-                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        context,
+                        EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       ),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
@@ -430,203 +500,299 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(_getSizeIcon(widget.size), size: ResponsiveService.getAdaptiveIconSize(context, 16)),
+                          Icon(_getSizeIcon(widget.size), size: ResponsiveService.getAdaptiveIconSize(context, 14)),
                           SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 4)),
-                          Icon(Icons.arrow_drop_down, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
+                          Icon(Icons.arrow_drop_down, size: ResponsiveService.getAdaptiveIconSize(context, 14)),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  // Auto Load CDCs button (desktop)
-                  if (!widget.isForExport && widget.onAutoLoadCDCs != null)
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        ResponsiveService.triggerLightFeedback(context);
-                        widget.onAutoLoadCDCs!();
-                      },
-                      icon: Icon(
-                        Icons.school,
-                        size: ResponsiveService.getAdaptiveIconSize(context, 16),
-                      ),
-                      label: const Text('Auto Load CDCs'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
-                        foregroundColor: Theme.of(context).colorScheme.secondary,
-                        side: BorderSide(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3)),
-                        elevation: 0,
-                        minimumSize: Size(
-                          0,
-                          ResponsiveService.getTouchTargetSize(context),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  if (!widget.isForExport && widget.onAutoLoadCDCs != null)
-                    const SizedBox(width: 8),
-                  // Save button
-                  if (!widget.isForExport && widget.onSave != null)
-                    ElevatedButton.icon(
-                      onPressed: widget.hasUnsavedChanges && !widget.isSaving 
-                        ? () {
-                            ResponsiveService.triggerMediumFeedback(context);
-                            widget.onSave!();
-                          }
-                        : null,
-                      icon: widget.isSaving 
-                        ? SizedBox(
-                            width: ResponsiveService.getAdaptiveIconSize(context, 16),
-                            height: ResponsiveService.getAdaptiveIconSize(context, 16),
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Icon(
-                            widget.hasUnsavedChanges ? Icons.save : Icons.check,
-                            size: ResponsiveService.getAdaptiveIconSize(context, 16),
-                          ),
-                      label: Text(
-                        widget.isSaving ? 'Saving...' : 
-                        widget.hasUnsavedChanges ? 'Save' : 'Saved',
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: widget.hasUnsavedChanges 
-                          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
-                          : Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.1),
-                        foregroundColor: widget.hasUnsavedChanges 
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.tertiary,
-                        side: BorderSide(
-                          color: widget.hasUnsavedChanges 
-                            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
-                            : Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3)
-                        ),
-                        elevation: 0,
-                        minimumSize: Size(
-                          0,
-                          ResponsiveService.getTouchTargetSize(context),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  if (!widget.isForExport && widget.onSave != null)
-                    const SizedBox(width: 8),
-                  // Quick Replace Button (desktop)
-                  if (_canShowQuickReplace)
-                    ElevatedButton.icon(
-                      onPressed: _showQuickReplaceDialog,
-                      icon: Icon(
-                        Icons.swap_horiz, 
-                        size: ResponsiveService.getAdaptiveIconSize(context, 16),
-                      ),
-                      label: const Text('Quick Replace'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.1),
-                        foregroundColor: Theme.of(context).colorScheme.tertiary,
-                        side: BorderSide(color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3)),
-                        elevation: 0,
-                        minimumSize: Size(
-                          0,
-                          ResponsiveService.getTouchTargetSize(context),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  if (_canShowQuickReplace)
-                    const SizedBox(width: 8),
-                  if (widget.timetableSlots.isNotEmpty && widget.onClear != null)
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        ResponsiveService.triggerHeavyFeedback(context);
-                        widget.onClear!();
-                      },
-                      icon: Icon(
-                        Icons.clear_all, 
-                        size: ResponsiveService.getAdaptiveIconSize(context, 16),
-                      ),
-                      label: const Text('Clear'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
-                        foregroundColor: Theme.of(context).colorScheme.error,
-                        side: BorderSide(color: Theme.of(context).colorScheme.error.withValues(alpha: 0.3)),
-                        elevation: 0,
-                        minimumSize: Size(
-                          0,
-                          ResponsiveService.getTouchTargetSize(context),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
                 ],
               ),
-        ),
-        widget.isForExport
-            ? Container(
-                margin: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outline,
-                    width: 1,
+              const SizedBox(height: 8),
+              // Mobile button row - clean and evenly spaced
+              _buildMobileButtonRow(),
+            ],
+          )
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Weekly Timetable',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Layout toggle button
+              IconButton(
+                onPressed: widget.onLayoutChanged != null
+                  ? () {
+                      ResponsiveService.triggerSelectionFeedback(context);
+                      widget.onLayoutChanged!(
+                        widget.layout == TimetableLayout.vertical
+                          ? TimetableLayout.horizontal
+                          : TimetableLayout.vertical
+                      );
+                    }
+                  : null,
+                icon: Icon(
+                  widget.layout == TimetableLayout.vertical
+                    ? Icons.view_column
+                    : Icons.view_stream,
+                  size: ResponsiveService.getAdaptiveIconSize(context, 20),
+                ),
+                tooltip: widget.layout == TimetableLayout.vertical
+                  ? 'Switch to horizontal layout'
+                  : 'Switch to vertical layout',
+                style: IconButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
+                  side: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
+                  minimumSize: Size(
+                    ResponsiveService.getTouchTargetSize(context),
+                    ResponsiveService.getTouchTargetSize(context),
                   ),
                 ),
-                child: RepaintBoundary(
-                  key: widget.tableKey,
-                  child: IntrinsicWidth(
-                    child: IntrinsicHeight(
-                      child: DataTable(
-                        columnSpacing: _getColumnSpacing(widget.size),
-                        horizontalMargin: _getHorizontalMargin(widget.size),
-                        dataRowHeight: _getDataRowHeight(widget.size),
-                        headingRowHeight: 60,
-                        dividerThickness: 0,
-                        border: TableBorder.all(color: Colors.transparent),
-                        columns: _buildColumns(context),
-                        rows: _buildRows(context),
-                      ),
+              ),
+              const SizedBox(width: 8),
+              PopupMenuButton<TimetableSize>(
+                onSelected: widget.onSizeChanged,
+                enabled: widget.onSizeChanged != null,
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: TimetableSize.compact,
+                    height: ResponsiveService.getTouchTargetSize(context),
+                    child: Row(
+                      children: [
+                        Icon(Icons.view_compact, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
+                        SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
+                        Text('Compact'),
+                      ],
                     ),
                   ),
-                ),
-              )
-            : Expanded(
+                  PopupMenuItem(
+                    value: TimetableSize.medium,
+                    height: ResponsiveService.getTouchTargetSize(context),
+                    child: Row(
+                      children: [
+                        Icon(Icons.view_module, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
+                        SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
+                        Text('Medium'),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: TimetableSize.large,
+                    height: ResponsiveService.getTouchTargetSize(context),
+                    child: Row(
+                      children: [
+                        Icon(Icons.view_comfortable, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
+                        SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
+                        Text('Large'),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: TimetableSize.extraLarge,
+                    height: ResponsiveService.getTouchTargetSize(context),
+                    child: Row(
+                      children: [
+                        Icon(Icons.view_agenda, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
+                        SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
+                        Text('Extra Large'),
+                      ],
+                    ),
+                  ),
+                ],
                 child: Container(
-                  margin: const EdgeInsets.all(4),
+                  constraints: BoxConstraints(
+                    minHeight: ResponsiveService.getTouchTargetSize(context),
+                    minWidth: ResponsiveService.getTouchTargetSize(context),
+                  ),
+                  padding: ResponsiveService.getAdaptivePadding(
+                    context,
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outline,
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Theme.of(context).shadowColor.withOpacity(0.2),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
+                    color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(_getSizeIcon(widget.size), size: ResponsiveService.getAdaptiveIconSize(context, 16)),
+                      SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 4)),
+                      Icon(Icons.arrow_drop_down, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
                     ],
                   ),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.vertical,
-                    physics: widget.layout == TimetableLayout.horizontal 
-                      ? const BouncingScrollPhysics() 
-                      : const ClampingScrollPhysics(),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      physics: widget.layout == TimetableLayout.horizontal 
-                        ? const BouncingScrollPhysics() 
-                        : const ClampingScrollPhysics(),
-                      child: Align(
-                        alignment: Alignment.topLeft,
-                        child: RepaintBoundary(
-                          key: widget.tableKey,
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Auto Load CDCs button (desktop)
+              if (!widget.isForExport && widget.onAutoLoadCDCs != null)
+                ElevatedButton.icon(
+                  onPressed: () {
+                    ResponsiveService.triggerLightFeedback(context);
+                    widget.onAutoLoadCDCs!();
+                  },
+                  icon: Icon(
+                    Icons.school,
+                    size: ResponsiveService.getAdaptiveIconSize(context, 16),
+                  ),
+                  label: const Text('Auto Load CDCs'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+                    foregroundColor: Theme.of(context).colorScheme.secondary,
+                    side: BorderSide(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3)),
+                    elevation: 0,
+                    minimumSize: Size(
+                      0,
+                      ResponsiveService.getTouchTargetSize(context),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              if (!widget.isForExport && widget.onAutoLoadCDCs != null)
+                const SizedBox(width: 8),
+              // Save button
+              if (!widget.isForExport && widget.onSave != null)
+                ElevatedButton.icon(
+                  onPressed: widget.hasUnsavedChanges && !widget.isSaving
+                    ? () {
+                        ResponsiveService.triggerMediumFeedback(context);
+                        widget.onSave!();
+                      }
+                    : null,
+                  icon: widget.isSaving
+                    ? SizedBox(
+                        width: ResponsiveService.getAdaptiveIconSize(context, 16),
+                        height: ResponsiveService.getAdaptiveIconSize(context, 16),
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(
+                        widget.hasUnsavedChanges ? Icons.save : Icons.check,
+                        size: ResponsiveService.getAdaptiveIconSize(context, 16),
+                      ),
+                  label: Text(
+                    widget.isSaving ? 'Saving...' :
+                    widget.hasUnsavedChanges ? 'Save' : 'Saved',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: widget.hasUnsavedChanges
+                      ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                      : Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.1),
+                    foregroundColor: widget.hasUnsavedChanges
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.tertiary,
+                    side: BorderSide(
+                      color: widget.hasUnsavedChanges
+                        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
+                        : Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3)
+                    ),
+                    elevation: 0,
+                    minimumSize: Size(
+                      0,
+                      ResponsiveService.getTouchTargetSize(context),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              if (!widget.isForExport && widget.onSave != null)
+                const SizedBox(width: 8),
+              // Quick Replace Button (desktop)
+              if (_canShowQuickReplace)
+                ElevatedButton.icon(
+                  onPressed: _showQuickReplaceDialog,
+                  icon: Icon(
+                    Icons.swap_horiz,
+                    size: ResponsiveService.getAdaptiveIconSize(context, 16),
+                  ),
+                  label: const Text('Quick Replace'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.1),
+                    foregroundColor: Theme.of(context).colorScheme.tertiary,
+                    side: BorderSide(color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3)),
+                    elevation: 0,
+                    minimumSize: Size(
+                      0,
+                      ResponsiveService.getTouchTargetSize(context),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              if (_canShowQuickReplace)
+                const SizedBox(width: 8),
+              if (widget.timetableSlots.isNotEmpty && widget.onClear != null)
+                ElevatedButton.icon(
+                  onPressed: () {
+                    ResponsiveService.triggerHeavyFeedback(context);
+                    widget.onClear!();
+                  },
+                  icon: Icon(
+                    Icons.clear_all,
+                    size: ResponsiveService.getAdaptiveIconSize(context, 16),
+                  ),
+                  label: const Text('Clear'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                    side: BorderSide(color: Theme.of(context).colorScheme.error.withValues(alpha: 0.3)),
+                    elevation: 0,
+                    minimumSize: Size(
+                      0,
+                      ResponsiveService.getTouchTargetSize(context),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isMobile = _isMobile;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Fixed app bar at the top (doesn't scroll)
+        _buildAppBar(),
+
+        // Timetable content area with gesture isolation
+        Expanded(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minWidth: isMobile ? 280 : ResponsiveService.getValue(context, mobile: 480, tablet: 768, desktop: 1000),
+              maxWidth: isMobile ? MediaQuery.of(context).size.width - 16 : double.infinity,
+            ),
+            child: widget.isForExport
+                ? Container(
+                    margin: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outline,
+                        width: 1,
+                      ),
+                    ),
+                    child: RepaintBoundary(
+                      key: widget.tableKey,
+                      child: IntrinsicWidth(
+                        child: IntrinsicHeight(
                           child: DataTable(
                             columnSpacing: _getColumnSpacing(widget.size),
                             horizontalMargin: _getHorizontalMargin(widget.size),
@@ -634,18 +800,77 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                             dataRowMaxHeight: _getDataRowHeight(widget.size),
                             headingRowHeight: 60,
                             dividerThickness: 0,
-                            border: TableBorder.all(color: Colors.transparent, width: 0),
-                          columns: _buildColumns(context),
-                          rows: _buildRows(context),
+                            border: TableBorder.all(color: Colors.transparent),
+                            columns: _buildColumns(context),
+                            rows: _buildRows(context),
                           ),
                         ),
                       ),
                     ),
+                  )
+                : Stack(
+                    children: [
+                      // Timetable with scrolling
+                      GestureDetector(
+                        // Capture all gestures within this area
+                        behavior: HitTestBehavior.opaque,
+                        child: Container(
+                          margin: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).scaffoldBackgroundColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.outline,
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Theme.of(context).shadowColor.withValues(alpha: 0.2),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: SingleChildScrollView(
+                              controller: _verticalScrollController,
+                              scrollDirection: Axis.vertical,
+                              physics: const ClampingScrollPhysics(),
+                              child: SingleChildScrollView(
+                                controller: _horizontalScrollController,
+                                scrollDirection: Axis.horizontal,
+                                physics: const ClampingScrollPhysics(),
+                                child: Transform(
+                                  transform: _transformationController.value,
+                                  child: RepaintBoundary(
+                                    key: widget.tableKey,
+                                    child: DataTable(
+                                      columnSpacing: _getColumnSpacing(widget.size),
+                                      horizontalMargin: _getHorizontalMargin(widget.size),
+                                      dataRowMinHeight: _getDataRowHeight(widget.size),
+                                      dataRowMaxHeight: _getDataRowHeight(widget.size),
+                                      headingRowHeight: 60,
+                                      dividerThickness: 0,
+                                      border: TableBorder.all(color: Colors.transparent, width: 0),
+                                      columns: _buildColumns(context),
+                                      rows: _buildRows(context),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Zoom controls positioned on bottom left
+                      _buildZoomControls(),
+                    ],
                   ),
-                ),
-              ),
+          ),
+        ),
       ],
-    ),);
+    );
   }
 
   List<DataColumn> _buildColumns(BuildContext context) {
@@ -994,8 +1219,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                _getCourseColor(slot.courseCode).withOpacity(0.9),
-                _getCourseColor(slot.courseCode).withOpacity(0.7),
+                _getCourseColor(slot.courseCode).withValues(alpha: 0.9),
+                _getCourseColor(slot.courseCode).withValues(alpha: 0.7),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -1003,13 +1228,13 @@ class _TimetableWidgetState extends State<TimetableWidget> {
             borderRadius: BorderRadius.circular(_getBorderRadius(widget.size)),
             boxShadow: [
               BoxShadow(
-                color: _getCourseColor(slot.courseCode).withOpacity(0.3),
+                color: _getCourseColor(slot.courseCode).withValues(alpha: 0.3),
                 blurRadius: 6,
                 offset: const Offset(0, 3),
               ),
             ],
             border: Border.all(
-              color: _getCourseColor(slot.courseCode).withOpacity(0.5),
+              color: _getCourseColor(slot.courseCode).withValues(alpha: 0.5),
               width: 1,
             ),
           ),

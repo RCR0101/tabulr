@@ -1160,66 +1160,47 @@ class _HomeScreenState extends State<HomeScreen> {
         Expanded(
           child: Card(
             margin: EdgeInsets.all(isMobile ? 4 : 8),
-            child: Container(
-              width: double.infinity,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Container(
-                  constraints: BoxConstraints(
-                    minWidth:
-                        isMobile
-                            ? MediaQuery.of(context).size.width - 32
-                            : ResponsiveService.getValue(
-                              context,
-                              mobile: 480,
-                              tablet: 768,
-                              desktop: 1000,
-                            ),
-                  ),
-                  child: RepaintBoundary(
-                    key: _timetableKey,
-                    child: TimetableWidget(
-                      timetableSlots: _timetableService.generateTimetableSlots(
-                        _timetable!.selectedSections,
-                        _timetable!.availableCourses,
-                      ),
-                      incompleteSelectionWarnings: _timetableService
-                          .getIncompleteSelectionWarnings(
-                            _timetable!.selectedSections,
-                            _timetable!.availableCourses,
-                          ),
-                      onClear: _clearTimetable,
-                      onRemoveSection: _removeSection,
-                      size: _userSettingsService.getTimetableSize(
-                        _timetable!.id,
-                      ),
-                      hasUnsavedChanges: _hasUnsavedChanges,
-                      isSaving: _isSaving,
-                      onSave: _authService.isGuest ? null : _saveTimetable,
-                      onAutoLoadCDCs: _autoLoadCDCs,
-                      onSizeChanged: (newSize) {
-                        _userSettingsService.updateTimetableSettings(
-                          _timetable!.id,
-                          newSize,
-                          null,
-                        );
-                      },
-                      layout: _userSettingsService.getTimetableLayout(
-                        _timetable!.id,
-                      ),
-                      onLayoutChanged: (newLayout) {
-                        _userSettingsService.updateTimetableSettings(
-                          _timetable!.id,
-                          null,
-                          newLayout,
-                        );
-                      },
-                      availableCourses: _timetable!.availableCourses,
-                      selectedSections: _timetable!.selectedSections,
-                      onQuickReplace: _quickReplaceCourse,
-                    ),
-                  ),
+            child: RepaintBoundary(
+              key: _timetableKey,
+              child: TimetableWidget(
+                timetableSlots: _timetableService.generateTimetableSlots(
+                  _timetable!.selectedSections,
+                  _timetable!.availableCourses,
                 ),
+                incompleteSelectionWarnings: _timetableService
+                    .getIncompleteSelectionWarnings(
+                      _timetable!.selectedSections,
+                      _timetable!.availableCourses,
+                    ),
+                onClear: _clearTimetable,
+                onRemoveSection: _removeSection,
+                size: _userSettingsService.getTimetableSize(
+                  _timetable!.id,
+                ),
+                hasUnsavedChanges: _hasUnsavedChanges,
+                isSaving: _isSaving,
+                onSave: _authService.isGuest ? null : _saveTimetable,
+                onAutoLoadCDCs: _autoLoadCDCs,
+                onSizeChanged: (newSize) {
+                  _userSettingsService.updateTimetableSettings(
+                    _timetable!.id,
+                    newSize,
+                    null,
+                  );
+                },
+                layout: _userSettingsService.getTimetableLayout(
+                  _timetable!.id,
+                ),
+                onLayoutChanged: (newLayout) {
+                  _userSettingsService.updateTimetableSettings(
+                    _timetable!.id,
+                    null,
+                    newLayout,
+                  );
+                },
+                availableCourses: _timetable!.availableCourses,
+                selectedSections: _timetable!.selectedSections,
+                onQuickReplace: _quickReplaceCourse,
               ),
             ),
           ),
@@ -1944,18 +1925,22 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
 
         final isWideScreen = ResponsiveService.isDesktop(context);
 
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(_timetable.name),
-            centerTitle: true,
-            leading:
-                ResponsiveService.isMobile(context)
-                    ? IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => Navigator.of(context).pop(),
-                      tooltip: 'Back',
-                    )
-                    : null,
+        return GestureDetector(
+          onHorizontalDragUpdate: (_) {
+            // Consume horizontal drag gestures to prevent iOS back swipe
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              title: Text(_timetable.name),
+              centerTitle: true,
+              leading:
+                  ResponsiveService.isMobile(context)
+                      ? IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => Navigator.of(context).pop(),
+                        tooltip: 'Back',
+                      )
+                      : null,
             actions: [
               CampusSelectorWidget(
                 onCampusChanged: (campus) async {
@@ -2349,7 +2334,8 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                     ],
                   ),
           bottomNavigationBar: const BottomDisclaimerWidget(),
-        );
+        ),
+      );
       },
     );
   }
@@ -2389,48 +2375,45 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
         Expanded(
           child: Card(
             margin: const EdgeInsets.all(8),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: RepaintBoundary(
-                key: _timetableKey,
-                child: TimetableWidget(
-                  timetableSlots: _timetableService.generateTimetableSlots(
-                    _timetable.selectedSections,
-                    _timetable.availableCourses,
-                  ),
-                  incompleteSelectionWarnings: _timetableService
-                      .getIncompleteSelectionWarnings(
-                        _timetable.selectedSections,
-                        _timetable.availableCourses,
-                      ),
-                  onClear: _clearTimetable,
-                  onRemoveSection: _removeSection,
-                  size: _userSettingsService.getTimetableSize(_timetable.id),
-                  hasUnsavedChanges: _hasUnsavedChanges,
-                  isSaving: _isSaving,
-                  onSave: _authService.isGuest ? null : _saveTimetable,
-                  onAutoLoadCDCs: _autoLoadCDCs,
-                  onSizeChanged: (newSize) {
-                    _userSettingsService.updateTimetableSettings(
-                      _timetable.id,
-                      newSize,
-                      null,
-                    );
-                  },
-                  layout: _userSettingsService.getTimetableLayout(
-                    _timetable.id,
-                  ),
-                  onLayoutChanged: (newLayout) {
-                    _userSettingsService.updateTimetableSettings(
-                      _timetable.id,
-                      null,
-                      newLayout,
-                    );
-                  },
-                  availableCourses: _timetable.availableCourses,
-                  selectedSections: _timetable.selectedSections,
-                  onQuickReplace: _quickReplaceCourse,
+            child: RepaintBoundary(
+              key: _timetableKey,
+              child: TimetableWidget(
+                timetableSlots: _timetableService.generateTimetableSlots(
+                  _timetable.selectedSections,
+                  _timetable.availableCourses,
                 ),
+                incompleteSelectionWarnings: _timetableService
+                    .getIncompleteSelectionWarnings(
+                      _timetable.selectedSections,
+                      _timetable.availableCourses,
+                    ),
+                onClear: _clearTimetable,
+                onRemoveSection: _removeSection,
+                size: _userSettingsService.getTimetableSize(_timetable.id),
+                hasUnsavedChanges: _hasUnsavedChanges,
+                isSaving: _isSaving,
+                onSave: _authService.isGuest ? null : _saveTimetable,
+                onAutoLoadCDCs: _autoLoadCDCs,
+                onSizeChanged: (newSize) {
+                  _userSettingsService.updateTimetableSettings(
+                    _timetable.id,
+                    newSize,
+                    null,
+                  );
+                },
+                layout: _userSettingsService.getTimetableLayout(
+                  _timetable.id,
+                ),
+                onLayoutChanged: (newLayout) {
+                  _userSettingsService.updateTimetableSettings(
+                    _timetable.id,
+                    null,
+                    newLayout,
+                  );
+                },
+                availableCourses: _timetable.availableCourses,
+                selectedSections: _timetable.selectedSections,
+                onQuickReplace: _quickReplaceCourse,
               ),
             ),
           ),
