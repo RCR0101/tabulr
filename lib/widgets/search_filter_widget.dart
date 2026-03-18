@@ -23,6 +23,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
   int? _minCredits;
   int? _maxCredits;
   List<DayOfWeek> _selectedDays = [];
+  List<int> _selectedHours = [];
   bool _showAdvancedFilters = false;
 
   void _updateSearch() {
@@ -34,6 +35,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
       'minCredits': _minCredits,
       'maxCredits': _maxCredits,
       'days': _selectedDays,
+      'hours': _selectedHours,
     };
     
     widget.onSearchChanged(_searchController.text, filters);
@@ -49,6 +51,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
       _minCredits = null;
       _maxCredits = null;
       _selectedDays.clear();
+      _selectedHours.clear();
     });
     _updateSearch();
   }
@@ -418,6 +421,48 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                     padding: ResponsiveService.getAdaptivePadding(
                       context,
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                  );
+                }).toList(),
+              ),
+              SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
+
+              // Hours filter
+              Text(
+                'Filter by Hours:',
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
+                ),
+              ),
+              SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 8)),
+              Wrap(
+                spacing: ResponsiveService.getAdaptiveSpacing(context, 8),
+                runSpacing: ResponsiveService.getAdaptiveSpacing(context, 4),
+                children: TimeSlotInfo.hourSlotNames.entries.map((entry) {
+                  final hour = entry.key;
+                  final timeLabel = entry.value;
+                  return FilterChip(
+                    label: Text(
+                      '$hour ($timeLabel)',
+                      style: TextStyle(
+                        fontSize: ResponsiveService.getAdaptiveFontSize(context, 11),
+                      ),
+                    ),
+                    selected: _selectedHours.contains(hour),
+                    onSelected: (selected) {
+                      setState(() {
+                        if (selected) {
+                          _selectedHours.add(hour);
+                        } else {
+                          _selectedHours.remove(hour);
+                        }
+                      });
+                      _updateSearch();
+                    },
+                    padding: ResponsiveService.getAdaptivePadding(
+                      context,
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                     ),
                   );
                 }).toList(),

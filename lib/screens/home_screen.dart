@@ -159,6 +159,12 @@ class _HomeScreenState extends State<HomeScreen> {
         courses = CourseUtils.filterByDays(courses, filters['days']);
       }
 
+      // Apply hours filter
+      if (filters['hours'] != null &&
+          (filters['hours'] as List<int>).isNotEmpty) {
+        courses = CourseUtils.filterByHours(courses, filters['hours']);
+      }
+
       // Apply exam date filters
       if (filters['midSemDate'] != null) {
         courses = CourseUtils.filterByExamDate(
@@ -1377,6 +1383,12 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
       if (filters['days'] != null &&
           (filters['days'] as List<DayOfWeek>).isNotEmpty) {
         courses = CourseUtils.filterByDays(courses, filters['days']);
+      }
+
+      // Apply hours filter
+      if (filters['hours'] != null &&
+          (filters['hours'] as List<int>).isNotEmpty) {
+        courses = CourseUtils.filterByHours(courses, filters['hours']);
       }
 
       // Apply exam date filters

@@ -103,11 +103,21 @@ class CourseUtils {
 
   static List<Course> filterByDays(List<Course> courses, List<DayOfWeek> selectedDays) {
     if (selectedDays.isEmpty) return courses;
-    
+
     return courses.where((course) {
       return course.sections.any((section) =>
           section.schedule.any((scheduleEntry) =>
               scheduleEntry.days.any((day) => selectedDays.contains(day))));
+    }).toList();
+  }
+
+  static List<Course> filterByHours(List<Course> courses, List<int> selectedHours) {
+    if (selectedHours.isEmpty) return courses;
+
+    return courses.where((course) {
+      return course.sections.any((section) =>
+          section.schedule.any((scheduleEntry) =>
+              scheduleEntry.hours.any((hour) => selectedHours.contains(hour))));
     }).toList();
   }
 }
