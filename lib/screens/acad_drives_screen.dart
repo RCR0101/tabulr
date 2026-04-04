@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:html' as html;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:http/http.dart' as http;
 import '../services/responsive_service.dart';
 import '../services/toast_service.dart';
 import '../services/auth_service.dart';
@@ -108,11 +107,11 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       for (var doc in filesSnapshot.docs) {
         final data = doc.data();
         final courseCodes = data['courseCodes'] as List<dynamic>? ?? [];
-        final primaryCourse = data['primaryCourse'] as String?;
-        final contributor = data['folderMetadata']?['contributor'] ?? 'Unknown Contributor';
-        
-        // Use primary course or first course code
-        String courseKey = primaryCourse ?? (courseCodes.isNotEmpty ? courseCodes[0].toString() : 'Uncategorized');
+        final courseCode = data['courseCode'] as String?;
+        final driveName = data['driveName'] as String? ?? 'Unknown Drive';
+
+        // Use courseCode or first course code from array
+        String courseKey = courseCode ?? (courseCodes.isNotEmpty ? courseCodes[0].toString() : 'Uncategorized');
         
         if (!coursesMap.containsKey(courseKey)) {
           coursesMap[courseKey] = {
@@ -120,20 +119,20 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
             'name': courseKey,
             'fileCount': 0,
             'files': [],
-            'contributors': <String>{},
+            'drives': <String>{},
           };
         }
-        
+
         coursesMap[courseKey]!['fileCount'] = (coursesMap[courseKey]!['fileCount'] as int) + 1;
         coursesMap[courseKey]!['files'].add(doc.id);
-        (coursesMap[courseKey]!['contributors'] as Set<String>).add(contributor);
+        (coursesMap[courseKey]!['drives'] as Set<String>).add(driveName);
       }
 
-      // Convert contributors set to count for each course
+      // Convert drives set to count for each course
       for (final course in coursesMap.values) {
-        final contributorsSet = course['contributors'] as Set<String>;
-        course['contributorCount'] = contributorsSet.length;
-        course.remove('contributors'); // Remove the set, keep only the count
+        final drivesSet = course['drives'] as Set<String>;
+        course['driveCount'] = drivesSet.length;
+        course.remove('drives'); // Remove the set, keep only the count
       }
 
       // Convert to list and sort by file count
@@ -293,9 +292,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     if (kIsWeb) {
       String? url;
       if (type == 'drive') {
-        url = file['driveLink'] ?? file['folderMetadata']?['drive_link'];
+        url = file['folderMetadata']?['drive_link'];
       } else if (type == 'download') {
-        url = file['storageUrl'] ?? file['firebaseUrl'];
+        url = file['storageUrl'];
       }
       
       if (url != null) {
@@ -330,25 +329,23 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                 _InfoRow('Size', _formatFileSize(file['size'] ?? 0)),
                 _InfoRow('Uploaded', _formatDate(file['uploadedAt'])),
                 
-                if (file['folderMetadata'] != null) ...[
-                  const SizedBox(height: 16),
-                  Text(
-                    'Metadata',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                const SizedBox(height: 16),
+                Text(
+                  'Metadata',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
-                  const SizedBox(height: 8),
-                  
-                  if (file['folderMetadata']['contributor'] != null)
-                    _InfoRow('Contributor', file['folderMetadata']['contributor']),
-                    
-                  if (file['folderMetadata']['subject'] != null)
-                    _InfoRow('Subject', file['folderMetadata']['subject']),
-                    
-                  if (file['folderMetadata']['department'] != null)
-                    _InfoRow('Department', file['folderMetadata']['department']),
-                ],
+                ),
+                const SizedBox(height: 8),
+
+                if (file['contributor'] != null)
+                  _InfoRow('Contributor', file['contributor']),
+
+                if (file['driveName'] != null)
+                  _InfoRow('Drive', file['driveName']),
+
+                if (file['courseName'] != null)
+                  _InfoRow('Course', file['courseName']),
                 
                 if (file['tags'] != null && (file['tags'] as List).isNotEmpty) ...[
                   const SizedBox(height: 16),
@@ -868,39 +865,39 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       );
     }
 
-    // Group files by contributor and then create hierarchical folder structure
-    final Map<String, _FolderTree> contributorTrees = {};
+    // Group files by driveName and then create hierarchical folder structure
+    final Map<String, _FolderTree> driveTrees = {};
     for (final file in files) {
-      final contributor = file['folderMetadata']?['contributor'] ?? 'Unknown Contributor';
+      final driveName = file['driveName'] as String? ?? 'Unknown Drive';
       final path = file['path'] as String? ?? '';
-      
-      // Extract folder path (everything after course code)
+
+      // Extract folder path from the path field
       final pathParts = path.split('/');
       List<String> folderPath = [];
-      if (pathParts.length > 2) {
-        // Skip semester and course code, get folder structure
-        folderPath = pathParts.sublist(2, pathParts.length - 1); // Exclude filename
+      if (pathParts.length > 1) {
+        // Get folder structure, exclude filename
+        folderPath = pathParts.sublist(0, pathParts.length - 1);
       }
-      
+
       // If no folder structure, put in root
       if (folderPath.isEmpty) {
         folderPath = ['General'];
       }
-      
-      contributorTrees.putIfAbsent(contributor, () => _FolderTree());
-      contributorTrees[contributor]!.addFile(folderPath, file);
+
+      driveTrees.putIfAbsent(driveName, () => _FolderTree());
+      driveTrees[driveName]!.addFile(folderPath, file);
     }
 
-    final contributors = contributorTrees.keys.toList()..sort(_naturalSort);
+    final driveNames = driveTrees.keys.toList()..sort(_naturalSort);
 
     return ListView.builder(
-      itemCount: contributors.length,
+      itemCount: driveNames.length,
       itemBuilder: (context, index) {
-        final contributor = contributors[index];
-        final folderTree = contributorTrees[contributor]!;
-        
-        return _ContributorHierarchySection(
-          contributor: contributor,
+        final driveName = driveNames[index];
+        final folderTree = driveTrees[driveName]!;
+
+        return _DriveHierarchySection(
+          driveName: driveName,
           folderTree: folderTree,
           onOpenFile: (file, type) => _openFile(file, type),
           onShowFileInfo: (file) => _showFileInfo(file),
@@ -909,193 +906,6 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           getFileIcon: _getFileIcon,
         );
       },
-    );
-  }
-}
-
-class _ContributorSection extends StatefulWidget {
-  final String contributor;
-  final Map<String, List<Map<String, dynamic>>> subfolders;
-  final Function(Map<String, dynamic>, String) onOpenFile;
-  final Function(Map<String, dynamic>) onShowFileInfo;
-  final String Function(int) formatFileSize;
-  final String Function(dynamic) formatDate;
-  final String Function(String) getFileIcon;
-
-  const _ContributorSection({
-    required this.contributor,
-    required this.subfolders,
-    required this.onOpenFile,
-    required this.onShowFileInfo,
-    required this.formatFileSize,
-    required this.formatDate,
-    required this.getFileIcon,
-  });
-
-  @override
-  State<_ContributorSection> createState() => _ContributorSectionState();
-}
-
-class _ContributorSectionState extends State<_ContributorSection> {
-  bool _isExpanded = false;
-  final Map<String, bool> _subfolderExpanded = {};
-
-  int get _totalFiles => widget.subfolders.values.fold(0, (total, files) => total + files.length);
-
-  @override
-  Widget build(BuildContext context) {
-    final subfolderNames = widget.subfolders.keys.toList()..sort(_naturalSort);
-    
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Contributor Header
-          InkWell(
-            onTap: () => setState(() => _isExpanded = !_isExpanded),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.person,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.contributor,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                        Text(
-                          '$_totalFiles file${_totalFiles == 1 ? '' : 's'} • ${subfolderNames.length} folder${subfolderNames.length == 1 ? '' : 's'}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    _isExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          
-          // Subfolders (Expandable)
-          if (_isExpanded) ...[
-            const Divider(height: 1),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: subfolderNames.length,
-              itemBuilder: (context, index) {
-                final subfolder = subfolderNames[index];
-                final files = widget.subfolders[subfolder]!;
-                final isSubfolderExpanded = _subfolderExpanded[subfolder] ?? false;
-                
-                return Column(
-                  children: [
-                    // Subfolder Header
-                    InkWell(
-                      onTap: () => setState(() => _subfolderExpanded[subfolder] = !isSubfolderExpanded),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.3),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.folder_outlined,
-                              color: Theme.of(context).colorScheme.secondary,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                subfolder,
-                                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: Theme.of(context).colorScheme.secondary,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              '${files.length}',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Icon(
-                              isSubfolderExpanded ? Icons.expand_less : Icons.expand_more,
-                              color: Theme.of(context).colorScheme.secondary,
-                              size: 16,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    
-                    // Files in Subfolder
-                    if (isSubfolderExpanded) ...[
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: files.length,
-                        separatorBuilder: (context, index) => Divider(
-                          height: 1,
-                          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
-                        ),
-                        itemBuilder: (context, fileIndex) {
-                          final file = files[fileIndex];
-                          return _FileCard(
-                            file: file,
-                            onOpen: (type) => widget.onOpenFile(file, type),
-                            onInfo: () => widget.onShowFileInfo(file),
-                            formatFileSize: widget.formatFileSize,
-                            formatDate: widget.formatDate,
-                            getFileIcon: widget.getFileIcon,
-                          );
-                        },
-                      ),
-                    ],
-                    
-                    if (index < subfolderNames.length - 1)
-                      Divider(
-                        height: 1,
-                        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-                      ),
-                  ],
-                );
-              },
-            ),
-          ],
-        ],
-      ),
     );
   }
 }
@@ -1142,7 +952,7 @@ class _CourseCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${course['contributorCount'] ?? 0} contributor${(course['contributorCount'] ?? 0) == 1 ? '' : 's'} • ${course['fileCount']} file${course['fileCount'] == 1 ? '' : 's'}',
+                        '${course['driveCount'] ?? 0} drive${(course['driveCount'] ?? 0) == 1 ? '' : 's'} • ${course['fileCount']} file${course['fileCount'] == 1 ? '' : 's'}',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
@@ -1180,10 +990,8 @@ class _FileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasDriveLink = (file['driveLink'] != null && file['driveLink'] != 'NA') || 
-                          (file['folderMetadata']?['drive_link'] != null && file['folderMetadata']?['drive_link'] != 'NA');
-    final hasDownloadUrl = (file['storageUrl'] != null && file['storageUrl'] != 'NA' && file['storageUrl'].toString().trim().isNotEmpty) || 
-                          (file['firebaseUrl'] != null && file['firebaseUrl'] != 'NA' && file['firebaseUrl'].toString().trim().isNotEmpty);
+    final hasDriveLink = file['folderMetadata']?['drive_link'] != null && file['folderMetadata']?['drive_link'] != 'NA';
+    final hasDownloadUrl = file['storageUrl'] != null && file['storageUrl'] != 'NA' && file['storageUrl'].toString().trim().isNotEmpty;
     
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -1300,9 +1108,9 @@ class _FolderTree {
   }
 }
 
-// Hierarchical Contributor Section Widget
-class _ContributorHierarchySection extends StatefulWidget {
-  final String contributor;
+// Hierarchical Drive Section Widget
+class _DriveHierarchySection extends StatefulWidget {
+  final String driveName;
   final _FolderTree folderTree;
   final Function(Map<String, dynamic>, String) onOpenFile;
   final Function(Map<String, dynamic>) onShowFileInfo;
@@ -1310,8 +1118,8 @@ class _ContributorHierarchySection extends StatefulWidget {
   final String Function(dynamic) formatDate;
   final String Function(String) getFileIcon;
 
-  const _ContributorHierarchySection({
-    required this.contributor,
+  const _DriveHierarchySection({
+    required this.driveName,
     required this.folderTree,
     required this.onOpenFile,
     required this.onShowFileInfo,
@@ -1321,10 +1129,10 @@ class _ContributorHierarchySection extends StatefulWidget {
   });
 
   @override
-  State<_ContributorHierarchySection> createState() => _ContributorHierarchySectionState();
+  State<_DriveHierarchySection> createState() => _DriveHierarchySectionState();
 }
 
-class _ContributorHierarchySectionState extends State<_ContributorHierarchySection> {
+class _DriveHierarchySectionState extends State<_DriveHierarchySection> {
   bool _isExpanded = false;
 
   @override
@@ -1340,7 +1148,7 @@ class _ContributorHierarchySectionState extends State<_ContributorHierarchySecti
       ),
       child: Column(
         children: [
-          // Contributor Header
+          // Drive Header
           InkWell(
             onTap: () => setState(() => _isExpanded = !_isExpanded),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
@@ -1353,7 +1161,7 @@ class _ContributorHierarchySectionState extends State<_ContributorHierarchySecti
               child: Row(
                 children: [
                   Icon(
-                    Icons.person,
+                    Icons.folder_shared,
                     color: Theme.of(context).colorScheme.primary,
                     size: 20,
                   ),
@@ -1363,7 +1171,7 @@ class _ContributorHierarchySectionState extends State<_ContributorHierarchySecti
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.contributor,
+                          widget.driveName,
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: Theme.of(context).colorScheme.primary,
@@ -1386,7 +1194,7 @@ class _ContributorHierarchySectionState extends State<_ContributorHierarchySecti
               ),
             ),
           ),
-          
+
           // Folder Hierarchy
           if (_isExpanded) ...[
             const Divider(height: 1),
