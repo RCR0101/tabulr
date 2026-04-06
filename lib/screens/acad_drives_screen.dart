@@ -101,31 +101,44 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           .collection('files')
           .get();
 
-      // Group files by primary course and count files per course
+      // Group files by ALL course codes (so files show up under every course they belong to)
+      // This matches the query logic in _loadCourseFiles which uses arrayContains
       Map<String, Map<String, dynamic>> coursesMap = {};
-      
+
       for (var doc in filesSnapshot.docs) {
         final data = doc.data();
         final courseCodes = data['courseCodes'] as List<dynamic>? ?? [];
         final courseCode = data['courseCode'] as String?;
         final driveName = data['driveName'] as String? ?? 'Unknown Drive';
 
-        // Use courseCode or first course code from array
-        String courseKey = courseCode ?? (courseCodes.isNotEmpty ? courseCodes[0].toString() : 'Uncategorized');
-        
-        if (!coursesMap.containsKey(courseKey)) {
-          coursesMap[courseKey] = {
-            'code': courseKey,
-            'name': courseKey,
-            'fileCount': 0,
-            'files': [],
-            'drives': <String>{},
-          };
+        // Get all course codes this file belongs to
+        Set<String> allCodes = {};
+        if (courseCodes.isNotEmpty) {
+          allCodes.addAll(courseCodes.map((c) => c.toString()));
+        }
+        if (courseCode != null && courseCode.isNotEmpty) {
+          allCodes.add(courseCode);
+        }
+        if (allCodes.isEmpty) {
+          allCodes.add('Uncategorized');
         }
 
-        coursesMap[courseKey]!['fileCount'] = (coursesMap[courseKey]!['fileCount'] as int) + 1;
-        coursesMap[courseKey]!['files'].add(doc.id);
-        (coursesMap[courseKey]!['drives'] as Set<String>).add(driveName);
+        // Add file to EVERY course it belongs to (matches arrayContains query)
+        for (final code in allCodes) {
+          if (!coursesMap.containsKey(code)) {
+            coursesMap[code] = {
+              'code': code,
+              'name': code,
+              'fileCount': 0,
+              'files': [],
+              'drives': <String>{},
+            };
+          }
+
+          coursesMap[code]!['fileCount'] = (coursesMap[code]!['fileCount'] as int) + 1;
+          coursesMap[code]!['files'].add(doc.id);
+          (coursesMap[code]!['drives'] as Set<String>).add(driveName);
+        }
       }
 
       // Convert drives set to count for each course
@@ -867,9 +880,16 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
     // Group files by driveName and then create hierarchical folder structure
     final Map<String, _FolderTree> driveTrees = {};
+    final Map<String, String> driveContributors = {};
     for (final file in files) {
       final driveName = file['driveName'] as String? ?? 'Unknown Drive';
       final path = file['path'] as String? ?? '';
+      final contributor = file['contributor'] as String?;
+
+      // Track contributor per drive (use the first one found)
+      if (contributor != null && contributor.isNotEmpty && !driveContributors.containsKey(driveName)) {
+        driveContributors[driveName] = contributor;
+      }
 
       // Extract folder path from the path field
       final pathParts = path.split('/');
@@ -895,9 +915,11 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       itemBuilder: (context, index) {
         final driveName = driveNames[index];
         final folderTree = driveTrees[driveName]!;
+        final contributor = driveContributors[driveName];
 
         return _DriveHierarchySection(
           driveName: driveName,
+          contributor: contributor,
           folderTree: folderTree,
           onOpenFile: (file, type) => _openFile(file, type),
           onShowFileInfo: (file) => _showFileInfo(file),
@@ -1111,6 +1133,7 @@ class _FolderTree {
 // Hierarchical Drive Section Widget
 class _DriveHierarchySection extends StatefulWidget {
   final String driveName;
+  final String? contributor;
   final _FolderTree folderTree;
   final Function(Map<String, dynamic>, String) onOpenFile;
   final Function(Map<String, dynamic>) onShowFileInfo;
@@ -1120,6 +1143,7 @@ class _DriveHierarchySection extends StatefulWidget {
 
   const _DriveHierarchySection({
     required this.driveName,
+    this.contributor,
     required this.folderTree,
     required this.onOpenFile,
     required this.onShowFileInfo,
@@ -1183,6 +1207,14 @@ class _DriveHierarchySectionState extends State<_DriveHierarchySection> {
                             color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
                         ),
+                        if (widget.contributor != null && widget.contributor!.isNotEmpty)
+                          Text(
+                            'Credits: ${widget.contributor}',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.secondary,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
                       ],
                     ),
                   ),
