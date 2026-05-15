@@ -6,6 +6,8 @@ import '../screens/cgpa_calculator_screen.dart';
 import '../screens/exam_seating_screen.dart';
 import '../screens/acad_drives_screen.dart';
 import '../screens/professors_screen.dart';
+import '../screens/course_announcements_screen.dart';
+import '../services/course_announcement_service.dart';
 
 enum DrawerScreen {
   timetables,
@@ -13,6 +15,7 @@ enum DrawerScreen {
   examSeating,
   acadDrives,
   profChambers,
+  announcements,
 }
 
 class AppDrawer extends StatelessWidget {
@@ -156,6 +159,20 @@ class AppDrawer extends StatelessWidget {
                         DrawerScreen.profChambers,
                       ),
                     ),
+
+                  if (auth.isAuthenticated &&
+                      CourseAnnouncementService().isHyderabadUser())
+                    _buildMenuItem(
+                      context: context,
+                      icon: Icons.campaign,
+                      title: 'Announcements',
+                      subtitle: 'Course updates & events',
+                      isSelected: currentScreen == DrawerScreen.announcements,
+                      onTap: () => _navigateTo(
+                        context,
+                        DrawerScreen.announcements,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -274,6 +291,9 @@ class AppDrawer extends StatelessWidget {
         break;
       case DrawerScreen.profChambers:
         destination = const ProfessorsScreen();
+        break;
+      case DrawerScreen.announcements:
+        destination = const CourseAnnouncementsScreen();
         break;
     }
 

@@ -176,7 +176,6 @@ class ExamSeatingParser {
       };
     }
 
-    // ID format: \d{4}[A-Z0-9]{4}\d{4}[HG] (e.g., 2022A7PS0001H, 2023AAPS0168G)
     const idPattern = '(\\d{4}[A-Z0-9]{4}\\d{4}[HGPD])';
 
     // Try dash/en-dash format first

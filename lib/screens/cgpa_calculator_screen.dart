@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:file_picker/file_picker.dart';
 import '../services/cgpa_service.dart';
 import '../services/all_courses_service.dart';
 import '../services/auth_service.dart';
@@ -9,6 +10,7 @@ import '../services/timetable_service.dart';
 import '../services/auto_load_cdc_service.dart';
 import '../services/toast_service.dart';
 import '../services/course_guide_service.dart';
+import '../services/performance_sheet_parser.dart';
 import '../models/cgpa_data.dart';
 import '../models/all_course.dart';
 import '../models/course.dart';
@@ -212,6 +214,127 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     } catch (e) {
       if (mounted) {
         _showErrorDialog('Error importing courses: $e');
+      }
+    }
+  }
+
+  Future<void> _importFromPerformanceSheet() async {
+    try {
+      // Pick PDF file
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        return; // User cancelled
+      }
+
+      final file = result.files.first;
+      if (file.bytes == null) {
+        _showErrorDialog('Could not read the selected file.');
+        return;
+      }
+
+      // Show loading
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: Card(
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Parsing Performance Sheet...'),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }
+
+      // Parse the PDF
+      final parsed = await PerformanceSheetParser.parse(file.bytes!);
+
+      // Close loading dialog
+      if (mounted) Navigator.of(context).pop();
+
+      if (parsed.semesters.isEmpty) {
+        _showErrorDialog(
+          'Could not find any courses in the PDF.\n'
+          '${parsed.warnings.isNotEmpty ? 'Warnings: ${parsed.warnings.join(", ")}' : ''}',
+        );
+        return;
+      }
+
+      if (!mounted) return;
+
+      // Show preview dialog
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => _PerformanceSheetPreviewDialog(
+          parsed: parsed,
+          allCourses: _allCourses,
+        ),
+      );
+
+      if (confirmed != true) return;
+
+      // Convert and import
+      final importedData = PerformanceSheetParser.toCGPAData(parsed, _allCourses);
+
+      // Merge with existing data (override semesters that were imported)
+      setState(() {
+        for (final entry in importedData.semesters.entries) {
+          final semName = entry.key;
+          final semData = entry.value;
+
+          // Add semester to list if not exists
+          if (!_semesters.contains(semName)) {
+            _semesters.add(semName);
+          }
+
+          // Override semester data
+          _cgpaData = _cgpaData.copyWith(
+            semesters: {
+              ..._cgpaData.semesters,
+              semName: semData,
+            },
+          );
+        }
+
+        // Recreate tab controller with new semester count
+        _tabController.dispose();
+        _tabController = TabController(
+          length: _semesters.length,
+          vsync: this,
+        );
+      });
+
+      // Save all imported semesters
+      for (final semName in importedData.semesters.keys) {
+        await _saveSemester(semName);
+      }
+
+      if (mounted) {
+        ToastService.showSuccess(
+          'Imported ${parsed.totalCourses} courses from ${parsed.semesters.length} semesters!',
+        );
+      }
+    } catch (e) {
+      // Close loading dialog if open
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+      if (mounted) {
+        _showErrorDialog('Error importing from Performance Sheet: $e');
       }
     }
   }
@@ -1059,6 +1182,14 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
             onPressed:
                 _authService.isAuthenticated
                     ? _importCoursesFromTimetable
+                    : null,
+          ),
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            tooltip: 'Import from Performance Sheet',
+            onPressed:
+                _authService.isAuthenticated
+                    ? _importFromPerformanceSheet
                     : null,
           ),
           IconButton(
@@ -2777,5 +2908,247 @@ class _CourseSelectionDialogState extends State<_CourseSelectionDialog> {
     }
 
     Navigator.pop(context, coursesToImport);
+  }
+}
+
+/// Dialog to preview parsed performance sheet data before importing
+class _PerformanceSheetPreviewDialog extends StatelessWidget {
+  final ParsedPerformanceSheet parsed;
+  final List<AllCourse> allCourses;
+
+  const _PerformanceSheetPreviewDialog({
+    required this.parsed,
+    required this.allCourses,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Build lookup for course info
+    final courseMap = <String, AllCourse>{};
+    for (final course in allCourses) {
+      courseMap[course.courseCode.toUpperCase()] = course;
+    }
+
+    return AlertDialog(
+      title: Row(
+        children: [
+          const Icon(Icons.preview_outlined),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Import Preview'),
+                if (parsed.studentName != null)
+                  Text(
+                    parsed.studentName!,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withValues(alpha: 0.7),
+                        ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 400,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Summary
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _SummaryItem(
+                    label: 'Semesters',
+                    value: '${parsed.semesters.length}',
+                  ),
+                  _SummaryItem(
+                    label: 'Courses',
+                    value: '${parsed.totalCourses}',
+                  ),
+                  if (parsed.cgpa != null)
+                    _SummaryItem(
+                      label: 'CGPA',
+                      value: parsed.cgpa!.toStringAsFixed(2),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Warning
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_outlined,
+                    color: Theme.of(context).colorScheme.error,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'This will override existing data for the imported semesters.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onErrorContainer,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Semester list
+            Expanded(
+              child: ListView.builder(
+                itemCount: parsed.semesters.length,
+                itemBuilder: (context, index) {
+                  final semester = parsed.semesters[index];
+                  return ExpansionTile(
+                    title: Text(semester.normalizedName),
+                    subtitle: Text(
+                      '${semester.courses.length} courses',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    children: semester.courses.map((course) {
+                      final lookup =
+                          courseMap[course.courseCode.toUpperCase()];
+                      final notFound = lookup == null;
+
+                      return ListTile(
+                        dense: true,
+                        leading: notFound
+                            ? Icon(
+                                Icons.warning_amber,
+                                color: Theme.of(context).colorScheme.error,
+                                size: 18,
+                              )
+                            : null,
+                        title: Text(
+                          course.courseCode,
+                          style: TextStyle(
+                            color: notFound
+                                ? Theme.of(context).colorScheme.error
+                                : null,
+                          ),
+                        ),
+                        subtitle: Text(
+                          lookup?.courseTitle ?? 'Course not found in database',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        trailing: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getGradeColor(course.grade, context),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            course.grade,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Import'),
+        ),
+      ],
+    );
+  }
+
+  Color _getGradeColor(String grade, BuildContext context) {
+    switch (grade) {
+      case 'A':
+        return Colors.green.shade700;
+      case 'A-':
+        return Colors.green.shade500;
+      case 'B':
+        return Colors.blue.shade600;
+      case 'B-':
+        return Colors.blue.shade400;
+      case 'C':
+        return Colors.orange.shade600;
+      case 'C-':
+        return Colors.orange.shade400;
+      case 'D':
+        return Colors.red.shade400;
+      case 'D-':
+      case 'E':
+      case 'NC':
+        return Colors.red.shade700;
+      case 'GD':
+      case 'PR':
+        return Colors.grey;
+      default:
+        return Colors.grey;
+    }
+  }
+}
+
+class _SummaryItem extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _SummaryItem({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
+        ),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onPrimaryContainer
+                    .withValues(alpha: 0.7),
+              ),
+        ),
+      ],
+    );
   }
 }

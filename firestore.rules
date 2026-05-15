@@ -145,7 +145,32 @@ service cloud.firestore {
       allow create: if true; // Anyone can submit new resources
       allow update, delete: if false; // Only admin can modify
     }
-    
+
+    // Course announcements - only Hyderabad BITS email users
+    match /course_announcements/{announcementId} {
+      function isHydEmail() {
+        return request.auth != null &&
+               request.auth.token.email.matches('.*@hyderabad[.]bits-pilani[.]ac[.]in$');
+      }
+
+      allow read: if isHydEmail();
+      allow create: if isHydEmail()
+                    && request.resource.data.authorUid == request.auth.uid;
+      allow delete: if isHydEmail()
+                    && resource.data.authorUid == request.auth.uid;
+      allow update: if isHydEmail()
+                    && request.resource.data.authorUid == resource.data.authorUid
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['upvotes', 'downvotes']);
+
+      // Votes subcollection - each user can only write their own vote
+      match /votes/{visitorUid} {
+        allow read: if isHydEmail();
+        allow write: if isHydEmail()
+                     && visitorUid == request.auth.uid;
+      }
+    }
+
     // Deny access to all other collections
     match /{document=**} {
       allow read, write: if false;
