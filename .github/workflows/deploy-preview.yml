@@ -19,6 +19,10 @@ jobs:
 
       - run: flutter pub get
 
+      - run: echo "$FIREBASE_OPTIONS" > lib/firebase_options.dart
+        env:
+          FIREBASE_OPTIONS: ${{ secrets.FIREBASE_OPTIONS_DART }}
+
       - run: flutter build web --release
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
