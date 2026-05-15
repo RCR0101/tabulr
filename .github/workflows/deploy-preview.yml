@@ -34,6 +34,7 @@ jobs:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           projectId: timetable-maker-3c8e0
+          channelId: preview
 
       - uses: w9jds/firebase-action@v13.22.1
         with:
