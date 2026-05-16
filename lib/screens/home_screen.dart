@@ -1,17 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:html' as html;
 import '../models/course.dart';
 import '../models/timetable.dart';
 import '../services/timetable_service.dart';
-import '../services/course_utils.dart';
 import '../services/export_service.dart';
 import '../services/clash_detector.dart';
 import '../services/auth_service.dart';
 import '../widgets/courses_tab_widget.dart';
 import '../widgets/timetable_widget.dart';
-import '../widgets/export_timetable_widget.dart';
 import '../widgets/clash_warnings_widget.dart';
 import '../widgets/search_filter_widget.dart';
 import '../widgets/theme_selector_widget.dart';
@@ -21,20 +17,14 @@ import '../services/campus_service.dart';
 import '../services/course_data_service.dart';
 import '../services/user_settings_service.dart';
 import '../services/responsive_service.dart';
-import '../services/auto_load_cdc_service.dart';
-import '../models/export_options.dart';
-import '../widgets/export_options_dialog.dart';
 import '../widgets/campus_selector_widget.dart';
 import '../widgets/disclaimer_widget.dart';
-import 'generator_screen.dart';
-import 'timetables_screen.dart';
 import 'course_guide_screen.dart';
 import 'discipline_electives_screen.dart';
 import 'humanities_electives_screen.dart';
 import 'professors_screen.dart';
 import 'prerequisites_screen.dart';
-import 'add_swap_screen.dart';
-import '../models/timetable.dart' as timetable;
+import '../mixins/timetable_editor_mixin.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -58,7 +48,7 @@ class HomeScreenWithTimetable extends StatefulWidget {
       _HomeScreenWithTimetableState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeScreen> {
   final TimetableService _timetableService = TimetableService();
   final AuthService _authService = AuthService();
   final PageLeaveWarningService _pageLeaveWarning = PageLeaveWarningService();
@@ -69,7 +59,22 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   bool _hasUnsavedChanges = false;
   bool _isSaving = false;
+  bool _showSavedIndicator = false;
+  Timer? _savedIndicatorTimer;
   StreamSubscription<Campus>? _campusSubscription;
+
+  @override Timetable? get currentTimetable => _timetable;
+  @override bool get isSaving => _isSaving;
+  @override set isSaving(bool v) => _isSaving = v;
+  @override bool get hasUnsavedChanges => _hasUnsavedChanges;
+  @override set hasUnsavedChanges(bool v) => _hasUnsavedChanges = v;
+  @override GlobalKey get timetableKey => _timetableKey;
+  @override TimetableService get timetableService => _timetableService;
+  @override AuthService get authService => _authService;
+  @override PageLeaveWarningService get pageLeaveWarning => _pageLeaveWarning;
+  @override void onUnsavedChangesChanged(bool value) {}
+  @override List<Course> get filteredCourses => _filteredCourses;
+  @override set filteredCourses(List<Course> v) => _filteredCourses = v;
 
   @override
   void initState() {
@@ -90,8 +95,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _savedIndicatorTimer?.cancel();
     _campusSubscription?.cancel();
     super.dispose();
+  }
+
+  @override
+  void triggerSavedIndicator() {
+    _savedIndicatorTimer?.cancel();
+    setState(() => _showSavedIndicator = true);
+    _savedIndicatorTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _showSavedIndicator = false);
+    });
   }
 
   Future<void> _loadTimetable() async {
@@ -115,590 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
             'Course data is not available. Please contact the administrator to upload the latest timetable data.';
       }
 
-      _showErrorDialog(errorMessage);
-    }
-  }
-
-  void _onSearchChanged(String query, Map<String, dynamic> filters) {
-    if (_timetable == null) return;
-
-    setState(() {
-      var courses = _timetable!.availableCourses;
-
-      // Apply text search
-      courses = CourseUtils.searchCourses(courses, query);
-
-      // Apply course code filter
-      if (filters['courseCode'] != null &&
-          filters['courseCode'].toString().isNotEmpty) {
-        courses = CourseUtils.filterByCourseCode(
-          courses,
-          filters['courseCode'],
-        );
-      }
-
-      // Apply instructor filter
-      if (filters['instructor'] != null &&
-          filters['instructor'].toString().isNotEmpty) {
-        courses = CourseUtils.filterByInstructor(
-          courses,
-          filters['instructor'],
-        );
-      }
-
-      // Apply credits filter
-      courses = CourseUtils.filterByCredits(
-        courses,
-        filters['minCredits'],
-        filters['maxCredits'],
-      );
-
-      // Apply days filter
-      if (filters['days'] != null &&
-          (filters['days'] as List<DayOfWeek>).isNotEmpty) {
-        courses = CourseUtils.filterByDays(courses, filters['days']);
-      }
-
-      // Apply hours filter
-      if (filters['hours'] != null &&
-          (filters['hours'] as List<int>).isNotEmpty) {
-        courses = CourseUtils.filterByHours(courses, filters['hours']);
-      }
-
-      // Apply exam date filters
-      if (filters['midSemDate'] != null) {
-        courses = CourseUtils.filterByExamDate(
-          courses,
-          filters['midSemDate'],
-          true,
-        );
-      }
-
-      if (filters['endSemDate'] != null) {
-        courses = CourseUtils.filterByExamDate(
-          courses,
-          filters['endSemDate'],
-          false,
-        );
-      }
-
-      _filteredCourses = courses;
-    });
-  }
-
-  void _addSection(String courseCode, String sectionId) {
-    if (_timetable == null) return;
-
-    try {
-      final success = _timetableService.addSectionWithoutSaving(
-        courseCode,
-        sectionId,
-        _timetable!,
-      );
-      if (success) {
-        setState(() {
-          _hasUnsavedChanges = true;
-        });
-        _pageLeaveWarning.enableWarning(true);
-      } else {
-        final course = _timetable!.availableCourses.firstWhere(
-          (c) => c.courseCode == courseCode,
-        );
-        final section = course.sections.firstWhere(
-          (s) => s.sectionId == sectionId,
-        );
-
-        // Check specific reason for failure
-        final existingSameType = _timetable!.selectedSections.where(
-          (s) => s.courseCode == courseCode && s.section.type == section.type,
-        );
-
-        if (existingSameType.isNotEmpty) {
-          _showErrorDialog(
-            'You can only select one ${section.type.name} section per course.\nAlready selected: ${existingSameType.first.sectionId}',
-          );
-        } else {
-          _showErrorDialog(
-            'Cannot add section due to time conflicts or exam clashes',
-          );
-        }
-      }
-    } catch (e) {
-      _showErrorDialog('Error adding section: $e');
-    }
-  }
-
-  void _removeSection(String courseCode, String sectionId) {
-    if (_timetable == null) return;
-
-    try {
-      _timetableService.removeSectionWithoutSaving(
-        courseCode,
-        sectionId,
-        _timetable!,
-      );
-      setState(() {
-        _hasUnsavedChanges = true;
-      });
-    } catch (e) {
-      _showErrorDialog('Error removing section: $e');
-    }
-  }
-
-  void _quickReplaceCourse(Course selectedCourse, Course replacementCourse) {
-    if (_timetable == null) return;
-
-    try {
-      // Remove all sections of the selected course
-      final sectionsToRemove = _timetable!.selectedSections
-          .where((section) => section.courseCode == selectedCourse.courseCode)
-          .toList();
-      
-      for (var section in sectionsToRemove) {
-        _timetableService.removeSectionWithoutSaving(
-          section.courseCode,
-          section.sectionId,
-          _timetable!,
-        );
-      }
-
-      // Add the replacement course (first available section of each type)
-      final replacementSections = replacementCourse.sections;
-      final lectureSection = replacementSections
-          .where((s) => s.type == SectionType.L)
-          .isNotEmpty ? replacementSections.firstWhere((s) => s.type == SectionType.L) : null;
-      
-      final tutorialSection = replacementSections
-          .where((s) => s.type == SectionType.T)
-          .isNotEmpty ? replacementSections.firstWhere((s) => s.type == SectionType.T) : null;
-      
-      final practicalSection = replacementSections
-          .where((s) => s.type == SectionType.P)
-          .isNotEmpty ? replacementSections.firstWhere((s) => s.type == SectionType.P) : null;
-
-      // Add lecture section (required for most courses)
-      if (lectureSection != null) {
-        _timetableService.addSectionWithoutSaving(
-          replacementCourse.courseCode,
-          lectureSection.sectionId,
-          _timetable!,
-        );
-      }
-
-      // Add tutorial section if exists
-      if (tutorialSection != null) {
-        _timetableService.addSectionWithoutSaving(
-          replacementCourse.courseCode,
-          tutorialSection.sectionId,
-          _timetable!,
-        );
-      }
-
-      // Add practical section if exists
-      if (practicalSection != null) {
-        _timetableService.addSectionWithoutSaving(
-          replacementCourse.courseCode,
-          practicalSection.sectionId,
-          _timetable!,
-        );
-      }
-
-      setState(() {
-        _hasUnsavedChanges = true;
-      });
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Replaced ${selectedCourse.courseCode} with ${replacementCourse.courseCode}'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    } catch (e) {
-      _showErrorDialog('Error replacing course: $e');
-    }
-  }
-
-  Future<void> _autoLoadCDCs() async {
-    if (_timetable == null) return;
-
-    try {
-      final autoLoadService = AutoLoadCDCService();
-      final result = await autoLoadService.showBranchYearDialog(context);
-
-      if (result != null) {
-        final selectedSections = await autoLoadService
-            .loadCDCsForBranchAndSemester(
-              branch: result.branch,
-              semester: result.year,
-              availableCourses: _timetable!.availableCourses,
-            );
-
-        if (selectedSections.isNotEmpty) {
-          for (final selectedSection in selectedSections) {
-            _timetableService.addSectionWithoutSaving(
-              selectedSection.courseCode,
-              selectedSection.sectionId,
-              _timetable!,
-            );
-          }
-
-          setState(() {
-            _hasUnsavedChanges = true;
-          });
-          _pageLeaveWarning.enableWarning(true);
-
-          ToastService.showSuccess(
-            'Auto-loaded ${selectedSections.length} CDC courses',
-          );
-        } else {
-          ToastService.showInfo(
-            'No CDC courses found for the selected branch and year',
-          );
-        }
-      }
-    } catch (e) {
-      _showErrorDialog('Error auto-loading CDCs: $e');
-    }
-  }
-
-  Future<void> _clearTimetable() async {
-    if (_timetable == null) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Clear Timetable'),
-            content: const Text(
-              'Are you sure you want to remove all selected courses from your timetable?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Clear All'),
-              ),
-            ],
-          ),
-    );
-
-    if (confirmed == true) {
-      try {
-        _timetable!.selectedSections.clear();
-        _timetable!.clashWarnings.clear();
-        setState(() {
-          _hasUnsavedChanges = true;
-        });
-        _pageLeaveWarning.enableWarning(true);
-
-        ToastService.showSuccess('Timetable cleared successfully');
-      } catch (e) {
-        _showErrorDialog('Error clearing timetable: $e');
-      }
-    }
-  }
-
-  Future<void> _saveTimetable() async {
-    if (_timetable == null || _isSaving) return;
-
-    setState(() {
-      _isSaving = true;
-    });
-
-    try {
-      await _timetableService.saveTimetable(_timetable!);
-      setState(() {
-        _hasUnsavedChanges = false;
-        _isSaving = false;
-      });
-      _pageLeaveWarning.enableWarning(false);
-
-      ToastService.showSuccess('Timetable saved successfully!');
-    } catch (e) {
-      setState(() {
-        _isSaving = false;
-      });
-      _showErrorDialog('Error saving timetable: $e');
-    }
-  }
-
-  void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Error'),
-            content: Text(message),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-    );
-  }
-
-  Future<bool> _showIncompleteWarningDialog() async {
-    return await showDialog<bool>(
-          context: context,
-          builder:
-              (context) => AlertDialog(
-                title: const Text('Incomplete Course Selections'),
-                content: const Text(
-                  'Some courses have incomplete selections (missing lab/tutorial/lecture sections). Do you want to continue exporting anyway?',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('Cancel'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('Continue'),
-                  ),
-                ],
-              ),
-        ) ??
-        false;
-  }
-
-  Future<void> _exportToICS() async {
-    if (_timetable == null || _timetable!.selectedSections.isEmpty) {
-      _showErrorDialog('No sections selected to export');
-      return;
-    }
-
-    try {
-      final filePath = await ExportService.exportToICS(
-        _timetable!.selectedSections,
-        _timetable!.availableCourses,
-      );
-
-      showDialog(
-        context: context,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('Export Successful'),
-              content: Text('Timetable exported to: $filePath'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
-      );
-    } catch (e) {
-      _showErrorDialog('Export failed: $e');
-    }
-  }
-
-  Future<void> _exportToPNG() async {
-    if (_timetable == null || _timetable!.selectedSections.isEmpty) {
-      _showErrorDialog('No sections selected to export');
-      return;
-    }
-
-    // Check for incomplete course selections
-    final warnings = _timetableService.getIncompleteSelectionWarnings(
-      _timetable!.selectedSections,
-      _timetable!.availableCourses,
-    );
-    if (warnings.isNotEmpty) {
-      final shouldContinue = await _showIncompleteWarningDialog();
-      if (!shouldContinue) {
-        return;
-      }
-    }
-
-    // Show export options dialog
-    final ExportOptions? exportOptions = await showDialog<ExportOptions>(
-      context: context,
-      builder: (context) => const ExportOptionsDialog(),
-    );
-
-    if (exportOptions == null) return; // User cancelled
-
-    try {
-      GlobalKey tableExportKey = GlobalKey();
-
-      final overlay = Overlay.of(context);
-      late OverlayEntry overlayEntry;
-
-      overlayEntry = OverlayEntry(
-        builder:
-            (context) => Positioned(
-              left: -10000,
-              top: -10000,
-              child: Material(
-                child: SizedBox(
-                  width: 2000, // Provide enough width for full table
-                  height: 2000, // Provide enough height for full table
-                  child: TimetableWidget(
-                    timetableSlots: _timetableService.generateTimetableSlots(
-                      _timetable!.selectedSections,
-                      _timetable!.availableCourses,
-                    ),
-                    incompleteSelectionWarnings: _timetableService
-                        .getIncompleteSelectionWarnings(
-                          _timetable!.selectedSections,
-                          _timetable!.availableCourses,
-                        ),
-                    size:
-                        TimetableSize
-                            .extraLarge, // Use largest size for best quality
-                    isForExport: true,
-                    tableKey: tableExportKey,
-                    exportOptions: exportOptions,
-                  ),
-                ),
-              ),
-            ),
-      );
-
-      overlay.insert(overlayEntry);
-
-      // Wait for the widget to render
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      final filePath = await ExportService.exportToPNG(tableExportKey);
-
-      overlayEntry.remove();
-
-      showDialog(
-        context: context,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('Export Successful'),
-              content: Text('Timetable downloaded as: $filePath'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
-      );
-    } catch (e) {
-      _showErrorDialog('Export failed: $e');
-    }
-  }
-
-  Future<void> _openGenerator() async {
-    final result = await Navigator.push<List<timetable.SelectedSection>>(
-      context,
-      MaterialPageRoute(builder: (context) => const GeneratorScreen()),
-    );
-
-    if (result != null && _timetable != null) {
-      try {
-        // Clear current selections
-        _timetable!.selectedSections.clear();
-
-        // Add new selections from generator
-        for (final section in result) {
-          await _timetableService.addSection(
-            section.courseCode,
-            section.sectionId,
-            _timetable!,
-          );
-        }
-
-        setState(() {});
-
-        ToastService.showSuccess('Generated timetable applied successfully!');
-      } catch (e) {
-        _showErrorDialog('Error applying generated timetable: $e');
-      }
-    }
-  }
-
-  void _openAddSwap() async {
-    if (_timetable == null) return;
-
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder:
-            (context) => AddSwapScreen(
-              currentSelectedSections: _timetable!.selectedSections,
-              availableCourses: _timetable!.availableCourses,
-              currentCampus: CampusService.currentCampusCode,
-              onTimetableUpdated: (updatedSections) {
-                // Update the main timetable with the new sections
-                setState(() {
-                  _timetable!.selectedSections.clear();
-                  _timetable!.selectedSections.addAll(updatedSections);
-                  _hasUnsavedChanges = true;
-                });
-                _pageLeaveWarning.enableWarning(true);
-              },
-            ),
-      ),
-    );
-  }
-
-  Future<void> _openGitHub() async {
-    // Replace with your GitHub repository URL
-    const String githubUrl = 'https://github.com/RCR0101/timetable_maker';
-
-    try {
-      // For web, open in new tab
-      if (kIsWeb) {
-        html.window.open(githubUrl, '_blank');
-      } else {
-        // For mobile, you'd need url_launcher package
-        print('Open GitHub: $githubUrl');
-      }
-    } catch (e) {
-      print('Error opening GitHub: $e');
-    }
-  }
-
-  Future<void> _logout() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Sign Out'),
-            content: const Text('Are you sure you want to sign out?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Sign Out'),
-              ),
-            ],
-          ),
-    );
-
-    if (confirmed == true) {
-      try {
-        await _authService.signOut();
-        // Force navigation back to root since we're deep in navigation stack
-        if (mounted) {
-          Navigator.of(context).popUntil((route) => route.isFirst);
-        }
-      } catch (e) {
-        _showErrorDialog('Error signing out: $e');
-      }
+      showErrorDialog(errorMessage);
     }
   }
 
@@ -754,6 +186,18 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             centerTitle: true,
             actions: [
+              if (_showSavedIndicator)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.green, size: 18),
+                      const SizedBox(width: 4),
+                      Text('Saved', style: TextStyle(color: Colors.green, fontSize: 13)),
+                    ],
+                  ),
+                ),
               CampusSelectorWidget(
                 onCampusChanged: (campus) {
                   // Clear course cache and reload timetable when campus changes
@@ -862,12 +306,12 @@ class _HomeScreenState extends State<HomeScreen> {
               if (isWideScreen) ...[
                 IconButton(
                   icon: const Icon(Icons.calendar_today),
-                  onPressed: _exportToICS,
+                  onPressed: exportToICS,
                   tooltip: 'Export to ICS',
                 ),
                 IconButton(
                   icon: const Icon(Icons.image),
-                  onPressed: _exportToPNG,
+                  onPressed: exportToPNG,
                   tooltip: 'Export to PNG',
                 ),
                 IconButton(
@@ -884,9 +328,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 PopupMenuButton<String>(
                   onSelected: (value) {
                     if (value == 'export_ics') {
-                      _exportToICS();
+                      exportToICS();
                     } else if (value == 'export_png') {
-                      _exportToPNG();
+                      exportToPNG();
                     } else if (value == 'export_tt') {
                       _exportToTTWithFilePicker();
                     } else if (value == 'import_tt') {
@@ -932,7 +376,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               IconButton(
                 icon: const Icon(Icons.star_border),
-                onPressed: () => _openGitHub(),
+                onPressed: () => openGitHub(),
                 tooltip: 'Star on GitHub',
               ),
               // User info and logout
@@ -940,7 +384,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 PopupMenuButton<String>(
                   onSelected: (value) {
                     if (value == 'logout') {
-                      _logout();
+                      logout();
                     }
                   },
                   itemBuilder:
@@ -1075,7 +519,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       FloatingActionButton.extended(
-                        onPressed: _openAddSwap,
+                        onPressed: openAddSwap,
                         icon: const Icon(Icons.swap_horiz),
                         label: const Text('Add/Swap'),
                         backgroundColor:
@@ -1086,7 +530,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(width: 8),
                       FloatingActionButton.extended(
-                        onPressed: _openGenerator,
+                        onPressed: openGenerator,
                         icon: const Icon(Icons.auto_awesome_mosaic),
                         label: const Text('TT Generator'),
                         backgroundColor: Theme.of(context).colorScheme.primary,
@@ -1100,7 +544,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       FloatingActionButton(
-                        onPressed: _openAddSwap,
+                        onPressed: openAddSwap,
                         backgroundColor:
                             Theme.of(context).colorScheme.secondary,
                         foregroundColor:
@@ -1111,7 +555,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 8),
                       FloatingActionButton(
-                        onPressed: _openGenerator,
+                        onPressed: openGenerator,
                         backgroundColor: Theme.of(context).colorScheme.primary,
                         foregroundColor:
                             Theme.of(context).colorScheme.onPrimary,
@@ -1130,7 +574,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildCoursesPanel() {
     return Column(
       children: [
-        SearchFilterWidget(onSearchChanged: _onSearchChanged),
+        SearchFilterWidget(onSearchChanged: onSearchChanged),
         Expanded(
           child: Card(
             margin: const EdgeInsets.all(8),
@@ -1139,9 +583,9 @@ class _HomeScreenState extends State<HomeScreen> {
               selectedSections: _timetable!.selectedSections,
               onSectionToggle: (courseCode, sectionId, isSelected) {
                 if (isSelected) {
-                  _removeSection(courseCode, sectionId);
+                  removeSection(courseCode, sectionId);
                 } else {
-                  _addSection(courseCode, sectionId);
+                  addSection(courseCode, sectionId);
                 }
               },
             ),
@@ -1178,15 +622,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       _timetable!.selectedSections,
                       _timetable!.availableCourses,
                     ),
-                onClear: _clearTimetable,
-                onRemoveSection: _removeSection,
+                onClear: clearTimetable,
+                onRemoveSection: removeSection,
                 size: _userSettingsService.getTimetableSize(
                   _timetable!.id,
                 ),
                 hasUnsavedChanges: _hasUnsavedChanges,
                 isSaving: _isSaving,
-                onSave: _authService.isGuest ? null : _saveTimetable,
-                onAutoLoadCDCs: _autoLoadCDCs,
+                onSave: _authService.isGuest ? null : saveTimetable,
+                onAutoLoadCDCs: autoLoadCDCs,
                 onSizeChanged: (newSize) {
                   _userSettingsService.updateTimetableSettings(
                     _timetable!.id,
@@ -1206,7 +650,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
                 availableCourses: _timetable!.availableCourses,
                 selectedSections: _timetable!.selectedSections,
-                onQuickReplace: _quickReplaceCourse,
+                onQuickReplace: quickReplaceCourse,
               ),
             ),
           ),
@@ -1288,13 +732,13 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
     } catch (e) {
-      _showErrorDialog('Import failed: $e');
+      showErrorDialog('Import failed: $e');
     }
   }
 
   Future<void> _exportToTTWithFilePicker() async {
     if (_timetable == null || _timetable!.selectedSections.isEmpty) {
-      _showErrorDialog('No sections selected to export');
+      showErrorDialog('No sections selected to export');
       return;
     }
 
@@ -1318,12 +762,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
       );
     } catch (e) {
-      _showErrorDialog('Export failed: $e');
+      showErrorDialog('Export failed: $e');
     }
   }
 }
 
-class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
+class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with TimetableEditorMixin<HomeScreenWithTimetable> {
   final TimetableService _timetableService = TimetableService();
   final AuthService _authService = AuthService();
   final PageLeaveWarningService _pageLeaveWarning = PageLeaveWarningService();
@@ -1334,6 +778,21 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
   final bool _isLoading = false;
   bool _hasUnsavedChanges = false;
   bool _isSaving = false;
+  bool _showSavedIndicator = false;
+  Timer? _savedIndicatorTimer;
+
+  @override Timetable? get currentTimetable => _timetable;
+  @override bool get isSaving => _isSaving;
+  @override set isSaving(bool v) => _isSaving = v;
+  @override bool get hasUnsavedChanges => _hasUnsavedChanges;
+  @override set hasUnsavedChanges(bool v) => _hasUnsavedChanges = v;
+  @override GlobalKey get timetableKey => _timetableKey;
+  @override TimetableService get timetableService => _timetableService;
+  @override AuthService get authService => _authService;
+  @override PageLeaveWarningService get pageLeaveWarning => _pageLeaveWarning;
+  @override void onUnsavedChangesChanged(bool value) => widget.onUnsavedChangesChanged?.call(value);
+  @override List<Course> get filteredCourses => _filteredCourses;
+  @override set filteredCourses(List<Course> v) => _filteredCourses = v;
 
   @override
   void initState() {
@@ -1343,586 +802,25 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
     _initializeUserSettings();
   }
 
+  @override
+  void dispose() {
+    _savedIndicatorTimer?.cancel();
+    super.dispose();
+  }
+
   Future<void> _initializeUserSettings() async {
     await _userSettingsService.initializeSettings();
   }
 
-  void _onSearchChanged(String query, Map<String, dynamic> filters) {
-    setState(() {
-      var courses = _timetable.availableCourses;
-
-      // Apply text search
-      courses = CourseUtils.searchCourses(courses, query);
-
-      // Apply course code filter
-      if (filters['courseCode'] != null &&
-          filters['courseCode'].toString().isNotEmpty) {
-        courses = CourseUtils.filterByCourseCode(
-          courses,
-          filters['courseCode'],
-        );
-      }
-
-      // Apply instructor filter
-      if (filters['instructor'] != null &&
-          filters['instructor'].toString().isNotEmpty) {
-        courses = CourseUtils.filterByInstructor(
-          courses,
-          filters['instructor'],
-        );
-      }
-
-      // Apply credits filter
-      courses = CourseUtils.filterByCredits(
-        courses,
-        filters['minCredits'],
-        filters['maxCredits'],
-      );
-
-      // Apply days filter
-      if (filters['days'] != null &&
-          (filters['days'] as List<DayOfWeek>).isNotEmpty) {
-        courses = CourseUtils.filterByDays(courses, filters['days']);
-      }
-
-      // Apply hours filter
-      if (filters['hours'] != null &&
-          (filters['hours'] as List<int>).isNotEmpty) {
-        courses = CourseUtils.filterByHours(courses, filters['hours']);
-      }
-
-      // Apply exam date filters
-      if (filters['midSemDate'] != null) {
-        courses = CourseUtils.filterByExamDate(
-          courses,
-          filters['midSemDate'],
-          true,
-        );
-      }
-
-      if (filters['endSemDate'] != null) {
-        courses = CourseUtils.filterByExamDate(
-          courses,
-          filters['endSemDate'],
-          false,
-        );
-      }
-
-      _filteredCourses = courses;
+  @override
+  void triggerSavedIndicator() {
+    _savedIndicatorTimer?.cancel();
+    setState(() => _showSavedIndicator = true);
+    _savedIndicatorTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _showSavedIndicator = false);
     });
   }
 
-  void _addSection(String courseCode, String sectionId) {
-    try {
-      final success = _timetableService.addSectionWithoutSaving(
-        courseCode,
-        sectionId,
-        _timetable,
-      );
-      if (success) {
-        setState(() {
-          _hasUnsavedChanges = true;
-        });
-        widget.onUnsavedChangesChanged?.call(true);
-        _pageLeaveWarning.enableWarning(true);
-      } else {
-        final course = _timetable.availableCourses.firstWhere(
-          (c) => c.courseCode == courseCode,
-        );
-        final section = course.sections.firstWhere(
-          (s) => s.sectionId == sectionId,
-        );
-
-        // Check specific reason for failure
-        final existingSameType = _timetable.selectedSections.where(
-          (s) => s.courseCode == courseCode && s.section.type == section.type,
-        );
-
-        if (existingSameType.isNotEmpty) {
-          _showErrorDialog(
-            'You can only select one ${section.type.name} section per course.\nAlready selected: ${existingSameType.first.sectionId}',
-          );
-        } else {
-          _showErrorDialog(
-            'Cannot add section due to time conflicts or exam clashes',
-          );
-        }
-      }
-    } catch (e) {
-      _showErrorDialog('Error adding section: $e');
-    }
-  }
-
-  void _removeSection(String courseCode, String sectionId) {
-    try {
-      _timetableService.removeSectionWithoutSaving(
-        courseCode,
-        sectionId,
-        _timetable,
-      );
-      setState(() {
-        _hasUnsavedChanges = true;
-      });
-      widget.onUnsavedChangesChanged?.call(true);
-    } catch (e) {
-      _showErrorDialog('Error removing section: $e');
-    }
-  }
-
-  void _quickReplaceCourse(Course selectedCourse, Course replacementCourse) {
-    try {
-      // Remove all sections of the selected course
-      final sectionsToRemove = _timetable.selectedSections
-          .where((section) => section.courseCode == selectedCourse.courseCode)
-          .toList();
-      
-      for (var section in sectionsToRemove) {
-        _timetableService.removeSectionWithoutSaving(
-          section.courseCode,
-          section.sectionId,
-          _timetable,
-        );
-      }
-
-      // Add the replacement course (first available section of each type)
-      final replacementSections = replacementCourse.sections;
-      final lectureSection = replacementSections
-          .where((s) => s.type == SectionType.L)
-          .isNotEmpty ? replacementSections.firstWhere((s) => s.type == SectionType.L) : null;
-      
-      final tutorialSection = replacementSections
-          .where((s) => s.type == SectionType.T)
-          .isNotEmpty ? replacementSections.firstWhere((s) => s.type == SectionType.T) : null;
-      
-      final practicalSection = replacementSections
-          .where((s) => s.type == SectionType.P)
-          .isNotEmpty ? replacementSections.firstWhere((s) => s.type == SectionType.P) : null;
-
-      // Add lecture section (required for most courses)
-      if (lectureSection != null) {
-        _timetableService.addSectionWithoutSaving(
-          replacementCourse.courseCode,
-          lectureSection.sectionId,
-          _timetable,
-        );
-      }
-
-      // Add tutorial section if exists
-      if (tutorialSection != null) {
-        _timetableService.addSectionWithoutSaving(
-          replacementCourse.courseCode,
-          tutorialSection.sectionId,
-          _timetable,
-        );
-      }
-
-      // Add practical section if exists
-      if (practicalSection != null) {
-        _timetableService.addSectionWithoutSaving(
-          replacementCourse.courseCode,
-          practicalSection.sectionId,
-          _timetable,
-        );
-      }
-
-      setState(() {
-        _hasUnsavedChanges = true;
-      });
-      widget.onUnsavedChangesChanged?.call(true);
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Replaced ${selectedCourse.courseCode} with ${replacementCourse.courseCode}'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    } catch (e) {
-      _showErrorDialog('Error replacing course: $e');
-    }
-  }
-
-  Future<void> _autoLoadCDCs() async {
-    try {
-      final autoLoadService = AutoLoadCDCService();
-      final result = await autoLoadService.showBranchYearDialog(context);
-
-      if (result != null) {
-        final selectedSections = await autoLoadService
-            .loadCDCsForBranchAndSemester(
-              branch: result.branch,
-              semester: result.year,
-              availableCourses: _timetable.availableCourses,
-            );
-
-        if (selectedSections.isNotEmpty) {
-          for (final selectedSection in selectedSections) {
-            _timetableService.addSectionWithoutSaving(
-              selectedSection.courseCode,
-              selectedSection.sectionId,
-              _timetable,
-            );
-          }
-
-          setState(() {
-            _hasUnsavedChanges = true;
-          });
-          widget.onUnsavedChangesChanged?.call(true);
-          _pageLeaveWarning.enableWarning(true);
-
-          ToastService.showSuccess(
-            'Auto-loaded ${selectedSections.length} CDC courses',
-          );
-        } else {
-          ToastService.showInfo(
-            'No CDC courses found for the selected branch and year',
-          );
-        }
-      }
-    } catch (e) {
-      _showErrorDialog('Error auto-loading CDCs: $e');
-    }
-  }
-
-  Future<void> _clearTimetable() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Clear Timetable'),
-            content: const Text(
-              'Are you sure you want to remove all selected courses from your timetable?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Clear All'),
-              ),
-            ],
-          ),
-    );
-
-    if (confirmed == true) {
-      try {
-        _timetable.selectedSections.clear();
-        _timetable.clashWarnings.clear();
-        setState(() {
-          _hasUnsavedChanges = true;
-        });
-        widget.onUnsavedChangesChanged?.call(true);
-        _pageLeaveWarning.enableWarning(true);
-
-        ToastService.showSuccess('Timetable cleared successfully');
-      } catch (e) {
-        _showErrorDialog('Error clearing timetable: $e');
-      }
-    }
-  }
-
-  Future<void> _saveTimetable() async {
-    if (_isSaving) return;
-
-    setState(() {
-      _isSaving = true;
-    });
-
-    try {
-      await _timetableService.saveTimetable(_timetable);
-      setState(() {
-        _hasUnsavedChanges = false;
-        _isSaving = false;
-      });
-      widget.onUnsavedChangesChanged?.call(false);
-      _pageLeaveWarning.enableWarning(false);
-
-      ToastService.showSuccess('Timetable saved successfully!');
-    } catch (e) {
-      setState(() {
-        _isSaving = false;
-      });
-      _showErrorDialog('Error saving timetable: $e');
-    }
-  }
-
-  void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Error'),
-            content: Text(message),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-    );
-  }
-
-  Future<bool> _showIncompleteWarningDialog() async {
-    return await showDialog<bool>(
-          context: context,
-          builder:
-              (context) => AlertDialog(
-                title: const Text('Incomplete Course Selections'),
-                content: const Text(
-                  'Some courses have incomplete selections (missing lab/tutorial/lecture sections). Do you want to continue exporting anyway?',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('Cancel'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('Continue'),
-                  ),
-                ],
-              ),
-        ) ??
-        false;
-  }
-
-  Future<void> _exportToICS() async {
-    if (_timetable.selectedSections.isEmpty) {
-      _showErrorDialog('No sections selected to export');
-      return;
-    }
-
-    try {
-      final filePath = await ExportService.exportToICS(
-        _timetable.selectedSections,
-        _timetable.availableCourses,
-      );
-
-      showDialog(
-        context: context,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('Export Successful'),
-              content: Text('Timetable exported to: $filePath'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
-      );
-    } catch (e) {
-      _showErrorDialog('Export failed: $e');
-    }
-  }
-
-  Future<void> _exportToPNG() async {
-    if (_timetable.selectedSections.isEmpty) {
-      _showErrorDialog('No sections selected to export');
-      return;
-    }
-
-    // Check for incomplete course selections
-    final warnings = _timetableService.getIncompleteSelectionWarnings(
-      _timetable.selectedSections,
-      _timetable.availableCourses,
-    );
-    if (warnings.isNotEmpty) {
-      final shouldContinue = await _showIncompleteWarningDialog();
-      if (!shouldContinue) {
-        return;
-      }
-    }
-
-    // Show export options dialog
-    final ExportOptions? exportOptions = await showDialog<ExportOptions>(
-      context: context,
-      builder: (context) => const ExportOptionsDialog(),
-    );
-
-    if (exportOptions == null) return; // User cancelled
-
-    try {
-      GlobalKey tableExportKey = GlobalKey();
-
-      final overlay = Overlay.of(context);
-      late OverlayEntry overlayEntry;
-
-      overlayEntry = OverlayEntry(
-        builder:
-            (context) => Positioned(
-              left: -10000,
-              top: -10000,
-              child: Material(
-                child: SizedBox(
-                  width: 2000, // Provide enough width for full table
-                  height: 2000, // Provide enough height for full table
-                  child: TimetableWidget(
-                    timetableSlots: _timetableService.generateTimetableSlots(
-                      _timetable.selectedSections,
-                      _timetable.availableCourses,
-                    ),
-                    incompleteSelectionWarnings: _timetableService
-                        .getIncompleteSelectionWarnings(
-                          _timetable.selectedSections,
-                          _timetable.availableCourses,
-                        ),
-                    size:
-                        TimetableSize
-                            .extraLarge, // Use largest size for best quality
-                    isForExport: true,
-                    tableKey: tableExportKey,
-                    exportOptions: exportOptions,
-                  ),
-                ),
-              ),
-            ),
-      );
-
-      overlay.insert(overlayEntry);
-
-      // Wait for the widget to render
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      final filePath = await ExportService.exportToPNG(tableExportKey);
-
-      overlayEntry.remove();
-
-      showDialog(
-        context: context,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('Export Successful'),
-              content: Text('Timetable downloaded as: $filePath'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
-      );
-    } catch (e) {
-      _showErrorDialog('Export failed: $e');
-    }
-  }
-
-  Future<void> _openGenerator() async {
-    final result = await Navigator.push<List<timetable.SelectedSection>>(
-      context,
-      MaterialPageRoute(builder: (context) => const GeneratorScreen()),
-    );
-
-    if (result != null) {
-      try {
-        // Clear current selections
-        _timetable.selectedSections.clear();
-
-        // Add new selections from generator
-        for (final section in result) {
-          await _timetableService.addSection(
-            section.courseCode,
-            section.sectionId,
-            _timetable,
-          );
-        }
-
-        setState(() {});
-        await _timetableService.saveTimetable(_timetable);
-
-        ToastService.showSuccess('Generated timetable applied successfully!');
-      } catch (e) {
-        _showErrorDialog('Error applying generated timetable: $e');
-      }
-    }
-  }
-
-  void _openAddSwap() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder:
-            (context) => AddSwapScreen(
-              currentSelectedSections: _timetable.selectedSections,
-              availableCourses: _timetable.availableCourses,
-              currentCampus: CampusService.currentCampusCode,
-              onTimetableUpdated: (updatedSections) {
-                // Update the main timetable with the new sections
-                setState(() {
-                  _timetable.selectedSections.clear();
-                  _timetable.selectedSections.addAll(updatedSections);
-                  _hasUnsavedChanges = true;
-                });
-                widget.onUnsavedChangesChanged?.call(true);
-                _pageLeaveWarning.enableWarning(true);
-              },
-            ),
-      ),
-    );
-  }
-
-  Future<void> _openGitHub() async {
-    // Replace with your GitHub repository URL
-    const String githubUrl = 'https://github.com/RCR0101/timetable_maker';
-
-    try {
-      // For web, open in new tab
-      if (kIsWeb) {
-        html.window.open(githubUrl, '_blank');
-      } else {
-        // For mobile, you'd need url_launcher package
-        print('Open GitHub: $githubUrl');
-      }
-    } catch (e) {
-      print('Error opening GitHub: $e');
-    }
-  }
-
-  Future<void> _logout() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Sign Out'),
-            content: const Text('Are you sure you want to sign out?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Sign Out'),
-              ),
-            ],
-          ),
-    );
-
-    if (confirmed == true) {
-      try {
-        await _authService.signOut();
-        // Force navigation back to root since we're deep in navigation stack
-        if (mounted) {
-          Navigator.of(context).popUntil((route) => route.isFirst);
-        }
-      } catch (e) {
-        _showErrorDialog('Error signing out: $e');
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1954,6 +852,18 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                       )
                       : null,
             actions: [
+              if (_showSavedIndicator)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.green, size: 18),
+                      const SizedBox(width: 4),
+                      Text('Saved', style: TextStyle(color: Colors.green, fontSize: 13)),
+                    ],
+                  ),
+                ),
               CampusSelectorWidget(
                 onCampusChanged: (campus) async {
                   // Clear course cache when campus changes
@@ -2086,12 +996,12 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
               if (isWideScreen) ...[
                 IconButton(
                   icon: const Icon(Icons.calendar_today),
-                  onPressed: _exportToICS,
+                  onPressed: exportToICS,
                   tooltip: 'Export to ICS',
                 ),
                 IconButton(
                   icon: const Icon(Icons.image),
-                  onPressed: _exportToPNG,
+                  onPressed: exportToPNG,
                   tooltip: 'Export to PNG',
                 ),
                 IconButton(
@@ -2108,9 +1018,9 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                 PopupMenuButton<String>(
                   onSelected: (value) {
                     if (value == 'export_ics') {
-                      _exportToICS();
+                      exportToICS();
                     } else if (value == 'export_png') {
-                      _exportToPNG();
+                      exportToPNG();
                     } else if (value == 'export_tt') {
                       _exportToTTWithFilePicker();
                     } else if (value == 'import_tt') {
@@ -2156,7 +1066,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                 ),
               IconButton(
                 icon: const Icon(Icons.star_border),
-                onPressed: () => _openGitHub(),
+                onPressed: () => openGitHub(),
                 tooltip: 'Star on GitHub',
               ),
               // User info and logout
@@ -2164,7 +1074,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                 PopupMenuButton<String>(
                   onSelected: (value) {
                     if (value == 'logout') {
-                      _logout();
+                      logout();
                     }
                   },
                   itemBuilder:
@@ -2299,7 +1209,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       FloatingActionButton.extended(
-                        onPressed: _openAddSwap,
+                        onPressed: openAddSwap,
                         icon: const Icon(Icons.swap_horiz),
                         label: const Text('Add/Swap'),
                         backgroundColor:
@@ -2310,7 +1220,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                       ),
                       const SizedBox(width: 8),
                       FloatingActionButton.extended(
-                        onPressed: _openGenerator,
+                        onPressed: openGenerator,
                         icon: const Icon(Icons.auto_awesome_mosaic),
                         label: const Text('TT Generator'),
                         backgroundColor: Theme.of(context).colorScheme.primary,
@@ -2324,7 +1234,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       FloatingActionButton(
-                        onPressed: _openAddSwap,
+                        onPressed: openAddSwap,
                         backgroundColor:
                             Theme.of(context).colorScheme.secondary,
                         foregroundColor:
@@ -2335,7 +1245,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                       ),
                       const SizedBox(height: 8),
                       FloatingActionButton(
-                        onPressed: _openGenerator,
+                        onPressed: openGenerator,
                         backgroundColor: Theme.of(context).colorScheme.primary,
                         foregroundColor:
                             Theme.of(context).colorScheme.onPrimary,
@@ -2355,7 +1265,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
   Widget _buildCoursesPanel() {
     return Column(
       children: [
-        SearchFilterWidget(onSearchChanged: _onSearchChanged),
+        SearchFilterWidget(onSearchChanged: onSearchChanged),
         Expanded(
           child: Card(
             margin: const EdgeInsets.all(8),
@@ -2364,9 +1274,9 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
               selectedSections: _timetable.selectedSections,
               onSectionToggle: (courseCode, sectionId, isSelected) {
                 if (isSelected) {
-                  _removeSection(courseCode, sectionId);
+                  removeSection(courseCode, sectionId);
                 } else {
-                  _addSection(courseCode, sectionId);
+                  addSection(courseCode, sectionId);
                 }
               },
             ),
@@ -2399,13 +1309,13 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                       _timetable.selectedSections,
                       _timetable.availableCourses,
                     ),
-                onClear: _clearTimetable,
-                onRemoveSection: _removeSection,
+                onClear: clearTimetable,
+                onRemoveSection: removeSection,
                 size: _userSettingsService.getTimetableSize(_timetable.id),
                 hasUnsavedChanges: _hasUnsavedChanges,
                 isSaving: _isSaving,
-                onSave: _authService.isGuest ? null : _saveTimetable,
-                onAutoLoadCDCs: _autoLoadCDCs,
+                onSave: _authService.isGuest ? null : saveTimetable,
+                onAutoLoadCDCs: autoLoadCDCs,
                 onSizeChanged: (newSize) {
                   _userSettingsService.updateTimetableSettings(
                     _timetable.id,
@@ -2425,7 +1335,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
                 },
                 availableCourses: _timetable.availableCourses,
                 selectedSections: _timetable.selectedSections,
-                onQuickReplace: _quickReplaceCourse,
+                onQuickReplace: quickReplaceCourse,
               ),
             ),
           ),
@@ -2512,13 +1422,13 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
         );
       }
     } catch (e) {
-      _showErrorDialog('Import failed: $e');
+      showErrorDialog('Import failed: $e');
     }
   }
 
   Future<void> _exportToTTWithFilePicker() async {
     if (_timetable == null || _timetable!.selectedSections.isEmpty) {
-      _showErrorDialog('No sections selected to export');
+      showErrorDialog('No sections selected to export');
       return;
     }
 
@@ -2541,13 +1451,13 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
             ),
       );
     } catch (e) {
-      _showErrorDialog('Export failed: $e');
+      showErrorDialog('Export failed: $e');
     }
   }
 
   Future<void> _exportToTT() async {
     if (_timetable == null || _timetable!.selectedSections.isEmpty) {
-      _showErrorDialog('No sections selected to export');
+      showErrorDialog('No sections selected to export');
       return;
     }
 
@@ -2568,7 +1478,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> {
             ),
       );
     } catch (e) {
-      _showErrorDialog('Export failed: $e');
+      showErrorDialog('Export failed: $e');
     }
   }
 }

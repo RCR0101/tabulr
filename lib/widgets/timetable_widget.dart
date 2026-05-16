@@ -4,6 +4,7 @@ import '../models/timetable.dart';
 import '../models/export_options.dart';
 import '../services/responsive_service.dart';
 import '../screens/quick_replace_screen.dart';
+import '../utils/datetime_utils.dart';
 
 enum TimetableSize {
   compact,
@@ -1174,16 +1175,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     return rows;
   }
 
-  String _getDayName(DayOfWeek day) {
-    switch (day) {
-      case DayOfWeek.M: return 'Monday';
-      case DayOfWeek.T: return 'Tuesday';
-      case DayOfWeek.W: return 'Wednesday';
-      case DayOfWeek.Th: return 'Thursday';
-      case DayOfWeek.F: return 'Friday';
-      case DayOfWeek.S: return 'Saturday';
-    }
-  }
+  String _getDayName(DayOfWeek day) => getDayName(day);
 
   Widget _buildTimetableCell(BuildContext context, TimetableSlot slot, int hour, DayOfWeek day) {
     // Find all slots for the same course to show in hover

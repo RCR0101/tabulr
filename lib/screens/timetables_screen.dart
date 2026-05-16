@@ -15,6 +15,7 @@ import '../widgets/theme_selector_widget.dart';
 import '../widgets/campus_selector_widget.dart';
 import '../widgets/disclaimer_widget.dart';
 import '../widgets/app_drawer.dart';
+import '../widgets/error_dialog.dart';
 import 'home_screen.dart';
 import 'course_guide_screen.dart';
 import 'timetable_comparison_screen.dart';
@@ -306,20 +307,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   }
 
   void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Error'),
-            content: Text(message),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-    );
+    ErrorDialog.show(context, message);
   }
 
   String _formatDate(DateTime date) {

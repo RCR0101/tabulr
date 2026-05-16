@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/cgpa_service.dart';
-import '../services/all_courses_service.dart';
+import '../services/course_catalog_service.dart';
 import '../services/auth_service.dart';
 import '../services/responsive_service.dart';
 import '../services/timetable_service.dart';
@@ -17,6 +17,8 @@ import '../models/course.dart';
 import '../models/timetable.dart';
 import '../widgets/app_drawer.dart';
 import 'grade_planner_screen.dart';
+import '../utils/grade_utils.dart' as grade_utils;
+import '../utils/branch_constants.dart' as constants;
 
 class CGPACalculatorScreen extends StatefulWidget {
   const CGPACalculatorScreen({super.key});
@@ -28,7 +30,7 @@ class CGPACalculatorScreen extends StatefulWidget {
 class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     with SingleTickerProviderStateMixin {
   final CGPAService _cgpaService = CGPAService();
-  final AllCoursesService _coursesService = AllCoursesService();
+  final CourseCatalogService _coursesService = CourseCatalogService();
   final AuthService _authService = AuthService();
   final TimetableService _timetableService = TimetableService();
 
@@ -376,24 +378,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       if (targetSemester != null) {
         print('Found target semester: ${targetSemester.name}');
         // Get the full branch name for searching
-        final branchCodeToName = {
-          'A1': 'Chemical',
-          'A2': 'Civil',
-          'A3': 'Electrical and Electronics',
-          'A4': 'Mechanical',
-          'A5': 'Pharma',
-          'A7': 'Computer Science',
-          'A8': 'Electronics and Instrumentation',
-          'AA': 'Electronics and Communication',
-          'AB': 'Manufacturing',
-          'AD': 'Math and Computing',
-          'AJ': 'Biotechnology',
-          'B1': 'MSc Biology',
-          'B2': 'MSc Chemistry',
-          'B3': 'MSc Economics',
-          'B4': 'MSc Mathematics',
-          'B5': 'MSc Physics',
-        };
+        final branchCodeToName = constants.branchCodeToName;
         
         final branchFullName = branchCodeToName[result.branch];
         
@@ -2188,36 +2173,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     );
   }
 
-  Color _getGradeColor(String grade) {
-    switch (grade) {
-      case 'A':
-        return const Color(0xFF0D9488); // Vibrant teal-green (excellence)
-      case 'A-':
-        return const Color(0xFF14B8A6); // Bright teal (very good)
-      case 'B':
-        return const Color(0xFF3B82F6); // Vivid blue (good)
-      case 'B-':
-        return const Color(0xFF60A5FA); // Sky blue (good)
-      case 'C':
-        return const Color(0xFFF59E0B); // Bright amber (average)
-      case 'C-':
-        return const Color(0xFFFBBF24); // Golden yellow (average)
-      case 'D':
-        return const Color(0xFFEF4444); // Vibrant red (below average)
-      case 'D-':
-        return const Color(0xFFF87171); // Bright red (poor)
-      case 'E':
-        return const Color(0xFFDC2626); // Deep red (fail)
-      case 'GD':
-        return const Color(0xFF06B6D4); // Cyan (deferred)
-      case 'PR':
-        return const Color(0xFFA855F7); // Vivid purple (progress)
-      case 'NC':
-        return const Color(0xFF6B7280); // Neutral grey (no credit)
-      default:
-        return Theme.of(context).colorScheme.onSurface;
-    }
-  }
+  Color _getGradeColor(String grade) => grade_utils.getGradeColor(grade);
 
   String _getGradeDescription(String grade) {
     switch (grade) {
@@ -3093,33 +3049,7 @@ class _PerformanceSheetPreviewDialog extends StatelessWidget {
     );
   }
 
-  Color _getGradeColor(String grade, BuildContext context) {
-    switch (grade) {
-      case 'A':
-        return Colors.green.shade700;
-      case 'A-':
-        return Colors.green.shade500;
-      case 'B':
-        return Colors.blue.shade600;
-      case 'B-':
-        return Colors.blue.shade400;
-      case 'C':
-        return Colors.orange.shade600;
-      case 'C-':
-        return Colors.orange.shade400;
-      case 'D':
-        return Colors.red.shade400;
-      case 'D-':
-      case 'E':
-      case 'NC':
-        return Colors.red.shade700;
-      case 'GD':
-      case 'PR':
-        return Colors.grey;
-      default:
-        return Colors.grey;
-    }
-  }
+  Color _getGradeColor(String grade, BuildContext context) => grade_utils.getGradeColor(grade);
 }
 
 class _SummaryItem extends StatelessWidget {

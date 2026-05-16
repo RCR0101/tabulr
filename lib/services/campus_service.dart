@@ -66,14 +66,9 @@ class CampusService {
   static Future<void> initializeCampus() async {
     final prefs = await SharedPreferences.getInstance();
     final campusIndex = prefs.getInt(_campusKey) ?? Campus.hyderabad.index;
-    print('CampusService: Loading campus with index $campusIndex');
-    
-    // Validate the index to prevent out-of-bounds errors
     if (campusIndex >= 0 && campusIndex < Campus.values.length) {
       _currentCampus = Campus.values[campusIndex];
-      print('CampusService: Loaded campus ${_currentCampus.toString()}');
     } else {
-      print('CampusService: Invalid campus index $campusIndex, defaulting to Hyderabad');
       _currentCampus = Campus.hyderabad;
     }
     
@@ -83,7 +78,6 @@ class CampusService {
   static Future<void> setCampus(Campus campus) async {
     _currentCampus = campus;
     final prefs = await SharedPreferences.getInstance();
-    print('CampusService: Saving campus ${campus.toString()} with index ${campus.index}');
     await prefs.setInt(_campusKey, campus.index);
     _campusChangeController.add(campus); // Notify listeners
   }

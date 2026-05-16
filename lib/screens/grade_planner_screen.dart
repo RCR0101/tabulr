@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/cgpa_data.dart';
 import '../services/responsive_service.dart';
+import '../utils/grade_utils.dart' as grade_utils;
 
 class GradePlannerScreen extends StatefulWidget {
   final CGPAData cgpaData;
@@ -354,30 +355,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
     );
   }
 
-  Color _getGradeColor(String grade) {
-    switch (grade) {
-      case 'A':
-        return Colors.teal;
-      case 'A-':
-        return Colors.cyan;
-      case 'B':
-        return Colors.blue;
-      case 'B-':
-        return Colors.lightBlue;
-      case 'C':
-        return Colors.amber;
-      case 'C-':
-        return Colors.orange;
-      case 'D':
-        return Colors.deepOrange;
-      case 'D-':
-        return Colors.red;
-      case 'E':
-        return Colors.red.shade900;
-      default:
-        return Colors.grey;
-    }
-  }
+  Color _getGradeColor(String grade) => grade_utils.getGradeColor(grade);
 
   @override
   void dispose() {

@@ -9,7 +9,7 @@ import 'auth_service.dart';
 import 'firestore_service.dart';
 import 'course_data_service.dart';
 import 'campus_service.dart';
-import 'all_course_service.dart';
+import 'course_catalog_service.dart';
 
 class TimetableService {
   static const String _storageKey = 'user_timetable_data';
@@ -17,7 +17,7 @@ class TimetableService {
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
   final CourseDataService _courseDataService = CourseDataService();
-  final AllCourseService _allCourseService = AllCourseService();
+  final CourseCatalogService _allCourseService = CourseCatalogService();
   
   // Save timetable using Firestore for authenticated users or local storage for guests
   Future<void> saveTimetable(Timetable timetable) async {

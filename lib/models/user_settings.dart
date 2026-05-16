@@ -1,19 +1,6 @@
 import '../widgets/timetable_widget.dart';
 import '../services/theme_service.dart' as theme_service;
-import 'package:cloud_firestore/cloud_firestore.dart';
-
-// Helper function to parse DateTime from both String and Firestore Timestamp
-DateTime _parseDateTime(dynamic value) {
-  if (value == null) {
-    return DateTime.now();
-  } else if (value is String) {
-    return DateTime.parse(value);
-  } else if (value is Timestamp) {
-    return value.toDate();
-  } else {
-    return DateTime.now();
-  }
-}
+import '../utils/datetime_utils.dart';
 
 enum ThemeMode { light, dark, system }
 
@@ -135,8 +122,8 @@ class UserSettings {
               )),
       customTimetableOrder: List<String>.from(json['customTimetableOrder'] ?? []),
       dontShowBottomDisclaimer: json['dontShowBottomDisclaimer'] ?? false,
-      dontShowTopUpdated: json['dontShowTopUpdated'] != null ? _parseDateTime(json['dontShowTopUpdated']) : null,
-      lastUpdated: _parseDateTime(json['lastUpdated']),
+      dontShowTopUpdated: json['dontShowTopUpdated'] != null ? parseDateTime(json['dontShowTopUpdated']) : null,
+      lastUpdated: parseDateTime(json['lastUpdated']),
     );
   }
 

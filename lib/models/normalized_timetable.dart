@@ -1,23 +1,10 @@
 import 'course.dart';
 import 'timetable.dart';
 import '../services/campus_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/datetime_utils.dart';
 
 export 'course.dart';
 export 'timetable.dart' show Timetable, SelectedSection, TimetableSlot, ClashWarning, ClashType, ClashSeverity;
-
-// Helper function to parse DateTime from both String and Firestore Timestamp
-DateTime _parseDateTime(dynamic value) {
-  if (value == null) {
-    return DateTime.now();
-  } else if (value is String) {
-    return DateTime.parse(value);
-  } else if (value is Timestamp) {
-    return value.toDate();
-  } else {
-    return DateTime.now();
-  }
-}
 
 /// Normalized timetable model that stores only references to courses
 /// instead of duplicating the entire course catalog
@@ -56,8 +43,8 @@ class NormalizedTimetable {
     return NormalizedTimetable(
       id: json['id'] ?? '',
       name: json['name'] ?? 'Untitled Timetable',
-      createdAt: _parseDateTime(json['createdAt']),
-      updatedAt: _parseDateTime(json['updatedAt']),
+      createdAt: parseDateTime(json['createdAt']),
+      updatedAt: parseDateTime(json['updatedAt']),
       selectedSections: (json['selectedSections'] as List? ?? [])
           .map((s) => SectionReference.fromJson(s))
           .toList(),
@@ -209,7 +196,7 @@ class CourseMetadata {
   factory CourseMetadata.fromJson(Map<String, dynamic> json) {
     return CourseMetadata(
       version: json['version'],
-      lastUpdated: _parseDateTime(json['lastUpdated']),
+      lastUpdated: parseDateTime(json['lastUpdated']),
       courseHashes: Map<String, String>.from(json['courseHashes']),
     );
   }

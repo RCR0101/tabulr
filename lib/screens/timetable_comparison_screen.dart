@@ -3,7 +3,7 @@ import '../models/timetable.dart';
 import '../models/course.dart';
 import '../widgets/timetable_widget.dart';
 import '../services/timetable_service.dart';
-import '../services/all_course_service.dart';
+import '../services/course_catalog_service.dart';
 import '../services/responsive_service.dart';
 
 enum ComparisonViewMode { grid, list }
@@ -17,7 +17,7 @@ class TimetableComparisonScreen extends StatefulWidget {
 
 class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
   final TimetableService _timetableService = TimetableService();
-  final AllCourseService _allCourseService = AllCourseService();
+  final CourseCatalogService _allCourseService = CourseCatalogService();
   
   List<Timetable> _allTimetables = [];
   Timetable? _leftTimetable;

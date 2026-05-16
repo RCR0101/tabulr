@@ -45,24 +45,12 @@ class ToastService {
     required String message,
     required ToastType type,
   }) {
-    Color backgroundColor;
-    Color textColor = Colors.white;
-
-    // Dark theme with colored accent
-    switch (type) {
-      case ToastType.success:
-        backgroundColor = const Color(0xFF1F2937); // Dark gray with success accent
-        break;
-      case ToastType.error:
-        backgroundColor = const Color(0xFF1F2937); // Dark gray with error accent
-        break;
-      case ToastType.warning:
-        backgroundColor = const Color(0xFF1F2937); // Dark gray with warning accent
-        break;
-      case ToastType.info:
-        backgroundColor = const Color(0xFF1F2937); // Dark gray with info accent
-        break;
-    }
+    final (Color backgroundColor, String webBgColor) = switch (type) {
+      ToastType.success => (const Color(0xFF065F46), "#065F46"),
+      ToastType.error => (const Color(0xFF991B1B), "#991B1B"),
+      ToastType.warning => (const Color(0xFF92400E), "#92400E"),
+      ToastType.info => (const Color(0xFF1E40AF), "#1E40AF"),
+    };
 
     Fluttertoast.showToast(
       msg: message,
@@ -70,9 +58,9 @@ class ToastService {
       gravity: ToastGravity.BOTTOM,
       timeInSecForIosWeb: 3,
       backgroundColor: backgroundColor,
-      textColor: textColor,
+      textColor: Colors.white,
       fontSize: 16.0,
-      webBgColor: "#1F2937",
+      webBgColor: webBgColor,
       webPosition: "center",
       webShowClose: true,
     );

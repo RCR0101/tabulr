@@ -8,11 +8,15 @@ import 'firestore_service.dart';
 import 'theme_service.dart' as theme_service;
 
 class UserSettingsService extends ChangeNotifier {
+  static final UserSettingsService _instance = UserSettingsService._internal();
+  factory UserSettingsService() => _instance;
+  UserSettingsService._internal();
+
   static const String _localStorageKey = 'user_settings';
-  
+
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
-  
+
   UserSettings? _userSettings;
   bool _isLoading = false;
 

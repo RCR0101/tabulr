@@ -337,7 +337,6 @@ class _TopAnnouncementWidgetState extends State<TopAnnouncementWidget> {
   @override
   void initState() {
     super.initState();
-    // Fetch announcement when widget is created
     _announcementService.fetchAnnouncement();
   }
 
@@ -348,6 +347,11 @@ class _TopAnnouncementWidgetState extends State<TopAnnouncementWidget> {
       builder: (context, child) {
         // Don't show if temporarily hidden this session
         if (_isTemporarilyHidden) {
+          return const SizedBox.shrink();
+        }
+
+        // Don't show until user settings have loaded
+        if (_userSettingsService.userSettings == null) {
           return const SizedBox.shrink();
         }
 

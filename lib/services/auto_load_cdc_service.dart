@@ -4,6 +4,7 @@ import '../models/timetable.dart';
 import '../services/course_guide_service.dart';
 import '../services/course_data_service.dart';
 import '../services/responsive_service.dart';
+import '../utils/branch_constants.dart' as constants;
 
 class AutoLoadCDCService {
   static final AutoLoadCDCService _instance = AutoLoadCDCService._internal();
@@ -12,24 +13,7 @@ class AutoLoadCDCService {
 
   final CourseGuideService _courseGuideService = CourseGuideService();
 
-  final Map<String, String> _branchCodeToName = {
-    'A1': 'Chemical',
-    'A2': 'Civil',
-    'A3': 'Electrical and Electronics',
-    'A4': 'Mechanical',
-    'A5': 'Pharma',
-    'A7': 'Computer Science',
-    'A8': 'Electronics and Instrumentation',
-    'AA': 'Electronics and Communication',
-    'AB': 'Manufacturing',
-    'AD': 'Math and Computing',
-    'AJ': 'Biotechnology',
-    'B1': 'MSc Biology',
-    'B2': 'MSc Chemistry',
-    'B3': 'MSc Economics',
-    'B4': 'MSc Mathematics',
-    'B5': 'MSc Physics',
-  };
+  final Map<String, String> _branchCodeToName = constants.branchCodeToName;
 
   Future<AutoLoadCDCResult?> showBranchYearDialog(BuildContext context) async {
     return await showDialog<AutoLoadCDCResult?>(
@@ -44,8 +28,6 @@ class AutoLoadCDCService {
     required List<Course> availableCourses,
   }) async {
     try {
-      print('Loading CDCs for branch: $branch, semester: $semester');
-
       // Load course guide data
       final semesters = await _courseGuideService.getAllSemesters();
       
@@ -67,14 +49,9 @@ class AutoLoadCDCService {
           
           if (containsBranch) {
             cdcCourses.addAll(group.courses);
-            print('Found group ${group.groupId} with ${group.courses.length} courses for branch $branch (${branchFullName ?? branch})');
           }
         }
-      } else {
-        print('Semester $semesterId not found in course guide');
       }
-
-      print('Found ${cdcCourses.length} CDC courses for $branch semester $semester');
 
       // Convert to SelectedSection objects by finding available lecture sections
       final selectedSections = <SelectedSection>[];
@@ -105,22 +82,18 @@ class AutoLoadCDCService {
             
             if (!hasConflict) {
               selectedSections.add(tempSection);
-              print('Auto-loaded: ${course.courseCode} - ${lectureSection.sectionId}');
               added = true;
               break;
             }
           }
           
           if (!added && lectureSections.isNotEmpty) {
-            print('Could not add ${course.courseCode} - all lecture sections have conflicts');
           }
         }
       }
 
-      print('Successfully loaded ${selectedSections.length} CDC sections');
       return selectedSections;
     } catch (e) {
-      print('Error loading CDCs: $e');
       rethrow;
     }
   }

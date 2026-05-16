@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'secure_logger.dart';
+import '../utils/datetime_utils.dart';
 
 class CourseGuideService {
   static final CourseGuideService _instance = CourseGuideService._internal();
@@ -11,8 +13,6 @@ class CourseGuideService {
 
   Future<List<CourseGuideSemester>> getAllSemesters() async {
     try {
-      print('Loading course guide data from Firestore...');
-      
       final querySnapshot = await _firestore
           .collection(_collectionName)
           .where(FieldPath.documentId, isNotEqualTo: '_metadata')
@@ -25,17 +25,16 @@ class CourseGuideService {
           final semester = CourseGuideSemester.fromFirestore(doc.id, data);
           semesters.add(semester);
         } catch (e) {
-          print('Error parsing semester ${doc.id}: $e');
+          SecureLogger.warning('COURSE_GUIDE', 'Error parsing semester ${doc.id}: $e');
         }
       }
 
       // Sort semesters by ID
       semesters.sort((a, b) => a.semesterId.compareTo(b.semesterId));
-      
-      print('Loaded ${semesters.length} semesters from course guide');
+
       return semesters;
     } catch (e) {
-      print('Error loading course guide: $e');
+      SecureLogger.error('COURSE_GUIDE', 'Error loading course guide', e);
       return [];
     }
   }
@@ -48,19 +47,19 @@ class CourseGuideService {
           .get();
 
       if (!doc.exists) {
-        print('Course guide metadata not found');
+        SecureLogger.warning('COURSE_GUIDE', 'Course guide metadata not found');
         return null;
       }
 
       final data = doc.data();
       if (data == null) {
-        print('Course guide metadata document is empty');
+        SecureLogger.warning('COURSE_GUIDE', 'Course guide metadata document is empty');
         return null;
       }
 
       return CourseGuideMetadata.fromFirestore(data);
     } catch (e) {
-      print('Error loading course guide metadata: $e');
+      SecureLogger.error('COURSE_GUIDE', 'Error loading course guide metadata', e);
       return null;
     }
   }
@@ -78,7 +77,7 @@ class CourseGuideService {
               final semester = CourseGuideSemester.fromFirestore(doc.id, data);
               semesters.add(semester);
             } catch (e) {
-              print('Error parsing semester ${doc.id}: $e');
+              SecureLogger.warning('COURSE_GUIDE', 'Error parsing semester ${doc.id}: $e');
             }
           }
           semesters.sort((a, b) => a.semesterId.compareTo(b.semesterId));
@@ -109,30 +108,18 @@ class CourseGuideSemester {
         final group = CourseGuideGroup.fromFirestore(entry.key, entry.value);
         groups.add(group);
       } catch (e) {
-        print('Error parsing group ${entry.key}: $e');
+        SecureLogger.warning('COURSE_GUIDE', 'Error parsing group ${entry.key}: $e');
       }
     }
 
     return CourseGuideSemester(
       semesterId: id,
       name: data['name'] ?? id,
-      lastUpdated: _parseDateTime(data['lastUpdated']),
+      lastUpdated: parseDateTime(data['lastUpdated']),
       groups: groups,
     );
   }
 
-  static DateTime _parseDateTime(dynamic value) {
-    if (value is String) {
-      try {
-        return DateTime.parse(value);
-      } catch (e) {
-        return DateTime.now();
-      }
-    } else if (value is Timestamp) {
-      return value.toDate();
-    }
-    return DateTime.now();
-  }
 }
 
 class CourseGuideGroup {
@@ -159,7 +146,7 @@ class CourseGuideGroup {
           final course = CourseGuideEntry.fromFirestore(courseData);
           courses.add(course);
         } catch (e) {
-          print('Error parsing course: $e');
+          SecureLogger.warning('COURSE_GUIDE', 'Error parsing course: $e');
         }
       }
     }
@@ -220,22 +207,10 @@ class CourseGuideMetadata {
     return CourseGuideMetadata(
       totalSemesters: (data['totalSemesters'] as num?)?.toInt() ?? 0,
       availableSemesters: availableList.map((s) => s.toString()).toList(),
-      lastUpdated: _parseDateTime(data['lastUpdated']),
+      lastUpdated: parseDateTime(data['lastUpdated']),
       uploadedBy: data['uploadedBy'] ?? 'Unknown',
       version: data['version'] ?? '1.0.0',
     );
   }
 
-  static DateTime _parseDateTime(dynamic value) {
-    if (value is String) {
-      try {
-        return DateTime.parse(value);
-      } catch (e) {
-        return DateTime.now();
-      }
-    } else if (value is Timestamp) {
-      return value.toDate();
-    }
-    return DateTime.now();
-  }
 }

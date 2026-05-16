@@ -1,66 +1,49 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/course.dart';
+import '../utils/branch_constants.dart' as constants;
+import '../utils/elective_clash_utils.dart';
 
 class DisciplineElectivesService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Mapping from branch codes to full branch names (same as humanities service)
-  static const Map<String, String> _branchCodeToName = {
-    'A1': 'Chemical',
-    'A2': 'Civil', 
-    'A3': 'Electrical and Electronics',
-    'A4': 'Mechanical',
-    'A5': 'Pharma',
-    'A7': 'Computer Science',
-    'A8': 'Electronics and Instrumentation',
-    'AA': 'Electronics and Communication',
-    'AB': 'Manufacturing',
-    'AD': 'Math and Computing',
-    'B1': 'MSc Biology',
-    'B2': 'MSc Chemistry',
-    'B3': 'MSc Economics',
-    'B4': 'MSc Mathematics',
-    'B5': 'MSc Physics',
-  };
+  static const Map<String, String> _branchCodeToName = constants.branchCodeToName;
   
   // Get all available branches
   Future<List<BranchInfo>> getAvailableBranches() async {
     try {
-      print('Fetching metadata from Firestore...');
+
       final metadataDoc = await _firestore
           .collection('discipline_electives')
           .doc('_metadata')
           .get()
           .timeout(Duration(seconds: 10));
       
-      print('Metadata doc exists: ${metadataDoc.exists}');
+
       
       if (!metadataDoc.exists) {
-        print('Metadata not found, using fallback data');
+
         return _getFallbackBranches();
       }
       
       final data = metadataDoc.data()!;
-      print('Metadata data keys: ${data.keys.toList()}');
+
       
       if (data.containsKey('branchCodes')) {
         final branchCodes = data['branchCodes'] as List<dynamic>;
-        print('Branch codes count: ${branchCodes.length}');
+
         
         final branches = branchCodes.map((branch) => BranchInfo(
           name: branch['name'] as String,
           code: branch['code'] as String,
         )).toList();
         
-        print('Parsed branches: ${branches.map((b) => b.name).join(', ')}');
+
         return branches;
       } else {
-        print('branchCodes key not found, using fallback');
+
         return _getFallbackBranches();
       }
     } catch (e) {
-      print('Error loading branches: $e');
-      print('Using fallback data due to error');
       return _getFallbackBranches();
     }
   }
@@ -115,7 +98,7 @@ class DisciplineElectivesService {
       final result = uniqueElectives.values.toList()
         ..sort((a, b) => a.courseCode.compareTo(b.courseCode));
       
-      print('Found ${result.length} discipline electives without clash filtering');
+
       return result;
     } catch (e) {
       throw Exception('Failed to get all discipline electives: $e');
@@ -125,14 +108,14 @@ class DisciplineElectivesService {
   // Get discipline electives for a branch
   Future<List<DisciplineElective>> getDisciplineElectives(String branchName) async {
     try {
-      print('Fetching discipline electives for: $branchName');
+
       
       // Convert branch name to document ID
       final branchId = branchName.toLowerCase()
           .replaceAll(RegExp(r'[^a-z0-9\s]'), '')
           .replaceAll(RegExp(r'\s+'), '-');
       
-      print('Branch ID: $branchId');
+
       
       final doc = await _firestore
           .collection('discipline_electives')
@@ -140,23 +123,23 @@ class DisciplineElectivesService {
           .get()
           .timeout(Duration(seconds: 10));
       
-      print('Document exists: ${doc.exists}');
+
       
       if (!doc.exists) {
-        print('Document not found, returning empty list');
+
         return [];
       }
       
       final data = doc.data()!;
-      print('Document data keys: ${data.keys.toList()}');
+
       
       if (!data.containsKey('courses')) {
-        print('No courses field found, returning empty list');
+
         return [];
       }
       
       final courses = data['courses'] as List<dynamic>;
-      print('Found ${courses.length} courses');
+
       
       return courses.map((course) => DisciplineElective(
         courseCode: course['course_code'] as String,
@@ -164,7 +147,7 @@ class DisciplineElectivesService {
         branchName: branchName,
       )).toList();
     } catch (e) {
-      print('Error in getDisciplineElectives: $e');
+
       // Return empty list instead of throwing
       return [];
     }
@@ -229,20 +212,20 @@ class DisciplineElectivesService {
       String? secondaryBranchCode = secondaryBranch != null ? _getBranchCodeFromName(secondaryBranch) : null;
       
       if (primaryBranchCode == null) {
-        print('Could not find branch code for: $primaryBranch');
+
         // Fallback to original filtering without clash detection
         return getFilteredDisciplineElectives(primaryBranch, secondaryBranch, availableCourses);
       }
       
       // Get core courses for clash detection
-      final coreCourseCodes = await _getCoreCourseCodes(
+      final coreCourseCodes = await ElectiveClashDetector.getCoreCourseCodes(
         primarySemester,
         primaryBranchCode,
         secondarySemester,
         secondaryBranchCode,
       );
       
-      print('Found ${coreCourseCodes.length} core courses for clash detection');
+
       
       // Filter to only include courses that exist in the available courses and don't clash
       final availableCourseCodes = availableCourses.map((c) => c.courseCode).toSet();
@@ -257,8 +240,8 @@ class DisciplineElectivesService {
         // Check for clashes if we have core courses
         if (coreCourseCodes.isNotEmpty) {
           final course = availableCourses.firstWhere((c) => c.courseCode == elective.courseCode);
-          if (_doesCourseClashWithCore(course, coreCourseCodes, availableCourses)) {
-            print('Discipline elective ${elective.courseCode} clashes with core courses, excluding');
+          if (ElectiveClashDetector.doesCourseClashWithCore(course, coreCourseCodes, availableCourses)) {
+
             continue;
           }
         }
@@ -275,7 +258,7 @@ class DisciplineElectivesService {
       final result = uniqueElectives.values.toList()
         ..sort((a, b) => a.courseCode.compareTo(b.courseCode));
       
-      print('Filtered to ${result.length} non-clashing discipline electives');
+
       return result;
     } catch (e) {
       throw Exception('Failed to filter discipline electives with clash detection: $e');
@@ -290,210 +273,6 @@ class DisciplineElectivesService {
       }
     }
     return null;
-  }
-
-  // Get core course codes for specified branches and semesters (reused from humanities service)
-  Future<Set<String>> _getCoreCourseCodes(
-    String primarySemester,
-    String primaryBranch,
-    String? secondarySemester,
-    String? secondaryBranch,
-  ) async {
-    final coreCourseCodes = <String>{};
-
-    // Get primary branch/semester courses
-    await _addCoreCoursesForBranchSemester(
-      coreCourseCodes,
-      primarySemester,
-      primaryBranch,
-    );
-
-    // Get secondary branch/semester courses if specified
-    if (secondarySemester != null && secondaryBranch != null) {
-      await _addCoreCoursesForBranchSemester(
-        coreCourseCodes,
-        secondarySemester,
-        secondaryBranch,
-      );
-    }
-
-    return coreCourseCodes;
-  }
-
-  // Add core courses for a specific branch and semester (reused from humanities service)
-  Future<void> _addCoreCoursesForBranchSemester(
-    Set<String> coreCourseCodes,
-    String semester,
-    String branch,
-  ) async {
-    try {
-      // Convert semester format from "2-1" to "semester_2_1"
-      final semesterDocId = 'semester_${semester.replaceAll('-', '_')}';
-      
-      final courseGuideDoc = await _firestore
-          .collection('course_guide')
-          .doc(semesterDocId)
-          .get();
-
-      if (!courseGuideDoc.exists) {
-        print('Course guide not found for semester: $semesterDocId');
-        return;
-      }
-
-      final data = courseGuideDoc.data();
-      if (data == null || !data.containsKey('groups')) {
-        print('No groups found in course guide for semester: $semesterDocId');
-        return;
-      }
-
-      final groups = data['groups'] as Map<String, dynamic>;
-
-      // Convert branch code to branch name
-      final branchName = _branchCodeToName[branch];
-      if (branchName == null) {
-        print('Unknown branch code: $branch');
-        return;
-      }
-
-      // Look for group with matching branch name
-      for (final entry in groups.entries) {
-        final groupData = entry.value as Map<String, dynamic>;
-        final branches = List<String>.from(groupData['branches'] ?? []);
-        
-        if (branches.contains(branchName)) {
-          // Add all courses from this group
-          final courses = List<dynamic>.from(groupData['courses'] ?? []);
-          for (final courseData in courses) {
-            if (courseData is Map<String, dynamic>) {
-              final courseCode = courseData['code'] as String?;
-              if (courseCode != null) {
-                coreCourseCodes.add(courseCode);
-              }
-            }
-          }
-          print('Found group for $branch ($branchName) with ${courses.length} courses');
-        }
-      }
-
-      print('Added ${coreCourseCodes.length} total core courses for $branch $semester');
-    } catch (e) {
-      print('Error getting core courses for $branch $semester: $e');
-    }
-  }
-
-  // Check if a discipline elective course clashes with any core course
-  bool _doesCourseClashWithCore(
-    Course electiveCourse,
-    Set<String> coreCourseCodes,
-    List<Course> availableCourses,
-  ) {
-    // Find core courses in the available courses list
-    final coreCourses = availableCourses
-        .where((course) => coreCourseCodes.contains(course.courseCode))
-        .toList();
-
-    // First check exam clashes
-    for (final coreCourse in coreCourses) {
-      if (_hasExamClash(electiveCourse, coreCourse)) {
-        print('Discipline elective ${electiveCourse.courseCode} has exam clash with core course ${coreCourse.courseCode}');
-        return true;
-      }
-    }
-
-    // Then check time clashes with section-type awareness
-    // Group elective sections by type
-    final electiveLectures = electiveCourse.sections.where((s) => s.type == SectionType.L).toList();
-    final electivePracticals = electiveCourse.sections.where((s) => s.type == SectionType.P).toList();
-    final electiveTutorials = electiveCourse.sections.where((s) => s.type == SectionType.T).toList();
-
-    for (final coreCourse in coreCourses) {
-      // Group core course sections by type
-      final coreLectures = coreCourse.sections.where((s) => s.type == SectionType.L).toList();
-      final corePracticals = coreCourse.sections.where((s) => s.type == SectionType.P).toList();
-      final coreTutorials = coreCourse.sections.where((s) => s.type == SectionType.T).toList();
-
-      // Check if ALL sections of same type clash (means no viable option)
-      if (_allSectionsClash(electiveLectures, coreLectures) ||
-          _allSectionsClash(electivePracticals, corePracticals) ||
-          _allSectionsClash(electiveTutorials, coreTutorials)) {
-        print('Discipline elective ${electiveCourse.courseCode} has unavoidable time clash with core course ${coreCourse.courseCode}');
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  // Check if two sections have time clashes
-  bool _doSectionsClash(Section section1, Section section2) {
-    for (final schedule1 in section1.schedule) {
-      for (final schedule2 in section2.schedule) {
-        // Check if they share any common days
-        final commonDays = schedule1.days.toSet().intersection(schedule2.days.toSet());
-        if (commonDays.isNotEmpty) {
-          // Check if they share any common hours
-          final commonHours = schedule1.hours.toSet().intersection(schedule2.hours.toSet());
-          if (commonHours.isNotEmpty) {
-            return true; // Clash detected
-          }
-        }
-      }
-    }
-    return false; // No clash
-  }
-
-  // Check if two courses have exam clashes
-  bool _hasExamClash(Course course1, Course course2) {
-    // Check MidSem exam clash
-    if (course1.midSemExam != null && course2.midSemExam != null) {
-      if (_examTimesConflict(course1.midSemExam!, course2.midSemExam!)) {
-        return true;
-      }
-    }
-    
-    // Check EndSem exam clash
-    if (course1.endSemExam != null && course2.endSemExam != null) {
-      if (_examTimesConflict(course1.endSemExam!, course2.endSemExam!)) {
-        return true;
-      }
-    }
-    
-    return false;
-  }
-
-  // Check if exam times conflict
-  bool _examTimesConflict(ExamSchedule exam1, ExamSchedule exam2) {
-    return exam1.date.day == exam2.date.day && 
-           exam1.date.month == exam2.date.month && 
-           exam1.date.year == exam2.date.year &&
-           exam1.timeSlot == exam2.timeSlot;
-  }
-
-  // Check if ALL sections of one type clash with ALL sections of another type
-  // This means there's no way to pick compatible sections
-  bool _allSectionsClash(List<Section> sections1, List<Section> sections2) {
-    if (sections1.isEmpty || sections2.isEmpty) {
-      return false; // No clash if either has no sections of this type
-    }
-
-    // Check if every section in sections1 clashes with every section in sections2
-    for (final section1 in sections1) {
-      bool hasNonClashingOption = false;
-      for (final section2 in sections2) {
-        if (!_doSectionsClash(section1, section2)) {
-          hasNonClashingOption = true;
-          break;
-        }
-      }
-      // If this section1 has at least one non-clashing option in sections2,
-      // then not all sections clash
-      if (hasNonClashingOption) {
-        return false;
-      }
-    }
-    
-    // All sections in sections1 clash with all sections in sections2
-    return true;
   }
 
   // Get course details for a discipline elective

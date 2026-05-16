@@ -6,6 +6,7 @@ import '../models/timetable.dart' as timetable;
 import '../services/course_data_service.dart';
 import '../services/campus_service.dart';
 import '../widgets/timetable_generator_widget.dart';
+import '../widgets/error_dialog.dart';
 
 class GeneratorScreen extends StatefulWidget {
   const GeneratorScreen({super.key});
@@ -60,19 +61,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   }
 
   void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Error'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
+    ErrorDialog.show(context, message);
   }
 
   void _onTimetableSelected(List<ConstraintSelectedSection> sections) {

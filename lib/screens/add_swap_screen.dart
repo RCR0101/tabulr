@@ -5,6 +5,8 @@ import '../services/course_data_service.dart';
 import '../services/responsive_service.dart';
 import '../widgets/search_filter_widget.dart';
 import '../services/campus_service.dart';
+import '../services/clash_detector.dart';
+import '../utils/datetime_utils.dart';
 
 class AddSwapScreen extends StatefulWidget {
   final List<SelectedSection> currentSelectedSections;
@@ -39,8 +41,6 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
   bool _isCheckingAll = false;
   String _searchQuery = '';
   String _safeCourseSearchQuery = '';
-  String? _selectedDiscipline;
-  String? _selectedLevel;
 
   @override
   void initState() {
@@ -72,17 +72,9 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
   void _filterCourses() {
     setState(() {
       _filteredCourses = _availableCourses.where((course) {
-        final matchesSearch = _searchQuery.isEmpty ||
+        return _searchQuery.isEmpty ||
             course.courseCode.toLowerCase().contains(_searchQuery.toLowerCase()) ||
             course.courseTitle.toLowerCase().contains(_searchQuery.toLowerCase());
-        
-        final matchesDiscipline = _selectedDiscipline == null ||
-            course.courseCode.startsWith(_selectedDiscipline!);
-        
-        final matchesLevel = _selectedLevel == null ||
-            course.courseCode.contains(_selectedLevel!);
-        
-        return matchesSearch && matchesDiscipline && matchesLevel;
       }).toList();
     });
   }
@@ -108,7 +100,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
       // Check if user has selected from all available types
       final missingSectionTypes = availableSectionTypes.difference(selectedSectionTypes);
       if (missingSectionTypes.isNotEmpty) {
-        final missingTypeNames = missingSectionTypes.map((t) => _getSectionTypeName(t)).join(', ');
+        final missingTypeNames = missingSectionTypes.map((t) => ClashDetector.getSectionTypeName(t)).join(', ');
         incompleteSelections.add('$courseCode: Missing $missingTypeNames');
       }
     }
@@ -190,9 +182,9 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
           
           final section = course.sections.firstWhere((s) => s.sectionId == sectionId);
           
-          final conflicts = _checkForConflicts(section);
-          final examConflicts = _checkForExamConflicts(course);
-          final newSelectionConflicts = _checkForNewSelectionConflicts(section, course, courseCode, sectionId, newlySelectedSections);
+          final conflicts = ClashDetector.checkScheduleConflicts(section, _currentTimetableSections);
+          final examConflicts = ClashDetector.checkExamConflicts(course, _currentTimetableSections, _availableCourses);
+          final newSelectionConflicts = ClashDetector.checkNewSelectionConflicts(section, course, courseCode, sectionId, newlySelectedSections, _availableCourses);
           final allConflicts = [...conflicts, ...examConflicts, ...newSelectionConflicts];
           
           results.add(ValidationResult(
@@ -244,205 +236,6 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     });
   }
 
-  List<ConflictInfo> _checkForConflicts(Section section) {
-    final conflicts = <ConflictInfo>[];
-    
-    for (final scheduleEntry in section.schedule) {
-      for (final day in scheduleEntry.days) {
-        for (final hour in scheduleEntry.hours) {
-          for (final currentSelected in _currentTimetableSections) {
-            for (final currentScheduleEntry in currentSelected.section.schedule) {
-              if (currentScheduleEntry.days.contains(day) && currentScheduleEntry.hours.contains(hour)) {
-                conflicts.add(ConflictInfo(
-                  conflictingCourse: currentSelected.courseCode,
-                  conflictingSectionId: currentSelected.sectionId,
-                  day: day,
-                  time: TimeSlotInfo.getHourSlotName(hour),
-                ));
-              }
-            }
-          }
-        }
-      }
-    }
-    
-    return conflicts;
-  }
-
-  List<ConflictInfo> _checkForExamConflicts(Course newCourse) {
-    final conflicts = <ConflictInfo>[];
-    
-    // Check for mid-semester exam conflicts
-    if (newCourse.midSemExam != null) {
-      for (final currentSelected in _currentTimetableSections) {
-        final currentCourse = _availableCourses.firstWhere(
-          (c) => c.courseCode == currentSelected.courseCode,
-        );
-        
-        if (currentCourse.midSemExam != null) {
-          // Check if exams are on the same date and have overlapping time slots
-          if (_examDatesConflict(newCourse.midSemExam!, currentCourse.midSemExam!)) {
-            conflicts.add(ConflictInfo(
-              conflictingCourse: currentSelected.courseCode,
-              conflictingSectionId: 'Mid-Sem Exam',
-              day: DayOfWeek.M, // Placeholder, exams don't follow day structure
-              time: 'Mid-Sem Exam: ${TimeSlotInfo.getTimeSlotName(newCourse.midSemExam!.timeSlot, campus: CampusService.currentCampusCode)}',
-            ));
-          }
-        }
-      }
-    }
-    
-    // Check for comprehensive exam conflicts
-    if (newCourse.endSemExam != null) {
-      for (final currentSelected in _currentTimetableSections) {
-        final currentCourse = _availableCourses.firstWhere(
-          (c) => c.courseCode == currentSelected.courseCode,
-        );
-        
-        if (currentCourse.endSemExam != null) {
-          // Check if exams are on the same date and have overlapping time slots
-          if (_examDatesConflict(newCourse.endSemExam!, currentCourse.endSemExam!)) {
-            conflicts.add(ConflictInfo(
-              conflictingCourse: currentSelected.courseCode,
-              conflictingSectionId: 'Comprehensive Exam',
-              day: DayOfWeek.M, // Placeholder, exams don't follow day structure
-              time: 'Comprehensive Exam: ${TimeSlotInfo.getTimeSlotName(newCourse.endSemExam!.timeSlot, campus: CampusService.currentCampusCode)}',
-            ));
-          }
-        }
-      }
-    }
-    
-    return conflicts;
-  }
-
-  bool _examDatesConflict(ExamSchedule exam1, ExamSchedule exam2) {
-    // Check if exams are on the same date
-    if (exam1.date.year == exam2.date.year &&
-        exam1.date.month == exam2.date.month &&
-        exam1.date.day == exam2.date.day) {
-      
-      // Check if time slots overlap
-      return _examTimeSlotsOverlap(exam1.timeSlot, exam2.timeSlot);
-    }
-    return false;
-  }
-
-  bool _examTimeSlotsOverlap(TimeSlot slot1, TimeSlot slot2) {
-    // If they're the exact same slot, they definitely overlap
-    if (slot1 == slot2) return true;
-    
-    // Check for overlapping time ranges
-    // Note: This is a simplified check. In practice, you might want more sophisticated logic
-    // based on the actual times defined in TimeSlotInfo.timeSlotNames
-    
-    // For mid-semester exams (MS1-MS4), check for overlaps
-    final midSemSlots = [TimeSlot.MS1, TimeSlot.MS2, TimeSlot.MS3, TimeSlot.MS4];
-    if (midSemSlots.contains(slot1) && midSemSlots.contains(slot2)) {
-      // MS1: 9:30-11:00, MS2: 11:30-1:00, MS3: 1:30-3:00, MS4: 3:30-5:00
-      // These don't overlap as they have 30-minute gaps
-      return false;
-    }
-    
-    // For comprehensive exams (FN, AN), check for overlaps
-    final compSlots = [TimeSlot.FN, TimeSlot.AN];
-    if (compSlots.contains(slot1) && compSlots.contains(slot2)) {
-      // EndSem time slots (campus-specific):
-      // Pilani: FN: 8:00AM-11:00AM, AN: 3:00PM-6:00PM
-      // Goa/Hyd: FN: 9:30AM-12:30PM, AN: 2:00PM-5:00PM
-      // These don't overlap
-      return false;
-    }
-    
-    // No overlap between different exam types (mid-sem vs comprehensive)
-    return false;
-  }
-
-  List<ConflictInfo> _checkForNewSelectionConflicts(
-    Section currentSection, 
-    Course currentCourse, 
-    String currentCourseCode, 
-    String currentSectionId, 
-    List<SelectedSection> allNewlySelected
-  ) {
-    final conflicts = <ConflictInfo>[];
-    
-    // Check class schedule conflicts with other newly selected sections
-    for (final scheduleEntry in currentSection.schedule) {
-      for (final day in scheduleEntry.days) {
-        for (final hour in scheduleEntry.hours) {
-          for (final otherSelected in allNewlySelected) {
-            // Skip checking against itself
-            if (otherSelected.courseCode == currentCourseCode && otherSelected.sectionId == currentSectionId) {
-              continue;
-            }
-            
-            for (final otherScheduleEntry in otherSelected.section.schedule) {
-              if (otherScheduleEntry.days.contains(day) && otherScheduleEntry.hours.contains(hour)) {
-                conflicts.add(ConflictInfo(
-                  conflictingCourse: otherSelected.courseCode,
-                  conflictingSectionId: otherSelected.sectionId,
-                  day: day,
-                  time: TimeSlotInfo.getHourSlotName(hour),
-                ));
-              }
-            }
-          }
-        }
-      }
-    }
-    
-    // Check exam conflicts with other newly selected courses
-    final examConflicts = _checkForExamConflictsBetweenNewSelections(currentCourse, currentCourseCode, allNewlySelected);
-    conflicts.addAll(examConflicts);
-    
-    return conflicts;
-  }
-
-  List<ConflictInfo> _checkForExamConflictsBetweenNewSelections(
-    Course currentCourse, 
-    String currentCourseCode, 
-    List<SelectedSection> allNewlySelected
-  ) {
-    final conflicts = <ConflictInfo>[];
-    
-    // Get unique courses from newly selected sections
-    final Set<String> otherCourseCodes = allNewlySelected
-        .map((s) => s.courseCode)
-        .where((code) => code != currentCourseCode)
-        .toSet();
-    
-    for (final otherCourseCode in otherCourseCodes) {
-      final otherCourse = _availableCourses.firstWhere((c) => c.courseCode == otherCourseCode);
-      
-      // Check mid-semester exam conflicts
-      if (currentCourse.midSemExam != null && otherCourse.midSemExam != null) {
-        if (_examDatesConflict(currentCourse.midSemExam!, otherCourse.midSemExam!)) {
-          conflicts.add(ConflictInfo(
-            conflictingCourse: otherCourseCode,
-            conflictingSectionId: 'Mid-Sem Exam',
-            day: DayOfWeek.M, // Placeholder
-            time: 'Mid-Sem Exam: ${TimeSlotInfo.getTimeSlotName(currentCourse.midSemExam!.timeSlot, campus: CampusService.currentCampusCode)}',
-          ));
-        }
-      }
-      
-      // Check comprehensive exam conflicts
-      if (currentCourse.endSemExam != null && otherCourse.endSemExam != null) {
-        if (_examDatesConflict(currentCourse.endSemExam!, otherCourse.endSemExam!)) {
-          conflicts.add(ConflictInfo(
-            conflictingCourse: otherCourseCode,
-            conflictingSectionId: 'Comprehensive Exam',
-            day: DayOfWeek.M, // Placeholder
-            time: 'Comprehensive Exam: ${TimeSlotInfo.getTimeSlotName(currentCourse.endSemExam!.timeSlot, campus: CampusService.currentCampusCode)}',
-          ));
-        }
-      }
-    }
-    
-    return conflicts;
-  }
 
   Future<void> _checkAllCourses() async {
     setState(() {
@@ -455,7 +248,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
       final List<SafeCourseResult> safeCourses = [];
       
       for (final course in _availableCourses) {
-        final safeCombination = _findSafeCombination(course);
+        final safeCombination = ClashDetector.findSafeCombination(course, _currentTimetableSections, _availableCourses);
         if (safeCombination != null) {
           // Get additional info for display
           final List<String> instructors = [];
@@ -477,7 +270,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
             for (final scheduleEntry in section.schedule) {
               final days = scheduleEntry.days.map(_getDayName).join('/');
               final hours = scheduleEntry.hours.map((h) => TimeSlotInfo.getHourSlotName(h)).join(', ');
-              scheduleEntries.add('${_getSectionTypeName(sectionType)}: $days: $hours');
+              scheduleEntries.add('${ClashDetector.getSectionTypeName(sectionType)}: $days: $hours');
             }
           }
           
@@ -516,104 +309,6 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
         );
       }
     }
-  }
-
-  Map<SectionType, String>? _findSafeCombination(Course course) {
-    // Group sections by type
-    final Map<SectionType, List<Section>> sectionsByType = {};
-    for (final section in course.sections) {
-      sectionsByType.putIfAbsent(section.type, () => []).add(section);
-    }
-    
-    // Get all required section types (ignore T and P if they don't exist)
-    final requiredTypes = sectionsByType.keys.toSet();
-    
-    // Generate all possible combinations
-    final combinations = _generateCombinations(sectionsByType, requiredTypes.toList());
-    
-    // Check each combination for conflicts
-    for (final combination in combinations) {
-      if (_isCombinationSafe(course, combination)) {
-        return combination;
-      }
-    }
-    
-    return null;
-  }
-
-  List<Map<SectionType, String>> _generateCombinations(
-    Map<SectionType, List<Section>> sectionsByType, 
-    List<SectionType> types
-  ) {
-    if (types.isEmpty) return [{}];
-    
-    final currentType = types.first;
-    final remainingTypes = types.sublist(1);
-    final sectionsForType = sectionsByType[currentType] ?? [];
-    
-    final subCombinations = _generateCombinations(sectionsByType, remainingTypes);
-    final allCombinations = <Map<SectionType, String>>[];
-    
-    for (final section in sectionsForType) {
-      for (final subCombination in subCombinations) {
-        final newCombination = Map<SectionType, String>.from(subCombination);
-        newCombination[currentType] = section.sectionId;
-        allCombinations.add(newCombination);
-      }
-    }
-    
-    return allCombinations;
-  }
-
-  bool _isCombinationSafe(Course course, Map<SectionType, String> combination) {
-    // Check for conflicts with existing selected sections
-    for (final entry in combination.entries) {
-      final sectionType = entry.key;
-      final sectionId = entry.value;
-      final section = course.sections.firstWhere((s) => s.sectionId == sectionId);
-      
-      // Check class schedule conflicts with current timetable
-      final classConflicts = _checkForConflicts(section);
-      if (classConflicts.isNotEmpty) return false;
-    }
-    
-    // Check exam conflicts with current timetable
-    final examConflicts = _checkForExamConflicts(course);
-    if (examConflicts.isNotEmpty) return false;
-    
-    // Check for internal conflicts within the combination
-    final sectionsInCombination = combination.entries.map((entry) {
-      final sectionId = entry.value;
-      return course.sections.firstWhere((s) => s.sectionId == sectionId);
-    }).toList();
-    
-    for (int i = 0; i < sectionsInCombination.length; i++) {
-      for (int j = i + 1; j < sectionsInCombination.length; j++) {
-        if (_sectionsConflict(sectionsInCombination[i], sectionsInCombination[j])) {
-          return false;
-        }
-      }
-    }
-    
-    return true;
-  }
-
-  bool _sectionsConflict(Section section1, Section section2) {
-    for (final schedule1 in section1.schedule) {
-      for (final schedule2 in section2.schedule) {
-        // Check for day and time overlaps
-        for (final day1 in schedule1.days) {
-          if (schedule2.days.contains(day1)) {
-            for (final hour1 in schedule1.hours) {
-              if (schedule2.hours.contains(hour1)) {
-                return true;
-              }
-            }
-          }
-        }
-      }
-    }
-    return false;
   }
 
   @override
@@ -1112,7 +807,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                 if (missingSectionTypes.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
-                    'Still needed: ${missingSectionTypes.map((t) => _getSectionTypeName(t)).join(', ')}',
+                    'Still needed: ${missingSectionTypes.map((t) => ClashDetector.getSectionTypeName(t)).join(', ')}',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.orange,
@@ -1185,7 +880,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                       child: Row(
                         children: [
                           Text(
-                            '${_getSectionTypeName(sectionType)} Sections',
+                            '${ClashDetector.getSectionTypeName(sectionType)} Sections',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
@@ -1356,16 +1051,6 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
-  String _getSectionTypeName(SectionType type) {
-    switch (type) {
-      case SectionType.L:
-        return 'Lecture';
-      case SectionType.P:
-        return 'Practical';
-      case SectionType.T:
-        return 'Tutorial';
-    }
-  }
 
   Widget _buildSafeCourseResults() {
     return Column(
@@ -1763,7 +1448,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              '${result.courseCode} - ${_getSectionTypeName(result.sectionType)} (${result.sectionId})',
+                              '${result.courseCode} - ${ClashDetector.getSectionTypeName(result.sectionType)} (${result.sectionId})',
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
@@ -1855,66 +1540,5 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     }).join(' | ');
   }
 
-  String _getDayName(DayOfWeek day) {
-    switch (day) {
-      case DayOfWeek.M: return 'Mon';
-      case DayOfWeek.T: return 'Tue';
-      case DayOfWeek.W: return 'Wed';
-      case DayOfWeek.Th: return 'Thu';
-      case DayOfWeek.F: return 'Fri';
-      case DayOfWeek.S: return 'Sat';
-    }
-  }
-}
-
-class ValidationResult {
-  final String courseCode;
-  final String sectionId;
-  final SectionType sectionType;
-  final String courseTitle;
-  final bool canBeAdded;
-  final List<ConflictInfo> conflicts;
-
-  ValidationResult({
-    required this.courseCode,
-    required this.sectionId,
-    required this.sectionType,
-    required this.courseTitle,
-    required this.canBeAdded,
-    required this.conflicts,
-  });
-}
-
-class ConflictInfo {
-  final String conflictingCourse;
-  final String conflictingSectionId;
-  final DayOfWeek day;
-  final String time;
-
-  ConflictInfo({
-    required this.conflictingCourse,
-    required this.conflictingSectionId,
-    required this.day,
-    required this.time,
-  });
-}
-
-class SafeCourseResult {
-  final String courseCode;
-  final String courseTitle;
-  final Map<SectionType, String> safeCombination;
-  final List<String> instructors;
-  final List<String> rooms;
-  final String scheduleDescription;
-  final Course course;
-
-  SafeCourseResult({
-    required this.courseCode,
-    required this.courseTitle,
-    required this.safeCombination,
-    required this.instructors,
-    required this.rooms,
-    required this.scheduleDescription,
-    required this.course,
-  });
+  String _getDayName(DayOfWeek day) => getDayName(day, abbreviated: true);
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../services/firestore_service.dart';
 import '../services/secure_logger.dart';
+import '../utils/datetime_utils.dart';
 
 class Announcement {
   final String topWidget;
@@ -14,7 +15,7 @@ class Announcement {
   factory Announcement.fromJson(Map<String, dynamic> json) {
     return Announcement(
       topWidget: json['topWidget'] ?? '',
-      lastUpdated: _parseDateTime(json['lastUpdated']),
+      lastUpdated: parseDateTime(json['lastUpdated']),
     );
   }
 
@@ -26,25 +27,6 @@ class Announcement {
   }
 }
 
-// Helper function to parse DateTime from both String and Firestore Timestamp
-DateTime _parseDateTime(dynamic value) {
-  if (value == null) {
-    return DateTime.now();
-  } else if (value is String) {
-    return DateTime.parse(value);
-  } else if (value is Map && value['_seconds'] != null) {
-    // Handle Firestore Timestamp object
-    final seconds = value['_seconds'];
-    final nanoseconds = value['_nanoseconds'] ?? 0;
-    return DateTime.fromMillisecondsSinceEpoch(seconds * 1000 + (nanoseconds ~/ 1000000));
-  } else {
-    try {
-      return DateTime.parse(value.toString());
-    } catch (e) {
-      return DateTime.now();
-    }
-  }
-}
 
 class AnnouncementService extends ChangeNotifier {
   static final AnnouncementService _instance = AnnouncementService._internal();

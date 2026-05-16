@@ -14,6 +14,21 @@ import 'export_service_stub.dart'
     if (dart.library.html) 'export_service_web.dart'
     if (dart.library.io) 'export_service_io.dart';
 
+const Map<int, List<int>> _hourToTime = {
+  1: [8, 0],
+  2: [9, 0],
+  3: [10, 0],
+  4: [11, 0],
+  5: [12, 0],
+  6: [13, 0],
+  7: [14, 0],
+  8: [15, 0],
+  9: [16, 0],
+  10: [17, 0],
+  11: [18, 0],
+  12: [19, 0],
+};
+
 /// Escape text per RFC 5545: commas, semicolons, backslashes, and newlines
 String _escapeText(String input) {
   return input
@@ -59,24 +74,8 @@ String _generateExDates(DayOfWeek day, int hour) {
     DayOfWeek.S: 6,
   };
 
-  // Hour to start time mapping
-  final hourToTime = {
-    1: [8, 0],
-    2: [9, 0],
-    3: [10, 0],
-    4: [11, 0],
-    5: [12, 0],
-    6: [13, 0],
-    7: [14, 0],
-    8: [15, 0],
-    9: [16, 0],
-    10: [17, 0],
-    11: [18, 0],
-    12: [19, 0],
-  };
-
   final targetWeekday = dayOffsetMap[day];
-  final timeSlot = hourToTime[hour];
+  final timeSlot = _hourToTime[hour];
   if (targetWeekday == null || timeSlot == null) return '';
 
   List<String> exDates = [];
@@ -556,23 +555,7 @@ class ExportService {
       DayOfWeek.S: 5,
     };
 
-    // Map hour to actual time based on TimeSlotInfo.hourSlotNames
-    final hourToTime = {
-      1: [8, 0], // 8:00-8:50 AM
-      2: [9, 0], // 9:00-9:50 AM
-      3: [10, 0], // 10:00-10:50 AM
-      4: [11, 0], // 11:00-11:50 AM
-      5: [12, 0], // 12:00-12:50 PM
-      6: [13, 0], // 1:00-1:50 PM
-      7: [14, 0], // 2:00-2:50 PM
-      8: [15, 0], // 3:00-3:50 PM
-      9: [16, 0], // 4:00-4:50 PM
-      10: [17, 0], // 5:00-5:50 PM
-      11: [18, 0], // 6:00-6:50 PM
-      12: [19, 0], // 7:00-7:50 PM
-    };
-
-    final timeSlot = hourToTime[hour];
+    final timeSlot = _hourToTime[hour];
     if (timeSlot == null) {
       throw Exception('Invalid hour: $hour');
     }
