@@ -9,14 +9,12 @@ class CourseGuideService {
   CourseGuideService._internal();
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  static const String _collectionName = 'course_guide';
+  CollectionReference<Map<String, dynamic>> get _collectionRef =>
+      _firestore.collection('reference').doc('course_guide').collection('semesters');
 
   Future<List<CourseGuideSemester>> getAllSemesters() async {
     try {
-      final querySnapshot = await _firestore
-          .collection(_collectionName)
-          .where(FieldPath.documentId, isNotEqualTo: '_metadata')
-          .get();
+      final querySnapshot = await _collectionRef.get();
 
       final semesters = <CourseGuideSemester>[];
       for (final doc in querySnapshot.docs) {
@@ -41,8 +39,7 @@ class CourseGuideService {
 
   Future<CourseGuideMetadata?> getMetadata() async {
     try {
-      final doc = await _firestore
-          .collection(_collectionName)
+      final doc = await _collectionRef
           .doc('_metadata')
           .get();
 
@@ -65,9 +62,7 @@ class CourseGuideService {
   }
 
   Stream<List<CourseGuideSemester>> watchSemesters() {
-    return _firestore
-        .collection(_collectionName)
-        .where(FieldPath.documentId, isNotEqualTo: '_metadata')
+    return _collectionRef
         .snapshots()
         .map((snapshot) {
           final semesters = <CourseGuideSemester>[];
@@ -100,15 +95,27 @@ class CourseGuideSemester {
   });
 
   factory CourseGuideSemester.fromFirestore(String id, Map<String, dynamic> data) {
-    final groupsData = data['groups'] as Map<String, dynamic>? ?? {};
+    final rawGroups = data['groups'];
     final groups = <CourseGuideGroup>[];
 
-    for (final entry in groupsData.entries) {
-      try {
-        final group = CourseGuideGroup.fromFirestore(entry.key, entry.value);
-        groups.add(group);
-      } catch (e) {
-        SecureLogger.warning('COURSE_GUIDE', 'Error parsing group ${entry.key}: $e');
+    if (rawGroups is List) {
+      for (int i = 0; i < rawGroups.length; i++) {
+        try {
+          final groupData = rawGroups[i] as Map<String, dynamic>;
+          final group = CourseGuideGroup.fromFirestore(i.toString(), groupData);
+          groups.add(group);
+        } catch (e) {
+          SecureLogger.warning('COURSE_GUIDE', 'Error parsing group $i: $e');
+        }
+      }
+    } else if (rawGroups is Map<String, dynamic>) {
+      for (final entry in rawGroups.entries) {
+        try {
+          final group = CourseGuideGroup.fromFirestore(entry.key, entry.value);
+          groups.add(group);
+        } catch (e) {
+          SecureLogger.warning('COURSE_GUIDE', 'Error parsing group ${entry.key}: $e');
+        }
       }
     }
 

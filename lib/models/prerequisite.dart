@@ -1,41 +1,45 @@
+import '../services/courses_master_service.dart';
+
 class Prerequisite {
-  final String prereqName;
-  final String preCop;
+  final String courseCode;
+  final String type;
 
   Prerequisite({
-    required this.prereqName,
-    required this.preCop,
+    required this.courseCode,
+    required this.type,
   });
+
+  String get displayName => CoursesMasterService().getTitle(courseCode);
 
   factory Prerequisite.fromMap(Map<String, dynamic> map) {
     return Prerequisite(
-      prereqName: map['prereq_name'] ?? '',
-      preCop: map['pre_cop'] ?? '',
+      courseCode: map['course_code'] ?? '',
+      type: map['type'] ?? 'pre',
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'prereq_name': prereqName,
-      'pre_cop': preCop,
+      'course_code': courseCode,
+      'type': type,
     };
   }
 }
 
 class CoursePrerequisites {
-  final String name;
-  final List<Prerequisite> prereqs;
   final String courseCode;
+  final List<Prerequisite> prereqs;
   final bool hasPrerequisites;
-  final String? allOne; // "All" or "One" - indicates if all or one prereq is needed
+  final String? allOne;
 
   CoursePrerequisites({
-    required this.name,
-    required this.prereqs,
     required this.courseCode,
+    required this.prereqs,
     required this.hasPrerequisites,
     this.allOne,
   });
+
+  String get displayName => CoursesMasterService().getTitle(courseCode);
 
   factory CoursePrerequisites.fromMap(Map<String, dynamic> map) {
     List<Prerequisite> prereqsList = [];
@@ -46,9 +50,8 @@ class CoursePrerequisites {
     }
 
     return CoursePrerequisites(
-      name: map['name'] ?? '',
-      prereqs: prereqsList,
       courseCode: map['course_code'] ?? '',
+      prereqs: prereqsList,
       hasPrerequisites: map['has_prerequisites'] ?? false,
       allOne: map['all_one'] as String?,
     );
@@ -56,9 +59,8 @@ class CoursePrerequisites {
 
   Map<String, dynamic> toMap() {
     return {
-      'name': name,
-      'prereqs': prereqs.map((p) => p.toMap()).toList(),
       'course_code': courseCode,
+      'prereqs': prereqs.map((p) => p.toMap()).toList(),
       'has_prerequisites': hasPrerequisites,
       if (allOne != null) 'all_one': allOne,
     };

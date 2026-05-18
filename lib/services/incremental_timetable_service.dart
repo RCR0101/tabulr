@@ -265,7 +265,7 @@ class IncrementalTimetableService {
 
   Future<void> _saveFirestoreTimetable(NormalizedTimetable timetable, String userId) async {
     final docRef = _firestore
-        .collection('user_timetables')
+        .collection('users')
         .doc(userId)
         .collection('timetables')
         .doc(timetable.id);
@@ -275,7 +275,7 @@ class IncrementalTimetableService {
 
   Future<NormalizedTimetable?> _getFirestoreTimetable(String timetableId, String userId) async {
     final docRef = _firestore
-        .collection('user_timetables')
+        .collection('users')
         .doc(userId)
         .collection('timetables')
         .doc(timetableId);
@@ -324,7 +324,7 @@ class IncrementalTimetableService {
 
   Future<void> _applyFirestoreUpdate(TimetableUpdateBatch updateBatch, String userId) async {
     final docRef = _firestore
-        .collection('user_timetables')
+        .collection('users')
         .doc(userId)
         .collection('timetables')
         .doc(updateBatch.timetableId);
@@ -384,7 +384,7 @@ class IncrementalTimetableService {
 
   Future<List<NormalizedTimetable>> _getAllFirestoreTimetables(String userId) async {
     final collection = _firestore
-        .collection('user_timetables')
+        .collection('users')
         .doc(userId)
         .collection('timetables');
     
@@ -453,7 +453,7 @@ class IncrementalTimetableService {
       // Delete from Firestore if user is authenticated
       if (userId != null) {
         await _firestore
-            .collection('user_timetables')
+            .collection('users')
             .doc(userId)
             .collection('timetables')
             .doc(timetableId)

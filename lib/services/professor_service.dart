@@ -288,7 +288,7 @@ class ProfessorService extends ChangeNotifier {
 
     try {
       final snapshot = await _firestore
-          .collection('professors')
+          .collection('reference').doc('professors').collection('entries')
           .orderBy('name')
           .get();
 

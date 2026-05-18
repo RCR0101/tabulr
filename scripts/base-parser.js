@@ -55,12 +55,11 @@ export function initializeFirebase() {
 
 // ─── Campus helpers ─────────────────────────────────────────────────────────
 
-const CAMPUS_COLLECTIONS = {
-  pilani: 'pilani-courses',
-  hyderabad: 'hyd-courses',
-  hyd: 'hyd-courses',
-  goa: 'goa-courses',
-  default: 'courses',
+const CAMPUS_IDS = {
+  pilani: 'pilani',
+  hyderabad: 'hyderabad',
+  hyd: 'hyderabad',
+  goa: 'goa',
 };
 
 const CAMPUS_DISPLAY_NAMES = {
@@ -68,15 +67,29 @@ const CAMPUS_DISPLAY_NAMES = {
   hyderabad: 'Hyderabad',
   hyd: 'Hyderabad',
   goa: 'Goa',
-  default: 'Default',
 };
 
-/**
- * Return the Firestore collection name for a campus code.
- */
-export function getCampusCollection(campusCode) {
-  const key = campusCode.toString().toLowerCase();
-  return CAMPUS_COLLECTIONS[key] || 'courses';
+export function getCampusId(campusCode) {
+  return CAMPUS_IDS[campusCode.toString().toLowerCase()] || 'hyderabad';
+}
+
+export function getTimetableCollection(campusCode) {
+  return `campuses/${getCampusId(campusCode)}/timetable`;
+}
+
+export function getCoursesMasterCollection(campusCode) {
+  return `campuses/${getCampusId(campusCode)}/courses_master`;
+}
+
+export function sanitizeString(str) {
+  if (typeof str !== 'string') return str;
+  return str.replace(/[\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+export function courseCodeToDocId(code) {
+  const sanitized = sanitizeString(code);
+  const primary = sanitized.includes('/') ? sanitized.split('/')[0].trim() : sanitized;
+  return primary.replace(/\s+/g, '_');
 }
 
 /**
@@ -84,7 +97,7 @@ export function getCampusCollection(campusCode) {
  */
 export function getCampusName(campusCode) {
   const key = campusCode.toString().toLowerCase();
-  return CAMPUS_DISPLAY_NAMES[key] || 'Default Campus';
+  return CAMPUS_DISPLAY_NAMES[key] || 'Hyderabad';
 }
 
 // ─── Batch upload ───────────────────────────────────────────────────────────
@@ -92,51 +105,72 @@ export function getCampusName(campusCode) {
 const BATCH_SIZE = 500;
 
 /**
- * Upload an array of course objects to a Firestore collection.
+ * Upload an array of course objects, splitting into courses_master + timetable.
  *
  * @param {FirebaseFirestore.Firestore} db
- * @param {Object[]} courses — each must have a `courseCode` property used as doc id
- * @param {string}   collectionName
+ * @param {Object[]} courses — each must have a `courseCode` property
+ * @param {string}   campusCode — e.g. 'hyderabad', 'pilani', 'goa'
  * @param {Object}   [opts]
  * @param {boolean}  [opts.clearFirst=true] — delete all existing docs before uploading
  */
-export async function uploadCoursesToFirestore(db, courses, collectionName, opts = {}) {
+export async function uploadCoursesToFirestore(db, courses, campusCode, opts = {}) {
   const { clearFirst = true } = opts;
-  const coursesRef = db.collection(collectionName);
+  const campusId = getCampusId(campusCode);
+  const masterRef = db.collection(`campuses/${campusId}/courses_master`);
+  const timetableRef = db.collection(`campuses/${campusId}/timetable`);
 
-  console.log(`Uploading ${courses.length} courses to Firestore collection: ${collectionName}`);
+  console.log(`Uploading ${courses.length} courses to campus: ${campusId}`);
 
-  // Optionally clear existing data
   if (clearFirst) {
     console.log('Clearing existing courses...');
-    const existingDocs = await coursesRef.get();
-    let batch = db.batch();
-    let count = 0;
-
-    for (const doc of existingDocs.docs) {
-      batch.delete(doc.ref);
-      count++;
-      if (count >= BATCH_SIZE) {
-        await batch.commit();
-        batch = db.batch();
-        count = 0;
+    for (const ref of [masterRef, timetableRef]) {
+      const existingDocs = await ref.get();
+      let batch = db.batch();
+      let count = 0;
+      for (const doc of existingDocs.docs) {
+        batch.delete(doc.ref);
+        count++;
+        if (count >= BATCH_SIZE) {
+          await batch.commit();
+          batch = db.batch();
+          count = 0;
+        }
       }
+      if (count > 0) await batch.commit();
+      console.log(`Cleared ${existingDocs.size} docs from ${ref.path}`);
     }
-    if (count > 0) {
-      await batch.commit();
-    }
-    console.log(`Cleared ${existingDocs.size} existing courses`);
   }
 
-  // Upload in batches
-  console.log('Adding new courses...');
+  console.log('Uploading courses_master + timetable...');
   for (let i = 0; i < courses.length; i += BATCH_SIZE) {
     const batch = db.batch();
     const slice = courses.slice(i, i + BATCH_SIZE);
 
     for (const course of slice) {
-      const docRef = coursesRef.doc(course.courseCode);
-      batch.set(docRef, course);
+      const docId = courseCodeToDocId(course.courseCode);
+      const code = sanitizeString(course.courseCode);
+
+      // courses_master: identity only
+      batch.set(masterRef.doc(docId), {
+        course_code: code,
+        title: sanitizeString(course.courseTitle || ''),
+        credits: parseInt(course.totalCredits || course.lectureCredits || '0', 10) || 0,
+        type: course.type || 'Normal',
+      });
+
+      // timetable: scheduling data
+      const timetableData = {
+        sections: (course.sections || []).map(s => ({
+          ...s,
+          instructor: sanitizeString(s.instructor || ''),
+          room: sanitizeString(s.room || ''),
+        })),
+        mid_sem_exam: course.midSemExam || null,
+        end_sem_exam: course.endSemExam || null,
+        lecture_credits: parseInt(course.lectureCredits || '0', 10) || 0,
+        practical_credits: parseInt(course.practicalCredits || '0', 10) || 0,
+      };
+      batch.set(timetableRef.doc(docId), timetableData);
     }
 
     await batch.commit();
@@ -147,25 +181,20 @@ export async function uploadCoursesToFirestore(db, courses, collectionName, opts
 // ─── Metadata ───────────────────────────────────────────────────────────────
 
 /**
- * Write (or merge) a metadata document for a collection upload.
+ * Write (or merge) a metadata document for a campus upload.
  *
  * @param {FirebaseFirestore.Firestore} db
- * @param {string} collectionName — used to derive the metadata doc name
- * @param {Object} metadata      — fields to write
+ * @param {string} campusCode — campus code
+ * @param {Object} metadata   — fields to write
  * @param {Object} [opts]
- * @param {boolean} [opts.merge=false] — merge into existing doc instead of overwrite
+ * @param {boolean} [opts.merge=false]
  */
-export async function updateMetadata(db, collectionName, metadata, opts = {}) {
+export async function updateMetadata(db, campusCode, metadata, opts = {}) {
   const { merge = false } = opts;
-  const metadataCollection = process.env.TIMETABLE_METADATA_COLLECTION || 'timetable_metadata';
-
-  // Derive doc name from collection: "pilani-courses" -> "current-pilani", "courses" -> "current"
-  const campus = collectionName.replace('-courses', '');
-  const docName = campus === 'courses' ? 'current' : `current-${campus}`;
-
-  const ref = db.collection(metadataCollection).doc(docName);
+  const campusId = getCampusId(campusCode);
+  const ref = db.collection('campuses').doc(campusId).collection('metadata').doc('current');
   await ref.set(metadata, { merge });
-  console.log(`Updated metadata: ${metadataCollection}/${docName}`);
+  console.log(`Updated metadata: campuses/${campusId}/metadata/current`);
 }
 
 // ─── Shared cell / row utilities ────────────────────────────────────────────

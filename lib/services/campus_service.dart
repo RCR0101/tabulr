@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum Campus {
@@ -41,26 +42,31 @@ class CampusService {
     }
   }
   
-  static String get currentCoursesCollection {
+  static String get campusId {
     switch (_currentCampus) {
       case Campus.hyderabad:
-        return 'hyd-courses';
+        return 'hyderabad';
       case Campus.pilani:
-        return 'pilani-courses';
+        return 'pilani';
       case Campus.goa:
-        return 'goa-courses';
+        return 'goa';
     }
   }
-  
-  static String get currentMetadataDocument {
-    switch (_currentCampus) {
-      case Campus.hyderabad:
-        return 'current-hyderabad';
-      case Campus.pilani:
-        return 'current-pilani';
-      case Campus.goa:
-        return 'current-goa';
-    }
+
+  static CollectionReference<Map<String, dynamic>> coursesMasterRef(FirebaseFirestore firestore) {
+    return firestore.collection('campuses').doc(campusId).collection('courses_master');
+  }
+
+  static CollectionReference<Map<String, dynamic>> timetableRef(FirebaseFirestore firestore) {
+    return firestore.collection('campuses').doc(campusId).collection('timetable');
+  }
+
+  static CollectionReference<Map<String, dynamic>> examSeatingRef(FirebaseFirestore firestore) {
+    return firestore.collection('campuses').doc(campusId).collection('exam_seating');
+  }
+
+  static DocumentReference<Map<String, dynamic>> metadataDocRef(FirebaseFirestore firestore) {
+    return firestore.collection('campuses').doc(campusId).collection('metadata').doc('current');
   }
   
   static Future<void> initializeCampus() async {

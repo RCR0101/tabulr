@@ -1,179 +1,106 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read access to courses collection for everyone
-    match /courses/{document} {
-      allow read: if true;
-      allow write: if false; // Only admin can write via script
-    }
-    
-    // Allow read access to Hyderabad campus courses for everyone
-    match /hyd-courses/{document} {
-      allow read: if true;
-      allow write: if false; // Only admin can write via script
-    }
-    
-    // Allow read access to Pilani campus courses for everyone
-    match /pilani-courses/{document} {
-      allow read: if true;
-      allow write: if false; // Only admin can write via script
-    }
-    
-    // Allow read access to Goa campus courses for everyone
-    match /goa-courses/{document} {
-      allow read: if true;
-      allow write: if false; // Only admin can write via script
-    }
-    
-    // Allow read access to timetable metadata for everyone
-    match /timetable_metadata/{document} {
-      allow read: if true;
-      allow write: if false; // Only admin can write via script
-    }
-    
-    // Allow read access to course guide for everyone
-    match /course_guide/{document} {
-      allow read: if true;
-      allow write: if false; // Only admin can write via script
-    }
-    
-    // Allow read access to discipline electives for everyone
-    match /discipline_electives/{document} {
-      allow read: if true;
-      allow write: if false; // Only admin can write via script
-    }
-    
-    // Allow read access to HUEL guide for everyone
-    match /huel_guide/{document} {
-      allow read: if true;
-      allow write: if false; // Only admin can write via script
-    }
-    
-    // Allow read access to professors collection for everyone
-    match /professors/{document} {
-      allow read: if true;
-      allow write: if false; // Only admin can write via script
-    }
-    
-    // Allow read access to all courses collection for everyone
-    match /all_courses/{document} {
-      allow read: if true;
-      allow write: if false; // Only admin can write via script
-    }
-    
-    // Allow read access to prerequisites collection for everyone
-    match /prerequisites/{document} {
-      allow read: if true;
-      allow write: if false; // Only admin can write via script
-    }
-    
-    // Allow read access to metadata collection for everyone
-    match /metadata/{document} {
-      allow read: if true;
-      allow write: if false; // Only admin can write via script
+
+    function isBitsEmail() {
+      return request.auth != null &&
+             request.auth.token.email.matches('.*@(hyderabad|pilani|goa|dubai)[.]bits-pilani[.]ac[.]in$');
     }
 
-    // Allow read access to exam seating collections for everyone
-    match /exam-seating/{document} {
-      allow read: if true;
-      allow write: if false; // Only admin can write via script
+    function isOwner(userId) {
+      let email = request.auth.token.email;
+      let username = email.split('@')[0];
+      return request.auth != null && (
+        userId == username + 'H' && email.matches('.*@hyderabad[.]bits-pilani[.]ac[.]in$') ||
+        userId == username + 'P' && email.matches('.*@pilani[.]bits-pilani[.]ac[.]in$') ||
+        userId == username + 'G' && email.matches('.*@goa[.]bits-pilani[.]ac[.]in$') ||
+        userId == username + 'D' && email.matches('.*@dubai[.]bits-pilani[.]ac[.]in$')
+      );
     }
 
-    match /hyd-exam-seating/{document} {
-      allow read: if true;
-      allow write: if false; // Only admin can write via script
+    function userDocId() {
+      let email = request.auth.token.email;
+      let username = email.split('@')[0];
+      let suffix = email.matches('.*@hyderabad[.]bits-pilani[.]ac[.]in$') ? 'H' :
+                   email.matches('.*@pilani[.]bits-pilani[.]ac[.]in$') ? 'P' :
+                   email.matches('.*@goa[.]bits-pilani[.]ac[.]in$') ? 'G' : 'D';
+      return username + suffix;
     }
 
-    match /goa-exam-seating/{document} {
-      allow read: if true;
-      allow write: if false; // Only admin can write via script
-    }
-
-    match /pilani-exam-seating/{document} {
-      allow read: if true;
-      allow write: if false; // Only admin can write via script
-    }
-    
-    // User timetables - only authenticated users can access their own data
-    match /user_timetables/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      
-      // Individual timetables subcollection
-      match /timetables/{timetableId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-    }
-    
-    // CGPA data - only authenticated users can access their own data
-    match /cgpa/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-
-      // Individual semesters subcollection
-      match /semesters/{semesterId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-      }
-    }
-
-    // Exam seating user data - only authenticated users can access their own data
-    match /exam-seating-user/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // User settings - only authenticated users can access their own settings
-    match /user-settings/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    match /files/{fileId} {
+    // Campus data (courses_master, timetable, exam_seating, metadata)
+    match /campuses/{campusId}/{sub=**} {
       allow read: if true;
       allow write: if false;
     }
-    
-    match /tags/{tagId} {
+
+    // Reference data
+    match /reference/{category}/{sub=**} {
       allow read: if true;
       allow write: if false;
     }
-    
-    match /metadataAcad/{metaId} {
-      allow read: if true;
-      allow write: if false;
-    }
-    
-    match /submissions/{submissionId} {
-      allow read: if false; // Only admin can read
-      allow create: if true; // Anyone can submit new resources
-      allow update, delete: if false; // Only admin can modify
+
+    // User data — owner only
+    match /users/{userId}/{sub=**} {
+      allow read, write: if isOwner(userId);
     }
 
-    // Course announcements - only Hyderabad BITS email users
-    match /course_announcements/{announcementId} {
-      function isHydEmail() {
-        return request.auth != null &&
-               request.auth.token.email.matches('.*@hyderabad[.]bits-pilani[.]ac[.]in$');
-      }
+    // Announcements
+    match /announcements/{announcementId} {
+      allow read: if isBitsEmail();
+      allow create: if isBitsEmail()
+        && request.resource.data.authorUid == userDocId();
+      allow delete: if isBitsEmail()
+        && resource.data.authorUid == userDocId();
+      allow update: if isBitsEmail()
+        && request.resource.data.authorUid == resource.data.authorUid
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['upvotes', 'downvotes', 'totalFlagWeight', 'topFlagReason',
+                      'topFlagCounterSource', 'disputeState', 'correctionText',
+                      'correctionSource', 'confirmWeight', 'denyWeight',
+                      'confirmCount', 'denyCount', 'verificationState']);
 
-      allow read: if isHydEmail();
-      allow create: if isHydEmail()
-                    && request.resource.data.authorUid == request.auth.uid;
-      allow delete: if isHydEmail()
-                    && resource.data.authorUid == request.auth.uid;
-      allow update: if isHydEmail()
-                    && request.resource.data.authorUid == resource.data.authorUid
-                    && request.resource.data.diff(resource.data).affectedKeys()
-                        .hasOnly(['upvotes', 'downvotes']);
-
-      // Votes subcollection - each user can only write their own vote
       match /votes/{visitorUid} {
-        allow read: if isHydEmail();
-        allow write: if isHydEmail()
-                     && visitorUid == request.auth.uid;
+        allow read: if isBitsEmail();
+        allow write: if isBitsEmail() && visitorUid == userDocId();
+      }
+      match /flags/{flagUid} {
+        allow read: if isBitsEmail();
+        allow write: if isBitsEmail() && flagUid == userDocId();
+      }
+      match /verifications/{verifUid} {
+        allow read: if isBitsEmail();
+        allow write: if isBitsEmail() && verifUid == userDocId();
       }
     }
 
-    // Deny access to all other collections
-    match /{document=**} {
-      allow read, write: if false;
+    // Reputation
+    match /reputation/{uid} {
+      allow read: if isBitsEmail();
+      allow create: if isBitsEmail();
+      allow update: if isBitsEmail()
+        && request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['score', 'lastActive', 'events', 'suspendedUntil']);
+    }
+
+    // Academic drives — three top-level collections
+    match /acad_drives_files/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /acad_drives_submissions/{docId} {
+      allow create: if request.auth != null;
+      allow read: if true;
+      allow update, delete: if false;
+    }
+    match /acad_drives_tags/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Admin metadata
+    match /admin_metadata/{docId} {
+      allow read: if true;
+      allow write: if false;
     }
   }
 }

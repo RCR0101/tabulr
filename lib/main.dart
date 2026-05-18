@@ -13,6 +13,7 @@ import 'screens/timetables_screen.dart';
 import 'services/auth_service.dart';
 import 'services/theme_service.dart' as theme_service;
 import 'services/campus_service.dart';
+import 'services/courses_master_service.dart';
 import 'services/preferences_service.dart';
 import 'services/user_settings_service.dart';
 import 'models/user_settings.dart' as user_settings;
@@ -30,6 +31,9 @@ void main() async {
   
   // Initialize campus service
   await CampusService.initializeCampus();
+
+  // Pre-load course names from courses_master
+  await CoursesMasterService().loadForCampus();
   
   // Initialize Auth Service
   await AuthService().initialize();
@@ -167,8 +171,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
         // Force rebuild when auth state changes by checking current state
         final isAuthenticated = _authService.isAuthenticated;
         final isGuest = _authService.isGuest;
-        
-        print('AuthWrapper rebuild - isAuthenticated: $isAuthenticated, isGuest: $isGuest');
         
         // If user is authenticated, go to timetables screen
         if (isAuthenticated) {

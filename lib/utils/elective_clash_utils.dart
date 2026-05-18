@@ -39,7 +39,7 @@ class ElectiveClashDetector {
       final semesterDocId = 'semester_${semester.replaceAll('-', '_')}';
 
       final courseGuideDoc = await _firestore
-          .collection('course_guide')
+          .collection('reference').doc('course_guide').collection('semesters')
           .doc(semesterDocId)
           .get();
 
@@ -48,13 +48,25 @@ class ElectiveClashDetector {
       final data = courseGuideDoc.data();
       if (data == null || !data.containsKey('groups')) return;
 
-      final groups = data['groups'] as Map<String, dynamic>;
+      final rawGroups = data['groups'];
 
       final branchName = constants.branchCodeToName[branch];
       if (branchName == null) return;
 
-      for (final entry in groups.entries) {
-        final groupData = entry.value as Map<String, dynamic>;
+      final groupsList = <Map<String, dynamic>>[];
+      if (rawGroups is List) {
+        for (final g in rawGroups) {
+          if (g is Map<String, dynamic>) groupsList.add(g);
+        }
+      } else if (rawGroups is Map<String, dynamic>) {
+        for (final entry in rawGroups.entries) {
+          if (entry.value is Map<String, dynamic>) {
+            groupsList.add(entry.value as Map<String, dynamic>);
+          }
+        }
+      }
+
+      for (final groupData in groupsList) {
         final branches = List<String>.from(groupData['branches'] ?? []);
 
         if (branches.contains(branchName)) {

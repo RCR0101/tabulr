@@ -245,6 +245,27 @@ class AuthService {
   String? get userName => currentUser?.displayName;
   String? get userPhotoUrl => currentUser?.photoURL;
 
+  /// Derives the Firestore document ID for the current user from their email.
+  /// Format: {username}{campusLetter} e.g. "f20220123H" for Hyderabad.
+  String? get userDocId {
+    final email = currentUser?.email;
+    if (email == null) return null;
+    return deriveUserDocId(email);
+  }
+
+  static String? deriveUserDocId(String? email) {
+    if (email == null || !email.contains('@')) return null;
+    final atIdx = email.indexOf('@');
+    final username = email.substring(0, atIdx);
+    final domain = email.substring(atIdx + 1).toLowerCase();
+
+    if (domain == 'hyderabad.bits-pilani.ac.in') return '${username}H';
+    if (domain == 'pilani.bits-pilani.ac.in') return '${username}P';
+    if (domain == 'goa.bits-pilani.ac.in') return '${username}G';
+    if (domain == 'dubai.bits-pilani.ac.in') return '${username}D';
+    return null;
+  }
+
   // Check if user has valid authentication state
   Future<bool> isValidAuthState() async {
     try {

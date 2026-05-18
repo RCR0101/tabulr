@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import { parse } from 'csv-parse/sync';
 import {
   initializeFirebase,
-  getCampusCollection,
+  getCampusId,
   getCampusName,
   uploadCoursesToFirestore,
   updateMetadata,
@@ -502,11 +502,10 @@ async function main() {
     console.log(`Written ${courseCodes.length} course codes to ${courseCodesFile}`);
 
     const { db } = initializeFirebase();
-    const collectionName = getCampusCollection(campus);
 
-    await uploadCoursesToFirestore(db, courses, collectionName);
+    await uploadCoursesToFirestore(db, courses, campus);
 
-    await updateMetadata(db, collectionName, {
+    await updateMetadata(db, campus, {
       lastUpdated: new Date().toISOString(),
       totalCourses: courses.length,
       uploadedAt: new Date().toISOString(),

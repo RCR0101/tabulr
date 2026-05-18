@@ -513,7 +513,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
   Widget _buildAnnouncementCard(
       CourseAnnouncement announcement, ThemeData theme) {
     final isAuthor =
-        announcement.authorUid == _authService.currentUser?.uid;
+        announcement.authorUid == _authService.userDocId;
     final authorTier = _authorTiers[announcement.authorUid];
 
     return Card(

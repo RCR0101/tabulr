@@ -325,7 +325,7 @@ function normalizeInstructorNames(instructor) {
 async function buildProfessorScheduleMap() {
   console.log('📚 Fetching courses from hyd-courses collection...');
 
-  const coursesSnapshot = await db.collection('hyd-courses').get();
+  const coursesSnapshot = await db.collection('campuses/hyderabad/timetable').get();
   console.log(`📖 Found ${coursesSnapshot.size} courses`);
 
   // Map: professorName (uppercase) -> array of schedule entries
@@ -333,8 +333,7 @@ async function buildProfessorScheduleMap() {
 
   coursesSnapshot.forEach(doc => {
     const course = doc.data();
-    const courseCode = course.courseCode;
-    const courseTitle = course.courseTitle;
+    const courseCode = doc.id.replace(/_/g, ' ');
 
     if (!course.sections || !Array.isArray(course.sections)) {
       return;
@@ -346,24 +345,21 @@ async function buildProfessorScheduleMap() {
       const sectionId = section.sectionId || '';
       const schedule = section.schedule || [];
 
-      // For each instructor in this section
       instructorNames.forEach(profName => {
         if (!professorScheduleMap[profName]) {
           professorScheduleMap[profName] = [];
         }
 
-        // For each schedule entry (day-hour combination)
         schedule.forEach(scheduleEntry => {
           const days = scheduleEntry.days || [];
           const hours = scheduleEntry.hours || [];
 
           professorScheduleMap[profName].push({
-            courseCode,
-            courseTitle,
-            sectionId,
+            course_code: courseCode,
+            section_id: sectionId,
             room,
-            days, // e.g., ['DayOfWeek.M', 'DayOfWeek.W', 'DayOfWeek.F']
-            hours, // e.g., [1, 2]
+            days,
+            hours,
           });
         });
       });
@@ -452,7 +448,7 @@ async function updateProfessorsWithSchedules() {
 
     // Step 5: Clear existing professors collection
     console.log('\n🔄 Clearing existing professor data...');
-    const professorsRef = db.collection('professors');
+    const professorsRef = db.collection('reference/professors/entries');
     const existingSnapshot = await professorsRef.get();
 
     const deletePromises = [];
@@ -508,7 +504,7 @@ async function updateProfessorsWithSchedules() {
     console.log(`📊 Professors without schedule: ${unmatchedCount}`);
 
     // Step 7: Update metadata
-    const metadataRef = db.collection('metadata').doc('professors');
+    const metadataRef = db.doc('admin/metadata/professors');
     await metadataRef.set({
       totalProfessors: uploadPromises.length,
       professorsWithSchedule: matchedCount,

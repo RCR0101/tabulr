@@ -4,6 +4,7 @@ import '../models/timetable.dart';
 import '../services/course_utils.dart';
 import '../services/responsive_service.dart';
 import '../services/campus_service.dart';
+import '../services/clash_detector.dart';
 
 class CourseListWidget extends StatelessWidget {
   final List<Course> courses;
@@ -35,40 +36,98 @@ class CourseListWidget extends StatelessWidget {
     final courseSections = selectedSections
         .where((s) => s.courseCode == courseCode)
         .toList();
-    
+
     if (courseSections.isEmpty) return '';
-    
-    // Group by section type and get the section IDs
+
     final Map<SectionType, String> typeToSection = {};
     for (final section in courseSections) {
       typeToSection[section.section.type] = section.sectionId;
     }
-    
-    // Build the display string (e.g., "L1 T2 P3")
+
     final List<String> parts = [];
     for (final type in [SectionType.L, SectionType.T, SectionType.P]) {
       if (typeToSection.containsKey(type)) {
         parts.add('${typeToSection[type]}');
       }
     }
-    
+
     return parts.join(' ');
+  }
+
+  /// Check if a course clashes with already-selected courses (exam or schedule).
+  List<String> _getCourseClashes(Course course) {
+    if (selectedSections.isEmpty) return [];
+    if (selectedSections.any((s) => s.courseCode == course.courseCode)) return [];
+
+    final clashes = <String>[];
+
+    // Check mid-sem exam clashes
+    if (course.midSemExam != null) {
+      for (final selected in selectedSections) {
+        final selectedCourse = courses.firstWhere(
+          (c) => c.courseCode == selected.courseCode,
+          orElse: () => course,
+        );
+        if (selectedCourse.courseCode == course.courseCode) continue;
+        if (selectedCourse.midSemExam != null &&
+            ClashDetector.examDatesConflict(course.midSemExam!, selectedCourse.midSemExam!)) {
+          clashes.add('MidSem clash with ${selectedCourse.courseCode}');
+          break;
+        }
+      }
+    }
+
+    // Check end-sem/comprehensive exam clashes
+    if (course.endSemExam != null) {
+      for (final selected in selectedSections) {
+        final selectedCourse = courses.firstWhere(
+          (c) => c.courseCode == selected.courseCode,
+          orElse: () => course,
+        );
+        if (selectedCourse.courseCode == course.courseCode) continue;
+        if (selectedCourse.endSemExam != null &&
+            ClashDetector.examDatesConflict(course.endSemExam!, selectedCourse.endSemExam!)) {
+          clashes.add('Compre clash with ${selectedCourse.courseCode}');
+          break;
+        }
+      }
+    }
+
+    // Check each section type individually — are ALL sections of that type blocked?
+    final sectionsByType = <SectionType, List<Section>>{};
+    for (final section in course.sections) {
+      sectionsByType.putIfAbsent(section.type, () => []).add(section);
+    }
+
+    for (final entry in sectionsByType.entries) {
+      final type = entry.key;
+      final sections = entry.value;
+      final allBlocked = sections.every((section) {
+        final conflicts = ClashDetector.checkScheduleConflicts(section, selectedSections);
+        return conflicts.isNotEmpty;
+      });
+      if (allBlocked) {
+        final typeName = type == SectionType.L ? 'Lecture' :
+                         type == SectionType.P ? 'Practical' : 'Tutorial';
+        clashes.add('All $typeName sections clash');
+      }
+    }
+
+    return clashes;
   }
 
   @override
   Widget build(BuildContext context) {
     List<Course> displayCourses;
-    
+
     if (showOnlySelected) {
-      // Show only courses that have selected sections
-      displayCourses = courses.where((course) => 
+      displayCourses = courses.where((course) =>
         selectedSections.any((s) => s.courseCode == course.courseCode)
       ).toList();
     } else {
-      // Show all courses without any reordering
       displayCourses = courses;
     }
-    
+
     if (displayCourses.isEmpty) {
       return Center(
         child: Column(
@@ -89,8 +148,8 @@ class CourseListWidget extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              showOnlySelected 
-                ? 'Go to Search tab to add courses' 
+              showOnlySelected
+                ? 'Go to Search tab to add courses'
                 : 'Try adjusting your search criteria',
               style: const TextStyle(
                 fontSize: 12,
@@ -101,14 +160,14 @@ class CourseListWidget extends StatelessWidget {
         ),
       );
     }
-    
+
     return ListView.builder(
       padding: ResponsiveService.getAdaptivePadding(
-        context, 
+        context,
         EdgeInsets.fromLTRB(
-          8, 
-          8, 
-          8, 
+          8,
+          8,
+          8,
           ResponsiveService.isMobile(context) ? 100 : 8
         ),
       ),
@@ -118,139 +177,211 @@ class CourseListWidget extends StatelessWidget {
         final isSelectedCourse = selectedSections.any(
           (s) => s.courseCode == course.courseCode,
         );
-        
-        return Container(
-          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-          decoration: BoxDecoration(
-            color: (isSelectedCourse && !showOnlySelected) 
-              ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-              : Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(12),
-            border: (isSelectedCourse && !showOnlySelected) 
-              ? Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.3))
-              : null,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: (isSelectedCourse && !showOnlySelected) ? 6 : 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: ExpansionTile(
-            title: Row(
+        final clashes = _getCourseClashes(course);
+        final hasClashes = clashes.isNotEmpty;
+
+        return Opacity(
+          opacity: hasClashes ? 0.5 : 1.0,
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+            decoration: BoxDecoration(
+              color: hasClashes
+                ? Theme.of(context).colorScheme.surfaceContainerHighest
+                : (isSelectedCourse && !showOnlySelected)
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                  : Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(12),
+              border: hasClashes
+                ? Border.all(color: Theme.of(context).colorScheme.error.withValues(alpha: 0.3))
+                : (isSelectedCourse && !showOnlySelected)
+                  ? Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3))
+                  : null,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: (isSelectedCourse && !showOnlySelected) ? 6 : 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
               children: [
-                if (isSelectedCourse && !showOnlySelected) ...[
+                ExpansionTile(
+                  title: Row(
+                    children: [
+                      if (isSelectedCourse && !showOnlySelected) ...[
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.secondary,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.5),
+                                blurRadius: 4,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      Expanded(
+                        child: Text(
+                          course.courseCode,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: hasClashes
+                              ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)
+                              : (isSelectedCourse && !showOnlySelected)
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (course.courseTitle.isNotEmpty && course.courseTitle != course.courseCode)
+                        Text(course.courseTitle),
+                      Text('Instructor in Charge: ${CourseUtils.getInstructorInCharge(course)}',
+                           style: TextStyle(
+                             fontWeight: FontWeight.w500,
+                             color: Theme.of(context).colorScheme.primary,
+                           )),
+                      Text('Credits: L${course.lectureCredits} P${course.practicalCredits} U${course.totalCredits}'),
+                      if (course.midSemExam != null)
+                        Text('MidSem: ${course.midSemExam!.date.day}/${course.midSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot, campus: CampusService.currentCampusCode)}'),
+                      if (course.endSemExam != null)
+                        Text('EndSem: ${course.endSemExam!.date.day}/${course.endSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot, campus: CampusService.currentCampusCode)}'),
+                      if (_getSelectedSectionsText(course.courseCode).isNotEmpty)
+                        Text(
+                          'Selected: ${_getSelectedSectionsText(course.courseCode)}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).brightness == Brightness.dark
+                              ? Theme.of(context).colorScheme.primaryContainer
+                              : Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                    ],
+                  ),
+                  children: course.sections.map((section) {
+                    final isSelected = _isSectionSelected(course.courseCode, section.sectionId);
+                    final isTypeAlreadySelected = _isSectionTypeAlreadySelected(course.courseCode, section.type);
+                    final canSelect = isSelected || !isTypeAlreadySelected;
+
+                    return Container(
+                      constraints: BoxConstraints(
+                        minHeight: ResponsiveService.getTouchTargetSize(context),
+                      ),
+                      child: ListTile(
+                        title: Text(
+                          '${section.sectionId} - ${section.instructor}',
+                          style: TextStyle(
+                            color: canSelect ? null : Colors.grey,
+                            fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
+                          ),
+                        ),
+                        contentPadding: ResponsiveService.getAdaptivePadding(
+                          context,
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Room: ${section.room}',
+                              style: TextStyle(color: canSelect ? null : Colors.grey),
+                            ),
+                            Text(
+                              'Schedule: ${TimeSlotInfo.getFormattedSchedule(section.schedule)}',
+                              style: TextStyle(color: canSelect ? null : Colors.grey),
+                            ),
+                            if (!canSelect && !isSelected)
+                              Text(
+                                'Already selected ${section.type.name} section for this course',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
+                                  fontSize: 12
+                                ),
+                              ),
+                          ],
+                        ),
+                        trailing: SizedBox(
+                          width: 70,
+                          height: 32,
+                          child: TextButton(
+                            onPressed: (canSelect && !hasClashes) ? () {
+                              onSectionToggle(course.courseCode, section.sectionId, isSelected);
+                            } : null,
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              backgroundColor: isSelected
+                                ? Theme.of(context).colorScheme.error.withValues(alpha: 0.1)
+                                : Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                            child: Text(
+                              isSelected ? 'Remove' : 'Add',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: (canSelect && !hasClashes)
+                                  ? (isSelected
+                                    ? Theme.of(context).colorScheme.error
+                                    : Theme.of(context).colorScheme.primary)
+                                  : Colors.grey,
+                              ),
+                            ),
+                          ),
+                        ),
+                        tileColor: isSelected
+                          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
+                          : (!canSelect ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.3) : null),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                if (hasClashes)
                   Container(
-                    width: 10,
-                    height: 10,
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.secondary,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Theme.of(context).colorScheme.secondary.withOpacity(0.5),
-                          blurRadius: 4,
-                          spreadRadius: 1,
+                      color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(12),
+                        bottomRight: Radius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            clashes.join(' • '),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context).colorScheme.error,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                ],
-                Expanded(
-                  child: Text(
-                    course.courseCode,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: (isSelectedCourse && !showOnlySelected) 
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                ),
               ],
             ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(course.courseTitle),
-                Text('Instructor in Charge: ${CourseUtils.getInstructorInCharge(course)}',
-                     style: TextStyle(
-                       fontWeight: FontWeight.w500, 
-                       color: Theme.of(context).colorScheme.primary,
-                     )),
-                Text('Credits: L${course.lectureCredits} P${course.practicalCredits} U${course.totalCredits}'),
-                if (course.midSemExam != null)
-                  Text('MidSem: ${course.midSemExam!.date.day}/${course.midSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot, campus: CampusService.currentCampusCode)}'),
-                if (course.endSemExam != null)
-                  Text('EndSem: ${course.endSemExam!.date.day}/${course.endSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot, campus: CampusService.currentCampusCode)}'),
-                if (_getSelectedSectionsText(course.courseCode).isNotEmpty)
-                  Text(
-                    'Selected: ${_getSelectedSectionsText(course.courseCode)}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).brightness == Brightness.dark
-                        ? Theme.of(context).colorScheme.primaryContainer
-                        : Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-              ],
-            ),
-            children: course.sections.map((section) {
-              final isSelected = _isSectionSelected(course.courseCode, section.sectionId);
-              final isTypeAlreadySelected = _isSectionTypeAlreadySelected(course.courseCode, section.type);
-              final canSelect = isSelected || !isTypeAlreadySelected;
-              
-              return Container(
-                constraints: BoxConstraints(
-                  minHeight: ResponsiveService.getTouchTargetSize(context),
-                ),
-                child: ListTile(
-                  title: Text(
-                    '${section.sectionId} - ${section.instructor}',
-                    style: TextStyle(
-                      color: canSelect ? null : Colors.grey,
-                      fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
-                    ),
-                  ),
-                  contentPadding: ResponsiveService.getAdaptivePadding(
-                    context,
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Room: ${section.room}',
-                      style: TextStyle(color: canSelect ? null : Colors.grey),
-                    ),
-                    Text(
-                      'Schedule: ${TimeSlotInfo.getFormattedSchedule(section.schedule)}',
-                      style: TextStyle(color: canSelect ? null : Colors.grey),
-                    ),
-                    if (!canSelect && !isSelected)
-                      Text(
-                        'Already selected ${section.type.name} section for this course',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error.withOpacity(0.8), 
-                          fontSize: 12
-                        ),
-                      ),
-                  ],
-                ),
-                trailing: Switch(
-                  value: isSelected,
-                  onChanged: canSelect ? (value) {
-                    onSectionToggle(course.courseCode, section.sectionId, isSelected);
-                  } : null,
-                ),
-                tileColor: isSelected 
-                  ? Theme.of(context).colorScheme.primary.withOpacity(0.15) 
-                  : (!canSelect ? Theme.of(context).colorScheme.surface.withOpacity(0.3) : null),
-                ),
-              );
-            }).toList(),
           ),
         );
       },

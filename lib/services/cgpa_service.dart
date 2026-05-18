@@ -14,7 +14,7 @@ class CGPAService {
   final AuthService _authService = AuthService();
 
   // Collection name for CGPA data
-  static const String _collectionName = 'cgpa';
+  static const String _collectionName = 'users';
 
   // Default semesters list
   static const List<String> defaultSemesters = [
@@ -105,7 +105,7 @@ class CGPAService {
   ) async {
     try {
       final user = _authService.currentUser;
-      if (user == null) {
+      if (user == null || _authService.userDocId == null) {
         SecureLogger.warning('CGPA', 'Save semester data operation attempted without authentication');
         return false;
       }
@@ -114,13 +114,13 @@ class CGPAService {
       final jsonData = jsonEncode(semesterData.toJson());
 
       // Encrypt the data
-      final encryptedData = _encryptData(jsonData, user.uid);
+      final encryptedData = _encryptData(jsonData, _authService.userDocId!);
 
       // Save to Firestore
       final docRef = _firestore
           .collection(_collectionName)
-          .doc(user.uid)
-          .collection('semesters')
+          .doc(_authService.userDocId!)
+          .collection('cgpa_semesters')
           .doc(semesterName);
 
       await docRef.set({
@@ -140,15 +140,15 @@ class CGPAService {
   Future<SemesterData?> loadSemesterData(String semesterName) async {
     try {
       final user = _authService.currentUser;
-      if (user == null) {
+      if (user == null || _authService.userDocId == null) {
         SecureLogger.warning('CGPA', 'Load semester data operation attempted without authentication');
         return null;
       }
 
       final docRef = _firestore
           .collection(_collectionName)
-          .doc(user.uid)
-          .collection('semesters')
+          .doc(_authService.userDocId!)
+          .collection('cgpa_semesters')
           .doc(semesterName);
 
       final doc = await docRef.get();
@@ -167,7 +167,7 @@ class CGPAService {
       // Decrypt the data
       final decryptedData = _decryptData(
         data['encryptedData'] as String,
-        user.uid,
+        _authService.userDocId!,
       );
 
       // Parse JSON
@@ -183,15 +183,15 @@ class CGPAService {
   Future<CGPAData> loadAllCGPAData() async {
     try {
       final user = _authService.currentUser;
-      if (user == null) {
+      if (user == null || _authService.userDocId == null) {
         SecureLogger.warning('CGPA', 'Load all CGPA data operation attempted without authentication');
         return CGPAData();
       }
 
       final snapshot = await _firestore
           .collection(_collectionName)
-          .doc(user.uid)
-          .collection('semesters')
+          .doc(_authService.userDocId!)
+          .collection('cgpa_semesters')
           .get();
 
       if (snapshot.docs.isEmpty) {
@@ -257,15 +257,15 @@ class CGPAService {
   Future<bool> deleteSemesterData(String semesterName) async {
     try {
       final user = _authService.currentUser;
-      if (user == null) {
+      if (user == null || _authService.userDocId == null) {
         SecureLogger.warning('CGPA', 'Delete semester data operation attempted without authentication');
         return false;
       }
 
       await _firestore
           .collection(_collectionName)
-          .doc(user.uid)
-          .collection('semesters')
+          .doc(_authService.userDocId!)
+          .collection('cgpa_semesters')
           .doc(semesterName)
           .delete();
 
@@ -281,7 +281,7 @@ class CGPAService {
   Future<bool> deleteAllCGPAData() async {
     try {
       final user = _authService.currentUser;
-      if (user == null) {
+      if (user == null || _authService.userDocId == null) {
         SecureLogger.warning('CGPA', 'Delete all CGPA data operation attempted without authentication');
         return false;
       }
@@ -289,8 +289,8 @@ class CGPAService {
       final snapshot =
           await _firestore
               .collection(_collectionName)
-              .doc(user.uid)
-              .collection('semesters')
+              .doc(_authService.userDocId!)
+              .collection('cgpa_semesters')
               .get();
 
       final batch = _firestore.batch();

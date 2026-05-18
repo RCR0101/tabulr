@@ -72,64 +72,55 @@ async function uploadAllCourses() {
     console.log('📖 Courses data loaded successfully');
     console.log(`📊 Total courses to process: ${dataLines.length}`);
 
-    // Fetch existing courses to check what needs to be uploaded
     console.log('🔍 Checking existing courses in database...');
-    const allCoursesRef = db.collection('all_courses');
-    const snapshot = await allCoursesRef.get();
-    
-    // Create a set of existing course document IDs
+    const masterRef = db.collection('campuses/hyderabad/courses_master');
+    const snapshot = await masterRef.get();
+
     const existingCourseIds = new Set(snapshot.docs.map(doc => doc.id));
     console.log(`📦 Found ${existingCourseIds.size} existing courses in database`);
 
-    // Upload new data in batches (Firestore limit is 500 operations per batch)
-    console.log('🔄 Uploading new courses...');
-    
+    console.log('🔄 Uploading courses to courses_master...');
+
     let batchCount = 0;
     let currentBatch = db.batch();
     let operationCount = 0;
     let documentCount = 0;
     let skippedCount = 0;
-    
+
     for (const line of dataLines) {
       if (!line.trim()) continue;
-      
+
       const [course_code, course_title, u, has_asterisk] = parseCsvLine(line);
-      
+
       if (!course_code) {
         console.warn(`⚠️  Skipping invalid line: ${line}`);
         continue;
       }
-      
-      // Determine type based on has_asterisk
+
       const type = has_asterisk === 'Yes' ? 'ATC' : 'Normal';
-      
-      // Use course_code as document ID (remove special characters for safety)
       const docId = course_code.replace(/[^a-zA-Z0-9]/g, '_');
-      
-      // Skip if course already exists
+
       if (existingCourseIds.has(docId)) {
         skippedCount++;
         continue;
       }
-      
-      const docRef = allCoursesRef.doc(docId);
-      
+
+      const docRef = masterRef.doc(docId);
+
+      const sanitize = (s) => (s || '').replace(/[\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
+
       const documentData = {
-        course_code: course_code,
-        course_title: course_title,
-        u: u,
+        course_code: sanitize(course_code),
+        title: sanitize(course_title),
+        credits: parseInt(u, 10) || 0,
         type: type,
-        // Add searchable fields for better querying
-        code_lower: course_code.toLowerCase(),
-        title_lower: course_title.toLowerCase(),
-        lastUpdated: new Date().toISOString()
+        updated_at: new Date().toISOString()
       };
-      
+
       currentBatch.set(docRef, documentData);
       operationCount++;
       documentCount++;
-      
-      // Commit batch if we hit the limit
+
       if (operationCount >= 500) {
         await currentBatch.commit();
         batchCount++;
@@ -146,8 +137,7 @@ async function uploadAllCourses() {
       console.log(`  ✅ Batch ${batchCount} committed (${operationCount} operations)`);
     }
 
-    // Create metadata document
-    const metadataRef = db.collection('metadata').doc('all_courses');
+    const metadataRef = db.doc('admin/metadata/all_courses');
     await metadataRef.set({
       lastUpdated: new Date().toISOString(),
       totalCourses: existingCourseIds.size + documentCount,

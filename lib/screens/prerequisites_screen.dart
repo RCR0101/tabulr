@@ -338,7 +338,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          course.name.replaceFirst(course.courseCode, '').trim(),
+                          course.displayName,
                           style: theme.textTheme.bodyMedium,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -434,7 +434,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    course.name.replaceFirst(course.courseCode, '').trim(),
+                    course.displayName,
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -546,18 +546,13 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
     ColorScheme colorScheme,
     Prerequisite prereq,
   ) {
-    // Extract course code from prerequisite name
-    final parts = prereq.prereqName.split(' ');
-    final prereqCode = parts.length >= 2 ? '${parts[0]} ${parts[1]}' : prereq.prereqName;
-    final prereqTitle = parts.length > 2 
-        ? parts.sublist(2).join(' ') 
-        : '';
+    final prereqCode = prereq.courseCode;
+    final prereqTitle = prereq.displayName;
 
-    // Determine the type of prerequisite
-    final preCopLower = prereq.preCop.toLowerCase();
-    final isPrerequisite = preCopLower == 'pre';
-    final isCorequisite = preCopLower == 'co/pre';
-    final isUnclear = preCopLower == 'nan';
+    final typeLower = prereq.type.toLowerCase();
+    final isPrerequisite = typeLower == 'pre';
+    final isCorequisite = typeLower == 'co/pre';
+    final isUnclear = typeLower == 'nan';
 
     // Select color and icon based on type
     Color containerColor;
@@ -589,7 +584,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
       containerColor = colorScheme.surfaceContainerHighest;
       textColor = colorScheme.onSurface;
       iconData = Icons.info_outline;
-      typeLabel = prereq.preCop.toUpperCase();
+      typeLabel = prereq.type.toUpperCase();
       description = 'See course requirements';
     }
 

@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'campus_service.dart';
 import 'auth_service.dart';
+import 'courses_master_service.dart';
+import 'secure_logger.dart';
 
 /// Represents a room with its ID range for exam seating
 class ExamRoom {
@@ -71,10 +73,11 @@ class ExamSeating {
 
   factory ExamSeating.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>?;
+    final code = doc.id.replaceAll('_', ' ');
     if (data == null) {
       return ExamSeating(
-        courseCode: doc.id,
-        courseTitle: '',
+        courseCode: code,
+        courseTitle: CoursesMasterService().getTitle(code),
         examDate: '',
         rooms: [],
       );
@@ -85,10 +88,18 @@ class ExamSeating {
             .toList() ??
         [];
 
+    final examDate = data['exam_date'];
+    String examDateStr = '';
+    if (examDate is String) {
+      examDateStr = examDate;
+    } else if (examDate != null && examDate.toDate != null) {
+      examDateStr = examDate.toDate().toIso8601String();
+    }
+
     return ExamSeating(
-      courseCode: data['courseCode'] ?? doc.id,
-      courseTitle: data['courseTitle'] ?? '',
-      examDate: data['examDate'] ?? '',
+      courseCode: code,
+      courseTitle: CoursesMasterService().getTitle(code),
+      examDate: examDateStr,
       rooms: roomsList,
     );
   }
@@ -112,29 +123,19 @@ class ExamSeatingService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Get the collection name based on current campus
-  String get _collectionName {
-    switch (CampusService.currentCampus) {
-      case Campus.hyderabad:
-        return 'hyd-exam-seating';
-      case Campus.pilani:
-        return 'pilani-exam-seating';
-      case Campus.goa:
-        return 'goa-exam-seating';
-    }
-  }
+  CollectionReference<Map<String, dynamic>> get _collectionRef =>
+      CampusService.examSeatingRef(_firestore);
 
-  /// Fetch all exam seating data
   Future<List<ExamSeating>> fetchAllExamSeating() async {
     try {
-      final querySnapshot = await _firestore.collection(_collectionName).get();
+      final querySnapshot = await _collectionRef.get();
 
       return querySnapshot.docs
           .map((doc) => ExamSeating.fromFirestore(doc))
           .where((exam) => exam.rooms.isNotEmpty)
           .toList();
     } catch (e) {
-      print('Error fetching exam seating: $e');
+      SecureLogger.error('EXAM_SEATING', 'Error fetching exam seating', e);
       return [];
     }
   }
@@ -153,7 +154,7 @@ class ExamSeatingService {
               exam.courseTitle.toUpperCase().contains(normalizedQuery))
           .toList();
     } catch (e) {
-      print('Error searching exam seating: $e');
+      SecureLogger.error('EXAM_SEATING', 'Error searching exam seating', e);
       return [];
     }
   }
@@ -162,13 +163,13 @@ class ExamSeatingService {
   Future<ExamSeating?> getExamByCourseCode(String courseCode) async {
     try {
       final docId = courseCode.replaceAll(' ', '_');
-      final doc = await _firestore.collection(_collectionName).doc(docId).get();
+      final doc = await _collectionRef.doc(docId).get();
 
       if (!doc.exists) return null;
 
       return ExamSeating.fromFirestore(doc);
     } catch (e) {
-      print('Error fetching exam: $e');
+      SecureLogger.error('EXAM_SEATING', 'Error fetching exam', e);
       return null;
     }
   }
@@ -180,48 +181,43 @@ class ExamSeatingService {
     return exam?.findRoomForStudent(studentId);
   }
 
-  // User data collection name
-  static const String _userCollectionName = 'exam-seating-user';
-
   final AuthService _authService = AuthService();
 
-  /// Save user's exam seating preferences (selected courses and student ID)
+  DocumentReference<Map<String, dynamic>> _userPrefsRef(String uid) =>
+      _firestore.collection('users').doc(uid).collection('exam_seating_prefs').doc('data');
+
   Future<bool> saveUserData({
     required List<String> selectedCourseCodes,
     required String studentId,
   }) async {
     try {
       final user = _authService.currentUser;
-      if (user == null) {
+      if (user == null || _authService.userDocId == null) {
         return false;
       }
 
-      final docRef = _firestore.collection(_userCollectionName).doc(user.uid);
-
-      await docRef.set({
-        'selectedCourseCodes': selectedCourseCodes,
-        'studentId': studentId,
+      await _userPrefsRef(_authService.userDocId!).set({
+        'selected_course_codes': selectedCourseCodes,
+        'student_id': studentId,
         'campus': CampusService.currentCampus.name,
-        'lastUpdated': FieldValue.serverTimestamp(),
+        'last_updated': FieldValue.serverTimestamp(),
       });
 
       return true;
     } catch (e) {
-      print('Error saving exam seating user data: $e');
+      SecureLogger.error('EXAM_SEATING', 'Error saving user data', e);
       return false;
     }
   }
 
-  /// Load user's exam seating preferences
   Future<ExamSeatingUserData?> loadUserData() async {
     try {
       final user = _authService.currentUser;
-      if (user == null) {
+      if (user == null || _authService.userDocId == null) {
         return null;
       }
 
-      final docRef = _firestore.collection(_userCollectionName).doc(user.uid);
-      final doc = await docRef.get();
+      final doc = await _userPrefsRef(_authService.userDocId!).get();
 
       if (!doc.exists) {
         return null;
@@ -234,7 +230,7 @@ class ExamSeatingService {
 
       return ExamSeatingUserData.fromMap(data);
     } catch (e) {
-      print('Error loading exam seating user data: $e');
+      SecureLogger.error('EXAM_SEATING', 'Error loading user data', e);
       return null;
     }
   }
@@ -254,8 +250,8 @@ class ExamSeatingUserData {
 
   factory ExamSeatingUserData.fromMap(Map<String, dynamic> map) {
     return ExamSeatingUserData(
-      selectedCourseCodes: List<String>.from(map['selectedCourseCodes'] ?? []),
-      studentId: map['studentId'] ?? '',
+      selectedCourseCodes: List<String>.from(map['selected_course_codes'] ?? []),
+      studentId: map['student_id'] ?? '',
       campus: map['campus'],
     );
   }

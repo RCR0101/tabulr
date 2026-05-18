@@ -50,7 +50,7 @@ class AnnouncementService extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      final doc = await _firestoreService.getDocument('metadata', 'announcement');
+      final doc = await _firestoreService.getDocument('admin_metadata', 'announcement');
       
       if (doc != null && doc.exists && doc.data() != null) {
         _currentAnnouncement = Announcement.fromJson(doc.data()!);
@@ -96,7 +96,7 @@ class AnnouncementService extends ChangeNotifier {
 
   /// Watch for real-time announcement updates
   Stream<Announcement?> watchAnnouncement() {
-    return _firestoreService.watchDocument('metadata', 'announcement').map((doc) {
+    return _firestoreService.watchDocument('admin_metadata', 'announcement').map((doc) {
       if (doc.exists && doc.data() != null) {
         final announcement = Announcement.fromJson(doc.data()!);
         _currentAnnouncement = announcement;

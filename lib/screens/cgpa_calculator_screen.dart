@@ -429,7 +429,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
           final allCourse = AllCourse(
             courseCode: cdcCourse.code,
             courseTitle: cdcCourse.name,
-            u: cdcCourse.credits.toString(),
+            creditValue: cdcCourse.credits,
             type: 'Normal',
           );
           _addCourseToSemester(semesterName, allCourse);
@@ -2857,7 +2857,7 @@ class _CourseSelectionDialogState extends State<_CourseSelectionDialog> {
         AllCourse(
           courseCode: course.courseCode,
           courseTitle: course.courseTitle,
-          u: course.totalCredits.toString(),
+          creditValue: course.totalCredits,
           type: 'Normal',
         ),
       );

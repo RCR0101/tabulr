@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/timetable.dart';
 import 'auth_service.dart';
-import 'config_service.dart';
 import 'secure_logger.dart';
 
 class FirestoreService {
@@ -12,15 +11,15 @@ class FirestoreService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AuthService _authService = AuthService();
-  final ConfigService _config = ConfigService();
 
-  // Collection name for user timetables (configurable via .env)
-  String get _collectionName => _config.firestoreTimetablesCollection;
+  String get _collectionName => 'users';
+
+  String? get _userDocId => _authService.userDocId;
 
   Future<bool> saveTimetable(Timetable timetable) async {
     try {
       final user = _authService.currentUser;
-      if (user == null) {
+      if (user == null || _userDocId == null) {
         SecureLogger.warning('FIRESTORE', 'Save operation attempted without authentication');
         return false;
       }
@@ -28,12 +27,12 @@ class FirestoreService {
       // Save individual timetable as a subcollection document
       final docRef = _firestore
           .collection(_collectionName)
-          .doc(user.uid)
+          .doc(_userDocId!)
           .collection('timetables')
           .doc(timetable.id);
       
       final Map<String, dynamic> timetableData = {
-        'userId': user.uid,
+        'userId': _userDocId,
         'userEmail': user.email,
         'timetableData': timetable.toJson(),
         'lastUpdated': FieldValue.serverTimestamp(),
@@ -53,14 +52,14 @@ class FirestoreService {
   Future<Timetable?> loadTimetable() async {
     try {
       final user = _authService.currentUser;
-      if (user == null) {
+      if (user == null || _userDocId == null) {
         SecureLogger.warning('FIRESTORE', 'Load operation attempted without authentication');
         return null;
       }
 
       final doc = await _firestore
           .collection(_collectionName)
-          .doc(user.uid)
+          .doc(_userDocId!)
           .get();
 
       if (!doc.exists) {
@@ -91,14 +90,14 @@ class FirestoreService {
   Future<bool> deleteTimetable() async {
     try {
       final user = _authService.currentUser;
-      if (user == null) {
+      if (user == null || _userDocId == null) {
         SecureLogger.warning('FIRESTORE', 'Delete operation attempted without authentication');
         return false;
       }
 
       await _firestore
           .collection(_collectionName)
-          .doc(user.uid)
+          .doc(_userDocId!)
           .delete();
 
       SecureLogger.dataOperation('delete', 'timetable', true);
@@ -112,13 +111,13 @@ class FirestoreService {
   Future<DateTime?> getLastUpdated() async {
     try {
       final user = _authService.currentUser;
-      if (user == null) {
+      if (user == null || _userDocId == null) {
         return null;
       }
 
       final doc = await _firestore
           .collection(_collectionName)
-          .doc(user.uid)
+          .doc(_userDocId!)
           .get();
 
       if (!doc.exists) {
@@ -141,13 +140,13 @@ class FirestoreService {
   Future<bool> hasSavedTimetable() async {
     try {
       final user = _authService.currentUser;
-      if (user == null) {
+      if (user == null || _userDocId == null) {
         return false;
       }
 
       final doc = await _firestore
           .collection(_collectionName)
-          .doc(user.uid)
+          .doc(_userDocId!)
           .get();
 
       return doc.exists && doc.data() != null && doc.data()!['timetableData'] != null;
@@ -159,13 +158,13 @@ class FirestoreService {
 
   Stream<DocumentSnapshot> watchTimetable() {
     final user = _authService.currentUser;
-    if (user == null) {
+    if (user == null || _userDocId == null) {
       return const Stream.empty();
     }
 
     return _firestore
         .collection(_collectionName)
-        .doc(user.uid)
+        .doc(_userDocId!)
         .snapshots();
   }
 
@@ -173,13 +172,13 @@ class FirestoreService {
   Future<Map<String, dynamic>?> getTimetableMetadata() async {
     try {
       final user = _authService.currentUser;
-      if (user == null) {
+      if (user == null || _userDocId == null) {
         return null;
       }
 
       final doc = await _firestore
           .collection(_collectionName)
-          .doc(user.uid)
+          .doc(_userDocId!)
           .get();
 
       if (!doc.exists) {
@@ -207,7 +206,7 @@ class FirestoreService {
   Future<List<Timetable>> getAllTimetables() async {
     try {
       final user = _authService.currentUser;
-      if (user == null) {
+      if (user == null || _userDocId == null) {
         SecureLogger.warning('FIRESTORE', 'Load timetables operation attempted without authentication');
         return [];
       }
@@ -216,7 +215,7 @@ class FirestoreService {
 
       final querySnapshot = await _firestore
           .collection(_collectionName)
-          .doc(user.uid)
+          .doc(_userDocId!)
           .collection('timetables')
           .orderBy('createdAt', descending: false)
           .get();
@@ -246,14 +245,14 @@ class FirestoreService {
   Future<Timetable?> getTimetableById(String timetableId) async {
     try {
       final user = _authService.currentUser;
-      if (user == null) {
+      if (user == null || _userDocId == null) {
         SecureLogger.warning('FIRESTORE', 'Get timetable by ID operation attempted without authentication');
         return null;
       }
 
       final doc = await _firestore
           .collection(_collectionName)
-          .doc(user.uid)
+          .doc(_userDocId!)
           .collection('timetables')
           .doc(timetableId)
           .get();
@@ -286,14 +285,14 @@ class FirestoreService {
   Future<bool> deleteTimetableById(String timetableId) async {
     try {
       final user = _authService.currentUser;
-      if (user == null) {
+      if (user == null || _userDocId == null) {
         SecureLogger.warning('FIRESTORE', 'Delete timetable operation attempted without authentication');
         return false;
       }
 
       await _firestore
           .collection(_collectionName)
-          .doc(user.uid)
+          .doc(_userDocId!)
           .collection('timetables')
           .doc(timetableId)
           .delete();

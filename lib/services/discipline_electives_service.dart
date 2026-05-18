@@ -13,8 +13,8 @@ class DisciplineElectivesService {
     try {
 
       final metadataDoc = await _firestore
-          .collection('discipline_electives')
-          .doc('_metadata')
+          .collection('reference').doc('discipline_electives').collection('metadata')
+          .doc('info')
           .get()
           .timeout(Duration(seconds: 10));
       
@@ -118,7 +118,7 @@ class DisciplineElectivesService {
 
       
       final doc = await _firestore
-          .collection('discipline_electives')
+          .collection('reference').doc('discipline_electives').collection('branches')
           .doc(branchId)
           .get()
           .timeout(Duration(seconds: 10));
@@ -140,12 +140,21 @@ class DisciplineElectivesService {
       
       final courses = data['courses'] as List<dynamic>;
 
-      
-      return courses.map((course) => DisciplineElective(
-        courseCode: course['course_code'] as String,
-        courseName: course['course_name'] as String,
-        branchName: branchName,
-      )).toList();
+
+      return courses.map((course) {
+        if (course is String) {
+          return DisciplineElective(
+            courseCode: course,
+            courseName: '',
+            branchName: branchName,
+          );
+        }
+        return DisciplineElective(
+          courseCode: (course['course_code'] ?? '') as String,
+          courseName: (course['course_name'] ?? '') as String,
+          branchName: branchName,
+        );
+      }).toList();
     } catch (e) {
 
       // Return empty list instead of throwing

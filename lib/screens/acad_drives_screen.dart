@@ -98,26 +98,19 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     try {
       // First, get all files to extract course information
       final filesSnapshot = await _firestore
-          .collection('files')
+          .collection('acad_drives_files')
           .get();
 
-      // Group files by ALL course codes (so files show up under every course they belong to)
-      // This matches the query logic in _loadCourseFiles which uses arrayContains
       Map<String, Map<String, dynamic>> coursesMap = {};
 
       for (var doc in filesSnapshot.docs) {
         final data = doc.data();
-        final courseCodes = data['courseCodes'] as List<dynamic>? ?? [];
-        final courseCode = data['courseCode'] as String?;
+        final courseCodes = data['course_codes'] as List<dynamic>? ?? [];
         final driveName = data['driveName'] as String? ?? 'Unknown Drive';
 
-        // Get all course codes this file belongs to
         Set<String> allCodes = {};
         if (courseCodes.isNotEmpty) {
           allCodes.addAll(courseCodes.map((c) => c.toString()));
-        }
-        if (courseCode != null && courseCode.isNotEmpty) {
-          allCodes.add(courseCode);
         }
         if (allCodes.isEmpty) {
           allCodes.add('Uncategorized');
@@ -174,8 +167,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
     try {
       final filesSnapshot = await _firestore
-          .collection('files')
-          .where('courseCodes', arrayContains: courseCode)
+          .collection('acad_drives_files')
+          .where('course_codes', arrayContains: courseCode)
           .orderBy('uploadedAt', descending: true)
           .get();
 
@@ -307,7 +300,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       if (type == 'drive') {
         url = file['folderMetadata']?['drive_link'];
       } else if (type == 'download') {
-        url = file['storageUrl'];
+        url = file['url'];
       }
       
       if (url != null) {
@@ -357,8 +350,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                 if (file['driveName'] != null)
                   _InfoRow('Drive', file['driveName']),
 
-                if (file['courseName'] != null)
-                  _InfoRow('Course', file['courseName']),
+                if (file['course_codes'] != null && (file['course_codes'] as List).isNotEmpty)
+                  _InfoRow('Course', (file['course_codes'] as List).first.toString()),
                 
                 if (file['tags'] != null && (file['tags'] as List).isNotEmpty) ...[
                   const SizedBox(height: 16),
@@ -502,7 +495,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         'submittedAt': FieldValue.serverTimestamp(),
       };
 
-      await _firestore.collection('submissions').add(submissionData);
+      await _firestore.collection('acad_drives_submissions').add(submissionData);
 
       ToastService.showSuccess('✅ Thank you! Your submission has been received and is pending approval.');
       
@@ -1013,7 +1006,7 @@ class _FileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasDriveLink = file['folderMetadata']?['drive_link'] != null && file['folderMetadata']?['drive_link'] != 'NA';
-    final hasDownloadUrl = file['storageUrl'] != null && file['storageUrl'] != 'NA' && file['storageUrl'].toString().trim().isNotEmpty;
+    final hasDownloadUrl = file['url'] != null && file['url'] != 'NA' && file['url'].toString().trim().isNotEmpty;
     
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

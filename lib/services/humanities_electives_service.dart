@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/course.dart';
 import '../utils/elective_clash_utils.dart';
+import '../services/secure_logger.dart';
 
 class HumanitiesElectivesService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -9,10 +10,10 @@ class HumanitiesElectivesService {
   Future<List<Course>> getAllHumanitiesElectives(List<Course> availableCourses) async {
     try {
       // Get HUEL courses from Firebase
-      final huelSnapshot = await _firestore.collection('huel_guide').get();
+      final huelSnapshot = await _firestore.collection('reference').doc('huel_guide').collection('courses').get();
       
       if (huelSnapshot.docs.isEmpty) {
-        print('No HUEL courses found in database');
+        SecureLogger.debug('HUEL', 'No HUEL courses found in database');
         return [];
       }
 
@@ -28,18 +29,18 @@ class HumanitiesElectivesService {
         }
       }
 
-      print('Found ${huelCourseCodes.length} HUEL courses in database');
+      SecureLogger.debug('HUEL', 'Found ${huelCourseCodes.length} HUEL courses in database');
 
       // Filter to only HUEL courses that are available in current semester timetable
       final allHuelCourses = availableCourses
           .where((course) => huelCourseCodes.contains(course.courseCode))
           .toList();
 
-      print('Found ${allHuelCourses.length} available HUEL courses without clash filtering');
+      SecureLogger.debug('HUEL', 'Found ${allHuelCourses.length} available HUEL courses');
       return allHuelCourses;
 
     } catch (e) {
-      print('Error in getAllHumanitiesElectives: $e');
+      SecureLogger.error('HUEL', 'Error in getAllHumanitiesElectives', e);
       rethrow;
     }
   }
@@ -54,10 +55,10 @@ class HumanitiesElectivesService {
   ) async {
     try {
       // Get HUEL courses from Firebase
-      final huelSnapshot = await _firestore.collection('huel_guide').get();
+      final huelSnapshot = await _firestore.collection('reference').doc('huel_guide').collection('courses').get();
       
       if (huelSnapshot.docs.isEmpty) {
-        print('No HUEL courses found in database');
+        SecureLogger.debug('HUEL', 'No HUEL courses found in database');
         return [];
       }
 
@@ -73,7 +74,7 @@ class HumanitiesElectivesService {
         }
       }
 
-      print('Found ${huelCourseCodes.length} HUEL courses in database');
+      SecureLogger.debug('HUEL', 'Found ${huelCourseCodes.length} HUEL courses in database');
 
       // Get core courses for the specified branches and semesters
       final coreCourseCodes = await ElectiveClashDetector.getCoreCourseCodes(
@@ -83,7 +84,7 @@ class HumanitiesElectivesService {
         secondaryBranch,
       );
 
-      print('Found ${coreCourseCodes.length} core courses for filtering');
+      SecureLogger.debug('HUEL', 'Found ${coreCourseCodes.length} core courses for filtering');
 
       // Filter HUEL courses that:
       // 1. Are available in current semester timetable
@@ -98,18 +99,18 @@ class HumanitiesElectivesService {
 
         // Check if this HUEL course clashes with any core course
         if (ElectiveClashDetector.doesCourseClashWithCore(course, coreCourseCodes, availableCourses)) {
-          print('HUEL course ${course.courseCode} clashes with core courses, excluding');
+          SecureLogger.debug('HUEL', 'Course ${course.courseCode} clashes with core, excluding');
           continue;
         }
 
         filteredHuelCourses.add(course);
       }
 
-      print('Filtered to ${filteredHuelCourses.length} non-clashing HUEL courses');
+      SecureLogger.debug('HUEL', 'Filtered to ${filteredHuelCourses.length} non-clashing HUEL courses');
       return filteredHuelCourses;
 
     } catch (e) {
-      print('Error in getFilteredHumanitiesElectives: $e');
+      SecureLogger.error('HUEL', 'Error in getFilteredHumanitiesElectives', e);
       rethrow;
     }
   }

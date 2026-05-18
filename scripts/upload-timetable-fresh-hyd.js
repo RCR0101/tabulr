@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import { parse } from 'csv-parse/sync';
 import {
   initializeFirebase,
-  getCampusCollection,
+  getCampusId,
   getCampusName,
   uploadCoursesToFirestore,
   updateMetadata,
@@ -494,19 +494,17 @@ async function main() {
     console.log(`Written ${courseCodes.length} course codes to ${courseCodesFile}`);
 
     const { db } = initializeFirebase();
-    const collectionName = getCampusCollection(campus);
 
-    // SELECTIVE UPDATE: Don't clear existing data, just overwrite matching docs
-    await uploadCoursesToFirestore(db, courses, collectionName, { clearFirst: false });
+    await uploadCoursesToFirestore(db, courses, campus, { clearFirst: false });
 
-    // Get current total course count for metadata update
     console.log('Getting updated course count...');
-    const allCoursesSnapshot = await db.collection(collectionName).get();
+    const campusId = getCampusId(campus);
+    const allCoursesSnapshot = await db.collection(`campuses/${campusId}/timetable`).get();
     const totalCourses = allCoursesSnapshot.size;
 
-    await updateMetadata(db, collectionName, {
+    await updateMetadata(db, campus, {
       lastUpdated: new Date().toISOString(),
-      totalCourses: totalCourses, // Total courses in collection after selective update
+      totalCourses: totalCourses,
       uploadedAt: new Date().toISOString(),
       version: Date.now().toString(),
       campus: getCampusName(campus),

@@ -10,7 +10,7 @@ class ReputationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AuthService _authService = AuthService();
 
-  static const String _collection = 'user_reputation';
+  static const String _collection = 'reputation';
   static const int _scoreFloor = -20;
   static const int _suspensionDays = 7;
   static const int _maxEvents = 50;
@@ -32,13 +32,13 @@ class ReputationService {
   }
 
   Stream<UserReputation> watchCurrentUserReputation() {
-    final uid = _authService.currentUser?.uid;
+    final uid = _authService.userDocId;
     if (uid == null) return Stream.value(UserReputation.empty(''));
     return watchReputation(uid);
   }
 
   Future<UserReputation> getCurrentUserReputation() async {
-    final uid = _authService.currentUser?.uid;
+    final uid = _authService.userDocId;
     if (uid == null) return UserReputation.empty('');
     return getReputation(uid);
   }

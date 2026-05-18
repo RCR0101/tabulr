@@ -56,15 +56,15 @@ class Timetable {
       createdAt: parseDateTime(json['createdAt']),
       updatedAt: parseDateTime(json['updatedAt']),
       campus: parsedCampus,
-      availableCourses: (json['availableCourses'] as List)
-          .map((c) => Course.fromJson(c))
-          .toList(),
-      selectedSections: (json['selectedSections'] as List)
-          .map((s) => SelectedSection.fromJson(s))
-          .toList(),
-      clashWarnings: (json['clashWarnings'] as List)
-          .map((w) => ClashWarning.fromJson(w))
-          .toList(),
+      availableCourses: (json['availableCourses'] as List?)
+          ?.map((c) => Course.fromJson(c))
+          .toList() ?? [],
+      selectedSections: (json['selectedSections'] as List?)
+          ?.map((s) => SelectedSection.fromJson(s))
+          .toList() ?? [],
+      clashWarnings: (json['clashWarnings'] as List?)
+          ?.map((w) => ClashWarning.fromJson(w))
+          .toList() ?? [],
     );
   }
 }

@@ -32,21 +32,24 @@ class Course {
     };
   }
 
-  factory Course.fromJson(Map<String, dynamic> json) {
+  factory Course.fromJson(Map<String, dynamic> json, {String? courseCode, String? resolvedTitle}) {
+    final code = courseCode ?? json['courseCode'] ?? '';
     return Course(
-      courseCode: json['courseCode'],
-      courseTitle: json['courseTitle'],
-      lectureCredits: json['lectureCredits'],
-      practicalCredits: json['practicalCredits'],
-      totalCredits: json['totalCredits'],
-      sections: (json['sections'] as List)
-          .map((s) => Section.fromJson(s))
-          .toList(),
-      midSemExam: json['midSemExam'] != null
-          ? ExamSchedule.fromJson(json['midSemExam'])
+      courseCode: code,
+      courseTitle: resolvedTitle ?? json['courseTitle'] ?? code,
+      lectureCredits: json['lecture_credits'] ?? json['lectureCredits'] ?? 0,
+      practicalCredits: json['practical_credits'] ?? json['practicalCredits'] ?? 0,
+      totalCredits: (json['lecture_credits'] ?? json['lectureCredits'] ?? 0) +
+          (json['practical_credits'] ?? json['practicalCredits'] ?? 0),
+      sections: (json['sections'] as List?)
+              ?.map((s) => Section.fromJson(s))
+              .toList() ??
+          [],
+      midSemExam: (json['mid_sem_exam'] ?? json['midSemExam']) != null
+          ? ExamSchedule.fromJson(json['mid_sem_exam'] ?? json['midSemExam'])
           : null,
-      endSemExam: json['endSemExam'] != null
-          ? ExamSchedule.fromJson(json['endSemExam'])
+      endSemExam: (json['end_sem_exam'] ?? json['endSemExam']) != null
+          ? ExamSchedule.fromJson(json['end_sem_exam'] ?? json['endSemExam'])
           : null,
     );
   }

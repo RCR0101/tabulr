@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/course.dart';
-import 'config_service.dart';
 import 'campus_service.dart';
+import 'courses_master_service.dart';
 
 class CourseDataService {
   static final CourseDataService _instance = CourseDataService._internal();
@@ -15,7 +15,6 @@ class CourseDataService {
   }
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final ConfigService _config = ConfigService();
   
   // Campus-aware cache for courses
   List<Course>? _cachedCourses;
@@ -34,8 +33,7 @@ class CourseDataService {
     int limit = 100,
   }) async {
     try {
-      Query query = _firestore
-          .collection(_config.coursesCollection)
+      Query query = CampusService.timetableRef(_firestore)
           .limit(limit);
       
       if (startAfter != null) {
@@ -49,7 +47,9 @@ class CourseDataService {
         try {
           final doc = snapshot.docs[i];
           final data = doc.data() as Map<String, dynamic>;
-          final course = Course.fromJson(data);
+          final code = doc.id.replaceAll('_', ' ');
+          final title = CoursesMasterService().getTitle(code);
+          final course = Course.fromJson(data, courseCode: code, resolvedTitle: title);
           courses.add(course);
         } catch (e) {
           // Skip unparseable course at index $i
@@ -90,8 +90,7 @@ class CourseDataService {
         bool hasMore = true;
         
         while (hasMore) {
-          Query query = _firestore
-              .collection(_config.coursesCollection)
+          Query query = CampusService.timetableRef(_firestore)
               .limit(_pageSize);
           
           if (lastDocument != null) {
@@ -103,11 +102,12 @@ class CourseDataService {
           if (snapshot.docs.isEmpty) {
             hasMore = false;
           } else {
-            // Parse courses from this batch
             for (final doc in snapshot.docs) {
               try {
                 final data = doc.data() as Map<String, dynamic>;
-                final course = Course.fromJson(data);
+                final code = doc.id.replaceAll('_', ' ');
+                final title = CoursesMasterService().getTitle(code);
+                final course = Course.fromJson(data, courseCode: code, resolvedTitle: title);
                 allCourses.add(course);
               } catch (e) {
                 // Skip unparseable course ${doc.id}
@@ -216,24 +216,7 @@ class CourseDataService {
   /// Get metadata for the current campus
   Future<Map<String, dynamic>?> _getCurrentMetadata(Campus campus) async {
     try {
-      String docName;
-      switch (campus) {
-        case Campus.hyderabad:
-          docName = 'current-hyderabad';
-          break;
-        case Campus.pilani:
-          docName = 'current-pilani';
-          break;
-        case Campus.goa:
-          docName = 'current-goa';
-          break;
-      }
-      
-      final DocumentSnapshot doc = await _firestore
-          .collection(_config.timetableMetadataCollection)
-          .doc(docName)
-          .get();
-
+      final DocumentSnapshot doc = await CampusService.metadataDocRef(_firestore).get();
       if (doc.exists) {
         return doc.data() as Map<String, dynamic>;
       }

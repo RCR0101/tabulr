@@ -19,7 +19,7 @@ class CourseAnnouncementService {
   final AuthService _authService = AuthService();
   final ReputationService _reputationService = ReputationService();
 
-  static const String _collection = 'course_announcements';
+  static const String _collection = 'announcements';
 
   bool isHyderabadUser() {
     return _authService.userEmail
@@ -67,7 +67,7 @@ class CourseAnnouncementService {
       eventDate: eventDate,
       startTime: startTime,
       endTime: endTime,
-      authorUid: user.uid,
+      authorUid: _authService.userDocId!,
       authorName: user.displayName ?? 'Anonymous',
       createdAt: DateTime.now(),
       source: source,
@@ -78,7 +78,7 @@ class CourseAnnouncementService {
 
     if (source.isHighOrMedium) {
       await _reputationService.addEvent(
-        uid: user.uid,
+        uid: _authService.userDocId!,
         type: 'source_attached',
         points: 2,
         description: 'Attached ${source.label} to announcement',
@@ -86,7 +86,7 @@ class CourseAnnouncementService {
       );
     }
 
-    await _reputationService.touchActivity(user.uid);
+    await _reputationService.touchActivity(_authService.userDocId!);
     SecureLogger.info('ANNOUNCEMENTS', 'Posted announcement: $title');
   }
 
@@ -133,7 +133,7 @@ class CourseAnnouncementService {
 
   Future<void> toggleVote(String announcementId, int voteValue) async {
     assert(voteValue == 1 || voteValue == -1);
-    final uid = _authService.currentUser?.uid;
+    final uid = _authService.userDocId;
     if (uid == null) return;
 
     final announcementRef =
@@ -184,7 +184,7 @@ class CourseAnnouncementService {
   }
 
   Stream<int?> watchUserVote(String announcementId) {
-    final uid = _authService.currentUser?.uid;
+    final uid = _authService.userDocId;
     if (uid == null) return Stream.value(null);
 
     return _firestore
@@ -204,7 +204,7 @@ class CourseAnnouncementService {
     String? counterSourceUrl,
     required String confidence,
   }) async {
-    final uid = _authService.currentUser?.uid;
+    final uid = _authService.userDocId;
     if (uid == null) return;
 
     final rep = await _reputationService.getReputation(uid);
@@ -285,7 +285,7 @@ class CourseAnnouncementService {
   }
 
   Stream<AnnouncementFlag?> watchUserFlag(String announcementId) {
-    final uid = _authService.currentUser?.uid;
+    final uid = _authService.userDocId;
     if (uid == null) return Stream.value(null);
     return _firestore
         .collection(_collection)
@@ -302,7 +302,7 @@ class CourseAnnouncementService {
     required String correctionText,
     String? correctionSource,
   }) async {
-    final uid = _authService.currentUser?.uid;
+    final uid = _authService.userDocId;
     if (uid == null) return;
 
     final ref = _firestore.collection(_collection).doc(announcementId);
@@ -353,7 +353,7 @@ class CourseAnnouncementService {
     required VerificationType type,
     String? note,
   }) async {
-    final uid = _authService.currentUser?.uid;
+    final uid = _authService.userDocId;
     if (uid == null) return;
 
     final rep = await _reputationService.getReputation(uid);
@@ -510,7 +510,7 @@ class CourseAnnouncementService {
 
   Stream<AnnouncementVerification?> watchUserVerification(
       String announcementId) {
-    final uid = _authService.currentUser?.uid;
+    final uid = _authService.userDocId;
     if (uid == null) return Stream.value(null);
     return _firestore
         .collection(_collection)

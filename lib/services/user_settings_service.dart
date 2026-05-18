@@ -1,10 +1,10 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import '../models/user_settings.dart';
 import '../widgets/timetable_widget.dart';
 import 'auth_service.dart';
-import 'firestore_service.dart';
 import 'theme_service.dart' as theme_service;
 
 class UserSettingsService extends ChangeNotifier {
@@ -15,7 +15,7 @@ class UserSettingsService extends ChangeNotifier {
   static const String _localStorageKey = 'user_settings';
 
   final AuthService _authService = AuthService();
-  final FirestoreService _firestoreService = FirestoreService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   UserSettings? _userSettings;
   bool _isLoading = false;
@@ -39,7 +39,7 @@ class UserSettingsService extends ChangeNotifier {
     } catch (e) {
       print('Error initializing user settings: $e');
       // Fall back to default settings
-      _userSettings = UserSettings.defaultSettings(_authService.currentUser?.uid ?? 'guest');
+      _userSettings = UserSettings.defaultSettings(_authService.userDocId ?? 'guest');
     }
 
     _isLoading = false;
@@ -49,20 +49,21 @@ class UserSettingsService extends ChangeNotifier {
   // Load settings from Firestore
   Future<void> _loadFromFirestore() async {
     try {
-      final userId = _authService.currentUser?.uid;
+      final userId = _authService.userDocId;
       if (userId == null) return;
 
-      final doc = await _firestoreService.getDocument('user-settings', userId);
-      if (doc != null && doc.data() != null) {
+      final doc = await _firestore
+          .collection('users').doc(userId).collection('settings').doc('preferences')
+          .get();
+      if (doc.exists && doc.data() != null) {
         _userSettings = UserSettings.fromJson(doc.data()!);
       } else {
-        // Create default settings
         _userSettings = UserSettings.defaultSettings(userId);
         await _saveToFirestore();
       }
     } catch (e) {
       print('Error loading settings from Firestore: $e');
-      _userSettings = UserSettings.defaultSettings(_authService.currentUser?.uid ?? 'guest');
+      _userSettings = UserSettings.defaultSettings(_authService.userDocId ?? 'guest');
     }
   }
 
@@ -91,17 +92,13 @@ class UserSettingsService extends ChangeNotifier {
     if (_userSettings == null) return;
 
     try {
-      final userId = _authService.currentUser?.uid;
+      final userId = _authService.userDocId;
       if (userId == null) return;
 
-      final success = await _firestoreService.saveDocument(
-        'user-settings', 
-        userId, 
-        _userSettings!.toJson()
-      );
-      if (!success) {
-        throw Exception('Failed to save to Firestore');
-      }
+      await _firestore
+          .collection('users').doc(userId).collection('settings').doc('preferences')
+          .set(_userSettings!.toJson());
+
     } catch (e) {
       print('Error saving settings to Firestore: $e');
       // Fall back to local storage

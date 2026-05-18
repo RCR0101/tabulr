@@ -32,32 +32,19 @@ initializeApp({
 
 const db = getFirestore();
 
-// Helper function to get campus-specific collection name
-function getCampusCollection(campus) {
-  const campusMap = {
-    'hyderabad': 'hyd-exam-seating',
-    'hyd': 'hyd-exam-seating',
-    'goa': 'goa-exam-seating',
-    'pilani': 'pilani-exam-seating',
-    'default': 'exam-seating'
-  };
-
-  const campusKey = campus.toString().toLowerCase();
-  return campusMap[campusKey] || 'exam-seating';
+function getCampusId(campus) {
+  const map = { hyderabad: 'hyderabad', hyd: 'hyderabad', goa: 'goa', pilani: 'pilani' };
+  return map[campus.toString().toLowerCase()] || 'hyderabad';
 }
 
-// Helper function to get campus name for display
 function getCampusName(campus) {
-  const campusMap = {
-    'hyderabad': 'Hyderabad',
-    'hyd': 'Hyderabad',
-    'goa': 'Goa',
-    'pilani': 'Pilani',
-    'default': 'Default'
-  };
+  const map = { hyderabad: 'Hyderabad', hyd: 'Hyderabad', goa: 'Goa', pilani: 'Pilani' };
+  return map[campus.toString().toLowerCase()] || 'Hyderabad';
+}
 
-  const campusKey = campus.toString().toLowerCase();
-  return campusMap[campusKey] || 'Default Campus';
+function sanitizeString(str) {
+  if (typeof str !== 'string') return str;
+  return str.replace(/[\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 /**
@@ -226,14 +213,14 @@ async function uploadExamSeating(csvPath, campus = 'default') {
     }
   }
 
-  const collectionName = getCampusCollection(campus);
+  const campusId = getCampusId(campus);
   const campusDisplayName = getCampusName(campus);
+  const collectionPath = `campuses/${campusId}/exam_seating`;
 
-  console.log(`\nUploading to collection: ${collectionName} (${campusDisplayName})`);
+  console.log(`\nUploading to: ${collectionPath} (${campusDisplayName})`);
 
-  // Clear existing collection before uploading
-  console.log(`\nClearing existing ${collectionName} collection...`);
-  const existingDocs = await db.collection(collectionName).get();
+  console.log(`\nClearing existing ${collectionPath}...`);
+  const existingDocs = await db.collection(collectionPath).get();
 
   if (!existingDocs.empty) {
     let deleteBatch = db.batch();
@@ -243,7 +230,6 @@ async function uploadExamSeating(csvPath, campus = 'default') {
       deleteBatch.delete(doc.ref);
       deleteCount++;
 
-      // Commit in batches of 450
       if (deleteCount % 450 === 0) {
         await deleteBatch.commit();
         console.log(`  Deleted ${deleteCount} documents...`);
@@ -251,7 +237,6 @@ async function uploadExamSeating(csvPath, campus = 'default') {
       }
     }
 
-    // Commit remaining deletes
     if (deleteCount % 450 !== 0) {
       await deleteBatch.commit();
     }
@@ -261,22 +246,28 @@ async function uploadExamSeating(csvPath, campus = 'default') {
     console.log('  Collection was already empty');
   }
 
-  // Upload in batches (Firestore limit is 500 operations per batch)
   let batch = db.batch();
   let operationCount = 0;
   let totalUploaded = 0;
 
   for (const exam of exams) {
-    // Replace spaces with underscores and slashes with dashes for valid Firestore doc ID
     const docId = exam.courseCode.replace(/\s+/g, '_').replace(/\//g, '-');
-    const docRef = db.collection(collectionName).doc(docId);
+    const docRef = db.collection(collectionPath).doc(docId);
+
+    const examDateStr = sanitizeString(exam.examDate || '');
+    let examDateTs = null;
+    if (examDateStr) {
+      const d = new Date(examDateStr);
+      if (!isNaN(d.getTime())) {
+        const { Timestamp } = await import('firebase-admin/firestore');
+        examDateTs = Timestamp.fromDate(d);
+      }
+    }
 
     batch.set(docRef, {
-      courseCode: exam.courseCode,
-      courseTitle: exam.courseTitle || '',
-      examDate: exam.examDate || '',
+      exam_date: examDateTs || examDateStr,
       rooms: exam.rooms,
-      updatedAt: new Date().toISOString()
+      updated_at: new Date().toISOString()
     });
 
     operationCount++;
@@ -295,16 +286,14 @@ async function uploadExamSeating(csvPath, campus = 'default') {
     console.log(`  Committed final batch of ${operationCount} documents`);
   }
 
-  // Update metadata
-  const metadataRef = db.collection('metadata').doc('exam_seating');
+  const metadataRef = db.doc('admin/metadata/exam_seating');
   await metadataRef.set({
     lastUpdated: new Date().toISOString(),
     totalCourses: exams.length,
     campus: campusDisplayName,
-    collection: collectionName
   }, { merge: true });
 
-  console.log(`\nSuccessfully uploaded ${totalUploaded} courses to ${collectionName}`);
+  console.log(`\nSuccessfully uploaded ${totalUploaded} courses to ${collectionPath}`);
 }
 
 // Main execution
