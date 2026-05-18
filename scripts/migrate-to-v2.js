@@ -511,7 +511,6 @@ async function stepC() {
     for (const doc of snap.docs) {
       const data = doc.data();
       const rawCode = sanitizeString(data.courseCode || doc.id.replace(/_/g, ' '));
-      const docId = courseCodeToDocId(rawCode);
 
       const examDate = toTimestamp(sanitizeString(data.examDate || data.exam_date || ''));
 
@@ -520,13 +519,18 @@ async function stepC() {
         rooms: sanitizeAllStrings(data.rooms || []),
       };
 
-      writer.sanitized++;
-      if (REPORT && writer.total < 3) {
-        console.log(`  [sample] ${campus.id}/${doc.id} → ${docId}:`, JSON.stringify(newDoc).substring(0, 200));
-      }
+      // Write a doc for each course code in slash-separated codes
+      const codes = rawCode.includes('/') ? rawCode.split('/').map(c => c.trim()) : [rawCode];
+      for (const code of codes) {
+        const docId = code.replace(/\s+/g, '_');
+        writer.sanitized++;
+        if (REPORT && writer.total < 3) {
+          console.log(`  [sample] ${campus.id}/${doc.id} → ${docId}:`, JSON.stringify(newDoc).substring(0, 200));
+        }
 
-      const ref = db.collection('campuses').doc(campus.id).collection('exam_seating').doc(docId);
-      await writer.set(ref, newDoc);
+        const ref = db.collection('campuses').doc(campus.id).collection('exam_seating').doc(docId);
+        await writer.set(ref, newDoc);
+      }
     }
     await writer.flush();
     writer.log();
@@ -721,32 +725,42 @@ async function stepG() {
   console.log('  [G1] Prerequisites...');
   const prereqWriter = new BatchWriter('reference/prerequisites/courses');
   const prereqSnap = await db.collection('prerequisites').get();
+  const prereqSeenIds = new Map();
 
   for (const doc of prereqSnap.docs) {
     const data = doc.data();
-    const code = sanitizeString(data.course_code || '');
-    if (!code) continue;
-    const docId = courseCodeToDocId(code);
+    const rawCode = sanitizeString(data.course_code || '');
+    if (!rawCode) continue;
 
     const prereqs = (data.prereqs || []).map(p => ({
       course_code: extractCourseCode(p.prereq_name || p.course_code || ''),
       type: (p.pre_cop || p.type || 'pre').toLowerCase(),
     }));
 
-    const newDoc = {
-      course_code: code,
-      has_prerequisites: data.has_prerequisites || prereqs.length > 0,
-      prereqs,
-      last_updated: toTimestamp(data.lastUpdated) || Timestamp.now(),
-    };
+    // Write a doc for each course code in slash-separated codes
+    const codes = rawCode.includes('/') ? rawCode.split('/').map(c => c.trim()) : [rawCode];
+    for (const code of codes) {
+      const docId = code.replace(/\s+/g, '_');
+      if (prereqSeenIds.has(docId)) {
+        console.log(`    [collision] ${docId} ← "${rawCode}" (already written by "${prereqSeenIds.get(docId)}")`);
+      }
+      prereqSeenIds.set(docId, rawCode);
 
-    prereqWriter.rekeyed++;
-    if (REPORT && prereqWriter.total < 3) {
-      console.log(`    [sample] ${doc.id} → ${docId}:`, JSON.stringify(newDoc));
+      const newDoc = {
+        course_code: code,
+        has_prerequisites: data.has_prerequisites || prereqs.length > 0,
+        prereqs,
+        last_updated: toTimestamp(data.lastUpdated) || Timestamp.now(),
+      };
+
+      prereqWriter.rekeyed++;
+      if (REPORT && prereqWriter.total < 3) {
+        console.log(`    [sample] ${doc.id} → ${docId}:`, JSON.stringify(newDoc));
+      }
+
+      const ref = db.collection('reference').doc('prerequisites').collection('courses').doc(docId);
+      await prereqWriter.set(ref, newDoc);
     }
-
-    const ref = db.collection('reference').doc('prerequisites').collection('courses').doc(docId);
-    await prereqWriter.set(ref, newDoc);
   }
   await prereqWriter.flush();
   prereqWriter.log();

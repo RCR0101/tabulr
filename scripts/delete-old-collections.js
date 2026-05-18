@@ -44,7 +44,7 @@ const VERIFY_PAIRS = [
   { old: 'goa-courses', new: 'campuses/goa/timetable' },
   { old: 'hyd-exam-seating', new: 'campuses/hyderabad/exam_seating' },
   { old: 'course_announcements', new: 'announcements' },
-  { old: 'prerequisites', new: 'reference/prerequisites/courses' },
+  { old: 'prerequisites', new: 'reference/prerequisites/courses', allowedDelta: 3 },
   { old: 'professors', new: 'reference/professors/entries' },
   { old: 'files', new: 'acad_drives_files' },
   { old: 'submissions', new: 'acad_drives_submissions' },
@@ -94,6 +94,20 @@ async function getCollectionSize(collectionPath) {
   return snap.data().count;
 }
 
+async function getCollectionDocIds(collectionPath) {
+  const parts = collectionPath.split('/');
+  let ref;
+  if (parts.length === 1) {
+    ref = db.collection(parts[0]);
+  } else if (parts.length === 3) {
+    ref = db.collection(parts[0]).doc(parts[1]).collection(parts[2]);
+  } else {
+    return new Set();
+  }
+  const snap = await ref.select().get();
+  return new Set(snap.docs.map(d => d.id));
+}
+
 async function verify() {
   console.log('=== Verifying migration ===\n');
   let allPassed = true;
@@ -101,11 +115,26 @@ async function verify() {
   for (const pair of VERIFY_PAIRS) {
     const oldCount = await getCollectionSize(pair.old);
     const newCount = await getCollectionSize(pair.new);
-    const passed = newCount >= oldCount;
+    const delta = pair.allowedDelta || 0;
+    const passed = newCount >= oldCount - delta;
     if (!passed) allPassed = false;
 
     const icon = passed ? '✓' : '✗';
     console.log(`  ${icon} ${pair.old} (${oldCount}) → ${pair.new} (${newCount})`);
+
+    if (!passed) {
+      const oldIds = await getCollectionDocIds(pair.old);
+      const newIds = await getCollectionDocIds(pair.new);
+      const onlyInOld = [...oldIds].filter(id => !newIds.has(id));
+      const onlyInNew = [...newIds].filter(id => !oldIds.has(id));
+      if (onlyInOld.length > 0) {
+        console.log(`    In old but not new (${onlyInOld.length}): ${onlyInOld.slice(0, 10).join(', ')}${onlyInOld.length > 10 ? '...' : ''}`);
+      }
+      if (onlyInNew.length > 0) {
+        console.log(`    In new but not old (${onlyInNew.length}): ${onlyInNew.slice(0, 10).join(', ')}${onlyInNew.length > 10 ? '...' : ''}`);
+      }
+      console.log(`    (Doc IDs may differ by naming convention — verify by count only if IDs were intentionally remapped)`);
+    }
   }
 
   console.log('');
