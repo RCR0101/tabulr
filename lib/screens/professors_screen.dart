@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/professor_service.dart';
 import '../services/responsive_service.dart';
@@ -419,233 +420,12 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
   }
 
   void _showScheduleDialog(Professor professor) {
-    final scheduleByDay = professor.getScheduleByDay();
-    final dayOrder = ['M', 'T', 'W', 'Th', 'F', 'S'];
-
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-        contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.calendar_month,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        professor.name,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on_outlined,
-                            size: 14,
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            professor.chamber,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                                ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
-          ],
-        ),
-        content: scheduleByDay.isEmpty
-            ? Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.event_busy,
-                        size: 40,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'No schedule data available',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            : SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: dayOrder
-                      .where((day) => scheduleByDay.containsKey(day))
-                      .map((day) => _buildDaySchedule(day, scheduleByDay[day]!))
-                      .toList(),
-                ),
-              ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
+      builder: (context) => _ProfessorDetailDialog(professor: professor),
     );
   }
 
-  Widget _buildDaySchedule(String day, List<ProfessorScheduleEntry> entries) {
-    final dayNames = {
-      'M': 'Monday',
-      'T': 'Tuesday',
-      'W': 'Wednesday',
-      'Th': 'Thursday',
-      'F': 'Friday',
-      'S': 'Saturday',
-    };
-
-    final dayColors = {
-      'M': AppDesign.info(context),
-      'T': AppDesign.success(context),
-      'W': AppDesign.warning(context),
-      'Th': Theme.of(context).colorScheme.tertiary,
-      'F': Colors.teal,
-      'S': Colors.pink,
-    };
-
-    final dayColor = dayColors[day] ?? Theme.of(context).colorScheme.primary;
-
-    // Group entries by time slot
-    final groupedByTime = <String, List<ProfessorScheduleEntry>>{};
-    for (final entry in entries) {
-      final timeKey = entry.hourRangeString;
-      groupedByTime.putIfAbsent(timeKey, () => []);
-      groupedByTime[timeKey]!.add(entry);
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Day header
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: dayColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Text(
-              dayNames[day] ?? day,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: dayColor,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          // Classes for this day grouped by time
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: groupedByTime.entries
-                .map((e) => _buildTimeSlotChip(e.key, e.value, dayColor))
-                .toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimeSlotChip(String timeSlot, List<ProfessorScheduleEntry> entries, Color accentColor) {
-    final time = _formatTimeCompact(timeSlot);
-
-    // Combine course codes and rooms
-    final courses = entries.map((e) {
-      if (e.room.isNotEmpty) {
-        return '${e.courseCode} @ ${e.room}';
-      }
-      return e.courseCode;
-    }).join(', ');
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: accentColor.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.access_time,
-            size: 12,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            time,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                  fontSize: 11,
-                ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            courses,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatTimeCompact(String hourRange) {
-    // Convert "8:00-9:50 AM" to "8-9:50"
-    return hourRange
-        .replaceAll(' AM', '')
-        .replaceAll(' PM', '')
-        .replaceAll(':00', '');
-  }
 
   void _showSortDialog() {
     final currentSort = _professorService.sortType;
@@ -796,5 +576,343 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
         return Icons.room;
     }
   }
+}
 
+class _ProfessorDetailDialog extends StatelessWidget {
+  final Professor professor;
+  const _ProfessorDetailDialog({required this.professor});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasContact = professor.email != null || professor.contact != null;
+
+    return DefaultTabController(
+      length: hasContact ? 2 : 1,
+      child: AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.person,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        professor.name,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on_outlined,
+                            size: 14,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            professor.chamber,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                                ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (hasContact)
+              TabBar(
+                tabs: const [
+                  Tab(text: 'Schedule'),
+                  Tab(text: 'Contact'),
+                ],
+                labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                indicatorSize: TabBarIndicatorSize.tab,
+              ),
+            if (!hasContact)
+              Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 300,
+          child: hasContact
+              ? TabBarView(
+                  children: [
+                    _buildScheduleTab(context),
+                    _buildContactTab(context),
+                  ],
+                )
+              : _buildScheduleTab(context),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScheduleTab(BuildContext context) {
+    final scheduleByDay = professor.getScheduleByDay();
+    final dayOrder = ['M', 'T', 'W', 'Th', 'F', 'S'];
+
+    if (scheduleByDay.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.event_busy,
+              size: 40,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'No schedule data available',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: dayOrder
+            .where((day) => scheduleByDay.containsKey(day))
+            .map((day) => _buildDaySchedule(context, day, scheduleByDay[day]!))
+            .toList(),
+      ),
+    );
+  }
+
+  Widget _buildContactTab(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(
+        children: [
+          if (professor.email != null)
+            _buildContactTile(
+              context,
+              icon: Icons.email_outlined,
+              label: 'Email',
+              value: professor.email!,
+              onTap: () => launchUrl(Uri.parse('mailto:${professor.email}')),
+            ),
+          if (professor.email != null && professor.contact != null)
+            const SizedBox(height: 12),
+          if (professor.contact != null)
+            _buildContactTile(
+              context,
+              icon: Icons.phone_outlined,
+              label: 'Phone',
+              value: professor.contact!,
+              onTap: () => launchUrl(Uri.parse('tel:${professor.contact}')),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactTile(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 20, color: Theme.of(context).colorScheme.onPrimaryContainer),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.open_in_new,
+              size: 16,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDaySchedule(BuildContext context, String day, List<ProfessorScheduleEntry> entries) {
+    final dayNames = {
+      'M': 'Monday',
+      'T': 'Tuesday',
+      'W': 'Wednesday',
+      'Th': 'Thursday',
+      'F': 'Friday',
+      'S': 'Saturday',
+    };
+
+    final dayColors = {
+      'M': AppDesign.info(context),
+      'T': AppDesign.success(context),
+      'W': AppDesign.warning(context),
+      'Th': Theme.of(context).colorScheme.tertiary,
+      'F': Colors.teal,
+      'S': Colors.pink,
+    };
+
+    final dayColor = dayColors[day] ?? Theme.of(context).colorScheme.primary;
+
+    final groupedByTime = <String, List<ProfessorScheduleEntry>>{};
+    for (final entry in entries) {
+      final timeKey = entry.hourRangeString;
+      groupedByTime.putIfAbsent(timeKey, () => []);
+      groupedByTime[timeKey]!.add(entry);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: dayColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              dayNames[day] ?? day,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: dayColor,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: groupedByTime.entries
+                .map((e) => _buildTimeSlotChip(context, e.key, e.value, dayColor))
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimeSlotChip(BuildContext context, String timeSlot, List<ProfessorScheduleEntry> entries, Color accentColor) {
+    final time = timeSlot
+        .replaceAll(' AM', '')
+        .replaceAll(' PM', '')
+        .replaceAll(':00', '');
+
+    final courses = entries.map((e) {
+      if (e.room.isNotEmpty) return '${e.courseCode} @ ${e.room}';
+      return e.courseCode;
+    }).join(', ');
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: accentColor.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.access_time,
+            size: 12,
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            time,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  fontSize: 11,
+                ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            courses,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
 }

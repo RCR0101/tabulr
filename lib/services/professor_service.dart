@@ -96,6 +96,8 @@ class Professor {
   final String id;
   final String name;
   final String chamber;
+  final String? email;
+  final String? contact;
   final List<ProfessorScheduleEntry> schedule;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -104,6 +106,8 @@ class Professor {
     required this.id,
     required this.name,
     required this.chamber,
+    this.email,
+    this.contact,
     required this.schedule,
     required this.createdAt,
     required this.updatedAt,
@@ -114,6 +118,8 @@ class Professor {
       id: json['id'] ?? '',
       name: json['name'] ?? '',
       chamber: json['chamber'] ?? 'Unavailable',
+      email: json['email'] as String?,
+      contact: json['contact'] as String?,
       schedule: (json['schedule'] as List<dynamic>?)
               ?.map((e) => ProfessorScheduleEntry.fromJson(e as Map<String, dynamic>))
               .toList() ??
@@ -132,6 +138,8 @@ class Professor {
       'id': id,
       'name': name,
       'chamber': chamber,
+      if (email != null) 'email': email,
+      if (contact != null) 'contact': contact,
       'schedule': schedule.map((e) => e.toJson()).toList(),
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
