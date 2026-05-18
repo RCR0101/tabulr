@@ -9,9 +9,25 @@ import '../services/exam_seating_service.dart';
 import '../services/course_announcement_service.dart';
 import '../services/professor_service.dart';
 import '../services/auth_service.dart';
-import '../services/config_service.dart';
 import '../services/toast_service.dart';
+import '../utils/design_constants.dart';
 import '../widgets/app_drawer.dart';
+
+int _timeToSlotHour(TimeOfDay t) => t.hour - 7;
+
+int _slotSpanFromTimes(TimeOfDay start, TimeOfDay end) {
+  final startSlot = _timeToSlotHour(start);
+  final endSlot = _timeToSlotHour(end);
+  return (endSlot - startSlot).clamp(1, 12);
+}
+
+String _dayFullName(DayOfWeek day) {
+  const names = {
+    DayOfWeek.M: 'Monday', DayOfWeek.T: 'Tuesday', DayOfWeek.W: 'Wednesday',
+    DayOfWeek.Th: 'Thursday', DayOfWeek.F: 'Friday', DayOfWeek.S: 'Saturday',
+  };
+  return names[day] ?? day.name;
+}
 
 class CalendarEvent {
   final String id;
@@ -23,6 +39,8 @@ class CalendarEvent {
   final DayOfWeek day;
   final int hour;
   final int durationHours;
+  final TimeOfDay? startTime;
+  final TimeOfDay? endTime;
 
   CalendarEvent({
     required this.id,
@@ -34,6 +52,8 @@ class CalendarEvent {
     required this.day,
     required this.hour,
     this.durationHours = 1,
+    this.startTime,
+    this.endTime,
   });
 
   Map<String, dynamic> toJson() => {
@@ -46,25 +66,56 @@ class CalendarEvent {
         'day': day.toString(),
         'hour': hour,
         'durationHours': durationHours,
+        if (startTime != null) 'startTimeHour': startTime!.hour,
+        if (startTime != null) 'startTimeMinute': startTime!.minute,
+        if (endTime != null) 'endTimeHour': endTime!.hour,
+        if (endTime != null) 'endTimeMinute': endTime!.minute,
       };
 
-  factory CalendarEvent.fromJson(Map<String, dynamic> json) => CalendarEvent(
-        id: json['id'] ?? '',
-        title: json['title'] ?? '',
-        description: json['description'],
-        type: json['type'] ?? 'custom',
-        professorId: json['professorId'],
-        professorName: json['professorName'],
-        day: DayOfWeek.values.firstWhere(
-          (e) => e.toString() == json['day'],
-          orElse: () => DayOfWeek.M,
-        ),
-        hour: json['hour'] ?? 1,
-        durationHours: json['durationHours'] ?? 1,
-      );
+  factory CalendarEvent.fromJson(Map<String, dynamic> json) {
+    TimeOfDay? start;
+    TimeOfDay? end;
+    if (json['startTimeHour'] != null) {
+      start = TimeOfDay(hour: json['startTimeHour'], minute: json['startTimeMinute'] ?? 0);
+    }
+    if (json['endTimeHour'] != null) {
+      end = TimeOfDay(hour: json['endTimeHour'], minute: json['endTimeMinute'] ?? 0);
+    }
+    return CalendarEvent(
+      id: json['id'] ?? '',
+      title: json['title'] ?? '',
+      description: json['description'],
+      type: json['type'] ?? 'custom',
+      professorId: json['professorId'],
+      professorName: json['professorName'],
+      day: DayOfWeek.values.firstWhere(
+        (e) => e.toString() == json['day'],
+        orElse: () => DayOfWeek.M,
+      ),
+      hour: json['hour'] ?? 1,
+      durationHours: json['durationHours'] ?? 1,
+      startTime: start,
+      endTime: end,
+    );
+  }
 
   List<int> get occupiedHours =>
       List.generate(durationHours, (i) => hour + i);
+
+  String get timeRangeLabel {
+    if (startTime != null && endTime != null) {
+      return '${_formatTime(startTime!)} – ${_formatTime(endTime!)}';
+    }
+    final slotStart = TimeSlotInfo.hourSlotNames[hour] ?? '';
+    return slotStart.isNotEmpty ? slotStart : 'Hour $hour';
+  }
+
+  static String _formatTime(TimeOfDay t) {
+    final h = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
+    final m = t.minute.toString().padLeft(2, '0');
+    final p = t.hour < 12 ? 'AM' : 'PM';
+    return '$h:$m $p';
+  }
 }
 
 class CalendarScreen extends StatefulWidget {
@@ -280,8 +331,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.warning_amber,
-                                size: 16, color: Colors.orange),
+                            Icon(Icons.warning_amber,
+                                size: 16, color: AppDesign.warning(context)),
                             const SizedBox(width: 8),
                             Expanded(
                                 child: Text(c,
@@ -354,7 +405,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           controller: controller,
           decoration: const InputDecoration(
             hintText: 'e.g. 2021A7PS0001H',
-            border: OutlineInputBorder(),
           ),
           textCapitalization: TextCapitalization.characters,
           autofocus: true,
@@ -472,21 +522,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
   }
 
+  static String _dedupeInstructor(String raw) {
+    final parts = raw.split(RegExp(r'[,/]')).map((s) => s.trim()).where((s) => s.isNotEmpty);
+    final seen = <String>{};
+    final unique = <String>[];
+    for (final p in parts) {
+      if (seen.add(p.toLowerCase())) unique.add(p);
+    }
+    return unique.join(', ');
+  }
+
   bool _isScrapped(String slotKey) =>
       _scrappedForWeek.contains('$_weekKey:$slotKey');
 
-  bool _isWithinSemester(DateTime weekStart) {
-    final config = ConfigService();
-    final weekEnd = weekStart.add(const Duration(days: 6));
-    return !weekEnd.isBefore(config.semesterStart) &&
-        !weekStart.isAfter(config.semesterEnd);
-  }
+
 
   // Build calendar items for a given day, merging consecutive identical slots
   List<_CalendarItem> _itemsForDay(DayOfWeek day) {
     final items = <_CalendarItem>[];
     if (_selectedTimetable == null) return items;
-    if (!_isWithinSemester(_weekStart)) return items;
 
     // Collect raw per-hour entries grouped by section identity
     final sectionSlots = <String, _RawSlotGroup>{};
@@ -501,7 +555,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               courseCode: sel.courseCode,
               sectionId: sel.sectionId,
               room: sel.section.room,
-              instructor: sel.section.instructor,
+              instructor: _dedupeInstructor(sel.section.instructor),
               color: _courseColor(sel.courseCode),
               hours: [],
             ),
@@ -542,8 +596,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
           hour: event.hour,
           spanHours: event.durationHours,
           color: event.type == 'prof_meeting'
-              ? Colors.deepPurple
-              : Colors.teal,
+              ? _courseColor('_prof_meeting')
+              : _courseColor('_custom_event'),
           slotKey: key,
           scrapped: anyScrapped,
           event: event,
@@ -592,7 +646,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           title: '${entry.courseCode} Exam',
           subtitle: room != null ? 'Room ${room.roomNo}' : 'No room found',
           hour: 0,
-          color: Colors.red,
+          color: Colors.red.shade700,
           examDate: entry.examDate,
           slotKey: 'exam-${entry.courseCode}',
         ));
@@ -607,7 +661,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           title: ann.title,
           subtitle: ann.courseCode,
           hour: ann.startTime?.hour ?? 0,
-          color: Colors.amber.shade700,
+          color: const Color(0xFFEF6C00),
           announcement: ann,
           slotKey: 'ann-${ann.id}',
         ));
@@ -757,13 +811,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
           Expanded(
             child: DropdownButtonFormField<String>(
               initialValue: _selectedTimetable?.id,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Timetable',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
                 contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 isDense: true,
               ),
               items: _timetables.map((tt) {
@@ -919,9 +970,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                     height: 6,
                                     margin: const EdgeInsets.only(
                                         top: 2, right: 2),
-                                    decoration: const BoxDecoration(
+                                    decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: Colors.red,
+                                      color: theme.colorScheme.error,
                                     ),
                                   ),
                                 if (hasAnn)
@@ -931,7 +982,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                     margin: const EdgeInsets.only(top: 2),
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: Colors.amber.shade700,
+                                      color: const Color(0xFFEF6C00),
                                     ),
                                   ),
                               ],
@@ -995,6 +1046,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       // Day columns
                       ...List.generate(6, (dayIdx) {
                         final dayItems = _itemsForDay(bitsDays[dayIdx]);
+                        final now = DateTime.now();
+                        final isToday = days[dayIdx].year == now.year &&
+                            days[dayIdx].month == now.month &&
+                            days[dayIdx].day == now.day;
+                        // Hour 1 = 8:00 AM, so offset = (nowHour - 8) + min/60
+                        final nowFractional =
+                            (now.hour - 8) + now.minute / 60.0;
+                        final nowInRange = nowFractional >= 0 &&
+                            nowFractional <=
+                                (endHour - startHour + 1).toDouble();
 
                         return SizedBox(
                           width: dayWidth,
@@ -1043,6 +1104,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   ),
                                 );
                               }),
+                              if (isToday && nowInRange)
+                                Positioned(
+                                  top: nowFractional * hourHeight,
+                                  left: 0,
+                                  right: 0,
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          color: theme.colorScheme.error,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Container(
+                                          height: 2,
+                                          color: theme.colorScheme.error,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                             ],
                           ),
                         );
@@ -1184,7 +1269,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
             if (item.type == _ItemType.customEvent && item.event != null)
               ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
+                leading: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
                 title: const Text('Delete event permanently'),
                 onTap: () {
                   Navigator.pop(ctx);
@@ -1244,6 +1329,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   TimeSlotInfo.getHourRangeName(
                       List.generate(item.spanHours, (i) => item.hour + i)),
                   theme),
+            if (item.type == _ItemType.customEvent && item.event != null)
+              _detailRow(Icons.access_time, item.event!.timeRangeLabel, theme),
             if (item.type == _ItemType.exam && item.examDate != null)
               _detailRow(Icons.event, item.examDate!, theme),
             if (item.announcement != null &&
@@ -1290,6 +1377,7 @@ class _SlotBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isScrapped = item.scrapped;
+    final tall = item.spanHours > 1;
 
     return GestureDetector(
       onTap: onTap,
@@ -1299,8 +1387,8 @@ class _SlotBlock extends StatelessWidget {
         opacity: isScrapped ? 0.35 : 1.0,
         child: Container(
           decoration: BoxDecoration(
-            color: item.color.withValues(alpha: isScrapped ? 0.05 : 0.15),
-            borderRadius: BorderRadius.circular(6),
+            color: item.color.withValues(alpha: isScrapped ? 0.05 : 0.12),
+            borderRadius: AppDesign.borderRadiusSm,
             border: Border(
               left: BorderSide(
                 color: isScrapped
@@ -1310,34 +1398,51 @@ class _SlotBlock extends StatelessWidget {
               ),
             ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          padding: EdgeInsets.symmetric(
+            horizontal: AppDesign.spacingSm,
+            vertical: tall ? AppDesign.spacingSm : AppDesign.spacingXs,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 item.title,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
                   color: item.color,
-                  fontSize: 10,
                   decoration:
                       isScrapped ? TextDecoration.lineThrough : null,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              if (item.subtitle.isNotEmpty)
+              if (item.subtitle.isNotEmpty) ...[
+                SizedBox(height: tall ? 2 : 0),
                 Text(
                   item.subtitle,
                   style: theme.textTheme.labelSmall?.copyWith(
-                    fontSize: 8,
+                    fontSize: tall ? 10 : 9,
                     color: theme.colorScheme.onSurface
-                        .withValues(alpha: 0.6),
+                        .withValues(alpha: AppDesign.opacityMedium),
+                  ),
+                  maxLines: tall ? 2 : 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+              if (item.instructor != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  item.instructor!,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontSize: 9,
+                    color: theme.colorScheme.onSurface
+                        .withValues(alpha: AppDesign.opacityLow),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+              ],
             ],
           ),
         ),
@@ -1370,8 +1475,8 @@ class _AddEventDialogState extends State<_AddEventDialog> {
   final _profSearchController = TextEditingController();
 
   DayOfWeek _selectedDay = DayOfWeek.M;
-  int _selectedHour = 1;
-  int _duration = 1;
+  TimeOfDay _startTime = const TimeOfDay(hour: 9, minute: 0);
+  TimeOfDay _endTime = const TimeOfDay(hour: 10, minute: 0);
 
   Professor? _selectedProfessor;
   List<Professor> _profResults = [];
@@ -1407,8 +1512,10 @@ class _AddEventDialogState extends State<_AddEventDialog> {
         .toList();
   }
 
-  bool _hasClash() {
-    final hours = List.generate(_duration, (i) => _selectedHour + i);
+  String? _clashReason() {
+    final startSlot = _timeToSlotHour(_startTime);
+    final span = _slotSpanFromTimes(_startTime, _endTime);
+    final hours = List.generate(span, (i) => startSlot + i);
 
     // Check against timetable
     if (widget.selectedTimetable != null) {
@@ -1416,7 +1523,9 @@ class _AddEventDialogState extends State<_AddEventDialog> {
         for (final entry in sel.section.schedule) {
           if (entry.days.contains(_selectedDay)) {
             for (final h in hours) {
-              if (entry.hours.contains(h)) return true;
+              if (entry.hours.contains(h)) {
+                return 'Clashes with ${sel.courseCode} in your timetable';
+              }
             }
           }
         }
@@ -1427,18 +1536,32 @@ class _AddEventDialogState extends State<_AddEventDialog> {
     for (final event in widget.existingEvents) {
       if (event.day == _selectedDay) {
         for (final h in hours) {
-          if (event.occupiedHours.contains(h)) return true;
+          if (event.occupiedHours.contains(h)) {
+            return 'Clashes with "${event.title}"';
+          }
         }
       }
     }
 
-    return false;
+    // Check against professor's schedule (for prof meetings)
+    if (_eventType == 'prof_meeting' && _selectedProfessor != null) {
+      final profEntries = _profScheduleForDay(_selectedProfessor!, _selectedDay);
+      for (final entry in profEntries) {
+        for (final h in hours) {
+          if (entry.hours.contains(h)) {
+            return '${_selectedProfessor!.name} has a class (${entry.courseCode}) at this time';
+          }
+        }
+      }
+    }
+
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final clash = _hasClash();
+    final clashMsg = _clashReason();
 
     return AlertDialog(
       title: const Text('Add Event'),
@@ -1478,7 +1601,6 @@ class _AddEventDialogState extends State<_AddEventDialog> {
                   controller: _profSearchController,
                   decoration: const InputDecoration(
                     labelText: 'Search professor',
-                    border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.search),
                   ),
                   onChanged: _searchProfs,
@@ -1529,7 +1651,6 @@ class _AddEventDialogState extends State<_AddEventDialog> {
                 controller: _titleController,
                 decoration: const InputDecoration(
                   labelText: 'Event title',
-                  border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
@@ -1539,7 +1660,6 @@ class _AddEventDialogState extends State<_AddEventDialog> {
                   controller: _descController,
                   decoration: const InputDecoration(
                     labelText: 'Description (optional)',
-                    border: OutlineInputBorder(),
                   ),
                   maxLines: 2,
                 ),
@@ -1550,7 +1670,6 @@ class _AddEventDialogState extends State<_AddEventDialog> {
                 initialValue: _selectedDay,
                 decoration: const InputDecoration(
                   labelText: 'Day',
-                  border: OutlineInputBorder(),
                   isDense: true,
                 ),
                 items: DayOfWeek.values.map((d) {
@@ -1571,71 +1690,78 @@ class _AddEventDialogState extends State<_AddEventDialog> {
               ),
               const SizedBox(height: 12),
 
-              // Hour + duration
+              // Start time + end time
               Row(
                 children: [
                   Expanded(
-                    child: DropdownButtonFormField<int>(
-                      initialValue: _selectedHour,
-                      decoration: const InputDecoration(
-                        labelText: 'Start hour',
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      items: List.generate(12, (i) {
-                        final h = i + 1;
-                        final label = TimeSlotInfo.hourSlotNames[h]
-                                ?.split('-')[0]
-                                .trim() ??
-                            'H$h';
-                        return DropdownMenuItem(
-                            value: h, child: Text(label));
-                      }),
-                      onChanged: (val) {
-                        if (val != null) setState(() => _selectedHour = val);
+                    child: _TimeTile(
+                      label: 'Start time',
+                      time: _startTime,
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: _startTime,
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            _startTime = picked;
+                            // Auto-advance end if it's before start
+                            if (_endTime.hour * 60 + _endTime.minute <=
+                                picked.hour * 60 + picked.minute) {
+                              _endTime = TimeOfDay(
+                                  hour: picked.hour + 1, minute: picked.minute);
+                            }
+                          });
+                        }
                       },
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: DropdownButtonFormField<int>(
-                      initialValue: _duration,
-                      decoration: const InputDecoration(
-                        labelText: 'Duration',
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      items: [1, 2, 3].map((d) {
-                        return DropdownMenuItem(
-                            value: d,
-                            child: Text('$d hour${d > 1 ? 's' : ''}'));
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) setState(() => _duration = val);
+                    child: _TimeTile(
+                      label: 'End time',
+                      time: _endTime,
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: _endTime,
+                        );
+                        if (picked != null) {
+                          setState(() => _endTime = picked);
+                        }
                       },
                     ),
                   ),
                 ],
               ),
 
-              if (clash) ...[
+              if (_endTime.hour * 60 + _endTime.minute <=
+                  _startTime.hour * 60 + _startTime.minute) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'End time must be after start time',
+                  style: TextStyle(fontSize: 12, color: AppDesign.danger(context)),
+                ),
+              ],
+
+              if (clashMsg != null) ...[
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.1),
+                    color: AppDesign.warning(context).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                        color: Colors.orange.withValues(alpha: 0.3)),
+                        color: AppDesign.warning(context).withValues(alpha: 0.3)),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.warning_amber, color: Colors.orange, size: 18),
-                      SizedBox(width: 8),
+                      Icon(Icons.warning_amber, color: AppDesign.warning(context), size: 18),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'This slot clashes with your schedule',
-                          style: TextStyle(fontSize: 12, color: Colors.orange),
+                          clashMsg,
+                          style: TextStyle(fontSize: 12, color: AppDesign.warning(context)),
                         ),
                       ),
                     ],
@@ -1652,9 +1778,13 @@ class _AddEventDialogState extends State<_AddEventDialog> {
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed: _titleController.text.trim().isEmpty
+          onPressed: _titleController.text.trim().isEmpty ||
+                  (_endTime.hour * 60 + _endTime.minute <=
+                      _startTime.hour * 60 + _startTime.minute)
               ? null
               : () {
+                  final startSlot = _timeToSlotHour(_startTime);
+                  final span = _slotSpanFromTimes(_startTime, _endTime);
                   final event = CalendarEvent(
                     id: DateTime.now().millisecondsSinceEpoch.toString(),
                     title: _titleController.text.trim(),
@@ -1665,8 +1795,10 @@ class _AddEventDialogState extends State<_AddEventDialog> {
                     professorId: _selectedProfessor?.id,
                     professorName: _selectedProfessor?.name,
                     day: _selectedDay,
-                    hour: _selectedHour,
-                    durationHours: _duration,
+                    hour: startSlot.clamp(1, 12),
+                    durationHours: span,
+                    startTime: _startTime,
+                    endTime: _endTime,
                   );
                   Navigator.pop(context, event);
                 },
@@ -1684,16 +1816,16 @@ class _AddEventDialogState extends State<_AddEventDialog> {
       return Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.green.withValues(alpha: 0.1),
+          color: AppDesign.success(context).withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 18),
+            Icon(Icons.check_circle, color: AppDesign.success(context), size: 18),
             const SizedBox(width: 8),
             Text(
-              '${prof.name} has no classes on this day',
-              style: const TextStyle(fontSize: 12, color: Colors.green),
+              '${prof.name} has no classes on ${_dayFullName(_selectedDay)}',
+              style: TextStyle(fontSize: 12, color: AppDesign.success(context)),
             ),
           ],
         ),
@@ -1710,7 +1842,7 @@ class _AddEventDialogState extends State<_AddEventDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${prof.name}\'s classes today:',
+            '${prof.name}\'s classes on ${_dayFullName(_selectedDay)}:',
             style: theme.textTheme.labelMedium
                 ?.copyWith(fontWeight: FontWeight.w600),
           ),
@@ -1778,4 +1910,36 @@ class _RawSlotGroup {
     required this.color,
     required this.hours,
   });
+}
+
+class _TimeTile extends StatelessWidget {
+  final String label;
+  final TimeOfDay time;
+  final VoidCallback onTap;
+
+  const _TimeTile({
+    required this.label,
+    required this.time,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final h = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final m = time.minute.toString().padLeft(2, '0');
+    final p = time.hour < 12 ? 'AM' : 'PM';
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: AppDesign.borderRadiusMd,
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          isDense: true,
+        ),
+        child: Text('$h:$m $p', style: theme.textTheme.bodyMedium),
+      ),
+    );
+  }
 }

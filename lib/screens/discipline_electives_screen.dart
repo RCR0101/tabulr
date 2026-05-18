@@ -232,7 +232,7 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
         initialValue: value,
         decoration: InputDecoration(
           labelText: label,
-          border: const OutlineInputBorder(),
+
           contentPadding: ResponsiveService.getAdaptivePadding(
             context,
             const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
@@ -301,7 +301,7 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
               initialValue: _selectedSemester,
               decoration: InputDecoration(
                 labelText: 'Semester',
-                border: const OutlineInputBorder(),
+      
                 contentPadding: ResponsiveService.getAdaptivePadding(
                   context,
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
@@ -600,7 +600,6 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Discipline Electives'),
-        centerTitle: true,
       ),
       body:
           _isLoading

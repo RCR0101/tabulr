@@ -6,6 +6,7 @@ import '../services/humanities_electives_service.dart';
 import '../services/discipline_electives_service.dart';
 import '../services/clash_detector.dart';
 import '../services/campus_service.dart';
+import '../utils/design_constants.dart';
 
 enum CourseCategory { huel, del, other }
 
@@ -248,9 +249,9 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     // Check if both courses have only lecture sections
     if (!_canReplaceCourses(_selectedCourse!, replacementCourse)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Can only replace between courses that have only lecture sections'),
-          backgroundColor: Colors.orange,
+        SnackBar(
+          content: const Text('Can only replace between courses that have only lecture sections'),
+          backgroundColor: AppDesign.warning(context),
         ),
       );
       return;
@@ -267,7 +268,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Successfully replaced ${_selectedCourse!.courseCode} with ${replacementCourse.courseCode}'),
-        backgroundColor: Colors.green,
+        backgroundColor: AppDesign.success(context),
         duration: const Duration(seconds: 3),
       ),
     );
@@ -396,8 +397,6 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Quick Replace Course'),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
@@ -878,10 +877,10 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
 
   Widget _buildCompactSimilarCoursesList() {
     if (_filteredCourses.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           'No similar courses found',
-          style: TextStyle(color: Colors.grey),
+          style: TextStyle(color: AppDesign.muted(context)),
         ),
       );
     }
@@ -942,16 +941,16 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.orange.withValues(alpha: 0.1),
+                                color: AppDesign.warning(context).withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.orange, width: 1),
+                                border: Border.all(color: AppDesign.warning(context), width: 1),
                               ),
-                              child: const Text(
+                              child: Text(
                                 'Mixed Sections',
                                 style: TextStyle(
                                   fontSize: 9,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.orange,
+                                  color: AppDesign.warning(context),
                                 ),
                               ),
                             ),
@@ -1014,10 +1013,10 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
 
 
   Color _getSimilarityColor(double score) {
-    if (score >= 0.8) return Colors.green;
-    if (score >= 0.6) return Colors.orange;
-    if (score >= 0.4) return Colors.deepOrange;
-    return Colors.red;
+    if (score >= 0.8) return AppDesign.success(context);
+    if (score >= 0.6) return AppDesign.warning(context);
+    if (score >= 0.4) return Theme.of(context).colorScheme.error;
+    return AppDesign.danger(context);
   }
 
   // Build category badge for course cards
@@ -1027,15 +1026,15 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     
     switch (category) {
       case CourseCategory.huel:
-        badgeColor = Colors.purple;
+        badgeColor = Theme.of(context).colorScheme.tertiary;
         categoryText = 'HUEL';
         break;
       case CourseCategory.del:
-        badgeColor = Colors.blue;
+        badgeColor = AppDesign.info(context);
         categoryText = 'DEL';
         break;
       case CourseCategory.other:
-        badgeColor = Colors.grey;
+        badgeColor = AppDesign.muted(context);
         categoryText = 'OTHER';
         break;
     }
@@ -1266,10 +1265,10 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.blue.withValues(alpha: 0.1),
+            color: AppDesign.info(context).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: Colors.blue.withValues(alpha: 0.3),
+              color: AppDesign.info(context).withValues(alpha: 0.3),
             ),
           ),
           child: Column(
@@ -1280,14 +1279,14 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                   Icon(
                     Icons.school_outlined,
                     size: 16,
-                    color: Colors.blue,
+                    color: AppDesign.info(context),
                   ),
                   const SizedBox(width: 6),
                   Text(
                     'DEL Parameters',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: Colors.blue,
+                      color: AppDesign.info(context),
                     ),
                   ),
                 ],

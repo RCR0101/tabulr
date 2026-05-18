@@ -11,6 +11,7 @@ import '../services/course_data_service.dart';
 import '../services/user_settings_service.dart';
 import '../services/responsive_service.dart';
 import '../models/user_settings.dart';
+import '../utils/design_constants.dart';
 import '../widgets/theme_selector_widget.dart';
 import '../widgets/campus_selector_widget.dart';
 import '../widgets/disclaimer_widget.dart';
@@ -248,8 +249,8 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
               ElevatedButton(
                 onPressed: () => Navigator.pop(context, true),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppDesign.danger(context),
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
                 ),
                 child: const Text('Delete'),
               ),
@@ -395,9 +396,9 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
       // Show success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('All timetables have been cleared'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('All timetables have been cleared'),
+            backgroundColor: AppDesign.success(context),
           ),
         );
       }
@@ -785,8 +786,8 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
               ElevatedButton(
                 onPressed: () => Navigator.pop(context, true),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppDesign.danger(context),
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
                 ),
                 child: const Text('Sign Out'),
               ),
@@ -835,7 +836,6 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                     ),
                   ],
                 ),
-        centerTitle: true,
         actions: [
           IconButton(
             icon: Icon(
@@ -1207,9 +1207,9 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                 if (isCustomSort)
                                   ReorderableDragStartListener(
                                     index: index,
-                                    child: const Icon(
+                                    child: Icon(
                                       Icons.drag_handle,
-                                      color: Colors.grey,
+                                      color: AppDesign.muted(context),
                                     ),
                                   )
                                 else
@@ -1217,7 +1217,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                     _getSortIcon(
                                       _userSettingsService.sortOrder,
                                     ),
-                                    color: Colors.grey,
+                                    color: AppDesign.muted(context),
                                   ),
                                 const SizedBox(width: 8),
                                 CircleAvatar(
@@ -1304,16 +1304,16 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                       ),
                                     ),
                                     if (_sortedTimetables.length > 1)
-                                      const PopupMenuItem(
+                                      PopupMenuItem(
                                         value: 'delete',
                                         child: ListTile(
                                           leading: Icon(
                                             Icons.delete,
-                                            color: Colors.red,
+                                            color: AppDesign.danger(context),
                                           ),
                                           title: Text(
                                             'Delete',
-                                            style: TextStyle(color: Colors.red),
+                                            style: TextStyle(color: AppDesign.danger(context)),
                                           ),
                                           contentPadding: EdgeInsets.zero,
                                         ),
@@ -1546,7 +1546,7 @@ class _TimetableEditorScreenState extends State<TimetableEditorScreen> {
                   TextButton(
                     onPressed: () => Navigator.pop(context, true),
                     child: const Text('Leave'),
-                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    style: TextButton.styleFrom(foregroundColor: AppDesign.danger(context)),
                   ),
                 ],
               ),

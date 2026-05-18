@@ -110,8 +110,6 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).cardColor,
-        elevation: 0,
         title: Row(
           children: [
             Container(

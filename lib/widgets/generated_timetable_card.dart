@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../models/timetable_constraints.dart';
+import '../utils/design_constants.dart';
 
 class GeneratedTimetableCard extends StatelessWidget {
   final GeneratedTimetable timetable;
@@ -33,13 +34,13 @@ class GeneratedTimetableCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: _getScoreColor(timetable.score),
+                        color: _getScoreColor(context, timetable.score),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         'Score: ${timetable.score.toStringAsFixed(1)}',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onPrimary,
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
@@ -67,7 +68,7 @@ class GeneratedTimetableCard extends StatelessWidget {
               runSpacing: 4,
               children: timetable.sections.map((section) => Chip(
                 label: Text('${section.courseCode}-${section.sectionId}'),
-                backgroundColor: Colors.blue.withOpacity(0.1),
+                backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
               )).toList(),
             ),
             
@@ -93,7 +94,7 @@ class GeneratedTimetableCard extends StatelessWidget {
                         hours.toString(),
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: hours > 6 ? Colors.red : Colors.green,
+                          color: hours > 6 ? AppDesign.danger(context) : AppDesign.success(context),
                         ),
                       ),
                     ],
@@ -108,7 +109,7 @@ class GeneratedTimetableCard extends StatelessWidget {
             if (timetable.pros.isNotEmpty) ...[
               Row(
                 children: [
-                  const Icon(Icons.check_circle, color: Colors.green, size: 16),
+                  Icon(Icons.check_circle, color: AppDesign.success(context), size: 16),
                   const SizedBox(width: 4),
                   const Text('Pros:', style: TextStyle(fontWeight: FontWeight.bold)),
                 ],
@@ -118,7 +119,7 @@ class GeneratedTimetableCard extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 20, bottom: 2),
                 child: Text(
                   '• $pro',
-                  style: const TextStyle(fontSize: 12, color: Colors.green),
+                  style: TextStyle(fontSize: 12, color: AppDesign.success(context)),
                 ),
               )),
             ],
@@ -127,7 +128,7 @@ class GeneratedTimetableCard extends StatelessWidget {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  const Icon(Icons.warning, color: Colors.orange, size: 16),
+                  Icon(Icons.warning, color: AppDesign.warning(context), size: 16),
                   const SizedBox(width: 4),
                   const Text('Cons:', style: TextStyle(fontWeight: FontWeight.bold)),
                 ],
@@ -137,7 +138,7 @@ class GeneratedTimetableCard extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 20, bottom: 2),
                 child: Text(
                   '• $con',
-                  style: const TextStyle(fontSize: 12, color: Colors.orange),
+                  style: TextStyle(fontSize: 12, color: AppDesign.warning(context)),
                 ),
               )),
             ],
@@ -147,9 +148,9 @@ class GeneratedTimetableCard extends StatelessWidget {
     );
   }
 
-  Color _getScoreColor(double score) {
-    if (score >= 80) return Colors.green;
-    if (score >= 60) return Colors.orange;
-    return Colors.red;
+  Color _getScoreColor(BuildContext context, double score) {
+    if (score >= 80) return AppDesign.success(context);
+    if (score >= 60) return AppDesign.warning(context);
+    return AppDesign.danger(context);
   }
 }

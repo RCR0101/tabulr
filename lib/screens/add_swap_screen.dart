@@ -7,6 +7,7 @@ import '../widgets/search_filter_widget.dart';
 import '../services/campus_service.dart';
 import '../services/clash_detector.dart';
 import '../utils/datetime_utils.dart';
+import '../utils/design_constants.dart';
 
 class AddSwapScreen extends StatefulWidget {
   final List<SelectedSection> currentSelectedSections;
@@ -409,10 +410,10 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
         ),
         Expanded(
           child: currentCourses.isEmpty
-              ? const Center(
+              ? Center(
                   child: Text(
                     'No courses in current timetable',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                    style: TextStyle(fontSize: 16, color: AppDesign.muted(context)),
                   ),
                 )
               : ListView.builder(
@@ -468,15 +469,15 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: _getSectionTypeColor(selectedSection.section.type),
+                                        color: _getSectionTypeColor(context, selectedSection.section.type),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
                                         selectedSection.section.type.name,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.bold,
-                                          color: Colors.white,
+                                          color: Theme.of(context).colorScheme.onPrimary,
                                         ),
                                       ),
                                     ),
@@ -549,14 +550,15 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     );
   }
 
-  Color _getSectionTypeColor(SectionType type) {
+  Color _getSectionTypeColor(BuildContext context, SectionType type) {
+    final scheme = Theme.of(context).colorScheme;
     switch (type) {
       case SectionType.L:
-        return Colors.blue;
+        return scheme.primary;
       case SectionType.P:
-        return Colors.orange;
+        return AppDesign.warning(context);
       case SectionType.T:
-        return Colors.green;
+        return AppDesign.success(context);
     }
   }
 
@@ -799,7 +801,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                     'Selected: ${courseSelections.entries.map((e) => '${e.key.name}:${e.value}').join(', ')}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: isCompleteSelection ? Colors.green : Theme.of(context).colorScheme.primary,
+                      color: isCompleteSelection ? AppDesign.success(context) : Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -810,7 +812,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                     'Still needed: ${missingSectionTypes.map((t) => ClashDetector.getSectionTypeName(t)).join(', ')}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.orange,
+                      color: AppDesign.warning(context),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -818,9 +820,9 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
               ],
             ),
             trailing: isCompleteSelection
-                ? Icon(Icons.check_circle, color: Colors.green)
+                ? Icon(Icons.check_circle, color: AppDesign.success(context))
                 : hasSelections
-                    ? Icon(Icons.warning, color: Colors.orange)
+                    ? Icon(Icons.warning, color: AppDesign.warning(context))
                     : const Icon(Icons.radio_button_unchecked),
             children: [
               // Show exam information first
@@ -984,20 +986,21 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
   }
 
   Widget _buildExamInfo(String examType, ExamSchedule exam) {
+    final scheme = Theme.of(context).colorScheme;
     return Row(
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
-            color: examType == 'Mid-Sem' ? Colors.purple : Colors.deepOrange,
+            color: examType == 'Mid-Sem' ? scheme.tertiary : scheme.error,
             borderRadius: BorderRadius.circular(4),
           ),
           child: Text(
             examType,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: scheme.onTertiary,
             ),
           ),
         ),
@@ -1013,21 +1016,22 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
   }
 
   Widget _buildCompactExamInfo(String examType, ExamSchedule exam) {
+    final scheme = Theme.of(context).colorScheme;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
           decoration: BoxDecoration(
-            color: examType == 'Mid-Sem' ? Colors.purple : Colors.deepOrange,
+            color: examType == 'Mid-Sem' ? scheme.tertiary : scheme.error,
             borderRadius: BorderRadius.circular(3),
           ),
           child: Text(
             examType == 'Mid-Sem' ? 'MS' : 'CE',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 8,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: scheme.onTertiary,
             ),
           ),
         ),
@@ -1203,10 +1207,10 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
+                          color: AppDesign.success(context).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: Colors.green.withOpacity(0.3),
+                            color: AppDesign.success(context).withValues(alpha: 0.3),
                           ),
                         ),
                         child: Column(
@@ -1217,14 +1221,14 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                                 Icon(
                                   Icons.check_circle,
                                   size: 16,
-                                  color: Colors.green,
+                                  color: AppDesign.success(context),
                                 ),
                                 const SizedBox(width: 6),
-                                const Text(
+                                Text(
                                   'Safe Combination:',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.green,
+                                    color: AppDesign.success(context),
                                   ),
                                 ),
                               ],
@@ -1247,15 +1251,15 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: _getSectionTypeColor(sectionType),
+                                        color: _getSectionTypeColor(context, sectionType),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
                                         sectionType.name,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.bold,
-                                          color: Colors.white,
+                                          color: Theme.of(context).colorScheme.onPrimary,
                                         ),
                                       ),
                                     ),
@@ -1392,7 +1396,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${result.courseCode} added to your timetable!'),
-        backgroundColor: Colors.green,
+        backgroundColor: AppDesign.success(context),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -1442,7 +1446,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                         children: [
                           Icon(
                             result.canBeAdded ? Icons.check_circle : Icons.error,
-                            color: result.canBeAdded ? Colors.green : Colors.red,
+                            color: result.canBeAdded ? AppDesign.success(context) : AppDesign.danger(context),
                             size: 20,
                           ),
                           const SizedBox(width: 8),
@@ -1465,14 +1469,14 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: result.canBeAdded
-                              ? Colors.green.withOpacity(0.1)
-                              : Colors.red.withOpacity(0.1),
+                          color: (result.canBeAdded
+                              ? AppDesign.success(context)
+                              : AppDesign.danger(context)).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: result.canBeAdded
-                                ? Colors.green.withOpacity(0.3)
-                                : Colors.red.withOpacity(0.3),
+                            color: (result.canBeAdded
+                                ? AppDesign.success(context)
+                                : AppDesign.danger(context)).withValues(alpha: 0.3),
                           ),
                         ),
                         child: Row(
@@ -1480,7 +1484,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                             Icon(
                               result.canBeAdded ? Icons.thumb_up : Icons.warning,
                               size: 16,
-                              color: result.canBeAdded ? Colors.green : Colors.red,
+                              color: result.canBeAdded ? AppDesign.success(context) : AppDesign.danger(context),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
@@ -1489,7 +1493,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                                     ? 'Can be safely added to timetable'
                                     : 'Has conflicts with existing courses',
                                 style: TextStyle(
-                                  color: result.canBeAdded ? Colors.green : Colors.red,
+                                  color: result.canBeAdded ? AppDesign.success(context) : AppDesign.danger(context),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -1509,7 +1513,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.schedule, size: 16, color: Colors.red),
+                              Icon(Icons.schedule, size: 16, color: AppDesign.danger(context)),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(

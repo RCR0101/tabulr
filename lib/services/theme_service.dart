@@ -917,6 +917,16 @@ ThemeData _buildTheme(_ThemeColors c) {
       backgroundColor: c.background,
       foregroundColor: c.appBarForeground ?? c.onSurface,
       elevation: 0,
+      scrolledUnderElevation: 1,
+      centerTitle: true,
+    ),
+    dialogTheme: DialogThemeData(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      titleTextStyle: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+        color: c.onSurface,
+      ),
     ),
     cardTheme: CardThemeData(
       color: c.surface,
@@ -943,20 +953,22 @@ ThemeData _buildTheme(_ThemeColors c) {
             filled: true,
             fillColor: c.inputFill,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: effectiveBorderColor),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: effectiveBorderColor),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
               borderSide:
                   BorderSide(color: c.primary, width: c.focusedBorderWidth),
             ),
             labelStyle: TextStyle(color: c.labelColor),
             hintStyle: TextStyle(color: c.hintColor),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           )
         : null,
     chipTheme: c.inputFill != null

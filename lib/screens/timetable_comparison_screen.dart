@@ -5,6 +5,7 @@ import '../widgets/timetable_widget.dart';
 import '../services/timetable_service.dart';
 import '../services/course_catalog_service.dart';
 import '../services/responsive_service.dart';
+import '../utils/design_constants.dart';
 
 enum ComparisonViewMode { grid, list }
 
@@ -410,7 +411,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                     'Identical Courses',
                     sameCourses.toString(),
                     Icons.check_circle,
-                    Colors.green,
+                    AppDesign.success(context),
                     ComparisonStatus.sameCourse,
                     items,
                   ),
@@ -421,7 +422,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                     'Different Sections',
                     differentSections.toString(),
                     Icons.swap_horiz,
-                    Colors.orange,
+                    AppDesign.warning(context),
                     ComparisonStatus.differentSection,
                     items,
                   ),
@@ -436,7 +437,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                     'Only in ${_leftTimetable!.name}',
                     onlyInLeft.toString(),
                     Icons.arrow_left,
-                    Colors.blue,
+                    AppDesign.info(context),
                     ComparisonStatus.onlyInLeft,
                     items,
                   ),
@@ -447,7 +448,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                     'Only in ${_rightTimetable!.name}',
                     onlyInRight.toString(),
                     Icons.arrow_right,
-                    Colors.purple,
+                    Theme.of(context).colorScheme.tertiary,
                     ComparisonStatus.onlyInRight,
                     items,
                   ),
@@ -715,22 +716,22 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
     
     switch (item.status) {
       case ComparisonStatus.sameCourse:
-        statusColor = Colors.green;
+        statusColor = AppDesign.success(context);
         statusIcon = Icons.check_circle;
         statusText = 'Same course and section';
         break;
       case ComparisonStatus.differentSection:
-        statusColor = Colors.orange;
+        statusColor = AppDesign.warning(context);
         statusIcon = Icons.swap_horiz;
         statusText = 'Different section';
         break;
       case ComparisonStatus.onlyInLeft:
-        statusColor = Colors.blue;
+        statusColor = AppDesign.info(context);
         statusIcon = Icons.arrow_left;
         statusText = 'Only in ${_leftTimetable!.name}';
         break;
       case ComparisonStatus.onlyInRight:
-        statusColor = Colors.purple;
+        statusColor = Theme.of(context).colorScheme.tertiary;
         statusIcon = Icons.arrow_right;
         statusText = 'Only in ${_rightTimetable!.name}';
         break;

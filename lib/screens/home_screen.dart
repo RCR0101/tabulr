@@ -17,6 +17,7 @@ import '../services/campus_service.dart';
 import '../services/course_data_service.dart';
 import '../services/user_settings_service.dart';
 import '../services/responsive_service.dart';
+import '../utils/design_constants.dart';
 import '../widgets/campus_selector_widget.dart';
 import '../widgets/disclaimer_widget.dart';
 import 'course_guide_screen.dart';
@@ -164,7 +165,6 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
                   ),
                 ],
               ),
-              centerTitle: true,
             ),
             body: const Center(child: Text('Failed to load timetable')),
           );
@@ -184,7 +184,6 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
                 ),
               ],
             ),
-            centerTitle: true,
             actions: [
               if (_showSavedIndicator)
                 Padding(
@@ -192,9 +191,9 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.check_circle, color: Colors.green, size: 18),
+                      Icon(Icons.check_circle, color: AppDesign.success(context), size: 18),
                       const SizedBox(width: 4),
-                      Text('Saved', style: TextStyle(color: Colors.green, fontSize: 13)),
+                      Text('Saved', style: TextStyle(color: AppDesign.success(context), fontSize: 13)),
                     ],
                   ),
                 ),
@@ -842,7 +841,6 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
           child: Scaffold(
             appBar: AppBar(
               title: Text(_timetable.name),
-              centerTitle: true,
               leading:
                   ResponsiveService.isMobile(context)
                       ? IconButton(
@@ -858,9 +856,9 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.check_circle, color: Colors.green, size: 18),
+                      Icon(Icons.check_circle, color: AppDesign.success(context), size: 18),
                       const SizedBox(width: 4),
-                      Text('Saved', style: TextStyle(color: Colors.green, fontSize: 13)),
+                      Text('Saved', style: TextStyle(color: AppDesign.success(context), fontSize: 13)),
                     ],
                   ),
                 ),

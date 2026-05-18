@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 import '../services/campus_service.dart';
+import '../utils/design_constants.dart';
 
 enum SortColumn { course, midSem, endSem }
 enum SortDirection { ascending, descending }
@@ -64,11 +65,11 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
           ),
         ),
         if (examData.isEmpty)
-          const Expanded(
+          Expanded(
             child: Center(
               child: Text(
                 'No courses selected',
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: AppDesign.muted(context)),
               ),
             ),
           )

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/prerequisite.dart';
 import '../repositories/prerequisites_repository.dart';
+import '../utils/design_constants.dart';
 
 class PrerequisitesScreen extends StatefulWidget {
   const PrerequisitesScreen({super.key});
@@ -115,8 +116,6 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Course Prerequisites'),
-        centerTitle: true,
-        elevation: 0,
       ),
       body: Column(
         children: [
@@ -136,7 +135,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
         color: colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -164,15 +163,6 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
                       onPressed: _clearSearch,
                     )
                   : null,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              filled: true,
-              fillColor: colorScheme.surfaceContainerHighest,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
             ),
             onChanged: (value) {
               setState(() {}); // To update suffix icon
@@ -352,8 +342,8 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
                                   : Icons.cancel,
                               size: 14,
                               color: course.hasPrerequisites
-                                  ? Colors.green
-                                  : Colors.grey,
+                                  ? AppDesign.success(context)
+                                  : AppDesign.muted(context),
                             ),
                             const SizedBox(width: 4),
                             Text(
@@ -508,7 +498,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
                   children: [
                     Icon(
                       Icons.check_circle,
-                      color: Colors.green,
+                      color: AppDesign.success(context),
                       size: 32,
                     ),
                     const SizedBox(width: 16),

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../services/professor_service.dart';
 import '../services/responsive_service.dart';
 import '../services/auth_service.dart';
+import '../utils/design_constants.dart';
 import '../widgets/app_drawer.dart';
 
 class ProfessorsScreen extends StatefulWidget {
@@ -66,7 +67,6 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
             ),
           ],
         ),
-        centerTitle: true,
         actions: [
           if (kIsWeb)
             IconButton(
@@ -536,10 +536,10 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
     };
 
     final dayColors = {
-      'M': Colors.blue,
-      'T': Colors.green,
-      'W': Colors.orange,
-      'Th': Colors.purple,
+      'M': AppDesign.info(context),
+      'T': AppDesign.success(context),
+      'W': AppDesign.warning(context),
+      'Th': Theme.of(context).colorScheme.tertiary,
       'F': Colors.teal,
       'S': Colors.pink,
     };

@@ -6,6 +6,7 @@ import '../services/timetable_generator.dart';
 import '../services/toast_service.dart';
 import '../services/responsive_service.dart';
 import '../services/campus_service.dart';
+import '../utils/design_constants.dart';
 import 'generated_timetable_card.dart';
 
 class TimetableGeneratorWidget extends StatefulWidget {
@@ -385,7 +386,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         return ListTile(
           leading: Icon(
             isSelected ? Icons.check_circle : Icons.add_circle_outline,
-            color: isSelected ? Colors.green : Colors.blue,
+            color: isSelected ? AppDesign.success(context) : AppDesign.info(context),
           ),
           title: Text(course.courseCode),
           subtitle: Text(
@@ -677,7 +678,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                       });
                     },
                     backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                    deleteIconColor: Colors.red,
+                    deleteIconColor: AppDesign.danger(context),
                   );
                 }).toList(),
               ),
@@ -735,7 +736,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                       });
                     },
                     backgroundColor: Theme.of(context).colorScheme.error.withOpacity(0.1),
-                    deleteIconColor: Colors.red,
+                    deleteIconColor: AppDesign.danger(context),
                   );
                 }).toList(),
               ),
@@ -793,7 +794,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                       });
                     },
                     backgroundColor: Theme.of(context).colorScheme.error.withOpacity(0.1),
-                    deleteIconColor: Colors.red,
+                    deleteIconColor: AppDesign.danger(context),
                   );
                 }).toList(),
               ),
@@ -970,14 +971,14 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     if (rankings.lectureInstructors.isNotEmpty)
-                                      _buildSectionTypeBadge('L', rankings.lectureInstructors.length),
+                                      _buildSectionTypeBadge(context, 'L', rankings.lectureInstructors.length),
                                     if (rankings.practicalInstructors.isNotEmpty) ...[
                                       const SizedBox(width: 3),
-                                      _buildSectionTypeBadge('P', rankings.practicalInstructors.length),
+                                      _buildSectionTypeBadge(context, 'P', rankings.practicalInstructors.length),
                                     ],
                                     if (rankings.tutorialInstructors.isNotEmpty) ...[
                                       const SizedBox(width: 3),
-                                      _buildSectionTypeBadge('T', rankings.tutorialInstructors.length),
+                                      _buildSectionTypeBadge(context, 'T', rankings.tutorialInstructors.length),
                                     ],
                                   ],
                                 ),
@@ -1020,34 +1021,35 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     );
   }
 
-  Widget _buildSectionTypeBadge(String sectionType, int count) {
+  Widget _buildSectionTypeBadge(BuildContext context, String sectionType, int count) {
+    final scheme = Theme.of(context).colorScheme;
     Color badgeColor;
     switch (sectionType) {
       case 'L':
-        badgeColor = Colors.blue;
+        badgeColor = scheme.primary;
         break;
       case 'P':
-        badgeColor = Colors.green;
+        badgeColor = AppDesign.success(context);
         break;
       case 'T':
-        badgeColor = Colors.orange;
+        badgeColor = AppDesign.warning(context);
         break;
       default:
-        badgeColor = Colors.grey;
+        badgeColor = AppDesign.muted(context);
     }
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       decoration: BoxDecoration(
-        color: badgeColor.withOpacity(0.8),
+        color: badgeColor.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         '$sectionType:$count',
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 9,
           fontWeight: FontWeight.bold,
-          color: Colors.white,
+          color: scheme.onPrimary,
         ),
       ),
     );
@@ -2197,9 +2199,7 @@ class _InstructorRankingDialogState extends State<_InstructorRankingDialog>
                           child: Text(
                             position.toString(),
                             style: TextStyle(
-                              color: isTopRank 
-                                ? Theme.of(context).colorScheme.onPrimary
-                                : Colors.white,
+                              color: Theme.of(context).colorScheme.onPrimary,
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
                             ),

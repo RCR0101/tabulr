@@ -5,6 +5,7 @@ import '../services/timetable_service.dart';
 import '../services/responsive_service.dart';
 import '../services/toast_service.dart';
 import '../models/timetable.dart';
+import '../utils/design_constants.dart';
 import '../widgets/app_drawer.dart';
 
 class ExamSeatingScreen extends StatefulWidget {
@@ -212,7 +213,6 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Exam Seating'),
-          centerTitle: true,
         ),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -222,7 +222,6 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       drawer: const AppDrawer(currentScreen: DrawerScreen.examSeating),
       appBar: AppBar(
         title: const Text('Exam Seating'),
-        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.file_download_outlined),
@@ -295,15 +294,9 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
               return TextField(
                 controller: controller,
                 focusNode: focusNode,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: 'Search for a course...',
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor:
-                      Theme.of(context).colorScheme.surfaceContainerHighest,
+                  prefixIcon: Icon(Icons.search),
                 ),
               );
             },
@@ -340,15 +333,9 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
               Expanded(
                 child: TextField(
                   controller: _idController,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     hintText: 'Enter your ID Number (e.g., 2022A7PS0001H)',
-                    prefixIcon: const Icon(Icons.badge),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
+                    prefixIcon: Icon(Icons.badge),
                   ),
                   textCapitalization: TextCapitalization.characters,
                   onSubmitted: (_) => _searchForRoom(),
@@ -606,17 +593,17 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.1),
+                        color: AppDesign.success(context).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: Colors.green.withValues(alpha: 0.3),
+                          color: AppDesign.success(context).withValues(alpha: 0.3),
                         ),
                       ),
                       child: Row(
                         children: [
                           Icon(
                             Icons.check_circle,
-                            color: Colors.green[700],
+                            color: AppDesign.success(context),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -630,7 +617,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
                                       .titleMedium
                                       ?.copyWith(
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.green[700],
+                                        color: AppDesign.success(context),
                                       ),
                                 ),
                                 Text(
@@ -639,7 +626,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
                                       .textTheme
                                       .bodySmall
                                       ?.copyWith(
-                                        color: Colors.green[700],
+                                        color: AppDesign.success(context),
                                       ),
                                 ),
                               ],
@@ -652,17 +639,17 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.1),
+                        color: AppDesign.warning(context).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: Colors.orange.withValues(alpha: 0.3),
+                          color: AppDesign.warning(context).withValues(alpha: 0.3),
                         ),
                       ),
                       child: Row(
                         children: [
                           Icon(
                             Icons.warning_amber,
-                            color: Colors.orange[700],
+                            color: AppDesign.warning(context),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -672,7 +659,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
                                   .textTheme
                                   .bodyMedium
                                   ?.copyWith(
-                                    color: Colors.orange[700],
+                                    color: AppDesign.warning(context),
                                   ),
                             ),
                           ),
@@ -749,7 +736,6 @@ class _TimetableCourseSelectionDialogState
               value: _selectedTimetable,
               decoration: const InputDecoration(
                 labelText: 'Select Timetable',
-                border: OutlineInputBorder(),
               ),
               items: widget.timetables
                   .map((tt) => DropdownMenuItem(

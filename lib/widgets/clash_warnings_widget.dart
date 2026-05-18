@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/timetable.dart';
+import '../utils/design_constants.dart';
 
 class ClashWarningsWidget extends StatelessWidget {
   final List<ClashWarning> warnings;
@@ -30,18 +31,14 @@ class ClashWarningsWidget extends StatelessWidget {
             itemCount: warnings.length,
             itemBuilder: (context, index) {
               final warning = warnings[index];
+              final isError = warning.severity == ClashSeverity.error;
+              final statusColor = isError ? AppDesign.danger(context) : AppDesign.warning(context);
               return Card(
-                color: warning.severity == ClashSeverity.error
-                    ? Colors.red.withOpacity(0.1)
-                    : Colors.orange.withOpacity(0.1),
+                color: statusColor.withValues(alpha: 0.1),
                 child: ListTile(
                   leading: Icon(
-                    warning.severity == ClashSeverity.error
-                        ? Icons.error
-                        : Icons.warning,
-                    color: warning.severity == ClashSeverity.error
-                        ? Colors.red
-                        : Colors.orange,
+                    isError ? Icons.error : Icons.warning,
+                    color: statusColor,
                   ),
                   title: Text(warning.message),
                   subtitle: Text(
@@ -52,9 +49,7 @@ class ClashWarningsWidget extends StatelessWidget {
                       warning.type.toString().split('.').last,
                       style: const TextStyle(fontSize: 12),
                     ),
-                    backgroundColor: warning.severity == ClashSeverity.error
-                        ? Colors.red.withOpacity(0.2)
-                        : Colors.orange.withOpacity(0.2),
+                    backgroundColor: statusColor.withValues(alpha: 0.2),
                   ),
                 ),
               );

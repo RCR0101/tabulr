@@ -12,6 +12,7 @@ import '../services/reputation_service.dart';
 import '../services/responsive_service.dart';
 import '../services/timetable_service.dart';
 import '../services/toast_service.dart';
+import '../utils/design_constants.dart';
 import '../widgets/app_drawer.dart';
 
 class CourseAnnouncementsScreen extends StatefulWidget {
@@ -255,7 +256,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: AppDesign.danger(context)),
             child: const Text('Delete'),
           ),
         ],
@@ -413,7 +414,6 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
         value: _selectedTimetable?.id,
         decoration: InputDecoration(
           labelText: 'Select Timetable',
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
@@ -695,16 +695,16 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
     Color color;
     switch (source.trustLevel) {
       case 'high':
-        color = Colors.green;
+        color = AppDesign.success(context);
         break;
       case 'medium':
-        color = Colors.amber.shade700;
+        color = AppDesign.warning(context);
         break;
       case 'low':
-        color = Colors.orange;
+        color = AppDesign.warning(context);
         break;
       default:
-        color = Colors.grey;
+        color = AppDesign.muted(context);
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
@@ -748,23 +748,23 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.green.withValues(alpha: 0.08),
+        color: AppDesign.success(context).withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
+        border: Border.all(color: AppDesign.success(context).withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.check_circle, size: 16, color: Colors.green),
-              SizedBox(width: 6),
+              Icon(Icons.check_circle, size: 16, color: AppDesign.success(context)),
+              const SizedBox(width: 6),
               Text(
                 'Correction',
                 style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: Colors.green),
+                    color: AppDesign.success(context)),
               ),
             ],
           ),
@@ -781,9 +781,9 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
                   .open(announcement.correctionSource!, '_blank'),
               child: Text(
                 'Source: ${announcement.correctionSource}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
-                  color: Colors.blue,
+                  color: AppDesign.info(context),
                   decoration: TextDecoration.underline,
                 ),
               ),
@@ -871,27 +871,27 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
 
     switch (state) {
       case 'community_verified':
-        badgeColor = Colors.green;
+        badgeColor = AppDesign.success(context);
         badgeIcon = Icons.verified;
         badgeText = 'Community Verified';
         break;
       case 'partially_verified':
-        badgeColor = Colors.blue;
+        badgeColor = AppDesign.info(context);
         badgeIcon = Icons.check_circle_outline;
         badgeText = 'Partially Verified';
         break;
       case 'contested':
-        badgeColor = Colors.orange;
+        badgeColor = AppDesign.warning(context);
         badgeIcon = Icons.warning_amber_rounded;
         badgeText = 'Contested';
         break;
       case 'likely_incorrect':
-        badgeColor = Colors.red;
+        badgeColor = AppDesign.danger(context);
         badgeIcon = Icons.error_outline;
         badgeText = 'Likely Incorrect';
         break;
       default:
-        badgeColor = Colors.grey;
+        badgeColor = AppDesign.muted(context);
         badgeIcon = Icons.help_outline;
         badgeText = 'Unverified';
     }
@@ -935,18 +935,18 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
             padding:
                 const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
             decoration: BoxDecoration(
-              color: Colors.amber.withValues(alpha: 0.1),
+              color: AppDesign.warning(context).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.schedule,
-                    size: 12, color: Colors.amber.shade700),
+                    size: 12, color: AppDesign.warning(context)),
                 const SizedBox(width: 3),
                 Text('Needs verification',
                     style: TextStyle(
-                        fontSize: 10, color: Colors.amber.shade700)),
+                        fontSize: 10, color: AppDesign.warning(context))),
               ],
             ),
           ),
@@ -974,7 +974,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
                   icon: Icons.arrow_upward_rounded,
                   count: announcement.upvotes,
                   isActive: userVote == 1,
-                  activeColor: Colors.green,
+                  activeColor: AppDesign.success(context),
                   onTap: () => _announcementService.toggleVote(
                       announcement.id, 1),
                 ),
@@ -983,7 +983,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
                   icon: Icons.arrow_downward_rounded,
                   count: announcement.downvotes,
                   isActive: userVote == -1,
-                  activeColor: Colors.red,
+                  activeColor: AppDesign.danger(context),
                   onTap: () => _announcementService.toggleVote(
                       announcement.id, -1),
                 ),
@@ -1001,7 +1001,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
                 icon: Icons.flag_outlined,
                 activeIcon: Icons.flag,
                 isActive: hasFlag,
-                activeColor: Colors.orange,
+                activeColor: AppDesign.warning(context),
                 tooltip:
                     hasFlag ? 'Already flagged' : 'Flag as incorrect',
                 onTap:
@@ -1026,7 +1026,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
                     icon: Icons.check_circle_outline,
                     activeIcon: Icons.check_circle,
                     isActive: isConfirmed,
-                    activeColor: Colors.green,
+                    activeColor: AppDesign.success(context),
                     tooltip:
                         isConfirmed ? 'Confirmed' : 'Confirm this',
                     onTap: isConfirmed
@@ -1042,7 +1042,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
                     icon: Icons.cancel_outlined,
                     activeIcon: Icons.cancel,
                     isActive: isDenied,
-                    activeColor: Colors.red,
+                    activeColor: AppDesign.danger(context),
                     tooltip: isDenied ? 'Denied' : 'Deny this',
                     onTap: isDenied
                         ? null
@@ -1341,8 +1341,6 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
                 value: _selectedCourse,
                 decoration: InputDecoration(
                   labelText: 'Course *',
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8)),
                 ),
                 items: courses
                     .map(
@@ -1360,10 +1358,8 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
                   value: _selectedSection.isEmpty
                       ? null
                       : _selectedSection,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Section (optional)',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8)),
                   ),
                   items: [
                     const DropdownMenuItem(
@@ -1382,8 +1378,6 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
                 decoration: InputDecoration(
                   labelText: 'Title *',
                   hintText: 'e.g. Quiz postponed to next week',
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8)),
                 ),
                 textCapitalization: TextCapitalization.sentences,
                 onChanged: (_) => setState(() {}),
@@ -1393,8 +1387,6 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
                 controller: _descriptionController,
                 decoration: InputDecoration(
                   labelText: 'Description (optional)',
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8)),
                 ),
                 maxLines: 3,
                 textCapitalization: TextCapitalization.sentences,
@@ -1478,8 +1470,6 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
                 value: _selectedSourceType,
                 decoration: InputDecoration(
                   labelText: 'Source (optional)',
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8)),
                 ),
                 items: SourceType.values
                     .map((t) => DropdownMenuItem(
@@ -1496,11 +1486,9 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: _sourceUrlController,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Source URL',
                     hintText: 'https://...',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8)),
                   ),
                   keyboardType: TextInputType.url,
                 ),
@@ -1510,8 +1498,6 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
                 value: _confidence,
                 decoration: InputDecoration(
                   labelText: 'How sure are you?',
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8)),
                 ),
                 items: const [
                   DropdownMenuItem(
@@ -1538,11 +1524,11 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
                   FilledButton(
                     onPressed: _canPost ? _post : null,
                     child: _isPosting
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
+                                strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                           )
                         : const Text('Post'),
                   ),
@@ -1628,8 +1614,6 @@ class _FlagDialogState extends State<_FlagDialog> {
                 decoration: InputDecoration(
                   labelText: 'Reason *',
                   hintText: 'Describe what is incorrect and why...',
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8)),
                   helperText: charCount < 20
                       ? '${20 - charCount} more characters needed'
                       : null,
@@ -1644,8 +1628,6 @@ class _FlagDialogState extends State<_FlagDialog> {
                 decoration: InputDecoration(
                   labelText: 'Counter-source URL (optional)',
                   hintText: 'Link to correct information...',
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8)),
                 ),
                 keyboardType: TextInputType.url,
               ),
@@ -1654,8 +1636,6 @@ class _FlagDialogState extends State<_FlagDialog> {
                 value: _confidence,
                 decoration: InputDecoration(
                   labelText: 'How sure are you?',
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8)),
                 ),
                 items: const [
                   DropdownMenuItem(
@@ -1682,11 +1662,11 @@ class _FlagDialogState extends State<_FlagDialog> {
                       backgroundColor: theme.colorScheme.error,
                     ),
                     child: _isSubmitting
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
+                                strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                           )
                         : const Text('Submit Flag'),
                   ),
@@ -1782,8 +1762,6 @@ class _AcceptCorrectionDialogState extends State<_AcceptCorrectionDialog> {
                 decoration: InputDecoration(
                   labelText: 'Correct information *',
                   hintText: 'What is the correct information?',
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8)),
                 ),
                 maxLines: 3,
                 textCapitalization: TextCapitalization.sentences,
@@ -1795,8 +1773,6 @@ class _AcceptCorrectionDialogState extends State<_AcceptCorrectionDialog> {
                 decoration: InputDecoration(
                   labelText: 'Source URL (optional)',
                   hintText: 'Link to correct source...',
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8)),
                 ),
                 keyboardType: TextInputType.url,
               ),
@@ -1812,11 +1788,11 @@ class _AcceptCorrectionDialogState extends State<_AcceptCorrectionDialog> {
                   FilledButton(
                     onPressed: _canSubmit ? _submit : null,
                     child: _isSubmitting
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
+                                strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
                           )
                         : const Text('Accept Correction'),
                   ),

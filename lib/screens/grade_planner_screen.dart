@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/cgpa_data.dart';
 import '../services/responsive_service.dart';
+import '../utils/design_constants.dart';
 import '../utils/grade_utils.dart' as grade_utils;
 
 class GradePlannerScreen extends StatefulWidget {
@@ -351,7 +352,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(content: Text(message), backgroundColor: AppDesign.danger(context)),
     );
   }
 
@@ -371,9 +372,6 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Grade Planner'),
-        centerTitle: true,
-        backgroundColor: colorScheme.surface,
-        surfaceTintColor: Colors.transparent,
       ),
       body: _semestersWithCourses.isEmpty
           ? _buildEmptyState()
@@ -537,12 +535,12 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
+              color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.analytics_rounded,
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.onPrimary,
               size: 28,
             ),
           ),
@@ -554,14 +552,14 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                 Text(
                   'Current CGPA',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.9),
+                        color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
                       ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '(excluding $_selectedSemester)',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.7),
+                        color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7),
                       ),
                 ),
               ],
@@ -570,7 +568,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
           Text(
             _currentCGPA.toStringAsFixed(2),
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.onPrimary,
                   fontWeight: FontWeight.bold,
                 ),
           ),
@@ -695,8 +693,8 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
           child: Center(
             child: Text(
               '${index + 1}',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onPrimary,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -791,12 +789,12 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
           ? null
           : _calculateGrades,
       icon: _isCalculating
-          ? const SizedBox(
+          ? SizedBox(
               width: 20,
               height: 20,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.onPrimary,
               ),
             )
           : const Icon(Icons.calculate_rounded),
@@ -849,12 +847,12 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
+                      color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.lightbulb_rounded,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onPrimary,
                       size: 20,
                     ),
                   ),
@@ -865,7 +863,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                           ? 'Grade Combinations'
                           : 'Top ${_results.length} Combinations',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onPrimary,
                             fontWeight: FontWeight.bold,
                           ),
                     ),
@@ -938,7 +936,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
           color: isTargetAchieved
-              ? Colors.green.withValues(alpha: 0.5)
+              ? AppDesign.success(context).withValues(alpha: 0.5)
               : colorScheme.outline.withValues(alpha: 0.2),
           width: isTargetAchieved ? 2 : 1,
         ),
@@ -971,19 +969,19 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.1),
+                      color: AppDesign.success(context).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.check_circle,
-                            color: Colors.green, size: 16),
+                            color: AppDesign.success(context), size: 16),
                         const SizedBox(width: 4),
                         Text(
                           'Target Achieved',
                           style: TextStyle(
-                            color: Colors.green,
+                            color: AppDesign.success(context),
                             fontWeight: FontWeight.w500,
                             fontSize: 12,
                           ),
@@ -1007,7 +1005,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                           Theme.of(context).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: isTargetAchieved
-                                    ? Colors.green
+                                    ? AppDesign.success(context)
                                     : colorScheme.onSurface,
                               ),
                     ),
@@ -1053,8 +1051,8 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                         ),
                         child: Text(
                           grade,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onPrimary,
                             fontWeight: FontWeight.bold,
                             fontSize: 11,
                           ),

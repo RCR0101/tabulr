@@ -17,6 +17,7 @@ import '../models/course.dart';
 import '../models/timetable.dart';
 import '../widgets/app_drawer.dart';
 import 'grade_planner_screen.dart';
+import '../utils/design_constants.dart';
 import '../utils/grade_utils.dart' as grade_utils;
 import '../utils/branch_constants.dart' as constants;
 
@@ -108,7 +109,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                   ? 'Semester saved successfully!'
                   : 'Failed to save semester',
             ),
-            backgroundColor: success ? Colors.green : Colors.red,
+            backgroundColor: success ? AppDesign.success(context) : AppDesign.danger(context),
           ),
         );
       }
@@ -222,7 +223,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
             content: Text(
               'Successfully imported $importedCount course${importedCount != 1 ? 's' : ''}!',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: AppDesign.success(context),
           ),
         );
       }
@@ -522,12 +523,12 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
+                        color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
                         Icons.analytics_rounded,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onPrimary,
                         size: 24,
                       ),
                     ),
@@ -539,7 +540,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                           Text(
                             'Semester Breakdown',
                             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.onPrimary,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -547,7 +548,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                           Text(
                             'SGPA for each semester',
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.white.withValues(alpha: 0.9),
+                              color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
                             ),
                           ),
                         ],
@@ -557,7 +558,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                       onPressed: () => Navigator.of(context).pop(),
                       icon: Icon(
                         Icons.close_rounded,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onPrimary,
                         size: 24,
                       ),
                     ),
@@ -607,7 +608,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                               child: Text(
                                 '${index + 1}',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: Theme.of(context).colorScheme.onPrimary,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
@@ -779,12 +780,12 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
+                        color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
                         Icons.school_rounded,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onPrimary,
                         size: 24,
                       ),
                     ),
@@ -796,7 +797,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                           Text(
                             'Credits Breakdown',
                             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.onPrimary,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -804,7 +805,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                           Text(
                             'Credits for each semester',
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.white.withValues(alpha: 0.9),
+                              color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
                             ),
                           ),
                         ],
@@ -814,7 +815,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                       onPressed: () => Navigator.of(context).pop(),
                       icon: Icon(
                         Icons.close_rounded,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onPrimary,
                         size: 24,
                       ),
                     ),
@@ -864,7 +865,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                               child: Text(
                                 '${index + 1}',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: Theme.of(context).colorScheme.onPrimary,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
@@ -1117,14 +1118,14 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
   Widget build(BuildContext context) {
     if (!_authService.isAuthenticated) {
       return Scaffold(
-        appBar: AppBar(title: const Text('CGPA Calculator'), centerTitle: true),
+        appBar: AppBar(title: const Text('CGPA Calculator')),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(32.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.lock_outline, size: 64, color: Colors.grey),
+                Icon(Icons.lock_outline, size: 64, color: AppDesign.muted(context)),
                 const SizedBox(height: 16),
                 Text(
                   'Please sign in to use the CGPA Calculator',
@@ -1145,7 +1146,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
 
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('CGPA Calculator'), centerTitle: true),
+        appBar: AppBar(title: const Text('CGPA Calculator')),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -1157,7 +1158,6 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       ),
       appBar: AppBar(
         title: const Text('CGPA Calculator'),
-        centerTitle: true,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(52),
           child: SizedBox(
@@ -1213,7 +1213,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? Colors.white.withValues(alpha: 0.25)
+                                      ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.25)
                                       : Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
@@ -1460,8 +1460,8 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
             size: isMobile ? 16 : 18,
             color:
                 isPrimary
-                    ? Colors.white.withOpacity(0.9)
-                    : Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                    ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9)
+                    : Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
           ),
           SizedBox(height: isMobile ? 4 : 6),
           Text(
@@ -1471,10 +1471,10 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
               fontWeight: FontWeight.bold,
               color:
                   isPrimary
-                      ? Colors.white
+                      ? Theme.of(context).colorScheme.onPrimary
                       : Theme.of(
                         context,
-                      ).colorScheme.onSurface.withOpacity(0.85),
+                      ).colorScheme.onSurface.withValues(alpha: 0.85),
               letterSpacing: -0.3,
             ),
             maxLines: 1,
@@ -1487,10 +1487,10 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
               fontSize: isMobile ? 10 : 11,
               color:
                   isPrimary
-                      ? Colors.white.withOpacity(0.85)
+                      ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85)
                       : Theme.of(
                         context,
-                      ).colorScheme.onSurface.withOpacity(0.6),
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
               fontWeight: FontWeight.w500,
               letterSpacing: 0.2,
             ),
@@ -2164,7 +2164,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                         child: Text(
                           grade,
                           style: TextStyle(
-                            color: Colors.white,
+                            color: Theme.of(context).colorScheme.onPrimary,
                             fontWeight: FontWeight.bold,
                             fontSize: isMobile ? 12 : 13,
                           ),
@@ -2248,8 +2248,8 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                         child: Center(
                           child: Text(
                             grade,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onPrimary,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                               letterSpacing: 0.5,
@@ -3128,9 +3128,9 @@ class _PerformanceSheetPreviewDialog extends StatelessWidget {
                           ),
                           child: Text(
                             course.grade,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.onPrimary,
                             ),
                           ),
                         ),

@@ -5,6 +5,7 @@ import '../services/course_utils.dart';
 import '../services/responsive_service.dart';
 import '../services/campus_service.dart';
 import '../services/clash_detector.dart';
+import '../utils/design_constants.dart';
 
 class CourseListWidget extends StatelessWidget {
   final List<Course> courses;
@@ -136,14 +137,14 @@ class CourseListWidget extends StatelessWidget {
             Icon(
               showOnlySelected ? Icons.school_outlined : Icons.search_off,
               size: 64,
-              color: Colors.grey,
+              color: AppDesign.muted(context),
             ),
             const SizedBox(height: 16),
             Text(
               showOnlySelected ? 'No courses selected' : 'No courses found',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
-                color: Colors.grey,
+                color: AppDesign.muted(context),
               ),
             ),
             const SizedBox(height: 8),
@@ -151,9 +152,9 @@ class CourseListWidget extends StatelessWidget {
               showOnlySelected
                 ? 'Go to Search tab to add courses'
                 : 'Try adjusting your search criteria',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey,
+                color: AppDesign.muted(context),
               ),
             ),
           ],
@@ -198,7 +199,7 @@ class CourseListWidget extends StatelessWidget {
                   : null,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
+                  color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.2),
                   blurRadius: (isSelectedCourse && !showOnlySelected) ? 6 : 4,
                   offset: const Offset(0, 2),
                 ),
@@ -282,7 +283,7 @@ class CourseListWidget extends StatelessWidget {
                         title: Text(
                           '${section.sectionId} - ${section.instructor}',
                           style: TextStyle(
-                            color: canSelect ? null : Colors.grey,
+                            color: canSelect ? null : AppDesign.muted(context),
                             fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
                           ),
                         ),
@@ -336,7 +337,7 @@ class CourseListWidget extends StatelessWidget {
                                   ? (isSelected
                                     ? Theme.of(context).colorScheme.error
                                     : Theme.of(context).colorScheme.primary)
-                                  : Colors.grey,
+                                  : AppDesign.muted(context),
                               ),
                             ),
                           ),

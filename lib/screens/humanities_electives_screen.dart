@@ -387,7 +387,6 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Humanities Electives'),
-        centerTitle: true,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

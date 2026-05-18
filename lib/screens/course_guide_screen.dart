@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/design_constants.dart';
 import '../widgets/course_guide_widget.dart';
 import '../services/auth_service.dart';
 import '../services/toast_service.dart';
@@ -28,8 +29,8 @@ class _CourseGuideScreenState extends State<CourseGuideScreen> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+              backgroundColor: AppDesign.danger(context),
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
             ),
             child: const Text('Sign Out'),
           ),
@@ -52,7 +53,6 @@ class _CourseGuideScreenState extends State<CourseGuideScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Course Guide'),
-        centerTitle: true,
         actions: [
           const ThemeToggleButton(),
           // User info and logout

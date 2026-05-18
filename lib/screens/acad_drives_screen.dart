@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/responsive_service.dart';
 import '../services/toast_service.dart';
 import '../services/auth_service.dart';
+import '../utils/design_constants.dart';
 import '../widgets/app_drawer.dart';
 
 enum CourseSortOption {
@@ -695,8 +696,6 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_selectedCourse ?? 'Academic Drives'),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        elevation: 0,
         leading: _selectedCourse != null
             ? IconButton(
                 onPressed: _goBackToCourses,
@@ -833,12 +832,12 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.school_outlined, size: 64, color: Colors.grey),
+            Icon(Icons.school_outlined, size: 64, color: AppDesign.muted(context)),
             const SizedBox(height: 16),
             Text(
               'No courses found',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Colors.grey,
+                color: AppDesign.muted(context),
               ),
             ),
           ],
@@ -870,12 +869,12 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.folder_open, size: 64, color: Colors.grey),
+            Icon(Icons.folder_open, size: 64, color: AppDesign.muted(context)),
             const SizedBox(height: 16),
             Text(
               'No files found',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Colors.grey,
+                color: AppDesign.muted(context),
               ),
             ),
           ],
@@ -976,10 +975,10 @@ class _CourseCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.folder,
                   size: 32,
-                  color: Colors.amber,
+                  color: AppDesign.warning(context),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
