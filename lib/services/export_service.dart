@@ -8,6 +8,7 @@ import '../models/course.dart';
 import '../models/timetable.dart';
 import 'dart:convert';
 import '../services/campus_service.dart';
+import '../services/config_service.dart';
 
 // Platform-specific implementations
 import 'export_service_stub.dart'
@@ -53,16 +54,7 @@ String _formatUtcForICS(DateTime dt) {
 
 /// Generate EXDATE entries for holiday breaks
 String _generateExDates(DayOfWeek day, int hour) {
-  final breakPeriods = [
-    {
-      'start': DateTime(2026, 3, 9),
-      'end': DateTime(2026, 3, 14),
-    }, // MidSem exams
-    {
-      'start': DateTime(2026, 5, 2),
-      'end': DateTime(2026, 5, 16),
-    }, // EndSem exams
-  ];
+  final breakPeriods = ConfigService().breakPeriods;
 
   // Map day of week to DateTime.weekday (1=Monday..7=Sunday)
   final dayOffsetMap = {
@@ -159,7 +151,7 @@ class ExportService {
               'SUMMARY:$summary',
               'DESCRIPTION:$description',
               'LOCATION:$location',
-              'RRULE:FREQ=WEEKLY;UNTIL=20260516T235959Z;BYDAY=$rruleDay',
+              'RRULE:FREQ=WEEKLY;UNTIL=${_formatUtcForICS(ConfigService().semesterEnd)};BYDAY=$rruleDay',
             ];
 
             // Add exception dates if any exist
@@ -541,9 +533,7 @@ class ExportService {
     int hour, {
     bool endTime = false,
   }) {
-    // Use a fixed semester start date (Spring 2026 semester)
-    // Using January 5, 2026 as semester start (a Monday)
-    final monday = DateTime(2026, 1, 5);
+    final monday = ConfigService().semesterStart;
 
     // Map day of week to offset from Monday
     final dayOffset = {

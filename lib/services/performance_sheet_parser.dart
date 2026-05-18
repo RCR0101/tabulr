@@ -3,11 +3,10 @@ import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../models/cgpa_data.dart';
 import '../models/all_course.dart';
 
-/// Parsed course entry from performance sheet (minimal data)
 class ParsedCourseEntry {
   final String courseCode;
   final String grade;
-  final String? tag; // HEL, DEL, EL
+  final String? tag;
 
   ParsedCourseEntry({
     required this.courseCode,
@@ -19,10 +18,9 @@ class ParsedCourseEntry {
   String toString() => '$courseCode: $grade${tag != null ? ' ($tag)' : ''}';
 }
 
-/// Parsed semester from performance sheet
 class ParsedSemester {
-  final String rawName; // e.g., "FIRST SEMESTER 2023-2024"
-  final String normalizedName; // e.g., "Year 1 Sem 1"
+  final String rawName;
+  final String normalizedName;
   final List<ParsedCourseEntry> courses;
 
   ParsedSemester({
@@ -35,7 +33,6 @@ class ParsedSemester {
   String toString() => '$normalizedName: ${courses.length} courses';
 }
 
-/// Result of parsing
 class ParsedPerformanceSheet {
   final String? studentId;
   final String? studentName;
@@ -55,9 +52,31 @@ class ParsedPerformanceSheet {
       semesters.fold(0, (sum, sem) => sum + sem.courses.length);
 }
 
-/// Service to parse BITS Pilani Performance Sheet PDFs
 class PerformanceSheetParser {
-  /// Parse performance sheet and extract course codes + grades
+  static const _validGrades = {
+    'A', 'A-', 'B', 'B-', 'C', 'C-', 'D', 'D-', 'E', 'NC', 'GD', 'PR'
+  };
+
+  static const _validTags = {'HEL', 'DEL', 'EL'};
+
+  // Course code: 2-4 uppercase letters + 1-3 spaces + F/G + 3 digits
+  static final _courseCodePattern = RegExp(r'([A-Z]{2,4})\s{1,3}([FG]\d{3})');
+
+  static final _semHeaderPattern = RegExp(
+    r'(FIRST|SECOND)\s+SEMESTER\s+(\d{4})\s*-\s*(\d{4})',
+    caseSensitive: false,
+  );
+
+  static final _summerHeaderPattern = RegExp(
+    r'SUMMER\s+TERM\s+(\d{4})\s*-\s*(\d{4})',
+    caseSensitive: false,
+  );
+
+  static final _pendingPattern = RegExp(
+    r'Pending\s+Courses',
+    caseSensitive: false,
+  );
+
   static Future<ParsedPerformanceSheet> parse(Uint8List pdfBytes) async {
     final warnings = <String>[];
     String? studentId;
@@ -71,138 +90,140 @@ class PerformanceSheetParser {
       final fullText = textExtractor.extractText();
       document.dispose();
 
-      warnings.add('Extracted ${fullText.length} chars');
+      final lines = fullText
+          .split('\n')
+          .map((line) => line.trim())
+          .where((line) => line.isNotEmpty)
+          .toList();
 
-      // Extract student info
-      final studentIdMatch = RegExp(r'Student ID:\s*(\w+)').firstMatch(fullText);
-      if (studentIdMatch != null) studentId = studentIdMatch.group(1);
+      // Extract student info from early lines
+      for (final line in lines.take(10)) {
+        if (studentId == null) {
+          final m = RegExp(r'Student ID:\s*(\w+)').firstMatch(line);
+          if (m != null) studentId = m.group(1);
+        }
+        if (studentName == null) {
+          final m = RegExp(r'Name:\s*([A-Z][A-Z\s]+?)(?=CGPA|ERP|\n|$)').firstMatch(line);
+          if (m != null) studentName = m.group(1)?.trim();
+        }
+        if (cgpa == null) {
+          final m = RegExp(r'CGPA:\s*([\d.]+)').firstMatch(line);
+          if (m != null) cgpa = double.tryParse(m.group(1) ?? '');
+        }
+      }
 
-      final nameMatch = RegExp(r'Name:\s*([A-Z][A-Z\s]+?)(?=\s*CGPA|\s*ERP|\n)').firstMatch(fullText);
-      if (nameMatch != null) studentName = nameMatch.group(1)?.trim();
-
-      final cgpaMatch = RegExp(r'CGPA:\s*([\d.]+)').firstMatch(fullText);
-      if (cgpaMatch != null) cgpa = double.tryParse(cgpaMatch.group(1) ?? '');
-
-      // Find all academic years for semester normalization
+      // Build academic year list for normalization
       final academicYears = <String>[];
-      for (final match in RegExp(r'Academic Year (\d{4})\s*-\s*(\d{4})').allMatches(fullText)) {
-        final year = '${match.group(1)}-${match.group(2)}';
-        if (!academicYears.contains(year)) {
-          academicYears.add(year);
+      for (final line in lines) {
+        for (final m in RegExp(r'Academic Year (\d{4})\s*-\s*(\d{4})').allMatches(line)) {
+          final year = '${m.group(1)}-${m.group(2)}';
+          if (!academicYears.contains(year)) academicYears.add(year);
         }
       }
 
-      // Simple approach: Find course code followed by grade anywhere in text
-      // Course code: 2-4 uppercase letters, space, F/G + 3 digits
-      // Grade: A, A-, B, B-, C, C-, D, D-, E, NC, GD, PR
-      // Pattern: Look for CODE followed eventually by a grade (with units in between)
-
-      // First find all course codes
-      final codePattern = RegExp(r'\b([A-Z]{2,4})\s+([FG]\d{3})\b');
-      final allCodes = <String>{};
-      for (final m in codePattern.allMatches(fullText)) {
-        allCodes.add('${m.group(1)} ${m.group(2)}');
+      // Find pending courses cutoff
+      int pendingCutoff = lines.length;
+      for (int i = 0; i < lines.length; i++) {
+        if (_pendingPattern.hasMatch(lines[i])) {
+          pendingCutoff = i;
+          break;
+        }
       }
-      warnings.add('Found ${allCodes.length} unique course codes');
 
-      // For each code, find the grade that follows it
-      // The PDF structure is: CODE TITLE UNITS GRADE [TAG]
-      // We look for: CODE ... (number like 1.0, 2.0, 3.0, 4.0, 5.0) ... GRADE
-      final courseGrades = <String, ParsedCourseEntry>{};
+      // Process each data line
+      int summerCounter = 0;
+      for (int i = 0; i < pendingCutoff; i++) {
+        final line = lines[i];
 
-      for (final code in allCodes) {
-        // Escape the code for regex
-        final escapedCode = code.replaceAll(' ', r'\s+');
+        // Skip non-data lines
+        if (line.startsWith('Academic Year') ||
+            line.startsWith('Completed') ||
+            line.startsWith('Performance') ||
+            line.startsWith('Count of')) continue;
 
-        // Look for the code followed by units (number) and grade
-        // More flexible pattern: CODE, then any text, then a number (units), then grade
-        final pattern = RegExp(
-          '$escapedCode[A-Z\\s&\\-\\.]+?(\\d+\\.?\\d*)\\s*([A-Z][+-]?|GD|PR|NC)(?:\\s*(HEL|DEL|EL))?',
-          caseSensitive: true,
-        );
+        // Find semester headers in this line
+        final semHeaders = <String>[];
+        for (final m in _semHeaderPattern.allMatches(line)) {
+          semHeaders.add(m.group(0)!);
+        }
+        for (final m in _summerHeaderPattern.allMatches(line)) {
+          semHeaders.add(m.group(0)!);
+        }
 
-        final match = pattern.firstMatch(fullText);
-        if (match != null) {
-          final grade = match.group(2)!;
-          final tag = match.group(3);
+        if (semHeaders.isEmpty) continue;
 
-          // Skip if grade looks like part of course title (e.g., "I" in "MATHEMATICS I")
-          if (grade.length == 1 && 'IVX'.contains(grade)) continue;
+        // Strip headers and column headers from the data
+        String dataText = line;
+        for (final header in semHeaders) {
+          dataText = dataText.replaceFirst(header, '');
+        }
+        dataText = dataText.replaceAll(RegExp(r'Course No\.'), '');
+        dataText = dataText.replaceAll(RegExp(r'Course Title'), '');
+        dataText = dataText.replaceAll(RegExp(r'Units'), '');
+        dataText = dataText.replaceAll(RegExp(r'Grade'), '');
+        dataText = dataText.replaceAll(RegExp(r'Tag'), '');
 
-          courseGrades[code] = ParsedCourseEntry(
-            courseCode: code,
-            grade: grade,
-            tag: tag,
+        // Split into semester chunks using large whitespace gaps (10+ spaces)
+        // This separates left-table (sem1) from right-table (sem2) data
+        final rawChunks = dataText.split(RegExp(r'\s{10,}'))
+            .map((c) => c.trim())
+            .where((c) => c.isNotEmpty)
+            .toList();
+
+        // Merge tag-only chunks (HEL/DEL/EL) back onto the previous chunk
+        final chunks = <String>[];
+        for (final chunk in rawChunks) {
+          final tokens = chunk.split(RegExp(r'\s+'));
+          final isTagOnly = tokens.every((t) => _validTags.contains(t));
+          if (isTagOnly && chunks.isNotEmpty) {
+            chunks.last = '${chunks.last} $chunk';
+          } else {
+            chunks.add(chunk);
+          }
+        }
+
+        final parsedChunks = <List<ParsedCourseEntry>>[];
+        for (final chunk in chunks) {
+          final courses = _extractCoursesFromChunk(chunk);
+          if (courses.isNotEmpty) {
+            parsedChunks.add(courses);
+          }
+        }
+
+        // Assign chunks to semester headers
+        for (int h = 0; h < semHeaders.length && h < parsedChunks.length; h++) {
+          final header = semHeaders[h];
+          final normName = _normalizeSemesterName(
+            header, academicYears, summerCounter,
           );
+          if (header.toUpperCase().contains('SUMMER')) summerCounter++;
+
+          semesters.add(ParsedSemester(
+            rawName: header,
+            normalizedName: normName,
+            courses: parsedChunks[h],
+          ));
         }
-      }
 
-      warnings.add('Matched ${courseGrades.length} courses with grades');
-
-      // Group by semester
-      final semesterPattern = RegExp(
-        r'(FIRST|SECOND)\s+SEMESTER\s+(\d{4})\s*-?\s*(\d{4})',
-        caseSensitive: false,
-      );
-      final summerPattern = RegExp(
-        r'SUMMER\s+TERM\s+(\d{4})\s*-?\s*(\d{4})',
-        caseSensitive: false,
-      );
-
-      // Find semester positions
-      final semPositions = <int, String>{};
-      for (final m in semesterPattern.allMatches(fullText)) {
-        semPositions[m.start] = m.group(0)!;
-      }
-      for (final m in summerPattern.allMatches(fullText)) {
-        semPositions[m.start] = m.group(0)!;
-      }
-
-      final sortedPos = semPositions.keys.toList()..sort();
-      warnings.add('Found ${sortedPos.length} semester markers');
-
-      if (sortedPos.isEmpty && courseGrades.isNotEmpty) {
-        // No semester markers found, put all in one
-        semesters.add(ParsedSemester(
-          rawName: 'All Courses',
-          normalizedName: 'Year 1 Sem 1',
-          courses: courseGrades.values.toList(),
-        ));
-      } else {
-        // For each semester section, find which courses appear in it
-        for (int i = 0; i < sortedPos.length; i++) {
-          final startPos = sortedPos[i];
-          final endPos = i + 1 < sortedPos.length ? sortedPos[i + 1] : fullText.length;
-          final section = fullText.substring(startPos, endPos);
-          final semName = semPositions[startPos]!;
-          final normName = _normalizeSemesterName(semName, academicYears);
-
-          // Find courses in this section
-          final semCourses = <ParsedCourseEntry>[];
-          for (final code in allCodes) {
-            if (section.contains(code) && courseGrades.containsKey(code)) {
-              semCourses.add(courseGrades[code]!);
-            }
-          }
-
-          if (semCourses.isNotEmpty) {
-            semesters.add(ParsedSemester(
-              rawName: semName,
-              normalizedName: normName,
-              courses: semCourses,
-            ));
+        // If only one header but multiple chunks (e.g., single semester line)
+        if (semHeaders.length == 1 && parsedChunks.length > 1) {
+          final allCourses = parsedChunks.expand((c) => c).toList();
+          if (semesters.isNotEmpty) {
+            semesters.last = ParsedSemester(
+              rawName: semesters.last.rawName,
+              normalizedName: semesters.last.normalizedName,
+              courses: allCourses,
+            );
           }
         }
       }
 
-      // If still no semesters but we have courses, something went wrong with sectioning
-      if (semesters.isEmpty && courseGrades.isNotEmpty) {
-        semesters.add(ParsedSemester(
-          rawName: 'Imported Courses',
-          normalizedName: 'Year 1 Sem 1',
-          courses: courseGrades.values.toList(),
-        ));
+      if (semesters.isEmpty) {
+        warnings.add('No semesters found in PDF');
       }
+
+      final total = semesters.fold(0, (int s, sem) => s + sem.courses.length);
+      warnings.add('Parsed $total courses across ${semesters.length} semesters');
     } catch (e) {
       warnings.add('Parse error: $e');
     }
@@ -216,23 +237,117 @@ class PerformanceSheetParser {
     );
   }
 
-  /// Normalize semester name to match app's format
-  static String _normalizeSemesterName(
-      String rawName, List<String> academicYears) {
-    final upper = rawName.toUpperCase();
+  /// Extract course code + grade pairs from a text chunk.
+  /// The chunk structure is: [codes...] [titles...] [units...] [grades...] [tags...]
+  static List<ParsedCourseEntry> _extractCoursesFromChunk(String chunk) {
+    final results = <ParsedCourseEntry>[];
 
-    // Handle summer term
-    if (upper.contains('SUMMER')) {
-      final match = RegExp(r'(\d{4})-(\d{4})').firstMatch(rawName);
-      if (match != null) {
-        return 'Summer ${match.group(1)}-${match.group(2)?.substring(2)}';
-      }
-      return 'Summer';
+    // Step 1: Find all course codes and their positions
+    final codeMatches = _courseCodePattern.allMatches(chunk).toList();
+    if (codeMatches.isEmpty) return results;
+
+    final codes = <String>[];
+    int lastCodeEnd = 0;
+    for (final m in codeMatches) {
+      codes.add('${m.group(1)} ${m.group(2)}');
+      lastCodeEnd = m.end;
     }
 
-    // Extract semester info
+    // Step 2: Everything after the last course code contains titles, units, grades, tags
+    final remainder = chunk.substring(lastCodeEnd);
+    final tokens = remainder.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
+
+    // Step 3: Walk tokens from the end to find tags, then grades, then units
+    // Tags are at the very end, grades before them, units before grades
+    final tags = <String>[];
+    final grades = <String>[];
+
+    // Scan from end: collect tags first, then grades, then the rest is titles+units
+    int idx = tokens.length - 1;
+
+    // Collect trailing tags and grades (they're intermixed at the end)
+    // Work backwards: anything that's a tag or grade, collect it
+    final endTokens = <_TokenType>[];
+    while (idx >= 0) {
+      final tok = tokens[idx];
+      if (_validTags.contains(tok)) {
+        endTokens.insert(0, _TokenType(tok, isTag: true));
+        idx--;
+      } else if (_validGrades.contains(tok)) {
+        endTokens.insert(0, _TokenType(tok, isGrade: true));
+        idx--;
+      } else if (tok.length == 1 && 'ABCDE'.contains(tok)) {
+        // Single letter grade
+        endTokens.insert(0, _TokenType(tok, isGrade: true));
+        idx--;
+      } else if (RegExp(r'^\d+$').hasMatch(tok)) {
+        // Hit the units block — stop
+        break;
+      } else {
+        // Hit a title word — stop
+        break;
+      }
+    }
+
+    // Separate grades and tags from endTokens
+    // The pattern per course is: [grade] [optional tag]
+    // So we walk forward through endTokens assigning grade, then optional tag
+    int tokenIdx = 0;
+    while (tokenIdx < endTokens.length) {
+      final t = endTokens[tokenIdx];
+      if (t.isGrade) {
+        grades.add(t.value);
+        // Check if next token is a tag
+        if (tokenIdx + 1 < endTokens.length && endTokens[tokenIdx + 1].isTag) {
+          tags.add(endTokens[tokenIdx + 1].value);
+          tokenIdx += 2;
+        } else {
+          tags.add('');
+          tokenIdx++;
+        }
+      } else if (t.isTag) {
+        // Tag without a preceding grade — skip
+        tokenIdx++;
+      } else {
+        tokenIdx++;
+      }
+    }
+
+    // Step 4: Pair courses with grades
+    for (int c = 0; c < codes.length; c++) {
+      if (c < grades.length) {
+        results.add(ParsedCourseEntry(
+          courseCode: codes[c],
+          grade: grades[c],
+          tag: (c < tags.length && tags[c].isNotEmpty) ? tags[c] : null,
+        ));
+      }
+      // If no grade for this course (current semester), skip it
+    }
+
+    return results;
+  }
+
+  static String _normalizeSemesterName(
+    String rawName,
+    List<String> academicYears,
+    int summerCount,
+  ) {
+    final upper = rawName.toUpperCase();
+
+    if (upper.contains('SUMMER')) {
+      final match = RegExp(r'(\d{4})\s*-\s*(\d{4})').firstMatch(rawName);
+      if (match != null) {
+        final yearKey = '${match.group(1)}-${match.group(2)}';
+        final yearIndex = academicYears.indexOf(yearKey);
+        final yearNum = yearIndex >= 0 ? yearIndex + 1 : summerCount + 1;
+        return 'ST $yearNum';
+      }
+      return 'ST ${summerCount + 1}';
+    }
+
     final match = RegExp(
-      r'(FIRST|SECOND)\s+SEMESTER\s+(\d{4})-(\d{4})',
+      r'(FIRST|SECOND)\s+SEMESTER\s+(\d{4})\s*-\s*(\d{4})',
       caseSensitive: false,
     ).firstMatch(rawName);
 
@@ -245,18 +360,16 @@ class PerformanceSheetParser {
       final yearNum = yearIndex >= 0 ? yearIndex + 1 : 1;
       final semNum = isFirst ? 1 : 2;
 
-      return 'Year $yearNum Sem $semNum';
+      return '$yearNum-$semNum';
     }
 
     return rawName;
   }
 
-  /// Convert parsed data to CGPAData using course database for details
   static CGPAData toCGPAData(
     ParsedPerformanceSheet parsed,
     List<AllCourse> allCourses,
   ) {
-    // Build lookup map for courses
     final courseMap = <String, AllCourse>{};
     for (final course in allCourses) {
       courseMap[course.courseCode.toUpperCase()] = course;
@@ -269,14 +382,12 @@ class PerformanceSheetParser {
 
       for (final entry in semester.courses) {
         final lookup = courseMap[entry.courseCode.toUpperCase()];
-
-        // Determine course type
         final isATC = entry.grade == 'GD' || entry.grade == 'PR';
 
         courses.add(CourseEntry(
           courseCode: entry.courseCode,
           courseTitle: lookup?.courseTitle ?? entry.courseCode,
-          credits: lookup?.credits ?? 3.0, // Default to 3 if not found
+          credits: lookup?.credits ?? 3.0,
           courseType: isATC ? 'ATC' : 'Normal',
           grade: entry.grade,
         ));
@@ -290,4 +401,12 @@ class PerformanceSheetParser {
 
     return CGPAData(semesters: semesterMap);
   }
+}
+
+class _TokenType {
+  final String value;
+  final bool isGrade;
+  final bool isTag;
+
+  _TokenType(this.value, {this.isGrade = false, this.isTag = false});
 }

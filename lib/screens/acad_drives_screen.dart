@@ -62,11 +62,15 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   List<Map<String, dynamic>> _courseFiles = [];
   bool _isLoading = true;
   bool _isLoadingFiles = false;
+  bool _isLoadingMoreFiles = false;
+  bool _hasMoreFiles = false;
   bool _isSubmitting = false;
   String _searchQuery = '';
   CourseSortOption _courseSortOption = CourseSortOption.fileCountDesc;
   FileSortOption _fileSortOption = FileSortOption.nameAsc;
-  
+  DocumentSnapshot? _lastFileDoc;
+  static const _pageSize = 20;
+
   final TextEditingController _searchController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -96,53 +100,19 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     });
 
     try {
-      // First, get all files to extract course information
-      final filesSnapshot = await _firestore
-          .collection('acad_drives_files')
+      final indexSnapshot = await _firestore
+          .collection('acad_drives_index')
           .get();
 
-      Map<String, Map<String, dynamic>> coursesMap = {};
-
-      for (var doc in filesSnapshot.docs) {
+      final courses = indexSnapshot.docs.map((doc) {
         final data = doc.data();
-        final courseCodes = data['course_codes'] as List<dynamic>? ?? [];
-        final driveName = data['driveName'] as String? ?? 'Unknown Drive';
-
-        Set<String> allCodes = {};
-        if (courseCodes.isNotEmpty) {
-          allCodes.addAll(courseCodes.map((c) => c.toString()));
-        }
-        if (allCodes.isEmpty) {
-          allCodes.add('Uncategorized');
-        }
-
-        // Add file to EVERY course it belongs to (matches arrayContains query)
-        for (final code in allCodes) {
-          if (!coursesMap.containsKey(code)) {
-            coursesMap[code] = {
-              'code': code,
-              'name': code,
-              'fileCount': 0,
-              'files': [],
-              'drives': <String>{},
-            };
-          }
-
-          coursesMap[code]!['fileCount'] = (coursesMap[code]!['fileCount'] as int) + 1;
-          coursesMap[code]!['files'].add(doc.id);
-          (coursesMap[code]!['drives'] as Set<String>).add(driveName);
-        }
-      }
-
-      // Convert drives set to count for each course
-      for (final course in coursesMap.values) {
-        final drivesSet = course['drives'] as Set<String>;
-        course['driveCount'] = drivesSet.length;
-        course.remove('drives'); // Remove the set, keep only the count
-      }
-
-      // Convert to list and sort by file count
-      final courses = coursesMap.values.toList()
+        return {
+          'code': data['code'] ?? doc.id,
+          'name': data['code'] ?? doc.id,
+          'fileCount': data['fileCount'] ?? 0,
+          'driveCount': data['driveCount'] ?? 0,
+        };
+      }).toList()
         ..sort((a, b) => (b['fileCount'] as int).compareTo(a['fileCount'] as int));
 
       setState(() {
@@ -163,6 +133,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       _isLoadingFiles = true;
       _selectedCourse = courseCode;
       _courseFiles = [];
+      _lastFileDoc = null;
+      _hasMoreFiles = false;
     });
 
     try {
@@ -170,6 +142,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           .collection('acad_drives_files')
           .where('course_codes', arrayContains: courseCode)
           .orderBy('uploadedAt', descending: true)
+          .limit(_pageSize)
           .get();
 
       final files = filesSnapshot.docs.map((doc) {
@@ -183,6 +156,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       setState(() {
         _courseFiles = files;
         _isLoadingFiles = false;
+        _hasMoreFiles = filesSnapshot.docs.length == _pageSize;
+        _lastFileDoc = filesSnapshot.docs.isNotEmpty ? filesSnapshot.docs.last : null;
       });
     } catch (e) {
       setState(() {
@@ -190,7 +165,44 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         _isLoadingFiles = false;
       });
       ToastService.showError('Failed to load course files: $e');
-      print(e);
+    }
+  }
+
+  Future<void> _loadMoreFiles() async {
+    if (_selectedCourse == null || _lastFileDoc == null || _isLoadingMoreFiles) return;
+
+    setState(() {
+      _isLoadingMoreFiles = true;
+    });
+
+    try {
+      final filesSnapshot = await _firestore
+          .collection('acad_drives_files')
+          .where('course_codes', arrayContains: _selectedCourse)
+          .orderBy('uploadedAt', descending: true)
+          .startAfterDocument(_lastFileDoc!)
+          .limit(_pageSize)
+          .get();
+
+      final newFiles = filesSnapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          ...data,
+        };
+      }).toList();
+
+      setState(() {
+        _courseFiles.addAll(newFiles);
+        _isLoadingMoreFiles = false;
+        _hasMoreFiles = filesSnapshot.docs.length == _pageSize;
+        _lastFileDoc = filesSnapshot.docs.isNotEmpty ? filesSnapshot.docs.last : null;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingMoreFiles = false;
+      });
+      ToastService.showError('Failed to load more files: $e');
     }
   }
 
@@ -904,8 +916,23 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     final driveNames = driveTrees.keys.toList()..sort(_naturalSort);
 
     return ListView.builder(
-      itemCount: driveNames.length,
+      itemCount: driveNames.length + (_hasMoreFiles ? 1 : 0),
       itemBuilder: (context, index) {
+        if (index == driveNames.length) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: _isLoadingMoreFiles
+                  ? const CircularProgressIndicator()
+                  : FilledButton.icon(
+                      onPressed: _loadMoreFiles,
+                      icon: const Icon(Icons.expand_more),
+                      label: const Text('Load More'),
+                    ),
+            ),
+          );
+        }
+
         final driveName = driveNames[index];
         final folderTree = driveTrees[driveName]!;
         final contributor = driveContributors[driveName];

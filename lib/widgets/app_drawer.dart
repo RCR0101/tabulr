@@ -7,10 +7,12 @@ import '../screens/exam_seating_screen.dart';
 import '../screens/acad_drives_screen.dart';
 import '../screens/professors_screen.dart';
 import '../screens/course_announcements_screen.dart';
+import '../screens/calendar_screen.dart';
 import '../services/course_announcement_service.dart';
 
 enum DrawerScreen {
   timetables,
+  calendar,
   cgpaCalculator,
   examSeating,
   acadDrives,
@@ -105,6 +107,19 @@ class AppDrawer extends StatelessWidget {
                       DrawerScreen.timetables,
                     ),
                   ),
+
+                  if (auth.isAuthenticated)
+                    _buildMenuItem(
+                      context: context,
+                      icon: Icons.calendar_month,
+                      title: 'Calendar',
+                      subtitle: 'Weekly schedule & exams',
+                      isSelected: currentScreen == DrawerScreen.calendar,
+                      onTap: () => _navigateTo(
+                        context,
+                        DrawerScreen.calendar,
+                      ),
+                    ),
 
                   const Divider(),
 
@@ -279,6 +294,9 @@ class AppDrawer extends StatelessWidget {
     switch (screen) {
       case DrawerScreen.timetables:
         destination = const TimetablesScreen();
+        break;
+      case DrawerScreen.calendar:
+        destination = const CalendarScreen();
         break;
       case DrawerScreen.cgpaCalculator:
         destination = const CGPACalculatorScreen();

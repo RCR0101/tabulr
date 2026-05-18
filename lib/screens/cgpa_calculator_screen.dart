@@ -28,13 +28,27 @@ class CGPACalculatorScreen extends StatefulWidget {
 }
 
 class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final CGPAService _cgpaService = CGPAService();
   final CourseCatalogService _coursesService = CourseCatalogService();
   final AuthService _authService = AuthService();
   final TimetableService _timetableService = TimetableService();
 
   late TabController _tabController;
+
+  void _rebuildTabController({int? initialIndex}) {
+    final prevIndex = _tabController.index;
+    _tabController.dispose();
+    final idx = (initialIndex ?? prevIndex).clamp(0, (_semesters.length - 1).clamp(0, 999));
+    _tabController = TabController(
+      length: _semesters.length,
+      vsync: this,
+      initialIndex: idx,
+    );
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) setState(() {});
+    });
+  }
   List<String> _semesters = [];
   CGPAData _cgpaData = CGPAData();
   List<AllCourse> _allCourses = [];
@@ -46,6 +60,9 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     super.initState();
     _semesters = List.from(CGPAService.defaultSemesters);
     _tabController = TabController(length: _semesters.length, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) setState(() {});
+    });
     _loadData();
   }
 
@@ -178,11 +195,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
         if (!_semesters.contains(semesterName)) {
           setState(() {
             _semesters.add(semesterName);
-            _tabController.dispose();
-            _tabController = TabController(
-              length: _semesters.length,
-              vsync: this,
-            );
+            _rebuildTabController();
           });
         }
 
@@ -312,12 +325,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
           );
         }
 
-        // Recreate tab controller with new semester count
-        _tabController.dispose();
-        _tabController = TabController(
-          length: _semesters.length,
-          vsync: this,
-        );
+        _rebuildTabController();
       });
 
       // Save all imported semesters
@@ -974,87 +982,134 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     return const Color(0xFFDC2626); // Minimal - Deep Red
   }
 
-  void _addCustomSemester() {
-    final controller = TextEditingController();
+  void _removeSemester(String semesterName) {
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(
-                ResponsiveService.getAdaptiveBorderRadius(context, 12),
-              ),
+      builder: (context) => AlertDialog(
+        title: const Text('Remove Semester'),
+        content: Text('Remove "$semesterName" and all its courses?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
             ),
-            contentPadding: ResponsiveService.getAdaptivePadding(
-              context,
-              const EdgeInsets.fromLTRB(24, 20, 24, 24),
-            ),
-            titlePadding: ResponsiveService.getAdaptivePadding(
-              context,
-              const EdgeInsets.fromLTRB(24, 24, 24, 0),
-            ),
-            actionsPadding: ResponsiveService.getAdaptivePadding(
-              context,
-              const EdgeInsets.fromLTRB(24, 0, 24, 24),
-            ),
-            title: Row(
-              children: [
-                Icon(
-                  Icons.add_outlined,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-                const Text('Add Custom Semester'),
-              ],
-            ),
-            content: TextField(
-              controller: controller,
-              decoration: InputDecoration(
-                labelText: 'Semester Name',
-                labelStyle: TextStyle(
-                  fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
-                ),
-                hintText: 'e.g., 5-2, ST 4',
-                hintStyle: TextStyle(
-                  fontSize: ResponsiveService.getAdaptiveFontSize(context, 13),
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(
-                    ResponsiveService.getAdaptiveBorderRadius(context, 8),
-                  ),
-                ),
-                contentPadding: ResponsiveService.getAdaptivePadding(
-                  context,
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                ),
-              ),
-              autofocus: true,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  if (controller.text.isNotEmpty &&
-                      !_semesters.contains(controller.text)) {
-                    setState(() {
-                      _semesters.add(controller.text);
-                      _tabController.dispose();
-                      _tabController = TabController(
-                        length: _semesters.length,
-                        vsync: this,
-                      );
-                    });
-                  }
+            onPressed: () async {
+              Navigator.pop(context);
+              setState(() {
+                _semesters.remove(semesterName);
+                final updatedSemesters = Map<String, SemesterData>.from(_cgpaData.semesters);
+                updatedSemesters.remove(semesterName);
+                _cgpaData = _cgpaData.copyWith(semesters: updatedSemesters);
+                _rebuildTabController();
+              });
+              await _cgpaService.deleteSemesterData(semesterName);
+            },
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _nextNormalSemester() {
+    int maxYear = 0;
+    int maxSem = 0;
+    final normalPattern = RegExp(r'^(\d+)-(\d+)$');
+    for (final s in _semesters) {
+      final m = normalPattern.firstMatch(s);
+      if (m != null) {
+        final y = int.parse(m.group(1)!);
+        final sem = int.parse(m.group(2)!);
+        if (y > maxYear || (y == maxYear && sem > maxSem)) {
+          maxYear = y;
+          maxSem = sem;
+        }
+      }
+    }
+    if (maxYear == 0) return '1-1';
+    if (maxSem >= 2) return '${maxYear + 1}-1';
+    return '$maxYear-${maxSem + 1}';
+  }
+
+  String _nextSummerTerm() {
+    int maxNum = 0;
+    final stPattern = RegExp(r'^ST (\d+)$');
+    for (final s in _semesters) {
+      final m = stPattern.firstMatch(s);
+      if (m != null) {
+        final n = int.parse(m.group(1)!);
+        if (n > maxNum) maxNum = n;
+      }
+    }
+    return 'ST ${maxNum + 1}';
+  }
+
+  void _addSemester(String name) {
+    if (name.isNotEmpty && !_semesters.contains(name)) {
+      setState(() {
+        _semesters.add(name);
+        _rebuildTabController(initialIndex: _semesters.length - 1);
+      });
+    }
+  }
+
+  void _addCustomSemester() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final nextNormal = _nextNormalSemester();
+        final nextSummer = _nextSummerTerm();
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.add_rounded, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 12),
+              const Text('Add Semester'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                leading: Icon(Icons.school_rounded, color: Theme.of(context).colorScheme.primary),
+                title: Text('Semester $nextNormal'),
+                subtitle: const Text('Regular semester'),
+                tileColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.06),
+                onTap: () {
                   Navigator.pop(context);
+                  _addSemester(nextNormal);
                 },
-                child: const Text('Add'),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                leading: Icon(Icons.wb_sunny_rounded, color: Theme.of(context).colorScheme.tertiary),
+                title: Text(nextSummer),
+                subtitle: const Text('Summer term'),
+                tileColor: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.06),
+                onTap: () {
+                  Navigator.pop(context);
+                  _addSemester(nextSummer);
+                },
               ),
             ],
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1103,46 +1158,103 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       appBar: AppBar(
         title: const Text('CGPA Calculator'),
         centerTitle: true,
-        bottom:
-            ResponsiveService.isMobile(context)
-                ? TabBar(
-                  controller: _tabController,
-                  isScrollable: true,
-                  labelStyle: TextStyle(
-                    fontSize: ResponsiveService.getAdaptiveFontSize(
-                      context,
-                      12,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(52),
+          child: SizedBox(
+            height: 52,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              itemCount: _semesters.length + 1,
+              itemBuilder: (context, index) {
+                if (index == _semesters.length) {
+                  return Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: ActionChip(
+                      avatar: Icon(
+                        Icons.add_rounded,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      label: const Text('Add'),
+                      labelStyle: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      side: BorderSide(
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                      ),
+                      backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
+                      onPressed: _addCustomSemester,
                     ),
-                    fontWeight: FontWeight.w600,
-                  ),
-                  unselectedLabelStyle: TextStyle(
-                    fontSize: ResponsiveService.getAdaptiveFontSize(
-                      context,
-                      12,
-                    ),
-                  ),
-                  tabAlignment: TabAlignment.center,
-                  tabs:
-                      _semesters
-                          .map(
-                            (sem) => Tab(
-                              child: Padding(
-                                padding: ResponsiveService.getAdaptivePadding(
-                                  context,
-                                  const EdgeInsets.symmetric(horizontal: 4),
+                  );
+                }
+
+                final sem = _semesters[index];
+                final isSelected = _tabController.index == index;
+                final semester = _cgpaData.semesters[sem];
+                final sgpa = semester?.sgpa ?? 0.0;
+                final hasData = semester != null && semester.courses.isNotEmpty;
+
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: GestureDetector(
+                    onLongPress: () => _removeSemester(sem),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      child: ChoiceChip(
+                        label: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(sem),
+                            if (hasData) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? Colors.white.withValues(alpha: 0.25)
+                                      : Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: Text(sem),
+                                child: Text(
+                                  sgpa.toStringAsFixed(1),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: isSelected
+                                        ? Theme.of(context).colorScheme.onPrimary
+                                        : Theme.of(context).colorScheme.primary,
+                                  ),
+                                ),
                               ),
-                            ),
-                          )
-                          .toList(),
-                )
-                : TabBar(
-                  controller: _tabController,
-                  isScrollable: true,
-                  labelStyle: const TextStyle(fontWeight: FontWeight.w600),
-                  tabs: _semesters.map((sem) => Tab(text: sem)).toList(),
-                ),
+                            ],
+                          ],
+                        ),
+                        selected: isSelected,
+                        onSelected: (_) {
+                          _tabController.animateTo(index);
+                          setState(() {});
+                        },
+                        selectedColor: Theme.of(context).colorScheme.primary,
+                        labelStyle: TextStyle(
+                          fontSize: 12,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: isSelected
+                              ? Theme.of(context).colorScheme.onPrimary
+                              : Theme.of(context).colorScheme.onSurface,
+                        ),
+                        showCheckmark: false,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.calculate_outlined),
@@ -1176,11 +1288,6 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                 _authService.isAuthenticated
                     ? _importFromPerformanceSheet
                     : null,
-          ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Add Custom Semester',
-            onPressed: _addCustomSemester,
           ),
           IconButton(
             icon: const Icon(Icons.refresh),

@@ -96,6 +96,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if false;
     }
+    match /acad_drives_index/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
 
     // Admin metadata
     match /admin_metadata/{docId} {

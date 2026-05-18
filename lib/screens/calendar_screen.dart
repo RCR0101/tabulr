@@ -1,0 +1,1781 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/course.dart';
+import '../models/timetable.dart';
+import '../models/course_announcement.dart';
+import '../services/timetable_service.dart';
+import '../services/exam_seating_service.dart';
+import '../services/course_announcement_service.dart';
+import '../services/professor_service.dart';
+import '../services/auth_service.dart';
+import '../services/config_service.dart';
+import '../services/toast_service.dart';
+import '../widgets/app_drawer.dart';
+
+class CalendarEvent {
+  final String id;
+  final String title;
+  final String? description;
+  final String type; // 'prof_meeting', 'custom'
+  final String? professorId;
+  final String? professorName;
+  final DayOfWeek day;
+  final int hour;
+  final int durationHours;
+
+  CalendarEvent({
+    required this.id,
+    required this.title,
+    this.description,
+    required this.type,
+    this.professorId,
+    this.professorName,
+    required this.day,
+    required this.hour,
+    this.durationHours = 1,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'description': description,
+        'type': type,
+        'professorId': professorId,
+        'professorName': professorName,
+        'day': day.toString(),
+        'hour': hour,
+        'durationHours': durationHours,
+      };
+
+  factory CalendarEvent.fromJson(Map<String, dynamic> json) => CalendarEvent(
+        id: json['id'] ?? '',
+        title: json['title'] ?? '',
+        description: json['description'],
+        type: json['type'] ?? 'custom',
+        professorId: json['professorId'],
+        professorName: json['professorName'],
+        day: DayOfWeek.values.firstWhere(
+          (e) => e.toString() == json['day'],
+          orElse: () => DayOfWeek.M,
+        ),
+        hour: json['hour'] ?? 1,
+        durationHours: json['durationHours'] ?? 1,
+      );
+
+  List<int> get occupiedHours =>
+      List.generate(durationHours, (i) => hour + i);
+}
+
+class CalendarScreen extends StatefulWidget {
+  const CalendarScreen({super.key});
+
+  @override
+  State<CalendarScreen> createState() => _CalendarScreenState();
+}
+
+class _CalendarScreenState extends State<CalendarScreen> {
+  final TimetableService _timetableService = TimetableService();
+  final ExamSeatingService _examSeatingService = ExamSeatingService();
+  final CourseAnnouncementService _announcementService =
+      CourseAnnouncementService();
+  final ProfessorService _professorService = ProfessorService();
+  final AuthService _authService = AuthService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  List<Timetable> _timetables = [];
+  Timetable? _selectedTimetable;
+  bool _isLoading = true;
+
+  String? _studentId;
+  List<ExamSeating> _examSeatingData = [];
+  Map<String, ExamRoom?> _examRooms = {};
+
+  List<CourseAnnouncement> _announcements = [];
+  StreamSubscription? _announcementSub;
+
+  List<CalendarEvent> _customEvents = [];
+
+  // Scrapped (dismissed) slots: keys are "day-hour" for timetable, event IDs for custom
+  Set<String> _scrappedForWeek = {};
+
+  DateTime _weekStart = _mondayOf(DateTime.now());
+
+  static DateTime _mondayOf(DateTime date) {
+    final d = DateTime(date.year, date.month, date.day);
+    return d.subtract(Duration(days: d.weekday - 1));
+  }
+
+  String get _weekKey {
+    final d = _weekStart;
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  @override
+  void dispose() {
+    _announcementSub?.cancel();
+    super.dispose();
+  }
+
+  DocumentReference? get _calendarPrefsRef {
+    final uid = _authService.userDocId;
+    if (uid == null) return null;
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('calendar_prefs')
+        .doc('data');
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final timetables = await _timetableService.getAllTimetables();
+      final userData = await _examSeatingService.loadUserData();
+      final allExams = await _examSeatingService.fetchAllExamSeating();
+      await _professorService.loadProfessors();
+
+      // Load saved prefs
+      String? savedTimetableId;
+      final prefsRef = _calendarPrefsRef;
+      if (prefsRef != null) {
+        final doc = await prefsRef.get();
+        if (doc.exists) {
+          final data = doc.data() as Map<String, dynamic>?;
+          if (data != null) {
+            savedTimetableId = data['selectedTimetableId'] as String?;
+            final eventsRaw = data['customEvents'] as List<dynamic>? ?? [];
+            _customEvents = eventsRaw
+                .map((e) =>
+                    CalendarEvent.fromJson(e as Map<String, dynamic>))
+                .toList();
+          }
+        }
+      }
+
+      Timetable? selected;
+      if (savedTimetableId != null) {
+        selected = timetables
+            .where((t) => t.id == savedTimetableId)
+            .firstOrNull;
+      }
+      selected ??= timetables.isNotEmpty ? timetables.first : null;
+
+      setState(() {
+        _timetables = timetables;
+        _selectedTimetable = selected;
+        _studentId = userData?.studentId;
+        _examSeatingData = allExams;
+      });
+
+      _resolveExamRooms();
+      _watchAnnouncements();
+    } catch (e) {
+      ToastService.showError('Failed to load calendar data');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _resolveExamRooms() {
+    if (_selectedTimetable == null ||
+        _studentId == null ||
+        _studentId!.isEmpty) {
+      setState(() => _examRooms = {});
+      return;
+    }
+
+    final rooms = <String, ExamRoom?>{};
+    final courseCodes =
+        _selectedTimetable!.selectedSections.map((s) => s.courseCode).toSet();
+
+    for (final code in courseCodes) {
+      final exam =
+          _examSeatingData.where((e) => e.courseCode == code).firstOrNull;
+      if (exam != null) {
+        rooms[code] = exam.findRoomForStudent(_studentId!);
+      }
+    }
+
+    setState(() => _examRooms = rooms);
+  }
+
+  void _watchAnnouncements() {
+    _announcementSub?.cancel();
+    if (_selectedTimetable == null) return;
+
+    final codes = _selectedTimetable!.selectedSections
+        .map((s) => s.courseCode)
+        .toSet()
+        .toList();
+
+    if (codes.isEmpty) return;
+
+    _announcementSub =
+        _announcementService.watchAnnouncements(codes).listen((announcements) {
+      if (mounted) {
+        setState(() => _announcements = announcements);
+      }
+    });
+  }
+
+  Future<void> _savePrefs() async {
+    final prefsRef = _calendarPrefsRef;
+    if (prefsRef == null) return;
+
+    await prefsRef.set({
+      'selectedTimetableId': _selectedTimetable?.id,
+      'customEvents': _customEvents.map((e) => e.toJson()).toList(),
+    });
+  }
+
+  // Check if a timetable clashes with existing custom events
+  List<String> _findClashes(Timetable timetable) {
+    final clashes = <String>[];
+
+    for (final sel in timetable.selectedSections) {
+      for (final entry in sel.section.schedule) {
+        for (final day in entry.days) {
+          for (final hour in entry.hours) {
+            for (final event in _customEvents) {
+              if (event.day == day && event.occupiedHours.contains(hour)) {
+                clashes.add(
+                    '${sel.courseCode} (${_dayLabel(day)} H$hour) clashes with "${event.title}"');
+              }
+            }
+          }
+        }
+      }
+    }
+    return clashes;
+  }
+
+  Future<void> _onTimetableChanged(Timetable? timetable) async {
+    if (timetable == null) return;
+
+    final clashes = _findClashes(timetable);
+    if (clashes.isNotEmpty) {
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Schedule Clash'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                  'This timetable clashes with your custom events:'),
+              const SizedBox(height: 12),
+              ...clashes
+                  .take(5)
+                  .map((c) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.warning_amber,
+                                size: 16, color: Colors.orange),
+                            const SizedBox(width: 8),
+                            Expanded(
+                                child: Text(c,
+                                    style: const TextStyle(fontSize: 13))),
+                          ],
+                        ),
+                      )),
+              if (clashes.length > 5)
+                Text('...and ${clashes.length - 5} more',
+                    style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.6))),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Switch Anyway'),
+            ),
+          ],
+        ),
+      );
+
+      if (proceed != true) return;
+    }
+
+    setState(() {
+      _selectedTimetable = timetable;
+      _scrappedForWeek = {};
+    });
+    _resolveExamRooms();
+    _watchAnnouncements();
+    _savePrefs();
+  }
+
+  void _previousWeek() {
+    setState(() {
+      _weekStart = _weekStart.subtract(const Duration(days: 7));
+      _scrappedForWeek = {};
+    });
+  }
+
+  void _nextWeek() {
+    setState(() {
+      _weekStart = _weekStart.add(const Duration(days: 7));
+      _scrappedForWeek = {};
+    });
+  }
+
+  void _goToToday() {
+    setState(() {
+      _weekStart = _mondayOf(DateTime.now());
+      _scrappedForWeek = {};
+    });
+  }
+
+  Future<void> _editStudentId() async {
+    final controller = TextEditingController(text: _studentId ?? '');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Student ID'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: 'e.g. 2021A7PS0001H',
+            border: OutlineInputBorder(),
+          ),
+          textCapitalization: TextCapitalization.characters,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      setState(() => _studentId = result.toUpperCase());
+
+      final codes = _selectedTimetable?.selectedSections
+              .map((s) => s.courseCode)
+              .toList() ??
+          [];
+      await _examSeatingService.saveUserData(
+        selectedCourseCodes: codes,
+        studentId: result.toUpperCase(),
+      );
+
+      _resolveExamRooms();
+    }
+  }
+
+  // --- Custom event management ---
+
+  Future<void> _addEvent() async {
+    final result = await showDialog<CalendarEvent>(
+      context: context,
+      builder: (ctx) => _AddEventDialog(
+        professorService: _professorService,
+        selectedTimetable: _selectedTimetable,
+        existingEvents: _customEvents,
+      ),
+    );
+
+    if (result != null) {
+      setState(() => _customEvents.add(result));
+      _savePrefs();
+    }
+  }
+
+  void _deleteEvent(CalendarEvent event) {
+    setState(() {
+      _customEvents.removeWhere((e) => e.id == event.id);
+    });
+    _savePrefs();
+    ToastService.showSuccess('Event removed');
+  }
+
+  void _scrapSlot(String slotKey) {
+    setState(() {
+      _scrappedForWeek.add('$_weekKey:$slotKey');
+    });
+  }
+
+  void _unscrapSlot(String slotKey) {
+    setState(() {
+      _scrappedForWeek.remove('$_weekKey:$slotKey');
+    });
+  }
+
+  void _scrapAllForDay(DayOfWeek day) {
+    setState(() {
+      // Scrap all timetable slots for this day
+      if (_selectedTimetable != null) {
+        for (final sel in _selectedTimetable!.selectedSections) {
+          for (final entry in sel.section.schedule) {
+            if (entry.days.contains(day)) {
+              for (final hour in entry.hours) {
+                _scrappedForWeek.add('$_weekKey:class-${day.name}-$hour');
+              }
+            }
+          }
+        }
+      }
+      // Scrap all custom events for this day
+      for (final event in _customEvents) {
+        if (event.day == day) {
+          for (final h in event.occupiedHours) {
+            _scrappedForWeek.add('$_weekKey:event-${event.id}-$h');
+          }
+        }
+      }
+    });
+  }
+
+  void _scrapAllForWeek() {
+    setState(() {
+      if (_selectedTimetable != null) {
+        for (final sel in _selectedTimetable!.selectedSections) {
+          for (final entry in sel.section.schedule) {
+            for (final day in entry.days) {
+              for (final hour in entry.hours) {
+                _scrappedForWeek.add('$_weekKey:class-${day.name}-$hour');
+              }
+            }
+          }
+        }
+      }
+      for (final event in _customEvents) {
+        for (final h in event.occupiedHours) {
+          _scrappedForWeek.add('$_weekKey:event-${event.id}-$h');
+        }
+      }
+    });
+  }
+
+  bool _isScrapped(String slotKey) =>
+      _scrappedForWeek.contains('$_weekKey:$slotKey');
+
+  bool _isWithinSemester(DateTime weekStart) {
+    final config = ConfigService();
+    final weekEnd = weekStart.add(const Duration(days: 6));
+    return !weekEnd.isBefore(config.semesterStart) &&
+        !weekStart.isAfter(config.semesterEnd);
+  }
+
+  // Build calendar items for a given day, merging consecutive identical slots
+  List<_CalendarItem> _itemsForDay(DayOfWeek day) {
+    final items = <_CalendarItem>[];
+    if (_selectedTimetable == null) return items;
+    if (!_isWithinSemester(_weekStart)) return items;
+
+    // Collect raw per-hour entries grouped by section identity
+    final sectionSlots = <String, _RawSlotGroup>{};
+
+    for (final sel in _selectedTimetable!.selectedSections) {
+      for (final entry in sel.section.schedule) {
+        if (entry.days.contains(day)) {
+          final groupKey = '${sel.courseCode}|${sel.sectionId}';
+          sectionSlots.putIfAbsent(
+            groupKey,
+            () => _RawSlotGroup(
+              courseCode: sel.courseCode,
+              sectionId: sel.sectionId,
+              room: sel.section.room,
+              instructor: sel.section.instructor,
+              color: _courseColor(sel.courseCode),
+              hours: [],
+            ),
+          );
+          sectionSlots[groupKey]!.hours.addAll(entry.hours);
+        }
+      }
+    }
+
+    // Merge consecutive hours into spans
+    for (final group in sectionSlots.values) {
+      final sorted = group.hours.toList()..sort();
+      int spanStart = sorted.first;
+      int spanEnd = spanStart;
+
+      for (int i = 1; i < sorted.length; i++) {
+        if (sorted[i] == spanEnd + 1) {
+          spanEnd = sorted[i];
+        } else {
+          items.add(_makeClassItem(group, day, spanStart, spanEnd));
+          spanStart = sorted[i];
+          spanEnd = spanStart;
+        }
+      }
+      items.add(_makeClassItem(group, day, spanStart, spanEnd));
+    }
+
+    // Custom events (already have durationHours, render as single merged block)
+    for (final event in _customEvents) {
+      if (event.day == day) {
+        final key = 'event-${event.id}-${event.hour}';
+        final anyScrapped = event.occupiedHours
+            .any((h) => _isScrapped('event-${event.id}-$h'));
+        items.add(_CalendarItem(
+          type: _ItemType.customEvent,
+          title: event.title,
+          subtitle: event.professorName ?? event.description ?? '',
+          hour: event.hour,
+          spanHours: event.durationHours,
+          color: event.type == 'prof_meeting'
+              ? Colors.deepPurple
+              : Colors.teal,
+          slotKey: key,
+          scrapped: anyScrapped,
+          event: event,
+        ));
+      }
+    }
+
+    return items;
+  }
+
+  _CalendarItem _makeClassItem(
+      _RawSlotGroup group, DayOfWeek day, int startHour, int endHour) {
+    final span = endHour - startHour + 1;
+    final key = 'class-${day.name}-$startHour';
+    final anyScrapped = List.generate(span, (i) => startHour + i)
+        .any((h) => _isScrapped('class-${day.name}-$h'));
+
+    return _CalendarItem(
+      type: _ItemType.classSlot,
+      title: group.courseCode,
+      subtitle: '${group.sectionId} • ${group.room}',
+      hour: startHour,
+      spanHours: span,
+      color: group.color,
+      instructor: group.instructor,
+      slotKey: key,
+      scrapped: anyScrapped,
+    );
+  }
+
+  List<_CalendarItem> _bannersForDay(DateTime date) {
+    final items = <_CalendarItem>[];
+
+    // Exam seating
+    for (final entry in _examSeatingData) {
+      if (_selectedTimetable == null) break;
+      final codes =
+          _selectedTimetable!.selectedSections.map((s) => s.courseCode).toSet();
+      if (!codes.contains(entry.courseCode)) continue;
+
+      final examDate = _parseExamDate(entry.examDate);
+      if (examDate != null && _sameDay(examDate, date)) {
+        final room = _examRooms[entry.courseCode];
+        items.add(_CalendarItem(
+          type: _ItemType.exam,
+          title: '${entry.courseCode} Exam',
+          subtitle: room != null ? 'Room ${room.roomNo}' : 'No room found',
+          hour: 0,
+          color: Colors.red,
+          examDate: entry.examDate,
+          slotKey: 'exam-${entry.courseCode}',
+        ));
+      }
+    }
+
+    // Announcements
+    for (final ann in _announcements) {
+      if (_sameDay(ann.eventDate, date)) {
+        items.add(_CalendarItem(
+          type: _ItemType.announcement,
+          title: ann.title,
+          subtitle: ann.courseCode,
+          hour: ann.startTime?.hour ?? 0,
+          color: Colors.amber.shade700,
+          announcement: ann,
+          slotKey: 'ann-${ann.id}',
+        ));
+      }
+    }
+
+    return items;
+  }
+
+  DateTime? _parseExamDate(String dateStr) {
+    if (dateStr.isEmpty) return null;
+    try {
+      return DateTime.parse(dateStr);
+    } catch (_) {
+      final parts = dateStr.split('/');
+      if (parts.length == 3) {
+        try {
+          return DateTime(
+              int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+        } catch (_) {}
+      }
+      return null;
+    }
+  }
+
+  bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  Color _courseColor(String code) {
+    final hash = code.hashCode;
+    const colors = [
+      Colors.blue,
+      Colors.teal,
+      Colors.indigo,
+      Colors.deepPurple,
+      Colors.cyan,
+      Colors.green,
+      Colors.orange,
+      Colors.pink,
+      Colors.brown,
+      Colors.blueGrey,
+    ];
+    return colors[hash.abs() % colors.length];
+  }
+
+  String _dayLabel(DayOfWeek d) {
+    switch (d) {
+      case DayOfWeek.M:
+        return 'Mon';
+      case DayOfWeek.T:
+        return 'Tue';
+      case DayOfWeek.W:
+        return 'Wed';
+      case DayOfWeek.Th:
+        return 'Thu';
+      case DayOfWeek.F:
+        return 'Fri';
+      case DayOfWeek.S:
+        return 'Sat';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Calendar'),
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (val) {
+              if (val == 'scrap_week') _scrapAllForWeek();
+              if (val == 'restore_week') {
+                setState(() {
+                  _scrappedForWeek.removeWhere((k) => k.startsWith(_weekKey));
+                });
+              }
+              if (val == 'student_id') _editStudentId();
+            },
+            itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: 'scrap_week',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.event_busy),
+                  title: Text('Scrap entire week'),
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'restore_week',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.restore),
+                  title: Text('Restore week'),
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'student_id',
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(Icons.badge_outlined),
+                  title: Text('Set Student ID'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      drawer: const AppDrawer(currentScreen: DrawerScreen.calendar),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addEvent,
+        child: const Icon(Icons.add),
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                _buildHeader(theme),
+                _buildWeekNav(theme),
+                const Divider(height: 1),
+                Expanded(child: _buildWeekView(theme)),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildHeader(ThemeData theme) {
+    if (_timetables.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(
+          'No timetables found. Create one in TT Builder first.',
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              initialValue: _selectedTimetable?.id,
+              decoration: InputDecoration(
+                labelText: 'Timetable',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                isDense: true,
+              ),
+              items: _timetables.map((tt) {
+                return DropdownMenuItem(value: tt.id, child: Text(tt.name));
+              }).toList(),
+              onChanged: (id) {
+                if (id == null) return;
+                final tt = _timetables.firstWhere((t) => t.id == id);
+                _onTimetableChanged(tt);
+              },
+            ),
+          ),
+          if (_studentId != null && _studentId!.isNotEmpty) ...[
+            const SizedBox(width: 12),
+            Chip(
+              avatar: const Icon(Icons.badge, size: 16),
+              label: Text(_studentId!, style: const TextStyle(fontSize: 12)),
+            ),
+          ],
+          if (!isToday) ...[
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.today, size: 20),
+              tooltip: 'Go to today',
+              onPressed: _goToToday,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  bool get isToday => _sameDay(_weekStart, _mondayOf(DateTime.now()));
+
+  Widget _buildWeekNav(ThemeData theme) {
+    final weekEnd = _weekStart.add(const Duration(days: 5));
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+
+    String label;
+    if (_weekStart.month == weekEnd.month) {
+      label =
+          '${_weekStart.day} - ${weekEnd.day} ${months[_weekStart.month - 1]} ${_weekStart.year}';
+    } else {
+      label =
+          '${_weekStart.day} ${months[_weekStart.month - 1]} - ${weekEnd.day} ${months[weekEnd.month - 1]} ${weekEnd.year}';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+              icon: const Icon(Icons.chevron_left), onPressed: _previousWeek),
+          Text(label,
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w600)),
+          IconButton(
+              icon: const Icon(Icons.chevron_right), onPressed: _nextWeek),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeekView(ThemeData theme) {
+    final days = List.generate(6, (i) => _weekStart.add(Duration(days: i)));
+    final dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    final today = DateTime.now();
+    final bitsDays = [
+      DayOfWeek.M,
+      DayOfWeek.T,
+      DayOfWeek.W,
+      DayOfWeek.Th,
+      DayOfWeek.F,
+      DayOfWeek.S,
+    ];
+
+    const startHour = 1;
+    const endHour = 12;
+    const hourHeight = 64.0;
+    const headerHeight = 60.0;
+    const timeColWidth = 56.0;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final dayWidth = (constraints.maxWidth - timeColWidth) / 6;
+
+        return Column(
+          children: [
+            // Day headers
+            SizedBox(
+              height: headerHeight,
+              child: Row(
+                children: [
+                  SizedBox(width: timeColWidth),
+                  ...List.generate(6, (i) {
+                    final isToday = _sameDay(days[i], today);
+                    final banners = _bannersForDay(days[i]);
+                    final hasExam =
+                        banners.any((b) => b.type == _ItemType.exam);
+                    final hasAnn =
+                        banners.any((b) => b.type == _ItemType.announcement);
+
+                    return GestureDetector(
+                      onLongPress: () => _showDayMenu(bitsDays[i]),
+                      child: SizedBox(
+                        width: dayWidth,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              dayLabels[i],
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: isToday
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.onSurface
+                                        .withValues(alpha: 0.6),
+                                fontWeight: isToday
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Container(
+                              width: 30,
+                              height: 30,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isToday
+                                    ? theme.colorScheme.primary
+                                    : Colors.transparent,
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '${days[i].day}',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: isToday
+                                      ? theme.colorScheme.onPrimary
+                                      : null,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (hasExam)
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    margin: const EdgeInsets.only(
+                                        top: 2, right: 2),
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                if (hasAnn)
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    margin: const EdgeInsets.only(top: 2),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.amber.shade700,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+
+            // Banner row
+            _buildBannerRow(days, dayWidth, timeColWidth, theme),
+
+            const Divider(height: 1),
+
+            // Scrollable time grid
+            Expanded(
+              child: SingleChildScrollView(
+                child: SizedBox(
+                  height: (endHour - startHour + 1) * hourHeight,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Time labels
+                      SizedBox(
+                        width: timeColWidth,
+                        child: Column(
+                          children:
+                              List.generate(endHour - startHour + 1, (i) {
+                            final hour = startHour + i;
+                            final label = TimeSlotInfo.hourSlotNames[hour]
+                                    ?.split('-')[0]
+                                    .trim() ??
+                                '$hour';
+                            return SizedBox(
+                              height: hourHeight,
+                              child: Align(
+                                alignment: Alignment.topRight,
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.only(right: 6, top: 2),
+                                  child: Text(
+                                    label,
+                                    style:
+                                        theme.textTheme.labelSmall?.copyWith(
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.5),
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+
+                      // Day columns
+                      ...List.generate(6, (dayIdx) {
+                        final dayItems = _itemsForDay(bitsDays[dayIdx]);
+
+                        return SizedBox(
+                          width: dayWidth,
+                          child: Stack(
+                            children: [
+                              // Grid lines
+                              ...List.generate(endHour - startHour + 1, (i) {
+                                return Positioned(
+                                  top: i * hourHeight,
+                                  left: 0,
+                                  right: 0,
+                                  child: Container(
+                                    height: 1,
+                                    color: theme.colorScheme.outline
+                                        .withValues(alpha: 0.08),
+                                  ),
+                                );
+                              }),
+                              Positioned(
+                                top: 0,
+                                bottom: 0,
+                                left: 0,
+                                child: Container(
+                                  width: 1,
+                                  color: theme.colorScheme.outline
+                                      .withValues(alpha: 0.08),
+                                ),
+                              ),
+                              // Items
+                              ...dayItems.map((item) {
+                                final top =
+                                    (item.hour - startHour) * hourHeight;
+                                final height =
+                                    item.spanHours * hourHeight - 2;
+                                return Positioned(
+                                  top: top + 1,
+                                  left: 2,
+                                  right: 2,
+                                  height: height,
+                                  child: _SlotBlock(
+                                    item: item,
+                                    onTap: () =>
+                                        _showItemDetail(context, item),
+                                    onLongPress: () =>
+                                        _showSlotMenu(item),
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildBannerRow(
+    List<DateTime> days,
+    double dayWidth,
+    double timeColWidth,
+    ThemeData theme,
+  ) {
+    final allBanners = <int, List<_CalendarItem>>{};
+    bool any = false;
+    for (int i = 0; i < 6; i++) {
+      final banners = _bannersForDay(days[i]);
+      allBanners[i] = banners;
+      if (banners.isNotEmpty) any = true;
+    }
+
+    if (!any) return const SizedBox.shrink();
+
+    return Container(
+      color: theme.colorScheme.surfaceContainerLow,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: timeColWidth),
+          ...List.generate(6, (i) {
+            final banners = allBanners[i] ?? [];
+            if (banners.isEmpty) return SizedBox(width: dayWidth);
+            return SizedBox(
+              width: dayWidth,
+              child: Padding(
+                padding: const EdgeInsets.all(2),
+                child: Column(
+                  children: banners.map((item) {
+                    return GestureDetector(
+                      onTap: () => _showItemDetail(context, item),
+                      child: Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: item.color.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border(
+                              left:
+                                  BorderSide(color: item.color, width: 3)),
+                        ),
+                        child: Text(
+                          item.title,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: item.color,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 9,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  void _showDayMenu(DayOfWeek day) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.event_busy),
+              title: Text('Scrap all for ${_dayLabel(day)}'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _scrapAllForDay(day);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.restore),
+              title: Text('Restore all for ${_dayLabel(day)}'),
+              onTap: () {
+                Navigator.pop(ctx);
+                setState(() {
+                  _scrappedForWeek.removeWhere(
+                      (k) => k.startsWith('$_weekKey:') && k.contains('-${day.name}-'));
+                });
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSlotMenu(_CalendarItem item) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!item.scrapped)
+              ListTile(
+                leading: const Icon(Icons.event_busy),
+                title: const Text('Scrap for this week'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _scrapSlot(item.slotKey);
+                },
+              ),
+            if (item.scrapped)
+              ListTile(
+                leading: const Icon(Icons.restore),
+                title: const Text('Restore'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _unscrapSlot(item.slotKey);
+                },
+              ),
+            if (item.type == _ItemType.customEvent && item.event != null)
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Delete event permanently'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _deleteEvent(item.event!);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showItemDetail(BuildContext context, _CalendarItem item) {
+    final theme = Theme.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration:
+                      BoxDecoration(shape: BoxShape.circle, color: item.color),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    item.title,
+                    style: theme.textTheme.titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                if (item.scrapped)
+                  Chip(
+                    label: const Text('Scrapped',
+                        style: TextStyle(fontSize: 11)),
+                    backgroundColor:
+                        theme.colorScheme.error.withValues(alpha: 0.1),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (item.subtitle.isNotEmpty)
+              _detailRow(Icons.info_outline, item.subtitle, theme),
+            if (item.instructor != null)
+              _detailRow(Icons.person, item.instructor!, theme),
+            if (item.type == _ItemType.classSlot)
+              _detailRow(
+                  Icons.access_time,
+                  TimeSlotInfo.getHourRangeName(
+                      List.generate(item.spanHours, (i) => item.hour + i)),
+                  theme),
+            if (item.type == _ItemType.exam && item.examDate != null)
+              _detailRow(Icons.event, item.examDate!, theme),
+            if (item.announcement != null &&
+                item.announcement!.description.isNotEmpty)
+              _detailRow(
+                  Icons.description, item.announcement!.description, theme),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(IconData icon, String text, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon,
+              size: 18,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+          const SizedBox(width: 12),
+          Expanded(child: Text(text, style: theme.textTheme.bodyMedium)),
+        ],
+      ),
+    );
+  }
+}
+
+// --- Slot block widget ---
+
+class _SlotBlock extends StatelessWidget {
+  final _CalendarItem item;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  const _SlotBlock({
+    required this.item,
+    required this.onTap,
+    required this.onLongPress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isScrapped = item.scrapped;
+
+    return GestureDetector(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 200),
+        opacity: isScrapped ? 0.35 : 1.0,
+        child: Container(
+          decoration: BoxDecoration(
+            color: item.color.withValues(alpha: isScrapped ? 0.05 : 0.15),
+            borderRadius: BorderRadius.circular(6),
+            border: Border(
+              left: BorderSide(
+                color: isScrapped
+                    ? item.color.withValues(alpha: 0.3)
+                    : item.color,
+                width: 3,
+              ),
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                item.title,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: item.color,
+                  fontSize: 10,
+                  decoration:
+                      isScrapped ? TextDecoration.lineThrough : null,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (item.subtitle.isNotEmpty)
+                Text(
+                  item.subtitle,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontSize: 8,
+                    color: theme.colorScheme.onSurface
+                        .withValues(alpha: 0.6),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// --- Add Event Dialog ---
+
+class _AddEventDialog extends StatefulWidget {
+  final ProfessorService professorService;
+  final Timetable? selectedTimetable;
+  final List<CalendarEvent> existingEvents;
+
+  const _AddEventDialog({
+    required this.professorService,
+    this.selectedTimetable,
+    required this.existingEvents,
+  });
+
+  @override
+  State<_AddEventDialog> createState() => _AddEventDialogState();
+}
+
+class _AddEventDialogState extends State<_AddEventDialog> {
+  String _eventType = 'custom'; // 'custom' or 'prof_meeting'
+  final _titleController = TextEditingController();
+  final _descController = TextEditingController();
+  final _profSearchController = TextEditingController();
+
+  DayOfWeek _selectedDay = DayOfWeek.M;
+  int _selectedHour = 1;
+  int _duration = 1;
+
+  Professor? _selectedProfessor;
+  List<Professor> _profResults = [];
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descController.dispose();
+    _profSearchController.dispose();
+    super.dispose();
+  }
+
+  void _searchProfs(String query) {
+    if (query.length < 2) {
+      setState(() => _profResults = []);
+      return;
+    }
+    final q = query.toLowerCase();
+    final all = widget.professorService.professors;
+    setState(() {
+      _profResults = all
+          .where((p) => p.name.toLowerCase().contains(q))
+          .take(8)
+          .toList();
+    });
+  }
+
+  List<ProfessorScheduleEntry> _profScheduleForDay(
+      Professor prof, DayOfWeek day) {
+    final dayStr = 'DayOfWeek.${day.name}';
+    return prof.schedule
+        .where((s) => s.days.contains(dayStr))
+        .toList();
+  }
+
+  bool _hasClash() {
+    final hours = List.generate(_duration, (i) => _selectedHour + i);
+
+    // Check against timetable
+    if (widget.selectedTimetable != null) {
+      for (final sel in widget.selectedTimetable!.selectedSections) {
+        for (final entry in sel.section.schedule) {
+          if (entry.days.contains(_selectedDay)) {
+            for (final h in hours) {
+              if (entry.hours.contains(h)) return true;
+            }
+          }
+        }
+      }
+    }
+
+    // Check against existing custom events
+    for (final event in widget.existingEvents) {
+      if (event.day == _selectedDay) {
+        for (final h in hours) {
+          if (event.occupiedHours.contains(h)) return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final clash = _hasClash();
+
+    return AlertDialog(
+      title: const Text('Add Event'),
+      content: SizedBox(
+        width: 400,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Event type
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(
+                      value: 'custom',
+                      label: Text('Custom'),
+                      icon: Icon(Icons.event)),
+                  ButtonSegment(
+                      value: 'prof_meeting',
+                      label: Text('Prof Meeting'),
+                      icon: Icon(Icons.person)),
+                ],
+                selected: {_eventType},
+                onSelectionChanged: (val) {
+                  setState(() {
+                    _eventType = val.first;
+                    if (_eventType == 'prof_meeting') {
+                      _titleController.text = '';
+                    }
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+
+              if (_eventType == 'prof_meeting') ...[
+                TextField(
+                  controller: _profSearchController,
+                  decoration: const InputDecoration(
+                    labelText: 'Search professor',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.search),
+                  ),
+                  onChanged: _searchProfs,
+                ),
+                if (_profResults.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 4),
+                    constraints: const BoxConstraints(maxHeight: 150),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                          color:
+                              theme.colorScheme.outline.withValues(alpha: 0.3)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _profResults.length,
+                      itemBuilder: (_, i) {
+                        final prof = _profResults[i];
+                        final isSelected = _selectedProfessor?.id == prof.id;
+                        return ListTile(
+                          dense: true,
+                          selected: isSelected,
+                          title: Text(prof.name),
+                          subtitle: Text('Chamber: ${prof.chamber}',
+                              style: const TextStyle(fontSize: 11)),
+                          onTap: () {
+                            setState(() {
+                              _selectedProfessor = prof;
+                              _profSearchController.text = prof.name;
+                              _profResults = [];
+                              _titleController.text =
+                                  'Meeting with ${prof.name}';
+                            });
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                if (_selectedProfessor != null) ...[
+                  const SizedBox(height: 12),
+                  _buildProfScheduleInfo(theme),
+                ],
+                const SizedBox(height: 12),
+              ],
+
+              TextField(
+                controller: _titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Event title',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              if (_eventType == 'custom')
+                TextField(
+                  controller: _descController,
+                  decoration: const InputDecoration(
+                    labelText: 'Description (optional)',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                ),
+              if (_eventType == 'custom') const SizedBox(height: 12),
+
+              // Day picker
+              DropdownButtonFormField<DayOfWeek>(
+                initialValue: _selectedDay,
+                decoration: const InputDecoration(
+                  labelText: 'Day',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                items: DayOfWeek.values.map((d) {
+                  const labels = {
+                    DayOfWeek.M: 'Monday',
+                    DayOfWeek.T: 'Tuesday',
+                    DayOfWeek.W: 'Wednesday',
+                    DayOfWeek.Th: 'Thursday',
+                    DayOfWeek.F: 'Friday',
+                    DayOfWeek.S: 'Saturday',
+                  };
+                  return DropdownMenuItem(
+                      value: d, child: Text(labels[d] ?? d.name));
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) setState(() => _selectedDay = val);
+                },
+              ),
+              const SizedBox(height: 12),
+
+              // Hour + duration
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: _selectedHour,
+                      decoration: const InputDecoration(
+                        labelText: 'Start hour',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      items: List.generate(12, (i) {
+                        final h = i + 1;
+                        final label = TimeSlotInfo.hourSlotNames[h]
+                                ?.split('-')[0]
+                                .trim() ??
+                            'H$h';
+                        return DropdownMenuItem(
+                            value: h, child: Text(label));
+                      }),
+                      onChanged: (val) {
+                        if (val != null) setState(() => _selectedHour = val);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      initialValue: _duration,
+                      decoration: const InputDecoration(
+                        labelText: 'Duration',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      items: [1, 2, 3].map((d) {
+                        return DropdownMenuItem(
+                            value: d,
+                            child: Text('$d hour${d > 1 ? 's' : ''}'));
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) setState(() => _duration = val);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+
+              if (clash) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: Colors.orange.withValues(alpha: 0.3)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.warning_amber, color: Colors.orange, size: 18),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'This slot clashes with your schedule',
+                          style: TextStyle(fontSize: 12, color: Colors.orange),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _titleController.text.trim().isEmpty
+              ? null
+              : () {
+                  final event = CalendarEvent(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    title: _titleController.text.trim(),
+                    description: _descController.text.trim().isNotEmpty
+                        ? _descController.text.trim()
+                        : null,
+                    type: _eventType,
+                    professorId: _selectedProfessor?.id,
+                    professorName: _selectedProfessor?.name,
+                    day: _selectedDay,
+                    hour: _selectedHour,
+                    durationHours: _duration,
+                  );
+                  Navigator.pop(context, event);
+                },
+          child: const Text('Add'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfScheduleInfo(ThemeData theme) {
+    final prof = _selectedProfessor!;
+    final dayEntries = _profScheduleForDay(prof, _selectedDay);
+
+    if (dayEntries.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.green.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.green, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              '${prof.name} has no classes on this day',
+              style: const TextStyle(fontSize: 12, color: Colors.green),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${prof.name}\'s classes today:',
+            style: theme.textTheme.labelMedium
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          ...dayEntries.map((entry) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  '${entry.courseCode} (${entry.sectionId}) — ${entry.hourRangeString}',
+                  style: theme.textTheme.bodySmall,
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+}
+
+// --- Models ---
+
+enum _ItemType { classSlot, exam, announcement, customEvent }
+
+class _CalendarItem {
+  final _ItemType type;
+  final String title;
+  final String subtitle;
+  final int hour;
+  final int spanHours;
+  final Color color;
+  final String? instructor;
+  final String? examDate;
+  final CourseAnnouncement? announcement;
+  final String slotKey;
+  final bool scrapped;
+  final CalendarEvent? event;
+
+  _CalendarItem({
+    required this.type,
+    required this.title,
+    required this.subtitle,
+    required this.hour,
+    this.spanHours = 1,
+    required this.color,
+    this.instructor,
+    this.examDate,
+    this.announcement,
+    required this.slotKey,
+    this.scrapped = false,
+    this.event,
+  });
+}
+
+class _RawSlotGroup {
+  final String courseCode;
+  final String sectionId;
+  final String room;
+  final String instructor;
+  final Color color;
+  final List<int> hours;
+
+  _RawSlotGroup({
+    required this.courseCode,
+    required this.sectionId,
+    required this.room,
+    required this.instructor,
+    required this.color,
+    required this.hours,
+  });
+}

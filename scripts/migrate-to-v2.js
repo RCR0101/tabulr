@@ -512,7 +512,10 @@ async function stepC() {
       const data = doc.data();
       const rawCode = sanitizeString(data.courseCode || doc.id.replace(/_/g, ' '));
 
-      const examDate = toTimestamp(sanitizeString(data.examDate || data.exam_date || ''));
+      const rawExamDate = data.examDate || data.exam_date || '';
+      const examDate = (rawExamDate instanceof Timestamp) ? rawExamDate
+        : (rawExamDate && typeof rawExamDate === 'string') ? sanitizeString(rawExamDate)
+        : null;
 
       const newDoc = {
         exam_date: examDate,

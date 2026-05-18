@@ -286,7 +286,7 @@ async function uploadExamSeating(csvPath, campus = 'default') {
     console.log(`  Committed final batch of ${operationCount} documents`);
   }
 
-  const metadataRef = db.doc('admin/metadata/exam_seating');
+  const metadataRef = db.doc('admin_metadata/exam_seating');
   await metadataRef.set({
     lastUpdated: new Date().toISOString(),
     totalCourses: exams.length,
