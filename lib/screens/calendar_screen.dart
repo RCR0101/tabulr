@@ -9,6 +9,8 @@ import '../services/exam_seating_service.dart';
 import '../services/course_announcement_service.dart';
 import '../services/professor_service.dart';
 import '../services/auth_service.dart';
+import '../services/config_service.dart';
+import '../services/course_data_service.dart';
 import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/app_drawer.dart';
@@ -146,6 +148,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   StreamSubscription? _announcementSub;
 
   List<CalendarEvent> _customEvents = [];
+  Map<String, Course> _courseMap = {};
+  final ConfigService _config = ConfigService();
 
   // Scrapped (dismissed) slots: keys are "day-hour" for timetable, event IDs for custom
   Set<String> _scrappedForWeek = {};
@@ -192,6 +196,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final userData = await _examSeatingService.loadUserData();
       final allExams = await _examSeatingService.fetchAllExamSeating();
       await _professorService.loadProfessors();
+
+      // Load courses for exam schedule lookup
+      try {
+        final courses = await CourseDataService().fetchCourses();
+        _courseMap = {for (final c in courses) c.courseCode: c};
+      } catch (_) {}
 
       // Load saved prefs
       String? savedTimetableId;
@@ -537,10 +547,39 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
 
 
+  _PeriodType _periodForDate(DateTime date) {
+    if (date.isAfter(_config.semesterEnd)) return _PeriodType.afterSemester;
+    if (!date.isBefore(_config.midsemStart) && !date.isAfter(_config.midsemEnd)) {
+      return _PeriodType.midsem;
+    }
+    if (!date.isBefore(_config.endsemStart) && !date.isAfter(_config.endsemEnd)) {
+      return _PeriodType.endsem;
+    }
+    if (date.isBefore(_config.semesterStart)) return _PeriodType.beforeSemester;
+    return _PeriodType.classes;
+  }
+
   // Build calendar items for a given day, merging consecutive identical slots
-  List<_CalendarItem> _itemsForDay(DayOfWeek day) {
+  List<_CalendarItem> _itemsForDay(DayOfWeek day, {DateTime? date}) {
     final items = <_CalendarItem>[];
     if (_selectedTimetable == null) return items;
+
+    final period = date != null ? _periodForDate(date) : _PeriodType.classes;
+
+    // During exam periods or after semester, show exams instead of classes
+    if (period == _PeriodType.midsem || period == _PeriodType.endsem) {
+      if (date != null) {
+        items.addAll(_examItemsForDate(date, period));
+      }
+      // Still show custom events during exam weeks
+      _addCustomEvents(items, day);
+      return items;
+    }
+
+    if (period == _PeriodType.afterSemester || period == _PeriodType.beforeSemester) {
+      _addCustomEvents(items, day);
+      return items;
+    }
 
     // Collect raw per-hour entries grouped by section identity
     final sectionSlots = <String, _RawSlotGroup>{};
@@ -583,7 +622,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
       items.add(_makeClassItem(group, day, spanStart, spanEnd));
     }
 
-    // Custom events (already have durationHours, render as single merged block)
+    _addCustomEvents(items, day);
+
+    return items;
+  }
+
+  void _addCustomEvents(List<_CalendarItem> items, DayOfWeek day) {
     for (final event in _customEvents) {
       if (event.day == day) {
         final key = 'event-${event.id}-${event.hour}';
@@ -604,7 +648,70 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ));
       }
     }
+  }
 
+  List<_CalendarItem> _examItemsForDate(DateTime date, _PeriodType period) {
+    final items = <_CalendarItem>[];
+    if (_selectedTimetable == null) return items;
+
+    final isMidsem = period == _PeriodType.midsem;
+    final examLabel = isMidsem ? 'MidSem' : 'Compre';
+
+    final processedCourses = <String>{};
+    for (final sel in _selectedTimetable!.selectedSections) {
+      if (processedCourses.contains(sel.courseCode)) continue;
+      processedCourses.add(sel.courseCode);
+
+      final course = _courseMap[sel.courseCode];
+      if (course == null) continue;
+
+      final exam = isMidsem ? course.midSemExam : course.endSemExam;
+      if (exam == null) continue;
+
+      // Check if exam falls on this date
+      if (exam.date.year != date.year ||
+          exam.date.month != date.month ||
+          exam.date.day != date.day) {
+        continue;
+      }
+
+      // Map TimeSlot to grid hours
+      int startHour;
+      int spanHours;
+      String timeLabel;
+      switch (exam.timeSlot) {
+        case TimeSlot.MS1:
+          startHour = 2; timeLabel = '9:30 - 11:00'; spanHours = 2;
+        case TimeSlot.MS2:
+          startHour = 4; timeLabel = '11:30 - 1:00'; spanHours = 2;
+        case TimeSlot.MS3:
+          startHour = 7; timeLabel = '2:00 - 3:30'; spanHours = 2;
+        case TimeSlot.MS4:
+          startHour = 9; timeLabel = '4:00 - 5:30'; spanHours = 2;
+        case TimeSlot.FN:
+          startHour = 1; timeLabel = '9:00 - 12:00'; spanHours = 4;
+        case TimeSlot.AN:
+          startHour = 8; timeLabel = '2:00 - 5:00'; spanHours = 3;
+      }
+
+      // Look up exam room if we have student ID
+      final roomInfo = _examRooms[sel.courseCode];
+      final roomStr = roomInfo != null ? ' • ${roomInfo.roomNo}' : '';
+
+      items.add(_CalendarItem(
+        type: _ItemType.exam,
+        title: '$examLabel: ${sel.courseCode}',
+        subtitle: '$timeLabel$roomStr',
+        hour: startHour,
+        spanHours: spanHours,
+        color: isMidsem
+            ? Theme.of(context).colorScheme.tertiary
+            : Theme.of(context).colorScheme.error,
+        slotKey: 'exam-${sel.courseCode}-${date.day}',
+        scrapped: false,
+        examDate: '${date.day}/${date.month}/${date.year}',
+      ));
+    }
     return items;
   }
 
@@ -1045,7 +1152,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
                       // Day columns
                       ...List.generate(6, (dayIdx) {
-                        final dayItems = _itemsForDay(bitsDays[dayIdx]);
+                        final dayItems = _itemsForDay(bitsDays[dayIdx], date: days[dayIdx]);
                         final now = DateTime.now();
                         final isToday = days[dayIdx].year == now.year &&
                             days[dayIdx].month == now.month &&
@@ -1861,6 +1968,8 @@ class _AddEventDialogState extends State<_AddEventDialog> {
 }
 
 // --- Models ---
+
+enum _PeriodType { classes, midsem, endsem, beforeSemester, afterSemester }
 
 enum _ItemType { classSlot, exam, announcement, customEvent }
 
