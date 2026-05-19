@@ -208,7 +208,7 @@ class CGPAService {
           if (data.containsKey('encryptedData')) {
             final decryptedData = _decryptData(
               data['encryptedData'] as String,
-              user.uid,
+              _authService.userDocId!,
             );
             final jsonData = jsonDecode(decryptedData) as Map<String, dynamic>;
             final semesterData = SemesterData.fromJson(jsonData);
