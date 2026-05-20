@@ -1029,7 +1029,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
           child: Text(
             examType == 'Mid-Sem' ? 'MS' : 'CE',
             style: TextStyle(
-              fontSize: 8,
+              fontSize: ResponsiveService.clampedFontSize(context, 8),
               fontWeight: FontWeight.bold,
               color: scheme.onTertiary,
             ),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
+import '../services/course_announcement_service.dart';
 import '../services/responsive_service.dart';
 import '../services/toast_service.dart';
 import '../screens/timetables_screen.dart';
@@ -97,8 +99,128 @@ class _MobileShell extends StatelessWidget {
     required this.child,
   });
 
+  static const _primaryTabs = [
+    DrawerScreen.timetables,
+    DrawerScreen.calendar,
+    DrawerScreen.examSeating,
+  ];
+
+  List<DrawerScreen> _overflowItems() {
+    final auth = AuthService();
+    final items = <DrawerScreen>[];
+    if (auth.isAuthenticated) items.add(DrawerScreen.cgpaCalculator);
+    if (auth.isAuthenticated) items.add(DrawerScreen.acadDrives);
+    if (auth.isAuthenticated) items.add(DrawerScreen.profChambers);
+    if (auth.isAuthenticated && CourseAnnouncementService().isHyderabadUser()) {
+      items.add(DrawerScreen.announcements);
+    }
+    return items;
+  }
+
+  int _currentIndex() {
+    final idx = _primaryTabs.indexOf(currentScreen);
+    return idx >= 0 ? idx : 3;
+  }
+
+  void _onTap(BuildContext context, int index) {
+    if (index < _primaryTabs.length) {
+      onScreenSelected(_primaryTabs[index]);
+    } else {
+      _showMoreSheet(context);
+    }
+  }
+
+  void _showMoreSheet(BuildContext context) {
+    final overflow = _overflowItems();
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 32,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...overflow.map((screen) => ListTile(
+                  leading: Icon(_iconFor(screen)),
+                  title: Text(_labelFor(screen)),
+                  selected: currentScreen == screen,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    onScreenSelected(screen);
+                  },
+                )),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static IconData _iconFor(DrawerScreen screen) => switch (screen) {
+        DrawerScreen.timetables => Icons.schedule,
+        DrawerScreen.calendar => Icons.calendar_month,
+        DrawerScreen.cgpaCalculator => Icons.calculate,
+        DrawerScreen.examSeating => Icons.event_seat,
+        DrawerScreen.acadDrives => Icons.folder_shared,
+        DrawerScreen.profChambers => Icons.person,
+        DrawerScreen.announcements => Icons.campaign,
+      };
+
+  static String _labelFor(DrawerScreen screen) => switch (screen) {
+        DrawerScreen.timetables => 'Timetables',
+        DrawerScreen.calendar => 'Calendar',
+        DrawerScreen.cgpaCalculator => 'CGPA',
+        DrawerScreen.examSeating => 'Exam Seating',
+        DrawerScreen.acadDrives => 'Acad Drives',
+        DrawerScreen.profChambers => 'Prof Chambers',
+        DrawerScreen.announcements => 'Announcements',
+      };
+
   @override
   Widget build(BuildContext context) {
-    return child;
+    final scheme = Theme.of(context).colorScheme;
+    final selectedIndex = _currentIndex();
+
+    return Scaffold(
+      body: child,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: selectedIndex,
+        onDestinationSelected: (i) => _onTap(context, i),
+        height: 64,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        backgroundColor: scheme.surface,
+        indicatorColor: scheme.primary.withValues(alpha: 0.12),
+        destinations: [
+          NavigationDestination(
+            icon: Icon(Icons.schedule, color: scheme.onSurface.withValues(alpha: 0.6)),
+            selectedIcon: Icon(Icons.schedule, color: scheme.primary),
+            label: 'Timetables',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_month, color: scheme.onSurface.withValues(alpha: 0.6)),
+            selectedIcon: Icon(Icons.calendar_month, color: scheme.primary),
+            label: 'Calendar',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.event_seat, color: scheme.onSurface.withValues(alpha: 0.6)),
+            selectedIcon: Icon(Icons.event_seat, color: scheme.primary),
+            label: 'Exams',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.more_horiz, color: scheme.onSurface.withValues(alpha: 0.6)),
+            selectedIcon: Icon(Icons.more_horiz, color: scheme.primary),
+            label: 'More',
+          ),
+        ],
+      ),
+    );
   }
 }

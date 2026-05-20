@@ -1322,7 +1322,9 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
+        constraints: BoxConstraints(
+          maxWidth: ResponsiveService.isMobile(context) ? MediaQuery.of(context).size.width * 0.92 : 480,
+        ),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -1587,7 +1589,9 @@ class _FlagDialogState extends State<_FlagDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
+        constraints: BoxConstraints(
+          maxWidth: ResponsiveService.isMobile(context) ? MediaQuery.of(context).size.width * 0.92 : 480,
+        ),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -1722,7 +1726,9 @@ class _AcceptCorrectionDialogState extends State<_AcceptCorrectionDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
+        constraints: BoxConstraints(
+          maxWidth: ResponsiveService.isMobile(context) ? MediaQuery.of(context).size.width * 0.92 : 480,
+        ),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(

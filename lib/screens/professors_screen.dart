@@ -564,7 +564,9 @@ class _ProfessorDetailDialog extends StatelessWidget {
     return DefaultTabController(
       length: hasContact ? 2 : 1,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
+        constraints: BoxConstraints(
+          maxWidth: ResponsiveService.isMobile(context) ? MediaQuery.of(context).size.width * 0.92 : 480,
+        ),
         child: AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -635,7 +637,7 @@ class _ProfessorDetailDialog extends StatelessWidget {
           ],
         ),
         content: SizedBox(
-          width: 440,
+          width: ResponsiveService.isMobile(context) ? MediaQuery.of(context).size.width * 0.85 : 440,
           height: 300,
           child: hasContact
               ? TabBarView(

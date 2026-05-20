@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/responsive_service.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 import '../widgets/common/shimmer_loading.dart';
@@ -156,6 +157,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Set<String> _scrappedForWeek = {};
 
   DateTime _weekStart = _mondayOf(DateTime.now());
+  int _mobileDayIndex = DateTime.now().weekday - 1; // 0=Mon, 5=Sat
 
   static DateTime _mondayOf(DateTime date) {
     final d = DateTime(date.year, date.month, date.day);
@@ -452,17 +454,36 @@ class _CalendarScreenState extends State<CalendarScreen> {
   // --- Custom event management ---
 
   Future<void> _addEvent() async {
-    final result = await showDialog<CalendarEvent>(
-      context: context,
-      builder: (ctx) => _AddEventDialog(
-        professorService: _professorService,
-        selectedTimetable: _selectedTimetable,
-        existingEvents: _customEvents,
-      ),
+    final eventWidget = _AddEventDialog(
+      professorService: _professorService,
+      selectedTimetable: _selectedTimetable,
+      existingEvents: _customEvents,
     );
+    final CalendarEvent? result;
+    if (ResponsiveService.isMobile(context)) {
+      result = await showModalBottomSheet<CalendarEvent>(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (ctx) => DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (ctx, scrollController) => eventWidget,
+        ),
+      );
+    } else {
+      result = await showDialog<CalendarEvent>(
+        context: context,
+        builder: (ctx) => eventWidget,
+      );
+    }
 
     if (result != null) {
-      setState(() => _customEvents.add(result));
+      setState(() => _customEvents.add(result!));
       _savePrefs();
     }
   }
@@ -915,7 +936,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 _buildHeader(theme),
                 _buildWeekNav(theme),
                 const Divider(height: 1),
-                Expanded(child: _buildWeekView(theme)),
+                if (ResponsiveService.isMobile(context)) ...[
+                  _buildMobileDaySelector(theme),
+                  Expanded(child: _buildSingleDayView(theme)),
+                ] else
+                  Expanded(child: _buildWeekView(theme)),
               ],
             ),
     );
@@ -1012,6 +1037,177 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+  Widget _buildMobileDaySelector(ThemeData theme) {
+    final days = List.generate(6, (i) => _weekStart.add(Duration(days: i)));
+    final dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    final today = DateTime.now();
+
+    return SizedBox(
+      height: 56,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        itemCount: 6,
+        itemBuilder: (context, i) {
+          final isToday = _sameDay(days[i], today);
+          final isSelected = i == _mobileDayIndex.clamp(0, 5);
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: GestureDetector(
+              onTap: () => setState(() => _mobileDayIndex = i),
+              child: Container(
+                width: 54,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : isToday
+                          ? theme.colorScheme.primary.withValues(alpha: 0.12)
+                          : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  border: isToday && !isSelected
+                      ? Border.all(color: theme.colorScheme.primary, width: 1.5)
+                      : null,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      dayLabels[i],
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: isSelected
+                            ? theme.colorScheme.onPrimary
+                            : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${days[i].day}',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: isSelected
+                            ? theme.colorScheme.onPrimary
+                            : theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSingleDayView(ThemeData theme) {
+    final dayIndex = _mobileDayIndex.clamp(0, 5);
+    final bitsDays = [DayOfWeek.M, DayOfWeek.T, DayOfWeek.W, DayOfWeek.Th, DayOfWeek.F, DayOfWeek.S];
+    final day = bitsDays[dayIndex];
+    final date = _weekStart.add(Duration(days: dayIndex));
+    final items = _itemsForDay(day, date: date);
+    final banners = _bannersForDay(date);
+
+    const startHour = 1;
+    const endHour = 12;
+
+    final allBanners = <int, List<_CalendarItem>>{};
+    for (final b in banners) {
+      for (int h = b.hour; h < b.hour + b.spanHours; h++) {
+        allBanners.putIfAbsent(h, () => []).add(b);
+      }
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      itemCount: endHour - startHour,
+      itemBuilder: (context, index) {
+        final hour = startHour + index;
+        final hourItems = items.where((it) => it.hour == hour).toList();
+        final hourBanners = allBanners[hour] ?? [];
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 52,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Column(
+                    children: [
+                      Text(
+                        'H${hour + 1}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        TimeSlotInfo.getHourSlotName(hour),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontSize: ResponsiveService.clampedFontSize(context, 9),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.35),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Expanded(
+                child: hourItems.isEmpty && hourBanners.isEmpty
+                    ? Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color: theme.colorScheme.outline.withValues(alpha: 0.08),
+                            ),
+                          ),
+                        ),
+                      )
+                    : Column(
+                        children: [
+                          ...hourBanners.map((b) => Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: GestureDetector(
+                                  onTap: () => _showItemDetail(context, b),
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: b.color.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      b.title,
+                                      style: theme.textTheme.labelMedium?.copyWith(
+                                        color: b.color,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              )),
+                          ...hourItems.map((item) => Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: _SlotBlock(
+                                  item: item,
+                                  onTap: () => _showItemDetail(context, item),
+                                  onLongPress: () => _showItemDetail(context, item),
+                                ),
+                              )),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildWeekView(ThemeData theme) {
     final days = List.generate(6, (i) => _weekStart.add(Duration(days: i)));
     final dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -1054,7 +1250,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     return GestureDetector(
                       onLongPress: () => _showDayMenu(bitsDays[i]),
                       child: SizedBox(
-                        width: dayWidth,
+                        width: dayWidth.clamp(44.0, double.infinity),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -1163,7 +1359,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                         theme.textTheme.labelSmall?.copyWith(
                                       color: theme.colorScheme.onSurface
                                           .withValues(alpha: 0.5),
-                                      fontSize: 10,
+                                      fontSize: ResponsiveService.clampedFontSize(context, 10),
                                     ),
                                   ),
                                 ),
@@ -1323,7 +1519,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: item.color,
                             fontWeight: FontWeight.w600,
-                            fontSize: 9,
+                            fontSize: ResponsiveService.clampedFontSize(context, 9),
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -1594,6 +1790,7 @@ class _SlotBlock extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         opacity: isScrapped ? 0.35 : 1.0,
         child: Container(
+          constraints: const BoxConstraints(minHeight: 44),
           decoration: BoxDecoration(
             color: item.color.withValues(alpha: isScrapped ? 0.06 : 0.18),
             borderRadius: AppDesign.borderRadiusSm,
@@ -1668,7 +1865,7 @@ class _SlotBlock extends StatelessWidget {
                 Text(
                   item.instructor!,
                   style: theme.textTheme.labelSmall?.copyWith(
-                    fontSize: 9,
+                    fontSize: ResponsiveService.clampedFontSize(context, 9),
                     color: theme.colorScheme.onSurface
                         .withValues(alpha: 0.5),
                   ),

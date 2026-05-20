@@ -488,7 +488,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                   Text(
                     course.courseTitle,
                     style: TextStyle(
-                      fontSize: 9,
+                      fontSize: ResponsiveService.clampedFontSize(context, 9),
                       color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     ),
                     maxLines: 1,
@@ -1047,7 +1047,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       child: Text(
         '$sectionType:$count',
         style: TextStyle(
-          fontSize: 9,
+          fontSize: ResponsiveService.clampedFontSize(context, 9),
           fontWeight: FontWeight.bold,
           color: scheme.onPrimary,
         ),

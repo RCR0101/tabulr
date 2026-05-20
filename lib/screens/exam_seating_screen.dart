@@ -726,7 +726,7 @@ class _TimetableCourseSelectionDialogState
     return AlertDialog(
       title: const Text('Import Courses'),
       content: SizedBox(
-        width: double.maxFinite,
+        width: ResponsiveService.isMobile(context) ? MediaQuery.of(context).size.width * 0.85 : 400,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

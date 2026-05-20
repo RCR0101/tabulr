@@ -67,17 +67,44 @@ class TimetableWidget extends StatefulWidget {
 }
 
 class _TimetableWidgetState extends State<TimetableWidget> {
-  String? _hoveredCourse; // Track which course is being hovered
-  double _zoomLevel = 1.0; // Current zoom level (0.5x to 3.0x)
+  String? _hoveredCourse;
+  double _zoomLevel = 1.0;
+  bool _initialZoomApplied = false;
   final TransformationController _transformationController = TransformationController();
   final ScrollController _verticalScrollController = ScrollController();
   final ScrollController _horizontalScrollController = ScrollController();
 
   bool get _isMobile {
-    // Always use desktop layout for export
     if (widget.isForExport) return false;
-
     return ResponsiveService.isMobile(context) || ResponsiveService.isTablet(context);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialZoomApplied && _isMobile) {
+      _initialZoomApplied = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final screenWidth = MediaQuery.of(context).size.width;
+        final gridWidth = _estimateGridWidth();
+        if (gridWidth > screenWidth) {
+          final fitZoom = (screenWidth / gridWidth).clamp(0.5, 1.0);
+          _handleZoomChange(fitZoom);
+        }
+      });
+    }
+  }
+
+  double _estimateGridWidth() {
+    final timeCol = _getTimeColumnWidth(widget.size);
+    final dayCol = _getDayColumnWidth(widget.size);
+    final spacing = _getColumnSpacing(widget.size);
+    final margin = _getHorizontalMargin(widget.size);
+    if (widget.layout == TimetableLayout.vertical) {
+      return timeCol + (dayCol * 6) + (spacing * 7) + (margin * 2);
+    }
+    return timeCol + (dayCol * 12) + (spacing * 13) + (margin * 2);
   }
 
   @override

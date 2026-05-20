@@ -6,6 +6,7 @@ import '../services/humanities_electives_service.dart';
 import '../services/discipline_electives_service.dart';
 import '../services/clash_detector.dart';
 import '../services/campus_service.dart';
+import '../services/responsive_service.dart';
 import '../utils/design_constants.dart';
 
 enum CourseCategory { huel, del, other }
@@ -948,7 +949,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                               child: Text(
                                 'Mixed Sections',
                                 style: TextStyle(
-                                  fontSize: 9,
+                                  fontSize: ResponsiveService.clampedFontSize(context, 9),
                                   fontWeight: FontWeight.w600,
                                   color: AppDesign.warning(context),
                                 ),
@@ -968,7 +969,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                               child: Text(
                                 '${(score * 100).round()}%',
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: ResponsiveService.clampedFontSize(context, 10),
                                   fontWeight: FontWeight.w600,
                                   color: _getSimilarityColor(score),
                                 ),
@@ -1049,7 +1050,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
       child: Text(
         categoryText,
         style: TextStyle(
-          fontSize: 8,
+          fontSize: ResponsiveService.clampedFontSize(context, 8),
           fontWeight: FontWeight.w600,
           color: badgeColor,
         ),

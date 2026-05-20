@@ -127,7 +127,7 @@ class ResponsiveService {
   static double getAdaptiveFontSize(BuildContext context, double baseFontSize) {
     final screenSize = getScreenSize(context);
     double scale;
-    
+
     switch (screenSize) {
       case ScreenSize.mobile:
         scale = mobileFontScale;
@@ -139,8 +139,18 @@ class ResponsiveService {
         scale = desktopFontScale;
         break;
     }
-    
+
     return baseFontSize * scale;
+  }
+
+  static const double _mobileMinFontSize = 11.0;
+
+  /// Returns [baseFontSize] on desktop/tablet, but clamps to at least 11px on mobile.
+  static double clampedFontSize(BuildContext context, double baseFontSize) {
+    if (isMobile(context)) {
+      return baseFontSize < _mobileMinFontSize ? _mobileMinFontSize : baseFontSize;
+    }
+    return baseFontSize;
   }
   
   /// Get minimum touch target size for current screen
