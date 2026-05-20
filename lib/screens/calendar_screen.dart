@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
+import '../widgets/common/shimmer_loading.dart';
 import '../models/course_announcement.dart';
 import '../services/timetable_service.dart';
 import '../services/exam_seating_service.dart';
@@ -13,7 +14,7 @@ import '../services/config_service.dart';
 import '../services/course_data_service.dart';
 import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
-import '../widgets/app_drawer.dart';
+
 
 int _timeToSlotHour(TimeOfDay t) => t.hour - 7;
 
@@ -480,6 +481,29 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
   }
 
+  void _scrapCourseForWeek(_CalendarItem item) {
+    setState(() {
+      if (item.type == _ItemType.classSlot && _selectedTimetable != null) {
+        for (final sel in _selectedTimetable!.selectedSections) {
+          if (sel.courseCode != item.title) continue;
+          for (final entry in sel.section.schedule) {
+            for (final day in entry.days) {
+              for (final hour in entry.hours) {
+                _scrappedForWeek.add('$_weekKey:class-${day.name}-$hour');
+              }
+            }
+          }
+        }
+      } else if (item.type == _ItemType.customEvent && item.event != null) {
+        for (final h in item.event!.occupiedHours) {
+          _scrappedForWeek.add('$_weekKey:event-${item.event!.id}-$h');
+        }
+      } else {
+        _scrappedForWeek.add('$_weekKey:${item.slotKey}');
+      }
+    });
+  }
+
   void _unscrapSlot(String slotKey) {
     setState(() {
       _scrappedForWeek.remove('$_weekKey:$slotKey');
@@ -696,12 +720,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       // Look up exam room if we have student ID
       final roomInfo = _examRooms[sel.courseCode];
-      final roomStr = roomInfo != null ? ' • ${roomInfo.roomNo}' : '';
 
       items.add(_CalendarItem(
         type: _ItemType.exam,
         title: '$examLabel: ${sel.courseCode}',
-        subtitle: '$timeLabel$roomStr',
+        subtitle: timeLabel,
+        examRoom: roomInfo?.roomNo,
         hour: startHour,
         spanHours: spanHours,
         color: isMidsem
@@ -880,13 +904,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ],
       ),
-      drawer: const AppDrawer(currentScreen: DrawerScreen.calendar),
       floatingActionButton: FloatingActionButton(
         onPressed: _addEvent,
         child: const Icon(Icons.add),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const CalendarSkeleton()
           : Column(
               children: [
                 _buildHeader(theme),
@@ -1428,6 +1451,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
             const SizedBox(height: 12),
             if (item.subtitle.isNotEmpty)
               _detailRow(Icons.info_outline, item.subtitle, theme),
+            if (item.examRoom != null)
+              _detailRow(Icons.meeting_room, 'Room ${item.examRoom}', theme),
             if (item.instructor != null)
               _detailRow(Icons.person, item.instructor!, theme),
             if (item.type == _ItemType.classSlot)
@@ -1444,7 +1469,83 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 item.announcement!.description.isNotEmpty)
               _detailRow(
                   Icons.description, item.announcement!.description, theme),
+            const SizedBox(height: 16),
+            Divider(color: theme.colorScheme.outlineVariant),
             const SizedBox(height: 8),
+            if (item.scrapped)
+              _actionTile(
+                ctx,
+                icon: Icons.restore,
+                label: 'Restore',
+                color: theme.colorScheme.primary,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _unscrapSlot(item.slotKey);
+                },
+              )
+            else ...[
+              _actionTile(
+                ctx,
+                icon: Icons.event_busy_outlined,
+                label: 'Scrap for today',
+                color: theme.colorScheme.onSurface,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _scrapSlot(item.slotKey);
+                },
+              ),
+              const SizedBox(height: 4),
+              _actionTile(
+                ctx,
+                icon: Icons.event_busy,
+                label: 'Scrap for entire week',
+                color: theme.colorScheme.onSurface,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _scrapCourseForWeek(item);
+                },
+              ),
+            ],
+            if (item.type == _ItemType.customEvent && item.event != null) ...[
+              const SizedBox(height: 4),
+              _actionTile(
+                ctx,
+                icon: Icons.delete_forever,
+                label: 'Delete event permanently',
+                color: theme.colorScheme.error,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _deleteEvent(item.event!);
+                },
+              ),
+            ],
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _actionTile(
+    BuildContext ctx, {
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: AppDesign.borderRadiusSm,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: color),
+            ),
           ],
         ),
       ),
@@ -1496,20 +1597,32 @@ class _SlotBlock extends StatelessWidget {
           decoration: BoxDecoration(
             color: item.color.withValues(alpha: isScrapped ? 0.05 : 0.12),
             borderRadius: AppDesign.borderRadiusSm,
-            border: Border(
-              left: BorderSide(
-                color: isScrapped
-                    ? item.color.withValues(alpha: 0.3)
-                    : item.color,
-                width: 3,
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 3,
+                  decoration: BoxDecoration(
+                    color: isScrapped
+                        ? item.color.withValues(alpha: 0.3)
+                        : item.color,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(8),
+                      bottomLeft: Radius.circular(8),
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
-          padding: EdgeInsets.symmetric(
-            horizontal: AppDesign.spacingSm,
-            vertical: tall ? AppDesign.spacingSm : AppDesign.spacingXs,
-          ),
-          child: Column(
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppDesign.spacingSm,
+                  vertical: tall ? AppDesign.spacingSm : AppDesign.spacingXs,
+                ),
+                child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1524,6 +1637,19 @@ class _SlotBlock extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
+              if (item.examRoom != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  item.examRoom!,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontSize: tall ? 13 : 11,
+                    fontWeight: FontWeight.w600,
+                    color: item.color,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
               if (item.subtitle.isNotEmpty) ...[
                 SizedBox(height: tall ? 2 : 0),
                 Text(
@@ -1550,6 +1676,9 @@ class _SlotBlock extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
+            ],
+          ),
+              ),
             ],
           ),
         ),
@@ -1982,6 +2111,7 @@ class _CalendarItem {
   final Color color;
   final String? instructor;
   final String? examDate;
+  final String? examRoom;
   final CourseAnnouncement? announcement;
   final String slotKey;
   final bool scrapped;
@@ -1996,6 +2126,7 @@ class _CalendarItem {
     required this.color,
     this.instructor,
     this.examDate,
+    this.examRoom,
     this.announcement,
     required this.slotKey,
     this.scrapped = false,

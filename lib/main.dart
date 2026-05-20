@@ -10,6 +10,8 @@ import 'firebase_options.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/timetables_screen.dart';
+import 'widgets/common/shimmer_loading.dart';
+import 'widgets/app_shell.dart';
 import 'services/auth_service.dart';
 import 'services/theme_service.dart' as theme_service;
 import 'services/campus_service.dart';
@@ -164,7 +166,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         // Show loading while checking auth state
         if (authSnapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            body: TimetableListSkeleton(),
           );
         }
         
@@ -172,9 +174,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
         final isAuthenticated = _authService.isAuthenticated;
         final isGuest = _authService.isGuest;
         
-        // If user is authenticated, go to timetables screen
+        // If user is authenticated, go to app shell with sidebar
         if (isAuthenticated) {
-          return const TimetablesScreen();
+          return const AppShell();
         }
         
         // If user has chosen guest mode, go to simple home screen

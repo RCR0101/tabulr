@@ -6,7 +6,7 @@ import '../services/responsive_service.dart';
 import '../services/toast_service.dart';
 import '../services/auth_service.dart';
 import '../utils/design_constants.dart';
-import '../widgets/app_drawer.dart';
+
 
 enum CourseSortOption {
   nameAsc,
@@ -711,9 +711,6 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           ),
         ],
       ),
-      drawer: _selectedCourse == null
-          ? const AppDrawer(currentScreen: DrawerScreen.acadDrives)
-          : null,
       body: Column(
         children: [
           // Header Section

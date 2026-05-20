@@ -19,13 +19,13 @@ import '../services/user_settings_service.dart';
 import '../services/responsive_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/campus_selector_widget.dart';
-import '../widgets/disclaimer_widget.dart';
+
 import 'course_guide_screen.dart';
 import 'discipline_electives_screen.dart';
 import 'humanities_electives_screen.dart';
-import 'professors_screen.dart';
 import 'prerequisites_screen.dart';
 import '../mixins/timetable_editor_mixin.dart';
+import '../utils/page_transitions.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -216,43 +216,25 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
                     case 'course_guide':
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const CourseGuideScreen(),
-                        ),
+                        FadeSlidePageRoute(page: const CourseGuideScreen()),
                       );
                       break;
                     case 'prerequisites':
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const PrerequisitesScreen(),
-                        ),
-                      );
-                      break;
-                    case 'professors':
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ProfessorsScreen(),
-                        ),
+                        FadeSlidePageRoute(page: const PrerequisitesScreen()),
                       );
                       break;
                     case 'discipline_electives':
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) => const DisciplineElectivesScreen(),
-                        ),
+                        FadeSlidePageRoute(page: const DisciplineElectivesScreen()),
                       );
                       break;
                     case 'humanities_electives':
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) => const HumanitiesElectivesScreen(),
-                        ),
+                        FadeSlidePageRoute(page: const HumanitiesElectivesScreen()),
                       );
                       break;
                   }
@@ -272,14 +254,6 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
                         child: ListTile(
                           leading: Icon(Icons.account_tree),
                           title: Text('Prerequisites'),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'professors',
-                        child: ListTile(
-                          leading: Icon(Icons.person),
-                          title: Text('Professors'),
                           contentPadding: EdgeInsets.zero,
                         ),
                       ),
@@ -431,7 +405,7 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
                           radius: 16,
                           backgroundImage:
                               _authService.userPhotoUrl != null
-                                  ? NetworkImage(_authService.userPhotoUrl!)
+                                  ? _authService.userPhotoImage
                                   : null,
                           child:
                               _authService.userPhotoUrl == null
@@ -564,7 +538,6 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
                       ),
                     ],
                   ),
-          bottomNavigationBar: const BottomDisclaimerWidget(),
         );
       },
     );
@@ -905,43 +878,25 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
                     case 'course_guide':
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const CourseGuideScreen(),
-                        ),
+                        FadeSlidePageRoute(page: const CourseGuideScreen()),
                       );
                       break;
                     case 'prerequisites':
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const PrerequisitesScreen(),
-                        ),
-                      );
-                      break;
-                    case 'professors':
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ProfessorsScreen(),
-                        ),
+                        FadeSlidePageRoute(page: const PrerequisitesScreen()),
                       );
                       break;
                     case 'discipline_electives':
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) => const DisciplineElectivesScreen(),
-                        ),
+                        FadeSlidePageRoute(page: const DisciplineElectivesScreen()),
                       );
                       break;
                     case 'humanities_electives':
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) => const HumanitiesElectivesScreen(),
-                        ),
+                        FadeSlidePageRoute(page: const HumanitiesElectivesScreen()),
                       );
                       break;
                   }
@@ -961,14 +916,6 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
                         child: ListTile(
                           leading: Icon(Icons.account_tree),
                           title: Text('Prerequisites'),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'professors',
-                        child: ListTile(
-                          leading: Icon(Icons.person),
-                          title: Text('Professors'),
                           contentPadding: EdgeInsets.zero,
                         ),
                       ),
@@ -1120,7 +1067,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
                           radius: 16,
                           backgroundImage:
                               _authService.userPhotoUrl != null
-                                  ? NetworkImage(_authService.userPhotoUrl!)
+                                  ? _authService.userPhotoImage
                                   : null,
                           child:
                               _authService.userPhotoUrl == null
@@ -1253,7 +1200,6 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
                       ),
                     ],
                   ),
-          bottomNavigationBar: const BottomDisclaimerWidget(),
         ),
       );
       },

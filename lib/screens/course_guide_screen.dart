@@ -101,7 +101,7 @@ class _CourseGuideScreenState extends State<CourseGuideScreen> {
                     CircleAvatar(
                       radius: 16,
                       backgroundImage: _authService.userPhotoUrl != null
-                          ? NetworkImage(_authService.userPhotoUrl!)
+                          ? _authService.userPhotoImage
                           : null,
                       child: _authService.userPhotoUrl == null
                           ? const Icon(Icons.person, size: 16)

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:html' as html;
 import '../models/course.dart';
+import '../utils/page_transitions.dart';
 import '../models/timetable.dart';
 import '../models/timetable.dart' as timetable_models;
 import '../models/export_options.dart';
@@ -572,7 +573,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     final result =
         await Navigator.push<List<timetable_models.SelectedSection>>(
       context,
-      MaterialPageRoute(builder: (context) => const GeneratorScreen()),
+      FadeSlidePageRoute(page: const GeneratorScreen()),
     );
 
     if (!mounted) return;
@@ -607,13 +608,12 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
 
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => AddSwapScreen(
+      FadeSlidePageRoute(
+        page: AddSwapScreen(
           currentSelectedSections: tt.selectedSections,
           availableCourses: tt.availableCourses,
           currentCampus: CampusService.currentCampusCode,
           onTimetableUpdated: (updatedSections) {
-            // Update the main timetable with the new sections
             setState(() {
               tt.selectedSections.clear();
               tt.selectedSections.addAll(updatedSections);

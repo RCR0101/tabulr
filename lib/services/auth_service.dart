@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/painting.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -244,6 +245,19 @@ class AuthService {
   String? get userEmail => currentUser?.email;
   String? get userName => currentUser?.displayName;
   String? get userPhotoUrl => currentUser?.photoURL;
+
+  NetworkImage? _cachedPhotoImage;
+  String? _cachedPhotoUrl;
+
+  NetworkImage? get userPhotoImage {
+    final url = userPhotoUrl;
+    if (url == null) return null;
+    if (_cachedPhotoUrl != url) {
+      _cachedPhotoUrl = url;
+      _cachedPhotoImage = NetworkImage(url);
+    }
+    return _cachedPhotoImage;
+  }
 
   /// Derives the Firestore document ID for the current user from their email.
   /// Format: {username}{campusLetter} e.g. "f20220123H" for Hyderabad.

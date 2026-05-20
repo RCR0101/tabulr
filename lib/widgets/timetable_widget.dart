@@ -5,6 +5,8 @@ import '../models/export_options.dart';
 import '../services/responsive_service.dart';
 import '../screens/quick_replace_screen.dart';
 import '../utils/datetime_utils.dart';
+import '../utils/design_constants.dart';
+import '../utils/page_transitions.dart';
 
 enum TimetableSize {
   compact,
@@ -158,8 +160,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => QuickReplaceScreen(
+      FadeSlidePageRoute(
+        page: QuickReplaceScreen(
           availableCourses: widget.availableCourses!,
           selectedSections: widget.selectedSections!,
           onReplace: widget.onQuickReplace!,
@@ -886,7 +888,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
-                color: Color(0xFFF0F6FC),
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -902,7 +904,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: _isMobile ? 12 : 14,
-                    color: Color(0xFFF0F6FC),
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -911,7 +913,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   TimeSlotInfo.getHourSlotName(hour + 1),
                   style: TextStyle(
                     fontSize: _isMobile ? 9 : 11,
-                    color: Color(0xFFF0F6FC).withValues(alpha: 0.8),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                     fontWeight: FontWeight.w400,
                   ),
                   textAlign: TextAlign.center,
@@ -934,7 +936,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
-                color: Color(0xFFF0F6FC),
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -947,7 +949,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
-                color: Color(0xFFF0F6FC),
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -960,7 +962,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
-                color: Color(0xFFF0F6FC),
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -973,7 +975,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
-                color: Color(0xFFF0F6FC),
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -986,7 +988,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
-                color: Color(0xFFF0F6FC),
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -999,7 +1001,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
-                color: Color(0xFFF0F6FC),
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -1012,7 +1014,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
-                color: Color(0xFFF0F6FC),
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -1051,7 +1053,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF30363D)),
+                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1097,7 +1099,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF30363D)),
+                  border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
                 ),
               ),
             );
@@ -1131,7 +1133,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF30363D)),
+                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
               ),
               child: Center(
                 child: Text(
@@ -1163,7 +1165,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF30363D)),
+                  border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
                 ),
               ),
             );
@@ -1209,33 +1211,33 @@ class _TimetableWidgetState extends State<TimetableWidget> {
           height: _getCellHeight(widget.size),
           margin: EdgeInsets.all(_getCellMargin(widget.size)),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                _getCourseColor(slot.courseCode).withValues(alpha: 0.9),
-                _getCourseColor(slot.courseCode).withValues(alpha: 0.7),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: _getCourseColor(slot.courseCode).withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(_getBorderRadius(widget.size)),
-            boxShadow: [
-              BoxShadow(
-                color: _getCourseColor(slot.courseCode).withValues(alpha: 0.3),
-                blurRadius: 6,
-                offset: const Offset(0, 3),
-              ),
-            ],
             border: Border.all(
-              color: _getCourseColor(slot.courseCode).withValues(alpha: 0.5),
-              width: 1,
+              color: _getCourseColor(slot.courseCode).withValues(alpha: 0.2),
             ),
           ),
           child: Stack(
             children: [
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 4,
+                  decoration: BoxDecoration(
+                    color: _getCourseColor(slot.courseCode),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(_getBorderRadius(widget.size)),
+                      bottomLeft: Radius.circular(_getBorderRadius(widget.size)),
+                    ),
+                  ),
+                ),
+              ),
               Padding(
                 padding: EdgeInsets.all(_getCellPadding(widget.size)),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,  // Changed from spaceEvenly for better distribution
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.max,
                   children: [
@@ -1247,7 +1249,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: _getCourseCodeFontSize(widget.size),
-                            color: Theme.of(context).colorScheme.onPrimary,
+                            color: _getCourseColor(slot.courseCode),
                             height: 1.1,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -1261,7 +1263,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                           slot.courseTitle,
                           style: TextStyle(
                             fontSize: _getCourseTitleFontSize(widget.size),
-                            color: const Color(0xFFE6EDF3),
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontWeight: FontWeight.w400,
                             height: _getLineHeight(widget.size),  // Dynamic line height for better text fitting
                             letterSpacing: widget.size == TimetableSize.compact ? 0.05 : 0.1,  // Reduced letter spacing for compact mode
@@ -1277,7 +1279,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                           slot.sectionId,
                           style: TextStyle(
                             fontSize: _getSectionIdFontSize(widget.size),
-                            color: const Color(0xFFE6EDF3),
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontWeight: FontWeight.w500,
                             height: 1.1,
                           ),
@@ -1292,7 +1294,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                           slot.instructor,
                           style: TextStyle(
                             fontSize: _getInstructorFontSize(widget.size),
-                            color: const Color(0xFFE6EDF3).withValues(alpha: 0.88),  // Slightly more opaque
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.88),  // Slightly more opaque
                             fontWeight: FontWeight.w400,
                             height: _getLineHeight(widget.size),  // Dynamic line height
                             letterSpacing: widget.size == TimetableSize.compact ? 0.1 : 0.15,  // Reduced letter spacing for compact mode
@@ -1308,7 +1310,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                           slot.room,
                           style: TextStyle(
                             fontSize: _getRoomFontSize(widget.size),
-                            color: const Color(0xFFE6EDF3),
+                            color: Theme.of(context).colorScheme.onSurface,
                             height: 1.1,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -1424,21 +1426,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
   }
 
   Color _getCourseColor(String courseCode) {
-    // Generate consistent colors based on course code
     final hash = courseCode.hashCode;
-    final colors = [
-      const Color(0xFF58A6FF),
-      const Color(0xFF56D364),
-      const Color(0xFFFF922B),
-      const Color(0xFFBD561D),
-      const Color(0xFF39C5CF),
-      const Color(0xFF6F42C1),
-      const Color(0xFFDA3633),
-      const Color(0xFFDB61A2),
-      const Color(0xFF39C5CF),
-      const Color(0xFFD4A72C),
-    ];
-    
+    final colors = AppDesign.timetableColors(context);
     return colors[hash.abs() % colors.length];
   }
 

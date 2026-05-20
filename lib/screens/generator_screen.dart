@@ -119,7 +119,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
-                Icons.auto_awesome,
+                Icons.auto_awesome_mosaic,
                 color: Theme.of(context).colorScheme.primary,
                 size: 24,
               ),

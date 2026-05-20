@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/cgpa_service.dart';
+import '../utils/page_transitions.dart';
+import '../widgets/common/shimmer_loading.dart';
 import '../services/course_catalog_service.dart';
 import '../services/auth_service.dart';
 import '../services/responsive_service.dart';
@@ -15,7 +17,7 @@ import '../models/cgpa_data.dart';
 import '../models/all_course.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
-import '../widgets/app_drawer.dart';
+
 import 'grade_planner_screen.dart';
 import '../utils/design_constants.dart';
 import '../utils/grade_utils.dart' as grade_utils;
@@ -1147,15 +1149,11 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     if (_isLoading) {
       return Scaffold(
         appBar: AppBar(title: const Text('CGPA Calculator')),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const CourseListSkeleton(),
       );
     }
 
     return Scaffold(
-      drawer: AppDrawer(
-        currentScreen: DrawerScreen.cgpaCalculator,
-        authService: _authService,
-      ),
       appBar: AppBar(
         title: const Text('CGPA Calculator'),
         bottom: PreferredSize(
@@ -1262,9 +1260,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
             onPressed: _authService.isAuthenticated
                 ? () => Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => GradePlannerScreen(cgpaData: _cgpaData),
-                      ),
+                      FadeSlidePageRoute(page: GradePlannerScreen(cgpaData: _cgpaData)),
                     )
                 : null,
           ),
@@ -1615,7 +1611,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                         ),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: crossAxisCount,
-                          childAspectRatio: isMobile ? 3.0 : 3.4,
+                          childAspectRatio: isMobile ? 2.8 : 2.8,
                           crossAxisSpacing: isMobile ? 8 : 12,
                           mainAxisSpacing: isMobile ? 8 : 12,
                         ),

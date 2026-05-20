@@ -13,7 +13,7 @@ import '../services/responsive_service.dart';
 import '../services/timetable_service.dart';
 import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
-import '../widgets/app_drawer.dart';
+
 
 class CourseAnnouncementsScreen extends StatefulWidget {
   const CourseAnnouncementsScreen({super.key});
@@ -320,10 +320,6 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
           if (_currentUserRep != null) _buildRepChip(theme),
           const SizedBox(width: 8),
         ],
-      ),
-      drawer: AppDrawer(
-        currentScreen: DrawerScreen.announcements,
-        authService: _authService,
       ),
       floatingActionButton: _selectedTimetable != null
           ? FloatingActionButton(

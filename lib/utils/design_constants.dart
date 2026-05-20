@@ -13,11 +13,23 @@ class AppDesign {
   static final BorderRadius borderRadiusLg = BorderRadius.circular(radiusLg);
 
   // Padding scale
+  static const double spacingXxs = 2.0;
   static const double spacingXs = 4.0;
   static const double spacingSm = 8.0;
   static const double spacingMd = 16.0;
   static const double spacingLg = 24.0;
   static const double spacingXl = 32.0;
+  static const double spacingXxl = 48.0;
+
+  // Animation durations
+  static const Duration animDurationFast = Duration(milliseconds: 150);
+  static const Duration animDurationNormal = Duration(milliseconds: 300);
+  static const Duration animDurationSlow = Duration(milliseconds: 500);
+  static const Curve animCurve = Curves.easeInOutCubic;
+
+  // Sidebar dimensions
+  static const double sidebarWidth = 260.0;
+  static const double sidebarCollapsedWidth = 72.0;
 
   // Opacity levels for text/icon emphasis
   static const double opacityHigh = 0.87;
@@ -124,5 +136,41 @@ class AppDesign {
       actions: actions,
       bottom: bottom,
     );
+  }
+
+  // ── Theme-aware timetable color palette ───────────────────────────
+  static List<Color> timetableColors(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+    if (brightness == Brightness.dark) {
+      return [
+        const Color(0xFF58A6FF),
+        const Color(0xFF3FB950),
+        const Color(0xFFD29922),
+        const Color(0xFFF778BA),
+        const Color(0xFFBC8CFF),
+        const Color(0xFF39D2C0),
+        const Color(0xFFFF7B72),
+        const Color(0xFF79C0FF),
+        const Color(0xFFFFA657),
+        const Color(0xFF7EE787),
+        scheme.tertiary,
+        scheme.secondary,
+      ];
+    }
+    return [
+      const Color(0xFF0969DA),
+      const Color(0xFF1A7F37),
+      const Color(0xFF9A6700),
+      const Color(0xFFBF3989),
+      const Color(0xFF8250DF),
+      const Color(0xFF1B7C83),
+      const Color(0xFFCF222E),
+      const Color(0xFF0550AE),
+      const Color(0xFFBC4C00),
+      const Color(0xFF116329),
+      scheme.tertiary,
+      scheme.secondary,
+    ];
   }
 }

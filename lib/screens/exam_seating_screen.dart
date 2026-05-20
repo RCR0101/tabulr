@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import '../services/exam_seating_service.dart';
+import '../widgets/common/shimmer_loading.dart';
 import '../services/timetable_service.dart';
 import '../services/responsive_service.dart';
 import '../services/toast_service.dart';
 import '../models/timetable.dart';
 import '../utils/design_constants.dart';
-import '../widgets/app_drawer.dart';
+
 
 class ExamSeatingScreen extends StatefulWidget {
   const ExamSeatingScreen({super.key});
@@ -214,12 +215,11 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
         appBar: AppBar(
           title: const Text('Exam Seating'),
         ),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const CourseListSkeleton(),
       );
     }
 
     return Scaffold(
-      drawer: const AppDrawer(currentScreen: DrawerScreen.examSeating),
       appBar: AppBar(
         title: const Text('Exam Seating'),
         actions: [

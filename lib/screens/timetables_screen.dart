@@ -3,6 +3,10 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:html' as html;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/timetable.dart';
+import '../utils/page_transitions.dart';
+import '../widgets/common/shimmer_loading.dart';
+import '../widgets/common/empty_state.dart';
+import '../widgets/disclaimer_widget.dart';
 import '../services/timetable_service.dart';
 import '../services/auth_service.dart';
 import '../services/toast_service.dart';
@@ -14,8 +18,8 @@ import '../models/user_settings.dart';
 import '../utils/design_constants.dart';
 import '../widgets/theme_selector_widget.dart';
 import '../widgets/campus_selector_widget.dart';
-import '../widgets/disclaimer_widget.dart';
-import '../widgets/app_drawer.dart';
+
+
 import '../widgets/error_dialog.dart';
 import 'home_screen.dart';
 import 'course_guide_screen.dart';
@@ -295,9 +299,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   void _openTimetable(Timetable timetable) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => TimetableEditorScreen(timetableId: timetable.id),
-      ),
+      FadeSlidePageRoute(page: TimetableEditorScreen(timetableId: timetable.id)),
     ).then((result) {
       // Only refresh if there were changes (optional optimization)
       // For now, we'll keep the refresh but consider reducing frequency
@@ -808,14 +810,10 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: TimetableListSkeleton());
     }
 
     return Scaffold(
-      drawer: AppDrawer(
-        currentScreen: DrawerScreen.timetables,
-        authService: _authService,
-      ),
       appBar: AppBar(
         title:
             ResponsiveService.isMobile(context)
@@ -908,33 +906,25 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                 case 'course_guide':
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const CourseGuideScreen(),
-                    ),
+                    FadeSlidePageRoute(page: const CourseGuideScreen()),
                   );
                   break;
                 case 'prerequisites':
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const PrerequisitesScreen(),
-                    ),
+                    FadeSlidePageRoute(page: const PrerequisitesScreen()),
                   );
                   break;
                 case 'discipline_electives':
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const DisciplineElectivesScreen(),
-                    ),
+                    FadeSlidePageRoute(page: const DisciplineElectivesScreen()),
                   );
                   break;
                 case 'humanities_electives':
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const HumanitiesElectivesScreen(),
-                    ),
+                    FadeSlidePageRoute(page: const HumanitiesElectivesScreen()),
                   );
                   break;
               }
@@ -1079,7 +1069,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                       radius: 16,
                       backgroundImage:
                           _authService.userPhotoUrl != null
-                              ? NetworkImage(_authService.userPhotoUrl!)
+                              ? _authService.userPhotoImage
                               : null,
                       child:
                           _authService.userPhotoUrl == null
@@ -1405,7 +1395,6 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: const BottomDisclaimerWidget(),
       floatingActionButton: ResponsiveService.buildResponsive(
         context,
         mobile: Column(
@@ -1416,9 +1405,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const TimetableComparisonScreen(),
-                  ),
+                  FadeSlidePageRoute(page: const TimetableComparisonScreen()),
                 );
               },
               tooltip: 'Compare Timetables',
@@ -1446,9 +1433,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const TimetableComparisonScreen(),
-                  ),
+                  FadeSlidePageRoute(page: const TimetableComparisonScreen()),
                 );
               },
               icon: const Icon(Icons.compare),
@@ -1557,11 +1542,20 @@ class _TimetableEditorScreenState extends State<TimetableEditorScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(body: TimetableListSkeleton());
     }
 
     if (_timetable == null) {
-      return const Scaffold(body: Center(child: Text('Timetable not found')));
+      return Scaffold(
+        body: EmptyStateWidget(
+          icon: Icons.search_off,
+          title: 'Timetable not found',
+          subtitle: 'It may have been deleted or moved.',
+          actionLabel: 'Go Back',
+          actionIcon: Icons.arrow_back,
+          onAction: () => Navigator.of(context).pop(),
+        ),
+      );
     }
 
     return PopScope(

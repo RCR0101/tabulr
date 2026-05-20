@@ -3,10 +3,11 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/professor_service.dart';
+import '../widgets/common/shimmer_loading.dart';
 import '../services/responsive_service.dart';
 import '../services/auth_service.dart';
 import '../utils/design_constants.dart';
-import '../widgets/app_drawer.dart';
+
 
 class ProfessorsScreen extends StatefulWidget {
   const ProfessorsScreen({super.key});
@@ -52,22 +53,8 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: AppDrawer(
-        currentScreen: DrawerScreen.profChambers,
-        authService: _authService,
-      ),
       appBar: AppBar(
-        title: Column(
-          children: [
-            const Text('Prof Chambers'),
-            Text(
-              'Credits: Pratyush Nair',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontSize: 10,
-              ),
-            ),
-          ],
-        ),
+        title: const Text('Prof Chambers'),
         actions: [
           if (kIsWeb)
             IconButton(
@@ -176,19 +163,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
   }
 
   Widget _buildLoadingView() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircularProgressIndicator(),
-          SizedBox(height: 16),
-          Text(
-            'Loading professors...',
-            style: TextStyle(fontSize: 16),
-          ),
-        ],
-      ),
-    );
+    return const CourseListSkeleton();
   }
 
   Widget _buildErrorView() {
@@ -588,7 +563,9 @@ class _ProfessorDetailDialog extends StatelessWidget {
 
     return DefaultTabController(
       length: hasContact ? 2 : 1,
-      child: AlertDialog(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
         contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
@@ -658,7 +635,7 @@ class _ProfessorDetailDialog extends StatelessWidget {
           ],
         ),
         content: SizedBox(
-          width: double.maxFinite,
+          width: 440,
           height: 300,
           child: hasContact
               ? TabBarView(
@@ -675,6 +652,7 @@ class _ProfessorDetailDialog extends StatelessWidget {
             child: const Text('Close'),
           ),
         ],
+      ),
       ),
     );
   }
