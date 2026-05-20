@@ -145,31 +145,23 @@ class _AppSidebarState extends State<AppSidebar> {
       ),
       child: widget.collapsed
           ? Center(
-              child: Container(
-                padding: const EdgeInsets.all(AppDesign.spacingSm),
-                decoration: BoxDecoration(
-                  color: scheme.primary.withValues(alpha: 0.1),
-                  borderRadius: AppDesign.borderRadiusSm,
-                ),
-                child: Icon(
-                  Icons.school,
-                  size: 22,
-                  color: scheme.primary,
+              child: ClipRRect(
+                borderRadius: AppDesign.borderRadiusSm,
+                child: Image.asset(
+                  'images/logo_nobg.png',
+                  width: 36,
+                  height: 36,
                 ),
               ),
             )
           : Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(AppDesign.spacingSm),
-                  decoration: BoxDecoration(
-                    color: scheme.primary.withValues(alpha: 0.1),
-                    borderRadius: AppDesign.borderRadiusSm,
-                  ),
-                  child: Icon(
-                    Icons.school,
-                    size: 22,
-                    color: scheme.primary,
+                ClipRRect(
+                  borderRadius: AppDesign.borderRadiusSm,
+                  child: Image.asset(
+                    'images/logo_nobg.png',
+                    width: 36,
+                    height: 36,
                   ),
                 ),
                 const SizedBox(width: AppDesign.spacingSm + 4),

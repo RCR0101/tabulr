@@ -44,13 +44,9 @@ void main() async {
   final userSettingsService = UserSettingsService();
   await userSettingsService.initializeSettings();
   
-  // Initialize Theme Service with settings from UserSettingsService
+  // Initialize Theme Service (reads its own persisted state)
   final themeService = theme_service.ThemeService();
   await themeService.initialize();
-  
-  // Sync ThemeService with UserSettingsService settings
-  await themeService.setTheme(userSettingsService.themeVariant);
-  await themeService.setThemeMode(_convertToFlutterThemeMode(userSettingsService.themeMode));
   
   // Initialize Preferences Service  
   await PreferencesService().initialize();
@@ -191,13 +187,3 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 }
 
-ThemeMode _convertToFlutterThemeMode(user_settings.ThemeMode userThemeMode) {
-  switch (userThemeMode) {
-    case user_settings.ThemeMode.light:
-      return ThemeMode.light;
-    case user_settings.ThemeMode.dark:
-      return ThemeMode.dark;
-    case user_settings.ThemeMode.system:
-      return ThemeMode.system;
-  }
-}

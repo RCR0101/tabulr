@@ -824,16 +824,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Color _courseColor(String code) {
     final hash = code.hashCode;
     const colors = [
-      Colors.blue,
-      Colors.teal,
-      Colors.indigo,
-      Colors.deepPurple,
-      Colors.cyan,
-      Colors.green,
-      Colors.orange,
-      Colors.pink,
-      Colors.brown,
-      Colors.blueGrey,
+      Color(0xFF4A9EFF),
+      Color(0xFF26C6AA),
+      Color(0xFF7C6CFF),
+      Color(0xFFB668E8),
+      Color(0xFF22D3EE),
+      Color(0xFF34D399),
+      Color(0xFFFB923C),
+      Color(0xFFF472B6),
+      Color(0xFFE8735A),
+      Color(0xFF60A5FA),
     ];
     return colors[hash.abs() % colors.length];
   }
@@ -1595,7 +1595,7 @@ class _SlotBlock extends StatelessWidget {
         opacity: isScrapped ? 0.35 : 1.0,
         child: Container(
           decoration: BoxDecoration(
-            color: item.color.withValues(alpha: isScrapped ? 0.05 : 0.12),
+            color: item.color.withValues(alpha: isScrapped ? 0.06 : 0.18),
             borderRadius: AppDesign.borderRadiusSm,
           ),
           child: Stack(
@@ -1657,7 +1657,7 @@ class _SlotBlock extends StatelessWidget {
                   style: theme.textTheme.labelSmall?.copyWith(
                     fontSize: tall ? 10 : 9,
                     color: theme.colorScheme.onSurface
-                        .withValues(alpha: AppDesign.opacityMedium),
+                        .withValues(alpha: 0.7),
                   ),
                   maxLines: tall ? 2 : 1,
                   overflow: TextOverflow.ellipsis,
@@ -1670,7 +1670,7 @@ class _SlotBlock extends StatelessWidget {
                   style: theme.textTheme.labelSmall?.copyWith(
                     fontSize: 9,
                     color: theme.colorScheme.onSurface
-                        .withValues(alpha: AppDesign.opacityLow),
+                        .withValues(alpha: 0.5),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
