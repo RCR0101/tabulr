@@ -1,13 +1,17 @@
 {
     "name": "Tabulr - Timetable Creator",
     "short_name": "Tabulr",
+    "description": "Create and manage your personalized timetables with ease. A powerful, intuitive timetable creator for BITS Pilani students.",
     "start_url": ".",
+    "scope": ".",
+    "id": "/",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "Create and manage your personalized timetables with ease. A powerful, intuitive timetable creator for students and professionals.",
-    "orientation": "portrait-primary",
+    "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+    "background_color": "#0D1117",
+    "theme_color": "#58A6FF",
+    "orientation": "any",
     "prefer_related_applications": false,
+    "categories": ["education", "productivity"],
     "icons": [
         {
             "src": "icons/Icon-192.png",
@@ -30,6 +34,20 @@
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "maskable"
+        }
+    ],
+    "screenshots": [],
+    "shortcuts": [
+        {
+            "name": "Create Timetable",
+            "short_name": "New TT",
+            "url": ".",
+            "icons": [
+                {
+                    "src": "icons/Icon-192.png",
+                    "sizes": "192x192"
+                }
+            ]
         }
     ]
 }
