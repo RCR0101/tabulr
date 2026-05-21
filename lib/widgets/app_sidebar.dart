@@ -91,12 +91,13 @@ class _AppSidebarState extends State<AppSidebar> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final items = _buildItems();
+    final collapsed = widget.collapsed;
 
     return AnimatedContainer(
       duration: AppDesign.animDurationNormal,
       curve: AppDesign.animCurve,
       clipBehavior: Clip.hardEdge,
-      width: widget.collapsed
+      width: collapsed
           ? AppDesign.sidebarCollapsedWidth
           : AppDesign.sidebarWidth,
       decoration: BoxDecoration(
@@ -110,79 +111,64 @@ class _AppSidebarState extends State<AppSidebar> {
       child: Material(
         color: Colors.transparent,
         child: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            _buildHeader(context, scheme),
-
-            // Menu items
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(
-                  vertical: AppDesign.spacingSm,
-                  horizontal: AppDesign.spacingSm,
+          child: Column(
+            children: [
+              _buildHeader(context, scheme, collapsed),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AppDesign.spacingSm,
+                    horizontal: AppDesign.spacingSm,
+                  ),
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    final isSelected = item.screen == widget.currentScreen;
+                    final isHovered = _hoveredIndex == index;
+                    return _buildItem(
+                      context, scheme, item, isSelected, isHovered, index, collapsed,
+                    );
+                  },
                 ),
-                itemCount: items.length,
-                itemBuilder: (context, index) {
-                  final item = items[index];
-                  final isSelected = item.screen == widget.currentScreen;
-                  final isHovered = _hoveredIndex == index;
-                  return _buildItem(
-                    context, scheme, item, isSelected, isHovered, index,
-                  );
-                },
               ),
-            ),
-
-            // Footer — collapse toggle
-            _buildFooter(context, scheme),
-          ],
+              _buildFooter(context, scheme, collapsed),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, ColorScheme scheme) {
+  Widget _buildHeader(BuildContext context, ColorScheme scheme, bool collapsed) {
     return Padding(
       padding: EdgeInsets.symmetric(
-        horizontal: widget.collapsed ? AppDesign.spacingSm : AppDesign.spacingMd,
+        horizontal: collapsed ? AppDesign.spacingSm : AppDesign.spacingMd,
         vertical: AppDesign.spacingMd,
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth <= 60) {
-            return Center(
-              child: ClipRRect(
-                borderRadius: AppDesign.borderRadiusSm,
-                child: Image.asset(
-                  'images/logo_nobg.png',
-                  width: 36,
-                  height: 36,
-                ),
-              ),
-            );
-          }
-          return Row(
-            children: [
-              ClipRRect(
-                borderRadius: AppDesign.borderRadiusSm,
-                child: Image.asset(
-                  'images/logo_nobg.png',
-                  width: 36,
-                  height: 36,
-                ),
-              ),
-              const SizedBox(width: AppDesign.spacingSm + 4),
-              Text(
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: AppDesign.borderRadiusSm,
+            child: Image.asset(
+              'images/logo_nobg.png',
+              width: 36,
+              height: 36,
+            ),
+          ),
+          if (!collapsed) ...[
+            const SizedBox(width: AppDesign.spacingSm + 4),
+            AnimatedOpacity(
+              opacity: collapsed ? 0.0 : 1.0,
+              duration: AppDesign.animDurationFast,
+              child: Text(
                 'Tabulr',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
               ),
-            ],
-          );
-        },
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -194,74 +180,66 @@ class _AppSidebarState extends State<AppSidebar> {
     bool isSelected,
     bool isHovered,
     int index,
+    bool collapsed,
   ) {
+    final icon = Icon(
+      item.icon,
+      size: collapsed ? 22 : 20,
+      color: isSelected
+          ? scheme.primary
+          : scheme.onSurface.withValues(alpha: 0.7),
+    );
+
+    final content = collapsed
+        ? Center(child: icon)
+        : Row(
+            children: [
+              icon,
+              const SizedBox(width: AppDesign.spacingSm + 4),
+              Expanded(
+                child: Text(
+                  item.label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    color: isSelected ? scheme.primary : scheme.onSurface,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+            ],
+          );
+
     return Padding(
       padding: const EdgeInsets.only(bottom: AppDesign.spacingXxs),
       child: MouseRegion(
         onEnter: (_) => setState(() => _hoveredIndex = index),
         onExit: (_) => setState(() => _hoveredIndex = null),
-        child: GestureDetector(
-          onTap: () => widget.onScreenSelected(item.screen),
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: widget.collapsed
-                  ? AppDesign.spacingSm
-                  : AppDesign.spacingSm + 4,
-              vertical: AppDesign.spacingSm + 2,
-            ),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? scheme.primary.withValues(alpha: 0.12)
-                  : isHovered
-                      ? scheme.onSurface.withValues(alpha: 0.06)
-                      : Colors.transparent,
-              borderRadius: AppDesign.borderRadiusSm,
-            ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final showLabel = constraints.maxWidth > 60;
-                if (!showLabel) {
-                  return Tooltip(
-                    message: item.label,
-                    preferBelow: false,
-                    child: Center(
-                      child: Icon(
-                        item.icon,
-                        size: 22,
-                        color: isSelected
-                            ? scheme.primary
-                            : scheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  );
-                }
-                return Row(
-                  children: [
-                    Icon(
-                      item.icon,
-                      size: 20,
-                      color: isSelected
-                          ? scheme.primary
-                          : scheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                    const SizedBox(width: AppDesign.spacingSm + 4),
-                    Expanded(
-                      child: Text(
-                        item.label,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight:
-                              isSelected ? FontWeight.w600 : FontWeight.w500,
-                          color: isSelected
-                              ? scheme.primary
-                              : scheme.onSurface,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                );
-              },
+        child: Tooltip(
+          message: collapsed ? item.label : '',
+          preferBelow: false,
+          waitDuration: const Duration(milliseconds: 400),
+          child: GestureDetector(
+            onTap: () => widget.onScreenSelected(item.screen),
+            child: AnimatedContainer(
+              duration: AppDesign.animDurationFast,
+              curve: AppDesign.animCurve,
+              padding: EdgeInsets.symmetric(
+                horizontal: collapsed
+                    ? AppDesign.spacingSm
+                    : AppDesign.spacingSm + 4,
+                vertical: AppDesign.spacingSm + 2,
+              ),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? scheme.primary.withValues(alpha: 0.12)
+                    : isHovered
+                        ? scheme.onSurface.withValues(alpha: 0.06)
+                        : Colors.transparent,
+                borderRadius: AppDesign.borderRadiusSm,
+              ),
+              child: content,
             ),
           ),
         ),
@@ -269,7 +247,7 @@ class _AppSidebarState extends State<AppSidebar> {
     );
   }
 
-  Widget _buildFooter(BuildContext context, ColorScheme scheme) {
+  Widget _buildFooter(BuildContext context, ColorScheme scheme, bool collapsed) {
     return Container(
       padding: const EdgeInsets.all(AppDesign.spacingSm),
       decoration: BoxDecoration(
@@ -279,44 +257,43 @@ class _AppSidebarState extends State<AppSidebar> {
           ),
         ),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (constraints.maxWidth <= 60) {
-            return IconButton(
-              onPressed: widget.onToggleCollapse,
-              icon: const Icon(Icons.chevron_right, size: 20),
-              tooltip: 'Expand sidebar',
-            );
-          }
-          return Row(
-            children: [
-              const SizedBox(width: AppDesign.spacingSm),
-              Icon(
-                Icons.info_outline,
-                size: 14,
-                color: scheme.onSurface.withValues(alpha: 0.4),
+      child: collapsed
+          ? Center(
+              child: IconButton(
+                onPressed: widget.onToggleCollapse,
+                icon: const Icon(Icons.chevron_right, size: 20),
+                tooltip: 'Expand sidebar',
               ),
-              const SizedBox(width: AppDesign.spacingSm),
-              Expanded(
-                child: Text(
-                  'Made with ❤️ for students',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: scheme.onSurface.withValues(alpha: 0.4),
+            )
+          : Row(
+              children: [
+                const SizedBox(width: AppDesign.spacingSm),
+                Icon(
+                  Icons.info_outline,
+                  size: 14,
+                  color: scheme.onSurface.withValues(alpha: 0.4),
+                ),
+                const SizedBox(width: AppDesign.spacingSm),
+                Expanded(
+                  child: Text(
+                    'Made with ❤️ for students',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: scheme.onSurface.withValues(alpha: 0.4),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
                   ),
                 ),
-              ),
-              IconButton(
-                onPressed: widget.onToggleCollapse,
-                icon: const Icon(Icons.chevron_left, size: 20),
-                tooltip: 'Collapse sidebar',
-                iconSize: 20,
-                visualDensity: VisualDensity.compact,
-              ),
-            ],
-          );
-        },
-      ),
+                IconButton(
+                  onPressed: widget.onToggleCollapse,
+                  icon: const Icon(Icons.chevron_left, size: 20),
+                  tooltip: 'Collapse sidebar',
+                  iconSize: 20,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ),
     );
   }
 }
