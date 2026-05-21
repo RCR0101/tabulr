@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart';
 import 'dart:html' as html;
 import '../models/course.dart';
 import '../utils/page_transitions.dart';
@@ -15,9 +16,11 @@ import '../services/toast_service.dart';
 import '../services/auto_load_cdc_service.dart';
 import '../services/campus_service.dart';
 import '../services/page_leave_warning_service.dart';
+import '../services/undo_redo_service.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/timetable_widget.dart';
 import '../widgets/export_options_dialog.dart';
+import '../widgets/share_timetable_dialog.dart';
 import '../screens/generator_screen.dart';
 import '../screens/add_swap_screen.dart';
 
@@ -42,6 +45,61 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   // -- Shared filteredCourses state --
   List<Course> get filteredCourses;
   set filteredCourses(List<Course> value);
+
+  // -- Undo/Redo --
+  final UndoRedoService undoRedoService = UndoRedoService();
+
+  void _pushUndo(String description) {
+    final tt = currentTimetable;
+    if (tt != null) undoRedoService.pushState(tt, description);
+  }
+
+  void _applySnapshot(TimetableSnapshot snapshot) {
+    final tt = currentTimetable;
+    if (tt == null) return;
+    tt.selectedSections.clear();
+    tt.selectedSections.addAll(snapshot.sections);
+    setState(() {
+      hasUnsavedChanges = true;
+    });
+    onUnsavedChangesChanged(true);
+    pageLeaveWarning.enableWarning(true);
+  }
+
+  void undo() {
+    final tt = currentTimetable;
+    if (tt == null) return;
+    final snapshot = undoRedoService.undo(tt);
+    if (snapshot != null) _applySnapshot(snapshot);
+  }
+
+  void redo() {
+    final tt = currentTimetable;
+    if (tt == null) return;
+    final snapshot = undoRedoService.redo(tt);
+    if (snapshot != null) _applySnapshot(snapshot);
+  }
+
+  Widget wrapWithKeyboardShortcuts(Widget child) {
+    return CallbackShortcuts(
+      bindings: <ShortcutActivator, VoidCallback>{
+        const SingleActivator(LogicalKeyboardKey.keyZ, control: true): undo,
+        const SingleActivator(LogicalKeyboardKey.keyZ, meta: true): undo,
+        const SingleActivator(LogicalKeyboardKey.keyZ, control: true, shift: true): redo,
+        const SingleActivator(LogicalKeyboardKey.keyZ, meta: true, shift: true): redo,
+        const SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
+          if (hasUnsavedChanges && !isSaving) saveTimetable();
+        },
+        const SingleActivator(LogicalKeyboardKey.keyS, meta: true): () {
+          if (hasUnsavedChanges && !isSaving) saveTimetable();
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: child,
+      ),
+    );
+  }
 
   // -----------------------------------------------------------------------
   // Shared methods
@@ -120,6 +178,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     if (tt == null) return;
 
     try {
+      _pushUndo('Add $courseCode $sectionId');
       final success = timetableService.addSectionWithoutSaving(
         courseCode,
         sectionId,
@@ -144,6 +203,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     if (tt == null) return;
 
     try {
+      _pushUndo('Remove $courseCode $sectionId');
       timetableService.removeSectionWithoutSaving(
         courseCode,
         sectionId,
@@ -163,6 +223,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     if (tt == null) return;
 
     try {
+      _pushUndo('Replace ${selectedCourse.courseCode}');
       // Remove all sections of the selected course
       final sectionsToRemove = tt.selectedSections
           .where((section) => section.courseCode == selectedCourse.courseCode)
@@ -257,6 +318,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         if (!mounted) return;
 
         if (selectedSections.isNotEmpty) {
+          _pushUndo('Auto load CDCs');
           for (final selectedSection in selectedSections) {
             timetableService.addSectionWithoutSaving(
               selectedSection.courseCode,
@@ -317,6 +379,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
 
     if (confirmed == true) {
       try {
+        _pushUndo('Clear timetable');
         tt.selectedSections.clear();
         tt.clashWarnings.clear();
         setState(() {
@@ -359,6 +422,16 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       });
       showErrorDialog('Error saving timetable: $e');
     }
+  }
+
+  Future<void> shareTimetable() async {
+    final tt = currentTimetable;
+    if (tt == null) return;
+    if (tt.selectedSections.isEmpty) {
+      ToastService.showWarning('Add some courses before sharing');
+      return;
+    }
+    await ShareTimetableDialog.show(context, tt);
   }
 
   void showErrorDialog(String message) {
@@ -527,6 +600,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
 
     if (result != null && tt != null) {
       try {
+        _pushUndo('Apply generated timetable');
         // Clear current selections
         tt.selectedSections.clear();
 

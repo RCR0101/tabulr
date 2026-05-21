@@ -10,6 +10,7 @@ import '../screens/exam_seating_screen.dart';
 import '../screens/acad_drives_screen.dart';
 import '../screens/professors_screen.dart';
 import '../screens/course_announcements_screen.dart';
+import '../screens/free_slot_finder_screen.dart';
 import 'app_drawer.dart';
 import 'app_sidebar.dart';
 
@@ -39,6 +40,7 @@ class _AppShellState extends State<AppShell> {
     return switch (_currentScreen) {
       DrawerScreen.timetables => const TimetablesScreen(),
       DrawerScreen.calendar => const CalendarScreen(),
+      DrawerScreen.freeSlotFinder => const FreeSlotFinderScreen(),
       DrawerScreen.cgpaCalculator => const CGPACalculatorScreen(),
       DrawerScreen.examSeating => const ExamSeatingScreen(),
       DrawerScreen.acadDrives => const AcadDrivesScreen(),
@@ -108,6 +110,7 @@ class _MobileShell extends StatelessWidget {
   List<DrawerScreen> _overflowItems() {
     final auth = AuthService();
     final items = <DrawerScreen>[];
+    if (auth.isAuthenticated) items.add(DrawerScreen.freeSlotFinder);
     if (auth.isAuthenticated) items.add(DrawerScreen.cgpaCalculator);
     if (auth.isAuthenticated) items.add(DrawerScreen.acadDrives);
     if (auth.isAuthenticated) items.add(DrawerScreen.profChambers);
@@ -167,6 +170,7 @@ class _MobileShell extends StatelessWidget {
   static IconData _iconFor(DrawerScreen screen) => switch (screen) {
         DrawerScreen.timetables => Icons.schedule,
         DrawerScreen.calendar => Icons.calendar_month,
+        DrawerScreen.freeSlotFinder => Icons.group,
         DrawerScreen.cgpaCalculator => Icons.calculate,
         DrawerScreen.examSeating => Icons.event_seat,
         DrawerScreen.acadDrives => Icons.folder_shared,
@@ -177,6 +181,7 @@ class _MobileShell extends StatelessWidget {
   static String _labelFor(DrawerScreen screen) => switch (screen) {
         DrawerScreen.timetables => 'Timetables',
         DrawerScreen.calendar => 'Calendar',
+        DrawerScreen.freeSlotFinder => 'Free Slots',
         DrawerScreen.cgpaCalculator => 'CGPA',
         DrawerScreen.examSeating => 'Exam Seating',
         DrawerScreen.acadDrives => 'Acad Drives',

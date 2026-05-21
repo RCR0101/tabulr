@@ -21,6 +21,8 @@ import '../widgets/campus_selector_widget.dart';
 
 
 import '../widgets/error_dialog.dart';
+import '../widgets/share_timetable_dialog.dart';
+import '../services/timetable_sharing_service.dart';
 import 'home_screen.dart';
 import 'course_guide_screen.dart';
 import 'timetable_comparison_screen.dart';
@@ -103,6 +105,31 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
       } catch (e) {
         _showErrorDialog('Error creating timetable: $e');
       }
+    }
+  }
+
+  Future<void> _importFromShareCode() async {
+    final result = await ImportTimetableDialog.show(context);
+    if (result == null || !mounted) return;
+    try {
+      final newTimetable = await _timetableService.createNewTimetable(result.name);
+      for (final section in result.sections) {
+        _timetableService.addSectionWithoutSaving(
+          section.courseCode,
+          section.sectionId,
+          newTimetable,
+        );
+      }
+      await _timetableService.saveTimetable(newTimetable);
+      setState(() {
+        _timetables.add(newTimetable);
+      });
+      _applySorting();
+      if (mounted) {
+        ToastService.showSuccess('Imported "${result.name}" from ${result.ownerName}');
+      }
+    } catch (e) {
+      if (mounted) _showErrorDialog('Error importing timetable: $e');
     }
   }
 
@@ -1255,6 +1282,15 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             FloatingActionButton(
+              onPressed: _importFromShareCode,
+              tooltip: 'Import from Code',
+              backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
+              foregroundColor: Theme.of(context).colorScheme.onTertiaryContainer,
+              heroTag: "import_code",
+              child: const Icon(Icons.download),
+            ),
+            SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 8)),
+            FloatingActionButton(
               onPressed: () {
                 Navigator.push(
                   context,
@@ -1282,6 +1318,15 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
         desktop: Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
+            FloatingActionButton.extended(
+              onPressed: _importFromShareCode,
+              icon: const Icon(Icons.download),
+              label: const Text('Import Code'),
+              backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
+              foregroundColor: Theme.of(context).colorScheme.onTertiaryContainer,
+              heroTag: "import_code",
+            ),
+            const SizedBox(width: 12),
             FloatingActionButton.extended(
               onPressed: () {
                 Navigator.push(

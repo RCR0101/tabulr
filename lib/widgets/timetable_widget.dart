@@ -39,6 +39,10 @@ class TimetableWidget extends StatefulWidget {
   final List<Course>? availableCourses;
   final List<SelectedSection>? selectedSections;
   final Function(Course selectedCourse, Course replacementCourse)? onQuickReplace;
+  final VoidCallback? onUndo;
+  final VoidCallback? onRedo;
+  final bool canUndo;
+  final bool canRedo;
 
   const TimetableWidget({
     super.key,
@@ -60,6 +64,10 @@ class TimetableWidget extends StatefulWidget {
     this.availableCourses,
     this.selectedSections,
     this.onQuickReplace,
+    this.onUndo,
+    this.onRedo,
+    this.canUndo = false,
+    this.canRedo = false,
   });
 
   @override
@@ -476,6 +484,25 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                  if (!widget.isForExport && widget.onUndo != null) ...[
+                    const SizedBox(width: 4),
+                    IconButton(
+                      onPressed: widget.canUndo ? widget.onUndo : null,
+                      icon: const Icon(Icons.undo, size: 16),
+                      tooltip: 'Undo',
+                      visualDensity: VisualDensity.compact,
+                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                      padding: EdgeInsets.zero,
+                    ),
+                    IconButton(
+                      onPressed: widget.canRedo ? widget.onRedo : null,
+                      icon: const Icon(Icons.redo, size: 16),
+                      tooltip: 'Redo',
+                      visualDensity: VisualDensity.compact,
+                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
                   const Spacer(),
                   // Layout toggle button
                   IconButton(
@@ -575,6 +602,27 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              if (!widget.isForExport && widget.onUndo != null) ...[
+                const SizedBox(width: 12),
+                IconButton(
+                  onPressed: widget.canUndo ? widget.onUndo : null,
+                  icon: Icon(Icons.undo, size: ResponsiveService.getAdaptiveIconSize(context, 18)),
+                  tooltip: 'Undo',
+                  visualDensity: VisualDensity.compact,
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(32, 32),
+                  ),
+                ),
+                IconButton(
+                  onPressed: widget.canRedo ? widget.onRedo : null,
+                  icon: Icon(Icons.redo, size: ResponsiveService.getAdaptiveIconSize(context, 18)),
+                  tooltip: 'Redo',
+                  visualDensity: VisualDensity.compact,
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(32, 32),
+                  ),
+                ),
+              ],
               const SizedBox(width: 16),
               // Layout toggle button
               IconButton(

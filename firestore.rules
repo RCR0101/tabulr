@@ -101,6 +101,16 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Shared timetables
+    match /shared_timetables/{docId} {
+      allow read: if isBitsEmail();
+      allow create: if isBitsEmail()
+        && request.resource.data.ownerId == userDocId();
+      allow delete: if isBitsEmail()
+        && resource.data.ownerId == userDocId();
+      allow update: if false;
+    }
+
     // Admin metadata
     match /admin_metadata/{docId} {
       allow read: if true;

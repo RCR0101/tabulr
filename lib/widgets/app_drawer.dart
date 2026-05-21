@@ -9,11 +9,13 @@ import '../screens/acad_drives_screen.dart';
 import '../screens/professors_screen.dart';
 import '../screens/course_announcements_screen.dart';
 import '../screens/calendar_screen.dart';
+import '../screens/free_slot_finder_screen.dart';
 import '../services/course_announcement_service.dart';
 
 enum DrawerScreen {
   timetables,
   calendar,
+  freeSlotFinder,
   cgpaCalculator,
   examSeating,
   acadDrives,
@@ -298,6 +300,9 @@ class AppDrawer extends StatelessWidget {
         break;
       case DrawerScreen.calendar:
         destination = const CalendarScreen();
+        break;
+      case DrawerScreen.freeSlotFinder:
+        destination = const FreeSlotFinderScreen();
         break;
       case DrawerScreen.cgpaCalculator:
         destination = const CGPACalculatorScreen();

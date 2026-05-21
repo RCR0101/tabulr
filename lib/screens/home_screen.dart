@@ -172,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
 
         final isWideScreen = ResponsiveService.isDesktop(context);
 
-        return Scaffold(
+        return wrapWithKeyboardShortcuts(Scaffold(
           appBar: AppBar(
             title: Row(
               mainAxisSize: MainAxisSize.min,
@@ -274,6 +274,11 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
                         ),
                       ),
                     ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.share),
+                onPressed: shareTimetable,
+                tooltip: 'Share Timetable',
               ),
               const ThemeToggleButton(),
               if (isWideScreen) ...[
@@ -538,7 +543,7 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
                       ),
                     ],
                   ),
-        );
+        ));
       },
     );
   }
@@ -623,6 +628,10 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
                 availableCourses: _timetable!.availableCourses,
                 selectedSections: _timetable!.selectedSections,
                 onQuickReplace: quickReplaceCourse,
+                onUndo: undo,
+                onRedo: redo,
+                canUndo: undoRedoService.canUndo,
+                canRedo: undoRedoService.canRedo,
               ),
             ),
           ),
@@ -811,7 +820,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
           onHorizontalDragUpdate: (_) {
             // Consume horizontal drag gestures to prevent iOS back swipe
           },
-          child: Scaffold(
+          child: wrapWithKeyboardShortcuts(Scaffold(
             appBar: AppBar(
               title: Text(_timetable.name),
               leading: IconButton(
@@ -933,6 +942,11 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
                         ),
                       ),
                     ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.share),
+                onPressed: shareTimetable,
+                tooltip: 'Share Timetable',
               ),
               const ThemeToggleButton(),
               if (isWideScreen) ...[
@@ -1197,7 +1211,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
                       ),
                     ],
                   ),
-        ),
+        )),
       );
       },
     );
@@ -1277,6 +1291,10 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
                 availableCourses: _timetable.availableCourses,
                 selectedSections: _timetable.selectedSections,
                 onQuickReplace: quickReplaceCourse,
+                onUndo: undo,
+                onRedo: redo,
+                canUndo: undoRedoService.canUndo,
+                canRedo: undoRedoService.canRedo,
               ),
             ),
           ),

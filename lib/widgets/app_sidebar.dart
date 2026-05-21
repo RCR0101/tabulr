@@ -41,6 +41,11 @@ class _AppSidebarState extends State<AppSidebar> {
         icon: Icons.calendar_month,
         label: 'Calendar',
       ));
+      items.add(_SidebarItem(
+        screen: DrawerScreen.freeSlotFinder,
+        icon: Icons.group,
+        label: 'Free Slots',
+      ));
     }
 
     if (_auth.isAuthenticated) {

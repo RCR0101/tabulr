@@ -13,6 +13,7 @@ import '../services/auto_load_cdc_service.dart';
 import '../services/toast_service.dart';
 import '../services/course_guide_service.dart';
 import '../services/performance_sheet_parser.dart';
+import '../services/courses_master_service.dart';
 import '../models/cgpa_data.dart';
 import '../models/all_course.dart';
 import '../models/course.dart';
@@ -431,9 +432,13 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
 
         if (!courseExists) {
           print('Adding new course: ${cdcCourse.code}');
+          final masterService = CoursesMasterService();
+          final title = cdcCourse.name.isNotEmpty
+              ? cdcCourse.name
+              : masterService.getTitle(cdcCourse.code);
           final allCourse = AllCourse(
             courseCode: cdcCourse.code,
-            courseTitle: cdcCourse.name,
+            courseTitle: title,
             creditValue: cdcCourse.credits,
             type: 'Normal',
           );
