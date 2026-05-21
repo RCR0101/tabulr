@@ -219,6 +219,34 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     }
   }
 
+  void sectionShuffle(List<SelectedSection> newSections) {
+    final tt = currentTimetable;
+    if (tt == null) return;
+
+    try {
+      _pushUndo('Section shuffle');
+      // Replace all selected sections with the new set
+      for (final section in tt.selectedSections.toList()) {
+        timetableService.removeSectionWithoutSaving(
+          section.courseCode, section.sectionId, tt,
+        );
+      }
+      for (final section in newSections) {
+        timetableService.addSectionWithoutSaving(
+          section.courseCode, section.sectionId, tt,
+        );
+      }
+
+      setState(() {
+        hasUnsavedChanges = true;
+      });
+      onUnsavedChangesChanged(true);
+      ToastService.showSuccess('Sections shuffled successfully');
+    } catch (e) {
+      showErrorDialog('Error shuffling sections: $e');
+    }
+  }
+
   void quickReplaceCourse(Course selectedCourse, Course replacementCourse) {
     final tt = currentTimetable;
     if (tt == null) return;

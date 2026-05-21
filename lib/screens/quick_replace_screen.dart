@@ -16,19 +16,22 @@ class QuickReplaceScreen extends StatefulWidget {
   final List<Course> availableCourses;
   final List<SelectedSection> selectedSections;
   final Function(Course selectedCourse, Course replacementCourse) onReplace;
+  final Function(List<SelectedSection> newSections)? onSectionShuffle;
 
   const QuickReplaceScreen({
     super.key,
     required this.availableCourses,
     required this.selectedSections,
     required this.onReplace,
+    this.onSectionShuffle,
   });
 
   @override
   State<QuickReplaceScreen> createState() => _QuickReplaceScreenState();
 }
 
-class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
+class _QuickReplaceScreenState extends State<QuickReplaceScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   Course? _selectedCourse;
   List<CourseComparison> _similarCourses = [];
   bool _isLoading = false;
@@ -59,10 +62,24 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     '1-1', '1-2', '2-1', '2-2', '3-1', '3-2'
   ];
 
+  // Section shuffle state
+  Course? _shuffleCourse;
+  Set<String> _closedSectionIds = {};
+  List<ShuffleResult> _shuffleResults = [];
+  bool _isShuffling = false;
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadCourseCategories();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _searchController.dispose();
+    super.dispose();
   }
 
   // Load course categories from Firebase
@@ -386,181 +403,185 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quick Replace Course'),
+        title: const Text('Quick Replace'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Replace Course'),
+            Tab(text: 'Section Shuffle'),
+          ],
+          indicatorColor: scheme.primary,
+          labelColor: scheme.primary,
+          unselectedLabelColor: scheme.onSurface.withValues(alpha: 0.6),
+        ),
       ),
       body: SafeArea(
-        child: Column(
+        child: TabBarView(
+          controller: _tabController,
           children: [
-            const SizedBox(height: 16), // Space between title bar and content
-            
-            // Course Selection (Always Visible) 
-            _buildCourseSelection(),
-            
-            // Show course details when a course is selected (above search params)
-            if (_selectedCourse != null) ...[
-              // Compact Selected Course Details
-              Container(
-                margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-                  ),
-                ),
-                child: _buildCompactCourseDetails(_selectedCourse!),
-              ),
-            ],
-            
-            // Search Parameters Section (Always Visible)
-            _buildSearchParameters(),
-            
-            // Show results only when a course is selected and search has been performed
-            if (_selectedCourse != null) ...[
-              
-              // Results Header
-              if (_similarCourses.isNotEmpty || _isLoading)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.analytics_outlined,
-                            size: 18,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Similar Courses (${_filteredCourses.length})',
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      
-                      // Search field for filtering results - only show when courses are available
-                      if (_similarCourses.isNotEmpty && !_isLoading) ...[
-                        const SizedBox(height: 12),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: TextFormField(
-                            controller: _searchController,
-                            decoration: InputDecoration(
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                              hintText: 'Search in results...',
-                              hintStyle: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                                fontSize: 14,
-                              ),
-                              prefixIcon: Icon(
-                                Icons.search,
-                                size: 20,
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                              ),
-                              suffixIcon: _searchText.isNotEmpty
-                                  ? IconButton(
-                                      icon: Icon(
-                                        Icons.clear,
-                                        size: 20,
-                                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                                      ),
-                                      onPressed: () {
-                                        setState(() {
-                                          _searchText = '';
-                                          _searchController.clear();
-                                        });
-                                      },
-                                    )
-                                  : null,
-                            ),
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface,
-                              fontSize: 14,
-                            ),
-                            onChanged: (value) {
-                              setState(() {
-                                _searchText = value;
-                              });
-                            },
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              
-              // Similar Courses List
-              Expanded(
-                child: _similarCourses.isEmpty && !_isLoading
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.search,
-                              size: 64,
-                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Ready to find courses',
-                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Click "Find Similar Courses" when ready',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      )
-                    : _isLoading
-                        ? const Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                CircularProgressIndicator(),
-                                SizedBox(height: 12),
-                                Text('Finding similar courses...'),
-                              ],
-                            ),
-                          )
-                        : _buildCompactSimilarCoursesList(),
-              ),
-            ] else ...[
-              // Empty state when no course is selected
-              Expanded(
-                child: _buildEmptyState(),
-              ),
-            ],
+            _buildReplaceCourseTab(),
+            _buildSectionShuffleTab(),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildReplaceCourseTab() {
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        _buildCourseSelection(),
+        if (_selectedCourse != null) ...[
+          Container(
+            margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+              ),
+            ),
+            child: _buildCompactCourseDetails(_selectedCourse!),
+          ),
+        ],
+        _buildSearchParameters(),
+        if (_selectedCourse != null) ...[
+          if (_similarCourses.isNotEmpty || _isLoading)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.analytics_outlined,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Similar Courses (${_filteredCourses.length})',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_similarCourses.isNotEmpty && !_isLoading) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: TextFormField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          hintText: 'Search in results...',
+                          hintStyle: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                            fontSize: 14,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                          suffixIcon: _searchText.isNotEmpty
+                              ? IconButton(
+                                  icon: Icon(
+                                    Icons.clear,
+                                    size: 20,
+                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _searchText = '';
+                                      _searchController.clear();
+                                    });
+                                  },
+                                )
+                              : null,
+                        ),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 14,
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _searchText = value;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          Expanded(
+            child: _similarCourses.isEmpty && !_isLoading
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.search,
+                          size: 64,
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Ready to find courses',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Click "Find Similar Courses" when ready',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  )
+                : _isLoading
+                    ? const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(),
+                            SizedBox(height: 12),
+                            Text('Finding similar courses...'),
+                          ],
+                        ),
+                      )
+                    : _buildCompactSimilarCoursesList(),
+          ),
+        ] else ...[
+          Expanded(
+            child: _buildEmptyState(),
+          ),
+        ],
+      ],
     );
   }
 
@@ -1525,6 +1546,416 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     );
   }
 
+  // ─── Section Shuffle Tab ───
+
+  Widget _buildSectionShuffleTab() {
+    final scheme = Theme.of(context).colorScheme;
+    final coursesInTimetable = _getCoursesInTimetable();
+
+    return Column(
+      children: [
+        const SizedBox(height: 16),
+        // Course picker
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: DropdownButtonFormField<String>(
+            initialValue: _shuffleCourse?.courseCode,
+            decoration: AppDesign.inputDecoration(
+              context,
+              label: 'Course to shuffle',
+              hint: 'Pick a course from your timetable',
+            ),
+            items: coursesInTimetable.map((c) => DropdownMenuItem(
+              value: c.courseCode,
+              child: Text('${c.courseCode} — ${c.courseTitle}', overflow: TextOverflow.ellipsis),
+            )).toList(),
+            onChanged: (code) {
+              if (code == null) return;
+              final course = coursesInTimetable.firstWhere((c) => c.courseCode == code);
+              setState(() {
+                _shuffleCourse = course;
+                _closedSectionIds = {};
+                _shuffleResults = [];
+              });
+            },
+          ),
+        ),
+
+        if (_shuffleCourse != null) ...[
+          const SizedBox(height: 12),
+          // Section chips — mark closed
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: _buildClosedSectionPicker(scheme),
+          ),
+
+          const SizedBox(height: 12),
+          // Find alternatives button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _closedSectionIds.isEmpty || _isShuffling ? null : _runShuffle,
+                icon: _isShuffling
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.shuffle, size: 18),
+                label: Text(_isShuffling ? 'Searching...' : 'Find Alternatives'),
+              ),
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 12),
+        // Results
+        Expanded(
+          child: _shuffleResults.isEmpty
+              ? Center(
+                  child: Text(
+                    _shuffleCourse == null
+                        ? 'Select a course to get started'
+                        : _closedSectionIds.isEmpty
+                            ? 'Mark closed sections, then tap Find Alternatives'
+                            : 'No results yet',
+                    style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.5)),
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  itemCount: _shuffleResults.length,
+                  itemBuilder: (context, index) => _buildShuffleResultCard(
+                    _shuffleResults[index],
+                    scheme,
+                  ),
+                ),
+        ),
+      ],
+    );
+  }
+
+  List<Course> _getCoursesInTimetable() {
+    final codes = widget.selectedSections.map((s) => s.courseCode).toSet();
+    return widget.availableCourses
+        .where((c) => codes.contains(c.courseCode))
+        .toList();
+  }
+
+  Widget _buildClosedSectionPicker(ColorScheme scheme) {
+    final course = _shuffleCourse!;
+    final currentSections = widget.selectedSections
+        .where((s) => s.courseCode == course.courseCode)
+        .toList();
+
+    // Group all sections by type
+    final sectionsByType = <SectionType, List<Section>>{};
+    for (final s in course.sections) {
+      sectionsByType.putIfAbsent(s.type, () => []).add(s);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Mark closed sections:',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: scheme.onSurface.withValues(alpha: 0.7),
+          ),
+        ),
+        const SizedBox(height: 8),
+        for (final type in sectionsByType.keys) ...[
+          Text(
+            type == SectionType.L ? 'Lecture' : type == SectionType.T ? 'Tutorial' : 'Practical',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: scheme.onSurface.withValues(alpha: 0.5),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: sectionsByType[type]!.map((section) {
+              final isCurrent = currentSections.any((s) => s.sectionId == section.sectionId);
+              final isClosed = _closedSectionIds.contains(section.sectionId);
+              return FilterChip(
+                label: Text(
+                  '${section.sectionId}${isCurrent ? ' (current)' : ''}',
+                  style: TextStyle(fontSize: 12),
+                ),
+                selected: isClosed,
+                selectedColor: scheme.error.withValues(alpha: 0.2),
+                checkmarkColor: scheme.error,
+                onSelected: (selected) {
+                  setState(() {
+                    if (selected) {
+                      _closedSectionIds.add(section.sectionId);
+                    } else {
+                      _closedSectionIds.remove(section.sectionId);
+                    }
+                    _shuffleResults = [];
+                  });
+                },
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ],
+    );
+  }
+
+  void _runShuffle() {
+    setState(() {
+      _isShuffling = true;
+      _shuffleResults = [];
+    });
+
+    // Run async to not block UI
+    Future(() {
+      final results = _computeShuffleResults();
+      if (mounted) {
+        setState(() {
+          _shuffleResults = results;
+          _isShuffling = false;
+        });
+      }
+    });
+  }
+
+  List<ShuffleResult> _computeShuffleResults() {
+    final course = _shuffleCourse!;
+    final currentSections = List<SelectedSection>.from(widget.selectedSections);
+    final allCourses = widget.availableCourses;
+
+    // Find which section types are affected (have closed sections)
+    final currentForCourse = currentSections
+        .where((s) => s.courseCode == course.courseCode)
+        .toList();
+
+    // For each affected section type, find alternatives
+    final affectedTypes = <SectionType>{};
+    for (final sel in currentForCourse) {
+      if (_closedSectionIds.contains(sel.sectionId)) {
+        affectedTypes.add(sel.section.type);
+      }
+    }
+
+    // Get candidate sections: same type, not closed
+    final candidatesByType = <SectionType, List<Section>>{};
+    for (final type in affectedTypes) {
+      candidatesByType[type] = course.sections
+          .where((s) => s.type == type && !_closedSectionIds.contains(s.sectionId))
+          .toList();
+    }
+
+    // Build all candidate combinations for the affected types
+    List<List<Section>> candidateCombos = [[]];
+    for (final type in affectedTypes) {
+      final candidates = candidatesByType[type] ?? [];
+      if (candidates.isEmpty) return []; // No alternatives for this type
+      final expanded = <List<Section>>[];
+      for (final combo in candidateCombos) {
+        for (final candidate in candidates) {
+          expanded.add([...combo, candidate]);
+        }
+      }
+      candidateCombos = expanded;
+    }
+
+    // Sections from other courses (fixed unless we need to shuffle them)
+    final otherSections = currentSections
+        .where((s) => s.courseCode != course.courseCode)
+        .toList();
+
+    // Sections from this course that are NOT affected (keep as-is)
+    final keptSections = currentForCourse
+        .where((s) => !affectedTypes.contains(s.section.type))
+        .toList();
+
+    final results = <ShuffleResult>[];
+
+    for (final combo in candidateCombos) {
+      // Build new section list for this course
+      final newCourseSections = <SelectedSection>[
+        ...keptSections,
+        ...combo.map((s) => SelectedSection(
+          courseCode: course.courseCode,
+          sectionId: s.sectionId,
+          section: s,
+        )),
+      ];
+
+      // Try direct fit first (no other course changes)
+      final directFit = [...otherSections, ...newCourseSections];
+      final directClashes = ClashDetector.detectClashes(directFit, allCourses);
+      if (directClashes.isEmpty) {
+        results.add(ShuffleResult(
+          newSections: directFit,
+          changedSections: combo.map((s) => s.sectionId).toList(),
+          otherChanges: [],
+          hasClashes: false,
+        ));
+        continue;
+      }
+
+      // Try shuffling other courses to resolve clashes
+      final shuffled = _tryShuffleOthers(
+        newCourseSections, otherSections, allCourses, course.courseCode,
+      );
+      if (shuffled != null) {
+        results.add(shuffled.copyWithChanged(combo.map((s) => s.sectionId).toList()));
+      }
+    }
+
+    // Sort: direct fits first, then by fewer other changes
+    results.sort((a, b) {
+      if (a.otherChanges.isEmpty != b.otherChanges.isEmpty) {
+        return a.otherChanges.isEmpty ? -1 : 1;
+      }
+      return a.otherChanges.length.compareTo(b.otherChanges.length);
+    });
+
+    return results.take(20).toList();
+  }
+
+  ShuffleResult? _tryShuffleOthers(
+    List<SelectedSection> fixedNewSections,
+    List<SelectedSection> otherSections,
+    List<Course> allCourses,
+    String fixedCourseCode,
+  ) {
+    // Group other sections by course
+    final otherByCourse = <String, List<SelectedSection>>{};
+    for (final s in otherSections) {
+      otherByCourse.putIfAbsent(s.courseCode, () => []).add(s);
+    }
+
+    // Try swapping one other course's sections at a time
+    for (final courseCode in otherByCourse.keys) {
+      final course = allCourses.where((c) => c.courseCode == courseCode).firstOrNull;
+      if (course == null) continue;
+
+      final currentCourseSections = otherByCourse[courseCode]!;
+      final unchangedOthers = otherSections
+          .where((s) => s.courseCode != courseCode)
+          .toList();
+
+      // For each section type of this course, try alternatives
+      for (final currentSel in currentCourseSections) {
+        final alternatives = course.sections
+            .where((s) => s.type == currentSel.section.type && s.sectionId != currentSel.sectionId)
+            .toList();
+
+        for (final alt in alternatives) {
+          final swappedOther = [
+            ...unchangedOthers,
+            ...currentCourseSections.map((s) => s.sectionId == currentSel.sectionId
+                ? SelectedSection(courseCode: courseCode, sectionId: alt.sectionId, section: alt)
+                : s),
+          ];
+          final fullList = [...swappedOther, ...fixedNewSections];
+          final clashes = ClashDetector.detectClashes(fullList, allCourses);
+          if (clashes.isEmpty) {
+            return ShuffleResult(
+              newSections: fullList,
+              changedSections: [],
+              otherChanges: ['$courseCode: ${currentSel.sectionId} → ${alt.sectionId}'],
+              hasClashes: false,
+            );
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  Widget _buildShuffleResultCard(ShuffleResult result, ColorScheme scheme) {
+    final changedLabel = result.changedSections.join(', ');
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  result.otherChanges.isEmpty ? Icons.check_circle : Icons.swap_horiz,
+                  size: 18,
+                  color: result.otherChanges.isEmpty ? Colors.green : scheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Switch to $changedLabel',
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+            if (result.otherChanges.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Direct fit — no other changes needed',
+                  style: TextStyle(fontSize: 12, color: Colors.green.shade300),
+                ),
+              ),
+            if (result.otherChanges.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Also requires:',
+                style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.6)),
+              ),
+              for (final change in result.otherChanges)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    '  • $change',
+                    style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.8)),
+                  ),
+                ),
+            ],
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.tonal(
+                onPressed: () {
+                  widget.onSectionShuffle?.call(result.newSections);
+                  Navigator.pop(context);
+                },
+                child: const Text('Apply', style: TextStyle(fontSize: 13)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ShuffleResult {
+  final List<SelectedSection> newSections;
+  final List<String> changedSections;
+  final List<String> otherChanges;
+  final bool hasClashes;
+
+  ShuffleResult({
+    required this.newSections,
+    required this.changedSections,
+    required this.otherChanges,
+    required this.hasClashes,
+  });
+
+  ShuffleResult copyWithChanged(List<String> changed) {
+    return ShuffleResult(
+      newSections: newSections,
+      changedSections: changed,
+      otherChanges: otherChanges,
+      hasClashes: hasClashes,
+    );
+  }
 }
 
 // Helper class for clash checking results

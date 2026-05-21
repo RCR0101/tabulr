@@ -114,7 +114,9 @@ class TimetableMakerApp extends StatelessWidget {
         final themeService = theme_service.ThemeService();
         return MaterialApp(
           title: 'Tabulr',
-          theme: themeService.getThemeData(themeService.currentTheme),
+          theme: themeService.getLightThemeData(themeService.currentTheme),
+          darkTheme: themeService.getDarkThemeData(themeService.currentTheme),
+          themeMode: themeService.currentThemeMode,
           home: const AuthWrapper(),
           debugShowCheckedModeBanner: false,
           builder: (context, child) {

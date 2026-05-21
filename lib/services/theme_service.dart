@@ -685,4 +685,14 @@ class ThemeService extends ChangeNotifier {
     final pair = _themeColors[theme]!;
     return _buildTheme(isLightMode ? pair.light : pair.dark);
   }
+
+  ThemeData getLightThemeData(AppTheme theme) {
+    final pair = _themeColors[theme]!;
+    return _buildTheme(pair.light);
+  }
+
+  ThemeData getDarkThemeData(AppTheme theme) {
+    final pair = _themeColors[theme]!;
+    return _buildTheme(pair.dark);
+  }
 }

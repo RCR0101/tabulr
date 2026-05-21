@@ -39,6 +39,7 @@ class TimetableWidget extends StatefulWidget {
   final List<Course>? availableCourses;
   final List<SelectedSection>? selectedSections;
   final Function(Course selectedCourse, Course replacementCourse)? onQuickReplace;
+  final Function(List<SelectedSection> newSections)? onSectionShuffle;
   final VoidCallback? onUndo;
   final VoidCallback? onRedo;
   final bool canUndo;
@@ -64,6 +65,7 @@ class TimetableWidget extends StatefulWidget {
     this.availableCourses,
     this.selectedSections,
     this.onQuickReplace,
+    this.onSectionShuffle,
     this.onUndo,
     this.onRedo,
     this.canUndo = false,
@@ -200,6 +202,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
           availableCourses: widget.availableCourses!,
           selectedSections: widget.selectedSections!,
           onReplace: widget.onQuickReplace!,
+          onSectionShuffle: widget.onSectionShuffle,
         ),
       ),
     );
