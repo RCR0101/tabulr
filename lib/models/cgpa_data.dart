@@ -181,19 +181,40 @@ class CGPAData {
     : semesters = semesters ?? {},
       lastUpdated = lastUpdated ?? DateTime.now();
 
-  // Calculate overall CGPA
+  // Calculate overall CGPA (only counts the latest attempt for repeated courses)
   double get cgpa {
     if (semesters.isEmpty) return 0.0;
 
-    double totalGradePoints = 0.0;
-    double totalCredits = 0.0;
-
-    for (final semester in semesters.values) {
-      totalGradePoints += semester.totalGradePoints;
-      totalCredits += semester.totalCredits;
-    }
+    final effectiveCourses = _deduplicatedCourses();
+    final totalGradePoints = effectiveCourses.fold<double>(
+      0.0, (sum, c) => sum + c.totalGradePoints);
+    final totalCredits = effectiveCourses.fold<double>(
+      0.0, (sum, c) => sum + c.credits);
 
     return totalCredits > 0 ? totalGradePoints / totalCredits : 0.0;
+  }
+
+  // Returns one CourseEntry per course code, keeping only the latest semester's attempt.
+  // Semester ordering follows their insertion order in the map (chronological).
+  List<CourseEntry> _deduplicatedCourses() {
+    final latest = <String, CourseEntry>{};
+    for (final semester in semesters.values) {
+      for (final course in semester.courses) {
+        if (course.courseType != 'Normal' ||
+            course.grade == null ||
+            course.grade!.isEmpty) continue;
+        latest[course.courseCode] = course;
+      }
+    }
+    return latest.values.toList();
+  }
+
+  double get effectiveTotalCredits {
+    return _deduplicatedCourses().fold<double>(0.0, (sum, c) => sum + c.credits);
+  }
+
+  double get effectiveTotalGradePoints {
+    return _deduplicatedCourses().fold<double>(0.0, (sum, c) => sum + c.totalGradePoints);
   }
 
   Map<String, dynamic> toJson() {

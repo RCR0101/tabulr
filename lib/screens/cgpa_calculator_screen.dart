@@ -18,6 +18,7 @@ import '../models/all_course.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 
+import 'cg_booster_screen.dart';
 import 'grade_planner_screen.dart';
 import '../utils/design_constants.dart';
 import '../utils/grade_utils.dart' as grade_utils;
@@ -1254,6 +1255,16 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                 ? () => Navigator.push(
                       context,
                       FadeSlidePageRoute(page: GradePlannerScreen(cgpaData: _cgpaData)),
+                    )
+                : null,
+          ),
+          IconButton(
+            icon: const Icon(Icons.bolt_outlined),
+            tooltip: 'CG Booster',
+            onPressed: _authService.isAuthenticated
+                ? () => Navigator.push(
+                      context,
+                      FadeSlidePageRoute(page: CGBoosterScreen(cgpaData: _cgpaData)),
                     )
                 : null,
           ),
