@@ -10,8 +10,9 @@ class ShareTimetableDialog extends StatefulWidget {
 
   const ShareTimetableDialog({super.key, required this.timetable});
 
-  static Future<void> show(BuildContext context, Timetable timetable) {
-    return showDialog<void>(
+  /// Returns the current shareId (possibly new if first share or revoked), or null if cancelled before share.
+  static Future<String?> show(BuildContext context, Timetable timetable) {
+    return showDialog<String>(
       context: context,
       builder: (_) => ShareTimetableDialog(timetable: timetable),
     );
@@ -24,15 +25,16 @@ class ShareTimetableDialog extends StatefulWidget {
 class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
   String? _code;
   bool _isLoading = false;
+  bool _isRevoking = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _generateCode();
+    _shareOrReuse();
   }
 
-  Future<void> _generateCode() async {
+  Future<void> _shareOrReuse() async {
     setState(() {
       _isLoading = true;
       _error = null;
@@ -55,9 +57,60 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
     }
   }
 
+  Future<void> _revoke() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: AppDesign.dialogShape,
+        title: const Text('Revoke share code?'),
+        content: const Text(
+          'The current code will stop working. A new code will be generated.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            child: const Text('Revoke'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _isRevoking = true;
+      _error = null;
+    });
+    try {
+      final newCode = await TimetableSharingService().revokeAndReshare(widget.timetable);
+      if (mounted) {
+        setState(() {
+          _code = newCode;
+          _isRevoking = false;
+        });
+        ToastService.showSuccess('Share code revoked. New code generated.');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to revoke';
+          _isRevoking = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final alreadyShared = widget.timetable.shareId != null;
+
     return AlertDialog(
       shape: AppDesign.dialogShape,
       title: Row(
@@ -80,12 +133,15 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Share this code with friends so they can view or import your timetable.',
+                        alreadyShared
+                            ? 'Your timetable is shared with the code below.'
+                            : 'Share this code with friends so they can view or import your timetable.',
                         style: TextStyle(fontSize: 13, color: scheme.onSurface.withValues(alpha: 0.7)),
                       ),
                       const SizedBox(height: 20),
                       Container(
-                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                         decoration: BoxDecoration(
                           color: scheme.primaryContainer.withValues(alpha: 0.3),
                           borderRadius: AppDesign.borderRadiusMd,
@@ -102,17 +158,24 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
                           textAlign: TextAlign.center,
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Code expires in 30 days',
-                        style: TextStyle(fontSize: 11, color: scheme.onSurface.withValues(alpha: 0.4)),
-                      ),
+                      const SizedBox(height: 16),
+                      if (_code != null)
+                        TextButton.icon(
+                          onPressed: _isRevoking ? null : _revoke,
+                          icon: _isRevoking
+                              ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                              : Icon(Icons.link_off, size: 16, color: scheme.error),
+                          label: Text(
+                            'Revoke & generate new code',
+                            style: TextStyle(fontSize: 12, color: scheme.error),
+                          ),
+                        ),
                     ],
                   ),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.pop(context, _code),
           child: const Text('Close'),
         ),
         if (_code != null)
@@ -170,7 +233,7 @@ class _ImportTimetableDialogState extends State<ImportTimetableDialog> {
       if (!mounted) return;
       if (data == null) {
         setState(() {
-          _error = 'No timetable found for code "$code"';
+          _error = 'No timetable found for this code';
           _isLoading = false;
         });
       } else {
@@ -208,7 +271,7 @@ class _ImportTimetableDialogState extends State<ImportTimetableDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Enter a share code from a friend to view their timetable.',
+              'Paste a share code from a friend to view their timetable.',
               style: TextStyle(fontSize: 13, color: scheme.onSurface.withValues(alpha: 0.7)),
             ),
             const SizedBox(height: 16),
@@ -217,7 +280,7 @@ class _ImportTimetableDialogState extends State<ImportTimetableDialog> {
               decoration: AppDesign.inputDecoration(
                 context,
                 label: 'Share Code',
-                hint: 'Paste UUID here',
+                hint: 'Paste code here',
                 suffixIcon: IconButton(
                   icon: _isLoading
                       ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))

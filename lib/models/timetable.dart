@@ -11,6 +11,7 @@ class Timetable {
   final List<Course> availableCourses;
   final List<SelectedSection> selectedSections;
   final List<ClashWarning> clashWarnings;
+  final String? shareId;
 
   Timetable({
     required this.id,
@@ -21,6 +22,7 @@ class Timetable {
     required this.availableCourses,
     required this.selectedSections,
     required this.clashWarnings,
+    this.shareId,
   });
 
   Map<String, dynamic> toJson() {
@@ -33,6 +35,7 @@ class Timetable {
       'availableCourses': availableCourses.map((c) => c.toJson()).toList(),
       'selectedSections': selectedSections.map((s) => s.toJson()).toList(),
       'clashWarnings': clashWarnings.map((w) => w.toJson()).toList(),
+      if (shareId != null) 'shareId': shareId,
     };
   }
 
@@ -65,6 +68,31 @@ class Timetable {
       clashWarnings: (json['clashWarnings'] as List?)
           ?.map((w) => ClashWarning.fromJson(w))
           .toList() ?? [],
+      shareId: json['shareId'] as String?,
+    );
+  }
+
+  Timetable copyWith({
+    String? id,
+    String? name,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Campus? campus,
+    List<Course>? availableCourses,
+    List<SelectedSection>? selectedSections,
+    List<ClashWarning>? clashWarnings,
+    String? Function()? shareId,
+  }) {
+    return Timetable(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      campus: campus ?? this.campus,
+      availableCourses: availableCourses ?? this.availableCourses,
+      selectedSections: selectedSections ?? this.selectedSections,
+      clashWarnings: clashWarnings ?? this.clashWarnings,
+      shareId: shareId != null ? shareId() : this.shareId,
     );
   }
 }

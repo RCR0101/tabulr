@@ -47,7 +47,7 @@ class TimetableSharingService {
     final ownerName = user?.displayName ?? 'Anonymous';
     final campus = CampusService.currentCampus.name;
 
-    final code = _generateUuid();
+    final code = timetable.shareId ?? _generateUuid();
     final sectionsJson = timetable.selectedSections.map((s) => s.toJson()).toList();
 
     await _firestore.collection(_collection).doc(code).set({
@@ -57,10 +57,38 @@ class TimetableSharingService {
       'campus': campus,
       'sections': sectionsJson,
       'createdAt': FieldValue.serverTimestamp(),
-      'expiresAt': Timestamp.fromDate(DateTime.now().add(const Duration(days: 30))),
     });
 
     return code;
+  }
+
+  Future<String> revokeAndReshare(Timetable timetable) async {
+    if (timetable.shareId != null) {
+      try {
+        await _firestore.collection(_collection).doc(timetable.shareId).delete();
+      } catch (_) {}
+    }
+
+    final newCode = _generateUuid();
+    final user = _authService.currentUser;
+    final ownerName = user?.displayName ?? 'Anonymous';
+    final campus = CampusService.currentCampus.name;
+    final sectionsJson = timetable.selectedSections.map((s) => s.toJson()).toList();
+
+    await _firestore.collection(_collection).doc(newCode).set({
+      'name': timetable.name,
+      'ownerName': ownerName,
+      'ownerId': _authService.userDocId,
+      'campus': campus,
+      'sections': sectionsJson,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    return newCode;
+  }
+
+  Future<void> deleteShare(String shareId) async {
+    await _firestore.collection(_collection).doc(shareId).delete();
   }
 
   Future<SharedTimetableData?> fetchSharedTimetable(String code) async {

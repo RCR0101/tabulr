@@ -431,8 +431,17 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       ToastService.showWarning('Add some courses before sharing');
       return;
     }
-    await ShareTimetableDialog.show(context, tt);
+    final returnedShareId = await ShareTimetableDialog.show(context, tt);
+    if (returnedShareId != null && returnedShareId != tt.shareId && mounted) {
+      final updated = tt.copyWith(shareId: () => returnedShareId);
+      setState(() {
+        _setCurrentTimetable(updated);
+      });
+      await timetableService.saveTimetable(updated);
+    }
   }
+
+  void _setCurrentTimetable(Timetable tt);
 
   void showErrorDialog(String message) {
     ErrorDialog.show(context, message);

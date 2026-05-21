@@ -106,9 +106,11 @@ service cloud.firestore {
       allow read: if isBitsEmail();
       allow create: if isBitsEmail()
         && request.resource.data.ownerId == userDocId();
+      allow update: if isBitsEmail()
+        && resource.data.ownerId == userDocId()
+        && request.resource.data.ownerId == userDocId();
       allow delete: if isBitsEmail()
         && resource.data.ownerId == userDocId();
-      allow update: if false;
     }
 
     // Admin metadata
