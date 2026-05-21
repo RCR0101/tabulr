@@ -37,18 +37,12 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
 
   Future<void> _upload() async {
     if (_code == null) return;
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
     try {
       await TimetableSharingService().uploadShare(_code!, widget.timetable);
-      if (mounted) setState(() => _isLoading = false);
     } catch (e) {
       if (mounted) {
         setState(() {
           _error = 'Failed to upload share';
-          _isLoading = false;
         });
       }
     }

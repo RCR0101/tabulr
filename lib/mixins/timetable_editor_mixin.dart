@@ -426,7 +426,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   }
 
   Future<void> shareTimetable() async {
-    var tt = currentTimetable;
+    final tt = currentTimetable;
     if (tt == null) return;
     if (tt.selectedSections.isEmpty) {
       ToastService.showWarning('Add some courses before sharing');
@@ -436,25 +436,24 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     // Assign a persistent shareId if this timetable doesn't have one yet
     if (tt.shareId == null) {
       final newId = TimetableSharingService().generateShareId();
-      tt = tt.copyWith(shareId: () => newId);
-      setState(() {
-        _setCurrentTimetable(tt!);
-      });
-      await timetableService.saveTimetable(tt);
+      final updated = tt.copyWith(shareId: () => newId);
+      setCurrentTimetable(updated);
+      setState(() {});
+      await timetableService.saveTimetable(updated);
     }
 
-    final returnedShareId = await ShareTimetableDialog.show(context, tt);
+    final current = currentTimetable!;
+    final returnedShareId = await ShareTimetableDialog.show(context, current);
     // If revoked, the dialog returns a new shareId
-    if (returnedShareId != null && returnedShareId != tt.shareId && mounted) {
-      final updated = tt.copyWith(shareId: () => returnedShareId);
-      setState(() {
-        _setCurrentTimetable(updated);
-      });
+    if (returnedShareId != null && returnedShareId != current.shareId && mounted) {
+      final updated = current.copyWith(shareId: () => returnedShareId);
+      setCurrentTimetable(updated);
+      setState(() {});
       await timetableService.saveTimetable(updated);
     }
   }
 
-  void _setCurrentTimetable(Timetable tt);
+  void setCurrentTimetable(Timetable tt);
 
   void showErrorDialog(String message) {
     ErrorDialog.show(context, message);

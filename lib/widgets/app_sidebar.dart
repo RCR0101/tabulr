@@ -146,6 +146,7 @@ class _AppSidebarState extends State<AppSidebar> {
         vertical: AppDesign.spacingMd,
       ),
       child: Row(
+        mainAxisAlignment: collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
         children: [
           ClipRRect(
             borderRadius: AppDesign.borderRadiusSm,

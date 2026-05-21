@@ -76,7 +76,7 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
   @override void onUnsavedChangesChanged(bool value) {}
   @override List<Course> get filteredCourses => _filteredCourses;
   @override set filteredCourses(List<Course> v) => _filteredCourses = v;
-  @override void _setCurrentTimetable(Timetable tt) => _timetable = tt;
+  @override void setCurrentTimetable(Timetable tt) => _timetable = tt;
 
   @override
   void initState() {
@@ -775,7 +775,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
   @override void onUnsavedChangesChanged(bool value) => widget.onUnsavedChangesChanged?.call(value);
   @override List<Course> get filteredCourses => _filteredCourses;
   @override set filteredCourses(List<Course> v) => _filteredCourses = v;
-  @override void _setCurrentTimetable(Timetable tt) => _timetable = tt;
+  @override void setCurrentTimetable(Timetable tt) => _timetable = tt;
 
   @override
   void initState() {
