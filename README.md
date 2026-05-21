@@ -1,237 +1,61 @@
 # Tabulr
 
-A Flutter desktop application for creating and managing academic timetables with automatic clash detection.
+A timetable builder for BITS Pilani students. Build clash-free schedules, compare options, track exams, and share timetables — all from one app.
 
-**Dark Theme** | **Timetable Generator** | **Excel Integration** | **Cross-Platform**
+**Web** &bull; **macOS** &bull; **Windows** &bull; **Linux**
 
-## Features
+## What it does
 
-- **Excel Integration**: Import course data from XLSX files with 380+ courses
-- **Modern Dark Theme**: Professional dark UI with clean design
-- **Timetable Generator**: Generate multiple timetable options with constraints:
-  - Avoid specific instructors or time slots
-  - Set max hours per day
-  - Prefer certain instructors
-  - Multiple MidSem time slots (9:30-11AM, 11:30-1PM, 1:30-3PM, 3:30-5PM)
-- **⚠Smart Clash Detection**: Automatically detects conflicts between:
-  - Regular class timings
-  - MidSem and EndSem exam schedules
-  - Multiple MidSem time slots
-- **Visual Timetable**: Clean grid view with gradient-filled time slots
-- **Export Options**: 
-  - ICS calendar files for calendar apps
-  - PNG images with custom save locations
-- **Advanced Search & Filtering**: Filter by course code, instructor, credits, days, exam dates
-- **Exam Schedule View**: Separate tab showing all exam dates and times
-- **Data Persistence**: Saves your timetable data locally
+- **Build timetables** — browse the full course catalog, pick sections, and see clashes in real time
+- **Auto-generate** — set constraints (max hours/day, avoid slots, prefer instructors) and get ranked timetable options
+- **Calendar view** — weekly schedule with classes, exams, custom events, and professor office hours
+- **Share & import** — share timetables via a short code; import a friend's with one tap
+- **Compare** — side-by-side timetable comparison and common free-slot finder
+- **Exam seating** — look up your exam room by student ID
+- **Academic drives** — browse course materials uploaded by the community
+- **Export** — PNG image (with exam dates), ICS for Google Calendar / Outlook, `.tt` file backup
 
-## Installation & Setup
-
-### Prerequisites
-
-1. **Install Flutter**: Download from [flutter.dev](https://docs.flutter.dev/get-started/install)
-2. **Enable Desktop Support**: 
-   ```bash
-   flutter config --enable-windows-desktop
-   flutter config --enable-macos-desktop
-   flutter config --enable-linux-desktop
-   ```
-
-### For Windows Users
-
-#### Option 1: Quick Setup (Recommended)
-1. **Install Flutter** using the Windows installer from [flutter.dev](https://docs.flutter.dev/get-started/install/windows)
-2. **Open Command Prompt or PowerShell** as Administrator
-3. **Enable Windows desktop support**:
-   ```cmd
-   flutter config --enable-windows-desktop
-   ```
-4. **Navigate to the project directory**:
-   ```cmd
-   cd "path\to\timetable_maker"
-   ```
-5. **Install dependencies**:
-   ```cmd
-   flutter pub get
-   ```
-6. **Run the application**:
-   ```cmd
-   flutter run -d windows
-   ```
-
-#### Option 2: Development Setup
-1. **Install Visual Studio 2022** with "Desktop development with C++" workload
-2. **Install Git for Windows** from [git-scm.com](https://git-scm.com/download/win)
-3. **Install Flutter SDK**:
-   - Download Flutter SDK zip
-   - Extract to `C:\flutter`
-   - Add `C:\flutter\bin` to your PATH environment variable
-4. **Verify installation**:
-   ```cmd
-   flutter doctor
-   ```
-5. **Clone/download this project** and follow steps 4-6 from Option 1
-
-#### Windows-Specific Notes:
-- **Antivirus**: Some antivirus software may slow down Flutter builds. Consider adding Flutter directories to exclusions
-- **Firewall**: Windows Firewall may prompt when running the app - allow access for full functionality
-- **File Permissions**: Run Command Prompt as Administrator if you encounter permission issues
-- **Long Path Support**: Enable long path support in Windows 10/11 for better compatibility
-
-### For macOS Users
+## Quick start
 
 ```bash
 cd timetable_maker
-flutter run -d macos
+flutter pub get
+flutter run -d chrome        # web
+flutter run -d macos         # or windows / linux
 ```
 
-### For Linux Users
+Requires Flutter 3.7+ with desktop support enabled. The app uses Firebase — `lib/firebase_options.dart` and `.env` are gitignored and must be configured for your own Firebase project.
 
-```bash
-cd timetable_maker
-flutter run -d linux
+## Project structure
+
+```
+lib/
+  models/       Data classes (Course, Timetable, Section, ExamSchedule)
+  services/     Business logic, Firebase, clash detection, timetable generation
+  screens/      Full-page views (timetables, calendar, CGPA, exam seating, ...)
+  widgets/      Reusable UI components
+  mixins/       Shared editor behavior (timetable editing, export, sharing)
+  utils/        Design tokens, constants
+  repositories/ Local + Firestore persistence
 ```
 
-## How to Use
+## Key features
 
-### 1. Course Data
+| Feature | Description |
+|---------|-------------|
+| Clash detection | Prevents time conflicts between classes and exams across all section types |
+| TT Generator | Cartesian product + scoring over selected courses with configurable constraints |
+| Section shuffle | When a section closes, suggests alternative arrangements across your courses |
+| Quick replace | Swap individual sections while preserving the rest of your timetable |
+| Multi-campus | Supports Pilani, Goa, and Hyderabad course catalogs |
+| Themes | 8 dark + light themes with system mode support |
 
-The app comes with **380+ courses** pre-loaded from an Excel file. You can:
-- **Search & Filter**: Use the search bar to find courses by code, name, or instructor
-- **Advanced Filters**: Filter by credits, days, exam dates, etc.
-- **Course Selection**: Browse courses in a clean interface with selected courses at the top
+## Tech stack
 
-### 2. Building Your Timetable
-
-#### Manual Selection:
-- **Browse Courses**: Use the "Courses" tab to see all available courses
-- **Toggle Sections**: Use switches to add L (Lecture), T (Tutorial), P (Practical) sections
-- **Smart Constraints**: App prevents selecting multiple sections of same type per course
-- **Real-time Clash Detection**: Warnings appear for scheduling conflicts
-
-#### TT Generator (Recommended):
-1. **Click the "TT Generator" floating button**
-2. **Select Required Courses**: Search and add courses you want to take
-3. **Set Constraints**:
-   - **Max Hours/Day**: Limit daily class hours
-   - **Avoid Time Slots**: Block specific days and hours
-   - **Avoid Instructors**: Exclude specific professors from your timetable
-   - **Prefer Instructors**: Favor certain professors
-   - **Avoid Back-to-Back**: Prevent consecutive classes
-4. **Generate**: Get 20-30 optimized timetable options
-5. **Select**: Choose your preferred timetable
-
-### 3. Viewing Your Schedule
-
-- **Timetable Grid**: Visual weekly schedule with gradient-filled time slots
-- **Exam Schedule**: Separate tab showing MidSem and EndSem dates/times
-- **Clear Display**: Course codes, sections, and room numbers clearly visible
-
-### 4. Understanding Time Slots
-
-**Regular Classes:**
-- Hour 1: 8:00AM-8:50AM
-- Hour 2: 9:00AM-9:50AM
-- Hour 3: 10:00AM-10:50AM
-- Hour 4: 11:00AM-11:50AM
-- Hour 5: 12:00PM-12:50PM
-- Hour 6: 1:00PM-1:50PM
-- Hour 7: 2:00PM-2:50PM
-- Hour 8: 3:00PM-3:50PM
-- Hour 9: 4:00PM-4:50PM
-- Hour 10: 5:00PM-5:50PM
-- Hour 11: 6:00PM-6:50PM
-- Hour 12: 7:00PM-7:50PM
-
-**MidSem Exam Slots:**
-- MS1: 9:30-11:00
-- MS2: 11:30-1:00  
-- MS3: 2:00-3:30
-- MS4: 4:00-5:30
-
-**EndSem Exam Slots:**
-- FN (Forenoon): 8:00AM-11:00AM
-- AN (Afternoon): 3:00PM-6:00PM
-
-### 5. Export Features
-
-- **📅 ICS Calendar**: Export to Google Calendar, Outlook, Apple Calendar
-- **🖼️ PNG Image**: Save timetable as image with custom location
-- **🗂️ File Management**: Choose where to save your exports
-
-### 6. Smart Clash Detection
-
-The app automatically detects and prevents:
-- **Regular Class Clashes**: Same time slot conflicts between courses
-- **Exam Clashes**: MidSem/EndSem scheduling conflicts
-- **Mixed Conflicts**: Classes and exams at conflicting times
-- **Section Type Conflicts**: Multiple L/T/P sections of same course
-
-## Data Format
-
-The app expects course data in the format described:
-- **Course Code**: Unique identifier (e.g., CS101)
-- **Sections**: L/P/T + number format
-- **Days**: M,T,W,Th,F,S (Monday through Saturday)
-- **Hours**: 1-10 representing hourly slots
-- **Exams**: DD/MM format with FN/AN time slots
-
-## Technical Details
-
-- Built with Flutter for cross-platform desktop support
-- Uses local storage for data persistence
-- Implements real-time clash detection algorithms
-- Clean, intuitive Material Design UI
-
-## Sample Data
-
-The app includes sample course data to help you get started. You can modify or delete this data and add your own courses.
-
-## Troubleshooting
-
-### Common Issues
-
-#### Windows-Specific:
-- **"flutter: command not found"**:
-  - Ensure Flutter is added to your PATH environment variable
-  - Restart Command Prompt/PowerShell after installation
-  - Try running `where flutter` to verify installation
-
-- **Visual Studio Build Tools missing**:
-  - Install Visual Studio 2022 with "Desktop development with C++" workload
-  - Or install "Build Tools for Visual Studio 2022" (lighter option)
-
-- **Slow builds**:
-  - Add Flutter directories to antivirus exclusions
-  - Close unnecessary programs during builds
-  - Use SSD storage for better performance
-
-- **Permission errors**:
-  - Run Command Prompt as Administrator
-  - Check Windows UAC settings
-  - Ensure you have write permissions to the project directory
-
-#### General Issues:
-1. **Dependencies**: Run `flutter pub get` to install packages
-2. **Doctor Check**: Run `flutter doctor` to diagnose setup issues
-3. **Clean Build**: Try `flutter clean` then `flutter pub get`
-4. **Storage Permissions**: Verify app can write to local storage
-5. **Console Logs**: Check terminal/console for error messages
-
-#### Platform-Specific Commands:
-```bash
-# Windows
-flutter run -d windows
-flutter build windows
-
-# macOS  
-flutter run -d macos
-flutter build macos
-
-# Linux
-flutter run -d linux
-flutter build linux
-```
+- **Flutter** (Dart) — cross-platform UI
+- **Firebase** — Auth, Firestore (timetables, settings, shared data), Hosting (PWA)
+- **Cloudflare R2** — academic drive file storage
 
 ## Created by
-- Aryan Dalmia
+
+Aryan Dalmia

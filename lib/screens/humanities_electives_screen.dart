@@ -5,6 +5,7 @@ import '../services/course_data_service.dart';
 import '../services/campus_service.dart';
 import '../models/course.dart';
 import '../widgets/course_list_widget.dart';
+import '../services/responsive_service.dart';
 
 class HumanitiesElectivesScreen extends StatefulWidget {
   const HumanitiesElectivesScreen({super.key});
@@ -294,42 +295,72 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
             const SizedBox(height: 16),
             
             // Search Buttons
-            Row(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: ElevatedButton(
-                    onPressed: (_selectedPrimaryBranch == null || _selectedSemester == null || _isSearching)
-                        ? null
-                        : _searchHumanitiesElectives,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: _isSearching
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Search (No Clashes)'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 2,
-                  child: OutlinedButton(
-                    onPressed: _isSearching ? null : _viewAllHumanitiesElectives,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: const Text('View All'),
-                  ),
-                ),
-              ],
+            _buildSearchButtons(
+              isMobile: ResponsiveService.isMobile(context),
+              touchTarget: ResponsiveService.getTouchTargetSize(context),
+              progressSize: ResponsiveService.getAdaptiveIconSize(context, 20),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSearchButtons({
+    required bool isMobile,
+    required double touchTarget,
+    required double progressSize,
+  }) {
+    final searchButton = ElevatedButton(
+      onPressed: (_selectedPrimaryBranch == null ||
+              _selectedSemester == null ||
+              _isSearching)
+          ? null
+          : () {
+              ResponsiveService.triggerMediumFeedback(context);
+              _searchHumanitiesElectives();
+            },
+      style: ElevatedButton.styleFrom(
+        minimumSize: Size(isMobile ? double.infinity : 0, touchTarget),
+      ),
+      child: _isSearching
+          ? SizedBox(
+              height: progressSize,
+              width: progressSize,
+              child: const CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Text('Search (No Clashes)'),
+    );
+
+    final viewAllButton = OutlinedButton(
+      onPressed: _isSearching
+          ? null
+          : () {
+              ResponsiveService.triggerLightFeedback(context);
+              _viewAllHumanitiesElectives();
+            },
+      style: OutlinedButton.styleFrom(
+        minimumSize: Size(isMobile ? double.infinity : 0, touchTarget),
+      ),
+      child: const Text('View All'),
+    );
+
+    if (isMobile) {
+      return Column(
+        children: [
+          SizedBox(width: double.infinity, child: searchButton),
+          SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
+          SizedBox(width: double.infinity, child: viewAllButton),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(flex: 3, child: searchButton),
+        SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
+        Expanded(flex: 2, child: viewAllButton),
+      ],
     );
   }
 

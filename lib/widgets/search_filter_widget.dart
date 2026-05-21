@@ -58,7 +58,13 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final isMobile = ResponsiveService.isMobile(context);
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: isMobile && _showAdvancedFilters ? 320 : double.infinity,
+      ),
+      child: SingleChildScrollView(
+      child: Container(
       margin: const EdgeInsets.all(8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -470,6 +476,8 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
             ],
         ],
       ),
+    ),
+    ),
     );
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/course_guide_service.dart';
+import '../services/courses_master_service.dart';
 
 class CourseGuideWidget extends StatefulWidget {
   const CourseGuideWidget({super.key});
@@ -306,11 +307,11 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
           minWidth: MediaQuery.of(context).size.width - 80,
         ),
         child: Table(
-          columnWidths: const {
-            0: FixedColumnWidth(100),
-            1: FlexColumnWidth(4),
-            2: FixedColumnWidth(60),
-            3: FixedColumnWidth(80),
+          columnWidths: {
+            0: const FixedColumnWidth(100),
+            1: FixedColumnWidth(MediaQuery.of(context).size.width - 320),
+            2: const FixedColumnWidth(60),
+            3: const FixedColumnWidth(80),
           },
           children: [
             TableRow(
@@ -325,14 +326,19 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
                 _buildTableHeader('Type'),
               ],
             ),
-            ...courses.map((course) => TableRow(
-              children: [
-                _buildTableCell(course.code, isCode: true),
-                _buildTableCell(course.name),
-                _buildTableCell(course.credits.toString(), isCenter: true),
-                _buildTableCell(course.type, isType: true),
-              ],
-            )),
+            ...courses.map((course) {
+              final resolvedName = course.name.isNotEmpty
+                  ? course.name
+                  : CoursesMasterService().getTitle(course.code);
+              return TableRow(
+                children: [
+                  _buildTableCell(course.code, isCode: true),
+                  _buildTableCell(resolvedName),
+                  _buildTableCell(course.credits.toString(), isCenter: true),
+                  _buildTableCell(course.type, isType: true),
+                ],
+              );
+            }),
           ],
         ),
       ),

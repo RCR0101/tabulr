@@ -718,31 +718,6 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                   ],
                 ),
         actions: [
-          IconButton(
-            icon: Icon(
-              Icons.sort,
-              size: ResponsiveService.getAdaptiveIconSize(context, 24),
-            ),
-            onPressed: _showSortDialog,
-            tooltip: 'Sort Timetables',
-            iconSize: ResponsiveService.getValue(
-              context,
-              mobile: 40.0,
-              tablet: 48.0,
-              desktop: 48.0,
-            ),
-            padding: ResponsiveService.getAdaptivePadding(
-              context,
-              EdgeInsets.all(
-                ResponsiveService.getValue(
-                  context,
-                  mobile: 8.0,
-                  tablet: 8.0,
-                  desktop: 8.0,
-                ),
-              ),
-            ),
-          ),
           if (!ResponsiveService.isMobile(context))
             CampusSelectorWidget(
               onCampusChanged: (campus) {
@@ -1058,6 +1033,42 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
               )
                 : Column(
                   children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: InkWell(
+                        onTap: _showSortDialog,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _getSortIcon(_userSettingsService.sortOrder),
+                                size: 16,
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _getSortOrderName(_userSettingsService.sortOrder),
+                                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.unfold_more,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    ),
                     Expanded(
                     child: ReorderableListView.builder(
                       padding: const EdgeInsets.all(16),
@@ -1074,43 +1085,15 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                           margin: const EdgeInsets.only(bottom: 12),
                           child: ListTile(
                             contentPadding: const EdgeInsets.all(16),
-                            leading: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (isCustomSort)
-                                  ReorderableDragStartListener(
+                            leading: isCustomSort
+                                ? ReorderableDragStartListener(
                                     index: index,
                                     child: Icon(
                                       Icons.drag_handle,
                                       color: AppDesign.muted(context),
                                     ),
                                   )
-                                else
-                                  Icon(
-                                    _getSortIcon(
-                                      _userSettingsService.sortOrder,
-                                    ),
-                                    color: AppDesign.muted(context),
-                                  ),
-                                const SizedBox(width: 8),
-                                CircleAvatar(
-                                  backgroundColor:
-                                      Theme.of(context).colorScheme.primary,
-                                  child: Text(
-                                    timetable.name.isNotEmpty
-                                        ? timetable.name[0].toUpperCase()
-                                        : 'T',
-                                    style: TextStyle(
-                                      color:
-                                          Theme.of(
-                                            context,
-                                          ).colorScheme.onPrimary,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                                : null,
                             title: Text(
                               timetable.name,
                               style: const TextStyle(
@@ -1288,8 +1271,8 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
             FloatingActionButton(
               onPressed: _importFromShareCode,
               tooltip: 'Import from Code',
-              backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
-              foregroundColor: Theme.of(context).colorScheme.onTertiaryContainer,
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
               heroTag: "import_code",
               child: const Icon(Icons.download),
             ),
@@ -1326,8 +1309,8 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
               onPressed: _importFromShareCode,
               icon: const Icon(Icons.download),
               label: const Text('Import Code'),
-              backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
-              foregroundColor: Theme.of(context).colorScheme.onTertiaryContainer,
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
               heroTag: "import_code",
             ),
             const SizedBox(width: 12),

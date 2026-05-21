@@ -105,6 +105,15 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
               }),
               icon: Icons.location_on,
             ),
+            _buildOptionTile(
+              title: 'Exam Dates',
+              subtitle: 'MidSem & CompRe dates below grid',
+              value: _options.showExamDates,
+              onChanged: (value) => setState(() {
+                _options = _options.copyWith(showExamDates: value);
+              }),
+              icon: Icons.event,
+            ),
             SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 8)),
             Container(
               padding: ResponsiveService.getAdaptivePadding(context, const EdgeInsets.all(12)),

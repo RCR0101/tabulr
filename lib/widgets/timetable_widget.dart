@@ -894,18 +894,26 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     child: RepaintBoundary(
                       key: widget.tableKey,
                       child: IntrinsicWidth(
-                        child: IntrinsicHeight(
-                          child: DataTable(
-                            columnSpacing: _getColumnSpacing(widget.size),
-                            horizontalMargin: _getHorizontalMargin(widget.size),
-                            dataRowMinHeight: _getDataRowHeight(widget.size),
-                            dataRowMaxHeight: _getDataRowHeight(widget.size),
-                            headingRowHeight: 60,
-                            dividerThickness: 0,
-                            border: TableBorder.all(color: Colors.transparent),
-                            columns: _buildColumns(context),
-                            rows: _buildRows(context),
-                          ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            IntrinsicHeight(
+                              child: DataTable(
+                                columnSpacing: _getColumnSpacing(widget.size),
+                                horizontalMargin: _getHorizontalMargin(widget.size),
+                                dataRowMinHeight: _getDataRowHeight(widget.size),
+                                dataRowMaxHeight: _getDataRowHeight(widget.size),
+                                headingRowHeight: 60,
+                                dividerThickness: 0,
+                                border: TableBorder.all(color: Colors.transparent),
+                                columns: _buildColumns(context),
+                                rows: _buildRows(context),
+                              ),
+                            ),
+                            if (widget.exportOptions?.showExamDates == true)
+                              _buildExamDatesForExport(context),
+                          ],
                         ),
                       ),
                     ),
@@ -1040,84 +1048,22 @@ class _TimetableWidgetState extends State<TimetableWidget> {
             ),
           ),
         ),
-        DataColumn(
-          label: SizedBox(
-            width: _getDayColumnWidth(widget.size),
-            child: Text(
-              'Monday',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.onSurface,
+        for (final day in _isMobile
+            ? const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+            : const ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'])
+          DataColumn(
+            label: SizedBox(
+              width: _getDayColumnWidth(widget.size),
+              child: Text(
+                day,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: _isMobile ? 13 : 16,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
             ),
           ),
-        ),
-        DataColumn(
-          label: SizedBox(
-            width: _getDayColumnWidth(widget.size),
-            child: Text(
-              'Tuesday',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-          ),
-        ),
-        DataColumn(
-          label: SizedBox(
-            width: _getDayColumnWidth(widget.size),
-            child: Text(
-              'Wednesday',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-          ),
-        ),
-        DataColumn(
-          label: SizedBox(
-            width: _getDayColumnWidth(widget.size),
-            child: Text(
-              'Thursday',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-          ),
-        ),
-        DataColumn(
-          label: SizedBox(
-            width: _getDayColumnWidth(widget.size),
-            child: Text(
-              'Friday',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-          ),
-        ),
-        DataColumn(
-          label: SizedBox(
-            width: _getDayColumnWidth(widget.size),
-            child: Text(
-              'Saturday',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-          ),
-        ),
       ];
     }
   }
@@ -1809,5 +1755,67 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       case TimetableSize.extraLarge:
         return 1.2;
     }
+  }
+
+  Widget _buildExamDatesForExport(BuildContext context) {
+    final courses = widget.availableCourses ?? [];
+    final sections = widget.selectedSections ?? [];
+    if (courses.isEmpty || sections.isEmpty) return const SizedBox.shrink();
+
+    final selectedCodes = sections.map((s) => s.courseCode).toSet();
+    final examCourses = courses.where((c) =>
+        selectedCodes.contains(c.courseCode) &&
+        (c.midSemExam != null || c.endSemExam != null)).toList()
+      ..sort((a, b) => a.courseCode.compareTo(b.courseCode));
+
+    if (examCourses.isEmpty) return const SizedBox.shrink();
+
+    String fmtDate(DateTime d) =>
+        '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+    String fmtSlot(TimeSlot s) => s == TimeSlot.FN ? 'FN' : 'AN';
+
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        border: Border(top: BorderSide(color: scheme.outline.withValues(alpha: 0.2))),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Exam Schedule',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: scheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 24,
+            runSpacing: 6,
+            children: examCourses.map((c) {
+              final parts = <String>[];
+              if (c.midSemExam != null) {
+                parts.add('Mid: ${fmtDate(c.midSemExam!.date)} ${fmtSlot(c.midSemExam!.timeSlot)}');
+              }
+              if (c.endSemExam != null) {
+                parts.add('Compre: ${fmtDate(c.endSemExam!.date)} ${fmtSlot(c.endSemExam!.timeSlot)}');
+              }
+              return Text(
+                '${c.courseCode}: ${parts.join(' | ')}',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: scheme.onSurface.withValues(alpha: 0.8),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
   }
 }

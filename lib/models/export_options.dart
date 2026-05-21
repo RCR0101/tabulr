@@ -5,6 +5,7 @@ class ExportOptions {
   final bool showInstructor;
   final bool showRoom;
   final bool showTimeSlots;
+  final bool showExamDates;
 
   const ExportOptions({
     this.showCourseCode = true,
@@ -13,6 +14,7 @@ class ExportOptions {
     this.showInstructor = true,
     this.showRoom = true,
     this.showTimeSlots = true,
+    this.showExamDates = true,
   });
 
   ExportOptions copyWith({
@@ -22,6 +24,7 @@ class ExportOptions {
     bool? showInstructor,
     bool? showRoom,
     bool? showTimeSlots,
+    bool? showExamDates,
   }) {
     return ExportOptions(
       showCourseCode: showCourseCode ?? this.showCourseCode,
@@ -30,6 +33,7 @@ class ExportOptions {
       showInstructor: showInstructor ?? this.showInstructor,
       showRoom: showRoom ?? this.showRoom,
       showTimeSlots: showTimeSlots ?? this.showTimeSlots,
+      showExamDates: showExamDates ?? this.showExamDates,
     );
   }
 }

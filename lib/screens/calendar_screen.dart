@@ -195,32 +195,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final timetables = await _timetableService.getAllTimetables();
-      final userData = await _examSeatingService.loadUserData();
-      final allExams = await _examSeatingService.fetchAllExamSeating();
-      await _professorService.loadProfessors();
+      final (timetables, userData, allExams, _, courses, prefsDoc) =
+          await (
+        _timetableService.getAllTimetables(),
+        _examSeatingService.loadUserData(),
+        _examSeatingService.fetchAllExamSeating(),
+        _professorService.loadProfessors(),
+        CourseDataService().fetchCourses().catchError((_) => <Course>[]),
+        _calendarPrefsRef?.get() ?? Future.value(null),
+      ).wait;
 
-      // Load courses for exam schedule lookup
-      try {
-        final courses = await CourseDataService().fetchCourses();
-        _courseMap = {for (final c in courses) c.courseCode: c};
-      } catch (_) {}
+      _courseMap = {for (final c in courses) c.courseCode: c};
 
-      // Load saved prefs
       String? savedTimetableId;
-      final prefsRef = _calendarPrefsRef;
-      if (prefsRef != null) {
-        final doc = await prefsRef.get();
-        if (doc.exists) {
-          final data = doc.data() as Map<String, dynamic>?;
-          if (data != null) {
-            savedTimetableId = data['selectedTimetableId'] as String?;
-            final eventsRaw = data['customEvents'] as List<dynamic>? ?? [];
-            _customEvents = eventsRaw
-                .map((e) =>
-                    CalendarEvent.fromJson(e as Map<String, dynamic>))
-                .toList();
-          }
+      if (prefsDoc != null && prefsDoc.exists) {
+        final data = prefsDoc.data() as Map<String, dynamic>?;
+        if (data != null) {
+          savedTimetableId = data['selectedTimetableId'] as String?;
+          final eventsRaw = data['customEvents'] as List<dynamic>? ?? [];
+          _customEvents = eventsRaw
+              .map((e) =>
+                  CalendarEvent.fromJson(e as Map<String, dynamic>))
+              .toList();
         }
       }
 
@@ -1180,7 +1176,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   child: Column(
                     children: [
                       Text(
-                        'H${hour + 1}',
+                        'H$hour',
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                           fontWeight: FontWeight.w600,

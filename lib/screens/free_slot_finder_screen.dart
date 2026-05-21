@@ -401,8 +401,13 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              ..._myTimetables.map((tt) => ActionChip(
-                    avatar: Icon(Icons.schedule, size: 16, color: scheme.primary),
+              ..._myTimetables
+                  .where((tt) => !_sources.any((s) => s.name == tt.name))
+                  .map((tt) => ActionChip(
+                    avatar: CircleAvatar(
+                      backgroundColor: _sourceColor(_sources.length),
+                      radius: 6,
+                    ),
                     label: Text(tt.name),
                     onPressed: () => _addMyTimetable(tt),
                   )),
@@ -520,10 +525,88 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
 
   Widget _buildGrid(ColorScheme scheme, bool isMobile) {
     final busyMap = _computeBusyMap();
-    final cellWidth = isMobile ? 52.0 : 72.0;
-    final cellHeight = isMobile ? 40.0 : 48.0;
-    final dayColWidth = isMobile ? 44.0 : 56.0;
 
+    if (isMobile) {
+      return _buildVerticalGrid(scheme, busyMap);
+    }
+    return _buildHorizontalGrid(scheme, busyMap);
+  }
+
+  Widget _buildVerticalGrid(ColorScheme scheme, Map<String, List<_SlotSource>> busyMap) {
+    final cellSize = 44.0;
+    final headerHeight = 36.0;
+    final hourColWidth = 44.0;
+
+    return Center(
+      child: Container(
+        decoration: AppDesign.cardDecoration(context),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                SizedBox(width: hourColWidth, height: headerHeight),
+                ..._dayLabels.map((label) => Expanded(
+                      child: Container(
+                        height: headerHeight,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(color: scheme.outline.withValues(alpha: 0.15)),
+                            left: BorderSide(color: scheme.outline.withValues(alpha: 0.08)),
+                          ),
+                        ),
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: scheme.onSurface.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ),
+                    )),
+              ],
+            ),
+            ..._hours.map((hour) => Row(
+                  children: [
+                    Container(
+                      width: hourColWidth,
+                      height: cellSize,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: scheme.outline.withValues(alpha: 0.08)),
+                        ),
+                      ),
+                      child: Text(
+                        _hourStartTime(hour),
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    ...List.generate(_days.length, (dayIdx) {
+                      return Expanded(
+                        child: _buildCell(scheme, busyMap, dayIdx, hour,
+                            width: null, height: cellSize, isMobile: true),
+                      );
+                    }),
+                  ],
+                )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHorizontalGrid(ColorScheme scheme, Map<String, List<_SlotSource>> busyMap) {
+    final cellWidth = 72.0;
+    final cellHeight = 48.0;
+    final dayColWidth = 56.0;
     final totalWidth = dayColWidth + (cellWidth * _hours.length);
 
     return Center(
@@ -535,117 +618,121 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
           scrollDirection: Axis.horizontal,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header row
-            Row(
-              children: [
-                SizedBox(width: dayColWidth, height: cellHeight),
-                ..._hours.map((h) => Container(
-                      width: cellWidth,
+            children: [
+              Row(
+                children: [
+                  SizedBox(width: dayColWidth, height: cellHeight),
+                  ..._hours.map((h) => Container(
+                        width: cellWidth,
+                        height: cellHeight,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(color: scheme.outline.withValues(alpha: 0.15)),
+                            left: BorderSide(color: scheme.outline.withValues(alpha: 0.08)),
+                          ),
+                        ),
+                        child: Text(
+                          _hourStartTime(h),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: scheme.onSurface.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      )),
+                ],
+              ),
+              ...List.generate(_days.length, (dayIdx) {
+                return Row(
+                  children: [
+                    Container(
+                      width: dayColWidth,
                       height: cellHeight,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         border: Border(
-                          bottom: BorderSide(color: scheme.outline.withValues(alpha: 0.15)),
-                          left: BorderSide(color: scheme.outline.withValues(alpha: 0.08)),
+                          bottom: BorderSide(color: scheme.outline.withValues(alpha: 0.08)),
                         ),
                       ),
                       child: Text(
-                        _hourStartTime(h),
+                        _dayLabels[dayIdx],
                         style: TextStyle(
-                          fontSize: isMobile ? 10 : 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: scheme.onSurface.withValues(alpha: 0.7),
+                          color: scheme.onSurface,
                         ),
                       ),
-                    )),
-              ],
-            ),
-            // Day rows
-            ...List.generate(_days.length, (dayIdx) {
-              return Row(
-                children: [
-                  Container(
-                    width: dayColWidth,
-                    height: cellHeight,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: scheme.outline.withValues(alpha: 0.08)),
-                      ),
                     ),
-                    child: Text(
-                      _dayLabels[dayIdx],
-                      style: TextStyle(
-                        fontSize: isMobile ? 11 : 13,
-                        fontWeight: FontWeight.w600,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                  ),
-                  ..._hours.map((hour) {
-                    final key = '${_days[dayIdx].index}-$hour';
-                    final busySources = busyMap[key] ?? [];
-                    final isFree = busySources.isEmpty;
-                    final isSelected = _isInSelection(dayIdx, hour);
-
-                    Color cellColor;
-                    if (isSelected) {
-                      cellColor = scheme.primary.withValues(alpha: 0.25);
-                    } else if (isFree) {
-                      cellColor = Colors.green.withValues(alpha: 0.12);
-                    } else {
-                      cellColor = scheme.error.withValues(alpha: 0.08);
-                    }
-
-                    return GestureDetector(
-                      onTap: isFree ? () => _onSlotTap(dayIdx, hour, busyMap) : null,
-                      child: MouseRegion(
-                        cursor: isFree ? SystemMouseCursors.click : SystemMouseCursors.basic,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          width: cellWidth,
-                          height: cellHeight,
-                          decoration: BoxDecoration(
-                            color: cellColor,
-                            border: Border(
-                              bottom: BorderSide(color: scheme.outline.withValues(alpha: 0.08)),
-                              left: BorderSide(color: scheme.outline.withValues(alpha: 0.08)),
-                            ),
-                          ),
-                          child: Center(
-                            child: isSelected
-                                ? Icon(Icons.check_circle,
-                                    size: isMobile ? 16 : 20,
-                                    color: scheme.primary)
-                                : isFree
-                                    ? Icon(Icons.add_circle_outline,
-                                        size: isMobile ? 14 : 18,
-                                        color: Colors.green.withValues(alpha: 0.5))
-                                    : Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: busySources
-                                            .take(4)
-                                            .map((s) => Container(
-                                                  width: isMobile ? 6 : 8,
-                                                  height: isMobile ? 6 : 8,
-                                                  margin: const EdgeInsets.symmetric(horizontal: 1),
-                                                  decoration: BoxDecoration(
-                                                      color: s.color, shape: BoxShape.circle),
-                                                ))
-                                            .toList(),
-                                      ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                ],
-              );
-            }),
-          ],
+                    ..._hours.map((hour) {
+                      return _buildCell(scheme, busyMap, dayIdx, hour,
+                          width: cellWidth, height: cellHeight, isMobile: false);
+                    }),
+                  ],
+                );
+              }),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCell(ColorScheme scheme, Map<String, List<_SlotSource>> busyMap,
+      int dayIdx, int hour,
+      {double? width, required double height, required bool isMobile}) {
+    final key = '${_days[dayIdx].index}-$hour';
+    final busySources = busyMap[key] ?? [];
+    final isFree = busySources.isEmpty;
+    final isSelected = _isInSelection(dayIdx, hour);
+
+    Color cellColor;
+    if (isSelected) {
+      cellColor = scheme.primary.withValues(alpha: 0.25);
+    } else if (isFree) {
+      cellColor = Colors.green.withValues(alpha: 0.12);
+    } else {
+      cellColor = scheme.error.withValues(alpha: 0.08);
+    }
+
+    return GestureDetector(
+      onTap: isFree ? () => _onSlotTap(dayIdx, hour, busyMap) : null,
+      child: MouseRegion(
+        cursor: isFree ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            color: cellColor,
+            border: Border(
+              bottom: BorderSide(color: scheme.outline.withValues(alpha: 0.08)),
+              left: BorderSide(color: scheme.outline.withValues(alpha: 0.08)),
+            ),
+          ),
+          child: Center(
+            child: isSelected
+                ? Icon(Icons.check_circle,
+                    size: isMobile ? 16 : 20, color: scheme.primary)
+                : isFree
+                    ? Icon(Icons.add_circle_outline,
+                        size: isMobile ? 14 : 18,
+                        color: Colors.green.withValues(alpha: 0.5))
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: busySources
+                            .take(4)
+                            .map((s) => Container(
+                                  width: isMobile ? 6 : 8,
+                                  height: isMobile ? 6 : 8,
+                                  margin: const EdgeInsets.symmetric(horizontal: 1),
+                                  decoration: BoxDecoration(
+                                      color: s.color, shape: BoxShape.circle),
+                                ))
+                            .toList(),
+                      ),
+          ),
+        ),
       ),
     );
   }

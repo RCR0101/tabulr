@@ -62,16 +62,20 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   List<Map<String, dynamic>> _courses = [];
   List<Map<String, dynamic>> _courseFiles = [];
   bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMoreCourses = true;
   bool _isLoadingFiles = false;
-  bool _isLoadingMoreFiles = false;
-  bool _hasMoreFiles = false;
+  DocumentSnapshot? _lastCourseDoc;
+  int _totalCourseCount = 0;
+
   bool _isSubmitting = false;
   String _searchQuery = '';
   CourseSortOption _courseSortOption = CourseSortOption.fileCountDesc;
   FileSortOption _fileSortOption = FileSortOption.nameAsc;
-  DocumentSnapshot? _lastFileDoc;
-  static const _pageSize = 20;
+  static const _coursePageSize = 40;
+  static const _filePageSize = 500;
 
+  final ScrollController _coursesScrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -83,11 +87,13 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   @override
   void initState() {
     super.initState();
+    _coursesScrollController.addListener(_onCoursesScroll);
     _loadCourses();
   }
 
   @override
   void dispose() {
+    _coursesScrollController.dispose();
     _searchController.dispose();
     _driveLinkController.dispose();
     _titleController.dispose();
@@ -95,29 +101,37 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     super.dispose();
   }
 
+  void _onCoursesScroll() {
+    if (_searchQuery.isNotEmpty) return;
+    if (!_hasMoreCourses || _isLoadingMore) return;
+    final pos = _coursesScrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - 200) {
+      _loadMoreCourses();
+    }
+  }
+
   Future<void> _loadCourses() async {
     setState(() {
       _isLoading = true;
+      _courses = [];
+      _lastCourseDoc = null;
+      _hasMoreCourses = true;
     });
 
     try {
-      final indexSnapshot = await _firestore
+      final countSnapshot = await _firestore
           .collection('acad_drives_index')
+          .count()
           .get();
+      _totalCourseCount = countSnapshot.count ?? 0;
 
-      final courses = indexSnapshot.docs.map((doc) {
-        final data = doc.data();
-        return {
-          'code': data['code'] ?? doc.id,
-          'name': data['code'] ?? doc.id,
-          'fileCount': data['fileCount'] ?? 0,
-          'driveCount': data['driveCount'] ?? 0,
-        };
-      }).toList()
-        ..sort((a, b) => (b['fileCount'] as int).compareTo(a['fileCount'] as int));
+      final query = _buildCourseQuery();
+      final snapshot = await query.limit(_coursePageSize).get();
 
       setState(() {
-        _courses = courses;
+        _courses = _parseCourses(snapshot.docs);
+        _lastCourseDoc = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
+        _hasMoreCourses = snapshot.docs.length == _coursePageSize;
         _isLoading = false;
       });
     } catch (e) {
@@ -129,13 +143,75 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     }
   }
 
+  Future<void> _loadMoreCourses() async {
+    if (_lastCourseDoc == null || _isLoadingMore || !_hasMoreCourses) return;
+
+    setState(() => _isLoadingMore = true);
+
+    try {
+      final query = _buildCourseQuery()
+          .startAfterDocument(_lastCourseDoc!)
+          .limit(_coursePageSize);
+      final snapshot = await query.get();
+
+      setState(() {
+        _courses.addAll(_parseCourses(snapshot.docs));
+        _lastCourseDoc = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
+        _hasMoreCourses = snapshot.docs.length == _coursePageSize;
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingMore = false);
+      ToastService.showError('Failed to load more courses: $e');
+    }
+  }
+
+  Query<Map<String, dynamic>> _buildCourseQuery() {
+    final collection = _firestore.collection('acad_drives_index');
+    switch (_courseSortOption) {
+      case CourseSortOption.nameAsc:
+        return collection.orderBy('code');
+      case CourseSortOption.nameDesc:
+        return collection.orderBy('code', descending: true);
+      case CourseSortOption.fileCountAsc:
+        return collection.orderBy('fileCount').orderBy('code');
+      case CourseSortOption.fileCountDesc:
+        return collection.orderBy('fileCount', descending: true).orderBy('code', descending: true);
+    }
+  }
+
+  List<Map<String, dynamic>> _parseCourses(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    return docs.map((doc) {
+      final data = doc.data();
+      return {
+        'code': data['code'] ?? doc.id,
+        'name': data['code'] ?? doc.id,
+        'fileCount': data['fileCount'] ?? 0,
+        'driveCount': data['driveCount'] ?? 0,
+      };
+    }).toList();
+  }
+
+  Future<void> _loadAllCoursesForSearch() async {
+    setState(() => _isLoading = true);
+    try {
+      final snapshot = await _firestore.collection('acad_drives_index').get();
+      setState(() {
+        _courses = _parseCourses(snapshot.docs);
+        _hasMoreCourses = false;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ToastService.showError('Failed to load courses: $e');
+    }
+  }
+
   Future<void> _loadCourseFiles(String courseCode) async {
     setState(() {
       _isLoadingFiles = true;
       _selectedCourse = courseCode;
       _courseFiles = [];
-      _lastFileDoc = null;
-      _hasMoreFiles = false;
     });
 
     try {
@@ -143,7 +219,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           .collection('acad_drives_files')
           .where('course_codes', arrayContains: courseCode)
           .orderBy('uploadedAt', descending: true)
-          .limit(_pageSize)
+          .limit(_filePageSize)
           .get();
 
       final files = filesSnapshot.docs.map((doc) {
@@ -157,8 +233,6 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       setState(() {
         _courseFiles = files;
         _isLoadingFiles = false;
-        _hasMoreFiles = filesSnapshot.docs.length == _pageSize;
-        _lastFileDoc = filesSnapshot.docs.isNotEmpty ? filesSnapshot.docs.last : null;
       });
     } catch (e) {
       setState(() {
@@ -166,44 +240,6 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         _isLoadingFiles = false;
       });
       ToastService.showError('Failed to load course files: $e');
-    }
-  }
-
-  Future<void> _loadMoreFiles() async {
-    if (_selectedCourse == null || _lastFileDoc == null || _isLoadingMoreFiles) return;
-
-    setState(() {
-      _isLoadingMoreFiles = true;
-    });
-
-    try {
-      final filesSnapshot = await _firestore
-          .collection('acad_drives_files')
-          .where('course_codes', arrayContains: _selectedCourse)
-          .orderBy('uploadedAt', descending: true)
-          .startAfterDocument(_lastFileDoc!)
-          .limit(_pageSize)
-          .get();
-
-      final newFiles = filesSnapshot.docs.map((doc) {
-        final data = doc.data();
-        return {
-          'id': doc.id,
-          ...data,
-        };
-      }).toList();
-
-      setState(() {
-        _courseFiles.addAll(newFiles);
-        _isLoadingMoreFiles = false;
-        _hasMoreFiles = filesSnapshot.docs.length == _pageSize;
-        _lastFileDoc = filesSnapshot.docs.isNotEmpty ? filesSnapshot.docs.last : null;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoadingMoreFiles = false;
-      });
-      ToastService.showError('Failed to load more files: $e');
     }
   }
 
@@ -217,35 +253,28 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   }
 
   List<Map<String, dynamic>> get _filteredCourses {
-    List<Map<String, dynamic>> filtered;
-    
     if (_searchQuery.isEmpty) {
-      filtered = List.from(_courses);
-    } else {
-      filtered = _courses.where((course) {
-        final code = (course['code'] ?? '').toString().toLowerCase();
-        final name = (course['name'] ?? '').toString().toLowerCase();
-        final query = _searchQuery.toLowerCase();
-        return code.contains(query) || name.contains(query);
-      }).toList();
+      return _courses;
     }
-    
-    // Apply sorting
+
+    final query = _searchQuery.toLowerCase();
+    final filtered = _courses.where((course) {
+      final code = (course['code'] ?? '').toString().toLowerCase();
+      final name = (course['name'] ?? '').toString().toLowerCase();
+      return code.contains(query) || name.contains(query);
+    }).toList();
+
     switch (_courseSortOption) {
       case CourseSortOption.nameAsc:
         filtered.sort((a, b) => (a['code'] ?? '').toString().toLowerCase().compareTo((b['code'] ?? '').toString().toLowerCase()));
-        break;
       case CourseSortOption.nameDesc:
         filtered.sort((a, b) => (b['code'] ?? '').toString().toLowerCase().compareTo((a['code'] ?? '').toString().toLowerCase()));
-        break;
       case CourseSortOption.fileCountAsc:
         filtered.sort((a, b) => (a['fileCount'] as int).compareTo(b['fileCount'] as int));
-        break;
       case CourseSortOption.fileCountDesc:
         filtered.sort((a, b) => (b['fileCount'] as int).compareTo(a['fileCount'] as int));
-        break;
     }
-    
+
     return filtered;
   }
 
@@ -589,6 +618,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                   _courseSortOption = value!;
                 });
                 Navigator.pop(context);
+                if (_searchQuery.isEmpty) {
+                  _loadCourses();
+                }
               },
               title: Text(title),
               subtitle: Text(subtitle),
@@ -713,60 +745,29 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       ),
       body: Column(
         children: [
-          // Header Section
-          Container(
-            width: double.infinity,
-            padding: ResponsiveService.getAdaptivePadding(
-              context,
-              const EdgeInsets.all(20),
-            ),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Theme.of(context).colorScheme.primary,
-                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
-                ],
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _selectedCourse != null 
-                    ? '$_selectedCourse Resources' 
-                    : 'Browse by Course',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onPrimary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _selectedCourse != null 
-                    ? 'Files organized for this course'
-                    : 'Select a course to browse its resources',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
           // Search Section
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Row(
               children: [
                 // Search Field
                 Expanded(
                   child: TextField(
                     controller: _searchController,
-                    onChanged: (value) => setState(() => _searchQuery = value),
+                    onChanged: (value) {
+                      final wasEmpty = _searchQuery.isEmpty;
+                      final isNowEmpty = value.isEmpty;
+                      setState(() => _searchQuery = value);
+                      if (_selectedCourse == null) {
+                        if (wasEmpty && !isNowEmpty) {
+                          _loadAllCoursesForSearch();
+                        } else if (!wasEmpty && isNowEmpty) {
+                          _loadCourses();
+                        }
+                      }
+                    },
                     decoration: InputDecoration(
-                      hintText: _selectedCourse != null 
+                      hintText: _selectedCourse != null
                         ? 'Search files in $_selectedCourse...'
                         : 'Search courses...',
                       prefixIcon: const Icon(Icons.search),
@@ -775,7 +776,11 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                               icon: const Icon(Icons.clear),
                               onPressed: () {
                                 _searchController.clear();
+                                final wasSearching = _searchQuery.isNotEmpty;
                                 setState(() => _searchQuery = '');
+                                if (_selectedCourse == null && wasSearching) {
+                                  _loadCourses();
+                                }
                               },
                             )
                           : null,
@@ -823,7 +828,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     }
 
     final courses = _filteredCourses;
-    
+
     if (courses.isEmpty) {
       return Center(
         child: Column(
@@ -842,15 +847,91 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       );
     }
 
-    return ListView.builder(
-      itemCount: courses.length,
-      itemBuilder: (context, index) {
-        final course = courses[index];
-        return _CourseCard(
-          course: course,
-          onTap: () => _loadCourseFiles(course['code']),
-        );
-      },
+    final itemCount = courses.length + (_hasMoreCourses && _searchQuery.isEmpty ? 1 : 0);
+
+    final isMobile = ResponsiveService.isMobile(context);
+    if (isMobile) {
+      return Column(
+        children: [
+          _buildCourseCountBar(courses.length),
+          Expanded(
+            child: ListView.builder(
+              controller: _coursesScrollController,
+              padding: const EdgeInsets.only(bottom: 16),
+              itemCount: itemCount,
+              itemBuilder: (context, index) {
+                if (index >= courses.length) {
+                  return _buildLoadingFooter();
+                }
+                final course = courses[index];
+                return _CourseCard(
+                  course: course,
+                  onTap: () => _loadCourseFiles(course['code']),
+                );
+              },
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        _buildCourseCountBar(courses.length),
+        Expanded(
+          child: GridView.builder(
+            controller: _coursesScrollController,
+            padding: const EdgeInsets.all(16),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 360,
+              mainAxisExtent: 80,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: itemCount,
+            itemBuilder: (context, index) {
+              if (index >= courses.length) {
+                return _buildLoadingFooter();
+              }
+              final course = courses[index];
+              return _CourseCard(
+                course: course,
+                onTap: () => _loadCourseFiles(course['code']),
+                compact: true,
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCourseCountBar(int shown) {
+    final total = _searchQuery.isNotEmpty ? shown : _totalCourseCount;
+    final label = _searchQuery.isNotEmpty
+        ? '$shown result${shown == 1 ? '' : 's'}'
+        : _hasMoreCourses
+            ? 'Showing $shown of $total courses'
+            : '$total courses';
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingFooter() {
+    return const Padding(
+      padding: EdgeInsets.all(16),
+      child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
     );
   }
 
@@ -912,23 +993,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     final driveNames = driveTrees.keys.toList()..sort(_naturalSort);
 
     return ListView.builder(
-      itemCount: driveNames.length + (_hasMoreFiles ? 1 : 0),
+      itemCount: driveNames.length,
       itemBuilder: (context, index) {
-        if (index == driveNames.length) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Center(
-              child: _isLoadingMoreFiles
-                  ? const CircularProgressIndicator()
-                  : FilledButton.icon(
-                      onPressed: _loadMoreFiles,
-                      icon: const Icon(Icons.expand_more),
-                      label: const Text('Load More'),
-                    ),
-            ),
-          );
-        }
-
         final driveName = driveNames[index];
         final folderTree = driveTrees[driveName]!;
         final contributor = driveContributors[driveName];
@@ -952,55 +1018,59 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 class _CourseCard extends StatelessWidget {
   final Map<String, dynamic> course;
   final VoidCallback onTap;
+  final bool compact;
 
   const _CourseCard({
     required this.course,
     required this.onTap,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.folder,
-                  size: 32,
-                  color: AppDesign.warning(context),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        course['code'] ?? 'Unknown Course',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+    return Card(
+      margin: compact ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      elevation: compact ? 1 : 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.all(compact ? 12 : 16),
+          child: Row(
+            children: [
+              Icon(
+                Icons.folder_rounded,
+                size: compact ? 28 : 32,
+                color: AppDesign.warning(context),
+              ),
+              SizedBox(width: compact ? 12 : 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      course['code'] ?? 'Unknown Course',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${course['driveCount'] ?? 0} drive${(course['driveCount'] ?? 0) == 1 ? '' : 's'} • ${course['fileCount']} file${course['fileCount'] == 1 ? '' : 's'}',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                        ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${course['fileCount']} file${course['fileCount'] == 1 ? '' : 's'}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const Icon(Icons.arrow_forward_ios, size: 16),
-              ],
-            ),
+              ),
+              Icon(Icons.chevron_right, size: 20,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4)),
+            ],
           ),
         ),
       ),

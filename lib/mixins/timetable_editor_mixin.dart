@@ -585,8 +585,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
           top: -10000,
           child: Material(
             child: SizedBox(
-              width: 2000, // Provide enough width for full table
-              height: 2000, // Provide enough height for full table
+              width: 2000,
+              height: 2200,
               child: TimetableWidget(
                 timetableSlots: timetableService.generateTimetableSlots(
                   tt.selectedSections,
@@ -597,8 +597,10 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
                   tt.selectedSections,
                   tt.availableCourses,
                 ),
+                selectedSections: tt.selectedSections,
+                availableCourses: tt.availableCourses,
                 size: TimetableSize
-                    .extraLarge, // Use largest size for best quality
+                    .extraLarge,
                 isForExport: true,
                 tableKey: tableExportKey,
                 exportOptions: exportOptions,

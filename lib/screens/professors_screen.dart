@@ -305,18 +305,6 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
-        leading: CircleAvatar(
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          foregroundColor: Theme.of(context).colorScheme.onPrimary,
-          child: Text(
-            professor.name.isNotEmpty
-                ? professor.name[0].toUpperCase()
-                : '?',
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
         title: Text(
           professor.name,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
