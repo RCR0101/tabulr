@@ -35,6 +35,14 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
   }
 
   Future<void> _shareOrReuse() async {
+    final existing = widget.timetable.shareId;
+    if (existing != null) {
+      setState(() {
+        _code = existing;
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _error = null;
