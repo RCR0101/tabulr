@@ -70,8 +70,16 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     super.dispose();
   }
 
+  TimetableListSortOrder? _lastSortOrder;
+  List<String>? _lastCustomOrder;
+
   void _onSettingsChanged() {
-    if (mounted) {
+    if (!mounted) return;
+    final currentSort = _userSettingsService.sortOrder;
+    final currentCustom = _userSettingsService.customTimetableOrder;
+    if (currentSort != _lastSortOrder || currentCustom != _lastCustomOrder) {
+      _lastSortOrder = currentSort;
+      _lastCustomOrder = currentCustom;
       _applySorting();
     }
   }
@@ -439,8 +447,6 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   void _applySorting() {
     final sortOrder = _userSettingsService.sortOrder;
     final customOrder = _userSettingsService.customTimetableOrder;
-    print('Applying sort: $sortOrder, timetables count: ${_timetables.length}');
-
     List<Timetable> sorted = List.from(_timetables);
 
     switch (sortOrder) {
@@ -492,7 +498,6 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     }
 
     final currentSort = _userSettingsService.sortOrder;
-    print('Current sort order: $currentSort');
 
     if (!mounted) return;
 

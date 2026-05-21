@@ -524,13 +524,17 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
     final cellHeight = isMobile ? 40.0 : 48.0;
     final dayColWidth = isMobile ? 44.0 : 56.0;
 
-    return Container(
-      decoration: AppDesign.cardDecoration(context),
-      clipBehavior: Clip.antiAlias,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    final totalWidth = dayColWidth + (cellWidth * _hours.length);
+
+    return Center(
+      child: Container(
+        constraints: BoxConstraints(maxWidth: totalWidth),
+        decoration: AppDesign.cardDecoration(context),
+        clipBehavior: Clip.antiAlias,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header row
             Row(
@@ -641,6 +645,7 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
             }),
           ],
         ),
+      ),
       ),
     );
   }

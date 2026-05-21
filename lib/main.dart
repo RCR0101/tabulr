@@ -44,7 +44,19 @@ void main() async {
     themeService.initialize(),
     PreferencesService().initialize(),
   ]);
-  
+
+  // Sync theme from UserSettings (Firestore source of truth) to ThemeService
+  final savedSettings = userSettingsService.userSettings;
+  if (savedSettings != null) {
+    await themeService.setTheme(savedSettings.themeVariant);
+    final flutterMode = switch (savedSettings.themeMode) {
+      user_settings.ThemeMode.light => ThemeMode.light,
+      user_settings.ThemeMode.dark => ThemeMode.dark,
+      user_settings.ThemeMode.system => ThemeMode.system,
+    };
+    await themeService.setThemeMode(flutterMode);
+  }
+
   if (kIsWeb) {
     setUrlStrategy(PathUrlStrategy());
     _setupWebCacheClearOnClose();
