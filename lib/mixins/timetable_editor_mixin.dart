@@ -16,6 +16,7 @@ import '../services/toast_service.dart';
 import '../services/auto_load_cdc_service.dart';
 import '../services/campus_service.dart';
 import '../services/page_leave_warning_service.dart';
+import '../services/timetable_sharing_service.dart';
 import '../services/undo_redo_service.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/timetable_widget.dart';
@@ -425,13 +426,25 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   }
 
   Future<void> shareTimetable() async {
-    final tt = currentTimetable;
+    var tt = currentTimetable;
     if (tt == null) return;
     if (tt.selectedSections.isEmpty) {
       ToastService.showWarning('Add some courses before sharing');
       return;
     }
+
+    // Assign a persistent shareId if this timetable doesn't have one yet
+    if (tt.shareId == null) {
+      final newId = TimetableSharingService().generateShareId();
+      tt = tt.copyWith(shareId: () => newId);
+      setState(() {
+        _setCurrentTimetable(tt!);
+      });
+      await timetableService.saveTimetable(tt);
+    }
+
     final returnedShareId = await ShareTimetableDialog.show(context, tt);
+    // If revoked, the dialog returns a new shareId
     if (returnedShareId != null && returnedShareId != tt.shareId && mounted) {
       final updated = tt.copyWith(shareId: () => returnedShareId);
       setState(() {

@@ -31,34 +31,23 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
   @override
   void initState() {
     super.initState();
-    _shareOrReuse();
+    _code = widget.timetable.shareId;
+    _upload();
   }
 
-  Future<void> _shareOrReuse() async {
-    final existing = widget.timetable.shareId;
-    if (existing != null) {
-      setState(() {
-        _code = existing;
-      });
-      return;
-    }
-
+  Future<void> _upload() async {
+    if (_code == null) return;
     setState(() {
       _isLoading = true;
       _error = null;
     });
     try {
-      final code = await TimetableSharingService().shareTimetable(widget.timetable);
-      if (mounted) {
-        setState(() {
-          _code = code;
-          _isLoading = false;
-        });
-      }
+      await TimetableSharingService().uploadShare(_code!, widget.timetable);
+      if (mounted) setState(() => _isLoading = false);
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Failed to generate share code';
+          _error = 'Failed to upload share';
           _isLoading = false;
         });
       }

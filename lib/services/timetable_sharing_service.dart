@@ -42,12 +42,12 @@ class TimetableSharingService {
     return '${b[0]}${b[1]}${b[2]}${b[3]}-${b[4]}${b[5]}-${b[6]}${b[7]}-${b[8]}${b[9]}-${b[10]}${b[11]}${b[12]}${b[13]}${b[14]}${b[15]}';
   }
 
-  Future<String> shareTimetable(Timetable timetable) async {
+  String generateShareId() => _generateUuid();
+
+  Future<void> uploadShare(String code, Timetable timetable) async {
     final user = _authService.currentUser;
     final ownerName = user?.displayName ?? 'Anonymous';
     final campus = CampusService.currentCampus.name;
-
-    final code = timetable.shareId ?? _generateUuid();
     final sectionsJson = timetable.selectedSections.map((s) => s.toJson()).toList();
 
     await _firestore.collection(_collection).doc(code).set({
@@ -58,8 +58,6 @@ class TimetableSharingService {
       'sections': sectionsJson,
       'createdAt': FieldValue.serverTimestamp(),
     });
-
-    return code;
   }
 
   Future<String> revokeAndReshare(Timetable timetable) async {
@@ -70,20 +68,7 @@ class TimetableSharingService {
     }
 
     final newCode = _generateUuid();
-    final user = _authService.currentUser;
-    final ownerName = user?.displayName ?? 'Anonymous';
-    final campus = CampusService.currentCampus.name;
-    final sectionsJson = timetable.selectedSections.map((s) => s.toJson()).toList();
-
-    await _firestore.collection(_collection).doc(newCode).set({
-      'name': timetable.name,
-      'ownerName': ownerName,
-      'ownerId': _authService.userDocId,
-      'campus': campus,
-      'sections': sectionsJson,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
+    await uploadShare(newCode, timetable);
     return newCode;
   }
 

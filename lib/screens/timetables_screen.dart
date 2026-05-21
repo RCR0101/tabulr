@@ -22,7 +22,6 @@ import '../widgets/campus_selector_widget.dart';
 
 import '../widgets/error_dialog.dart';
 import '../widgets/share_timetable_dialog.dart';
-import '../services/timetable_sharing_service.dart';
 import 'home_screen.dart';
 import 'course_guide_screen.dart';
 import 'timetable_comparison_screen.dart';
