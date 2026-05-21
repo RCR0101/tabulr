@@ -1103,6 +1103,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget _buildSingleDayView(ThemeData theme) {
     final dayIndex = _mobileDayIndex.clamp(0, 5);
     final bitsDays = [DayOfWeek.M, DayOfWeek.T, DayOfWeek.W, DayOfWeek.Th, DayOfWeek.F, DayOfWeek.S];
+    final fullDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     final day = bitsDays[dayIndex];
     final date = _weekStart.add(Duration(days: dayIndex));
     final items = _itemsForDay(day, date: date);
@@ -1118,11 +1119,52 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      itemCount: endHour - startHour,
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        if (details.primaryVelocity == null) return;
+        if (details.primaryVelocity! < -200 && dayIndex < 5) {
+          setState(() => _mobileDayIndex = dayIndex + 1);
+        } else if (details.primaryVelocity! > 200 && dayIndex > 0) {
+          setState(() => _mobileDayIndex = dayIndex - 1);
+        }
+      },
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        itemCount: endHour - startHour + 1,
       itemBuilder: (context, index) {
-        final hour = startHour + index;
+        if (index == 0) {
+          final monthDay = '${date.day} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][date.month - 1]}';
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12, left: 4),
+            child: Row(
+              children: [
+                Text(
+                  fullDayNames[dayIndex],
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  monthDay,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                ),
+                const Spacer(),
+                Icon(Icons.swipe, size: 16, color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
+                const SizedBox(width: 4),
+                Text(
+                  'Swipe to change day',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        final hour = startHour + index - 1;
         final hourItems = items.where((it) => it.hour == hour).toList();
         final hourBanners = allBanners[hour] ?? [];
 
@@ -1168,6 +1210,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         ),
                       )
                     : Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           ...hourBanners.map((b) => Padding(
                                 padding: const EdgeInsets.only(bottom: 4),
@@ -1205,6 +1248,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         );
       },
+      ),
     );
   }
 
