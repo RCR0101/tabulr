@@ -43,12 +43,5 @@
 <body>
   <script src="flutter_bootstrap.js" async></script>
 
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('flutter-first-frame', function () {
-        navigator.serviceWorker.register('flutter_service_worker.js');
-      });
-    }
-  </script>
 </body>
 </html>

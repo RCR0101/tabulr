@@ -25,7 +25,7 @@ jobs:
         env:
           DOT_ENV: ${{ secrets.DOT_ENV }}
 
-      - run: flutter build web --release
+      - run: flutter build web --release --pwa-strategy=none
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
