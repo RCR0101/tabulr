@@ -23,7 +23,7 @@ class AppDesign {
 
   // Animation durations
   static const Duration animDurationFast = Duration(milliseconds: 150);
-  static const Duration animDurationNormal = Duration(milliseconds: 300);
+  static const Duration animDurationNormal = Duration(milliseconds: 200);
   static const Duration animDurationSlow = Duration(milliseconds: 500);
   static const Curve animCurve = Curves.easeInOutCubic;
 

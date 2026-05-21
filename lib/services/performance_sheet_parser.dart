@@ -336,13 +336,6 @@ class PerformanceSheetParser {
     final upper = rawName.toUpperCase();
 
     if (upper.contains('SUMMER')) {
-      final match = RegExp(r'(\d{4})\s*-\s*(\d{4})').firstMatch(rawName);
-      if (match != null) {
-        final yearKey = '${match.group(1)}-${match.group(2)}';
-        final yearIndex = academicYears.indexOf(yearKey);
-        final yearNum = yearIndex >= 0 ? yearIndex + 1 : summerCount + 1;
-        return 'ST $yearNum';
-      }
       return 'ST ${summerCount + 1}';
     }
 

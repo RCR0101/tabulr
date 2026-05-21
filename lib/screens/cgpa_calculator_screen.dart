@@ -103,17 +103,8 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
         semesterData,
       );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              success
-                  ? 'Semester saved successfully!'
-                  : 'Failed to save semester',
-            ),
-            backgroundColor: success ? AppDesign.success(context) : AppDesign.danger(context),
-          ),
-        );
+      if (mounted && !success) {
+        ToastService.showError('Failed to save semester');
       }
     }
 
@@ -220,13 +211,8 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       }
 
       if (mounted && importedCount > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Successfully imported $importedCount course${importedCount != 1 ? 's' : ''}!',
-            ),
-            backgroundColor: AppDesign.success(context),
-          ),
+        ToastService.showSuccess(
+          'Imported $importedCount course${importedCount != 1 ? 's' : ''}!',
         );
       }
     } catch (e) {
@@ -331,15 +317,22 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
         _rebuildTabController();
       });
 
-      // Save all imported semesters
+      // Batch-save all imported semesters in one Firestore write
+      final semestersToSave = <String, SemesterData>{};
       for (final semName in importedData.semesters.keys) {
-        await _saveSemester(semName);
+        final data = _cgpaData.semesters[semName];
+        if (data != null) semestersToSave[semName] = data;
       }
+      final success = await _cgpaService.saveAllSemesters(semestersToSave);
 
       if (mounted) {
-        ToastService.showSuccess(
-          'Imported ${parsed.totalCourses} courses from ${parsed.semesters.length} semesters!',
-        );
+        if (success) {
+          ToastService.showSuccess(
+            'Imported ${parsed.totalCourses} courses from ${parsed.semesters.length} semesters!',
+          );
+        } else {
+          ToastService.showError('Failed to save imported data');
+        }
       }
     } catch (e) {
       // Close loading dialog if open

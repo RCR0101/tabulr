@@ -814,14 +814,11 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
           child: Scaffold(
             appBar: AppBar(
               title: Text(_timetable.name),
-              leading:
-                  ResponsiveService.isMobile(context)
-                      ? IconButton(
-                        icon: const Icon(Icons.arrow_back),
-                        onPressed: () => Navigator.of(context).pop(),
-                        tooltip: 'Back',
-                      )
-                      : null,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.of(context).pop(),
+                tooltip: 'Back',
+              ),
             actions: [
               if (_showSavedIndicator)
                 Padding(

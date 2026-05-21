@@ -32,8 +32,10 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
 
   List<Timetable> _timetables = [];
   Timetable? _selectedTimetable;
+  List<CourseAnnouncement> _allAnnouncements = [];
   List<CourseAnnouncement> _announcements = [];
   bool _isLoading = true;
+  bool _showExpired = false;
   StreamSubscription? _announcementsSub;
   StreamSubscription? _repSub;
   UserReputation? _currentUserRep;
@@ -101,7 +103,8 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
         _announcementService.watchAnnouncements(courseCodes).listen(
       (announcements) {
         setState(() {
-          _announcements = announcements;
+          _allAnnouncements = announcements;
+          _applyFilter();
           _isLoading = false;
         });
         _loadAuthorTiers();
@@ -120,6 +123,18 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
       _reputationService.getReputation(uid).then((rep) {
         if (mounted) setState(() => _authorTiers[uid] = rep.tier);
       });
+    }
+  }
+
+  void _applyFilter() {
+    if (_showExpired) {
+      _announcements = List.of(_allAnnouncements);
+    } else {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      _announcements = _allAnnouncements
+          .where((a) => !a.eventDate.isBefore(today))
+          .toList();
     }
   }
 
@@ -430,6 +445,31 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
     );
   }
 
+  Widget _buildShowOlderToggle(ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        children: [
+          FilterChip(
+            label: const Text('Show past events'),
+            selected: _showExpired,
+            onSelected: (value) {
+              setState(() {
+                _showExpired = value;
+                _applyFilter();
+              });
+            },
+            avatar: Icon(
+              _showExpired ? Icons.history : Icons.history_outlined,
+              size: 18,
+            ),
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBody(ThemeData theme) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -468,39 +508,77 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
         ),
       );
     }
-    if (_announcements.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.campaign_outlined,
-                size: 64,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
-            const SizedBox(height: 16),
-            Text('No announcements for your courses yet',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                    color:
-                        theme.colorScheme.onSurface.withValues(alpha: 0.6))),
-            const SizedBox(height: 8),
-            Text('Tap + to post the first one!',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                    color:
-                        theme.colorScheme.onSurface.withValues(alpha: 0.4))),
-          ],
-        ),
+    if (_announcements.isEmpty && !_showExpired) {
+      return Column(
+        children: [
+          _buildShowOlderToggle(theme),
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.campaign_outlined,
+                      size: 64,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
+                  const SizedBox(height: 16),
+                  Text('No upcoming announcements for your courses',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                          color:
+                              theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                  const SizedBox(height: 8),
+                  Text('Tap + to post one, or toggle "Show past" above',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                          color:
+                              theme.colorScheme.onSurface.withValues(alpha: 0.4))),
+                ],
+              ),
+            ),
+          ),
+        ],
       );
     }
-    return RefreshIndicator(
-      onRefresh: _loadTimetables,
-      child: ListView.builder(
-        padding: ResponsiveService.getAdaptivePadding(
-          context,
-          const EdgeInsets.all(16),
+    if (_announcements.isEmpty && _showExpired) {
+      return Column(
+        children: [
+          _buildShowOlderToggle(theme),
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.campaign_outlined,
+                      size: 64,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
+                  const SizedBox(height: 16),
+                  Text('No announcements for your courses yet',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                          color:
+                              theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    return Column(
+      children: [
+        _buildShowOlderToggle(theme),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _loadTimetables,
+            child: ListView.builder(
+              padding: ResponsiveService.getAdaptivePadding(
+                context,
+                const EdgeInsets.all(16),
+              ),
+              itemCount: _announcements.length,
+              itemBuilder: (context, index) =>
+                  _buildAnnouncementCard(_announcements[index], theme),
+            ),
+          ),
         ),
-        itemCount: _announcements.length,
-        itemBuilder: (context, index) =>
-            _buildAnnouncementCard(_announcements[index], theme),
-      ),
+      ],
     );
   }
 

@@ -136,6 +136,34 @@ class CGPAService {
     }
   }
 
+  Future<bool> saveAllSemesters(Map<String, SemesterData> semesters) async {
+    try {
+      final user = _authService.currentUser;
+      if (user == null || _authService.userDocId == null) return false;
+
+      final batch = _firestore.batch();
+      final colRef = _firestore
+          .collection(_collectionName)
+          .doc(_authService.userDocId!)
+          .collection('cgpa_semesters');
+
+      for (final entry in semesters.entries) {
+        final jsonData = jsonEncode(entry.value.toJson());
+        final encryptedData = _encryptData(jsonData, _authService.userDocId!);
+        batch.set(colRef.doc(entry.key), {
+          'encryptedData': encryptedData,
+          'lastUpdated': FieldValue.serverTimestamp(),
+        });
+      }
+
+      await batch.commit();
+      return true;
+    } catch (e) {
+      SecureLogger.error('CGPA', 'Failed to batch save semesters', e);
+      return false;
+    }
+  }
+
   // Load semester data from Firestore (decrypted)
   Future<SemesterData?> loadSemesterData(String semesterName) async {
     try {

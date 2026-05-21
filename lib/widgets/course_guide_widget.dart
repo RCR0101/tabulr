@@ -202,32 +202,60 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
     );
   }
 
+  String _formatSemesterName(String name, String id) {
+    final raw = id.replaceAll('semester_', '');
+    final parts = raw.split('_');
+    if (parts.length == 2) {
+      return 'Year ${parts[0]}  ·  Semester ${parts[1]}';
+    }
+    return name;
+  }
+
   Widget _buildSemesterCard(CourseGuideSemester semester) {
+    final scheme = Theme.of(context).colorScheme;
+    final semLabel = semester.semesterId.replaceAll('semester_', '').replaceAll('_', '.');
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16.0),
-      elevation: 2,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: scheme.outline.withValues(alpha: 0.15)),
+      ),
       child: ExpansionTile(
-        leading: CircleAvatar(
-          backgroundColor: Theme.of(context).colorScheme.secondary,
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [scheme.primary, scheme.secondary],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          alignment: Alignment.center,
           child: Text(
-            semester.semesterId.replaceAll('semester_', '').replaceAll('_', '-'),
+            semLabel,
             style: TextStyle(
-              color: Theme.of(context).colorScheme.onSecondary,
+              color: scheme.onPrimary,
               fontWeight: FontWeight.bold,
-              fontSize: 12,
+              fontSize: 14,
             ),
           ),
         ),
         title: Text(
-          semester.name,
+          _formatSemesterName(semester.name, semester.semesterId),
           style: const TextStyle(
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
           ),
         ),
         subtitle: Text(
           '${semester.groups.length} group${semester.groups.length != 1 ? 's' : ''}',
           style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            color: scheme.onSurface.withValues(alpha: 0.5),
+            fontSize: 12,
           ),
         ),
         children: semester.groups.map((group) => _buildGroupCard(group)).toList(),
@@ -271,37 +299,43 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
   }
 
   Widget _buildCoursesTable(List<CourseGuideEntry> courses) {
-    return Table(
-      columnWidths: const {
-        0: FlexColumnWidth(2),
-        1: FlexColumnWidth(4),
-        2: FlexColumnWidth(1),
-        3: FlexColumnWidth(2),
-      },
-      children: [
-        // Header
-        TableRow(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-          ),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minWidth: MediaQuery.of(context).size.width - 80,
+        ),
+        child: Table(
+          columnWidths: const {
+            0: FixedColumnWidth(100),
+            1: FlexColumnWidth(4),
+            2: FixedColumnWidth(60),
+            3: FixedColumnWidth(80),
+          },
           children: [
-            _buildTableHeader('Code'),
-            _buildTableHeader('Course Name'),
-            _buildTableHeader('Credits'),
-            _buildTableHeader('Type'),
+            TableRow(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+              ),
+              children: [
+                _buildTableHeader('Code'),
+                _buildTableHeader('Course Name'),
+                _buildTableHeader('Cr'),
+                _buildTableHeader('Type'),
+              ],
+            ),
+            ...courses.map((course) => TableRow(
+              children: [
+                _buildTableCell(course.code, isCode: true),
+                _buildTableCell(course.name),
+                _buildTableCell(course.credits.toString(), isCenter: true),
+                _buildTableCell(course.type, isType: true),
+              ],
+            )),
           ],
         ),
-        // Courses
-        ...courses.map((course) => TableRow(
-          children: [
-            _buildTableCell(course.code, isCode: true),
-            _buildTableCell(course.name),
-            _buildTableCell(course.credits.toString(), isCenter: true),
-            _buildTableCell(course.type, isType: true),
-          ],
-        )),
-      ],
+      ),
     );
   }
 

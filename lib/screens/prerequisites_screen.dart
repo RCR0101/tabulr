@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/prerequisite.dart';
 import '../repositories/prerequisites_repository.dart';
+import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
 
 class PrerequisitesScreen extends StatefulWidget {
@@ -50,9 +51,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
         _isLoadingInitial = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading courses: $e')),
-        );
+        ToastService.showError('Error loading courses: $e');
       }
     }
   }
@@ -84,9 +83,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
         _isSearching = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error searching: $e')),
-        );
+        ToastService.showError('Error searching: $e');
       }
     }
   }

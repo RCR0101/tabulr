@@ -3,6 +3,7 @@ import '../models/course.dart';
 import '../models/timetable.dart';
 import '../services/course_data_service.dart';
 import '../services/responsive_service.dart';
+import '../services/toast_service.dart';
 import '../widgets/search_filter_widget.dart';
 import '../services/campus_service.dart';
 import '../services/clash_detector.dart';
@@ -63,9 +64,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
         _isLoading = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading courses: $e')),
-        );
+        ToastService.showError('Error loading courses: $e');
       }
     }
   }
@@ -82,9 +81,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
 
   Future<void> _validateSelection() async {
     if (_selectedSections.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one course section')),
-      );
+      ToastService.showWarning('Please select at least one course section');
       return;
     }
 
@@ -208,9 +205,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
         _isValidating = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error validating courses: $e')),
-        );
+        ToastService.showError('Error validating courses: $e');
       }
     }
   }
@@ -295,9 +290,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
 
       if (safeCourses.isEmpty) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No courses found that can be safely added without conflicts')),
-          );
+          ToastService.showInfo('No courses found that can be safely added without conflicts');
         }
       }
     } catch (e) {
@@ -305,9 +298,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
         _isCheckingAll = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error checking courses: $e')),
-        );
+        ToastService.showError('Error checking courses: $e');
       }
     }
   }
@@ -1393,13 +1384,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
       widget.onTimetableUpdated!(_currentTimetableSections);
     }
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${result.courseCode} added to your timetable!'),
-        backgroundColor: AppDesign.success(context),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    ToastService.showSuccess('${result.courseCode} added to your timetable!');
   }
 
   Widget _buildValidationResults() {

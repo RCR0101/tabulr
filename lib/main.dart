@@ -34,22 +34,16 @@ void main() async {
   // Initialize campus service
   await CampusService.initializeCampus();
 
-  // Pre-load course names from courses_master
-  await CoursesMasterService().loadForCampus();
-  
-  // Initialize Auth Service
-  await AuthService().initialize();
-  
-  // Initialize User Settings Service
+  // Run remaining service inits in parallel (all depend on campus, not each other)
   final userSettingsService = UserSettingsService();
-  await userSettingsService.initializeSettings();
-  
-  // Initialize Theme Service (reads its own persisted state)
   final themeService = theme_service.ThemeService();
-  await themeService.initialize();
-  
-  // Initialize Preferences Service  
-  await PreferencesService().initialize();
+  await Future.wait([
+    CoursesMasterService().loadForCampus(),
+    AuthService().initialize(),
+    userSettingsService.initializeSettings(),
+    themeService.initialize(),
+    PreferencesService().initialize(),
+  ]);
   
   if (kIsWeb) {
     setUrlStrategy(PathUrlStrategy());

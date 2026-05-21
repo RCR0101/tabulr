@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/cgpa_data.dart';
 import '../services/responsive_service.dart';
+import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../utils/grade_utils.dart' as grade_utils;
 
@@ -351,9 +352,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: AppDesign.danger(context)),
-    );
+    ToastService.showError(message);
   }
 
   Color _getGradeColor(String grade) => grade_utils.getGradeColor(grade);

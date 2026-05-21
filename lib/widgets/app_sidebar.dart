@@ -90,6 +90,7 @@ class _AppSidebarState extends State<AppSidebar> {
     return AnimatedContainer(
       duration: AppDesign.animDurationNormal,
       curve: AppDesign.animCurve,
+      clipBehavior: Clip.hardEdge,
       width: widget.collapsed
           ? AppDesign.sidebarCollapsedWidth
           : AppDesign.sidebarWidth,
@@ -143,8 +144,10 @@ class _AppSidebarState extends State<AppSidebar> {
         horizontal: widget.collapsed ? AppDesign.spacingSm : AppDesign.spacingMd,
         vertical: AppDesign.spacingMd,
       ),
-      child: widget.collapsed
-          ? Center(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth <= 60) {
+            return Center(
               child: ClipRRect(
                 borderRadius: AppDesign.borderRadiusSm,
                 child: Image.asset(
@@ -153,26 +156,29 @@ class _AppSidebarState extends State<AppSidebar> {
                   height: 36,
                 ),
               ),
-            )
-          : Row(
-              children: [
-                ClipRRect(
-                  borderRadius: AppDesign.borderRadiusSm,
-                  child: Image.asset(
-                    'images/logo_nobg.png',
-                    width: 36,
-                    height: 36,
-                  ),
+            );
+          }
+          return Row(
+            children: [
+              ClipRRect(
+                borderRadius: AppDesign.borderRadiusSm,
+                child: Image.asset(
+                  'images/logo_nobg.png',
+                  width: 36,
+                  height: 36,
                 ),
-                const SizedBox(width: AppDesign.spacingSm + 4),
-                Text(
-                  'Tabulr',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(width: AppDesign.spacingSm + 4),
+              Text(
+                'Tabulr',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -191,9 +197,7 @@ class _AppSidebarState extends State<AppSidebar> {
         onExit: (_) => setState(() => _hoveredIndex = null),
         child: GestureDetector(
           onTap: () => widget.onScreenSelected(item.screen),
-          child: AnimatedContainer(
-            duration: AppDesign.animDurationFast,
-            curve: AppDesign.animCurve,
+          child: Container(
             padding: EdgeInsets.symmetric(
               horizontal: widget.collapsed
                   ? AppDesign.spacingSm
@@ -208,8 +212,11 @@ class _AppSidebarState extends State<AppSidebar> {
                       : Colors.transparent,
               borderRadius: AppDesign.borderRadiusSm,
             ),
-            child: widget.collapsed
-                ? Tooltip(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final showLabel = constraints.maxWidth > 60;
+                if (!showLabel) {
+                  return Tooltip(
                     message: item.label,
                     preferBelow: false,
                     child: Center(
@@ -221,33 +228,36 @@ class _AppSidebarState extends State<AppSidebar> {
                             : scheme.onSurface.withValues(alpha: 0.7),
                       ),
                     ),
-                  )
-                : Row(
-                    children: [
-                      Icon(
-                        item.icon,
-                        size: 20,
-                        color: isSelected
-                            ? scheme.primary
-                            : scheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                      const SizedBox(width: AppDesign.spacingSm + 4),
-                      Expanded(
-                        child: Text(
-                          item.label,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight:
-                                isSelected ? FontWeight.w600 : FontWeight.w500,
-                            color: isSelected
-                                ? scheme.primary
-                                : scheme.onSurface,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+                  );
+                }
+                return Row(
+                  children: [
+                    Icon(
+                      item.icon,
+                      size: 20,
+                      color: isSelected
+                          ? scheme.primary
+                          : scheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: AppDesign.spacingSm + 4),
+                    Expanded(
+                      child: Text(
+                        item.label,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.w500,
+                          color: isSelected
+                              ? scheme.primary
+                              : scheme.onSurface,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -264,39 +274,44 @@ class _AppSidebarState extends State<AppSidebar> {
           ),
         ),
       ),
-      child: widget.collapsed
-          ? IconButton(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth <= 60) {
+            return IconButton(
               onPressed: widget.onToggleCollapse,
               icon: const Icon(Icons.chevron_right, size: 20),
               tooltip: 'Expand sidebar',
-            )
-          : Row(
-              children: [
-                const SizedBox(width: AppDesign.spacingSm),
-                Icon(
-                  Icons.info_outline,
-                  size: 14,
-                  color: scheme.onSurface.withValues(alpha: 0.4),
-                ),
-                const SizedBox(width: AppDesign.spacingSm),
-                Expanded(
-                  child: Text(
-                    'Made with ❤️ for students',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: scheme.onSurface.withValues(alpha: 0.4),
-                    ),
+            );
+          }
+          return Row(
+            children: [
+              const SizedBox(width: AppDesign.spacingSm),
+              Icon(
+                Icons.info_outline,
+                size: 14,
+                color: scheme.onSurface.withValues(alpha: 0.4),
+              ),
+              const SizedBox(width: AppDesign.spacingSm),
+              Expanded(
+                child: Text(
+                  'Made with ❤️ for students',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: scheme.onSurface.withValues(alpha: 0.4),
                   ),
                 ),
-                IconButton(
-                  onPressed: widget.onToggleCollapse,
-                  icon: const Icon(Icons.chevron_left, size: 20),
-                  tooltip: 'Collapse sidebar',
-                  iconSize: 20,
-                  visualDensity: VisualDensity.compact,
-                ),
-              ],
-            ),
+              ),
+              IconButton(
+                onPressed: widget.onToggleCollapse,
+                icon: const Icon(Icons.chevron_left, size: 20),
+                tooltip: 'Collapse sidebar',
+                iconSize: 20,
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

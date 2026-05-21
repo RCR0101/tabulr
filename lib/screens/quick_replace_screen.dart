@@ -7,6 +7,7 @@ import '../services/discipline_electives_service.dart';
 import '../services/clash_detector.dart';
 import '../services/campus_service.dart';
 import '../services/responsive_service.dart';
+import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
 
 enum CourseCategory { huel, del, other }
@@ -249,12 +250,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
   void _performReplace(Course replacementCourse) {
     // Check if both courses have only lecture sections
     if (!_canReplaceCourses(_selectedCourse!, replacementCourse)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Can only replace between courses that have only lecture sections'),
-          backgroundColor: AppDesign.warning(context),
-        ),
-      );
+      ToastService.showWarning('Can only replace between courses that have only lecture sections');
       return;
     }
 
@@ -266,12 +262,8 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
 
     widget.onReplace(_selectedCourse!, replacementCourse);
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Successfully replaced ${_selectedCourse!.courseCode} with ${replacementCourse.courseCode}'),
-        backgroundColor: AppDesign.success(context),
-        duration: const Duration(seconds: 3),
-      ),
+    ToastService.showSuccess(
+      'Replaced ${_selectedCourse!.courseCode} with ${replacementCourse.courseCode}',
     );
     
     Navigator.of(context).pop();

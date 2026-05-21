@@ -10,7 +10,6 @@ import '../models/export_options.dart';
 import '../services/timetable_service.dart';
 import '../services/course_utils.dart';
 import '../services/export_service.dart';
-import '../services/clash_detector.dart';
 import '../services/auth_service.dart';
 import '../services/toast_service.dart';
 import '../services/auto_load_cdc_service.dart';
@@ -133,27 +132,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         onUnsavedChangesChanged(true);
         pageLeaveWarning.enableWarning(true);
       } else {
-        final course = tt.availableCourses.firstWhere(
-          (c) => c.courseCode == courseCode,
-        );
-        final section = course.sections.firstWhere(
-          (s) => s.sectionId == sectionId,
-        );
-
-        // Check specific reason for failure
-        final existingSameType = tt.selectedSections.where(
-          (s) => s.courseCode == courseCode && s.section.type == section.type,
-        );
-
-        if (existingSameType.isNotEmpty) {
-          showErrorDialog(
-            'You can only select one ${section.type.name} section per course.\nAlready selected: ${existingSameType.first.sectionId}',
-          );
-        } else {
-          showErrorDialog(
-            'Cannot add section due to time conflicts or exam clashes',
-          );
-        }
+        ToastService.showError('Cannot add — section clashes with your timetable');
       }
     } catch (e) {
       showErrorDialog('Error adding section: $e');
@@ -165,10 +144,6 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     if (tt == null) return;
 
     try {
-      final removedSection = tt.selectedSections.firstWhere(
-        (s) => s.courseCode == courseCode && s.sectionId == sectionId,
-      );
-
       timetableService.removeSectionWithoutSaving(
         courseCode,
         sectionId,
@@ -178,28 +153,6 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         hasUnsavedChanges = true;
       });
       onUnsavedChangesChanged(true);
-
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Removed $courseCode $sectionId'),
-          duration: const Duration(seconds: 5),
-          action: SnackBarAction(
-            label: 'Undo',
-            onPressed: () {
-              setState(() {
-                tt.selectedSections.add(removedSection);
-                tt.clashWarnings
-                  ..clear()
-                  ..addAll(ClashDetector.detectClashes(
-                    tt.selectedSections,
-                    tt.availableCourses,
-                  ));
-              });
-            },
-          ),
-        ),
-      );
     } catch (e) {
       showErrorDialog('Error removing section: $e');
     }
@@ -275,14 +228,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       });
       onUnsavedChangesChanged(true);
 
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'Replaced ${selectedCourse.courseCode} with ${replacementCourse.courseCode}'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 3),
-        ),
+      ToastService.showSuccess(
+        'Replaced ${selectedCourse.courseCode} with ${replacementCourse.courseCode}',
       );
     } catch (e) {
       showErrorDialog('Error replacing course: $e');

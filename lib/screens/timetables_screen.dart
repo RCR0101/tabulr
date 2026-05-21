@@ -397,12 +397,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
 
       // Show success message
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('All timetables have been cleared'),
-            backgroundColor: AppDesign.success(context),
-          ),
-        );
+        ToastService.showSuccess('All timetables have been cleared');
       }
     } catch (e) {
       // Close loading dialog if still open
@@ -476,231 +471,88 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
 
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.sort,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    size: 20,
-                  ),
+      builder: (context) {
+        final scheme = Theme.of(context).colorScheme;
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+          contentPadding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const SizedBox(width: 12),
-                const Text('Sort Timetables'),
-              ],
-            ),
-            content: Container(
-              width: ResponsiveService.getValue(
-                context,
-                mobile: MediaQuery.of(context).size.width * 0.9,
-                tablet: 400,
-                desktop: 480,
+                child: Icon(Icons.sort, color: scheme.onPrimaryContainer, size: 20),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Wrap(
-                    spacing: ResponsiveService.getValue(
-                      context,
-                      mobile: 8,
-                      tablet: 8,
-                      desktop: 8,
-                    ),
-                    runSpacing: ResponsiveService.getValue(
-                      context,
-                      mobile: 8,
-                      tablet: 8,
-                      desktop: 8,
-                    ),
-                    alignment: WrapAlignment.spaceEvenly,
-                    children:
-                        TimetableListSortOrder.values.map((sortOrder) {
-                          final isSelected = currentSort == sortOrder;
-                          return SizedBox(
-                            width: ResponsiveService.getValue(
-                              context,
-                              mobile:
-                                  (MediaQuery.of(context).size.width * 0.9 -
-                                      24) /
-                                  2,
-                              tablet: 180,
-                              desktop: 220,
+              const SizedBox(width: 12),
+              const Text('Sort Timetables'),
+            ],
+          ),
+          content: SizedBox(
+            width: 340,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: TimetableListSortOrder.values.map((sortOrder) {
+                final isSelected = currentSort == sortOrder;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Material(
+                    color: isSelected
+                        ? scheme.primaryContainer.withValues(alpha: 0.5)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () async {
+                        final navigator = Navigator.of(context);
+                        await _userSettingsService.updateSortOrder(sortOrder);
+                        navigator.pop();
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _getSortIcon(sortOrder),
+                              size: 20,
+                              color: isSelected ? scheme.primary : scheme.onSurfaceVariant,
                             ),
-                            child: Material(
-                              color:
-                                  isSelected
-                                      ? Theme.of(
-                                        context,
-                                      ).colorScheme.primaryContainer
-                                      : Theme.of(context).colorScheme.surface,
-                              borderRadius: BorderRadius.circular(12),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(12),
-                                onTap: () async {
-                                  print('Sort option tapped: $sortOrder');
-                                  final navigator = Navigator.of(context);
-                                  try {
-                                    await _userSettingsService.updateSortOrder(
-                                      sortOrder,
-                                    );
-                                    navigator.pop();
-                                  } catch (e) {
-                                    print('Error updating sort order: $e');
-                                  }
-                                },
-                                child: Container(
-                                  constraints: BoxConstraints(
-                                    minHeight:
-                                        ResponsiveService.getTouchTargetSize(
-                                          context,
-                                        ),
-                                  ),
-                                  padding: ResponsiveService.getAdaptivePadding(
-                                    context,
-                                    EdgeInsets.all(
-                                      ResponsiveService.isMobile(context)
-                                          ? 8
-                                          : 12,
-                                    ),
-                                  ),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color:
-                                          isSelected
-                                              ? Theme.of(
-                                                context,
-                                              ).colorScheme.primary
-                                              : Theme.of(context)
-                                                  .colorScheme
-                                                  .outline
-                                                  .withOpacity(0.3),
-                                      width: isSelected ? 2 : 1,
-                                    ),
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Container(
-                                        padding: EdgeInsets.all(
-                                          ResponsiveService.isMobile(context)
-                                              ? 8
-                                              : 8,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color:
-                                              isSelected
-                                                  ? Theme.of(
-                                                    context,
-                                                  ).colorScheme.primary
-                                                  : Theme.of(context)
-                                                      .colorScheme
-                                                      .surfaceContainerHighest,
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                        child: Icon(
-                                          _getSortIcon(sortOrder),
-                                          size:
-                                              ResponsiveService.isMobile(
-                                                    context,
-                                                  )
-                                                  ? 18
-                                                  : 18,
-                                          color:
-                                              isSelected
-                                                  ? Theme.of(
-                                                    context,
-                                                  ).colorScheme.onPrimary
-                                                  : Theme.of(context)
-                                                      .colorScheme
-                                                      .onSurfaceVariant,
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        height:
-                                            ResponsiveService.isMobile(context)
-                                                ? 6
-                                                : 8,
-                                      ),
-                                      Text(
-                                        _getSortOrderName(sortOrder),
-                                        textAlign: TextAlign.center,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontWeight:
-                                              isSelected
-                                                  ? FontWeight.w600
-                                                  : FontWeight.w500,
-                                          fontSize:
-                                              ResponsiveService.isMobile(
-                                                    context,
-                                                  )
-                                                  ? 10
-                                                  : 12,
-                                          color:
-                                              isSelected
-                                                  ? Theme.of(context)
-                                                      .colorScheme
-                                                      .onPrimaryContainer
-                                                  : Theme.of(
-                                                    context,
-                                                  ).colorScheme.onSurface,
-                                        ),
-                                      ),
-                                      if (isSelected) ...[
-                                        const SizedBox(height: 4),
-                                        Icon(
-                                          Icons.check_circle,
-                                          color:
-                                              Theme.of(
-                                                context,
-                                              ).colorScheme.primary,
-                                          size:
-                                              ResponsiveService.isMobile(
-                                                    context,
-                                                  )
-                                                  ? 14
-                                                  : 16,
-                                        ),
-                                      ],
-                                    ],
-                                  ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _getSortOrderName(sortOrder),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                                  color: isSelected ? scheme.primary : scheme.onSurface,
                                 ),
                               ),
                             ),
-                          );
-                        }).toList(),
+                            if (isSelected)
+                              Icon(Icons.check_rounded, size: 20, color: scheme.primary),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                ],
-              ),
+                );
+              }).toList(),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                ),
-                child: const Text('Cancel'),
-              ),
-            ],
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1395,6 +1247,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
           ),
         ],
       ),
+      floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
       floatingActionButton: ResponsiveService.buildResponsive(
         context,
         mobile: Column(

@@ -109,65 +109,66 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
                   final themeData = _themeService.getThemeData(theme);
                   final isSelected = _themeService.currentTheme == theme;
 
+                  final cs = themeData.colorScheme;
                   return InkWell(
                     onTap: () async {
                       await _themeService.setTheme(theme);
                       await _userSettingsService.updateThemeVariant(theme);
                     },
-                    borderRadius: BorderRadius.circular(ResponsiveService.getAdaptiveBorderRadius(context, 12)),
-                    child: Container(
-                      constraints: BoxConstraints(
-                        minHeight: ResponsiveService.getTouchTargetSize(context),
-                      ),
-                      child: AnimatedContainer(
+                    borderRadius: BorderRadius.circular(12),
+                    child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
-                        color: themeData.cardColor,
+                        color: cs.surface,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isSelected 
-                              ? themeData.colorScheme.primary 
-                              : themeData.colorScheme.outline,
-                          width: isSelected ? 3 : 1,
+                          color: isSelected ? cs.primary : cs.outline.withValues(alpha: 0.3),
+                          width: isSelected ? 2.5 : 1,
                         ),
                         boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                  color: themeData.colorScheme.primary.withOpacity(0.3),
-                                  blurRadius: 8,
-                                  spreadRadius: 2,
-                                ),
-                              ]
+                            ? [BoxShadow(color: cs.primary.withValues(alpha: 0.25), blurRadius: 8, spreadRadius: 1)]
                             : null,
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            _themeService.getThemeIcon(theme),
-                            color: themeData.colorScheme.primary,
-                            size: 32,
+                          // Color swatch row
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              _ColorDot(color: cs.primary, size: 18),
+                              const SizedBox(width: 6),
+                              _ColorDot(color: cs.secondary, size: 18),
+                              const SizedBox(width: 6),
+                              _ColorDot(color: cs.tertiary, size: 18),
+                              const SizedBox(width: 6),
+                              _ColorDot(color: cs.surfaceContainerHighest, size: 18, border: cs.outline),
+                            ],
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            _themeService.getThemeName(theme),
-                            style: TextStyle(
-                              color: themeData.colorScheme.onSurface,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              fontSize: 14,
-                            ),
-                            textAlign: TextAlign.center,
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (isSelected) ...[
+                                Icon(Icons.check_circle, color: cs.primary, size: 14),
+                                const SizedBox(width: 4),
+                              ],
+                              Flexible(
+                                child: Text(
+                                  _themeService.getThemeName(theme),
+                                  style: TextStyle(
+                                    color: cs.onSurface,
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                    fontSize: 13,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 4),
-                          if (isSelected)
-                            Icon(
-                              Icons.check_circle,
-                              color: themeData.colorScheme.primary,
-                              size: 16,
-                            ),
                         ],
                       ),
-                    ),
                     ),
                   );
                 },
@@ -509,6 +510,29 @@ class ThemePreviewCard extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ColorDot extends StatelessWidget {
+  final Color color;
+  final double size;
+  final Color? border;
+
+  const _ColorDot({required this.color, required this.size, this.border});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: border != null
+            ? Border.all(color: border!.withValues(alpha: 0.3), width: 1)
+            : null,
       ),
     );
   }

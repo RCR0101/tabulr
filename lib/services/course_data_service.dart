@@ -172,43 +172,28 @@ class CourseDataService {
     }
   }
 
+  static const Duration _versionCheckInterval = Duration(minutes: 5);
+
   /// Check if the current cache is valid by comparing versions
   Future<bool> _isCacheValid(Campus currentCampus) async {
     try {
-      // Basic checks: cache exists, campus matches, and not too old (fallback)
-      if (_cachedCourses == null) {
-        return false;
-      }
+      if (_cachedCourses == null || _lastFetchTime == null) return false;
+      if (_cachedCampus != currentCampus) return false;
 
-      if (_cachedCampus != currentCampus) {
-        return false;
-      }
+      final age = DateTime.now().difference(_lastFetchTime!);
+      if (age > _cacheTimeout) return false;
 
-      if (_lastFetchTime == null) {
-        return false;
-      }
+      // Skip Firestore version check if cache is very fresh
+      if (age < _versionCheckInterval) return true;
 
-      if (DateTime.now().difference(_lastFetchTime!) > _cacheTimeout) {
-        return false;
-      }
-
-      // Version check: compare cached version with current database version
       final metadata = await _getCurrentMetadata(currentCampus);
-
       final currentVersion = metadata?['version'] as String?;
 
-      // If we can't get the current version, fall back to time-based cache
-      if (currentVersion == null) {
-        return DateTime.now().difference(_lastFetchTime!) < _cacheTimeout;
-      }
+      if (currentVersion == null) return true;
 
-      // Cache is valid if versions match
-      final versionsMatch = _cachedVersion != null && _cachedVersion == currentVersion;
-
-      return versionsMatch;
+      return _cachedVersion != null && _cachedVersion == currentVersion;
     } catch (e) {
-      // On error, fall back to time-based cache validation
-      return _lastFetchTime != null && 
+      return _lastFetchTime != null &&
              DateTime.now().difference(_lastFetchTime!) < _cacheTimeout;
     }
   }

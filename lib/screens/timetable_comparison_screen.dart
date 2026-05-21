@@ -5,6 +5,7 @@ import '../widgets/timetable_widget.dart';
 import '../services/timetable_service.dart';
 import '../services/course_catalog_service.dart';
 import '../services/responsive_service.dart';
+import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
 
 enum ComparisonViewMode { grid, list }
@@ -64,9 +65,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
         _isLoading = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading timetables: $e')),
-        );
+        ToastService.showError('Error loading timetables: $e');
       }
     }
   }

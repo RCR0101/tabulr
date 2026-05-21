@@ -389,16 +389,40 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     }
     
     if (buttons.isEmpty) return const SizedBox.shrink();
-    
-    List<Widget> spacedButtons = [];
-    for (int i = 0; i < buttons.length; i++) {
-      spacedButtons.add(Expanded(child: buttons[i]));
-      if (i < buttons.length - 1) {
-        spacedButtons.add(const SizedBox(width: 8));
-      }
+
+    if (buttons.length <= 2) {
+      return Row(
+        children: [
+          for (int i = 0; i < buttons.length; i++) ...[
+            Expanded(child: buttons[i]),
+            if (i < buttons.length - 1) const SizedBox(width: 8),
+          ],
+        ],
+      );
     }
-    
-    return Row(children: spacedButtons);
+
+    final firstRow = buttons.sublist(0, 2);
+    final secondRow = buttons.sublist(2);
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: firstRow[0]),
+            const SizedBox(width: 8),
+            Expanded(child: firstRow[1]),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (int i = 0; i < secondRow.length; i++) ...[
+              Expanded(child: secondRow[i]),
+              if (i < secondRow.length - 1) const SizedBox(width: 8),
+            ],
+          ],
+        ),
+      ],
+    );
   }
 
   Widget _buildMobileButton({
@@ -410,25 +434,23 @@ class _TimetableWidgetState extends State<TimetableWidget> {
   }) {
     return ElevatedButton.icon(
       onPressed: onPressed,
-      icon: isLoading 
-        ? SizedBox(
-            width: ResponsiveService.getAdaptiveIconSize(context, 16),
-            height: ResponsiveService.getAdaptiveIconSize(context, 16),
-            child: const CircularProgressIndicator(strokeWidth: 2),
+      icon: isLoading
+        ? const SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2),
           )
-        : icon != null 
-          ? Icon(icon, size: ResponsiveService.getAdaptiveIconSize(context, 16))
+        : icon != null
+          ? Icon(icon, size: 14)
           : const SizedBox.shrink(),
-      label: Text(label),
+      label: Text(label, style: const TextStyle(fontSize: 12)),
       style: ElevatedButton.styleFrom(
         backgroundColor: color.withValues(alpha: 0.1),
         foregroundColor: color,
         side: BorderSide(color: color.withValues(alpha: 0.3)),
         elevation: 0,
-        minimumSize: Size(
-          0,
-          ResponsiveService.getTouchTargetSize(context),
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        minimumSize: const Size(0, 36),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
@@ -440,7 +462,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     final isMobile = _isMobile;
 
     return Padding(
-      padding: const EdgeInsets.all(8),
+      padding: EdgeInsets.all(isMobile ? 6 : 8),
       child: isMobile
         ? Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -450,7 +472,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   const Text(
                     'Weekly Timetable',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -539,8 +561,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              // Mobile button row - clean and evenly spaced
+              const SizedBox(height: 4),
               _buildMobileButtonRow(),
             ],
           )

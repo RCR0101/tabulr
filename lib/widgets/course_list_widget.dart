@@ -33,6 +33,22 @@ class CourseListWidget extends StatelessWidget {
     );
   }
 
+  /// Returns a human-readable conflict description for this specific section,
+  /// or null if no conflict.
+  String? _getSectionConflict(Section section, String courseCode) {
+    if (selectedSections.isEmpty) return null;
+    final otherSections = selectedSections
+        .where((s) => s.courseCode != courseCode)
+        .toList();
+    if (otherSections.isEmpty) return null;
+
+    final conflicts = ClashDetector.checkScheduleConflicts(section, otherSections);
+    if (conflicts.isEmpty) return null;
+
+    final first = conflicts.first;
+    return 'Clashes with ${first.conflictingCourse} ${first.conflictingSectionId} (${first.time})';
+  }
+
   String _getSelectedSectionsText(String courseCode) {
     final courseSections = selectedSections
         .where((s) => s.courseCode == courseCode)
@@ -274,6 +290,8 @@ class CourseListWidget extends StatelessWidget {
                     final isSelected = _isSectionSelected(course.courseCode, section.sectionId);
                     final isTypeAlreadySelected = _isSectionTypeAlreadySelected(course.courseCode, section.type);
                     final canSelect = isSelected || !isTypeAlreadySelected;
+                    final sectionConflict = isSelected ? null : _getSectionConflict(section, course.courseCode);
+                    final isBlocked = !canSelect || sectionConflict != null;
 
                     return Container(
                       constraints: BoxConstraints(
@@ -283,7 +301,7 @@ class CourseListWidget extends StatelessWidget {
                         title: Text(
                           '${section.sectionId} - ${section.instructor}',
                           style: TextStyle(
-                            color: canSelect ? null : AppDesign.muted(context),
+                            color: isBlocked && !isSelected ? AppDesign.muted(context) : null,
                             fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
                           ),
                         ),
@@ -296,11 +314,11 @@ class CourseListWidget extends StatelessWidget {
                           children: [
                             Text(
                               'Room: ${section.room}',
-                              style: TextStyle(color: canSelect ? null : Colors.grey),
+                              style: TextStyle(color: isBlocked && !isSelected ? Colors.grey : null),
                             ),
                             Text(
                               'Schedule: ${TimeSlotInfo.getFormattedSchedule(section.schedule)}',
-                              style: TextStyle(color: canSelect ? null : Colors.grey),
+                              style: TextStyle(color: isBlocked && !isSelected ? Colors.grey : null),
                             ),
                             if (!canSelect && !isSelected)
                               Text(
@@ -310,13 +328,21 @@ class CourseListWidget extends StatelessWidget {
                                   fontSize: 12
                                 ),
                               ),
+                            if (sectionConflict != null && canSelect)
+                              Text(
+                                sectionConflict,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
+                                  fontSize: 12,
+                                ),
+                              ),
                           ],
                         ),
                         trailing: SizedBox(
                           width: 70,
                           height: 32,
                           child: TextButton(
-                            onPressed: (canSelect && !hasClashes) ? () {
+                            onPressed: (!isBlocked || isSelected) ? () {
                               onSectionToggle(course.courseCode, section.sectionId, isSelected);
                             } : null,
                             style: TextButton.styleFrom(
@@ -333,7 +359,7 @@ class CourseListWidget extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: (canSelect && !hasClashes)
+                                color: (!isBlocked || isSelected)
                                   ? (isSelected
                                     ? Theme.of(context).colorScheme.error
                                     : Theme.of(context).colorScheme.primary)
@@ -344,7 +370,7 @@ class CourseListWidget extends StatelessWidget {
                         ),
                         tileColor: isSelected
                           ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
-                          : (!canSelect ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.3) : null),
+                          : (isBlocked ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.3) : null),
                       ),
                     );
                   }).toList(),
