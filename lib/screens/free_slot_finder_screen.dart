@@ -1,12 +1,14 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/timetable.dart';
 import '../models/course.dart';
+import '../services/auth_service.dart';
 import '../services/timetable_service.dart';
-import '../services/timetable_sharing_service.dart';
 import '../services/responsive_service.dart';
 import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/share_timetable_dialog.dart';
+import 'calendar_screen.dart';
 
 class FreeSlotFinderScreen extends StatefulWidget {
   const FreeSlotFinderScreen({super.key});
@@ -17,20 +19,35 @@ class FreeSlotFinderScreen extends StatefulWidget {
 
 class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
   final TimetableService _timetableService = TimetableService();
+  final AuthService _authService = AuthService();
   List<Timetable> _myTimetables = [];
   final List<_SlotSource> _sources = [];
   bool _isLoading = true;
 
+  // Selection state
+  int? _selDayIdx;
+  int? _selStartHour;
+  int? _selEndHour;
+
   static const _days = [
-    DayOfWeek.M,
-    DayOfWeek.T,
-    DayOfWeek.W,
-    DayOfWeek.Th,
-    DayOfWeek.F,
-    DayOfWeek.S,
+    DayOfWeek.M, DayOfWeek.T, DayOfWeek.W,
+    DayOfWeek.Th, DayOfWeek.F, DayOfWeek.S,
   ];
   static const _dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   static const _hours = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+  static String _hourStartTime(int hour) {
+    final full = TimeSlotInfo.hourSlotNames[hour] ?? '';
+    if (full.isEmpty) return 'H$hour';
+    return full.split('-')[0].trim();
+  }
+
+  static String _hourEndTime(int hour) {
+    final full = TimeSlotInfo.hourSlotNames[hour] ?? '';
+    if (full.isEmpty) return '';
+    final parts = full.split('-');
+    return parts.length > 1 ? parts[1].trim() : '';
+  }
 
   @override
   void initState() {
@@ -56,7 +73,7 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
     setState(() {
       _sources.add(_SlotSource(
         name: tt.name,
-        busySlots: _extractBusySlots(tt.selectedSections, tt.availableCourses),
+        busySlots: _extractBusySlots(tt.selectedSections),
         color: _sourceColor(_sources.length),
       ));
     });
@@ -65,31 +82,18 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
   Future<void> _addFromCode() async {
     final result = await ImportTimetableDialog.show(context);
     if (result == null || !mounted) return;
-    if (_sources.any((s) => s.name == '${result.name} (${result.ownerName})')) return;
+    final label = '${result.name} (${result.ownerName})';
+    if (_sources.any((s) => s.name == label)) return;
     setState(() {
       _sources.add(_SlotSource(
-        name: '${result.name} (${result.ownerName})',
-        busySlots: _extractBusySlotsFromSections(result.sections),
+        name: label,
+        busySlots: _extractBusySlots(result.sections),
         color: _sourceColor(_sources.length),
       ));
     });
   }
 
-  Set<String> _extractBusySlots(List<SelectedSection> sections, List<Course> courses) {
-    final busy = <String>{};
-    for (final sel in sections) {
-      for (final entry in sel.section.schedule) {
-        for (final day in entry.days) {
-          for (final hour in entry.hours) {
-            busy.add('${day.index}-$hour');
-          }
-        }
-      }
-    }
-    return busy;
-  }
-
-  Set<String> _extractBusySlotsFromSections(List<SelectedSection> sections) {
+  Set<String> _extractBusySlots(List<SelectedSection> sections) {
     final busy = <String>{};
     for (final sel in sections) {
       for (final entry in sel.section.schedule) {
@@ -105,31 +109,261 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
 
   Color _sourceColor(int index) {
     const palette = [
-      Color(0xFF58A6FF),
-      Color(0xFF3FB950),
-      Color(0xFFF778BA),
-      Color(0xFFD29922),
-      Color(0xFFBC8CFF),
-      Color(0xFF39D2C0),
-      Color(0xFFFF7B72),
-      Color(0xFF79C0FF),
+      Color(0xFF58A6FF), Color(0xFF3FB950), Color(0xFFF778BA), Color(0xFFD29922),
+      Color(0xFFBC8CFF), Color(0xFF39D2C0), Color(0xFFFF7B72), Color(0xFF79C0FF),
     ];
     return palette[index % palette.length];
+  }
+
+  Map<String, List<_SlotSource>> _computeBusyMap() {
+    final allBusy = <String, List<_SlotSource>>{};
+    for (final source in _sources) {
+      for (final slot in source.busySlots) {
+        allBusy.putIfAbsent(slot, () => []).add(source);
+      }
+    }
+    return allBusy;
+  }
+
+  bool _isSlotFree(Map<String, List<_SlotSource>> busyMap, int dayIdx, int hour) {
+    final key = '${_days[dayIdx].index}-$hour';
+    return (busyMap[key] ?? []).isEmpty;
+  }
+
+  bool _isInSelection(int dayIdx, int hour) {
+    if (_selDayIdx == null || _selDayIdx != dayIdx) return false;
+    if (_selEndHour != null) {
+      final lo = _selStartHour! < _selEndHour! ? _selStartHour! : _selEndHour!;
+      final hi = _selStartHour! > _selEndHour! ? _selStartHour! : _selEndHour!;
+      return hour >= lo && hour <= hi;
+    }
+    return hour == _selStartHour;
+  }
+
+  void _onSlotTap(int dayIdx, int hour, Map<String, List<_SlotSource>> busyMap) {
+    if (!_isSlotFree(busyMap, dayIdx, hour)) return;
+
+    setState(() {
+      if (_selDayIdx == null || _selStartHour == null) {
+        // First tap — start selection
+        _selDayIdx = dayIdx;
+        _selStartHour = hour;
+        _selEndHour = null;
+      } else if (_selDayIdx == dayIdx && _selEndHour == null) {
+        if (hour == _selStartHour) {
+          // Tapped same slot again — confirm single slot
+          _selEndHour = hour;
+          return;
+        }
+        // Second tap on same day — check all slots in range are free
+        final lo = _selStartHour! < hour ? _selStartHour! : hour;
+        final hi = _selStartHour! > hour ? _selStartHour! : hour;
+        for (int h = lo; h <= hi; h++) {
+          if (!_isSlotFree(busyMap, dayIdx, h)) {
+            ToastService.showWarning('Busy slot in range — pick a different endpoint');
+            return;
+          }
+        }
+        _selEndHour = hour;
+      } else {
+        // Different day or already have a range — restart
+        _selDayIdx = dayIdx;
+        _selStartHour = hour;
+        _selEndHour = null;
+      }
+    });
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _selDayIdx = null;
+      _selStartHour = null;
+      _selEndHour = null;
+    });
+  }
+
+  int get _rangeStart {
+    if (_selStartHour == null) return 0;
+    if (_selEndHour == null) return _selStartHour!;
+    return _selStartHour! < _selEndHour! ? _selStartHour! : _selEndHour!;
+  }
+
+  int get _rangeEnd {
+    if (_selStartHour == null) return 0;
+    if (_selEndHour == null) return _selStartHour!;
+    return _selStartHour! > _selEndHour! ? _selStartHour! : _selEndHour!;
+  }
+
+  String get _selectionLabel {
+    if (_selDayIdx == null || _selStartHour == null) return '';
+    final day = _dayLabels[_selDayIdx!];
+    if (_selEndHour == null) {
+      return '$day ${_hourStartTime(_selStartHour!)} — tap another slot to extend';
+    }
+    final lo = _rangeStart;
+    final hi = _rangeEnd;
+    final startStr = _hourStartTime(lo);
+    final endStr = _hourEndTime(hi);
+    final count = hi - lo + 1;
+    return '$day $startStr – $endStr ($count ${count == 1 ? 'hour' : 'hours'})';
+  }
+
+  Future<void> _createEventFromSelection() async {
+    if (_selDayIdx == null || _selStartHour == null) return;
+
+    final lo = _rangeStart;
+    final hi = _rangeEnd;
+    final day = _days[_selDayIdx!];
+    final dayLabel = _dayLabels[_selDayIdx!];
+    final duration = hi - lo + 1;
+    final timeRange = '${_hourStartTime(lo)} – ${_hourEndTime(hi)}';
+
+    final title = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final controller = TextEditingController();
+        return AlertDialog(
+          shape: AppDesign.dialogShape,
+          title: Text('Add event'),
+          content: SizedBox(
+            width: 340,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Theme.of(ctx).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    borderRadius: AppDesign.borderRadiusSm,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.schedule, size: 16, color: Theme.of(ctx).colorScheme.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        '$dayLabel $timeRange',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(ctx).colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  decoration: AppDesign.inputDecoration(
+                    ctx,
+                    label: 'Event title',
+                    hint: 'e.g. Study session, Lunch',
+                  ),
+                  onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+              icon: const Icon(Icons.calendar_month, size: 16),
+              label: const Text('Add to Calendar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (title == null || title.isEmpty || !mounted) return;
+
+    final event = CalendarEvent(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: title,
+      type: 'custom',
+      day: day,
+      hour: lo,
+      durationHours: duration,
+      startTime: _hourToTimeOfDay(lo),
+      endTime: _hourToTimeOfDay(hi + 1),
+    );
+
+    try {
+      await _saveEventToCalendar(event);
+      if (mounted) {
+        ToastService.showSuccess('Added "$title" to calendar');
+        _clearSelection();
+      }
+    } catch (e) {
+      if (mounted) ToastService.showError('Failed to add event');
+    }
+  }
+
+  TimeOfDay _hourToTimeOfDay(int hour) {
+    const mapping = {
+      1: TimeOfDay(hour: 8, minute: 0),
+      2: TimeOfDay(hour: 9, minute: 0),
+      3: TimeOfDay(hour: 10, minute: 0),
+      4: TimeOfDay(hour: 11, minute: 0),
+      5: TimeOfDay(hour: 12, minute: 0),
+      6: TimeOfDay(hour: 13, minute: 0),
+      7: TimeOfDay(hour: 14, minute: 0),
+      8: TimeOfDay(hour: 15, minute: 0),
+      9: TimeOfDay(hour: 16, minute: 0),
+      10: TimeOfDay(hour: 17, minute: 0),
+      11: TimeOfDay(hour: 18, minute: 0),
+    };
+    return mapping[hour] ?? TimeOfDay(hour: 7 + hour, minute: 0);
+  }
+
+  Future<void> _saveEventToCalendar(CalendarEvent event) async {
+    final uid = _authService.userDocId;
+    if (uid == null) throw Exception('Not authenticated');
+
+    final ref = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('calendar_prefs')
+        .doc('data');
+
+    final doc = await ref.get();
+    final existing = <Map<String, dynamic>>[];
+    if (doc.exists) {
+      final data = doc.data();
+      if (data != null && data['customEvents'] != null) {
+        for (final e in data['customEvents'] as List<dynamic>) {
+          existing.add(Map<String, dynamic>.from(e as Map));
+        }
+      }
+    }
+    existing.add(event.toJson());
+
+    await ref.set({
+      if (doc.exists && doc.data()?['selectedTimetableId'] != null)
+        'selectedTimetableId': doc.data()!['selectedTimetableId'],
+      'customEvents': existing,
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isMobile = ResponsiveService.isMobile(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Free Slot Finder')),
+      appBar: AppBar(title: const Text('Free Time Finder')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: EdgeInsets.all(ResponsiveService.isMobile(context) ? 12 : 24),
+              padding: EdgeInsets.all(isMobile ? 12 : 24),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1000),
+                  constraints: const BoxConstraints(maxWidth: 1200),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -138,7 +372,11 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
                       if (_sources.length >= 2) ...[
                         _buildLegend(scheme),
                         const SizedBox(height: 12),
-                        _buildGrid(scheme),
+                        _buildGrid(scheme, isMobile),
+                        if (_selStartHour != null) ...[
+                          const SizedBox(height: 12),
+                          _buildSelectionBar(scheme),
+                        ],
                       ] else
                         _buildHint(scheme),
                     ],
@@ -156,7 +394,8 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Add timetables to compare', style: TextStyle(fontWeight: FontWeight.w600, color: scheme.onSurface)),
+          Text('Add timetables to compare',
+              style: TextStyle(fontWeight: FontWeight.w600, color: scheme.onSurface)),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
@@ -179,13 +418,15 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
             Wrap(
               spacing: 8,
               runSpacing: 4,
-              children: _sources.map((s) => Chip(
-                    avatar: CircleAvatar(backgroundColor: s.color, radius: 6),
-                    label: Text(s.name, style: const TextStyle(fontSize: 12)),
-                    deleteIcon: const Icon(Icons.close, size: 14),
-                    onDeleted: () => setState(() => _sources.remove(s)),
-                    visualDensity: VisualDensity.compact,
-                  )).toList(),
+              children: _sources
+                  .map((s) => Chip(
+                        avatar: CircleAvatar(backgroundColor: s.color, radius: 6),
+                        label: Text(s.name, style: const TextStyle(fontSize: 12)),
+                        deleteIcon: const Icon(Icons.close, size: 14),
+                        onDeleted: () => setState(() => _sources.remove(s)),
+                        visualDensity: VisualDensity.compact,
+                      ))
+                  .toList(),
             ),
           ],
         ],
@@ -194,93 +435,211 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
   }
 
   Widget _buildLegend(ColorScheme scheme) {
-    return Row(
+    return Wrap(
+      spacing: 16,
+      runSpacing: 8,
       children: [
-        Container(width: 16, height: 16, decoration: BoxDecoration(
-          color: Colors.green.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(3),
-          border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
-        )),
-        const SizedBox(width: 6),
-        Text('Free for all', style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.7))),
-        const SizedBox(width: 16),
-        Container(width: 16, height: 16, decoration: BoxDecoration(
-          color: scheme.error.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(3),
-          border: Border.all(color: scheme.error.withValues(alpha: 0.3)),
-        )),
-        const SizedBox(width: 6),
-        Text('Busy', style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.7))),
+        _legendItem(
+          Colors.green.withValues(alpha: 0.2),
+          Colors.green.withValues(alpha: 0.5),
+          'Free — tap to select',
+          scheme,
+        ),
+        _legendItem(
+          scheme.error.withValues(alpha: 0.15),
+          scheme.error.withValues(alpha: 0.3),
+          'Busy',
+          scheme,
+        ),
+        ..._sources.map((s) => Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                    width: 10, height: 10,
+                    decoration: BoxDecoration(color: s.color, shape: BoxShape.circle)),
+                const SizedBox(width: 4),
+                Text(s.name,
+                    style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.7))),
+              ],
+            )),
       ],
     );
   }
 
-  Widget _buildGrid(ColorScheme scheme) {
-    final allBusy = <String, List<_SlotSource>>{};
-    for (final source in _sources) {
-      for (final slot in source.busySlots) {
-        allBusy.putIfAbsent(slot, () => []).add(source);
-      }
-    }
+  Widget _legendItem(Color fill, Color border, String label, ColorScheme scheme) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+            width: 16, height: 16,
+            decoration: BoxDecoration(
+              color: fill,
+              borderRadius: BorderRadius.circular(3),
+              border: Border.all(color: border),
+            )),
+        const SizedBox(width: 6),
+        Text(label,
+            style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.7))),
+      ],
+    );
+  }
+
+  Widget _buildSelectionBar(ColorScheme scheme) {
+    final hasRange = _selEndHour != null;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: 0.3),
+        borderRadius: AppDesign.borderRadiusMd,
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.touch_app, size: 18, color: scheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _selectionLabel,
+              style: TextStyle(fontSize: 13, color: scheme.onSurface),
+            ),
+          ),
+          TextButton(
+            onPressed: _clearSelection,
+            child: const Text('Cancel'),
+          ),
+          if (hasRange)
+            FilledButton.icon(
+              onPressed: _createEventFromSelection,
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Create Event'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGrid(ColorScheme scheme, bool isMobile) {
+    final busyMap = _computeBusyMap();
+    final cellWidth = isMobile ? 52.0 : 72.0;
+    final cellHeight = isMobile ? 40.0 : 48.0;
+    final dayColWidth = isMobile ? 44.0 : 56.0;
 
     return Container(
       decoration: AppDesign.cardDecoration(context),
       clipBehavior: Clip.antiAlias,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columnSpacing: 4,
-          headingRowHeight: 36,
-          dataRowMinHeight: 32,
-          dataRowMaxHeight: 32,
-          border: TableBorder.all(color: scheme.outline.withValues(alpha: 0.1)),
-          columns: [
-            const DataColumn(label: SizedBox(width: 40, child: Text('', style: TextStyle(fontSize: 12)))),
-            ..._hours.map((h) => DataColumn(
-                  label: SizedBox(
-                    width: 36,
-                    child: Text('H$h', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
-                  ),
-                )),
-          ],
-          rows: List.generate(_days.length, (dayIdx) {
-            return DataRow(
-              cells: [
-                DataCell(Text(_dayLabels[dayIdx], style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600))),
-                ..._hours.map((hour) {
-                  final key = '${_days[dayIdx].index}-$hour';
-                  final busySources = allBusy[key] ?? [];
-                  final isFree = busySources.isEmpty;
-                  return DataCell(
-                    Center(
-                      child: Container(
-                        width: 32,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: isFree
-                              ? Colors.green.withValues(alpha: 0.15)
-                              : scheme.error.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row
+            Row(
+              children: [
+                SizedBox(width: dayColWidth, height: cellHeight),
+                ..._hours.map((h) => Container(
+                      width: cellWidth,
+                      height: cellHeight,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: scheme.outline.withValues(alpha: 0.15)),
+                          left: BorderSide(color: scheme.outline.withValues(alpha: 0.08)),
                         ),
-                        child: isFree
-                            ? Icon(Icons.check, size: 12, color: Colors.green.withValues(alpha: 0.7))
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: busySources.take(3).map((s) =>
-                                  Container(
-                                    width: 6, height: 6,
-                                    margin: const EdgeInsets.symmetric(horizontal: 1),
-                                    decoration: BoxDecoration(color: s.color, shape: BoxShape.circle),
-                                  ),
-                                ).toList(),
-                              ),
+                      ),
+                      child: Text(
+                        _hourStartTime(h),
+                        style: TextStyle(
+                          fontSize: isMobile ? 10 : 12,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    )),
+              ],
+            ),
+            // Day rows
+            ...List.generate(_days.length, (dayIdx) {
+              return Row(
+                children: [
+                  Container(
+                    width: dayColWidth,
+                    height: cellHeight,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: scheme.outline.withValues(alpha: 0.08)),
                       ),
                     ),
-                  );
-                }),
-              ],
-            );
-          }),
+                    child: Text(
+                      _dayLabels[dayIdx],
+                      style: TextStyle(
+                        fontSize: isMobile ? 11 : 13,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  ..._hours.map((hour) {
+                    final key = '${_days[dayIdx].index}-$hour';
+                    final busySources = busyMap[key] ?? [];
+                    final isFree = busySources.isEmpty;
+                    final isSelected = _isInSelection(dayIdx, hour);
+
+                    Color cellColor;
+                    if (isSelected) {
+                      cellColor = scheme.primary.withValues(alpha: 0.25);
+                    } else if (isFree) {
+                      cellColor = Colors.green.withValues(alpha: 0.12);
+                    } else {
+                      cellColor = scheme.error.withValues(alpha: 0.08);
+                    }
+
+                    return GestureDetector(
+                      onTap: isFree ? () => _onSlotTap(dayIdx, hour, busyMap) : null,
+                      child: MouseRegion(
+                        cursor: isFree ? SystemMouseCursors.click : SystemMouseCursors.basic,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          width: cellWidth,
+                          height: cellHeight,
+                          decoration: BoxDecoration(
+                            color: cellColor,
+                            border: Border(
+                              bottom: BorderSide(color: scheme.outline.withValues(alpha: 0.08)),
+                              left: BorderSide(color: scheme.outline.withValues(alpha: 0.08)),
+                            ),
+                          ),
+                          child: Center(
+                            child: isSelected
+                                ? Icon(Icons.check_circle,
+                                    size: isMobile ? 16 : 20,
+                                    color: scheme.primary)
+                                : isFree
+                                    ? Icon(Icons.add_circle_outline,
+                                        size: isMobile ? 14 : 18,
+                                        color: Colors.green.withValues(alpha: 0.5))
+                                    : Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: busySources
+                                            .take(4)
+                                            .map((s) => Container(
+                                                  width: isMobile ? 6 : 8,
+                                                  height: isMobile ? 6 : 8,
+                                                  margin: const EdgeInsets.symmetric(horizontal: 1),
+                                                  decoration: BoxDecoration(
+                                                      color: s.color, shape: BoxShape.circle),
+                                                ))
+                                            .toList(),
+                                      ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              );
+            }),
+          ],
         ),
       ),
     );

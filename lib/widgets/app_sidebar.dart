@@ -44,7 +44,7 @@ class _AppSidebarState extends State<AppSidebar> {
       items.add(_SidebarItem(
         screen: DrawerScreen.freeSlotFinder,
         icon: Icons.group,
-        label: 'Free Slots',
+        label: 'Free Time Finder',
       ));
     }
 
