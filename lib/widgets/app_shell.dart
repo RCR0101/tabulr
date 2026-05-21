@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/course_announcement_service.dart';
 import '../services/responsive_service.dart';
+import '../services/theme_service.dart' as theme_service;
 import '../services/toast_service.dart';
+import '../services/user_settings_service.dart';
+import '../models/user_settings.dart' as user_settings;
 import '../screens/timetables_screen.dart';
 import '../screens/calendar_screen.dart';
 import '../screens/cgpa_calculator_screen.dart';
@@ -34,6 +37,23 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     _currentScreen = widget.initialScreen;
+    _syncThemeFromSettings();
+  }
+
+  Future<void> _syncThemeFromSettings() async {
+    final settingsService = UserSettingsService();
+    await settingsService.initializeSettings();
+    final saved = settingsService.userSettings;
+    if (saved == null) return;
+
+    final themeService = theme_service.ThemeService();
+    await themeService.setTheme(saved.themeVariant);
+    final flutterMode = switch (saved.themeMode) {
+      user_settings.ThemeMode.light => ThemeMode.light,
+      user_settings.ThemeMode.dark => ThemeMode.dark,
+      user_settings.ThemeMode.system => ThemeMode.system,
+    };
+    await themeService.setThemeMode(flutterMode);
   }
 
   Widget _buildScreen() {
