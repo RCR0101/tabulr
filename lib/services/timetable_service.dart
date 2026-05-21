@@ -23,15 +23,8 @@ class TimetableService {
   Future<void> saveTimetable(Timetable timetable) async {
     try {
       // Update the timetable's updatedAt timestamp
-      final updatedTimetable = Timetable(
-        id: timetable.id,
-        name: timetable.name,
-        createdAt: timetable.createdAt,
+      final updatedTimetable = timetable.copyWith(
         updatedAt: DateTime.now(),
-        campus: timetable.campus,
-        availableCourses: timetable.availableCourses,
-        selectedSections: timetable.selectedSections,
-        clashWarnings: timetable.clashWarnings,
       );
       
       print('Saving timetable "${timetable.name}" with campus: ${CampusService.getCampusDisplayName(timetable.campus)}');

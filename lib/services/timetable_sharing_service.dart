@@ -97,10 +97,20 @@ class TimetableSharingService {
     if (!doc.exists) return null;
 
     final data = doc.data()!;
-    final sectionsJson = data['sections'] as List<dynamic>;
-    final sections = sectionsJson
-        .map((s) => SelectedSection.fromJson(s as Map<String, dynamic>))
-        .toList();
+    final sectionsRaw = data['sections'] as List<dynamic>? ?? [];
+    final sections = <SelectedSection>[];
+    for (final s in sectionsRaw) {
+      final map = Map<String, dynamic>.from(s as Map);
+      if (map['section'] is Map) {
+        map['section'] = Map<String, dynamic>.from(map['section'] as Map);
+        if (map['section']['schedule'] is List) {
+          map['section']['schedule'] = (map['section']['schedule'] as List)
+              .map((e) => e is Map ? Map<String, dynamic>.from(e) : e)
+              .toList();
+        }
+      }
+      sections.add(SelectedSection.fromJson(map));
+    }
 
     return SharedTimetableData(
       code: trimmed,
