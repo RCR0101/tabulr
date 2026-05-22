@@ -721,272 +721,142 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
           if (!ResponsiveService.isMobile(context))
             CampusSelectorWidget(
               onCampusChanged: (campus) {
-                // Clear course cache when campus changes
                 CourseDataService().clearCache();
                 ToastService.showInfo(
                   'Switched to ${CampusService.getCampusDisplayName(campus)} campus',
                 );
               },
             ),
-          SizedBox(
-            width: ResponsiveService.getValue(
-              context,
-              mobile: 4,
-              tablet: 8,
-              desktop: 8,
-            ),
-          ),
+          const SizedBox(width: 4),
           PopupMenuButton<String>(
-            icon: Icon(
-              Icons.apps,
-              size: ResponsiveService.getAdaptiveIconSize(context, 24),
-            ),
-            tooltip: 'More Options',
-            iconSize: ResponsiveService.getValue(
-              context,
-              mobile: 40.0,
-              tablet: 48.0,
-              desktop: 48.0,
-            ),
-            padding: ResponsiveService.getAdaptivePadding(
-              context,
-              EdgeInsets.all(
-                ResponsiveService.getValue(
-                  context,
-                  mobile: 8.0,
-                  tablet: 8.0,
-                  desktop: 8.0,
-                ),
-              ),
-            ),
+            icon: const Icon(Icons.apps, size: 22),
+            tooltip: 'Tools',
             onSelected: (value) {
               switch (value) {
                 case 'course_guide':
-                  Navigator.push(
-                    context,
-                    FadeSlidePageRoute(page: const CourseGuideScreen()),
-                  );
+                  Navigator.push(context, FadeSlidePageRoute(page: const CourseGuideScreen()));
                   break;
                 case 'prerequisites':
-                  Navigator.push(
-                    context,
-                    FadeSlidePageRoute(page: const PrerequisitesScreen()),
-                  );
+                  Navigator.push(context, FadeSlidePageRoute(page: const PrerequisitesScreen()));
                   break;
                 case 'discipline_electives':
-                  Navigator.push(
-                    context,
-                    FadeSlidePageRoute(page: const DisciplineElectivesScreen()),
-                  );
+                  Navigator.push(context, FadeSlidePageRoute(page: const DisciplineElectivesScreen()));
                   break;
                 case 'humanities_electives':
-                  Navigator.push(
-                    context,
-                    FadeSlidePageRoute(page: const HumanitiesElectivesScreen()),
-                  );
+                  Navigator.push(context, FadeSlidePageRoute(page: const HumanitiesElectivesScreen()));
+                  break;
+                case 'github':
+                  _openGitHub();
                   break;
               }
             },
-            itemBuilder:
-                (context) => [
-                  // Campus selector for mobile
-                  if (ResponsiveService.isMobile(context))
-                    PopupMenuItem(
-                      enabled: false,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Campus',
-                              style: Theme.of(
-                                context,
-                              ).textTheme.labelSmall?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurface.withValues(alpha: 0.6),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            CampusSelectorWidget(
-                              onCampusChanged: (campus) {
-                                Navigator.pop(context);
-                                CourseDataService().clearCache();
-                                ToastService.showInfo(
-                                  'Switched to ${CampusService.getCampusDisplayName(campus)} campus',
-                                );
-                              },
-                            ),
-                          ],
+            itemBuilder: (context) => [
+              if (ResponsiveService.isMobile(context)) ...[
+                PopupMenuItem(
+                  enabled: false,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Campus', style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          fontWeight: FontWeight.w600,
+                        )),
+                        const SizedBox(height: 4),
+                        CampusSelectorWidget(
+                          onCampusChanged: (campus) {
+                            Navigator.pop(context);
+                            CourseDataService().clearCache();
+                            ToastService.showInfo('Switched to ${CampusService.getCampusDisplayName(campus)} campus');
+                          },
                         ),
-                      ),
-                    ),
-                  if (ResponsiveService.isMobile(context))
-                    const PopupMenuDivider(),
-                  const PopupMenuItem(
-                    value: 'course_guide',
-                    child: ListTile(
-                      leading: Icon(Icons.menu_book),
-                      title: Text('Course Guide'),
-                      contentPadding: EdgeInsets.zero,
+                      ],
                     ),
                   ),
-                  const PopupMenuItem(
-                    value: 'prerequisites',
-                    child: ListTile(
-                      leading: Icon(Icons.account_tree),
-                      title: Text('Prerequisites'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'discipline_electives',
-                    child: ListTile(
-                      leading: Icon(Icons.school),
-                      title: Text('Discipline Electives'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'humanities_electives',
-                    child: ListTile(
-                      leading: Icon(Icons.library_books),
-                      title: Text('Humanities Electives'),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                ],
+                ),
+                const PopupMenuDivider(),
+              ],
+              const PopupMenuItem(
+                value: 'course_guide',
+                child: ListTile(leading: Icon(Icons.menu_book), title: Text('Course Guide'), contentPadding: EdgeInsets.zero),
+              ),
+              const PopupMenuItem(
+                value: 'prerequisites',
+                child: ListTile(leading: Icon(Icons.account_tree), title: Text('Prerequisites'), contentPadding: EdgeInsets.zero),
+              ),
+              const PopupMenuItem(
+                value: 'discipline_electives',
+                child: ListTile(leading: Icon(Icons.school), title: Text('Discipline Electives'), contentPadding: EdgeInsets.zero),
+              ),
+              const PopupMenuItem(
+                value: 'humanities_electives',
+                child: ListTile(leading: Icon(Icons.library_books), title: Text('Humanities Electives'), contentPadding: EdgeInsets.zero),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'github',
+                child: ListTile(leading: Icon(Icons.star_border), title: Text('Star on GitHub'), contentPadding: EdgeInsets.zero),
+              ),
+            ],
           ),
           const ThemeToggleButton(),
-          IconButton(
-            icon: Icon(
-              Icons.star_border,
-              size: ResponsiveService.getAdaptiveIconSize(context, 24),
-            ),
-            onPressed: () => _openGitHub(),
-            tooltip: 'Star on GitHub',
-            iconSize: ResponsiveService.getTouchTargetSize(context),
-            padding: EdgeInsets.all(
-              ResponsiveService.getValue(
-                context,
-                mobile: 12.0,
-                tablet: 8.0,
-                desktop: 8.0,
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'logout') _logout();
+            },
+            itemBuilder: (context) => [
+              if (_authService.isAuthenticated) ...[
+                PopupMenuItem(
+                  enabled: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(_authService.userName ?? 'User', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(_authService.userEmail ?? '', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color)),
+                      const Divider(),
+                    ],
+                  ),
+                ),
+              ] else ...[
+                const PopupMenuItem(
+                  enabled: false,
+                  child: ListTile(leading: Icon(Icons.person_outline), title: Text('Guest User'), contentPadding: EdgeInsets.zero),
+                ),
+                const PopupMenuDivider(),
+              ],
+              const PopupMenuItem(
+                value: 'logout',
+                child: ListTile(leading: Icon(Icons.logout), title: Text('Sign Out'), contentPadding: EdgeInsets.zero),
               ),
+            ],
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: _authService.isAuthenticated
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundImage: _authService.userPhotoUrl != null ? _authService.userPhotoImage : null,
+                          child: _authService.userPhotoUrl == null ? const Icon(Icons.person, size: 16) : null,
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.arrow_drop_down, size: 18),
+                      ],
+                    )
+                  : const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.person_outline, size: 22),
+                        SizedBox(width: 2),
+                        Icon(Icons.arrow_drop_down, size: 18),
+                      ],
+                    ),
             ),
           ),
-          // User info and logout
-          if (_authService.isAuthenticated)
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'logout') {
-                  _logout();
-                }
-              },
-              itemBuilder:
-                  (context) => [
-                    PopupMenuItem(
-                      enabled: false,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _authService.userName ?? 'User',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            _authService.userEmail ?? '',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color:
-                                  Theme.of(context).textTheme.bodySmall?.color,
-                            ),
-                          ),
-                          const Divider(),
-                        ],
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'logout',
-                      child: ListTile(
-                        leading: Icon(Icons.logout),
-                        title: Text('Sign Out'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  ],
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircleAvatar(
-                      radius: 16,
-                      backgroundImage:
-                          _authService.userPhotoUrl != null
-                              ? _authService.userPhotoImage
-                              : null,
-                      child:
-                          _authService.userPhotoUrl == null
-                              ? const Icon(Icons.person, size: 16)
-                              : null,
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.arrow_drop_down),
-                  ],
-                ),
-              ),
-            )
-          else
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'logout') {
-                  _logout();
-                }
-              },
-              itemBuilder:
-                  (context) => [
-                    const PopupMenuItem(
-                      enabled: false,
-                      child: ListTile(
-                        leading: Icon(Icons.person_outline),
-                        title: Text('Guest User'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                    const PopupMenuDivider(),
-                    const PopupMenuItem(
-                      value: 'logout',
-                      child: ListTile(
-                        leading: Icon(Icons.logout),
-                        title: Text('Sign Out'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  ],
-              child: const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.person_outline),
-                    SizedBox(width: 4),
-                    Icon(Icons.arrow_drop_down),
-                  ],
-                ),
-              ),
-            ),
-          SizedBox(
-            width: ResponsiveService.getValue(
-              context,
-              mobile: 4,
-              tablet: 8,
-              desktop: 8,
-            ),
-          ),
+          const SizedBox(width: 4),
         ],
       ),
       body: Column(
@@ -1080,103 +950,127 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                         final isCustomSort =
                             _userSettingsService.sortOrder ==
                             TimetableListSortOrder.custom;
+                        final courseCodes = timetable.selectedSections.map((s) => s.courseCode).toSet().toList();
+                        double totalCredits = 0;
+                        for (final code in courseCodes) {
+                          final course = timetable.availableCourses.where((c) => c.courseCode == code).firstOrNull;
+                          if (course != null) totalCredits += course.totalCredits;
+                        }
+                        totalCredits += timetable.projectCount * 3;
+                        final scheme = Theme.of(context).colorScheme;
                         return Card(
                           key: ValueKey(timetable.id),
                           margin: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(16),
-                            leading: isCustomSort
-                                ? ReorderableDragStartListener(
-                                    index: index,
-                                    child: Icon(
-                                      Icons.drag_handle,
-                                      color: AppDesign.muted(context),
-                                    ),
-                                  )
-                                : null,
-                            title: Text(
-                              timetable.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${timetable.selectedSections.map((s) => s.courseCode).toSet().length} courses selected',
-                                  style: TextStyle(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface
-                                        .withValues(alpha: 0.7),
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  'Created: ${_formatDate(timetable.createdAt)}',
-                                  style: TextStyle(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurface
-                                        .withValues(alpha: 0.5),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            trailing: PopupMenuButton<String>(
-                              onSelected: (value) {
-                                switch (value) {
-                                  case 'rename':
-                                    _renameTimetable(timetable);
-                                    break;
-                                  case 'duplicate':
-                                    _duplicateTimetable(timetable);
-                                    break;
-                                  case 'delete':
-                                    _deleteTimetable(timetable);
-                                    break;
-                                }
-                              },
-                              itemBuilder:
-                                  (context) => [
-                                    const PopupMenuItem(
-                                      value: 'rename',
-                                      child: ListTile(
-                                        leading: Icon(Icons.edit),
-                                        title: Text('Rename'),
-                                        contentPadding: EdgeInsets.zero,
-                                      ),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'duplicate',
-                                      child: ListTile(
-                                        leading: Icon(Icons.copy),
-                                        title: Text('Duplicate'),
-                                        contentPadding: EdgeInsets.zero,
-                                      ),
-                                    ),
-                                    if (_sortedTimetables.length > 1)
-                                      PopupMenuItem(
-                                        value: 'delete',
-                                        child: ListTile(
-                                          leading: Icon(
-                                            Icons.delete,
-                                            color: AppDesign.danger(context),
-                                          ),
-                                          title: Text(
-                                            'Delete',
-                                            style: TextStyle(color: AppDesign.danger(context)),
-                                          ),
-                                          contentPadding: EdgeInsets.zero,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => _openTimetable(timetable),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      if (isCustomSort) ...[
+                                        ReorderableDragStartListener(
+                                          index: index,
+                                          child: Icon(Icons.drag_handle, color: AppDesign.muted(context)),
+                                        ),
+                                        const SizedBox(width: 12),
+                                      ],
+                                      Expanded(
+                                        child: Text(
+                                          timetable.name,
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                         ),
                                       ),
+                                      if (totalCredits > 0)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: scheme.primaryContainer,
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            '${totalCredits % 1 == 0 ? totalCredits.toInt() : totalCredits.toStringAsFixed(1)} cr',
+                                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: scheme.onPrimaryContainer),
+                                          ),
+                                        ),
+                                      const SizedBox(width: 8),
+                                      PopupMenuButton<String>(
+                                        onSelected: (value) {
+                                          switch (value) {
+                                            case 'rename':
+                                              _renameTimetable(timetable);
+                                              break;
+                                            case 'duplicate':
+                                              _duplicateTimetable(timetable);
+                                              break;
+                                            case 'delete':
+                                              _deleteTimetable(timetable);
+                                              break;
+                                          }
+                                        },
+                                        itemBuilder: (context) => [
+                                          const PopupMenuItem(
+                                            value: 'rename',
+                                            child: ListTile(leading: Icon(Icons.edit), title: Text('Rename'), contentPadding: EdgeInsets.zero),
+                                          ),
+                                          const PopupMenuItem(
+                                            value: 'duplicate',
+                                            child: ListTile(leading: Icon(Icons.copy), title: Text('Duplicate'), contentPadding: EdgeInsets.zero),
+                                          ),
+                                          if (_sortedTimetables.length > 1)
+                                            PopupMenuItem(
+                                              value: 'delete',
+                                              child: ListTile(
+                                                leading: Icon(Icons.delete, color: AppDesign.danger(context)),
+                                                title: Text('Delete', style: TextStyle(color: AppDesign.danger(context))),
+                                                contentPadding: EdgeInsets.zero,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  if (courseCodes.isNotEmpty) ...[
+                                    const SizedBox(height: 10),
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 4,
+                                      children: courseCodes.map((code) {
+                                        return Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: scheme.surfaceContainerHighest,
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(code, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: scheme.onSurface.withValues(alpha: 0.8))),
+                                        );
+                                      }).toList(),
+                                    ),
                                   ],
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        '${courseCodes.length} course${courseCodes.length != 1 ? 's' : ''}',
+                                        style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.6)),
+                                      ),
+                                      if (timetable.projectCount > 0) ...[
+                                        Text(' · ', style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.4))),
+                                        Text('${timetable.projectCount} project${timetable.projectCount != 1 ? 's' : ''}', style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.6))),
+                                      ],
+                                      const Spacer(),
+                                      Text(
+                                        _formatDate(timetable.updatedAt),
+                                        style: TextStyle(fontSize: 11, color: scheme.onSurface.withValues(alpha: 0.4)),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
-                            onTap: () => _openTimetable(timetable),
                           ),
                         );
                       },

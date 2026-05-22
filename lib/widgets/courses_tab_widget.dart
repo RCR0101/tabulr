@@ -9,12 +9,16 @@ class CoursesTabWidget extends StatefulWidget {
   final List<Course> courses;
   final List<SelectedSection> selectedSections;
   final Function(String, String, bool) onSectionToggle;
+  final int projectCount;
+  final ValueChanged<int> onProjectCountChanged;
 
   const CoursesTabWidget({
     super.key,
     required this.courses,
     required this.selectedSections,
     required this.onSectionToggle,
+    required this.projectCount,
+    required this.onProjectCountChanged,
   });
 
   @override
@@ -24,8 +28,6 @@ class CoursesTabWidget extends StatefulWidget {
 class _CoursesTabWidgetState extends State<CoursesTabWidget>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _isBannerExpanded = false;
-  int _projectCount = 0;
 
   @override
   void initState() {
@@ -39,243 +41,63 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
     super.dispose();
   }
 
-  Widget _buildCreditsBanner() {
-    // Calculate total credits from selected courses
+  Widget _buildStickyCreditsBar() {
     final selectedCoursesCodes = widget.selectedSections.map((s) => s.courseCode).toSet();
     double courseCredits = 0;
-    
+
     for (final courseCode in selectedCoursesCodes) {
       final course = widget.courses.firstWhere(
         (c) => c.courseCode == courseCode,
-        orElse: () => Course(
-          courseCode: courseCode,
-          courseTitle: 'Unknown',
-          lectureCredits: 0.0,
-          practicalCredits: 0.0,
-          totalCredits: 0.0,
-          sections: [],
-        ),
+        orElse: () => Course(courseCode: courseCode, courseTitle: 'Unknown', lectureCredits: 0.0, practicalCredits: 0.0, totalCredits: 0.0, sections: []),
       );
       courseCredits += course.totalCredits;
     }
-    
-    final projectCredits = _projectCount * 3;
+
+    final projectCredits = widget.projectCount * 3;
     final totalCredits = courseCredits + projectCredits;
-    
+    final scheme = Theme.of(context).colorScheme;
+    final isOver = totalCredits > 25;
+
     return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.all(8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-          width: 1,
-        ),
+        color: isOver ? scheme.errorContainer : scheme.primaryContainer.withOpacity(0.4),
+        border: Border(bottom: BorderSide(color: scheme.outline.withOpacity(0.3))),
       ),
-      child: Column(
+      child: Row(
         children: [
-          // Main banner with expandable functionality
+          Icon(Icons.school, size: 16, color: isOver ? scheme.error : scheme.primary),
+          const SizedBox(width: 6),
+          Text(
+            '${totalCredits % 1 == 0 ? totalCredits.toInt() : totalCredits.toStringAsFixed(1)}/25 credits',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isOver ? scheme.error : scheme.primary),
+          ),
+          if (selectedCoursesCodes.isNotEmpty) ...[
+            Text(
+              '  (${selectedCoursesCodes.length} course${selectedCoursesCodes.length != 1 ? 's' : ''})',
+              style: TextStyle(fontSize: 11, color: scheme.onSurface.withOpacity(0.5)),
+            ),
+          ],
+          const Spacer(),
+          // Project counter inline
+          Icon(Icons.assignment, size: 14, color: scheme.primary.withOpacity(0.7)),
+          const SizedBox(width: 4),
           InkWell(
-            onTap: () {
-              setState(() {
-                _isBannerExpanded = !_isBannerExpanded;
-              });
-            },
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.school,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Total Credits: $totalCredits (Max: 25)',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  Icon(
-                    _isBannerExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 20,
-                  ),
-                ],
-              ),
-            ),
+            onTap: widget.projectCount > 0 ? () { widget.onProjectCountChanged(widget.projectCount - 1); } : null,
+            child: Icon(Icons.remove_circle_outline, size: 16, color: widget.projectCount > 0 ? scheme.primary : scheme.onSurface.withOpacity(0.3)),
           ),
-          // Collapsible project section
-          AnimatedCrossFade(
-            firstChild: const SizedBox.shrink(),
-            secondChild: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Column(
-                children: [
-                  Divider(
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                    height: 1,
-                  ),
-                  const SizedBox(height: 12),
-                  ResponsiveService.isMobile(context)
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.assignment,
-                                  color: Theme.of(context).colorScheme.primary,
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Projects:',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: Theme.of(context).colorScheme.primary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  onPressed: _projectCount > 0 ? () {
-                                    setState(() {
-                                      _projectCount--;
-                                    });
-                                  } : null,
-                                  icon: const Icon(Icons.remove_circle_outline),
-                                  iconSize: 20,
-                                  constraints: const BoxConstraints(
-                                    minWidth: 32,
-                                    minHeight: 32,
-                                  ),
-                                ),
-                                Container(
-                                  constraints: const BoxConstraints(minWidth: 40),
-                                  child: Text(
-                                    '$_projectCount',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Theme.of(context).colorScheme.primary,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: _projectCount < 8 ? () { // Max 8 projects (24 credits)
-                                    setState(() {
-                                      _projectCount++;
-                                    });
-                                  } : null,
-                                  icon: const Icon(Icons.add_circle_outline),
-                                  iconSize: 20,
-                                  constraints: const BoxConstraints(
-                                    minWidth: 32,
-                                    minHeight: 32,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        )
-                      : Row(
-                          children: [
-                            Icon(
-                              Icons.assignment,
-                              color: Theme.of(context).colorScheme.primary,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Projects:',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                            const Spacer(),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  onPressed: _projectCount > 0 ? () {
-                                    setState(() {
-                                      _projectCount--;
-                                    });
-                                  } : null,
-                                  icon: const Icon(Icons.remove_circle_outline),
-                                  iconSize: 20,
-                                  constraints: const BoxConstraints(
-                                    minWidth: 32,
-                                    minHeight: 32,
-                                  ),
-                                ),
-                                Container(
-                                  constraints: const BoxConstraints(minWidth: 40),
-                                  child: Text(
-                                    '$_projectCount',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: Theme.of(context).colorScheme.primary,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: _projectCount < 8 ? () { // Max 8 projects (24 credits)
-                                    setState(() {
-                                      _projectCount++;
-                                    });
-                                  } : null,
-                                  icon: const Icon(Icons.add_circle_outline),
-                                  iconSize: 20,
-                                  constraints: const BoxConstraints(
-                                    minWidth: 32,
-                                    minHeight: 32,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                  if (_projectCount > 0) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      '$_projectCount project${_projectCount == 1 ? '' : 's'} = +$projectCredits credits',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.8),
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            crossFadeState: _isBannerExpanded 
-                ? CrossFadeState.showSecond 
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 200),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text('$widget.projectCount', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: scheme.primary)),
           ),
+          InkWell(
+            onTap: widget.projectCount < 8 ? () { widget.onProjectCountChanged(widget.projectCount + 1); } : null,
+            child: Icon(Icons.add_circle_outline, size: 16, color: widget.projectCount < 8 ? scheme.primary : scheme.onSurface.withOpacity(0.3)),
+          ),
+          if (widget.projectCount > 0) ...[
+            const SizedBox(width: 4),
+            Text('(+$projectCredits)', style: TextStyle(fontSize: 10, color: scheme.onSurface.withOpacity(0.5))),
+          ],
         ],
       ),
     );
@@ -287,13 +109,10 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
     
     return Column(
       children: [
+        _buildStickyCreditsBar(),
         Container(
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(8),
-              topRight: Radius.circular(8),
-            ),
           ),
           child: TabBar(
             controller: _tabController,
@@ -415,18 +234,11 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                 showOnlySelected: false,
               ),
               // My Courses tab - shows only selected courses
-              Column(
-                children: [
-                  Expanded(
-                    child: CourseListWidget(
-                      courses: widget.courses,
-                      selectedSections: widget.selectedSections,
-                      onSectionToggle: widget.onSectionToggle,
-                      showOnlySelected: true,
-                    ),
-                  ),
-                  _buildCreditsBanner(),
-                ],
+              CourseListWidget(
+                courses: widget.courses,
+                selectedSections: widget.selectedSections,
+                onSectionToggle: widget.onSectionToggle,
+                showOnlySelected: true,
               ),
               // Exam schedule tab
               widget.selectedSections.isEmpty

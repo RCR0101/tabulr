@@ -12,6 +12,7 @@ class Timetable {
   final List<SelectedSection> selectedSections;
   final List<ClashWarning> clashWarnings;
   final String? shareId;
+  int projectCount;
 
   Timetable({
     required this.id,
@@ -23,6 +24,7 @@ class Timetable {
     required this.selectedSections,
     required this.clashWarnings,
     this.shareId,
+    this.projectCount = 0,
   });
 
   Map<String, dynamic> toJson() {
@@ -36,6 +38,7 @@ class Timetable {
       'selectedSections': selectedSections.map((s) => s.toJson()).toList(),
       'clashWarnings': clashWarnings.map((w) => w.toJson()).toList(),
       if (shareId != null) 'shareId': shareId,
+      if (projectCount > 0) 'projectCount': projectCount,
     };
   }
 
@@ -69,6 +72,7 @@ class Timetable {
           ?.map((w) => ClashWarning.fromJson(w))
           .toList() ?? [],
       shareId: json['shareId'] as String?,
+      projectCount: json['projectCount'] as int? ?? 0,
     );
   }
 
@@ -82,6 +86,7 @@ class Timetable {
     List<SelectedSection>? selectedSections,
     List<ClashWarning>? clashWarnings,
     String? Function()? shareId,
+    int? projectCount,
   }) {
     return Timetable(
       id: id ?? this.id,
@@ -93,6 +98,7 @@ class Timetable {
       selectedSections: selectedSections ?? this.selectedSections,
       clashWarnings: clashWarnings ?? this.clashWarnings,
       shareId: shareId != null ? shareId() : this.shareId,
+      projectCount: projectCount ?? this.projectCount,
     );
   }
 }

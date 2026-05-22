@@ -15,7 +15,8 @@ class NormalizedTimetable {
   final DateTime updatedAt;
   final List<SectionReference> selectedSections;
   final List<ClashWarning> clashWarnings;
-  final String? courseVersion; // For cache invalidation
+  final String? courseVersion;
+  final int projectCount;
 
   NormalizedTimetable({
     required this.id,
@@ -25,6 +26,7 @@ class NormalizedTimetable {
     required this.selectedSections,
     required this.clashWarnings,
     this.courseVersion,
+    this.projectCount = 0,
   });
 
   Map<String, dynamic> toJson() {
@@ -36,6 +38,7 @@ class NormalizedTimetable {
       'selectedSections': selectedSections.map((s) => s.toJson()).toList(),
       'clashWarnings': clashWarnings.map((w) => w.toJson()).toList(),
       'courseVersion': courseVersion,
+      if (projectCount > 0) 'projectCount': projectCount,
     };
   }
 
@@ -52,6 +55,7 @@ class NormalizedTimetable {
           .map((w) => ClashWarning.fromJson(w))
           .toList(),
       courseVersion: json['courseVersion'],
+      projectCount: json['projectCount'] as int? ?? 0,
     );
   }
 
@@ -82,6 +86,7 @@ class NormalizedTimetable {
       availableCourses: availableCourses,
       selectedSections: selectedSectionsLegacy,
       clashWarnings: clashWarnings,
+      projectCount: projectCount,
     );
   }
 
@@ -101,6 +106,7 @@ class NormalizedTimetable {
       updatedAt: legacy.updatedAt,
       selectedSections: sectionRefs,
       clashWarnings: legacy.clashWarnings,
+      projectCount: legacy.projectCount,
     );
   }
 }

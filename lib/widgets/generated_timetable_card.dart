@@ -75,19 +75,51 @@ class GeneratedTimetableCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             
-            // Course sections
-            Text(
-              'Sections (${timetable.sections.length}):',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
+            // Course sections with details
             Wrap(
-              spacing: 4,
-              runSpacing: 4,
-              children: timetable.sections.map((section) => Chip(
-                label: Text('${section.courseCode}-${section.sectionId}'),
-                backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-              )).toList(),
+              spacing: 6,
+              runSpacing: 6,
+              children: timetable.sections.map((section) {
+                final isOptional = timetable.optionalCourseCodes.contains(section.courseCode);
+                final schedule = TimeSlotInfo.getFormattedSchedule(section.section.schedule);
+                final instructor = section.section.instructor;
+                final shortInstructor = instructor.length > 20 ? '${instructor.substring(0, 18)}...' : instructor;
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isOptional
+                        ? Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.5)
+                        : Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: isOptional
+                          ? Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3)
+                          : Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${section.courseCode} - ${section.sectionId}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isOptional
+                              ? Theme.of(context).colorScheme.tertiary
+                              : Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      if (shortInstructor.isNotEmpty)
+                        Text(shortInstructor, style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7))),
+                      if (schedule.isNotEmpty)
+                        Text(schedule, style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5))),
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
             
             const SizedBox(height: 12),

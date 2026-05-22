@@ -559,6 +559,14 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
             child: CoursesTabWidget(
               courses: _filteredCourses,
               selectedSections: _timetable!.selectedSections,
+              projectCount: _timetable!.projectCount,
+              onProjectCountChanged: (count) {
+                setState(() {
+                  _timetable!.projectCount = count;
+                  hasUnsavedChanges = true;
+                });
+                onUnsavedChangesChanged(true);
+              },
               onSectionToggle: (courseCode, sectionId, isSelected) {
                 if (isSelected) {
                   removeSection(courseCode, sectionId);
@@ -1230,6 +1238,14 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
             child: CoursesTabWidget(
               courses: _filteredCourses,
               selectedSections: _timetable.selectedSections,
+              projectCount: _timetable.projectCount,
+              onProjectCountChanged: (count) {
+                setState(() {
+                  _timetable.projectCount = count;
+                  hasUnsavedChanges = true;
+                });
+                onUnsavedChangesChanged(true);
+              },
               onSectionToggle: (courseCode, sectionId, isSelected) {
                 if (isSelected) {
                   removeSection(courseCode, sectionId);
