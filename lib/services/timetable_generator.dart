@@ -10,57 +10,125 @@ class TimetableGenerator {
     TimetableConstraints constraints, {
     int maxTimetables = 30,
   }) {
-    
-    
-    final requiredCourses = availableCourses
-        .where((course) => constraints.requiredCourses.contains(course.courseCode))
+    final mandatoryCourses = availableCourses
+        .where((c) => constraints.mandatoryCourses.contains(c.courseCode))
         .toList();
 
-    
-    for (final course in requiredCourses) {
-      
+    if (mandatoryCourses.length != constraints.mandatoryCourses.length) {
+      throw Exception('Some mandatory courses not found in available courses');
     }
 
-    if (requiredCourses.length != constraints.requiredCourses.length) {
-      
-      throw Exception('Some required courses not found in available courses');
-    }
+    final optionalCourses = availableCourses
+        .where((c) => constraints.optionalCourses.contains(c.courseCode))
+        .toList();
 
-    final allCombinations = _generateAllCombinations(requiredCourses);
-    
-    
+    // Sort optionals by exam slot preference match (best candidates first)
+    _sortOptionalsByPreference(optionalCourses, constraints);
+
+    final mandatoryCombos = _generateAllCombinations(mandatoryCourses);
+    final allCourses = [...mandatoryCourses, ...optionalCourses];
+
+    final mandatoryCredits = mandatoryCourses.fold(0.0, (sum, c) => sum + c.totalCredits);
+
+    final seen = <String>{};
     final validTimetables = <GeneratedTimetable>[];
 
-    for (int i = 0; i < allCombinations.length && validTimetables.length < maxTimetables; i++) {
-      final combination = allCombinations[i];
-      
-      if (_isValidCombination(combination, availableCourses)) {
-        final score = _scoreTimetable(combination, constraints, requiredCourses);
-        final analysis = _analyzeTimetable(combination, constraints, requiredCourses);
-        
-        validTimetables.add(GeneratedTimetable(
-          id: 'timetable_${validTimetables.length + 1}',
-          sections: combination,
-          score: score,
-          pros: analysis['pros'] as List<String>,
-          cons: analysis['cons'] as List<String>,
-          hoursPerDay: _calculateHoursPerDay(combination),
-        ));
-      } else {
-        if (i < 5) { // Log first few invalid combinations
-          
+    for (int i = 0; i < mandatoryCombos.length; i++) {
+      final base = mandatoryCombos[i];
+      if (!_isValidCombination(base, allCourses)) continue;
+
+      // Greedily add optional courses
+      final result = _addOptionalCourses(
+        base, optionalCourses, allCourses, constraints, mandatoryCredits,
+      );
+
+      // Deduplicate by section set
+      final key = (result.sections.map((s) => '${s.courseCode}:${s.sectionId}').toList()..sort()).join('|');
+      if (seen.contains(key)) continue;
+      seen.add(key);
+
+      final score = _scoreTimetable(result.sections, constraints, allCourses);
+      final analysis = _analyzeTimetable(result.sections, constraints, allCourses);
+
+      if (result.optionalCodes.isNotEmpty) {
+        final optNames = result.optionalCodes.join(', ');
+        (analysis['pros'] as List<String>).insert(0, 'Includes optionals: $optNames');
+      }
+
+      validTimetables.add(GeneratedTimetable(
+        id: 'timetable_${validTimetables.length + 1}',
+        sections: result.sections,
+        score: score,
+        pros: analysis['pros'] as List<String>,
+        cons: analysis['cons'] as List<String>,
+        hoursPerDay: _calculateHoursPerDay(result.sections),
+        totalCredits: result.totalCredits,
+        optionalCourseCodes: result.optionalCodes,
+      ));
+
+      if (validTimetables.length >= maxTimetables * 2) break;
+    }
+
+    validTimetables.sort((a, b) => b.score.compareTo(a.score));
+    return validTimetables.take(maxTimetables).toList();
+  }
+
+  static void _sortOptionalsByPreference(List<Course> optionals, TimetableConstraints constraints) {
+    optionals.sort((a, b) {
+      int scoreA = 0, scoreB = 0;
+      if (constraints.preferredMidsemSlot != null) {
+        if (a.midSemExam?.timeSlot == constraints.preferredMidsemSlot) scoreA += 2;
+        if (b.midSemExam?.timeSlot == constraints.preferredMidsemSlot) scoreB += 2;
+      }
+      if (constraints.preferredCompreSlot != null) {
+        if (a.endSemExam?.timeSlot == constraints.preferredCompreSlot) scoreA += 2;
+        if (b.endSemExam?.timeSlot == constraints.preferredCompreSlot) scoreB += 2;
+      }
+      return scoreB.compareTo(scoreA);
+    });
+  }
+
+  static _OptionalResult _addOptionalCourses(
+    List<ConstraintSelectedSection> base,
+    List<Course> optionalCourses,
+    List<Course> allCourses,
+    TimetableConstraints constraints,
+    double mandatoryCredits,
+  ) {
+    var current = List<ConstraintSelectedSection>.from(base);
+    double currentCredits = mandatoryCredits;
+    final addedCodes = <String>{};
+
+    for (final optCourse in optionalCourses) {
+      if (currentCredits + optCourse.totalCredits > constraints.maxCredits) continue;
+
+      final sectionCombos = _generateAllCombinations([optCourse]);
+      List<ConstraintSelectedSection>? bestCombo;
+      double bestScore = -1;
+
+      for (final combo in sectionCombos) {
+        final candidate = [...current, ...combo];
+        if (!_isValidCombination(candidate, allCourses)) continue;
+
+        final score = _scoreTimetable(candidate, constraints, allCourses);
+        if (score > bestScore) {
+          bestScore = score;
+          bestCombo = combo;
         }
+      }
+
+      if (bestCombo != null) {
+        current = [...current, ...bestCombo];
+        currentCredits += optCourse.totalCredits;
+        addedCodes.add(optCourse.courseCode);
       }
     }
 
-    
-
-    // No fallback - only return conflict-free timetables
-
-    // Sort by score (highest first)
-    validTimetables.sort((a, b) => b.score.compareTo(a.score));
-    
-    return validTimetables.take(maxTimetables).toList();
+    return _OptionalResult(
+      sections: current,
+      totalCredits: currentCredits,
+      optionalCodes: addedCodes,
+    );
   }
 
   static List<List<ConstraintSelectedSection>> _generateAllCombinations(List<Course> courses) {
@@ -334,11 +402,35 @@ class TimetableGenerator {
       }
     }
 
-    // Preferred exam slots: up to 3 pts
-    final examSlotBonus = _calculateExamSlotBonus(sections, courses, constraints);
-    bonus += examSlotBonus.clamp(0, 3);
+    // Exam slot preference: up to 2 pts
+    if (constraints.preferredMidsemSlot != null || constraints.preferredCompreSlot != null) {
+      final courseCodes = sections.map((s) => s.courseCode).toSet();
+      int matched = 0;
+      int total = 0;
+      for (final code in courseCodes) {
+        final course = courses.firstWhere((c) => c.courseCode == code, orElse: () => Course(
+          courseCode: code, courseTitle: '', lectureCredits: 0, practicalCredits: 0, totalCredits: 0, sections: [],
+        ));
+        if (constraints.preferredMidsemSlot != null && course.midSemExam != null) {
+          total++;
+          if (course.midSemExam!.timeSlot == constraints.preferredMidsemSlot) matched++;
+        }
+        if (constraints.preferredCompreSlot != null && course.endSemExam != null) {
+          total++;
+          if (course.endSemExam!.timeSlot == constraints.preferredCompreSlot) matched++;
+        }
+      }
+      if (total > 0) bonus += (matched / total * 2).clamp(0, 2);
+    }
 
-    final rawScore = 90 - penalty + bonus.clamp(0, 10);
+    // Optional courses bonus: reward fitting more optionals (up to 3 pts)
+    final optionalCodes = constraints.optionalCourses.toSet();
+    final includedOptionals = sections.map((s) => s.courseCode).toSet().intersection(optionalCodes);
+    if (optionalCodes.isNotEmpty) {
+      bonus += (includedOptionals.length / optionalCodes.length * 3).clamp(0, 3);
+    }
+
+    final rawScore = 90 - penalty + bonus.clamp(0, 15);
     return rawScore.clamp(0, 100);
   }
 
@@ -415,30 +507,7 @@ class TimetableGenerator {
     return penalty;
   }
 
-  static double _calculateExamSlotBonus(List<ConstraintSelectedSection> sections, List<Course> courses, TimetableConstraints constraints) {
-    if (constraints.preferredMidsemSlot == null && constraints.preferredCompreSlot == null) return 0;
 
-    final courseCodes = sections.map((s) => s.courseCode).toSet();
-    int matched = 0;
-    int total = 0;
-
-    for (final code in courseCodes) {
-      final course = courses.firstWhere((c) => c.courseCode == code, orElse: () => Course(
-        courseCode: code, courseTitle: '', lectureCredits: 0, practicalCredits: 0, totalCredits: 0, sections: [],
-      ));
-      if (constraints.preferredMidsemSlot != null && course.midSemExam != null) {
-        total++;
-        if (course.midSemExam!.timeSlot == constraints.preferredMidsemSlot) matched++;
-      }
-      if (constraints.preferredCompreSlot != null && course.endSemExam != null) {
-        total++;
-        if (course.endSemExam!.timeSlot == constraints.preferredCompreSlot) matched++;
-      }
-    }
-
-    if (total == 0) return 0;
-    return (matched / total) * 3;
-  }
 
   static int _calculateBackToBackPenalty(List<ConstraintSelectedSection> sections) {
     final timeSlots = <String, List<ConstraintSelectedSection>>{};
@@ -698,4 +767,16 @@ class TimetableGenerator {
 
     return hoursPerDay;
   }
+}
+
+class _OptionalResult {
+  final List<ConstraintSelectedSection> sections;
+  final double totalCredits;
+  final Set<String> optionalCodes;
+
+  _OptionalResult({
+    required this.sections,
+    required this.totalCredits,
+    required this.optionalCodes,
+  });
 }

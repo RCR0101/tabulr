@@ -1,36 +1,40 @@
 import 'course.dart';
 
 class TimetableConstraints {
-  final List<String> requiredCourses;
+  final List<String> mandatoryCourses;
+  final List<String> optionalCourses;
+  final double maxCredits;
   final List<TimeAvoidance> avoidTimes;
   final List<LabAvoidance> avoidLabs;
   final int maxHoursPerDay;
   final List<String> preferredInstructors;
   final List<String> avoidedInstructors;
   final bool avoidBackToBackClasses;
-  final TimeSlot? preferredMidsemSlot;
-  final TimeSlot? preferredCompreSlot;
   final Map<String, InstructorRankings> instructorRankings;
   final List<DayOfWeek> freeDayPreference;
   final bool minimizeGaps;
   final TimeOfDayPreference timeOfDayPreference;
   final bool protectLunchBreak;
+  final TimeSlot? preferredMidsemSlot;
+  final TimeSlot? preferredCompreSlot;
 
   TimetableConstraints({
-    required this.requiredCourses,
+    this.mandatoryCourses = const [],
+    this.optionalCourses = const [],
+    this.maxCredits = 25,
     this.avoidTimes = const [],
     this.avoidLabs = const [],
     this.maxHoursPerDay = 8,
     this.preferredInstructors = const [],
     this.avoidedInstructors = const [],
     this.avoidBackToBackClasses = false,
-    this.preferredMidsemSlot,
-    this.preferredCompreSlot,
     this.instructorRankings = const {},
     this.freeDayPreference = const [],
     this.minimizeGaps = false,
     this.timeOfDayPreference = TimeOfDayPreference.none,
     this.protectLunchBreak = false,
+    this.preferredMidsemSlot,
+    this.preferredCompreSlot,
   });
 }
 
@@ -61,6 +65,8 @@ class GeneratedTimetable {
   final List<String> pros;
   final List<String> cons;
   final Map<DayOfWeek, int> hoursPerDay;
+  final double totalCredits;
+  final Set<String> optionalCourseCodes;
 
   GeneratedTimetable({
     required this.id,
@@ -69,6 +75,8 @@ class GeneratedTimetable {
     required this.pros,
     required this.cons,
     required this.hoursPerDay,
+    this.totalCredits = 0,
+    this.optionalCourseCodes = const {},
   });
 }
 

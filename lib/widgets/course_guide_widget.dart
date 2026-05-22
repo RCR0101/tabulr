@@ -408,11 +408,12 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
 
   Widget _buildCoursesTable(List<CourseGuideEntry> courses) {
     return Table(
+      defaultColumnWidth: const IntrinsicColumnWidth(),
       columnWidths: const {
-        0: FixedColumnWidth(110),
-        1: FlexColumnWidth(),
-        2: FixedColumnWidth(40),
-        3: FixedColumnWidth(70),
+        0: IntrinsicColumnWidth(),
+        1: IntrinsicColumnWidth(),
+        2: IntrinsicColumnWidth(),
+        3: IntrinsicColumnWidth(),
       },
           children: [
             TableRow(
