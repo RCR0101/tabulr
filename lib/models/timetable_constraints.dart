@@ -8,8 +8,13 @@ class TimetableConstraints {
   final List<String> preferredInstructors;
   final List<String> avoidedInstructors;
   final bool avoidBackToBackClasses;
-  final TimeSlot? preferredExamSlot;
+  final TimeSlot? preferredMidsemSlot;
+  final TimeSlot? preferredCompreSlot;
   final Map<String, InstructorRankings> instructorRankings;
+  final List<DayOfWeek> freeDayPreference;
+  final bool minimizeGaps;
+  final TimeOfDayPreference timeOfDayPreference;
+  final bool protectLunchBreak;
 
   TimetableConstraints({
     required this.requiredCourses,
@@ -19,8 +24,13 @@ class TimetableConstraints {
     this.preferredInstructors = const [],
     this.avoidedInstructors = const [],
     this.avoidBackToBackClasses = false,
-    this.preferredExamSlot,
+    this.preferredMidsemSlot,
+    this.preferredCompreSlot,
     this.instructorRankings = const {},
+    this.freeDayPreference = const [],
+    this.minimizeGaps = false,
+    this.timeOfDayPreference = TimeOfDayPreference.none,
+    this.protectLunchBreak = false,
   });
 }
 
@@ -169,4 +179,10 @@ class TimetableGenerationResult {
       TimetableIssueType.noValidCombinations,
     ].contains(type);
   }
+}
+
+enum TimeOfDayPreference {
+  none,
+  morning,
+  afternoon,
 }

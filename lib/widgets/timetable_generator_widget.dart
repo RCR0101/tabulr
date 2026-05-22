@@ -32,7 +32,12 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   final List<String> _preferredInstructors = [];
   final List<String> _avoidedInstructors = [];
   bool _avoidBackToBack = false;
-  TimeSlot? _preferredExamSlot;
+  bool _minimizeGaps = false;
+  bool _protectLunchBreak = false;
+  TimeOfDayPreference _timeOfDayPreference = TimeOfDayPreference.none;
+  final List<DayOfWeek> _freeDayPreference = [];
+  TimeSlot? _preferredMidsemSlot;
+  TimeSlot? _preferredCompreSlot;
   List<GeneratedTimetable> _generatedTimetables = [];
   bool _isGenerating = false;
   final Map<String, InstructorRankings> _instructorRankings = {};
@@ -579,6 +584,45 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           ),
         ),
         const SizedBox(height: 8),
+        _buildFreeDayRanking(),
+        const SizedBox(height: 8),
+        // Minimize gaps
+        Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
+          ),
+          child: CheckboxListTile(
+            title: const Text('Minimize gaps between classes', style: TextStyle(fontSize: 14)),
+            value: _minimizeGaps,
+            dense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            onChanged: (value) {
+              setState(() { _minimizeGaps = value ?? false; });
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Protect lunch break
+        Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
+          ),
+          child: CheckboxListTile(
+            title: const Text('Protect lunch break (12–2 PM)', style: TextStyle(fontSize: 14)),
+            value: _protectLunchBreak,
+            dense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            onChanged: (value) {
+              setState(() { _protectLunchBreak = value ?? false; });
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Time of day preference
         Container(
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
@@ -588,31 +632,88 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              const Text('Preferred exam slot:', style: TextStyle(fontSize: 14)),
+              const Text('Prefer classes in:', style: TextStyle(fontSize: 14)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: DropdownButton<TimeOfDayPreference>(
+                  value: _timeOfDayPreference,
+                  isExpanded: true,
+                  underline: Container(),
+                  items: const [
+                    DropdownMenuItem(value: TimeOfDayPreference.none, child: Text('No preference', style: TextStyle(fontSize: 14))),
+                    DropdownMenuItem(value: TimeOfDayPreference.morning, child: Text('Morning (before 2 PM)', style: TextStyle(fontSize: 14))),
+                    DropdownMenuItem(value: TimeOfDayPreference.afternoon, child: Text('Afternoon (after 11 AM)', style: TextStyle(fontSize: 14))),
+                  ],
+                  onChanged: (value) {
+                    setState(() { _timeOfDayPreference = value ?? TimeOfDayPreference.none; });
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Preferred midsem slot
+        Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              const Text('Preferred midsem:', style: TextStyle(fontSize: 14)),
               const SizedBox(width: 8),
               Expanded(
                 child: DropdownButton<TimeSlot?>(
-                  value: _preferredExamSlot,
+                  value: _preferredMidsemSlot,
                   hint: const Text('Any', style: TextStyle(fontSize: 14)),
                   isExpanded: true,
                   underline: Container(),
                   items: [
-                    const DropdownMenuItem<TimeSlot?>(
-                      value: null,
-                      child: Text('Any', style: TextStyle(fontSize: 14)),
-                    ),
-                    ...TimeSlot.values.map((slot) => DropdownMenuItem(
+                    const DropdownMenuItem<TimeSlot?>(value: null, child: Text('Any', style: TextStyle(fontSize: 14))),
+                    ...TimeSlotInfo.getMidSemSlots().map((slot) => DropdownMenuItem(
                       value: slot,
-                      child: Text(
-                        TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode),
-                        style: TextStyle(fontSize: 14),
-                      ),
+                      child: Text(TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode), style: const TextStyle(fontSize: 14)),
                     )),
                   ],
                   onChanged: (value) {
-                    setState(() {
-                      _preferredExamSlot = value;
-                    });
+                    setState(() { _preferredMidsemSlot = value; });
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Preferred compre slot
+        Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              const Text('Preferred compre:', style: TextStyle(fontSize: 14)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: DropdownButton<TimeSlot?>(
+                  value: _preferredCompreSlot,
+                  hint: const Text('Any', style: TextStyle(fontSize: 14)),
+                  isExpanded: true,
+                  underline: Container(),
+                  items: [
+                    const DropdownMenuItem<TimeSlot?>(value: null, child: Text('Any', style: TextStyle(fontSize: 14))),
+                    ...TimeSlotInfo.getEndSemSlots().map((slot) => DropdownMenuItem(
+                      value: slot,
+                      child: Text(TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode), style: const TextStyle(fontSize: 14)),
+                    )),
+                  ],
+                  onChanged: (value) {
+                    setState(() { _preferredCompreSlot = value; });
                   },
                 ),
               ),
@@ -628,6 +729,159 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         const SizedBox(height: 16),
         _buildInstructorRanking(),
       ],
+    );
+  }
+
+  static const _dayNames = {
+    DayOfWeek.M: 'Mon',
+    DayOfWeek.T: 'Tue',
+    DayOfWeek.W: 'Wed',
+    DayOfWeek.Th: 'Thu',
+    DayOfWeek.F: 'Fri',
+    DayOfWeek.S: 'Sat',
+  };
+
+  Widget _buildFreeDayRanking() {
+    final unranked = DayOfWeek.values
+        .where((d) => !_freeDayPreference.contains(d))
+        .toList();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('Free day preference:', style: TextStyle(fontSize: 14)),
+              const Spacer(),
+              if (_freeDayPreference.isNotEmpty)
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _freeDayPreference.clear();
+                    });
+                  },
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('Clear', style: TextStyle(fontSize: 12)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Tap days in order of preference (most wanted free day first)',
+            style: TextStyle(
+              fontSize: 11,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (_freeDayPreference.isNotEmpty) ...[
+            ReorderableListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              itemCount: _freeDayPreference.length,
+              onReorder: (oldIndex, newIndex) {
+                setState(() {
+                  if (newIndex > oldIndex) newIndex--;
+                  final day = _freeDayPreference.removeAt(oldIndex);
+                  _freeDayPreference.insert(newIndex, day);
+                });
+              },
+              itemBuilder: (context, index) {
+                final day = _freeDayPreference[index];
+                return Container(
+                  key: ValueKey(day),
+                  margin: const EdgeInsets.only(bottom: 4),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ReorderableDragStartListener(
+                        index: index,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          child: Icon(
+                            Icons.drag_handle,
+                            size: 16,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                          ),
+                        ),
+                      ),
+                      Container(
+                        width: 20,
+                        height: 20,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '${index + 1}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _dayNames[day]!,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            _freeDayPreference.remove(day);
+                          });
+                        },
+                        icon: const Icon(Icons.close, size: 14),
+                        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                        padding: EdgeInsets.zero,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 6),
+          ],
+          if (unranked.isNotEmpty)
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: unranked.map((day) {
+                return ActionChip(
+                  label: Text(_dayNames[day]!, style: const TextStyle(fontSize: 12)),
+                  onPressed: () {
+                    setState(() {
+                      _freeDayPreference.add(day);
+                    });
+                  },
+                  visualDensity: VisualDensity.compact,
+                );
+              }).toList(),
+            ),
+        ],
+      ),
     );
   }
 
@@ -1348,8 +1602,13 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         preferredInstructors: _preferredInstructors,
         avoidedInstructors: _avoidedInstructors,
         avoidBackToBackClasses: _avoidBackToBack,
-        preferredExamSlot: _preferredExamSlot,
+        preferredMidsemSlot: _preferredMidsemSlot,
+        preferredCompreSlot: _preferredCompreSlot,
         instructorRankings: _instructorRankings,
+        freeDayPreference: _freeDayPreference,
+        minimizeGaps: _minimizeGaps,
+        timeOfDayPreference: _timeOfDayPreference,
+        protectLunchBreak: _protectLunchBreak,
       );
 
       final timetables = TimetableGenerator.generateTimetables(
