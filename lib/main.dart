@@ -119,15 +119,6 @@ class TimetableMakerApp extends StatelessWidget {
           themeMode: themeService.currentThemeMode,
           home: const AuthWrapper(),
           debugShowCheckedModeBanner: false,
-          builder: (context, child) {
-            // Disable iOS back swipe gesture across the entire app
-            return GestureDetector(
-              onHorizontalDragStart: (_) {
-                // Consume horizontal drag start to prevent iOS back swipe
-              },
-              child: child,
-            );
-          },
         );
       },
     );

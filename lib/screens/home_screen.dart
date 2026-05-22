@@ -198,7 +198,9 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
 
         final isWideScreen = ResponsiveService.isDesktop(context);
 
-        return wrapWithKeyboardShortcuts(Scaffold(
+        return GestureDetector(
+          onHorizontalDragUpdate: (_) {},
+          child: wrapWithKeyboardShortcuts(Scaffold(
           appBar: AppBar(
             title: Row(
               mainAxisSize: MainAxisSize.min,
@@ -570,7 +572,7 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
                       ),
                     ],
                   ),
-        ));
+        )));
       },
     );
   }
