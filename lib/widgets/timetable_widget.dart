@@ -280,7 +280,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                 '${(_zoomLevel * 100).toStringAsFixed(0)}%',
                 style: TextStyle(
                   fontSize: 12,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                   color: Theme.of(context).colorScheme.primary,
                 ),
               ),
@@ -484,7 +484,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     'Weekly Timetable',
                     style: TextStyle(
                       fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   if (!widget.isForExport && widget.onUndo != null) ...[
@@ -602,7 +602,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                 'Weekly Timetable',
                 style: TextStyle(
                   fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               if (!widget.isForExport && widget.onUndo != null) ...[
@@ -993,7 +993,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
             child: Text(
               'Day',
               style: TextStyle(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 fontSize: 16,
                 color: Theme.of(context).colorScheme.onSurface,
               ),
@@ -1009,7 +1009,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                 Text(
                   _isMobile ? 'H${hour + 1}' : 'Hour ${hour + 1}',
                   style: TextStyle(
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                     fontSize: _isMobile ? 12 : 14,
                     color: Theme.of(context).colorScheme.onSurface,
                   ),
@@ -1041,7 +1041,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
             child: Text(
               'Time',
               style: TextStyle(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w600,
                 fontSize: 16,
                 color: Theme.of(context).colorScheme.onSurface,
               ),
@@ -1057,7 +1057,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               child: Text(
                 day,
                 style: TextStyle(
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                   fontSize: _isMobile ? 13 : 16,
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
@@ -1107,7 +1107,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     _isMobile ? 'H$hour' : 'Hour $hour',
                     style: TextStyle(
                       fontSize: _getHourLabelFontSize(widget.size),
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                       color: Theme.of(context).colorScheme.primary,
                     ),
                     textAlign: TextAlign.center,
@@ -1185,7 +1185,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   _getDayName(day),
                   style: TextStyle(
                     fontSize: _getHourLabelFontSize(widget.size),
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w600,
                     color: Theme.of(context).colorScheme.primary,
                   ),
                   textAlign: TextAlign.center,
@@ -1292,7 +1292,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                         child: Text(
                           slot.courseCode,
                           style: TextStyle(
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w600,
                             fontSize: _getCourseCodeFontSize(widget.size),
                             color: _getCourseColor(slot.courseCode),
                             height: 1.1,
@@ -1789,7 +1789,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
             'Exam Schedule',
             style: TextStyle(
               fontSize: 14,
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w600,
               color: scheme.onSurface,
             ),
           ),

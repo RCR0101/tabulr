@@ -28,6 +28,8 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
   double get _totalCredits => widget.cgpaData.effectiveTotalCredits;
   double get _totalGradePoints => widget.cgpaData.effectiveTotalGradePoints;
 
+  Color _gradeColor(String grade) => grade_utils.getGradeColor(grade, brightness: Theme.of(context).brightness);
+
   @override
   void initState() {
     super.initState();
@@ -480,7 +482,7 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
                 width: 36,
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: grade_utils.getGradeColor(candidate.currentGrade).withValues(alpha: 0.15),
+                  color: _gradeColor(candidate.currentGrade).withValues(alpha: 0.15),
                   borderRadius: AppDesign.borderRadiusSm,
                 ),
                 child: Text(
@@ -488,7 +490,7 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: grade_utils.getGradeColor(candidate.currentGrade),
+                    color: _gradeColor(candidate.currentGrade),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -592,7 +594,7 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
                       width: 36,
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                       decoration: BoxDecoration(
-                        color: grade_utils.getGradeColor(change.oldGrade).withValues(alpha: 0.1),
+                        color: _gradeColor(change.oldGrade).withValues(alpha: 0.1),
                         borderRadius: AppDesign.borderRadiusSm,
                       ),
                       child: Text(
@@ -600,7 +602,7 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: grade_utils.getGradeColor(change.oldGrade),
+                          color: _gradeColor(change.oldGrade),
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -613,7 +615,7 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
                       width: 36,
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                       decoration: BoxDecoration(
-                        color: grade_utils.getGradeColor(change.newGrade).withValues(alpha: 0.15),
+                        color: _gradeColor(change.newGrade).withValues(alpha: 0.15),
                         borderRadius: AppDesign.borderRadiusSm,
                       ),
                       child: Text(
@@ -621,7 +623,7 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: grade_utils.getGradeColor(change.newGrade),
+                          color: _gradeColor(change.newGrade),
                         ),
                         textAlign: TextAlign.center,
                       ),

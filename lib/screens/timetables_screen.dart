@@ -981,7 +981,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                       Expanded(
                                         child: Text(
                                           timetable.name,
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                                         ),
                                       ),
                                       if (totalCredits > 0)

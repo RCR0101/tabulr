@@ -690,12 +690,13 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
   }
 
   Color _getSGPAColor(double sgpa) {
-    if (sgpa >= 9.0) return const Color(0xFF0D9488); // Excellent - Teal
-    if (sgpa >= 8.0) return const Color(0xFF3B82F6); // Very Good - Blue
-    if (sgpa >= 7.0) return const Color(0xFF059669); // Good - Green
-    if (sgpa >= 6.0) return const Color(0xFFF59E0B); // Average - Amber
-    if (sgpa >= 5.0) return const Color(0xFFEF4444); // Below Average - Red
-    return const Color(0xFFDC2626); // Poor - Deep Red
+    final scheme = Theme.of(context).colorScheme;
+    if (sgpa >= 9.0) return scheme.primary;
+    if (sgpa >= 8.0) return scheme.secondary;
+    if (sgpa >= 7.0) return AppDesign.success(context);
+    if (sgpa >= 6.0) return AppDesign.warning(context);
+    if (sgpa >= 5.0) return scheme.error;
+    return scheme.error;
   }
 
   void _showSemesterCreditsDetails() {
@@ -1766,34 +1767,16 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
 
   Widget _buildStatItem(String label, String value, IconData icon) {
     final isMobile = ResponsiveService.isMobile(context);
+    final scheme = Theme.of(context).colorScheme;
 
     return Container(
       padding: EdgeInsets.all(isMobile ? 8 : 10),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Theme.of(
-              context,
-            ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-            Theme.of(
-              context,
-            ).colorScheme.surfaceContainer.withValues(alpha: 0.2),
-          ],
-        ),
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(isMobile ? 8 : 10),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15),
-          width: 1,
+          color: scheme.outline.withValues(alpha: AppDesign.opacityDivider),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1801,17 +1784,15 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
           Icon(
             icon,
             size: isMobile ? 14 : 16,
-            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
+            color: scheme.primary.withValues(alpha: AppDesign.opacityMedium),
           ),
           SizedBox(height: isMobile ? 3 : 4),
           Text(
             value,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            style: TextStyle(
               fontSize: isMobile ? 14 : 16,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.8),
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurface.withValues(alpha: AppDesign.opacityHigh),
               letterSpacing: -0.2,
             ),
             maxLines: 1,
@@ -1820,7 +1801,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
           const SizedBox(height: 1),
           Text(
             label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            style: TextStyle(
               fontSize: isMobile ? 9 : 10,
               color: Theme.of(
                 context,
@@ -1843,21 +1824,14 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
             : CGPAService.normalGrades;
     final isMobile = ResponsiveService.isMobile(context);
 
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.3),
-          width: 1,
+          color: scheme.outline.withValues(alpha: AppDesign.opacityDivider),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -1870,46 +1844,24 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
             children: [
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.book_rounded,
-                      size: isMobile ? 20 : 22,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           course.courseCode,
-                          style: Theme.of(
-                            context,
-                          ).textTheme.titleMedium?.copyWith(
+                          style: TextStyle(
                             fontSize: isMobile ? 14 : 15,
-                            fontWeight: FontWeight.w700,
-                            color: Theme.of(context).colorScheme.onSurface,
-                            letterSpacing: 0.2,
+                            fontWeight: FontWeight.w600,
+                            color: scheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           course.courseTitle,
-                          style: Theme.of(
-                            context,
-                          ).textTheme.bodyMedium?.copyWith(
+                          style: TextStyle(
                             fontSize: isMobile ? 11 : 12,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withOpacity(0.7),
+                            color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
                             height: 1.2,
                           ),
                           maxLines: 1,
@@ -1920,18 +1872,12 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                   ),
                   const SizedBox(width: 4),
                   IconButton(
-                    icon: Icon(Icons.close_rounded, size: 18),
-                    color: Theme.of(context).colorScheme.error.withOpacity(0.7),
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow),
                     onPressed:
                         () => _removeCourseFromSemester(semesterName, index),
                     tooltip: 'Remove course',
                     style: IconButton.styleFrom(
-                      backgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.errorContainer.withOpacity(0.1),
-                      foregroundColor: Theme.of(
-                        context,
-                      ).colorScheme.error.withOpacity(0.8),
                       padding: const EdgeInsets.all(6),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -1943,42 +1889,18 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.secondaryContainer.withOpacity(0.6),
-                      borderRadius: BorderRadius.circular(16),
+                      color: scheme.secondaryContainer.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.stars_rounded,
-                          size: 14,
-                          color:
-                              Theme.of(
-                                context,
-                              ).colorScheme.onSecondaryContainer,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${course.credits}',
-                          style: Theme.of(
-                            context,
-                          ).textTheme.labelMedium?.copyWith(
-                            fontSize: 12,
-                            color:
-                                Theme.of(
-                                  context,
-                                ).colorScheme.onSecondaryContainer,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      '${course.credits} cr',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: scheme.onSecondaryContainer,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -2165,73 +2087,45 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                 color: colorScheme.primary,
               ),
             ),
-            borderRadius: BorderRadius.circular(16),
-            elevation: 12,
+            borderRadius: BorderRadius.circular(12),
+            elevation: 2,
             dropdownColor: colorScheme.surfaceContainer,
             menuMaxHeight: 320,
             items: gradeOptions.map((grade) {
               final gradeColor = _getGradeColor(grade);
               final description = _getGradeDescription(grade);
-              
+
               return DropdownMenuItem<String>(
                 value: grade,
-                child: Container(
-                  margin: const EdgeInsets.symmetric(vertical: 2),
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        gradeColor.withValues(alpha: 0.05),
-                        gradeColor.withValues(alpha: 0.02),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: gradeColor.withValues(alpha: 0.2),
-                      width: 1,
-                    ),
-                  ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
                   child: Row(
                     children: [
                       Container(
-                        width: 48,
-                        height: 32,
+                        width: 40,
+                        height: 28,
                         decoration: BoxDecoration(
-                          color: gradeColor,
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: gradeColor.withValues(alpha: 0.4),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                          color: gradeColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Center(
                           child: Text(
                             grade,
                             style: TextStyle(
-                              color: Theme.of(context).colorScheme.onPrimary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              letterSpacing: 0.5,
+                              color: gradeColor,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           description,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          style: TextStyle(
                             fontSize: isMobile ? 13 : 14,
-                            color: colorScheme.onSurface.withValues(alpha: 0.9),
-                            fontWeight: FontWeight.w600,
+                            color: colorScheme.onSurface.withValues(alpha: AppDesign.opacityHigh),
                           ),
                         ),
                       ),
@@ -2247,7 +2141,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     );
   }
 
-  Color _getGradeColor(String grade) => grade_utils.getGradeColor(grade);
+  Color _getGradeColor(String grade) => grade_utils.getGradeColor(grade, brightness: Theme.of(context).brightness);
 
   String _getGradeDescription(String grade) {
     switch (grade) {
@@ -3123,7 +3017,7 @@ class _PerformanceSheetPreviewDialog extends StatelessWidget {
     );
   }
 
-  Color _getGradeColor(String grade, BuildContext context) => grade_utils.getGradeColor(grade);
+  Color _getGradeColor(String grade, BuildContext context) => grade_utils.getGradeColor(grade, brightness: Theme.of(context).brightness);
 }
 
 class _SummaryItem extends StatelessWidget {

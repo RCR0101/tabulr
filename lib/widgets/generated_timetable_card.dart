@@ -29,7 +29,7 @@ class GeneratedTimetableCard extends StatelessWidget {
                   children: [
                     Text(
                       timetable.id,
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
                     if (timetable.totalCredits > 0) ...[
                       const SizedBox(width: 8),
@@ -60,7 +60,7 @@ class GeneratedTimetableCard extends StatelessWidget {
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onPrimary,
                           fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -89,8 +89,8 @@ class GeneratedTimetableCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: isOptional
-                        ? Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.5)
-                        : Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5),
+                        ? Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: AppDesign.opacityLow)
+                        : Theme.of(context).colorScheme.primaryContainer.withValues(alpha: AppDesign.opacityLow),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
                       color: isOptional
@@ -113,9 +113,9 @@ class GeneratedTimetableCard extends StatelessWidget {
                         ),
                       ),
                       if (shortInstructor.isNotEmpty)
-                        Text(shortInstructor, style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7))),
+                        Text(shortInstructor, style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium))),
                       if (schedule.isNotEmpty)
-                        Text(schedule, style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5))),
+                        Text(schedule, style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityLow))),
                     ],
                   ),
                 );
@@ -127,7 +127,7 @@ class GeneratedTimetableCard extends StatelessWidget {
             // Hours per day
             Text(
               'Hours per day:',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium)),
             ),
             const SizedBox(height: 4),
             Row(
@@ -143,7 +143,7 @@ class GeneratedTimetableCard extends StatelessWidget {
                       Text(
                         hours.toString(),
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
                           color: hours > 6 ? AppDesign.danger(context) : AppDesign.success(context),
                         ),
                       ),
@@ -161,7 +161,7 @@ class GeneratedTimetableCard extends StatelessWidget {
                 children: [
                   Icon(Icons.check_circle, color: AppDesign.success(context), size: 16),
                   const SizedBox(width: 4),
-                  const Text('Pros:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text('Pros:', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium))),
                 ],
               ),
               const SizedBox(height: 4),
@@ -180,7 +180,7 @@ class GeneratedTimetableCard extends StatelessWidget {
                 children: [
                   Icon(Icons.warning, color: AppDesign.warning(context), size: 16),
                   const SizedBox(width: 4),
-                  const Text('Cons:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text('Cons:', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium))),
                 ],
               ),
               const SizedBox(height: 4),

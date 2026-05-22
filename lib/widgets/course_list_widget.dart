@@ -248,9 +248,9 @@ class CourseListWidget extends StatelessWidget {
                         child: Text(
                           course.courseCode,
                           style: TextStyle(
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w600,
                             color: hasClashes
-                              ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)
+                              ? Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityLow)
                               : (isSelectedCourse && !showOnlySelected)
                                 ? Theme.of(context).colorScheme.primary
                                 : Theme.of(context).colorScheme.onSurface,
@@ -266,8 +266,7 @@ class CourseListWidget extends StatelessWidget {
                         Text(course.courseTitle),
                       Text('Instructor in Charge: ${CourseUtils.getInstructorInCharge(course)}',
                            style: TextStyle(
-                             fontWeight: FontWeight.w500,
-                             color: Theme.of(context).colorScheme.primary,
+                             color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
                            )),
                       Text('Credits: L${course.lectureCredits} P${course.practicalCredits} U${course.totalCredits}'),
                       if (course.midSemExam != null)
@@ -314,11 +313,11 @@ class CourseListWidget extends StatelessWidget {
                           children: [
                             Text(
                               'Room: ${section.room}',
-                              style: TextStyle(color: isBlocked && !isSelected ? Colors.grey : null),
+                              style: TextStyle(color: isBlocked && !isSelected ? AppDesign.muted(context) : null),
                             ),
                             Text(
                               'Schedule: ${TimeSlotInfo.getFormattedSchedule(section.schedule)}',
-                              style: TextStyle(color: isBlocked && !isSelected ? Colors.grey : null),
+                              style: TextStyle(color: isBlocked && !isSelected ? AppDesign.muted(context) : null),
                             ),
                             if (!canSelect && !isSelected)
                               Text(

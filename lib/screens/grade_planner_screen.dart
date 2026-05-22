@@ -355,7 +355,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
     ToastService.showError(message);
   }
 
-  Color _getGradeColor(String grade) => grade_utils.getGradeColor(grade);
+  Color _getGradeColor(String grade) => grade_utils.getGradeColor(grade, brightness: Theme.of(context).brightness);
 
   @override
   void dispose() {

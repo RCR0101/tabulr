@@ -4,6 +4,7 @@ import '../models/timetable.dart';
 import 'course_list_widget.dart';
 import 'exam_dates_widget.dart';
 import '../services/responsive_service.dart';
+import '../utils/design_constants.dart';
 
 class CoursesTabWidget extends StatefulWidget {
   final List<Course> courses;
@@ -61,8 +62,8 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: isOver ? scheme.errorContainer : scheme.primaryContainer.withOpacity(0.4),
-        border: Border(bottom: BorderSide(color: scheme.outline.withOpacity(0.3))),
+        color: isOver ? scheme.errorContainer : scheme.primaryContainer.withValues(alpha: AppDesign.opacityLow),
+        border: Border(bottom: BorderSide(color: scheme.outline.withValues(alpha: AppDesign.opacityLow))),
       ),
       child: Row(
         children: [
@@ -75,16 +76,16 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
           if (selectedCoursesCodes.isNotEmpty) ...[
             Text(
               '  (${selectedCoursesCodes.length} course${selectedCoursesCodes.length != 1 ? 's' : ''})',
-              style: TextStyle(fontSize: 11, color: scheme.onSurface.withOpacity(0.5)),
+              style: TextStyle(fontSize: 11, color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow)),
             ),
           ],
           const Spacer(),
           // Project counter inline
-          Icon(Icons.assignment, size: 14, color: scheme.primary.withOpacity(0.7)),
+          Icon(Icons.assignment, size: 14, color: scheme.primary.withValues(alpha: AppDesign.opacityMedium)),
           const SizedBox(width: 4),
           InkWell(
             onTap: widget.projectCount > 0 ? () { widget.onProjectCountChanged(widget.projectCount - 1); } : null,
-            child: Icon(Icons.remove_circle_outline, size: 16, color: widget.projectCount > 0 ? scheme.primary : scheme.onSurface.withOpacity(0.3)),
+            child: Icon(Icons.remove_circle_outline, size: 16, color: widget.projectCount > 0 ? scheme.primary : scheme.onSurface.withValues(alpha: AppDesign.opacityLow)),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -92,11 +93,11 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
           ),
           InkWell(
             onTap: widget.projectCount < 8 ? () { widget.onProjectCountChanged(widget.projectCount + 1); } : null,
-            child: Icon(Icons.add_circle_outline, size: 16, color: widget.projectCount < 8 ? scheme.primary : scheme.onSurface.withOpacity(0.3)),
+            child: Icon(Icons.add_circle_outline, size: 16, color: widget.projectCount < 8 ? scheme.primary : scheme.onSurface.withValues(alpha: AppDesign.opacityLow)),
           ),
           if (widget.projectCount > 0) ...[
             const SizedBox(width: 4),
-            Text('(+$projectCredits)', style: TextStyle(fontSize: 10, color: scheme.onSurface.withOpacity(0.5))),
+            Text('(+$projectCredits)', style: TextStyle(fontSize: 10, color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow))),
           ],
         ],
       ),
@@ -117,7 +118,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
           child: TabBar(
             controller: _tabController,
             labelColor: Theme.of(context).colorScheme.primary,
-            unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
             indicatorColor: Theme.of(context).colorScheme.primary,
             dividerColor: Theme.of(context).colorScheme.outline,
             isScrollable: false,
@@ -249,14 +250,14 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                           Icon(
                             Icons.event_busy,
                             size: 64,
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityLow),
                           ),
                           SizedBox(height: 16),
                           Text(
                             'No courses selected',
                             style: TextStyle(
                               fontSize: 16,
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
                             ),
                           ),
                           SizedBox(height: 8),
@@ -264,7 +265,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                             'Add courses to see exam schedules',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityLow),
                             ),
                           ),
                         ],
