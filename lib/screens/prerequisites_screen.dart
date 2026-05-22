@@ -3,6 +3,7 @@ import '../models/prerequisite.dart';
 import '../repositories/prerequisites_repository.dart';
 import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
+import '../widgets/common/loading_state.dart';
 
 class PrerequisitesScreen extends StatefulWidget {
   const PrerequisitesScreen({super.key});
@@ -193,11 +194,11 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
     }
 
     if (_isLoadingInitial) {
-      return const Center(child: CircularProgressIndicator());
+      return const LoadingStateWidget(message: 'Loading courses...');
     }
 
     if (_isSearching) {
-      return const Center(child: CircularProgressIndicator());
+      return const LoadingStateWidget();
     }
 
     if (_searchResults.isEmpty && _hasSearched) {

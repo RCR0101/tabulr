@@ -19,6 +19,7 @@ import '../services/user_settings_service.dart';
 import '../services/responsive_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/campus_selector_widget.dart';
+import '../widgets/common/loading_state.dart';
 
 import 'course_guide_screen.dart';
 import 'discipline_electives_screen.dart';
@@ -167,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
       builder: (context, child) {
         if (_isLoading) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            body: LoadingStateWidget(),
           );
         }
 
@@ -870,7 +871,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
       builder: (context, child) {
         if (_isLoading) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            body: LoadingStateWidget(),
           );
         }
 

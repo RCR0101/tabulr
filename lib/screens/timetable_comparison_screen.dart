@@ -7,6 +7,7 @@ import '../services/course_catalog_service.dart';
 import '../services/responsive_service.dart';
 import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
+import '../widgets/common/loading_state.dart';
 
 enum ComparisonViewMode { grid, list }
 
@@ -946,7 +947,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingStateWidget()
           : Column(
               children: [
                 Container(

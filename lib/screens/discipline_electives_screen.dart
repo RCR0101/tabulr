@@ -6,6 +6,8 @@ import '../services/campus_service.dart';
 import '../services/responsive_service.dart';
 import '../models/course.dart';
 import '../widgets/course_list_widget.dart';
+import '../widgets/common/loading_state.dart';
+import '../widgets/common/inline_error_card.dart';
 
 class DisciplineElectivesScreen extends StatefulWidget {
   const DisciplineElectivesScreen({super.key});
@@ -603,35 +605,12 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
       ),
       body:
           _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? const LoadingStateWidget()
               : SingleChildScrollView(
                 child: Column(
                   children: [
                     if (_errorMessage.isNotEmpty)
-                      Card(
-                        margin: const EdgeInsets.all(16),
-                        color: Theme.of(context).colorScheme.errorContainer,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _errorMessage,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                      InlineErrorCard(message: _errorMessage),
                     _buildBranchSelector(),
                     _buildResultsSection(),
                   ],

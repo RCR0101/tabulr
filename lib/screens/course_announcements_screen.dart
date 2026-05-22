@@ -13,6 +13,7 @@ import '../services/responsive_service.dart';
 import '../services/timetable_service.dart';
 import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
+import '../widgets/common/loading_state.dart';
 
 
 class CourseAnnouncementsScreen extends StatefulWidget {
@@ -472,7 +473,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
 
   Widget _buildBody(ThemeData theme) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const LoadingStateWidget();
     }
     if (_timetables.isEmpty) {
       return Center(

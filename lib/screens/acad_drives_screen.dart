@@ -6,6 +6,7 @@ import '../services/responsive_service.dart';
 import '../services/toast_service.dart';
 import '../services/auth_service.dart';
 import '../utils/design_constants.dart';
+import '../widgets/common/loading_state.dart';
 
 
 enum CourseSortOption {
@@ -824,7 +825,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
   Widget _buildCoursesView() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const LoadingStateWidget();
     }
 
     final courses = _filteredCourses;
@@ -937,7 +938,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
   Widget _buildFilesView() {
     if (_isLoadingFiles) {
-      return const Center(child: CircularProgressIndicator());
+      return const LoadingStateWidget();
     }
 
     final files = _filteredFiles;

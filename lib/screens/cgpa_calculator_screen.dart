@@ -12,6 +12,7 @@ import '../services/timetable_service.dart';
 import '../services/auto_load_cdc_service.dart';
 import '../services/toast_service.dart';
 import '../services/course_guide_service.dart';
+import '../widgets/error_dialog.dart';
 import '../services/performance_sheet_parser.dart';
 import '../services/courses_master_service.dart';
 import '../models/cgpa_data.dart';
@@ -2175,38 +2176,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
   }
 
   void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(
-                ResponsiveService.getAdaptiveBorderRadius(context, 12),
-              ),
-            ),
-            title: Row(
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  color: Theme.of(context).colorScheme.error,
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-                const Text('Error'),
-              ],
-            ),
-            content: Text(
-              message,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-    );
+    ErrorDialog.show(context, message);
   }
 
   void _showAddCourseDialog(String semesterName) {

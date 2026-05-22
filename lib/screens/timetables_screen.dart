@@ -813,8 +813,8 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_authService.userName ?? 'User', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      Text(_authService.userEmail ?? '', style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color)),
+                      Text(_authService.userName ?? 'User', style: Theme.of(context).textTheme.titleSmall),
+                      Text(_authService.userEmail ?? '', style: Theme.of(context).textTheme.bodySmall),
                       const Divider(),
                     ],
                   ),
@@ -981,7 +981,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                       Expanded(
                                         child: Text(
                                           timetable.name,
-                                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                                          style: Theme.of(context).textTheme.titleMedium,
                                         ),
                                       ),
                                       if (totalCredits > 0)
@@ -993,7 +993,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                           ),
                                           child: Text(
                                             '${totalCredits % 1 == 0 ? totalCredits.toInt() : totalCredits.toStringAsFixed(1)} cr',
-                                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: scheme.onPrimaryContainer),
+                                            style: Theme.of(context).textTheme.labelMedium?.copyWith(color: scheme.onPrimaryContainer),
                                           ),
                                         ),
                                       const SizedBox(width: 8),
@@ -1045,7 +1045,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                             color: scheme.surfaceContainerHighest,
                                             borderRadius: BorderRadius.circular(6),
                                           ),
-                                          child: Text(code, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: scheme.onSurface.withValues(alpha: 0.8))),
+                                          child: Text(code, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: scheme.onSurface.withValues(alpha: 0.8))),
                                         );
                                       }).toList(),
                                     ),
@@ -1055,16 +1055,16 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                     children: [
                                       Text(
                                         '${courseCodes.length} course${courseCodes.length != 1 ? 's' : ''}',
-                                        style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.6)),
+                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurface.withValues(alpha: 0.6)),
                                       ),
                                       if (timetable.projectCount > 0) ...[
-                                        Text(' · ', style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.4))),
-                                        Text('${timetable.projectCount} project${timetable.projectCount != 1 ? 's' : ''}', style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.6))),
+                                        Text(' · ', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurface.withValues(alpha: 0.4))),
+                                        Text('${timetable.projectCount} project${timetable.projectCount != 1 ? 's' : ''}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurface.withValues(alpha: 0.6))),
                                       ],
                                       const Spacer(),
                                       Text(
                                         _formatDate(timetable.updatedAt),
-                                        style: TextStyle(fontSize: 11, color: scheme.onSurface.withValues(alpha: 0.4)),
+                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: scheme.onSurface.withValues(alpha: 0.4)),
                                       ),
                                     ],
                                   ),

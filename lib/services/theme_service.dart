@@ -458,12 +458,30 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
   ),
 };
 
+TextTheme _buildTextTheme(Color onSurface) {
+  return TextTheme(
+    headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: onSurface),
+    headlineSmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: onSurface),
+    titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: onSurface),
+    titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: onSurface),
+    titleSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: onSurface),
+    bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: onSurface),
+    bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: onSurface),
+    bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: onSurface),
+    labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: onSurface),
+    labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: onSurface),
+    labelSmall: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: onSurface),
+  );
+}
+
 ThemeData _buildTheme(_ThemeColors c) {
   final isDark = c.brightness == Brightness.dark;
   final base = isDark ? ThemeData.dark() : ThemeData.light();
   final effectiveBorderColor = c.borderColor ?? c.outline;
+  final textTheme = _buildTextTheme(c.onSurface);
 
   return base.copyWith(
+    textTheme: textTheme,
     primaryColor: c.background,
     scaffoldBackgroundColor: c.background,
     cardColor: c.surface,
