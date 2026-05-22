@@ -57,10 +57,10 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   }
 
   Future<void> _initializeAndLoadData() async {
-    // Initialize user settings first
-    await _userSettingsService.initializeSettings();
-    // Then load timetables
-    await _loadTimetables();
+    await Future.wait([
+      _userSettingsService.initializeSettings(),
+      _loadTimetables(),
+    ]);
   }
 
   @override

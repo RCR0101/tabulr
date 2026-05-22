@@ -4,10 +4,12 @@ import '../services/campus_service.dart';
 
 class CampusSelectorWidget extends StatefulWidget {
   final Function(Campus)? onCampusChanged;
-  
+  final Future<bool> Function()? confirmSwitch;
+
   const CampusSelectorWidget({
     super.key,
     this.onCampusChanged,
+    this.confirmSwitch,
   });
 
   @override
@@ -40,6 +42,10 @@ class _CampusSelectorWidgetState extends State<CampusSelectorWidget> {
       tooltip: 'Select Campus',
       onSelected: (Campus campus) async {
         if (campus != CampusService.currentCampus) {
+          if (widget.confirmSwitch != null) {
+            final confirmed = await widget.confirmSwitch!();
+            if (!confirmed) return;
+          }
           await CampusService.setCampus(campus);
           setState(() {});
           widget.onCampusChanged?.call(campus);

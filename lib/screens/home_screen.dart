@@ -136,6 +136,30 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
     }
   }
 
+  Future<bool> _confirmCampusSwitch() async {
+    if (!_hasUnsavedChanges) return true;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unsaved Changes'),
+        content: const Text(
+          'Switching campus will discard your unsaved changes. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Switch'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -199,6 +223,7 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
                   ),
                 ),
               CampusSelectorWidget(
+                confirmSwitch: () => _confirmCampusSwitch(),
                 onCampusChanged: (campus) {
                   // Clear course cache and reload timetable when campus changes
                   CourseDataService().clearCache();
@@ -804,6 +829,30 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
     await _userSettingsService.initializeSettings();
   }
 
+  Future<bool> _confirmCampusSwitch() async {
+    if (!_hasUnsavedChanges) return true;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unsaved Changes'),
+        content: const Text(
+          'Switching campus will discard your unsaved changes. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Switch'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
   @override
   void triggerSavedIndicator() {
     _savedIndicatorTimer?.cancel();
@@ -853,6 +902,7 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
                   ),
                 ),
               CampusSelectorWidget(
+                confirmSwitch: () => _confirmCampusSwitch(),
                 onCampusChanged: (campus) async {
                   // Clear course cache when campus changes
                   CourseDataService().clearCache();

@@ -39,9 +39,46 @@
 
   <title>Tabulr</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    body { margin: 0; background: #0d1117; }
+    .loading {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 24px;
+    }
+    .loading span {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px; color: #8b949e; letter-spacing: 0.5px;
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid #21262d;
+      border-top-color: #58A6FF;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-color-scheme: light) {
+      body { background: #fff; }
+      .spinner { border-color: #d0d7de; border-top-color: #58A6FF; }
+      .loading span { color: #656d76; }
+    }
+  </style>
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <span>Loading Tabulr...</span>
+  </div>
 
+  <script src="flutter_bootstrap.js" async></script>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var el = document.getElementById('loading');
+      if (el) el.remove();
+    });
+  </script>
 </body>
 </html>
