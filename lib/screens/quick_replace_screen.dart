@@ -30,8 +30,8 @@ class QuickReplaceScreen extends StatefulWidget {
   State<QuickReplaceScreen> createState() => _QuickReplaceScreenState();
 }
 
-class _QuickReplaceScreenState extends State<QuickReplaceScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
+  int _selectedTab = 0;
   Course? _selectedCourse;
   List<CourseComparison> _similarCourses = [];
   bool _isLoading = false;
@@ -71,13 +71,11 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> with SingleTick
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     _loadCourseCategories();
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -411,23 +409,31 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> with SingleTick
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Replace Course'),
-            Tab(text: 'Section Shuffle'),
-          ],
-          indicatorColor: scheme.primary,
-          labelColor: scheme.primary,
-          unselectedLabelColor: scheme.onSurface.withValues(alpha: 0.6),
-        ),
       ),
       body: SafeArea(
-        child: TabBarView(
-          controller: _tabController,
+        child: Column(
           children: [
-            _buildReplaceCourseTab(),
-            _buildSectionShuffleTab(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment(value: 0, label: Text('Replace Course'), icon: Icon(Icons.swap_horiz, size: 18)),
+                    ButtonSegment(value: 1, label: Text('Section Shuffle'), icon: Icon(Icons.shuffle, size: 18)),
+                  ],
+                  selected: {_selectedTab},
+                  onSelectionChanged: (set) => setState(() => _selectedTab = set.first),
+                  style: SegmentedButton.styleFrom(
+                    selectedBackgroundColor: scheme.primaryContainer,
+                    selectedForegroundColor: scheme.onPrimaryContainer,
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: _selectedTab == 0 ? _buildReplaceCourseTab() : _buildSectionShuffleTab(),
+            ),
           ],
         ),
       ),

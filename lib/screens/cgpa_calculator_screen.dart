@@ -1225,50 +1225,41 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.calculate_outlined),
-            tooltip: 'Grade Planner',
-            onPressed: _authService.isAuthenticated
-                ? () => Navigator.push(
-                      context,
-                      FadeSlidePageRoute(page: GradePlannerScreen(cgpaData: _cgpaData)),
-                    )
-                : null,
-          ),
-          IconButton(
-            icon: const Icon(Icons.bolt_outlined),
-            tooltip: 'CG Booster',
-            onPressed: _authService.isAuthenticated
-                ? () => Navigator.push(
-                      context,
-                      FadeSlidePageRoute(page: CGBoosterScreen(cgpaData: _cgpaData)),
-                    )
-                : null,
-          ),
-          IconButton(
-            icon: const Icon(Icons.school_outlined),
-            tooltip: 'Load CDCs',
-            onPressed: _authService.isAuthenticated ? _loadCDCs : null,
-          ),
-          IconButton(
-            icon: const Icon(Icons.file_download_outlined),
-            tooltip: 'Import Courses from Timetable',
-            onPressed:
-                _authService.isAuthenticated
-                    ? _importCoursesFromTimetable
-                    : null,
-          ),
-          IconButton(
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-            tooltip: 'Import from Performance Sheet',
-            onPressed:
-                _authService.isAuthenticated
-                    ? _importFromPerformanceSheet
-                    : null,
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, size: 22),
             tooltip: 'Reload Data',
             onPressed: _loadData,
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, size: 22),
+            tooltip: 'More',
+            onSelected: (value) {
+              if (!_authService.isAuthenticated) return;
+              switch (value) {
+                case 'grade_planner':
+                  Navigator.push(context, FadeSlidePageRoute(page: GradePlannerScreen(cgpaData: _cgpaData)));
+                  break;
+                case 'cg_booster':
+                  Navigator.push(context, FadeSlidePageRoute(page: CGBoosterScreen(cgpaData: _cgpaData)));
+                  break;
+                case 'load_cdcs':
+                  _loadCDCs();
+                  break;
+                case 'import_timetable':
+                  _importCoursesFromTimetable();
+                  break;
+                case 'import_pdf':
+                  _importFromPerformanceSheet();
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'grade_planner', child: ListTile(leading: Icon(Icons.calculate_outlined), title: Text('Grade Planner'), contentPadding: EdgeInsets.zero)),
+              const PopupMenuItem(value: 'cg_booster', child: ListTile(leading: Icon(Icons.bolt_outlined), title: Text('CG Booster'), contentPadding: EdgeInsets.zero)),
+              const PopupMenuDivider(),
+              const PopupMenuItem(value: 'load_cdcs', child: ListTile(leading: Icon(Icons.school_outlined), title: Text('Load CDCs'), contentPadding: EdgeInsets.zero)),
+              const PopupMenuItem(value: 'import_timetable', child: ListTile(leading: Icon(Icons.file_download_outlined), title: Text('Import from Timetable'), contentPadding: EdgeInsets.zero)),
+              const PopupMenuItem(value: 'import_pdf', child: ListTile(leading: Icon(Icons.picture_as_pdf_outlined), title: Text('Import Performance Sheet'), contentPadding: EdgeInsets.zero)),
+            ],
           ),
         ],
       ),

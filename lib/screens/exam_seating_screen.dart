@@ -302,18 +302,20 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
             },
             itemBuilder: (context, exam) {
               return ListTile(
-                title: Text(exam.courseCode),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                title: Text(exam.courseCode, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                 subtitle: Text(
                   exam.courseTitle.isNotEmpty
                       ? exam.courseTitle
                       : 'No title available',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
                 ),
                 trailing: exam.examDate.isNotEmpty
                     ? Text(
                         exam.examDate,
-                        style: Theme.of(context).textTheme.bodySmall,
+                        style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary),
                       )
                     : null,
               );

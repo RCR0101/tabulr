@@ -1198,10 +1198,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     ? Container(
                         height: 44,
                         decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerLowest,
+                          borderRadius: AppDesign.borderRadiusSm,
                           border: Border(
                             bottom: BorderSide(
-                              color: theme.colorScheme.outline.withValues(alpha: 0.08),
+                              color: theme.colorScheme.outline.withValues(alpha: 0.06),
                             ),
+                          ),
+                        ),
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.only(left: 10),
+                        child: Text(
+                          'Free',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.15),
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       )
@@ -1427,16 +1438,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           width: dayWidth,
                           child: Stack(
                             children: [
-                              // Grid lines
+                              // Grid lines + alternating background
                               ...List.generate(endHour - startHour + 1, (i) {
+                                final hour = startHour + i;
+                                final hasItem = dayItems.any((it) => it.hour == hour || (it.hour < hour && it.hour + it.spanHours > hour));
                                 return Positioned(
                                   top: i * hourHeight,
                                   left: 0,
                                   right: 0,
+                                  height: hourHeight,
                                   child: Container(
-                                    height: 1,
-                                    color: theme.colorScheme.outline
-                                        .withValues(alpha: 0.08),
+                                    decoration: BoxDecoration(
+                                      color: hasItem ? null : (i.isEven ? theme.colorScheme.surfaceContainerLowest : null),
+                                      border: Border(
+                                        top: BorderSide(color: theme.colorScheme.outline.withValues(alpha: 0.08)),
+                                      ),
+                                    ),
                                   ),
                                 );
                               }),
