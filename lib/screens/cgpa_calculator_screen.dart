@@ -23,7 +23,6 @@ import 'cg_booster_screen.dart';
 import 'grade_planner_screen.dart';
 import '../utils/design_constants.dart';
 import '../utils/grade_utils.dart' as grade_utils;
-import '../utils/branch_constants.dart' as constants;
 
 class CGPACalculatorScreen extends StatefulWidget {
   const CGPACalculatorScreen({super.key});
@@ -367,42 +366,14 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
 
       if (!mounted) return;
 
-      // Get CDC courses directly from course guide data
+      // Get CDC courses from branch structure
       final courseGuideService = CourseGuideService();
-      final semesters = await courseGuideService.getAllSemesters();
-      
-      print('Loaded ${semesters.length} semesters from course guide');
-      
-      // Convert semester format (e.g., "3-1" to "semester_3_1")
-      final semesterId = 'semester_${result.year.replaceAll('-', '_')}';
-      print('Looking for semester ID: $semesterId');
-      
-      final cdcCourses = <CourseGuideEntry>[];
-      
-      // Find the specific semester
-      final targetSemester = semesters.where((s) => s.semesterId == semesterId).firstOrNull;
-      if (targetSemester != null) {
-        print('Found target semester: ${targetSemester.name}');
-        // Get the full branch name for searching
-        final branchCodeToName = constants.branchCodeToName;
-        
-        final branchFullName = branchCodeToName[result.branch];
-        
-        for (final group in targetSemester.groups) {
-          print('Checking group ${group.groupId} with branches: ${group.branches}');
-          // Check if group contains either the branch code or the full branch name
-          bool containsBranch = group.branches.contains(result.branch) || 
-                               (branchFullName != null && group.branches.contains(branchFullName));
-          
-          if (containsBranch) {
-            print('Group matches! Adding ${group.courses.length} courses');
-            cdcCourses.addAll(group.courses);
-          }
-        }
-      } else {
-        print('Target semester not found!');
-      }
+      final cdcData = await courseGuideService.getCDCsForBranch(
+        result.branch,
+        semester: result.year,
+      );
 
+      final cdcCourses = cdcData[result.year] ?? <CourseGuideEntry>[];
       print('Found ${cdcCourses.length} CDC courses total');
 
       if (cdcCourses.isEmpty) {

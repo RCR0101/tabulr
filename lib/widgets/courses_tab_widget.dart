@@ -42,7 +42,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
   Widget _buildCreditsBanner() {
     // Calculate total credits from selected courses
     final selectedCoursesCodes = widget.selectedSections.map((s) => s.courseCode).toSet();
-    int courseCredits = 0;
+    double courseCredits = 0;
     
     for (final courseCode in selectedCoursesCodes) {
       final course = widget.courses.firstWhere(
@@ -50,9 +50,9 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
         orElse: () => Course(
           courseCode: courseCode,
           courseTitle: 'Unknown',
-          lectureCredits: 0,
-          practicalCredits: 0,
-          totalCredits: 0,
+          lectureCredits: 0.0,
+          practicalCredits: 0.0,
+          totalCredits: 0.0,
           sections: [],
         ),
       );

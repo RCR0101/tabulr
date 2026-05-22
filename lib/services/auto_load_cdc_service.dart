@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
-import '../services/course_guide_service.dart';
-import '../services/course_data_service.dart';
+import '../services/branch_structure_service.dart';
+import '../services/courses_master_service.dart';
 import '../services/responsive_service.dart';
 import '../utils/branch_constants.dart' as constants;
 
@@ -11,9 +11,7 @@ class AutoLoadCDCService {
   factory AutoLoadCDCService() => _instance;
   AutoLoadCDCService._internal();
 
-  final CourseGuideService _courseGuideService = CourseGuideService();
-
-  final Map<String, String> _branchCodeToName = constants.branchCodeToName;
+  final BranchStructureService _branchService = BranchStructureService();
 
   Future<AutoLoadCDCResult?> showBranchYearDialog(BuildContext context) async {
     return await showDialog<AutoLoadCDCResult?>(
@@ -28,50 +26,23 @@ class AutoLoadCDCService {
     required List<Course> availableCourses,
   }) async {
     try {
-      // Load course guide data
-      final semesters = await _courseGuideService.getAllSemesters();
-      
-      // Convert semester format (e.g., "3-1" to "semester_3_1")
-      final semesterId = 'semester_${semester.replaceAll('-', '_')}';
-      
-      final cdcCourses = <CourseGuideEntry>[];
-      
-      // Find the specific semester
-      final targetSemester = semesters.where((s) => s.semesterId == semesterId).firstOrNull;
-      if (targetSemester != null) {
-        // Get the full branch name for searching
-        final branchFullName = _branchCodeToName[branch];
-        
-        for (final group in targetSemester.groups) {
-          // Check if group contains either the branch code or the full branch name
-          bool containsBranch = group.branches.contains(branch) || 
-                               (branchFullName != null && group.branches.contains(branchFullName));
-          
-          if (containsBranch) {
-            cdcCourses.addAll(group.courses);
-          }
-        }
-      }
+      final cdcCodes = await _branchService.getCDCs(branch, semester);
 
-      // Convert to SelectedSection objects by finding available lecture sections
       final selectedSections = <SelectedSection>[];
 
-      for (final cdcCourse in cdcCourses) {
-        final course = availableCourses.where((c) => c.courseCode == cdcCourse.code).firstOrNull;
+      for (final code in cdcCodes) {
+        final course = availableCourses.where((c) => c.courseCode == code).firstOrNull;
         if (course != null) {
-          // Find all lecture sections and try each one until we find one without conflicts
           final lectureSections = course.sections.where((s) => s.type == SectionType.L).toList();
           bool added = false;
-          
+
           for (final lectureSection in lectureSections) {
-            // Create a temporary SelectedSection to test for conflicts
             final tempSection = SelectedSection(
               courseCode: course.courseCode,
               sectionId: lectureSection.sectionId,
               section: lectureSection,
             );
-            
-            // Check if this section conflicts with already selected sections
+
             bool hasConflict = false;
             for (final existing in selectedSections) {
               if (_hasTimeConflict(tempSection.section, existing.section)) {
@@ -79,15 +50,12 @@ class AutoLoadCDCService {
                 break;
               }
             }
-            
+
             if (!hasConflict) {
               selectedSections.add(tempSection);
               added = true;
               break;
             }
-          }
-          
-          if (!added && lectureSections.isNotEmpty) {
           }
         }
       }
@@ -99,13 +67,10 @@ class AutoLoadCDCService {
   }
 
   bool _hasTimeConflict(Section section1, Section section2) {
-    // Check if sections have time conflicts
     for (final entry1 in section1.schedule) {
       for (final entry2 in section2.schedule) {
-        // Check if they share any common days
         final commonDays = entry1.days.where((day) => entry2.days.contains(day));
         if (commonDays.isNotEmpty) {
-          // Check for hour overlap
           final hours1 = Set.from(entry1.hours);
           final hours2 = Set.from(entry2.hours);
           if (hours1.intersection(hours2).isNotEmpty) {
@@ -133,9 +98,7 @@ class AutoLoadCDCDialog extends StatefulWidget {
 }
 
 class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
-  final List<String> _branches = [
-    'A1', 'A2', 'A3', 'A4', 'A5', 'A7', 'A8', 'AA', 'AB', 'AD', 'AJ', 'B1', 'B2', 'B3', 'B4', 'B5'
-  ];
+  final List<String> _branches = constants.branchCodeToName.keys.toList()..sort();
 
   final List<String> _semesters = ['1-1', '1-2', '2-1', '2-2', '3-1', '3-2'];
 
@@ -145,7 +108,7 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
   @override
   Widget build(BuildContext context) {
     final isMobile = ResponsiveService.isMobile(context);
-    
+
     return AlertDialog(
       title: Row(
         children: [
@@ -167,11 +130,10 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
         ],
       ),
       content: SizedBox(
-        width: ResponsiveService.getValue(context, 
-          mobile: MediaQuery.of(context).size.width - 32,
-          tablet: 400, 
-          desktop: 350
-        ),
+        width: ResponsiveService.getValue(context,
+            mobile: MediaQuery.of(context).size.width - 32,
+            tablet: 400,
+            desktop: 350),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,8 +145,7 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
               ),
             ),
             SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 20)),
-            
-            // Branch Selection
+
             Text(
               'Branch *',
               style: TextStyle(
@@ -203,9 +164,10 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
                 ),
               ),
               items: _branches.map((branch) {
+                final name = constants.branchCodeToName[branch] ?? branch;
                 return DropdownMenuItem<String>(
                   value: branch,
-                  child: Text(branch),
+                  child: Text('$branch - $name'),
                 );
               }).toList(),
               onChanged: (String? newValue) {
@@ -217,10 +179,9 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
               isExpanded: true,
               hint: const Text('Select your branch'),
             ),
-            
+
             SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 16)),
-            
-            // Semester Selection
+
             Text(
               'Semester *',
               style: TextStyle(
@@ -253,8 +214,7 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
               isExpanded: true,
               hint: const Text('Select your semester'),
             ),
-            
-            // Mobile actions inline
+
             if (isMobile) ...[
               SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 20)),
               SizedBox(
@@ -283,15 +243,15 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: (_selectedBranch != null && _selectedSemester != null) 
-                    ? () {
-                        ResponsiveService.triggerMediumFeedback(context);
-                        Navigator.of(context).pop(AutoLoadCDCResult(
-                          branch: _selectedBranch!,
-                          year: _selectedSemester!,
-                        ));
-                      }
-                    : null,
+                  onPressed: (_selectedBranch != null && _selectedSemester != null)
+                      ? () {
+                          ResponsiveService.triggerMediumFeedback(context);
+                          Navigator.of(context).pop(AutoLoadCDCResult(
+                            branch: _selectedBranch!,
+                            year: _selectedSemester!,
+                          ));
+                        }
+                      : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: Theme.of(context).colorScheme.onPrimary,
@@ -308,28 +268,30 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
           ],
         ),
       ),
-      actions: isMobile ? null : [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton.icon(
-          onPressed: (_selectedBranch != null && _selectedSemester != null) 
-            ? () {
-                Navigator.of(context).pop(AutoLoadCDCResult(
-                  branch: _selectedBranch!,
-                  year: _selectedSemester!,
-                ));
-              }
-            : null,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Theme.of(context).colorScheme.onPrimary,
-          ),
-          icon: const Icon(Icons.download, size: 16),
-          label: const Text('Load CDCs'),
-        ),
-      ],
+      actions: isMobile
+          ? null
+          : [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton.icon(
+                onPressed: (_selectedBranch != null && _selectedSemester != null)
+                    ? () {
+                        Navigator.of(context).pop(AutoLoadCDCResult(
+                          branch: _selectedBranch!,
+                          year: _selectedSemester!,
+                        ));
+                      }
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                ),
+                icon: const Icon(Icons.download, size: 16),
+                label: const Text('Load CDCs'),
+              ),
+            ],
     );
   }
 }

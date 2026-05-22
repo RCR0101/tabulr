@@ -463,21 +463,20 @@ class XlsxParser {
     return value.toString();
   }
 
-  static int _getNumericValue(List<Data?> row, int index) {
+  static double _getNumericValue(List<Data?> row, int index) {
     final value = _getCellValue(row, index);
     if (value == null) return 0;
-    
+
     if (value is num) {
-      return value.round();
+      return value.toDouble();
     } else if (value is String) {
       try {
-        final doubleValue = double.parse(value);
-        return doubleValue.round();
+        return double.parse(value);
       } catch (e) {
         return 0;
       }
     }
-    
+
     return 0;
   }
 

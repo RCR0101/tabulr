@@ -1,9 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/course.dart';
-import '../utils/branch_constants.dart' as constants;
+import '../services/branch_structure_service.dart';
 
 class ElectiveClashDetector {
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static final BranchStructureService _branchService = BranchStructureService();
 
   static Future<Set<String>> getCoreCourseCodes(
     String primarySemester,
@@ -11,77 +10,12 @@ class ElectiveClashDetector {
     String? secondarySemester,
     String? secondaryBranch,
   ) async {
-    final coreCourseCodes = <String>{};
-
-    await _addCoreCoursesForBranchSemester(
-      coreCourseCodes,
+    return _branchService.getCoreCourseCodes(
       primarySemester,
       primaryBranch,
+      secondarySemester,
+      secondaryBranch,
     );
-
-    if (secondarySemester != null && secondaryBranch != null) {
-      await _addCoreCoursesForBranchSemester(
-        coreCourseCodes,
-        secondarySemester,
-        secondaryBranch,
-      );
-    }
-
-    return coreCourseCodes;
-  }
-
-  static Future<void> _addCoreCoursesForBranchSemester(
-    Set<String> coreCourseCodes,
-    String semester,
-    String branch,
-  ) async {
-    try {
-      final semesterDocId = 'semester_${semester.replaceAll('-', '_')}';
-
-      final courseGuideDoc = await _firestore
-          .collection('reference').doc('course_guide').collection('semesters')
-          .doc(semesterDocId)
-          .get();
-
-      if (!courseGuideDoc.exists) return;
-
-      final data = courseGuideDoc.data();
-      if (data == null || !data.containsKey('groups')) return;
-
-      final rawGroups = data['groups'];
-
-      final branchName = constants.branchCodeToName[branch];
-      if (branchName == null) return;
-
-      final groupsList = <Map<String, dynamic>>[];
-      if (rawGroups is List) {
-        for (final g in rawGroups) {
-          if (g is Map<String, dynamic>) groupsList.add(g);
-        }
-      } else if (rawGroups is Map<String, dynamic>) {
-        for (final entry in rawGroups.entries) {
-          if (entry.value is Map<String, dynamic>) {
-            groupsList.add(entry.value as Map<String, dynamic>);
-          }
-        }
-      }
-
-      for (final groupData in groupsList) {
-        final branches = List<String>.from(groupData['branches'] ?? []);
-
-        if (branches.contains(branchName)) {
-          final courses = List<dynamic>.from(groupData['courses'] ?? []);
-          for (final courseData in courses) {
-            if (courseData is Map<String, dynamic>) {
-              final courseCode = courseData['code'] as String?;
-              if (courseCode != null) {
-                coreCourseCodes.add(courseCode);
-              }
-            }
-          }
-        }
-      }
-    } catch (_) {}
   }
 
   static bool doesCourseClashWithCore(

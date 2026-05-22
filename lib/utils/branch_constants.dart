@@ -8,6 +8,7 @@ const Map<String, String> branchCodeToName = {
   'A8': 'Electronics and Instrumentation',
   'AA': 'Electronics and Communication',
   'AB': 'Manufacturing',
+  'AC': 'Electronics and Computer',
   'AD': 'Math and Computing',
   'AJ': 'Biotechnology',
   'B1': 'MSc Biology',
@@ -15,4 +16,11 @@ const Map<String, String> branchCodeToName = {
   'B3': 'MSc Economics',
   'B4': 'MSc Mathematics',
   'B5': 'MSc Physics',
+  'B7': 'Semiconductors and Nanoscience',
 };
+
+bool isMscBranch(String branchCode) =>
+    branchCode.startsWith('B');
+
+bool isBeBranch(String branchCode) =>
+    branchCode.startsWith('A');

@@ -138,7 +138,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> with SingleTick
     final allDelCourses = <String>{};
     
     for (final branch in _availableBranches) {
-      final delCourses = await _delService.getDisciplineElectives(branch.name);
+      final delCourses = await _delService.getDisciplineElectives(branch.code);
       allDelCourses.addAll(delCourses.map((course) => course.courseCode));
     }
     _delCourses = allDelCourses;

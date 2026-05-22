@@ -117,8 +117,8 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
 
       final electives = await _disciplineElectivesService
           .getAllDisciplineElectives(
-            _selectedPrimaryBranch!.name,
-            _selectedSecondaryBranch?.name,
+            _selectedPrimaryBranch!.code,
+            _selectedSecondaryBranch?.code,
             _availableCourses,
           );
 
@@ -164,8 +164,8 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
 
       final electives = await _disciplineElectivesService
           .getFilteredDisciplineElectivesWithClashDetection(
-            _selectedPrimaryBranch!.name,
-            _selectedSecondaryBranch?.name,
+            _selectedPrimaryBranch!.code,
+            _selectedSecondaryBranch?.code,
             _selectedSemester!,
             _selectedSemester,
             _availableCourses,

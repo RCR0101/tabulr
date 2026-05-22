@@ -1,9 +1,9 @@
 class Course {
   final String courseCode;
   final String courseTitle;
-  final int lectureCredits;
-  final int practicalCredits;
-  final int totalCredits;
+  final double lectureCredits;
+  final double practicalCredits;
+  final double totalCredits;
   final List<Section> sections;
   final ExamSchedule? midSemExam;
   final ExamSchedule? endSemExam;
@@ -37,10 +37,10 @@ class Course {
     return Course(
       courseCode: code,
       courseTitle: resolvedTitle ?? json['courseTitle'] ?? code,
-      lectureCredits: json['lecture_credits'] ?? json['lectureCredits'] ?? 0,
-      practicalCredits: json['practical_credits'] ?? json['practicalCredits'] ?? 0,
-      totalCredits: (json['lecture_credits'] ?? json['lectureCredits'] ?? 0) +
-          (json['practical_credits'] ?? json['practicalCredits'] ?? 0),
+      lectureCredits: (json['lecture_credits'] ?? json['lectureCredits'] ?? 0).toDouble(),
+      practicalCredits: (json['practical_credits'] ?? json['practicalCredits'] ?? 0).toDouble(),
+      totalCredits: ((json['lecture_credits'] ?? json['lectureCredits'] ?? 0) +
+          (json['practical_credits'] ?? json['practicalCredits'] ?? 0)).toDouble(),
       sections: (json['sections'] as List?)
               ?.map((s) => Section.fromJson(s))
               .toList() ??

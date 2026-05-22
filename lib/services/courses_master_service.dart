@@ -5,7 +5,7 @@ import 'campus_service.dart';
 class CourseMasterEntry {
   final String courseCode;
   final String title;
-  final int credits;
+  final double credits;
   final String type;
 
   CourseMasterEntry({
@@ -19,7 +19,7 @@ class CourseMasterEntry {
     return CourseMasterEntry(
       courseCode: map['course_code'] ?? '',
       title: map['title'] ?? '',
-      credits: map['credits'] ?? 0,
+      credits: (map['credits'] as num?)?.toDouble() ?? 0,
       type: map['type'] ?? 'Normal',
     );
   }

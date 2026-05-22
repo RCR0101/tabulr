@@ -1,7 +1,7 @@
 class AllCourse {
   final String courseCode;
   final String courseTitle;
-  final int creditValue;
+  final double creditValue;
   final String type;
 
   AllCourse({
@@ -11,13 +11,13 @@ class AllCourse {
     required this.type,
   });
 
-  double get credits => creditValue.toDouble();
+  double get credits => creditValue;
 
   factory AllCourse.fromFirestore(Map<String, dynamic> data) {
     return AllCourse(
       courseCode: data['course_code'] as String? ?? '',
       courseTitle: data['title'] as String? ?? '',
-      creditValue: data['credits'] as int? ?? 0,
+      creditValue: (data['credits'] as num?)?.toDouble() ?? 0,
       type: data['type'] as String? ?? 'Normal',
     );
   }
