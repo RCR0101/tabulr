@@ -863,7 +863,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   _scrappedForWeek.removeWhere((k) => k.startsWith(_weekKey));
                 });
               }
-              if (val == 'student_id') _editStudentId();
             },
             itemBuilder: (_) => [
               const PopupMenuItem(
@@ -880,15 +879,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   dense: true,
                   leading: Icon(Icons.restore),
                   title: Text('Restore week'),
-                ),
-              ),
-              const PopupMenuDivider(),
-              const PopupMenuItem(
-                value: 'student_id',
-                child: ListTile(
-                  dense: true,
-                  leading: Icon(Icons.badge_outlined),
-                  title: Text('Set Student ID'),
                 ),
               ),
             ],
@@ -952,13 +942,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
               },
             ),
           ),
-          if (_studentId != null && _studentId!.isNotEmpty) ...[
-            const SizedBox(width: 12),
-            Chip(
-              avatar: const Icon(Icons.badge, size: 16),
-              label: Text(_studentId!, style: const TextStyle(fontSize: 12)),
+          const SizedBox(width: 12),
+          ActionChip(
+            avatar: const Icon(Icons.badge, size: 16),
+            label: Text(
+              _studentId != null && _studentId!.isNotEmpty
+                  ? _studentId!
+                  : 'Set ID',
+              style: const TextStyle(fontSize: 12),
             ),
-          ],
+            onPressed: _editStudentId,
+            tooltip: 'Set Student ID',
+          ),
           if (!isToday) ...[
             const SizedBox(width: AppDesign.spacingSm),
             IconButton(

@@ -10,6 +10,7 @@ class AppToast {
   static OverlayState? _overlayState;
   static OverlayEntry? _currentEntry;
   static Timer? _dismissTimer;
+  static _ToastOverlayState? _currentState;
 
   static void init(BuildContext context) {
     _overlayState = Overlay.of(context, rootOverlay: true);
@@ -20,13 +21,31 @@ class AppToast {
     required ToastType type,
     Duration duration = const Duration(seconds: 3),
   }) {
-    dismiss();
+    _dismissTimer?.cancel();
+    _dismissTimer = null;
 
+    if (_currentState != null && _currentEntry != null) {
+      _currentState!.animateOut().then((_) {
+        _currentEntry?.remove();
+        _currentEntry = null;
+        _currentState = null;
+        _insert(message, type, duration);
+      });
+    } else {
+      _currentEntry?.remove();
+      _currentEntry = null;
+      _currentState = null;
+      _insert(message, type, duration);
+    }
+  }
+
+  static void _insert(String message, ToastType type, Duration duration) {
     final entry = OverlayEntry(
       builder: (_) => _ToastOverlay(
         message: message,
         type: type,
         onDismiss: dismiss,
+        onStateCreated: (state) => _currentState = state,
       ),
     );
 
@@ -38,8 +57,20 @@ class AppToast {
   static void dismiss() {
     _dismissTimer?.cancel();
     _dismissTimer = null;
-    _currentEntry?.remove();
-    _currentEntry = null;
+
+    if (_currentState != null && _currentEntry != null) {
+      final entry = _currentEntry;
+      _currentEntry = null;
+      final state = _currentState;
+      _currentState = null;
+      state!.animateOut().then((_) {
+        entry?.remove();
+      });
+    } else {
+      _currentEntry?.remove();
+      _currentEntry = null;
+      _currentState = null;
+    }
   }
 
   static void showSuccess(String message) =>
@@ -56,11 +87,13 @@ class _ToastOverlay extends StatefulWidget {
   final String message;
   final ToastType type;
   final VoidCallback onDismiss;
+  final ValueChanged<_ToastOverlayState> onStateCreated;
 
   const _ToastOverlay({
     required this.message,
     required this.type,
     required this.onDismiss,
+    required this.onStateCreated,
   });
 
   @override
@@ -72,6 +105,7 @@ class _ToastOverlayState extends State<_ToastOverlay>
   late final AnimationController _controller;
   late final Animation<Offset> _slideAnimation;
   late final Animation<double> _fadeAnimation;
+  bool _dismissed = false;
 
   @override
   void initState() {
@@ -86,6 +120,13 @@ class _ToastOverlayState extends State<_ToastOverlay>
     ).animate(CurvedAnimation(parent: _controller, curve: AppDesign.animCurve));
     _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _controller.forward();
+    widget.onStateCreated(this);
+  }
+
+  Future<void> animateOut() {
+    if (_dismissed) return Future.value();
+    _dismissed = true;
+    return _controller.reverse();
   }
 
   @override

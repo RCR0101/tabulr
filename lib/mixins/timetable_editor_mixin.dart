@@ -18,14 +18,30 @@ import '../services/campus_service.dart';
 import '../services/page_leave_warning_service.dart';
 import '../services/timetable_sharing_service.dart';
 import '../services/undo_redo_service.dart';
+import '../services/clash_detector.dart';
+import '../services/course_data_service.dart';
+import '../services/responsive_service.dart';
+import '../services/user_settings_service.dart';
+import '../utils/design_constants.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/timetable_widget.dart';
 import '../widgets/export_options_dialog.dart';
 import '../widgets/share_timetable_dialog.dart';
+import '../widgets/courses_tab_widget.dart';
+import '../widgets/clash_warnings_widget.dart';
+import '../widgets/search_filter_widget.dart';
+import '../widgets/theme_selector_widget.dart';
+import '../widgets/campus_selector_widget.dart';
+import '../widgets/common/loading_state.dart';
+import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
 import '../screens/generator_screen.dart';
 import '../screens/add_swap_screen.dart';
+import '../screens/course_guide_screen.dart';
+import '../screens/discipline_electives_screen.dart';
+import '../screens/humanities_electives_screen.dart';
+import '../screens/prerequisites_screen.dart';
 
 mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   // Abstract getters/setters that subclasses must implement
@@ -42,8 +58,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   /// Class 1 does nothing; Class 2 calls widget.onUnsavedChangesChanged?.call(value)
   void onUnsavedChangesChanged(bool value);
 
-  /// Already defined in both classes
-  void triggerSavedIndicator();
+  UserSettingsService get userSettingsService;
 
   // -- Shared filteredCourses state --
   List<Course> get filteredCourses;
@@ -697,6 +712,540 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         ),
       ),
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Saved indicator
+  // ---------------------------------------------------------------------------
+  bool _showSavedIndicator = false;
+  bool get showSavedIndicator => _showSavedIndicator;
+  Timer? _savedIndicatorTimer;
+
+  void triggerSavedIndicator() {
+    _savedIndicatorTimer?.cancel();
+    setState(() => _showSavedIndicator = true);
+    _savedIndicatorTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _showSavedIndicator = false);
+    });
+  }
+
+  void disposeSavedIndicator() {
+    _savedIndicatorTimer?.cancel();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Shared helpers
+  // ---------------------------------------------------------------------------
+
+  void initializeUserSettings() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      userSettingsService.initializeSettings();
+    });
+  }
+
+  Future<bool> confirmCampusSwitch() async {
+    if (!hasUnsavedChanges) return true;
+    return await AppDialog.confirm(
+      context: context,
+      title: 'Unsaved Changes',
+      message: 'Switching campus will discard your unsaved changes. Continue?',
+      confirmLabel: 'Switch',
+      isDangerous: true,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Shared UI builders
+  // ---------------------------------------------------------------------------
+
+  Widget buildCoursesPanel() {
+    final tt = currentTimetable!;
+    return Column(
+      children: [
+        SearchFilterWidget(onSearchChanged: onSearchChanged),
+        Expanded(
+          child: Card(
+            margin: const EdgeInsets.all(8),
+            child: CoursesTabWidget(
+              courses: filteredCourses,
+              selectedSections: tt.selectedSections,
+              projectCount: tt.projectCount,
+              onProjectCountChanged: (count) {
+                setState(() {
+                  tt.projectCount = count;
+                  hasUnsavedChanges = true;
+                });
+                onUnsavedChangesChanged(true);
+              },
+              onSectionToggle: (courseCode, sectionId, isSelected) {
+                if (isSelected) {
+                  removeSection(courseCode, sectionId);
+                } else {
+                  addSection(courseCode, sectionId);
+                }
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget buildTimetablePanel() {
+    final tt = currentTimetable!;
+    final isMobile =
+        ResponsiveService.isMobile(context) ||
+        ResponsiveService.isTablet(context);
+
+    return Column(
+      children: [
+        if (tt.clashWarnings.isNotEmpty)
+          Card(
+            margin: EdgeInsets.all(isMobile ? 4 : 8),
+            child: ClashWarningsWidget(warnings: tt.clashWarnings),
+          ),
+        Expanded(
+          child: Card(
+            margin: EdgeInsets.all(isMobile ? 4 : 8),
+            child: RepaintBoundary(
+              key: timetableKey,
+              child: TimetableWidget(
+                timetableSlots: timetableService.generateTimetableSlots(
+                  tt.selectedSections,
+                  tt.availableCourses,
+                ),
+                incompleteSelectionWarnings: timetableService
+                    .getIncompleteSelectionWarnings(
+                      tt.selectedSections,
+                      tt.availableCourses,
+                    ),
+                onClear: clearTimetable,
+                onRemoveSection: removeSection,
+                size: userSettingsService.getTimetableSize(tt.id),
+                hasUnsavedChanges: hasUnsavedChanges,
+                isSaving: isSaving,
+                onSave: authService.isGuest ? null : saveTimetable,
+                onAutoLoadCDCs: autoLoadCDCs,
+                onSizeChanged: (newSize) {
+                  userSettingsService.updateTimetableSettings(
+                    tt.id,
+                    newSize,
+                    null,
+                  );
+                },
+                layout: userSettingsService.getTimetableLayout(tt.id),
+                onLayoutChanged: (newLayout) {
+                  userSettingsService.updateTimetableSettings(
+                    tt.id,
+                    null,
+                    newLayout,
+                  );
+                },
+                availableCourses: tt.availableCourses,
+                selectedSections: tt.selectedSections,
+                onQuickReplace: quickReplaceCourse,
+                onSectionShuffle: sectionShuffle,
+                onUndo: undo,
+                onRedo: redo,
+                canUndo: undoRedoService.canUndo,
+                canRedo: undoRedoService.canRedo,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> buildCommonActions() {
+    return [
+      if (_showSavedIndicator)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check_circle, color: AppDesign.success(context), size: 18),
+              const SizedBox(width: 4),
+              Text('Saved', style: TextStyle(color: AppDesign.success(context), fontSize: 13)),
+            ],
+          ),
+        ),
+      CampusSelectorWidget(
+        confirmSwitch: () => confirmCampusSwitch(),
+        onCampusChanged: onCampusChanged,
+      ),
+      IconButton(
+        icon: const Icon(Icons.share),
+        onPressed: shareTimetable,
+        tooltip: 'Share Timetable',
+      ),
+      const ThemeToggleButton(),
+      PopupMenuButton<String>(
+        icon: const Icon(Icons.menu_book),
+        tooltip: 'Tools',
+        onSelected: (value) {
+          switch (value) {
+            case 'course_guide':
+              Navigator.push(context, FadeSlidePageRoute(page: const CourseGuideScreen()));
+              break;
+            case 'prerequisites':
+              Navigator.push(context, FadeSlidePageRoute(page: const PrerequisitesScreen()));
+              break;
+            case 'discipline_electives':
+              Navigator.push(context, FadeSlidePageRoute(page: const DisciplineElectivesScreen()));
+              break;
+            case 'humanities_electives':
+              Navigator.push(context, FadeSlidePageRoute(page: const HumanitiesElectivesScreen()));
+              break;
+          }
+        },
+        itemBuilder: (context) => const [
+          PopupMenuItem(
+            value: 'course_guide',
+            child: ListTile(
+              leading: Icon(Icons.menu_book),
+              title: Text('Course Guide'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          PopupMenuItem(
+            value: 'prerequisites',
+            child: ListTile(
+              leading: Icon(Icons.account_tree),
+              title: Text('Prerequisites'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          PopupMenuItem(
+            value: 'discipline_electives',
+            child: ListTile(
+              leading: Icon(Icons.school),
+              title: Text('Discipline Electives'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          PopupMenuItem(
+            value: 'humanities_electives',
+            child: ListTile(
+              leading: Icon(Icons.library_books),
+              title: Text('Humanities Electives'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        ],
+      ),
+      PopupMenuButton<String>(
+        icon: const Icon(Icons.more_vert),
+        tooltip: 'More',
+        onSelected: (value) {
+          switch (value) {
+            case 'import_tt': importFromTT(); break;
+            case 'export_tt': exportToTTWithFilePicker(); break;
+            case 'export_ics': exportToICS(); break;
+            case 'export_png': exportToPNG(); break;
+            case 'github': openGitHub(); break;
+          }
+        },
+        itemBuilder: (context) => const [
+          PopupMenuItem(
+            value: 'import_tt',
+            child: ListTile(
+              leading: Icon(Icons.file_download),
+              title: Text('Import Timetable (.tt)'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          PopupMenuItem(
+            value: 'export_tt',
+            child: ListTile(
+              leading: Icon(Icons.file_upload),
+              title: Text('Export Timetable (.tt)'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          PopupMenuItem(
+            value: 'export_ics',
+            child: ListTile(
+              leading: Icon(Icons.calendar_today),
+              title: Text('Export to Calendar (.ics)'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          PopupMenuItem(
+            value: 'export_png',
+            child: ListTile(
+              leading: Icon(Icons.image),
+              title: Text('Export as Image (.png)'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+          PopupMenuDivider(),
+          PopupMenuItem(
+            value: 'github',
+            child: ListTile(
+              leading: Icon(Icons.star_border),
+              title: Text('Star on GitHub'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        ],
+      ),
+      if (authService.isAuthenticated)
+        PopupMenuButton<String>(
+          onSelected: (value) {
+            if (value == 'logout') logout();
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              enabled: false,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    authService.userName ?? 'User',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    authService.userEmail ?? '',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).textTheme.bodySmall?.color,
+                    ),
+                  ),
+                  const Divider(),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'logout',
+              child: ListTile(
+                leading: Icon(Icons.logout),
+                title: Text('Sign Out'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundImage: authService.userPhotoUrl != null
+                      ? authService.userPhotoImage
+                      : null,
+                  child: authService.userPhotoUrl == null
+                      ? const Icon(Icons.person, size: 16)
+                      : null,
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.arrow_drop_down),
+              ],
+            ),
+          ),
+        )
+      else
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.person_outline,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Guest',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+      const SizedBox(width: 8),
+    ];
+  }
+
+  Widget buildBodyLayout(bool isWideScreen) {
+    if (isWideScreen) {
+      return Row(
+        children: [
+          Expanded(flex: 1, child: buildCoursesPanel()),
+          Expanded(flex: 2, child: buildTimetablePanel()),
+        ],
+      );
+    }
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          Material(
+            color: Theme.of(context).colorScheme.surface,
+            child: TabBar(
+              labelColor: Theme.of(context).colorScheme.primary,
+              unselectedLabelColor:
+                  Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              indicatorColor: Theme.of(context).colorScheme.primary,
+              tabs: const [
+                Tab(icon: Icon(Icons.search), text: 'Courses'),
+                Tab(icon: Icon(Icons.calendar_view_week), text: 'Timetable'),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                buildCoursesPanel(),
+                buildTimetablePanel(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget? buildFABs(bool isWideScreen) {
+    if (isWideScreen) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.extended(
+            onPressed: openAddSwap,
+            icon: const Icon(Icons.swap_horiz),
+            label: const Text('Add/Swap'),
+            backgroundColor: Theme.of(context).colorScheme.secondary,
+            foregroundColor: Theme.of(context).colorScheme.onSecondary,
+            heroTag: 'add_swap',
+          ),
+          const SizedBox(width: 8),
+          FloatingActionButton.extended(
+            onPressed: openGenerator,
+            icon: const Icon(Icons.auto_awesome_mosaic),
+            label: const Text('TT Generator'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
+            heroTag: 'generator',
+          ),
+        ],
+      );
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FloatingActionButton(
+          onPressed: openAddSwap,
+          backgroundColor: Theme.of(context).colorScheme.secondary,
+          foregroundColor: Theme.of(context).colorScheme.onSecondary,
+          tooltip: 'Add/Swap Courses',
+          heroTag: 'add_swap',
+          child: const Icon(Icons.swap_horiz),
+        ),
+        const SizedBox(height: 8),
+        FloatingActionButton(
+          onPressed: openGenerator,
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+          tooltip: 'TT Generator',
+          heroTag: 'generator',
+          child: const Icon(Icons.auto_awesome_mosaic),
+        ),
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Import / Export
+  // ---------------------------------------------------------------------------
+
+  void onCampusChanged(Campus campus);
+
+  Future<void> importFromTT() async {
+    try {
+      final importedTimetable = await ExportService.importFromTTWithFilePicker();
+      if (importedTimetable == null) return;
+
+      final shouldReplace = await AppDialog.confirm(
+        context: context,
+        title: 'Import Timetable',
+        message: 'Are you sure you want to import "${importedTimetable.name}"?\n\n'
+            'This will replace your current timetable with the imported one.\n\n'
+            'Campus: ${importedTimetable.campus.toString().split('.').last}\n'
+            'Courses: ${importedTimetable.selectedSections.length} sections',
+        confirmLabel: 'Import',
+      );
+
+      if (shouldReplace) {
+        if (CampusService.currentCampus != importedTimetable.campus) {
+          await CampusService.setCampus(importedTimetable.campus);
+        }
+        final reloadedTimetable = await timetableService.loadTimetable();
+        final clashWarnings = ClashDetector.detectClashes(
+          importedTimetable.selectedSections,
+          reloadedTimetable.availableCourses,
+        );
+
+        final updatedImportedTimetable = Timetable(
+          id: importedTimetable.id,
+          name: importedTimetable.name,
+          createdAt: importedTimetable.createdAt,
+          updatedAt: importedTimetable.updatedAt,
+          campus: importedTimetable.campus,
+          availableCourses: reloadedTimetable.availableCourses,
+          selectedSections: importedTimetable.selectedSections,
+          clashWarnings: clashWarnings,
+        );
+
+        await timetableService.saveTimetable(updatedImportedTimetable);
+
+        setState(() {
+          setCurrentTimetable(updatedImportedTimetable);
+          filteredCourses = updatedImportedTimetable.availableCourses;
+          hasUnsavedChanges = false;
+        });
+
+        pageLeaveWarning.enableWarning(false);
+        onUnsavedChangesChanged(false);
+
+        if (!mounted) return;
+        ToastService.showSuccess(
+          'Timetable "${importedTimetable.name}" imported successfully!',
+        );
+      }
+    } catch (e) {
+      showErrorDialog('Import failed: $e');
+    }
+  }
+
+  Future<void> exportToTTWithFilePicker() async {
+    final tt = currentTimetable;
+    if (tt == null || tt.selectedSections.isEmpty) {
+      showErrorDialog('No sections selected to export');
+      return;
+    }
+
+    try {
+      final filePath = await ExportService.exportToTTWithFilePicker(tt);
+      if (!mounted) return;
+      AppDialog.adaptive(
+        context: context,
+        title: 'Export Successful',
+        icon: Icons.check_circle_outline,
+        content: Text('Timetable exported to: $filePath'),
+        actions: [
+          AppButton(
+            label: 'OK',
+            onTap: () => Navigator.of(context).pop(),
+          ),
+        ],
+      );
+    } catch (e) {
+      showErrorDialog('Export failed: $e');
+    }
   }
 
   Future<void> openGitHub() async {

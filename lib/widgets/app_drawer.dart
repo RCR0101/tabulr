@@ -224,17 +224,25 @@ class AppDrawer extends StatelessWidget {
                     width: ResponsiveService.getAdaptiveSpacing(context, 8),
                   ),
                   Expanded(
-                    child: Text(
-                      'Made with ❤️ for students',
-                      style: TextStyle(
-                        fontSize: ResponsiveService.getAdaptiveFontSize(
-                          context,
-                          12,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Made with ',
+                          style: TextStyle(
+                            fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
                         ),
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
+                        Icon(Icons.favorite, size: 12, color: Colors.red.withValues(alpha: 0.7)),
+                        Text(
+                          ' for students',
+                          style: TextStyle(
+                            fontSize: ResponsiveService.getAdaptiveFontSize(context, 12),
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

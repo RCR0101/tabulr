@@ -283,14 +283,19 @@ class _AppSidebarState extends State<AppSidebar> {
                 ),
                 const SizedBox(width: AppDesign.spacingSm),
                 Expanded(
-                  child: Text(
-                    'Made with ❤️ for students',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: scheme.onSurface.withValues(alpha: 0.4),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.clip,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Made with ',
+                        style: TextStyle(fontSize: 11, color: scheme.onSurface.withValues(alpha: 0.4)),
+                      ),
+                      Icon(Icons.favorite, size: 11, color: Colors.red.withValues(alpha: 0.6)),
+                      Text(
+                        ' for students',
+                        style: TextStyle(fontSize: 11, color: scheme.onSurface.withValues(alpha: 0.4)),
+                      ),
+                    ],
                   ),
                 ),
                 IconButton(

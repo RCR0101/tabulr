@@ -445,6 +445,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
           FilterChip(
             label: const Text('Show past events'),
             selected: _showExpired,
+            showCheckmark: false,
             onSelected: (value) {
               setState(() {
                 _showExpired = value;
