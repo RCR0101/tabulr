@@ -21,6 +21,8 @@ import '../utils/design_constants.dart';
 import '../widgets/campus_selector_widget.dart';
 import '../widgets/common/loading_state.dart';
 import '../widgets/common/shimmer_loading.dart';
+import '../widgets/common/app_dialog.dart';
+import '../widgets/common/app_button.dart';
 
 import 'course_guide_screen.dart';
 import 'discipline_electives_screen.dart';
@@ -140,26 +142,13 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
 
   Future<bool> _confirmCampusSwitch() async {
     if (!_hasUnsavedChanges) return true;
-    final result = await showDialog<bool>(
+    return await AppDialog.confirm(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Unsaved Changes'),
-        content: const Text(
-          'Switching campus will discard your unsaved changes. Continue?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Switch'),
-          ),
-        ],
-      ),
+      title: 'Unsaved Changes',
+      message: 'Switching campus will discard your unsaved changes. Continue?',
+      confirmLabel: 'Switch',
+      isDangerous: true,
     );
-    return result ?? false;
   }
 
   @override
@@ -688,31 +677,17 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
       }
 
       // Show confirmation dialog
-      final shouldReplace = await showDialog<bool>(
+      final shouldReplace = await AppDialog.confirm(
         context: context,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('Import Timetable'),
-              content: Text(
-                'Are you sure you want to import "${importedTimetable.name}"?\n\n'
-                'This will replace your current timetable with the imported one.\n\n'
-                'Campus: ${importedTimetable.campus.toString().split('.').last}\n'
-                'Courses: ${importedTimetable.selectedSections.length} sections',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('Import'),
-                ),
-              ],
-            ),
+        title: 'Import Timetable',
+        message: 'Are you sure you want to import "${importedTimetable.name}"?\n\n'
+            'This will replace your current timetable with the imported one.\n\n'
+            'Campus: ${importedTimetable.campus.toString().split('.').last}\n'
+            'Courses: ${importedTimetable.selectedSections.length} sections',
+        confirmLabel: 'Import',
       );
 
-      if (shouldReplace == true) {
+      if (shouldReplace) {
         // Switch campus to match the imported timetable
         if (CampusService.currentCampus != importedTimetable.campus) {
           await CampusService.setCampus(importedTimetable.campus);
@@ -767,19 +742,17 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
         _timetable!,
       );
       if (!mounted) return;
-      showDialog(
+      AppDialog.adaptive(
         context: context,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('Export Successful'),
-              content: Text('Timetable exported to: $filePath'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
+        title: 'Export Successful',
+        icon: Icons.check_circle_outline,
+        content: Text('Timetable exported to: $filePath'),
+        actions: [
+          AppButton(
+            label: 'OK',
+            onTap: () => Navigator.of(context).pop(),
+          ),
+        ],
       );
     } catch (e) {
       showErrorDialog('Export failed: $e');
@@ -835,26 +808,13 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
 
   Future<bool> _confirmCampusSwitch() async {
     if (!_hasUnsavedChanges) return true;
-    final result = await showDialog<bool>(
+    return await AppDialog.confirm(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Unsaved Changes'),
-        content: const Text(
-          'Switching campus will discard your unsaved changes. Continue?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Switch'),
-          ),
-        ],
-      ),
+      title: 'Unsaved Changes',
+      message: 'Switching campus will discard your unsaved changes. Continue?',
+      confirmLabel: 'Switch',
+      isDangerous: true,
     );
-    return result ?? false;
   }
 
   @override
@@ -1386,31 +1346,17 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
       }
 
       // Show confirmation dialog
-      final shouldReplace = await showDialog<bool>(
+      final shouldReplace = await AppDialog.confirm(
         context: context,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('Import Timetable'),
-              content: Text(
-                'Are you sure you want to import "${importedTimetable.name}"?\n\n'
-                'This will replace your current timetable with the imported one.\n\n'
-                'Campus: ${importedTimetable.campus.toString().split('.').last}\n'
-                'Courses: ${importedTimetable.selectedSections.length} sections',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('Import'),
-                ),
-              ],
-            ),
+        title: 'Import Timetable',
+        message: 'Are you sure you want to import "${importedTimetable.name}"?\n\n'
+            'This will replace your current timetable with the imported one.\n\n'
+            'Campus: ${importedTimetable.campus.toString().split('.').last}\n'
+            'Courses: ${importedTimetable.selectedSections.length} sections',
+        confirmLabel: 'Import',
       );
 
-      if (shouldReplace == true) {
+      if (shouldReplace) {
         // Switch campus to match the imported timetable
         if (CampusService.currentCampus != importedTimetable.campus) {
           await CampusService.setCampus(importedTimetable.campus);
@@ -1469,19 +1415,17 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
       final filePath = await ExportService.exportToTTWithFilePicker(
         _timetable!,
       );
-      showDialog(
+      AppDialog.adaptive(
         context: context,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('Export Successful'),
-              content: Text('Timetable exported to: $filePath'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
+        title: 'Export Successful',
+        icon: Icons.check_circle_outline,
+        content: Text('Timetable exported to: $filePath'),
+        actions: [
+          AppButton(
+            label: 'OK',
+            onTap: () => Navigator.of(context).pop(),
+          ),
+        ],
       );
     } catch (e) {
       showErrorDialog('Export failed: $e');
@@ -1496,19 +1440,17 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
 
     try {
       final filePath = await ExportService.exportToTT(_timetable!);
-      showDialog(
+      AppDialog.adaptive(
         context: context,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('Export Successful'),
-              content: Text('Timetable exported to: $filePath'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
+        title: 'Export Successful',
+        icon: Icons.check_circle_outline,
+        content: Text('Timetable exported to: $filePath'),
+        actions: [
+          AppButton(
+            label: 'OK',
+            onTap: () => Navigator.of(context).pop(),
+          ),
+        ],
       );
     } catch (e) {
       showErrorDialog('Export failed: $e');

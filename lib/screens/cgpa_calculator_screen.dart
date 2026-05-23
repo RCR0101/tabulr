@@ -13,6 +13,8 @@ import '../services/auto_load_cdc_service.dart';
 import '../services/toast_service.dart';
 import '../services/course_guide_service.dart';
 import '../widgets/error_dialog.dart';
+import '../widgets/common/app_dialog.dart';
+import '../widgets/common/app_button.dart';
 import '../services/performance_sheet_parser.dart';
 import '../services/courses_master_service.dart';
 import '../models/cgpa_data.dart';
@@ -965,37 +967,25 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     return const Color(0xFFDC2626); // Minimal - Deep Red
   }
 
-  void _removeSemester(String semesterName) {
-    showDialog(
+  void _removeSemester(String semesterName) async {
+    final confirmed = await AppDialog.confirm(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Remove Semester'),
-        content: Text('Remove "$semesterName" and all its courses?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            onPressed: () async {
-              Navigator.pop(context);
-              setState(() {
-                _semesters.remove(semesterName);
-                final updatedSemesters = Map<String, SemesterData>.from(_cgpaData.semesters);
-                updatedSemesters.remove(semesterName);
-                _cgpaData = _cgpaData.copyWith(semesters: updatedSemesters);
-                _rebuildTabController();
-              });
-              await _cgpaService.deleteSemesterData(semesterName);
-            },
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
+      title: 'Remove Semester',
+      message: 'Remove "$semesterName" and all its courses?',
+      confirmLabel: 'Remove',
+      isDangerous: true,
     );
+
+    if (confirmed) {
+      setState(() {
+        _semesters.remove(semesterName);
+        final updatedSemesters = Map<String, SemesterData>.from(_cgpaData.semesters);
+        updatedSemesters.remove(semesterName);
+        _cgpaData = _cgpaData.copyWith(semesters: updatedSemesters);
+        _rebuildTabController();
+      });
+      await _cgpaService.deleteSemesterData(semesterName);
+    }
   }
 
   String _nextNormalSemester() {
@@ -1041,58 +1031,47 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
   }
 
   void _addCustomSemester() {
-    showDialog(
+    final nextNormal = _nextNormalSemester();
+    final nextSummer = _nextSummerTerm();
+    AppDialog.adaptive(
       context: context,
-      builder: (context) {
-        final nextNormal = _nextNormalSemester();
-        final nextSummer = _nextSummerTerm();
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+      title: 'Add Semester',
+      icon: Icons.add_rounded,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            leading: Icon(Icons.school_rounded, color: Theme.of(context).colorScheme.primary),
+            title: Text('Semester $nextNormal'),
+            subtitle: const Text('Regular semester'),
+            tileColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.06),
+            onTap: () {
+              Navigator.pop(context);
+              _addSemester(nextNormal);
+            },
           ),
-          title: Row(
-            children: [
-              Icon(Icons.add_rounded, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 12),
-              const Text('Add Semester'),
-            ],
+          const SizedBox(height: 8),
+          ListTile(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            leading: Icon(Icons.wb_sunny_rounded, color: Theme.of(context).colorScheme.tertiary),
+            title: Text(nextSummer),
+            subtitle: const Text('Summer term'),
+            tileColor: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.06),
+            onTap: () {
+              Navigator.pop(context);
+              _addSemester(nextSummer);
+            },
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                leading: Icon(Icons.school_rounded, color: Theme.of(context).colorScheme.primary),
-                title: Text('Semester $nextNormal'),
-                subtitle: const Text('Regular semester'),
-                tileColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.06),
-                onTap: () {
-                  Navigator.pop(context);
-                  _addSemester(nextNormal);
-                },
-              ),
-              const SizedBox(height: 8),
-              ListTile(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                leading: Icon(Icons.wb_sunny_rounded, color: Theme.of(context).colorScheme.tertiary),
-                title: Text(nextSummer),
-                subtitle: const Text('Summer term'),
-                tileColor: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.06),
-                onTap: () {
-                  Navigator.pop(context);
-                  _addSemester(nextSummer);
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-          ],
-        );
-      },
+        ],
+      ),
+      actions: [
+        AppButton(
+          label: 'Cancel',
+          variant: AppButtonVariant.ghost,
+          onTap: () => Navigator.pop(context),
+        ),
+      ],
     );
   }
 

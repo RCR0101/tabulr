@@ -21,6 +21,8 @@ import '../widgets/campus_selector_widget.dart';
 
 
 import '../widgets/error_dialog.dart';
+import '../widgets/common/app_dialog.dart';
+import '../widgets/common/app_button.dart';
 import '../widgets/share_timetable_dialog.dart';
 import 'home_screen.dart';
 import 'course_guide_screen.dart';
@@ -141,61 +143,21 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   }
 
   Future<String?> _showCreateTimetableDialog() async {
-    final controller = TextEditingController();
-    return showDialog<String>(
+    return AppDialog.input(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Create New Timetable'),
-            content: TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'Timetable Name',
-                hintText: 'Enter a name for your timetable',
-              ),
-              autofocus: true,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context, controller.text.trim());
-                },
-                child: const Text('Create'),
-              ),
-            ],
-          ),
+      title: 'Create New Timetable',
+      hint: 'Enter a name for your timetable',
+      confirmLabel: 'Create',
     );
   }
 
   Future<void> _renameTimetable(Timetable timetable) async {
-    final controller = TextEditingController(text: timetable.name);
-    final newName = await showDialog<String>(
+    final newName = await AppDialog.input(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Rename Timetable'),
-            content: TextField(
-              controller: controller,
-              decoration: const InputDecoration(labelText: 'Timetable Name'),
-              autofocus: true,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context, controller.text.trim());
-                },
-                child: const Text('Rename'),
-              ),
-            ],
-          ),
+      title: 'Rename Timetable',
+      initialValue: timetable.name,
+      hint: 'Timetable Name',
+      confirmLabel: 'Rename',
     );
 
     if (newName != null && newName.isNotEmpty && newName != timetable.name) {
@@ -225,30 +187,12 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   }
 
   Future<void> _duplicateTimetable(Timetable timetable) async {
-    final controller = TextEditingController(text: '${timetable.name} (Copy)');
-    final newName = await showDialog<String>(
+    final newName = await AppDialog.input(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Duplicate Timetable'),
-            content: TextField(
-              controller: controller,
-              decoration: const InputDecoration(labelText: 'New Timetable Name'),
-              autofocus: true,
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context, controller.text.trim());
-                },
-                child: const Text('Duplicate'),
-              ),
-            ],
-          ),
+      title: 'Duplicate Timetable',
+      initialValue: '${timetable.name} (Copy)',
+      hint: 'New Timetable Name',
+      confirmLabel: 'Duplicate',
     );
 
     if (newName != null && newName.isNotEmpty) {
@@ -271,32 +215,15 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
       return;
     }
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await AppDialog.confirm(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Delete Timetable'),
-            content: Text(
-              'Are you sure you want to delete "${timetable.name}"? This action cannot be undone.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppDesign.danger(context),
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                ),
-                child: const Text('Delete'),
-              ),
-            ],
-          ),
+      title: 'Delete Timetable',
+      message: 'Are you sure you want to delete "${timetable.name}"? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      isDangerous: true,
     );
 
-    if (confirmed == true) {
+    if (confirmed) {
       try {
         await _timetableService.deleteTimetable(timetable.id);
         setState(() {
@@ -351,55 +278,18 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  void _showClearAllDialog() {
-    showDialog(
+  void _showClearAllDialog() async {
+    final confirmed = await AppDialog.confirm(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: Row(
-              children: [
-                Icon(Icons.warning, color: Theme.of(context).colorScheme.error),
-                const SizedBox(width: AppDesign.spacingSm),
-                const Text('Clear All Timetables'),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Are you sure you want to delete all ${_sortedTimetables.length} timetables?',
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-                const SizedBox(height: AppDesign.spacingSm),
-                Text(
-                  'This action cannot be undone.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.error,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  _clearAllTimetables();
-                },
-                style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.error,
-                  foregroundColor: Theme.of(context).colorScheme.onError,
-                ),
-                child: const Text('Clear All'),
-              ),
-            ],
-          ),
+      title: 'Clear All Timetables',
+      message: 'Are you sure you want to delete all ${_sortedTimetables.length} timetables? This action cannot be undone.',
+      confirmLabel: 'Clear All',
+      isDangerous: true,
     );
+
+    if (confirmed) {
+      _clearAllTimetables();
+    }
   }
 
   Future<void> _clearAllTimetables() async {
@@ -500,34 +390,14 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
 
     if (!mounted) return;
 
-    showDialog(
+    final scheme = Theme.of(context).colorScheme;
+    AppDialog.adaptive(
       context: context,
-      builder: (context) {
-        final scheme = Theme.of(context).colorScheme;
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: AppDesign.borderRadiusLg,
-          ),
-          titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-          contentPadding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
-          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppDesign.spacingSm),
-                decoration: BoxDecoration(
-                  color: scheme.primaryContainer,
-                  borderRadius: AppDesign.borderRadiusSm,
-                ),
-                child: Icon(Icons.sort, color: scheme.onPrimaryContainer, size: 20),
-              ),
-              const SizedBox(width: 12),
-              const Text('Sort Timetables'),
-            ],
-          ),
-          content: SizedBox(
-            width: 340,
-            child: Column(
+      title: 'Sort Timetables',
+      icon: Icons.sort,
+      content: SizedBox(
+        width: 340,
+        child: Column(
               mainAxisSize: MainAxisSize.min,
               children: TimetableListSortOrder.values.map((sortOrder) {
                 final isSelected = currentSort == sortOrder;
@@ -575,15 +445,14 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                 );
               }).toList(),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-          ],
-        );
-      },
+      ),
+      actions: [
+        AppButton(
+          label: 'Cancel',
+          variant: AppButtonVariant.ghost,
+          onTap: () => Navigator.pop(context),
+        ),
+      ],
     );
   }
 
@@ -657,30 +526,15 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   }
 
   Future<void> _logout() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await AppDialog.confirm(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Sign Out'),
-            content: const Text('Are you sure you want to sign out?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppDesign.danger(context),
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                ),
-                child: const Text('Sign Out'),
-              ),
-            ],
-          ),
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out?',
+      confirmLabel: 'Sign Out',
+      isDangerous: true,
     );
 
-    if (confirmed == true) {
+    if (confirmed) {
       try {
         await _authService.signOut();
         // Navigation will be handled by AuthWrapper
@@ -1294,28 +1148,14 @@ class _TimetableEditorScreenState extends State<TimetableEditorScreen> {
   }
 
   Future<bool> _showUnsavedChangesDialog() async {
-    return await showDialog<bool>(
-          context: context,
-          builder:
-              (context) => AlertDialog(
-                title: const Text('Unsaved Changes'),
-                content: const Text(
-                  'You have unsaved changes that will be lost. Are you sure you want to go back?',
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('Stay'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('Leave'),
-                    style: TextButton.styleFrom(foregroundColor: AppDesign.danger(context)),
-                  ),
-                ],
-              ),
-        ) ??
-        false;
+    return await AppDialog.confirm(
+      context: context,
+      title: 'Unsaved Changes',
+      message: 'You have unsaved changes that will be lost. Are you sure you want to go back?',
+      confirmLabel: 'Leave',
+      cancelLabel: 'Stay',
+      isDangerous: true,
+    );
   }
 
   @override

@@ -15,6 +15,8 @@ import '../services/config_service.dart';
 import '../services/course_data_service.dart';
 import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
+import '../widgets/common/app_dialog.dart';
+import '../widgets/common/app_button.dart';
 
 
 int _timeToSlotHour(TimeOfDay t) => t.hour - 7;
@@ -322,53 +324,54 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     final clashes = _findClashes(timetable);
     if (clashes.isNotEmpty) {
-      final proceed = await showDialog<bool>(
+      final proceed = await AppDialog.adaptive<bool>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Schedule Clash'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                  'This timetable clashes with your custom events:'),
-              const SizedBox(height: 12),
-              ...clashes
-                  .take(5)
-                  .map((c) => Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(Icons.warning_amber,
-                                size: 16, color: AppDesign.warning(context)),
-                            const SizedBox(width: AppDesign.spacingSm),
-                            Expanded(
-                                child: Text(c,
-                                    style: const TextStyle(fontSize: 13))),
-                          ],
-                        ),
-                      )),
-              if (clashes.length > 5)
-                Text('...and ${clashes.length - 5} more',
-                    style: TextStyle(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: AppDesign.opacityMedium))),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Switch Anyway'),
-            ),
+        title: 'Schedule Clash',
+        icon: Icons.warning_amber,
+        iconColor: AppDesign.warning(context),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+                'This timetable clashes with your custom events:'),
+            const SizedBox(height: 12),
+            ...clashes
+                .take(5)
+                .map((c) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.warning_amber,
+                              size: 16, color: AppDesign.warning(context)),
+                          const SizedBox(width: AppDesign.spacingSm),
+                          Expanded(
+                              child: Text(c,
+                                  style: const TextStyle(fontSize: 13))),
+                        ],
+                      ),
+                    )),
+            if (clashes.length > 5)
+              Text('...and ${clashes.length - 5} more',
+                  style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: AppDesign.opacityMedium))),
           ],
         ),
+        actions: [
+          AppButton(
+            label: 'Cancel',
+            variant: AppButtonVariant.ghost,
+            onTap: () => Navigator.pop(context, false),
+          ),
+          AppButton(
+            label: 'Switch Anyway',
+            onTap: () => Navigator.pop(context, true),
+          ),
+        ],
       );
 
       if (proceed != true) return;
@@ -405,30 +408,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Future<void> _editStudentId() async {
-    final controller = TextEditingController(text: _studentId ?? '');
-    final result = await showDialog<String>(
+    final result = await AppDialog.input(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Student ID'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            hintText: 'e.g. 2021A7PS0001H',
-          ),
-          textCapitalization: TextCapitalization.characters,
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+      title: 'Student ID',
+      initialValue: _studentId,
+      hint: 'e.g. 2021A7PS0001H',
+      confirmLabel: 'Save',
     );
 
     if (result != null && result.isNotEmpty) {

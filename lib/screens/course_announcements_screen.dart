@@ -15,6 +15,7 @@ import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/loading_state.dart';
 import '../widgets/common/shimmer_loading.dart';
+import '../widgets/common/app_dialog.dart';
 
 
 class CourseAnnouncementsScreen extends StatefulWidget {
@@ -261,25 +262,14 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
       warning += '\n\nThis post is ${announcement.disputeState.replaceAll('_', ' ')}. '
           'Deleting it will incur a reputation penalty.';
     }
-    final confirmed = await showDialog<bool>(
+    final confirmed = await AppDialog.confirm(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Announcement'),
-        content: Text(warning),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: AppDesign.danger(context)),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+      title: 'Delete Announcement',
+      message: warning,
+      confirmLabel: 'Delete',
+      isDangerous: true,
     );
-    if (confirmed == true) {
+    if (confirmed) {
       try {
         await _announcementService.deleteAnnouncement(announcement.id);
         ToastService.showSuccess('Announcement deleted');

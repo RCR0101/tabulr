@@ -7,6 +7,8 @@ import '../widgets/common/shimmer_loading.dart';
 import '../services/responsive_service.dart';
 import '../services/auth_service.dart';
 import '../utils/design_constants.dart';
+import '../widgets/common/app_dialog.dart';
+import '../widgets/common/app_button.dart';
 
 
 class ProfessorsScreen extends StatefulWidget {
@@ -390,32 +392,14 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
 
   void _showSortDialog() {
     final currentSort = _professorService.sortType;
-    
-    showDialog(
+
+    AppDialog.adaptive(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                Icons.sort,
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Text('Sort Professors'),
-          ],
-        ),
-        content: Container(
-          width: ResponsiveService.getValue(context, mobile: MediaQuery.of(context).size.width * 0.9, tablet: 400, desktop: 480),
-          child: Column(
+      title: 'Sort Professors',
+      icon: Icons.sort,
+      content: Container(
+        width: ResponsiveService.getValue(context, mobile: MediaQuery.of(context).size.width * 0.9, tablet: 400, desktop: 480),
+        child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Wrap(
@@ -503,14 +487,14 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
               ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
       ),
+      actions: [
+        AppButton(
+          label: 'Close',
+          variant: AppButtonVariant.ghost,
+          onTap: () => Navigator.pop(context),
+        ),
+      ],
     );
   }
 

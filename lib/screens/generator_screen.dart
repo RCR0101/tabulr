@@ -7,6 +7,8 @@ import '../services/course_data_service.dart';
 import '../services/campus_service.dart';
 import '../widgets/timetable_generator_widget.dart';
 import '../widgets/error_dialog.dart';
+import '../widgets/common/app_dialog.dart';
+import '../widgets/common/app_button.dart';
 
 class GeneratorScreen extends StatefulWidget {
   const GeneratorScreen({super.key});
@@ -72,36 +74,36 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
       section: s.section,
     )).toList();
 
-    showDialog(
+    AppDialog.adaptive(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Timetable Selected'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Selected timetable with sections:'),
-            const SizedBox(height: 8),
-            ...timetableSections.map((section) => Text(
-              '• ${section.courseCode} - ${section.sectionId}',
-              style: const TextStyle(fontSize: 12),
-            )),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context, timetableSections);
-            },
-            child: const Text('Apply to Main Timetable'),
-          ),
+      title: 'Timetable Selected',
+      icon: Icons.check_circle_outline,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Selected timetable with sections:'),
+          const SizedBox(height: 8),
+          ...timetableSections.map((section) => Text(
+            '• ${section.courseCode} - ${section.sectionId}',
+            style: const TextStyle(fontSize: 12),
+          )),
         ],
       ),
+      actions: [
+        AppButton(
+          label: 'OK',
+          variant: AppButtonVariant.ghost,
+          onTap: () => Navigator.pop(context),
+        ),
+        AppButton(
+          label: 'Apply to Main Timetable',
+          onTap: () {
+            Navigator.pop(context);
+            Navigator.pop(context, timetableSections);
+          },
+        ),
+      ],
     );
   }
 

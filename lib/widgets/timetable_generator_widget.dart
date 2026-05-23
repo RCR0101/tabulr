@@ -7,6 +7,8 @@ import '../services/toast_service.dart';
 import '../services/responsive_service.dart';
 import '../services/campus_service.dart';
 import '../utils/design_constants.dart';
+import 'common/app_dialog.dart';
+import 'common/app_button.dart';
 import 'generated_timetable_card.dart';
 
 class TimetableGeneratorWidget extends StatefulWidget {
@@ -1596,77 +1598,66 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   }
 
   void _showNoTimetablesDialog() {
-    showDialog(
+    AppDialog.adaptive(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(
-              Icons.warning_amber,
-              color: Theme.of(context).colorScheme.primary,
-              size: 24,
-            ),
-            const SizedBox(width: 8),
-            const Text('No Valid Timetables Found'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'No conflict-free timetable combinations could be generated with your selected courses and constraints.',
-              style: TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Try the following:',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text('• Remove some time constraints'),
-            const Text('• Select fewer courses'),
-            const Text('• Choose courses with more section options'),
-            const Text('• Adjust your preferences'),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                ),
+      title: 'No Valid Timetables Found',
+      icon: Icons.warning_amber,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'No conflict-free timetable combinations could be generated with your selected courses and constraints.',
+            style: TextStyle(fontSize: 16),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Try the following:',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text('• Remove some time constraints'),
+          const Text('• Select fewer courses'),
+          const Text('• Choose courses with more section options'),
+          const Text('• Adjust your preferences'),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 16,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'All generated timetables are now conflict-free for better scheduling.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'All generated timetables are now conflict-free for better scheduling.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
           ),
         ],
       ),
+      actions: [
+        AppButton(
+          label: 'OK',
+          onTap: () => Navigator.pop(context),
+        ),
+      ],
     );
   }
 }

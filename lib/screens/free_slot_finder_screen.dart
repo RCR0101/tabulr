@@ -7,6 +7,8 @@ import '../services/timetable_service.dart';
 import '../services/responsive_service.dart';
 import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
+import '../widgets/common/app_dialog.dart';
+import '../widgets/common/app_button.dart';
 import '../widgets/common/loading_state.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/share_timetable_dialog.dart';
@@ -220,66 +222,60 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
     final duration = hi - lo + 1;
     final timeRange = '${_hourStartTime(lo)} – ${_hourEndTime(hi)}';
 
-    final title = await showDialog<String>(
+    final controller = TextEditingController();
+    final title = await AppDialog.adaptive<String>(
       context: context,
-      builder: (ctx) {
-        final controller = TextEditingController();
-        return AlertDialog(
-          shape: AppDesign.dialogShape,
-          title: Text('Add event'),
-          content: SizedBox(
-            width: 340,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+      title: 'Add event',
+      icon: Icons.calendar_month,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+              borderRadius: AppDesign.borderRadiusSm,
+            ),
+            child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Theme.of(ctx).colorScheme.primaryContainer.withValues(alpha: 0.3),
-                    borderRadius: AppDesign.borderRadiusSm,
+                Icon(Icons.schedule, size: 16, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  '$dayLabel $timeRange',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.schedule, size: 16, color: Theme.of(ctx).colorScheme.primary),
-                      const SizedBox(width: 8),
-                      Text(
-                        '$dayLabel $timeRange',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(ctx).colorScheme.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: controller,
-                  autofocus: true,
-                  decoration: AppDesign.inputDecoration(
-                    ctx,
-                    label: 'Event title',
-                    hint: 'e.g. Study session, Lunch',
-                  ),
-                  onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
                 ),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+          const SizedBox(height: 16),
+          TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: AppDesign.inputDecoration(
+              context,
+              label: 'Event title',
+              hint: 'e.g. Study session, Lunch',
             ),
-            FilledButton.icon(
-              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-              icon: const Icon(Icons.calendar_month, size: 16),
-              label: const Text('Add to Calendar'),
-            ),
-          ],
-        );
-      },
+            onSubmitted: (v) => Navigator.pop(context, v.trim()),
+          ),
+        ],
+      ),
+      actions: [
+        AppButton(
+          label: 'Cancel',
+          variant: AppButtonVariant.ghost,
+          onTap: () => Navigator.pop(context),
+        ),
+        AppButton(
+          label: 'Add to Calendar',
+          icon: Icons.calendar_month,
+          onTap: () => Navigator.pop(context, controller.text.trim()),
+        ),
+      ],
     );
 
     if (title == null || title.isEmpty || !mounted) return;

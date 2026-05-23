@@ -8,6 +8,8 @@ import '../services/auth_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/loading_state.dart';
 import '../widgets/common/shimmer_loading.dart';
+import '../widgets/common/app_dialog.dart';
+import '../widgets/common/app_button.dart';
 
 
 enum CourseSortOption {
@@ -356,160 +358,128 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     }
 
   Future<void> _showFileInfo(Map<String, dynamic> file) async {
-    return showDialog(
+    return AppDialog.adaptive(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          file['name'] ?? 'Unknown File',
-          style: Theme.of(context).textTheme.titleMedium,
-          overflow: TextOverflow.ellipsis,
-        ),
-        content: SizedBox(
-          width: ResponsiveService.getValue(
-            context,
-            mobile: double.maxFinite,
-            tablet: 400,
-            desktop: 500,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _InfoRow('Size', _formatFileSize(file['size'] ?? 0)),
-                _InfoRow('Uploaded', _formatDate(file['uploadedAt'])),
-                
-                const SizedBox(height: 16),
-                Text(
-                  'Metadata',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
+      title: file['name'] ?? 'Unknown File',
+      icon: Icons.info_outline,
+      content: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _InfoRow('Size', _formatFileSize(file['size'] ?? 0)),
+            _InfoRow('Uploaded', _formatDate(file['uploadedAt'])),
 
-                if (file['contributor'] != null)
-                  _InfoRow('Contributor', file['contributor']),
-
-                if (file['driveName'] != null)
-                  _InfoRow('Drive', file['driveName']),
-
-                if (file['course_codes'] != null && (file['course_codes'] as List).isNotEmpty)
-                  _InfoRow('Course', (file['course_codes'] as List).first.toString()),
-                
-                if (file['tags'] != null && (file['tags'] as List).isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Text(
-                    'Tags',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: (file['tags'] as List<dynamic>)
-                        .map((tag) => Chip(
-                              label: Text(
-                                tag.toString(),
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                              backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                            ))
-                        .toList(),
-                  ),
-                ],
-              ],
+            const SizedBox(height: 16),
+            Text(
+              'Metadata',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
+            const SizedBox(height: 8),
+
+            if (file['contributor'] != null)
+              _InfoRow('Contributor', file['contributor']),
+
+            if (file['driveName'] != null)
+              _InfoRow('Drive', file['driveName']),
+
+            if (file['course_codes'] != null && (file['course_codes'] as List).isNotEmpty)
+              _InfoRow('Course', (file['course_codes'] as List).first.toString()),
+
+            if (file['tags'] != null && (file['tags'] as List).isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text(
+                'Tags',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: (file['tags'] as List<dynamic>)
+                    .map((tag) => Chip(
+                          label: Text(
+                            tag.toString(),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                        ))
+                    .toList(),
+              ),
+            ],
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
       ),
+      actions: [
+        AppButton(
+          label: 'Close',
+          variant: AppButtonVariant.ghost,
+          onTap: () => Navigator.of(context).pop(),
+        ),
+      ],
     );
   }
 
   Future<void> _showSubmitDialog() async {
-    return showDialog(
+    return AppDialog.adaptive(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
+      title: 'Submit Academic Resource',
+      icon: Icons.cloud_upload,
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.cloud_upload),
-            SizedBox(width: 8),
-            Text('Submit Academic Resource'),
+            Text(
+              'Share your notes, papers, or other academic materials with the community',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _driveLinkController,
+              decoration: const InputDecoration(
+                labelText: 'Google Drive Link *',
+                hintText: 'https://drive.google.com/file/d/...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _titleController,
+              decoration: const InputDecoration(
+                labelText: 'Title *',
+                hintText: 'e.g., Algorithm Analysis Notes',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _contributorController,
+              decoration: const InputDecoration(
+                labelText: 'Contributor Name *',
+                hintText: 'Your name as it should appear',
+                border: OutlineInputBorder(),
+              ),
+            ),
           ],
         ),
-        content: SizedBox(
-          width: ResponsiveService.getValue(
-            context,
-            mobile: double.maxFinite,
-            tablet: 400,
-            desktop: 500,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Share your notes, papers, or other academic materials with the community',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                TextField(
-                  controller: _driveLinkController,
-                  decoration: const InputDecoration(
-                    labelText: 'Google Drive Link *',
-                    hintText: 'https://drive.google.com/file/d/...',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _titleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Title *',
-                    hintText: 'e.g., Algorithm Analysis Notes',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _contributorController,
-                  decoration: const InputDecoration(
-                    labelText: 'Contributor Name *',
-                    hintText: 'Your name as it should appear',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: _isSubmitting ? null : _submitLink,
-            child: _isSubmitting 
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Submit'),
-          ),
-        ],
       ),
+      actions: [
+        AppButton(
+          label: 'Cancel',
+          variant: AppButtonVariant.ghost,
+          onTap: () => Navigator.of(context).pop(),
+        ),
+        AppButton(
+          label: 'Submit',
+          onTap: _isSubmitting ? null : _submitLink,
+        ),
+      ],
     );
   }
 
@@ -572,134 +542,120 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   }
 
   void _showCourseSortDialog() {
-    showDialog(
+    AppDialog.adaptive(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.sort),
-            SizedBox(width: 8),
-            Text('Sort Courses'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: CourseSortOption.values.map((option) {
-            String title;
-            String subtitle;
-            IconData icon;
-            
-            switch (option) {
-              case CourseSortOption.nameAsc:
-                title = 'Name A-Z';
-                subtitle = 'Sort by course name ascending';
-                icon = Icons.sort_by_alpha;
-                break;
-              case CourseSortOption.nameDesc:
-                title = 'Name Z-A';
-                subtitle = 'Sort by course name descending';
-                icon = Icons.sort_by_alpha;
-                break;
-              case CourseSortOption.fileCountAsc:
-                title = 'Files Count ↑';
-                subtitle = 'Sort by file count ascending';
-                icon = Icons.trending_up;
-                break;
-              case CourseSortOption.fileCountDesc:
-                title = 'Files Count ↓';
-                subtitle = 'Sort by file count descending';
-                icon = Icons.trending_down;
-                break;
-            }
-            
-            return RadioListTile<CourseSortOption>(
-              value: option,
-              groupValue: _courseSortOption,
-              onChanged: (value) {
-                setState(() {
-                  _courseSortOption = value!;
-                });
-                Navigator.pop(context);
-                if (_searchQuery.isEmpty) {
-                  _loadCourses();
-                }
-              },
-              title: Text(title),
-              subtitle: Text(subtitle),
-              secondary: Icon(icon),
-            );
-          }).toList(),
-        ),
+      title: 'Sort Courses',
+      icon: Icons.sort,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: CourseSortOption.values.map((option) {
+          String title;
+          String subtitle;
+          IconData icon;
+
+          switch (option) {
+            case CourseSortOption.nameAsc:
+              title = 'Name A-Z';
+              subtitle = 'Sort by course name ascending';
+              icon = Icons.sort_by_alpha;
+              break;
+            case CourseSortOption.nameDesc:
+              title = 'Name Z-A';
+              subtitle = 'Sort by course name descending';
+              icon = Icons.sort_by_alpha;
+              break;
+            case CourseSortOption.fileCountAsc:
+              title = 'Files Count ↑';
+              subtitle = 'Sort by file count ascending';
+              icon = Icons.trending_up;
+              break;
+            case CourseSortOption.fileCountDesc:
+              title = 'Files Count ↓';
+              subtitle = 'Sort by file count descending';
+              icon = Icons.trending_down;
+              break;
+          }
+
+          return RadioListTile<CourseSortOption>(
+            value: option,
+            groupValue: _courseSortOption,
+            onChanged: (value) {
+              setState(() {
+                _courseSortOption = value!;
+              });
+              Navigator.pop(context);
+              if (_searchQuery.isEmpty) {
+                _loadCourses();
+              }
+            },
+            title: Text(title),
+            subtitle: Text(subtitle),
+            secondary: Icon(icon),
+          );
+        }).toList(),
       ),
     );
   }
 
   void _showFileSortDialog() {
-    showDialog(
+    AppDialog.adaptive(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.sort),
-            SizedBox(width: 8),
-            Text('Sort Files'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: FileSortOption.values.map((option) {
-            String title;
-            String subtitle;
-            IconData icon;
-            
-            switch (option) {
-              case FileSortOption.nameAsc:
-                title = 'Name A-Z';
-                subtitle = 'Sort by filename ascending';
-                icon = Icons.sort_by_alpha;
-                break;
-              case FileSortOption.nameDesc:
-                title = 'Name Z-A';
-                subtitle = 'Sort by filename descending';
-                icon = Icons.sort_by_alpha;
-                break;
-              case FileSortOption.dateAsc:
-                title = 'Date Oldest';
-                subtitle = 'Sort by upload date ascending';
-                icon = Icons.schedule;
-                break;
-              case FileSortOption.dateDesc:
-                title = 'Date Newest';
-                subtitle = 'Sort by upload date descending';
-                icon = Icons.schedule;
-                break;
-              case FileSortOption.sizeAsc:
-                title = 'Size Smallest';
-                subtitle = 'Sort by file size ascending';
-                icon = Icons.storage;
-                break;
-              case FileSortOption.sizeDesc:
-                title = 'Size Largest';
-                subtitle = 'Sort by file size descending';
-                icon = Icons.storage;
-                break;
-            }
-            
-            return RadioListTile<FileSortOption>(
-              value: option,
-              groupValue: _fileSortOption,
-              onChanged: (value) {
-                setState(() {
-                  _fileSortOption = value!;
-                });
-                Navigator.pop(context);
-              },
-              title: Text(title),
-              subtitle: Text(subtitle),
-              secondary: Icon(icon),
-            );
-          }).toList(),
-        ),
+      title: 'Sort Files',
+      icon: Icons.sort,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: FileSortOption.values.map((option) {
+          String title;
+          String subtitle;
+          IconData icon;
+
+          switch (option) {
+            case FileSortOption.nameAsc:
+              title = 'Name A-Z';
+              subtitle = 'Sort by filename ascending';
+              icon = Icons.sort_by_alpha;
+              break;
+            case FileSortOption.nameDesc:
+              title = 'Name Z-A';
+              subtitle = 'Sort by filename descending';
+              icon = Icons.sort_by_alpha;
+              break;
+            case FileSortOption.dateAsc:
+              title = 'Date Oldest';
+              subtitle = 'Sort by upload date ascending';
+              icon = Icons.schedule;
+              break;
+            case FileSortOption.dateDesc:
+              title = 'Date Newest';
+              subtitle = 'Sort by upload date descending';
+              icon = Icons.schedule;
+              break;
+            case FileSortOption.sizeAsc:
+              title = 'Size Smallest';
+              subtitle = 'Sort by file size ascending';
+              icon = Icons.storage;
+              break;
+            case FileSortOption.sizeDesc:
+              title = 'Size Largest';
+              subtitle = 'Sort by file size descending';
+              icon = Icons.storage;
+              break;
+          }
+
+          return RadioListTile<FileSortOption>(
+            value: option,
+            groupValue: _fileSortOption,
+            onChanged: (value) {
+              setState(() {
+                _fileSortOption = value!;
+              });
+              Navigator.pop(context);
+            },
+            title: Text(title),
+            subtitle: Text(subtitle),
+            secondary: Icon(icon),
+          );
+        }).toList(),
       ),
     );
   }

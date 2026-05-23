@@ -8,6 +8,8 @@ import '../widgets/search_filter_widget.dart';
 import '../services/campus_service.dart';
 import '../services/clash_detector.dart';
 import '../utils/datetime_utils.dart';
+import '../widgets/common/app_dialog.dart';
+import '../widgets/common/app_button.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/loading_state.dart';
 import '../widgets/common/shimmer_loading.dart';
@@ -106,38 +108,36 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     }
 
     if (incompleteSelections.isNotEmpty) {
-      showDialog(
+      AppDialog.adaptive(
         context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Incomplete Course Selection'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Please select sections from all available types for the following courses:'),
-                const SizedBox(height: 12),
-                ...incompleteSelections.map((incomplete) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.warning, color: Theme.of(context).colorScheme.error, size: 16),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(incomplete, style: const TextStyle(fontSize: 14))),
-                    ],
-                  ),
-                )),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('OK'),
+        title: 'Incomplete Course Selection',
+        icon: Icons.warning,
+        iconColor: Theme.of(context).colorScheme.error,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Please select sections from all available types for the following courses:'),
+            const SizedBox(height: 12),
+            ...incompleteSelections.map((incomplete) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.warning, color: Theme.of(context).colorScheme.error, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(incomplete, style: const TextStyle(fontSize: 14))),
+                ],
               ),
-            ],
-          );
-        },
+            )),
+          ],
+        ),
+        actions: [
+          AppButton(
+            label: 'OK',
+            onTap: () => Navigator.of(context).pop(),
+          ),
+        ],
       );
       return;
     }

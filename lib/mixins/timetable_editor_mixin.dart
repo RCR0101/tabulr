@@ -22,6 +22,8 @@ import '../widgets/error_dialog.dart';
 import '../widgets/timetable_widget.dart';
 import '../widgets/export_options_dialog.dart';
 import '../widgets/share_timetable_dialog.dart';
+import '../widgets/common/app_dialog.dart';
+import '../widgets/common/app_button.dart';
 import '../screens/generator_screen.dart';
 import '../screens/add_swap_screen.dart';
 
@@ -409,33 +411,17 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     final tt = currentTimetable;
     if (tt == null) return;
 
-    final confirmed = await showDialog<bool>(
+    final confirmed = await AppDialog.confirm(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Clear Timetable'),
-        content: const Text(
-          'Are you sure you want to remove all selected courses from your timetable?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Clear All'),
-          ),
-        ],
-      ),
+      title: 'Clear Timetable',
+      message: 'Are you sure you want to remove all selected courses from your timetable?',
+      confirmLabel: 'Clear All',
+      isDangerous: true,
     );
 
     if (!mounted) return;
 
-    if (confirmed == true) {
+    if (confirmed) {
       try {
         _pushUndo('Clear timetable');
         tt.selectedSections.clear();
@@ -517,26 +503,13 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   }
 
   Future<bool> showIncompleteWarningDialog() async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Incomplete Course Selections'),
-            content: const Text(
-              'Some courses have incomplete selections (missing lab/tutorial/lecture sections). Do you want to continue exporting anyway?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Continue'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
+    return await AppDialog.confirm(
+      context: context,
+      title: 'Incomplete Course Selections',
+      message: 'Some courses have incomplete selections (missing lab/tutorial/lecture sections). Do you want to continue exporting anyway?',
+      confirmLabel: 'Continue',
+      icon: Icons.warning_amber_rounded,
+    );
   }
 
   Future<void> exportToICS() async {
@@ -554,18 +527,17 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
 
       if (!mounted) return;
 
-      showDialog(
+      AppDialog.adaptive(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Export Successful'),
-          content: Text('Timetable exported to: $filePath'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
+        title: 'Export Successful',
+        icon: Icons.check_circle_outline,
+        content: Text('Timetable exported to: $filePath'),
+        actions: [
+          AppButton(
+            label: 'OK',
+            onTap: () => Navigator.pop(context),
+          ),
+        ],
       );
     } catch (e) {
       showErrorDialog('Export failed: $e');
@@ -650,18 +622,17 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
 
       if (!mounted) return;
 
-      showDialog(
+      AppDialog.adaptive(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Export Successful'),
-          content: Text('Timetable downloaded as: $filePath'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
+        title: 'Export Successful',
+        icon: Icons.check_circle_outline,
+        content: Text('Timetable downloaded as: $filePath'),
+        actions: [
+          AppButton(
+            label: 'OK',
+            onTap: () => Navigator.pop(context),
+          ),
+        ],
       );
     } catch (e) {
       showErrorDialog('Export failed: $e');
@@ -746,31 +717,17 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   }
 
   Future<void> logout() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await AppDialog.confirm(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out?',
+      confirmLabel: 'Sign Out',
+      isDangerous: true,
     );
 
     if (!mounted) return;
 
-    if (confirmed == true) {
+    if (confirmed) {
       try {
         await authService.signOut();
         // Force navigation back to root since we're deep in navigation stack

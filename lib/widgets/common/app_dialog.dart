@@ -177,7 +177,7 @@ class AppDialog {
     bool isDangerous = false,
     IconData? icon,
   }) async {
-    final result = await show<bool>(
+    final result = await adaptive<bool>(
       context: context,
       title: title,
       icon: icon ?? (isDangerous ? Icons.warning_amber_rounded : null),
@@ -211,7 +211,7 @@ class AppDialog {
     IconData? icon,
   }) async {
     final controller = TextEditingController(text: initialValue);
-    final result = await show<String>(
+    final result = await adaptive<String>(
       context: context,
       title: title,
       icon: icon,

@@ -8,6 +8,8 @@ import '../services/clash_detector.dart';
 import '../services/campus_service.dart';
 import '../services/responsive_service.dart';
 import '../services/toast_service.dart';
+import '../widgets/common/app_dialog.dart';
+import '../widgets/common/app_button.dart';
 import '../utils/design_constants.dart';
 
 enum CourseCategory { huel, del, other }
@@ -341,61 +343,48 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
   }
 
   void _showClashDialog(Course replacementCourse, List<ClashWarning> clashes) {
-    showDialog(
+    AppDialog.adaptive(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(
-                Icons.warning,
-                color: Theme.of(context).colorScheme.error,
-              ),
-              const SizedBox(width: 8),
-              const Text('Clash Detected'),
-            ],
+      title: 'Clash Detected',
+      icon: Icons.warning,
+      iconColor: Theme.of(context).colorScheme.error,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Replacing ${_selectedCourse!.courseCode} with ${replacementCourse.courseCode} would cause the following clashes:',
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Replacing ${_selectedCourse!.courseCode} with ${replacementCourse.courseCode} would cause the following clashes:',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 16),
-              ...clashes.map((clash) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.error,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        clash.message,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ),
-                  ],
+          const SizedBox(height: 16),
+          ...clashes.map((clash) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.error,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.error,
                 ),
-              )),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Continue Browsing'),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    clash.message,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
             ),
-          ],
-        );
-      },
+          )),
+        ],
+      ),
+      actions: [
+        AppButton(
+          label: 'Continue Browsing',
+          onTap: () => Navigator.of(context).pop(),
+        ),
+      ],
     );
   }
 

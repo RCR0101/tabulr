@@ -4,6 +4,7 @@ import '../models/timetable.dart';
 import '../services/timetable_sharing_service.dart';
 import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
+import 'common/app_dialog.dart';
 
 class ShareTimetableDialog extends StatefulWidget {
   final Timetable timetable;
@@ -49,30 +50,14 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
   }
 
   Future<void> _revoke() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await AppDialog.confirm(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: AppDesign.dialogShape,
-        title: const Text('Revoke share code?'),
-        content: const Text(
-          'The current code will stop working. A new code will be generated.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(ctx).colorScheme.error,
-            ),
-            child: const Text('Revoke'),
-          ),
-        ],
-      ),
+      title: 'Revoke share code?',
+      message: 'The current code will stop working. A new code will be generated.',
+      confirmLabel: 'Revoke',
+      isDangerous: true,
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
 
     setState(() {
       _isRevoking = true;

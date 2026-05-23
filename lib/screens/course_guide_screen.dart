@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/design_constants.dart';
 import '../widgets/course_guide_widget.dart';
+import '../widgets/common/app_dialog.dart';
 import '../services/auth_service.dart';
 import '../services/toast_service.dart';
 import '../widgets/theme_selector_widget.dart';
@@ -16,29 +17,15 @@ class _CourseGuideScreenState extends State<CourseGuideScreen> {
   final AuthService _authService = AuthService();
 
   Future<void> _logout() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await AppDialog.confirm(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppDesign.danger(context),
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
-            ),
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out?',
+      confirmLabel: 'Sign Out',
+      isDangerous: true,
     );
 
-    if (confirmed == true) {
+    if (confirmed) {
       try {
         await _authService.signOut();
         // Navigation will be handled by AuthWrapper
