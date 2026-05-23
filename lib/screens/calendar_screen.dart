@@ -893,14 +893,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ? const CalendarSkeleton()
           : Column(
               children: [
-                _buildHeader(theme),
-                _buildWeekNav(theme),
-                const Divider(height: 1),
                 if (ResponsiveService.isMobile(context)) ...[
+                  _buildMobileHeader(theme),
                   _buildMobileDaySelector(theme),
                   Expanded(child: _buildSingleDayView(theme)),
-                ] else
+                ] else ...[
+                  _buildHeader(theme),
+                  _buildWeekNav(theme),
+                  const Divider(height: 1),
                   Expanded(child: _buildWeekView(theme)),
+                ],
               ],
             ),
     );
@@ -969,6 +971,106 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   bool get isToday => _sameDay(_weekStart, _mondayOf(DateTime.now()));
 
+  Widget _buildMobileHeader(ThemeData theme) {
+    if (_timetables.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(AppDesign.spacingMd),
+        child: Text(
+          'No timetables found. Create one in TT Builder first.',
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: theme.colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
+          ),
+        ),
+      );
+    }
+
+    final weekEnd = _weekStart.add(const Duration(days: 5));
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    String weekLabel;
+    if (_weekStart.month == weekEnd.month) {
+      weekLabel = '${_weekStart.day}–${weekEnd.day} ${months[_weekStart.month - 1]}';
+    } else {
+      weekLabel = '${_weekStart.day} ${months[_weekStart.month - 1]}–${weekEnd.day} ${months[weekEnd.month - 1]}';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _selectedTimetable?.id,
+                  decoration: const InputDecoration(
+                    labelText: 'Timetable',
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    isDense: true,
+                  ),
+                  items: _timetables.map((tt) {
+                    return DropdownMenuItem(value: tt.id, child: Text(tt.name));
+                  }).toList(),
+                  onChanged: (id) {
+                    if (id == null) return;
+                    final tt = _timetables.firstWhere((t) => t.id == id);
+                    _onTimetableChanged(tt);
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              ActionChip(
+                avatar: const Icon(Icons.badge, size: 16),
+                label: Text(
+                  _studentId != null && _studentId!.isNotEmpty ? _studentId! : 'Set ID',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                onPressed: _editStudentId,
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left, size: 20),
+                onPressed: _previousWeek,
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              ),
+              Expanded(
+                child: Text(
+                  weekLabel,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              if (!isToday)
+                IconButton(
+                  icon: const Icon(Icons.today, size: 18),
+                  tooltip: 'Go to today',
+                  onPressed: _goToToday,
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right, size: 20),
+                onPressed: _nextWeek,
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildWeekNav(ThemeData theme) {
     final weekEnd = _weekStart.add(const Duration(days: 5));
     const months = [
@@ -1006,61 +1108,65 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final days = List.generate(6, (i) => _weekStart.add(Duration(days: i)));
     final dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     final today = DateTime.now();
+    final selected = _mobileDayIndex.clamp(0, 5);
 
-    return SizedBox(
-      height: 56,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        itemCount: 6,
-        itemBuilder: (context, i) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: Row(
+        children: List.generate(6, (i) {
           final isToday = _sameDay(days[i], today);
-          final isSelected = i == _mobileDayIndex.clamp(0, 5);
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 3),
-            child: GestureDetector(
-              onTap: () => setState(() => _mobileDayIndex = i),
-              child: Container(
-                width: 54,
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? theme.colorScheme.primary
-                      : isToday
-                          ? theme.colorScheme.primary.withValues(alpha: AppDesign.opacityDivider)
-                          : Colors.transparent,
-                  borderRadius: AppDesign.borderRadiusMd,
-                  border: isToday && !isSelected
-                      ? Border.all(color: theme.colorScheme.primary, width: 1.5)
-                      : null,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      dayLabels[i],
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: isSelected
-                            ? theme.colorScheme.onPrimary
-                            : theme.colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
-                        fontWeight: FontWeight.w600,
+          final isSelected = i == selected;
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(left: i == 0 ? 0 : 4, right: i == 5 ? 0 : 4),
+              child: GestureDetector(
+                onTap: () => setState(() => _mobileDayIndex = i),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  height: 62,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? theme.colorScheme.primary
+                        : isToday
+                            ? theme.colorScheme.primary.withValues(alpha: 0.08)
+                            : theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(16),
+                    border: isToday && !isSelected
+                        ? Border.all(color: theme.colorScheme.primary, width: 1.5)
+                        : null,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        dayLabels[i],
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: isSelected
+                              ? theme.colorScheme.onPrimary.withValues(alpha: 0.85)
+                              : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${days[i].day}',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        color: isSelected
-                            ? theme.colorScheme.onPrimary
-                            : theme.colorScheme.onSurface,
-                        fontWeight: FontWeight.bold,
+                      const SizedBox(height: 3),
+                      Text(
+                        '${days[i].day}',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: isSelected
+                              ? theme.colorScheme.onPrimary
+                              : theme.colorScheme.onSurface,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           );
-        },
+        }),
       ),
     );
   }

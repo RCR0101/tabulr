@@ -10,6 +10,7 @@ import '../widgets/common/loading_state.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
+import '../services/courses_master_service.dart';
 
 
 enum CourseSortOption {
@@ -185,11 +186,14 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   }
 
   List<Map<String, dynamic>> _parseCourses(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    final master = CoursesMasterService();
     return docs.map((doc) {
       final data = doc.data();
+      final code = data['code'] ?? doc.id;
+      final title = master.getTitle(code);
       return {
-        'code': data['code'] ?? doc.id,
-        'name': data['code'] ?? doc.id,
+        'code': code,
+        'name': title != code ? title : '',
         'fileCount': data['fileCount'] ?? 0,
         'driveCount': data['driveCount'] ?? 0,
       };
@@ -530,9 +534,18 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     }
   }
 
-  String _getFileIcon(String mimeType) {
-    // Return empty string to remove emojis for files
-    return '';
+  static IconData _getFileIconData(String mimeType) {
+    final mt = mimeType.toLowerCase();
+    if (mt.contains('pdf')) return Icons.picture_as_pdf_rounded;
+    if (mt.contains('image')) return Icons.image_rounded;
+    if (mt.contains('video')) return Icons.videocam_rounded;
+    if (mt.contains('audio')) return Icons.audiotrack_rounded;
+    if (mt.contains('spreadsheet') || mt.contains('excel') || mt.contains('csv')) return Icons.table_chart_rounded;
+    if (mt.contains('presentation') || mt.contains('powerpoint')) return Icons.slideshow_rounded;
+    if (mt.contains('document') || mt.contains('word') || mt.contains('msword')) return Icons.article_rounded;
+    if (mt.contains('zip') || mt.contains('rar') || mt.contains('compressed')) return Icons.folder_zip_rounded;
+    if (mt.contains('text')) return Icons.description_rounded;
+    return Icons.insert_drive_file_rounded;
   }
 
   String _formatFileSize(int bytes) {
@@ -749,21 +762,13 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                   ),
                 ),
                 
-                const SizedBox(width: 12),
-                
-                // Sort Button
-                Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: IconButton(
-                    onPressed: _selectedCourse != null 
-                        ? _showFileSortDialog
-                        : _showCourseSortDialog,
-                    icon: const Icon(Icons.sort),
-                    tooltip: _selectedCourse != null ? 'Sort files' : 'Sort courses',
-                  ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: _selectedCourse != null
+                      ? _showFileSortDialog
+                      : _showCourseSortDialog,
+                  icon: const Icon(Icons.sort, size: 22),
+                  tooltip: _selectedCourse != null ? 'Sort files' : 'Sort courses',
                 ),
               ],
             ),
@@ -970,7 +975,6 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
             onShowFileInfo: (file) => _showFileInfo(file),
             formatFileSize: _formatFileSize,
             formatDate: _formatDate,
-            getFileIcon: _getFileIcon,
           );
         },
       ),
@@ -978,7 +982,6 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   }
 }
 
-// Course Card Widget
 class _CourseCard extends StatelessWidget {
   final Map<String, dynamic> course;
   final VoidCallback onTap;
@@ -992,48 +995,81 @@ class _CourseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: compact ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      elevation: compact ? 1 : 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    final scheme = Theme.of(context).colorScheme;
+    final code = course['code'] ?? 'Unknown Course';
+    final title = (course['name'] ?? '') as String;
+    final fileCount = course['fileCount'] ?? 0;
+    final driveCount = course['driveCount'] ?? 0;
+
+    return Container(
+      margin: compact ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         onTap: onTap,
         child: Padding(
-          padding: EdgeInsets.all(compact ? 12 : 16),
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 12 : 14,
+            vertical: compact ? 10 : 12,
+          ),
           child: Row(
             children: [
-              Icon(
-                Icons.folder_rounded,
-                size: compact ? 28 : 32,
-                color: AppDesign.warning(context),
+              Container(
+                width: compact ? 36 : 40,
+                height: compact ? 36 : 40,
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.menu_book_rounded,
+                  size: compact ? 18 : 20,
+                  color: scheme.primary,
+                ),
               ),
-              SizedBox(width: compact ? 12 : 16),
+              SizedBox(width: compact ? 10 : 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      course['code'] ?? 'Unknown Course',
+                      code,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${course['fileCount']} file${course['fileCount'] == 1 ? '' : 's'}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    if (title.isNotEmpty) ...[
+                      const SizedBox(height: 1),
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurface.withValues(alpha: 0.55),
+                          fontSize: 12,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right, size: 20,
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4)),
+              const SizedBox(width: 8),
+              Text(
+                '$fileCount file${fileCount == 1 ? '' : 's'}${driveCount > 1 ? ' · $driveCount drives' : ''}',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: 0.4),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(Icons.chevron_right, size: 18,
+                  color: scheme.onSurface.withValues(alpha: 0.3)),
             ],
           ),
         ),
@@ -1049,7 +1085,6 @@ class _FileCard extends StatelessWidget {
   final VoidCallback onInfo;
   final String Function(int) formatFileSize;
   final String Function(dynamic) formatDate;
-  final String Function(String) getFileIcon;
 
   const _FileCard({
     required this.file,
@@ -1057,7 +1092,6 @@ class _FileCard extends StatelessWidget {
     required this.onInfo,
     required this.formatFileSize,
     required this.formatDate,
-    required this.getFileIcon,
   });
 
   @override
@@ -1078,8 +1112,12 @@ class _FileCard extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
-
-            // File Info
+            Icon(
+              _AcadDrivesScreenState._getFileIconData(file['mimeType'] ?? ''),
+              size: 20,
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+            ),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1189,7 +1227,6 @@ class _DriveHierarchySection extends StatefulWidget {
   final Function(Map<String, dynamic>) onShowFileInfo;
   final String Function(int) formatFileSize;
   final String Function(dynamic) formatDate;
-  final String Function(String) getFileIcon;
 
   const _DriveHierarchySection({
     required this.driveName,
@@ -1199,7 +1236,6 @@ class _DriveHierarchySection extends StatefulWidget {
     required this.onShowFileInfo,
     required this.formatFileSize,
     required this.formatDate,
-    required this.getFileIcon,
   });
 
   @override
@@ -1211,32 +1247,29 @@ class _DriveHierarchySectionState extends State<_DriveHierarchySection> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-        ),
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
-          // Drive Header
           InkWell(
             onTap: () => setState(() => _isExpanded = !_isExpanded),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              ),
+            borderRadius: BorderRadius.vertical(
+              top: const Radius.circular(10),
+              bottom: _isExpanded ? Radius.zero : const Radius.circular(10),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
                 children: [
                   Icon(
-                    Icons.folder_shared,
-                    color: Theme.of(context).colorScheme.primary,
+                    _isExpanded ? Icons.folder_open_rounded : Icons.folder_rounded,
+                    color: scheme.onSurface.withValues(alpha: 0.5),
                     size: 20,
                   ),
                   const SizedBox(width: 12),
@@ -1246,40 +1279,41 @@ class _DriveHierarchySectionState extends State<_DriveHierarchySection> {
                       children: [
                         Text(
                           widget.driveName,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary,
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        Text(
-                          '${widget.folderTree.totalFileCount} file${widget.folderTree.totalFileCount == 1 ? '' : 's'} • ${widget.folderTree.subfolders.length} folder${widget.folderTree.subfolders.length == 1 ? '' : 's'}',
+                        const SizedBox(height: 2),
+                        Text.rich(
+                          TextSpan(children: [
+                            TextSpan(text: '${widget.folderTree.totalFileCount} file${widget.folderTree.totalFileCount == 1 ? '' : 's'}'),
+                            TextSpan(text: ' · ${widget.folderTree.subfolders.length} folder${widget.folderTree.subfolders.length == 1 ? '' : 's'}'),
+                            if (widget.contributor != null && widget.contributor!.isNotEmpty)
+                              TextSpan(
+                                text: ' · ${widget.contributor}',
+                                style: TextStyle(fontStyle: FontStyle.italic),
+                              ),
+                          ]),
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                            color: scheme.onSurface.withValues(alpha: 0.45),
+                            fontSize: 12,
                           ),
                         ),
-                        if (widget.contributor != null && widget.contributor!.isNotEmpty)
-                          Text(
-                            'Credits: ${widget.contributor}',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.secondary,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
                       ],
                     ),
                   ),
                   Icon(
                     _isExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: scheme.onSurface.withValues(alpha: 0.4),
+                    size: 20,
                   ),
                 ],
               ),
             ),
           ),
 
-          // Folder Hierarchy
           if (_isExpanded) ...[
-            const Divider(height: 1),
+            Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.3)),
             _FolderNode(
               folderTree: widget.folderTree,
               level: 0,
@@ -1287,8 +1321,7 @@ class _DriveHierarchySectionState extends State<_DriveHierarchySection> {
               onShowFileInfo: widget.onShowFileInfo,
               formatFileSize: widget.formatFileSize,
               formatDate: widget.formatDate,
-              getFileIcon: widget.getFileIcon,
-            ),
+              ),
           ],
         ],
       ),
@@ -1305,7 +1338,6 @@ class _FolderNode extends StatefulWidget {
   final Function(Map<String, dynamic>) onShowFileInfo;
   final String Function(int) formatFileSize;
   final String Function(dynamic) formatDate;
-  final String Function(String) getFileIcon;
 
   const _FolderNode({
     required this.folderTree,
@@ -1315,7 +1347,6 @@ class _FolderNode extends StatefulWidget {
     required this.onShowFileInfo,
     required this.formatFileSize,
     required this.formatDate,
-    required this.getFileIcon,
   });
 
   @override
@@ -1398,8 +1429,7 @@ class _FolderNodeState extends State<_FolderNode> {
                   onShowFileInfo: widget.onShowFileInfo,
                   formatFileSize: widget.formatFileSize,
                   formatDate: widget.formatDate,
-                  getFileIcon: widget.getFileIcon,
-                ),
+                      ),
               ],
             ],
           );
@@ -1414,7 +1444,6 @@ class _FolderNodeState extends State<_FolderNode> {
             onInfo: () => widget.onShowFileInfo(file),
             formatFileSize: widget.formatFileSize,
             formatDate: widget.formatDate,
-            getFileIcon: widget.getFileIcon,
           ),
         )),
       ],
@@ -1422,36 +1451,17 @@ class _FolderNodeState extends State<_FolderNode> {
   }
   
   Color _getFolderBackgroundColor(BuildContext context, int level) {
-    switch (level % 3) {
-      case 0:
-        return Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.3);
-      case 1:
-        return Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: 0.3);
-      default:
-        return Theme.of(context).colorScheme.surfaceContainer.withValues(alpha: 0.5);
-    }
+    final scheme = Theme.of(context).colorScheme;
+    final alpha = (0.04 + level * 0.02).clamp(0.0, 0.1);
+    return scheme.onSurface.withValues(alpha: alpha);
   }
-  
+
   Color _getFolderIconColor(BuildContext context, int level) {
-    switch (level % 3) {
-      case 0:
-        return Theme.of(context).colorScheme.secondary;
-      case 1:
-        return Theme.of(context).colorScheme.tertiary;
-      default:
-        return Theme.of(context).colorScheme.onSurfaceVariant;
-    }
+    return Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45);
   }
-  
+
   Color _getFolderTextColor(BuildContext context, int level) {
-    switch (level % 3) {
-      case 0:
-        return Theme.of(context).colorScheme.secondary;
-      case 1:
-        return Theme.of(context).colorScheme.tertiary;
-      default:
-        return Theme.of(context).colorScheme.onSurfaceVariant;
-    }
+    return Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75);
   }
 }
 

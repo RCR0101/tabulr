@@ -8,6 +8,7 @@ import '../services/page_leave_warning_service.dart';
 import '../services/toast_service.dart';
 import '../services/campus_service.dart';
 import '../services/course_data_service.dart';
+import '../services/courses_master_service.dart';
 import '../services/user_settings_service.dart';
 import '../services/responsive_service.dart';
 import '../utils/design_constants.dart';
@@ -84,6 +85,8 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
   @override
   void onCampusChanged(Campus campus) {
     CourseDataService().clearCache();
+    CoursesMasterService().clear();
+    CoursesMasterService().loadForCampus();
     _loadTimetable();
     ToastService.showInfo(
       'Switched to ${CampusService.getCampusDisplayName(campus)} campus',
@@ -208,6 +211,8 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
   @override
   void onCampusChanged(Campus campus) async {
     CourseDataService().clearCache();
+    CoursesMasterService().clear();
+    CoursesMasterService().loadForCampus();
     try {
       final courseDataService = CourseDataService();
       final newCourses = await courseDataService.fetchCourses();
