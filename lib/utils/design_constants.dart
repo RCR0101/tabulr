@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/theme_service.dart';
 
 class AppDesign {
   AppDesign._();
@@ -140,6 +141,9 @@ class AppDesign {
 
   // ── Theme-aware timetable color palette ───────────────────────────
   static List<Color> timetableColors(BuildContext context) {
+    final ext = Theme.of(context).extension<TimetableTheme>();
+    if (ext != null) return ext.accents;
+
     final scheme = Theme.of(context).colorScheme;
     final brightness = Theme.of(context).brightness;
     if (brightness == Brightness.dark) {

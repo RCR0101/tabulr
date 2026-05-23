@@ -50,6 +50,7 @@ class _ThemeColors {
   final Color? surfaceContainer;
   final Color? surfaceContainerHigh;
   final Color? surfaceContainerLow;
+  final List<Color>? timetableAccents;
 
   const _ThemeColors({
     required this.brightness,
@@ -83,6 +84,7 @@ class _ThemeColors {
     this.surfaceContainer,
     this.surfaceContainerHigh,
     this.surfaceContainerLow,
+    this.timetableAccents,
   });
 }
 
@@ -105,6 +107,12 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       hintColor: Color(0xFF6E7681),
       headingRowColor: Color(0xFF21262D),
       dataRowColor: Color(0xFF161B22),
+      timetableAccents: [
+        Color(0xFF58A6FF), Color(0xFF3FB950), Color(0xFFD29922),
+        Color(0xFFF778BA), Color(0xFFBC8CFF), Color(0xFF39D2C0),
+        Color(0xFFFF7B72), Color(0xFF79C0FF), Color(0xFFFFA657),
+        Color(0xFF7EE787),
+      ],
     ),
     light: _ThemeColors(
       brightness: Brightness.light,
@@ -124,6 +132,12 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       chipBgColor: Color(0xFFF6F8FA),
       headingRowColor: Color(0xFFF6F8FA),
       dataRowColor: Color(0xFFFFFFFF),
+      timetableAccents: [
+        Color(0xFF0969DA), Color(0xFF1A7F37), Color(0xFF9A6700),
+        Color(0xFFBF3989), Color(0xFF8250DF), Color(0xFF1B7C83),
+        Color(0xFFCF222E), Color(0xFF0550AE), Color(0xFFBC4C00),
+        Color(0xFF116329),
+      ],
     ),
   ),
   AppTheme.draculaDark: (
@@ -145,6 +159,12 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       headingRowColor: Color(0xFF44475A),
       dataRowColor: Color(0xFF282A36),
       collapsedIconColor: Color(0xFF6272A4),
+      timetableAccents: [
+        Color(0xFFBD93F9), Color(0xFF50FA7B), Color(0xFFFFB86C),
+        Color(0xFFFF79C6), Color(0xFF8BE9FD), Color(0xFFF1FA8C),
+        Color(0xFFFF5555), Color(0xFF6272A4), Color(0xFFE6ACFF),
+        Color(0xFF69FF94),
+      ],
     ),
     light: _ThemeColors(
       brightness: Brightness.light,
@@ -164,6 +184,12 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       headingRowColor: Color(0xFFFFFFFF),
       dataRowColor: Color(0xFFF8F8F2),
       collapsedIconColor: Color(0xFF44475A),
+      timetableAccents: [
+        Color(0xFF7C5CBF), Color(0xFF2D8B4E), Color(0xFFC4841D),
+        Color(0xFFBF3989), Color(0xFF3A7CA5), Color(0xFF8B8B00),
+        Color(0xFFCF222E), Color(0xFF6272A4), Color(0xFF9B59B6),
+        Color(0xFF27AE60),
+      ],
     ),
   ),
   AppTheme.nordDark: (
@@ -185,6 +211,12 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       hintColor: Color(0xFF616E88),
       headingRowColor: Color(0xFF434C5E),
       dataRowColor: Color(0xFF3B4252),
+      timetableAccents: [
+        Color(0xFF5E81AC), Color(0xFFA3BE8C), Color(0xFFEBCB8B),
+        Color(0xFFB48EAD), Color(0xFF88C0D0), Color(0xFF81A1C1),
+        Color(0xFFBF616A), Color(0xFF8FBCBB), Color(0xFFD08770),
+        Color(0xFFA3BE8C),
+      ],
     ),
     light: _ThemeColors(
       brightness: Brightness.light,
@@ -203,6 +235,12 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       hintColor: Color(0xFFD8DEE9),
       headingRowColor: Color(0xFFFFFFFF),
       dataRowColor: Color(0xFFECEFF4),
+      timetableAccents: [
+        Color(0xFF4C6A92), Color(0xFF6B8E5E), Color(0xFFC4A44C),
+        Color(0xFF8E6B8A), Color(0xFF5A8F9A), Color(0xFF6282A3),
+        Color(0xFFA04850), Color(0xFF5F9A98), Color(0xFFAA6B50),
+        Color(0xFF6B8E5E),
+      ],
     ),
   ),
   AppTheme.tokyoNightDark: (
@@ -226,6 +264,12 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       dataRowColor: Color(0xFF24283B),
       buttonForeground: Color(0xFF1A1B26),
       chipSecondaryLabel: Color(0xFF1A1B26),
+      timetableAccents: [
+        Color(0xFF7AA2F7), Color(0xFF9ECE6A), Color(0xFFE0AF68),
+        Color(0xFFF7768E), Color(0xFFBB9AF7), Color(0xFF7DCFFF),
+        Color(0xFFFF9E64), Color(0xFF2AC3DE), Color(0xFFB4F9F8),
+        Color(0xFF73DACA),
+      ],
     ),
     light: _ThemeColors(
       brightness: Brightness.light,
@@ -244,6 +288,12 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       hintColor: Color(0xFFA9B1D6),
       headingRowColor: Color(0xFFF7F7F7),
       dataRowColor: Color(0xFFFFFFFF),
+      timetableAccents: [
+        Color(0xFF3D59A1), Color(0xFF33635C), Color(0xFF8F5E15),
+        Color(0xFFCC517A), Color(0xFF7847BD), Color(0xFF166775),
+        Color(0xFFB15C2B), Color(0xFF2E7DE9), Color(0xFF188B8D),
+        Color(0xFF38919F),
+      ],
     ),
   ),
   AppTheme.gruvboxDark: (
@@ -265,6 +315,12 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       hintColor: Color(0xFF665C54),
       headingRowColor: Color(0xFF3C3836),
       dataRowColor: Color(0xFF282828),
+      timetableAccents: [
+        Color(0xFFD79921), Color(0xFF98971A), Color(0xFF458588),
+        Color(0xFFCC241D), Color(0xFFB16286), Color(0xFF689D6A),
+        Color(0xFFD65D0E), Color(0xFF83A598), Color(0xFFFABD2F),
+        Color(0xFFB8BB26),
+      ],
     ),
     light: _ThemeColors(
       brightness: Brightness.light,
@@ -283,6 +339,12 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       hintColor: Color(0xFFBDAE93),
       headingRowColor: Color(0xFFF2E5BC),
       dataRowColor: Color(0xFFFBF1C7),
+      timetableAccents: [
+        Color(0xFFB57614), Color(0xFF79740E), Color(0xFF076678),
+        Color(0xFF9D0006), Color(0xFF8F3F71), Color(0xFF427B58),
+        Color(0xFFAF3A03), Color(0xFF458588), Color(0xFF8B7A26),
+        Color(0xFF6A8538),
+      ],
     ),
   ),
   AppTheme.catppuccinDark: (
@@ -304,6 +366,12 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       hintColor: Color(0xFF6C7086),
       headingRowColor: Color(0xFF45475A),
       dataRowColor: Color(0xFF313244),
+      timetableAccents: [
+        Color(0xFFCBA6F7), Color(0xFFA6E3A1), Color(0xFFF9E2AF),
+        Color(0xFFF38BA8), Color(0xFF89B4FA), Color(0xFF94E2D5),
+        Color(0xFFFAB387), Color(0xFF74C7EC), Color(0xFFEBA0AC),
+        Color(0xFFF2CDCD),
+      ],
     ),
     light: _ThemeColors(
       brightness: Brightness.light,
@@ -322,6 +390,12 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       hintColor: Color(0xFF9CA0B0),
       headingRowColor: Color(0xFFE6E9EF),
       dataRowColor: Color(0xFFEFF1F5),
+      timetableAccents: [
+        Color(0xFF8839EF), Color(0xFF40A02B), Color(0xFFDF8E1D),
+        Color(0xFFD20F39), Color(0xFF1E66F5), Color(0xFF179299),
+        Color(0xFFFE640B), Color(0xFF04A5E5), Color(0xFFE64553),
+        Color(0xFF7287FD),
+      ],
     ),
   ),
   AppTheme.solarizedDark: (
@@ -342,6 +416,12 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       hintColor: Color(0xFF657B83),
       headingRowColor: Color(0xFF073642),
       dataRowColor: Color(0xFF002B36),
+      timetableAccents: [
+        Color(0xFF268BD2), Color(0xFF859900), Color(0xFFB58900),
+        Color(0xFFD33682), Color(0xFF6C71C4), Color(0xFF2AA198),
+        Color(0xFFCB4B16), Color(0xFF839496), Color(0xFFDC322F),
+        Color(0xFF93A1A1),
+      ],
     ),
     light: _ThemeColors(
       brightness: Brightness.light,
@@ -360,6 +440,12 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       hintColor: Color(0xFF93A1A1),
       headingRowColor: Color(0xFFEEE8D5),
       dataRowColor: Color(0xFFFDF6E3),
+      timetableAccents: [
+        Color(0xFF268BD2), Color(0xFF859900), Color(0xFFB58900),
+        Color(0xFFD33682), Color(0xFF6C71C4), Color(0xFF2AA198),
+        Color(0xFFCB4B16), Color(0xFF586E75), Color(0xFFDC322F),
+        Color(0xFF657B83),
+      ],
     ),
   ),
   AppTheme.arcticFrost: (
@@ -388,6 +474,12 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surfaceContainer: Color(0xFF1A2D42),
       surfaceContainerHigh: Color(0xFF24374D),
       surfaceContainerLow: Color(0xFF0D1925),
+      timetableAccents: [
+        Color(0xFF88C0D0), Color(0xFFA3BE8C), Color(0xFFEBCB8B),
+        Color(0xFFB48EAD), Color(0xFF81A1C1), Color(0xFF8FBCBB),
+        Color(0xFFBF616A), Color(0xFF5E81AC), Color(0xFFD08770),
+        Color(0xFFA3BE8C),
+      ],
     ),
     light: _ThemeColors(
       brightness: Brightness.light,
@@ -404,6 +496,12 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       inputFill: Color(0xFFF5F9FC),
       labelColor: Color(0xFF4A90A4),
       hintColor: Color(0xFF94A8BC),
+      timetableAccents: [
+        Color(0xFF4A90A4), Color(0xFF5A8F6A), Color(0xFFC4A44C),
+        Color(0xFF8E6B8A), Color(0xFF5E81AC), Color(0xFF5F9A98),
+        Color(0xFFA04850), Color(0xFF4C6A92), Color(0xFFAA6B50),
+        Color(0xFF6B8E5E),
+      ],
     ),
   ),
   AppTheme.amoledDark: (
@@ -430,6 +528,12 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surfaceContainer: Color(0xFF141414),
       surfaceContainerHigh: Color(0xFF1A1A1A),
       surfaceContainerLow: Color(0xFF070707),
+      timetableAccents: [
+        Color(0xFF6CB4EE), Color(0xFF4ADE80), Color(0xFFFBBF24),
+        Color(0xFFF472B6), Color(0xFFA78BFA), Color(0xFF22D3EE),
+        Color(0xFFFB923C), Color(0xFF38BDF8), Color(0xFFF87171),
+        Color(0xFF34D399),
+      ],
     ),
     light: _ThemeColors(
       brightness: Brightness.dark,
@@ -454,9 +558,35 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surfaceContainer: Color(0xFF141414),
       surfaceContainerHigh: Color(0xFF1A1A1A),
       surfaceContainerLow: Color(0xFF070707),
+      timetableAccents: [
+        Color(0xFF6CB4EE), Color(0xFF4ADE80), Color(0xFFFBBF24),
+        Color(0xFFF472B6), Color(0xFFA78BFA), Color(0xFF22D3EE),
+        Color(0xFFFB923C), Color(0xFF38BDF8), Color(0xFFF87171),
+        Color(0xFF34D399),
+      ],
     ),
   ),
 };
+
+class TimetableTheme extends ThemeExtension<TimetableTheme> {
+  final List<Color> accents;
+  const TimetableTheme(this.accents);
+
+  @override
+  TimetableTheme copyWith({List<Color>? accents}) =>
+      TimetableTheme(accents ?? this.accents);
+
+  @override
+  TimetableTheme lerp(covariant TimetableTheme? other, double t) {
+    if (other == null) return this;
+    return TimetableTheme(
+      List.generate(
+        accents.length,
+        (i) => Color.lerp(accents[i], i < other.accents.length ? other.accents[i] : accents[i], t)!,
+      ),
+    );
+  }
+}
 
 TextTheme _buildTextTheme(Color onSurface) {
   return TextTheme(
@@ -589,6 +719,9 @@ ThemeData _buildTheme(_ThemeColors c) {
           )
         : null,
     visualDensity: VisualDensity.adaptivePlatformDensity,
+    extensions: [
+      if (c.timetableAccents != null) TimetableTheme(c.timetableAccents!),
+    ],
   );
 }
 

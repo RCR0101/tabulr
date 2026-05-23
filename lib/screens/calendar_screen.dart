@@ -342,7 +342,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           children: [
                             Icon(Icons.warning_amber,
                                 size: 16, color: AppDesign.warning(context)),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppDesign.spacingSm),
                             Expanded(
                                 child: Text(c,
                                     style: const TextStyle(fontSize: 13))),
@@ -355,7 +355,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         color: Theme.of(context)
                             .colorScheme
                             .onSurface
-                            .withValues(alpha: 0.6))),
+                            .withValues(alpha: AppDesign.opacityMedium))),
             ],
           ),
           actions: [
@@ -839,19 +839,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       a.year == b.year && a.month == b.month && a.day == b.day;
 
   Color _courseColor(String code) {
+    final colors = AppDesign.timetableColors(context);
     final hash = code.hashCode;
-    const colors = [
-      Color(0xFF4A9EFF),
-      Color(0xFF26C6AA),
-      Color(0xFF7C6CFF),
-      Color(0xFFB668E8),
-      Color(0xFF22D3EE),
-      Color(0xFF34D399),
-      Color(0xFFFB923C),
-      Color(0xFFF472B6),
-      Color(0xFFE8735A),
-      Color(0xFF60A5FA),
-    ];
     return colors[hash.abs() % colors.length];
   }
 
@@ -945,11 +934,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Widget _buildHeader(ThemeData theme) {
     if (_timetables.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppDesign.spacingMd),
         child: Text(
           'No timetables found. Create one in TT Builder first.',
           style: theme.textTheme.bodyLarge?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            color: theme.colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
           ),
         ),
       );
@@ -986,7 +975,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ],
           if (!isToday) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: AppDesign.spacingSm),
             IconButton(
               icon: const Icon(Icons.today, size: 20),
               tooltip: 'Go to today',
@@ -1057,9 +1046,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   color: isSelected
                       ? theme.colorScheme.primary
                       : isToday
-                          ? theme.colorScheme.primary.withValues(alpha: 0.12)
+                          ? theme.colorScheme.primary.withValues(alpha: AppDesign.opacityDivider)
                           : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppDesign.borderRadiusMd,
                   border: isToday && !isSelected
                       ? Border.all(color: theme.colorScheme.primary, width: 1.5)
                       : null,
@@ -1072,7 +1061,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: isSelected
                             ? theme.colorScheme.onPrimary
-                            : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                            : theme.colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1140,7 +1129,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppDesign.spacingSm),
                 Text(
                   monthDay,
                   style: theme.textTheme.titleMedium?.copyWith(
@@ -1149,7 +1138,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
                 const Spacer(),
                 Icon(Icons.swipe, size: 16, color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
-                const SizedBox(width: 4),
+                const SizedBox(width: AppDesign.spacingXs),
                 Text(
                   'Swipe to change day',
                   style: theme.textTheme.labelSmall?.copyWith(
@@ -1228,7 +1217,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                     decoration: BoxDecoration(
                                       color: b.color.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(8),
+                                      borderRadius: AppDesign.borderRadiusSm,
                                     ),
                                     child: Text(
                                       b.title,
@@ -1311,7 +1300,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 color: isToday
                                     ? theme.colorScheme.primary
                                     : theme.colorScheme.onSurface
-                                        .withValues(alpha: 0.6),
+                                        .withValues(alpha: AppDesign.opacityMedium),
                                 fontWeight: isToday
                                     ? FontWeight.bold
                                     : FontWeight.normal,
@@ -1722,9 +1711,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 item.announcement!.description.isNotEmpty)
               _detailRow(
                   Icons.description, item.announcement!.description, theme),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppDesign.spacingMd),
             Divider(color: theme.colorScheme.outlineVariant),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppDesign.spacingSm),
             if (item.scrapped)
               _actionTile(
                 ctx,
@@ -1747,7 +1736,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   _scrapSlot(item.slotKey);
                 },
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppDesign.spacingXs),
               _actionTile(
                 ctx,
                 icon: Icons.event_busy,
@@ -1760,7 +1749,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
             ],
             if (item.type == _ItemType.customEvent && item.event != null) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: AppDesign.spacingXs),
               _actionTile(
                 ctx,
                 icon: Icons.delete_forever,
@@ -1772,7 +1761,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 },
               ),
             ],
-            const SizedBox(height: 8),
+            const SizedBox(height: AppDesign.spacingSm),
           ],
         ),
       ),
@@ -1812,7 +1801,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         children: [
           Icon(icon,
               size: 18,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+              color: theme.colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium)),
           const SizedBox(width: 12),
           Expanded(child: Text(text, style: theme.textTheme.bodyMedium)),
         ],
@@ -2084,7 +2073,7 @@ class _AddEventDialogState extends State<_AddEventDialog> {
                   });
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppDesign.spacingMd),
 
               if (_eventType == 'prof_meeting') ...[
                 TextField(
@@ -2103,7 +2092,7 @@ class _AddEventDialogState extends State<_AddEventDialog> {
                       border: Border.all(
                           color:
                               theme.colorScheme.outline.withValues(alpha: 0.3)),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppDesign.borderRadiusSm,
                     ),
                     child: ListView.builder(
                       shrinkWrap: true,
@@ -2227,7 +2216,7 @@ class _AddEventDialogState extends State<_AddEventDialog> {
 
               if (_endTime.hour * 60 + _endTime.minute <=
                   _startTime.hour * 60 + _startTime.minute) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AppDesign.spacingSm),
                 Text(
                   'End time must be after start time',
                   style: TextStyle(fontSize: 12, color: AppDesign.danger(context)),
@@ -2237,17 +2226,17 @@ class _AddEventDialogState extends State<_AddEventDialog> {
               if (clashMsg != null) ...[
                 const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(AppDesign.spacingSm),
                   decoration: BoxDecoration(
                     color: AppDesign.warning(context).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: AppDesign.borderRadiusSm,
                     border: Border.all(
                         color: AppDesign.warning(context).withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     children: [
                       Icon(Icons.warning_amber, color: AppDesign.warning(context), size: 18),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppDesign.spacingSm),
                       Expanded(
                         child: Text(
                           clashMsg,
@@ -2307,12 +2296,12 @@ class _AddEventDialogState extends State<_AddEventDialog> {
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: AppDesign.success(context).withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: AppDesign.borderRadiusSm,
         ),
         child: Row(
           children: [
             Icon(Icons.check_circle, color: AppDesign.success(context), size: 18),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppDesign.spacingSm),
             Text(
               '${prof.name} has no classes on ${_dayFullName(_selectedDay)}',
               style: TextStyle(fontSize: 12, color: AppDesign.success(context)),
@@ -2326,7 +2315,7 @@ class _AddEventDialogState extends State<_AddEventDialog> {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDesign.borderRadiusSm,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

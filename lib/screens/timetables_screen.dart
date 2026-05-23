@@ -359,7 +359,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
             title: Row(
               children: [
                 Icon(Icons.warning, color: Theme.of(context).colorScheme.error),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppDesign.spacingSm),
                 const Text('Clear All Timetables'),
               ],
             ),
@@ -371,7 +371,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                   'Are you sure you want to delete all ${_sortedTimetables.length} timetables?',
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppDesign.spacingSm),
                 Text(
                   'This action cannot be undone.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -506,7 +506,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
         final scheme = Theme.of(context).colorScheme;
         return AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: AppDesign.borderRadiusLg,
           ),
           titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
           contentPadding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
@@ -514,10 +514,10 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
           title: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(AppDesign.spacingSm),
                 decoration: BoxDecoration(
                   color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppDesign.borderRadiusSm,
                 ),
                 child: Icon(Icons.sort, color: scheme.onPrimaryContainer, size: 20),
               ),
@@ -707,7 +707,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: AppDesign.borderRadiusSm,
                         child: Image.asset(
                           'images/full_logo_bg.png',
                           height: 50,
@@ -727,7 +727,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                 );
               },
             ),
-          const SizedBox(width: 4),
+          const SizedBox(width: AppDesign.spacingXs),
           PopupMenuButton<String>(
             icon: const Icon(Icons.apps, size: 22),
             tooltip: 'Tools',
@@ -761,10 +761,10 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text('Campus', style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
                           fontWeight: FontWeight.w600,
                         )),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: AppDesign.spacingXs),
                         CampusSelectorWidget(
                           onCampusChanged: (campus) {
                             Navigator.pop(context);
@@ -842,7 +842,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                           backgroundImage: _authService.userPhotoUrl != null ? _authService.userPhotoImage : null,
                           child: _authService.userPhotoUrl == null ? const Icon(Icons.person, size: 16) : null,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: AppDesign.spacingXs),
                         const Icon(Icons.arrow_drop_down, size: 18),
                       ],
                     )
@@ -856,7 +856,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                     ),
             ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: AppDesign.spacingXs),
         ],
       ),
       body: Column(
@@ -878,7 +878,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                         context,
                       ).colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppDesign.spacingMd),
                     Text(
                       'No timetables yet',
                       style: Theme.of(
@@ -889,7 +889,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                         ).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppDesign.spacingSm),
                     Text(
                       'Create your first timetable to get started',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -909,7 +909,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                         alignment: Alignment.centerLeft,
                         child: InkWell(
                         onTap: _showSortDialog,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: AppDesign.borderRadiusSm,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                           child: Row(
@@ -918,20 +918,20 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                               Icon(
                                 _getSortIcon(_userSettingsService.sortOrder),
                                 size: 16,
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
                               ),
                               const SizedBox(width: 6),
                               Text(
                                 _getSortOrderName(_userSettingsService.sortOrder),
                                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
                                 ),
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: AppDesign.spacingXs),
                               Icon(
                                 Icons.unfold_more,
                                 size: 16,
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityLow),
                               ),
                             ],
                           ),
@@ -941,7 +941,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                     ),
                     Expanded(
                     child: ReorderableListView.builder(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(AppDesign.spacingMd),
                       itemCount: _sortedTimetables.length,
                       onReorder: _onReorder,
                       buildDefaultDragHandles: false,
@@ -962,10 +962,10 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                           key: ValueKey(timetable.id),
                           margin: const EdgeInsets.only(bottom: 12),
                           child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: AppDesign.borderRadiusMd,
                             onTap: () => _openTimetable(timetable),
                             child: Padding(
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.all(AppDesign.spacingMd),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -996,7 +996,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                             style: Theme.of(context).textTheme.labelMedium?.copyWith(color: scheme.onPrimaryContainer),
                                           ),
                                         ),
-                                      const SizedBox(width: 8),
+                                      const SizedBox(width: AppDesign.spacingSm),
                                       PopupMenuButton<String>(
                                         onSelected: (value) {
                                           switch (value) {
@@ -1050,21 +1050,21 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                       }).toList(),
                                     ),
                                   ],
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: AppDesign.spacingSm),
                                   Row(
                                     children: [
                                       Text(
                                         '${courseCodes.length} course${courseCodes.length != 1 ? 's' : ''}',
-                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurface.withValues(alpha: 0.6)),
+                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium)),
                                       ),
                                       if (timetable.projectCount > 0) ...[
-                                        Text(' · ', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurface.withValues(alpha: 0.4))),
-                                        Text('${timetable.projectCount} project${timetable.projectCount != 1 ? 's' : ''}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurface.withValues(alpha: 0.6))),
+                                        Text(' · ', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow))),
+                                        Text('${timetable.projectCount} project${timetable.projectCount != 1 ? 's' : ''}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium))),
                                       ],
                                       const Spacer(),
                                       Text(
                                         _formatDate(timetable.updatedAt),
-                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: scheme.onSurface.withValues(alpha: 0.4)),
+                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow)),
                                       ),
                                     ],
                                   ),
@@ -1079,7 +1079,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                   // Clear All button at bottom
                   if (_sortedTimetables.isNotEmpty)
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(AppDesign.spacingMd),
                       child:
                           ResponsiveService.isMobile(context)
                               ? Align(
@@ -1222,7 +1222,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                   Theme.of(context).colorScheme.onSecondaryContainer,
               heroTag: "compare",
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: AppDesign.spacingMd),
             FloatingActionButton.extended(
               onPressed: _createNewTimetable,
               icon: const Icon(Icons.add),

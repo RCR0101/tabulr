@@ -181,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppDesign.borderRadiusSm,
                       child: Image.asset(
                         'images/full_logo_bg.png',
                         height: 50,

@@ -114,10 +114,18 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
   }
 
   void _addCourseToSemester(String semesterName, AllCourse course) {
+    final semester =
+        _cgpaData.semesters[semesterName] ??
+        SemesterData(semesterName: semesterName);
+
+    if (semester.courses.any((c) => c.courseCode == course.courseCode)) {
+      ToastService.showError(
+        '${course.courseCode} is already in $semesterName',
+      );
+      return;
+    }
+
     setState(() {
-      final semester =
-          _cgpaData.semesters[semesterName] ??
-          SemesterData(semesterName: semesterName);
       final courseEntry = CourseEntry(
         courseCode: course.courseCode,
         courseTitle: course.courseTitle,
@@ -1818,12 +1826,27 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     );
   }
 
+  bool _isSuperseded(String semesterName, String courseCode) {
+    final semesterKeys = _semesters;
+    final currentIdx = semesterKeys.indexOf(semesterName);
+    if (currentIdx == -1) return false;
+    for (var i = currentIdx + 1; i < semesterKeys.length; i++) {
+      final later = _cgpaData.semesters[semesterKeys[i]];
+      if (later != null && later.courses.any((c) => c.courseCode == courseCode)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   Widget _buildCourseCard(String semesterName, int index, CourseEntry course) {
     final gradeOptions =
         course.courseType == 'ATC'
             ? CGPAService.atcGrades
             : CGPAService.normalGrades;
     final isMobile = ResponsiveService.isMobile(context);
+    final superseded = course.courseType == 'Normal' &&
+        _isSuperseded(semesterName, course.courseCode);
 
     final scheme = Theme.of(context).colorScheme;
     return Container(
@@ -1904,6 +1927,25 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                       ),
                     ),
                   ),
+                  if (superseded)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: scheme.error.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'Superseded',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: scheme.error.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ),
+                    ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: _buildGradeSelector(
