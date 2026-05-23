@@ -174,9 +174,38 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     });
   }
 
+  double _currentTotalCredits() {
+    final tt = currentTimetable;
+    if (tt == null) return 0;
+    final selectedCodes = tt.selectedSections.map((s) => s.courseCode).toSet();
+    double credits = 0;
+    for (final code in selectedCodes) {
+      final course = tt.availableCourses.cast<Course?>().firstWhere(
+        (c) => c!.courseCode == code,
+        orElse: () => null,
+      );
+      if (course != null) credits += course.totalCredits;
+    }
+    credits += tt.projectCount * 3;
+    return credits;
+  }
+
   void addSection(String courseCode, String sectionId) {
     final tt = currentTimetable;
     if (tt == null) return;
+
+    final isNewCourse = !tt.selectedSections.any((s) => s.courseCode == courseCode);
+    if (isNewCourse) {
+      final course = tt.availableCourses.cast<Course?>().firstWhere(
+        (c) => c!.courseCode == courseCode,
+        orElse: () => null,
+      );
+      final addedCredits = course?.totalCredits ?? 0;
+      if (_currentTotalCredits() + addedCredits > 25) {
+        ToastService.showError('Adding this course would exceed the 25 credit limit');
+        return;
+      }
+    }
 
     try {
       _pushUndo('Add $courseCode $sectionId');

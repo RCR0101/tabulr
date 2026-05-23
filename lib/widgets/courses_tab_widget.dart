@@ -4,6 +4,7 @@ import '../models/timetable.dart';
 import 'course_list_widget.dart';
 import 'exam_dates_widget.dart';
 import '../services/responsive_service.dart';
+import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
 
 class CoursesTabWidget extends StatefulWidget {
@@ -58,6 +59,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
     final totalCredits = courseCredits + projectCredits;
     final scheme = Theme.of(context).colorScheme;
     final isOver = totalCredits > 25;
+    final canAddProject = totalCredits + 3 <= 25 && widget.projectCount < 8;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -81,7 +83,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
           ],
           const Spacer(),
           // Project counter inline
-          Icon(Icons.assignment, size: 14, color: scheme.primary.withValues(alpha: AppDesign.opacityMedium)),
+          Text('Projects', style: TextStyle(fontSize: 11, color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium))),
           const SizedBox(width: 4),
           InkWell(
             onTap: widget.projectCount > 0 ? () { widget.onProjectCountChanged(widget.projectCount - 1); } : null,
@@ -89,11 +91,13 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text('$widget.projectCount', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: scheme.primary)),
+            child: Text('${widget.projectCount}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: scheme.primary)),
           ),
           InkWell(
-            onTap: widget.projectCount < 8 ? () { widget.onProjectCountChanged(widget.projectCount + 1); } : null,
-            child: Icon(Icons.add_circle_outline, size: 16, color: widget.projectCount < 8 ? scheme.primary : scheme.onSurface.withValues(alpha: AppDesign.opacityLow)),
+            onTap: canAddProject
+                ? () { widget.onProjectCountChanged(widget.projectCount + 1); }
+                : () { if (totalCredits + 3 > 25) ToastService.showError('Cannot add project — would exceed 25 credit limit'); },
+            child: Icon(Icons.add_circle_outline, size: 16, color: canAddProject ? scheme.primary : scheme.onSurface.withValues(alpha: AppDesign.opacityLow)),
           ),
           if (widget.projectCount > 0) ...[
             const SizedBox(width: 4),
