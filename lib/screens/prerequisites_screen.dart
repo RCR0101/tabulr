@@ -4,6 +4,7 @@ import '../repositories/prerequisites_repository.dart';
 import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/loading_state.dart';
+import '../widgets/common/shimmer_loading.dart';
 
 class PrerequisitesScreen extends StatefulWidget {
   const PrerequisitesScreen({super.key});
@@ -194,11 +195,11 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
     }
 
     if (_isLoadingInitial) {
-      return const LoadingStateWidget(message: 'Loading courses...');
+      return const PrerequisitesSkeleton();
     }
 
     if (_isSearching) {
-      return const LoadingStateWidget();
+      return const PrerequisitesSkeleton(count: 3);
     }
 
     if (_searchResults.isEmpty && _hasSearched) {
@@ -276,7 +277,9 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
   }
 
   Widget _buildSearchResults(ThemeData theme, ColorScheme colorScheme) {
-    return ListView.builder(
+    return RefreshIndicator(
+      onRefresh: _loadInitialCourses,
+      child: ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: _searchResults.length,
       itemBuilder: (context, index) {
@@ -367,6 +370,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
           ),
         );
       },
+    ),
     );
   }
 

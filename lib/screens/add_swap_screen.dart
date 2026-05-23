@@ -10,6 +10,7 @@ import '../services/clash_detector.dart';
 import '../utils/datetime_utils.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/loading_state.dart';
+import '../widgets/common/shimmer_loading.dart';
 
 class AddSwapScreen extends StatefulWidget {
   final List<SelectedSection> currentSelectedSections;
@@ -316,7 +317,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
         elevation: 0,
       ),
       body: _isLoading
-          ? const LoadingStateWidget()
+          ? const CourseListSkeleton()
           : isMobile
               ? _buildMobileLayout()
               : _buildDesktopLayout(),

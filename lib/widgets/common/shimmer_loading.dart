@@ -200,3 +200,184 @@ class CalendarSkeleton extends StatelessWidget {
     );
   }
 }
+
+class AcadDrivesSkeleton extends StatelessWidget {
+  final int count;
+  final bool grid;
+
+  const AcadDrivesSkeleton({super.key, this.count = 8, this.grid = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return ShimmerLoading(
+      child: Padding(
+        padding: const EdgeInsets.all(AppDesign.spacingMd),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const ShimmerBlock(width: 160, height: 14),
+            const SizedBox(height: AppDesign.spacingSm + 4),
+            Expanded(
+              child: grid
+                  ? Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: List.generate(
+                        count,
+                        (_) => SizedBox(
+                          width: 340,
+                          height: 80,
+                          child: ShimmerBlock(height: 80, borderRadius: AppDesign.radiusMd),
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: List.generate(
+                        count,
+                        (_) => Padding(
+                          padding: const EdgeInsets.only(bottom: AppDesign.spacingSm),
+                          child: ShimmerBlock(height: 72, borderRadius: AppDesign.radiusMd),
+                        ),
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AnnouncementsSkeleton extends StatelessWidget {
+  final int count;
+
+  const AnnouncementsSkeleton({super.key, this.count = 4});
+
+  @override
+  Widget build(BuildContext context) {
+    return ShimmerLoading(
+      child: Padding(
+        padding: const EdgeInsets.all(AppDesign.spacingMd),
+        child: Column(
+          children: List.generate(
+            count,
+            (_) => Padding(
+              padding: const EdgeInsets.only(bottom: AppDesign.spacingSm + 4),
+              child: Container(
+                height: 120,
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerHighest
+                      .withValues(alpha: 0.3),
+                  borderRadius: AppDesign.borderRadiusMd,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppDesign.spacingMd),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          ShimmerBlock(width: 80, height: 20, borderRadius: AppDesign.radiusSm),
+                          const SizedBox(width: AppDesign.spacingSm),
+                          ShimmerBlock(width: 140, height: 16),
+                        ],
+                      ),
+                      const SizedBox(height: AppDesign.spacingSm + 4),
+                      const ShimmerBlock(height: 14),
+                      const SizedBox(height: AppDesign.spacingSm),
+                      ShimmerBlock(width: 200, height: 14),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class PrerequisitesSkeleton extends StatelessWidget {
+  final int count;
+
+  const PrerequisitesSkeleton({super.key, this.count = 6});
+
+  @override
+  Widget build(BuildContext context) {
+    return ShimmerLoading(
+      child: Padding(
+        padding: const EdgeInsets.all(AppDesign.spacingMd),
+        child: Column(
+          children: List.generate(
+            count,
+            (_) => Padding(
+              padding: const EdgeInsets.only(bottom: AppDesign.spacingSm + 4),
+              child: Container(
+                height: 72,
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerHighest
+                      .withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppDesign.spacingMd),
+                  child: Row(
+                    children: [
+                      ShimmerBlock(width: 100, height: 18),
+                      const SizedBox(width: AppDesign.spacingMd),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ShimmerBlock(width: 200, height: 14),
+                            const SizedBox(height: AppDesign.spacingSm),
+                            ShimmerBlock(width: 120, height: 12),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class GenericListSkeleton extends StatelessWidget {
+  final int count;
+  final double itemHeight;
+
+  const GenericListSkeleton({
+    super.key,
+    this.count = 5,
+    this.itemHeight = 64,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ShimmerLoading(
+      child: Padding(
+        padding: const EdgeInsets.all(AppDesign.spacingMd),
+        child: Column(
+          children: List.generate(
+            count,
+            (_) => Padding(
+              padding: const EdgeInsets.only(bottom: AppDesign.spacingSm),
+              child: ShimmerBlock(height: itemHeight, borderRadius: AppDesign.radiusMd),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

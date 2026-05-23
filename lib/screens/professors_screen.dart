@@ -274,13 +274,16 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
           ),
           const Divider(height: 1),
           Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: professors.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                return _buildProfessorCard(professors[index]);
-              },
+            child: RefreshIndicator(
+              onRefresh: _loadProfessors,
+              child: ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: professors.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  return _buildProfessorCard(professors[index]);
+                },
+              ),
             ),
           ),
         ],

@@ -8,6 +8,7 @@ import '../services/responsive_service.dart';
 import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/loading_state.dart';
+import '../widgets/common/shimmer_loading.dart';
 
 enum ComparisonViewMode { grid, list }
 
@@ -947,7 +948,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
         ],
       ),
       body: _isLoading
-          ? const LoadingStateWidget()
+          ? const TimetableListSkeleton()
           : Column(
               children: [
                 Container(

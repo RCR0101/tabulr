@@ -7,6 +7,7 @@ import '../services/responsive_service.dart';
 import '../models/course.dart';
 import '../widgets/course_list_widget.dart';
 import '../widgets/common/loading_state.dart';
+import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/inline_error_card.dart';
 
 class DisciplineElectivesScreen extends StatefulWidget {
@@ -605,7 +606,7 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
       ),
       body:
           _isLoading
-              ? const LoadingStateWidget()
+              ? const CourseListSkeleton()
               : SingleChildScrollView(
                 child: Column(
                   children: [

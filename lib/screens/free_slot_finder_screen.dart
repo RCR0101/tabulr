@@ -8,6 +8,7 @@ import '../services/responsive_service.dart';
 import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/loading_state.dart';
+import '../widgets/common/shimmer_loading.dart';
 import '../widgets/share_timetable_dialog.dart';
 import 'calendar_screen.dart';
 
@@ -359,7 +360,7 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Free Time Finder')),
       body: _isLoading
-          ? const LoadingStateWidget()
+          ? const CalendarSkeleton()
           : SingleChildScrollView(
               padding: EdgeInsets.all(isMobile ? 12 : 24),
               child: Center(

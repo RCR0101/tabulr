@@ -510,7 +510,9 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
     final sortedCourses = List<ExamSeating>.from(_selectedCourses)
       ..sort((a, b) => _compareExamDates(a.examDate, b.examDate));
 
-    return ListView.builder(
+    return RefreshIndicator(
+      onRefresh: _loadExamData,
+      child: ListView.builder(
       padding: ResponsiveService.getAdaptivePadding(
         context,
         const EdgeInsets.all(16),
@@ -674,6 +676,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
           ),
         );
       },
+    ),
     );
   }
 }

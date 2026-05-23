@@ -14,6 +14,7 @@ import '../services/timetable_service.dart';
 import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/loading_state.dart';
+import '../widgets/common/shimmer_loading.dart';
 
 
 class CourseAnnouncementsScreen extends StatefulWidget {
@@ -473,7 +474,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
 
   Widget _buildBody(ThemeData theme) {
     if (_isLoading) {
-      return const LoadingStateWidget();
+      return const AnnouncementsSkeleton();
     }
     if (_timetables.isEmpty) {
       return Center(

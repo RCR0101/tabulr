@@ -7,6 +7,7 @@ import '../services/toast_service.dart';
 import '../services/auth_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/loading_state.dart';
+import '../widgets/common/shimmer_loading.dart';
 
 
 enum CourseSortOption {
@@ -825,7 +826,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
   Widget _buildCoursesView() {
     if (_isLoading) {
-      return const LoadingStateWidget();
+      return AcadDrivesSkeleton(grid: !ResponsiveService.isMobile(context));
     }
 
     final courses = _filteredCourses;
@@ -856,20 +857,23 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         children: [
           _buildCourseCountBar(courses.length),
           Expanded(
-            child: ListView.builder(
-              controller: _coursesScrollController,
-              padding: const EdgeInsets.only(bottom: 16),
-              itemCount: itemCount,
-              itemBuilder: (context, index) {
-                if (index >= courses.length) {
-                  return _buildLoadingFooter();
-                }
-                final course = courses[index];
-                return _CourseCard(
-                  course: course,
-                  onTap: () => _loadCourseFiles(course['code']),
-                );
-              },
+            child: RefreshIndicator(
+              onRefresh: _loadCourses,
+              child: ListView.builder(
+                controller: _coursesScrollController,
+                padding: const EdgeInsets.only(bottom: 16),
+                itemCount: itemCount,
+                itemBuilder: (context, index) {
+                  if (index >= courses.length) {
+                    return _buildLoadingFooter();
+                  }
+                  final course = courses[index];
+                  return _CourseCard(
+                    course: course,
+                    onTap: () => _loadCourseFiles(course['code']),
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -938,7 +942,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
   Widget _buildFilesView() {
     if (_isLoadingFiles) {
-      return const LoadingStateWidget();
+      return const GenericListSkeleton(count: 8, itemHeight: 56);
     }
 
     final files = _filteredFiles;
@@ -993,24 +997,27 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
     final driveNames = driveTrees.keys.toList()..sort(_naturalSort);
 
-    return ListView.builder(
-      itemCount: driveNames.length,
-      itemBuilder: (context, index) {
-        final driveName = driveNames[index];
-        final folderTree = driveTrees[driveName]!;
-        final contributor = driveContributors[driveName];
+    return RefreshIndicator(
+      onRefresh: () => _loadCourseFiles(_selectedCourse!),
+      child: ListView.builder(
+        itemCount: driveNames.length,
+        itemBuilder: (context, index) {
+          final driveName = driveNames[index];
+          final folderTree = driveTrees[driveName]!;
+          final contributor = driveContributors[driveName];
 
-        return _DriveHierarchySection(
-          driveName: driveName,
-          contributor: contributor,
-          folderTree: folderTree,
-          onOpenFile: (file, type) => _openFile(file, type),
-          onShowFileInfo: (file) => _showFileInfo(file),
-          formatFileSize: _formatFileSize,
-          formatDate: _formatDate,
-          getFileIcon: _getFileIcon,
-        );
-      },
+          return _DriveHierarchySection(
+            driveName: driveName,
+            contributor: contributor,
+            folderTree: folderTree,
+            onOpenFile: (file, type) => _openFile(file, type),
+            onShowFileInfo: (file) => _showFileInfo(file),
+            formatFileSize: _formatFileSize,
+            formatDate: _formatDate,
+            getFileIcon: _getFileIcon,
+          );
+        },
+      ),
     );
   }
 }
