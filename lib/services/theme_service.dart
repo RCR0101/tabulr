@@ -213,9 +213,9 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       dataRowColor: Color(0xFF3B4252),
       timetableAccents: [
         Color(0xFF5E81AC), Color(0xFFA3BE8C), Color(0xFFEBCB8B),
-        Color(0xFFB48EAD), Color(0xFF88C0D0), Color(0xFF81A1C1),
+        Color(0xFFB48EAD), Color(0xFF88C0D0), Color(0xFFD4879C),
         Color(0xFFBF616A), Color(0xFF8FBCBB), Color(0xFFD08770),
-        Color(0xFFA3BE8C),
+        Color(0xFFC6AA78),
       ],
     ),
     light: _ThemeColors(
@@ -237,9 +237,9 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       dataRowColor: Color(0xFFECEFF4),
       timetableAccents: [
         Color(0xFF4C6A92), Color(0xFF6B8E5E), Color(0xFFC4A44C),
-        Color(0xFF8E6B8A), Color(0xFF5A8F9A), Color(0xFF6282A3),
+        Color(0xFF8E6B8A), Color(0xFF5A8F9A), Color(0xFFA8657C),
         Color(0xFFA04850), Color(0xFF5F9A98), Color(0xFFAA6B50),
-        Color(0xFF6B8E5E),
+        Color(0xFF9E8458),
       ],
     ),
   ),
@@ -477,8 +477,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       timetableAccents: [
         Color(0xFF88C0D0), Color(0xFFA3BE8C), Color(0xFFEBCB8B),
         Color(0xFFB48EAD), Color(0xFF81A1C1), Color(0xFF8FBCBB),
-        Color(0xFFBF616A), Color(0xFF5E81AC), Color(0xFFD08770),
-        Color(0xFFA3BE8C),
+        Color(0xFFBF616A), Color(0xFFC6AA78), Color(0xFFD08770),
+        Color(0xFFD4879C),
       ],
     ),
     light: _ThemeColors(
@@ -499,8 +499,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       timetableAccents: [
         Color(0xFF4A90A4), Color(0xFF5A8F6A), Color(0xFFC4A44C),
         Color(0xFF8E6B8A), Color(0xFF5E81AC), Color(0xFF5F9A98),
-        Color(0xFFA04850), Color(0xFF4C6A92), Color(0xFFAA6B50),
-        Color(0xFF6B8E5E),
+        Color(0xFFA04850), Color(0xFF9E8458), Color(0xFFAA6B50),
+        Color(0xFFA8657C),
       ],
     ),
   ),
@@ -655,8 +655,8 @@ ThemeData _buildTheme(_ThemeColors c) {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       shadowColor: c.cardShadowColor,
     ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
         backgroundColor: c.primary,
         foregroundColor: c.buttonForeground ?? c.onPrimary,
         elevation: c.buttonElevation,

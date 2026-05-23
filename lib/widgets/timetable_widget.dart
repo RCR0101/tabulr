@@ -443,7 +443,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     required Color color,
     bool isLoading = false,
   }) {
-    return ElevatedButton.icon(
+    return FilledButton.icon(
       onPressed: onPressed,
       icon: isLoading
         ? const SizedBox(
@@ -455,7 +455,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
           ? Icon(icon, size: 14)
           : const SizedBox.shrink(),
       label: Text(label, style: const TextStyle(fontSize: 12)),
-      style: ElevatedButton.styleFrom(
+      style: FilledButton.styleFrom(
         backgroundColor: color.withValues(alpha: 0.1),
         foregroundColor: color,
         side: BorderSide(color: color.withValues(alpha: 0.3)),
@@ -734,7 +734,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               const SizedBox(width: 16),
               // Auto Load CDCs button (desktop)
               if (!widget.isForExport && widget.onAutoLoadCDCs != null)
-                ElevatedButton.icon(
+                FilledButton.icon(
                   onPressed: () {
                     ResponsiveService.triggerLightFeedback(context);
                     widget.onAutoLoadCDCs!();
@@ -744,7 +744,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     size: ResponsiveService.getAdaptiveIconSize(context, 16),
                   ),
                   label: const Text('Auto Load CDCs'),
-                  style: ElevatedButton.styleFrom(
+                  style: FilledButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
                     foregroundColor: Theme.of(context).colorScheme.secondary,
                     side: BorderSide(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3)),
@@ -762,7 +762,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                 const SizedBox(width: 8),
               // Save button
               if (!widget.isForExport && widget.onSave != null)
-                ElevatedButton.icon(
+                FilledButton.icon(
                   onPressed: widget.hasUnsavedChanges && !widget.isSaving
                     ? () {
                         ResponsiveService.triggerMediumFeedback(context);
@@ -783,7 +783,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     widget.isSaving ? 'Saving...' :
                     widget.hasUnsavedChanges ? 'Save' : 'Saved',
                   ),
-                  style: ElevatedButton.styleFrom(
+                  style: FilledButton.styleFrom(
                     backgroundColor: widget.hasUnsavedChanges
                       ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
                       : Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.1),
@@ -809,14 +809,14 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                 const SizedBox(width: 8),
               // Quick Replace Button (desktop)
               if (_canShowQuickReplace)
-                ElevatedButton.icon(
+                FilledButton.icon(
                   onPressed: _showQuickReplaceDialog,
                   icon: Icon(
                     Icons.swap_horiz,
                     size: ResponsiveService.getAdaptiveIconSize(context, 16),
                   ),
                   label: const Text('Quick Replace'),
-                  style: ElevatedButton.styleFrom(
+                  style: FilledButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.1),
                     foregroundColor: Theme.of(context).colorScheme.tertiary,
                     side: BorderSide(color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3)),
@@ -833,7 +833,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               if (_canShowQuickReplace)
                 const SizedBox(width: 8),
               if (widget.timetableSlots.isNotEmpty && widget.onClear != null)
-                ElevatedButton.icon(
+                TextButton.icon(
                   onPressed: () {
                     ResponsiveService.triggerHeavyFeedback(context);
                     widget.onClear!();
@@ -843,17 +843,11 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     size: ResponsiveService.getAdaptiveIconSize(context, 16),
                   ),
                   label: const Text('Clear'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
+                  style: TextButton.styleFrom(
                     foregroundColor: Theme.of(context).colorScheme.error,
-                    side: BorderSide(color: Theme.of(context).colorScheme.error.withValues(alpha: 0.3)),
-                    elevation: 0,
                     minimumSize: Size(
                       0,
                       ResponsiveService.getTouchTargetSize(context),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                 ),
@@ -1225,19 +1219,20 @@ class _TimetableWidgetState extends State<TimetableWidget> {
   String _getDayName(DayOfWeek day) => getDayName(day);
 
   Widget _buildTimetableCell(BuildContext context, TimetableSlot slot, int hour, DayOfWeek day) {
-    // Find all slots for the same course to show in hover
     final sameCourseSlots = widget.timetableSlots
         .where((s) => s.courseCode == slot.courseCode && s.sectionId == slot.sectionId)
         .toList();
-    
-    // Use RepaintBoundary for performance on mobile
+    final courseKey = '${slot.courseCode}-${slot.sectionId}';
+    final isHovered = _hoveredCourse == courseKey;
+    final courseColor = _getCourseColor(slot.courseCode);
+
     return RepaintBoundary(
       child: Semantics(
         label: '${slot.courseCode} ${slot.sectionId}, ${slot.instructor}, ${slot.room}',
         child: MouseRegion(
         onEnter: (_) {
           setState(() {
-            _hoveredCourse = '${slot.courseCode}-${slot.sectionId}';
+            _hoveredCourse = courseKey;
           });
         },
         onExit: (_) {
@@ -1245,23 +1240,18 @@ class _TimetableWidgetState extends State<TimetableWidget> {
             _hoveredCourse = null;
           });
         },
-        child: Tooltip(
-        message: _buildTooltipContent(sameCourseSlots),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Theme.of(context).colorScheme.outline),
-        ),
-        textStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12),
-        child: Container(
+        child: GestureDetector(
+        onTap: () => _showCellDetail(context, slot, sameCourseSlots),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
           width: _getDayColumnWidth(widget.size),
           height: _getCellHeight(widget.size),
           margin: EdgeInsets.all(_getCellMargin(widget.size)),
           decoration: BoxDecoration(
-            color: _getCourseColor(slot.courseCode).withValues(alpha: 0.12),
+            color: courseColor.withValues(alpha: isHovered ? 0.22 : 0.12),
             borderRadius: BorderRadius.circular(_getBorderRadius(widget.size)),
             border: Border.all(
-              color: _getCourseColor(slot.courseCode).withValues(alpha: 0.2),
+              color: courseColor.withValues(alpha: isHovered ? 0.4 : 0.2),
             ),
           ),
           child: Stack(
@@ -1446,24 +1436,131 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     );
   }
 
-  String _buildTooltipContent(List<TimetableSlot> slots) {
-    if (slots.isEmpty) return '';
-    
-    final courseCode = slots.first.courseCode;
-    final sectionId = slots.first.sectionId;
-    final instructor = slots.first.instructor;
-    
+
+  void _showCellDetail(BuildContext context, TimetableSlot slot, List<TimetableSlot> sameCourseSlots) {
+    final scheme = Theme.of(context).colorScheme;
+    final courseColor = _getCourseColor(slot.courseCode);
     final timeSlots = <String>[];
-    for (var slot in slots) {
-      for (var hour in slot.hours) {
-        final timeSlot = '${_getDayAbbreviation(slot.day)} ${TimeSlotInfo.getHourSlotName(hour)}';
-        if (!timeSlots.contains(timeSlot)) {
-          timeSlots.add(timeSlot);
-        }
+    for (var s in sameCourseSlots) {
+      for (var hour in s.hours) {
+        final ts = '${_getDayAbbreviation(s.day)} ${TimeSlotInfo.getHourSlotName(hour)}';
+        if (!timeSlots.contains(ts)) timeSlots.add(ts);
       }
     }
-    
-    return '$courseCode ($sectionId)\\n$instructor\\nSchedule:\\n${timeSlots.join('\\n')}';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 340),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: courseColor,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            slot.courseCode,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: courseColor,
+                            ),
+                          ),
+                          Text(
+                            slot.sectionId,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: scheme.onSurface.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      icon: const Icon(Icons.close, size: 20),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  slot.courseTitle,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: scheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _detailRow(Icons.person_outline, slot.instructor, scheme),
+                const SizedBox(height: 6),
+                _detailRow(Icons.room_outlined, slot.room, scheme),
+                const SizedBox(height: 6),
+                _detailRow(
+                  Icons.schedule,
+                  timeSlots.join(', '),
+                  scheme,
+                ),
+                if (widget.onRemoveSection != null) ...[
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        widget.onRemoveSection!(slot.courseCode, slot.sectionId);
+                      },
+                      icon: const Icon(Icons.remove_circle_outline, size: 18),
+                      label: const Text('Remove section'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: scheme.error,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(IconData icon, String text, ColorScheme scheme) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: scheme.onSurface.withValues(alpha: 0.5)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 13,
+              color: scheme.onSurface.withValues(alpha: 0.8),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   String _getDayAbbreviation(DayOfWeek day) {

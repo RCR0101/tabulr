@@ -68,9 +68,9 @@ class AppButton extends StatelessWidget {
             ],
           );
 
-    final button = ElevatedButton(
+    final button = FilledButton(
       onPressed: isLoading ? null : onTap,
-      style: ElevatedButton.styleFrom(
+      style: FilledButton.styleFrom(
         backgroundColor: bg,
         foregroundColor: fg,
         elevation: 0,

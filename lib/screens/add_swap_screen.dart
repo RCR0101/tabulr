@@ -589,7 +589,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
               // Check All button
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton.icon(
+                child: FilledButton.icon(
                   onPressed: _isCheckingAll ? null : () {
                     ResponsiveService.triggerMediumFeedback(context);
                     _checkAllCourses();
@@ -602,7 +602,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                         )
                       : Icon(Icons.checklist, size: ResponsiveService.getAdaptiveIconSize(context, 18)),
                   label: Text(_isCheckingAll ? 'Checking All Courses...' : 'Check All'),
-                  style: ElevatedButton.styleFrom(
+                  style: FilledButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.secondary,
                     foregroundColor: Theme.of(context).colorScheme.onSecondary,
                     minimumSize: Size(
@@ -638,7 +638,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                     SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
                     SizedBox(
                       width: double.infinity,
-                      child: ElevatedButton.icon(
+                      child: FilledButton.icon(
                         onPressed: _isValidating ? null : () {
                           ResponsiveService.triggerMediumFeedback(context);
                           _validateSelection();
@@ -651,7 +651,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                               )
                             : Icon(Icons.verified_user, size: ResponsiveService.getAdaptiveIconSize(context, 18)),
                         label: Text(_isValidating ? 'Validating...' : 'Validate Selection'),
-                        style: ElevatedButton.styleFrom(
+                        style: FilledButton.styleFrom(
                           backgroundColor: Theme.of(context).colorScheme.primary,
                           foregroundColor: Theme.of(context).colorScheme.onPrimary,
                           minimumSize: Size(
@@ -680,7 +680,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                     ),
                     SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 12)),
                     Expanded(
-                      child: ElevatedButton.icon(
+                      child: FilledButton.icon(
                         onPressed: _isValidating ? null : () {
                           ResponsiveService.triggerMediumFeedback(context);
                           _validateSelection();
@@ -693,7 +693,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                               )
                             : Icon(Icons.verified_user, size: ResponsiveService.getAdaptiveIconSize(context, 18)),
                         label: Text(_isValidating ? 'Validating...' : 'Validate Selection'),
-                        style: ElevatedButton.styleFrom(
+                        style: FilledButton.styleFrom(
                           backgroundColor: Theme.of(context).colorScheme.primary,
                           foregroundColor: Theme.of(context).colorScheme.onPrimary,
                           minimumSize: Size(0, ResponsiveService.getTouchTargetSize(context)),
@@ -716,7 +716,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: ElevatedButton.icon(
+                      child: FilledButton.icon(
                         onPressed: _isValidating ? null : _validateSelection,
                         icon: _isValidating
                             ? const SizedBox(
@@ -726,7 +726,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                               )
                             : const Icon(Icons.verified_user),
                         label: Text(_isValidating ? 'Validating...' : 'Validate Selection'),
-                        style: ElevatedButton.styleFrom(
+                        style: FilledButton.styleFrom(
                           backgroundColor: Theme.of(context).colorScheme.primary,
                           foregroundColor: Theme.of(context).colorScheme.onPrimary,
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1181,11 +1181,11 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                             ),
                           ),
                           // Action button to add this combination
-                          ElevatedButton.icon(
+                          FilledButton.icon(
                             onPressed: () => _addSafeCombination(result),
                             icon: const Icon(Icons.add, size: 16),
                             label: const Text('Add'),
-                            style: ElevatedButton.styleFrom(
+                            style: FilledButton.styleFrom(
                               backgroundColor: Theme.of(context).colorScheme.primary,
                               foregroundColor: Theme.of(context).colorScheme.onPrimary,
                               minimumSize: const Size(0, 32),

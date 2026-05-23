@@ -904,17 +904,14 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
             const SizedBox(height: 8),
             SizedBox(
               height: 30,
-              child: OutlinedButton.icon(
+              child: TextButton.icon(
                 onPressed: () =>
                     _showAcceptCorrectionDialog(announcement),
                 icon: const Icon(Icons.edit, size: 14),
                 label: const Text('Accept & Correct',
                     style: TextStyle(fontSize: 12)),
-                style: OutlinedButton.styleFrom(
+                style: TextButton.styleFrom(
                   foregroundColor: theme.colorScheme.error,
-                  side: BorderSide(
-                      color:
-                          theme.colorScheme.error.withValues(alpha: 0.3)),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                 ),
               ),

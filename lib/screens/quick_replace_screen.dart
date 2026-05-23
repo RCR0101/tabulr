@@ -1915,7 +1915,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerRight,
-              child: FilledButton.tonal(
+              child: FilledButton(
                 onPressed: () {
                   widget.onSectionShuffle?.call(result.newSections);
                   Navigator.pop(context);

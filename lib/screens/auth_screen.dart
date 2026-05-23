@@ -113,7 +113,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     SizedBox(
                       width: double.infinity,
                       height: 56,
-                      child: ElevatedButton.icon(
+                      child: FilledButton.icon(
                         onPressed: _isLoading ? null : _signInWithGoogle,
                         icon: _isLoading
                             ? const SizedBox(

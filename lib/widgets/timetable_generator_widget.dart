@@ -823,9 +823,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           children: [
             const Text('Avoid time slots:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
             const Spacer(),
-            ElevatedButton(
+            FilledButton(
               onPressed: _addTimeAvoidance,
-              style: ElevatedButton.styleFrom(
+              style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 minimumSize: const Size(0, 32),
               ),
@@ -881,9 +881,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           children: [
             const Text('Avoid labs on:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
             const Spacer(),
-            ElevatedButton(
+            FilledButton(
               onPressed: _addLabAvoidance,
-              style: ElevatedButton.styleFrom(
+              style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 minimumSize: const Size(0, 32),
               ),
@@ -939,9 +939,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           children: [
             const Text('Avoid instructors:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
             const Spacer(),
-            ElevatedButton(
+            FilledButton(
               onPressed: _mandatoryCourses.isNotEmpty ? _addInstructorAvoidance : null,
-              style: ElevatedButton.styleFrom(
+              style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 minimumSize: const Size(0, 32),
               ),
@@ -1010,9 +1010,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           children: [
             const Text('Rank instructors:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
             const Spacer(),
-            ElevatedButton(
+            FilledButton(
               onPressed: _mandatoryCourses.isNotEmpty ? _showInstructorRankingDialog : null,
-              style: ElevatedButton.styleFrom(
+              style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 minimumSize: const Size(0, 32),
               ),
@@ -1453,9 +1453,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
             ? Theme.of(context).colorScheme.surface
             : null,
       ),
-      child: ElevatedButton(
+      child: FilledButton(
         onPressed: _mandatoryCourses.isNotEmpty && !_isGenerating ? _generateTimetables : null,
-        style: ElevatedButton.styleFrom(
+        style: FilledButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
@@ -1741,7 +1741,7 @@ class _TimeAvoidanceDialogState extends State<_TimeAvoidanceDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        ElevatedButton(
+        FilledButton(
           onPressed: _selectedDay != null && _selectedHours.isNotEmpty
             ? () {
                 final avoidTime = TimeAvoidance(
@@ -1839,7 +1839,7 @@ class _LabAvoidanceDialogState extends State<_LabAvoidanceDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        ElevatedButton(
+        FilledButton(
           onPressed: _selectedDay != null && _selectedHours.isNotEmpty
             ? () {
                 final avoidLab = LabAvoidance(
@@ -2088,7 +2088,7 @@ class _InstructorAvoidanceDialogState extends State<_InstructorAvoidanceDialog> 
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        ElevatedButton(
+        FilledButton(
           onPressed: _selectedInstructors.isNotEmpty
               ? () => Navigator.pop(context, _selectedInstructors)
               : null,
@@ -2232,7 +2232,7 @@ class _InstructorRankingDialogState extends State<_InstructorRankingDialog>
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        ElevatedButton(
+        FilledButton(
           onPressed: () => Navigator.pop(context, _rankings),
           child: const Text('Save Rankings'),
         ),

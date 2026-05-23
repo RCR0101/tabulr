@@ -314,7 +314,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
     required double touchTarget,
     required double progressSize,
   }) {
-    final searchButton = ElevatedButton(
+    final searchButton = FilledButton(
       onPressed: (_selectedPrimaryBranch == null ||
               _selectedSemester == null ||
               _isSearching)
@@ -323,7 +323,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
               ResponsiveService.triggerMediumFeedback(context);
               _searchHumanitiesElectives();
             },
-      style: ElevatedButton.styleFrom(
+      style: FilledButton.styleFrom(
         minimumSize: Size(isMobile ? double.infinity : 0, touchTarget),
       ),
       child: _isSearching

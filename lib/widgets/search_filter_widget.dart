@@ -113,7 +113,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                   Row(
                     children: [
                       Expanded(
-                        child: ElevatedButton.icon(
+                        child: FilledButton.icon(
                           onPressed: () {
                             setState(() {
                               _showAdvancedFilters = !_showAdvancedFilters;
@@ -130,7 +130,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                         ),
                       ),
                       SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
-                      ElevatedButton.icon(
+                      FilledButton.icon(
                         onPressed: _clearFilters,
                         icon: Icon(
                           Icons.clear,
@@ -306,7 +306,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                   children: [
                     SizedBox(
                       width: double.infinity,
-                      child: ElevatedButton.icon(
+                      child: FilledButton.icon(
                         onPressed: () async {
                           final date = await showDatePicker(
                             context: context,
@@ -328,7 +328,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                     SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 8)),
                     SizedBox(
                       width: double.infinity,
-                      child: ElevatedButton.icon(
+                      child: FilledButton.icon(
                         onPressed: () async {
                           final date = await showDatePicker(
                             context: context,
@@ -352,7 +352,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                 desktop: Row(
                   children: [
                     Expanded(
-                      child: ElevatedButton(
+                      child: FilledButton(
                         onPressed: () async {
                           final date = await showDatePicker(
                             context: context,
@@ -372,7 +372,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: ElevatedButton(
+                      child: FilledButton(
                         onPressed: () async {
                           final date = await showDatePicker(
                             context: context,

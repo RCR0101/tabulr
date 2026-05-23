@@ -440,7 +440,7 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
     required double touchTarget,
     required double progressSize,
   }) {
-    final searchButton = ElevatedButton(
+    final searchButton = FilledButton(
       onPressed: (_selectedPrimaryBranch == null ||
               _selectedSemester == null ||
               _isSearching)
@@ -449,7 +449,7 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
               ResponsiveService.triggerMediumFeedback(context);
               _searchDisciplineElectives();
             },
-      style: ElevatedButton.styleFrom(
+      style: FilledButton.styleFrom(
         minimumSize: Size(isMobile ? double.infinity : 0, touchTarget),
       ),
       child: _isSearching

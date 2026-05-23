@@ -85,6 +85,7 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final isDesktop = !ResponsiveService.isMobile(context);
+    final isTablet = ResponsiveService.isTablet(context);
 
     if (isDesktop) {
       return Row(
@@ -92,9 +93,10 @@ class _AppShellState extends State<AppShell> {
           AppSidebar(
             currentScreen: _currentScreen,
             onScreenSelected: _onScreenSelected,
-            collapsed: _sidebarCollapsed,
-            onToggleCollapse: () =>
-                setState(() => _sidebarCollapsed = !_sidebarCollapsed),
+            collapsed: isTablet || _sidebarCollapsed,
+            onToggleCollapse: isTablet
+                ? null
+                : () => setState(() => _sidebarCollapsed = !_sidebarCollapsed),
           ),
           Expanded(child: _buildScreen()),
         ],

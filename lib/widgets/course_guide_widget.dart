@@ -139,7 +139,7 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
               const SizedBox(height: 16),
               Text(_error!, textAlign: TextAlign.center),
               const SizedBox(height: 16),
-              ElevatedButton(onPressed: _loadBranches, child: const Text('Retry')),
+              FilledButton(onPressed: _loadBranches, child: const Text('Retry')),
             ],
           ),
         ),
@@ -300,9 +300,9 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
           // Search button
           SizedBox(
             width: isMobile ? double.infinity : null,
-            child: ElevatedButton.icon(
+            child: FilledButton.icon(
               onPressed: (_selectedPrimaryBranch == null || _isSearching) ? null : _loadCDCs,
-              style: ElevatedButton.styleFrom(
+              style: FilledButton.styleFrom(
                 minimumSize: Size(isMobile ? double.infinity : 160, touchTarget),
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,

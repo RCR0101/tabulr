@@ -8,7 +8,7 @@ class AppSidebar extends StatefulWidget {
   final DrawerScreen currentScreen;
   final ValueChanged<DrawerScreen> onScreenSelected;
   final bool collapsed;
-  final VoidCallback onToggleCollapse;
+  final VoidCallback? onToggleCollapse;
 
   const AppSidebar({
     super.key,
@@ -264,13 +264,15 @@ class _AppSidebarState extends State<AppSidebar> {
         ),
       ),
       child: collapsed
-          ? Center(
-              child: IconButton(
-                onPressed: widget.onToggleCollapse,
-                icon: const Icon(Icons.chevron_right, size: 20),
-                tooltip: 'Expand sidebar',
-              ),
-            )
+          ? (widget.onToggleCollapse != null
+              ? Center(
+                  child: IconButton(
+                    onPressed: widget.onToggleCollapse,
+                    icon: const Icon(Icons.chevron_right, size: 20),
+                    tooltip: 'Expand sidebar',
+                  ),
+                )
+              : const SizedBox.shrink())
           : Row(
               children: [
                 const SizedBox(width: AppDesign.spacingSm),

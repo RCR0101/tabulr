@@ -242,7 +242,7 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
               SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton.icon(
+                child: FilledButton.icon(
                   onPressed: (_selectedBranch != null && _selectedSemester != null)
                       ? () {
                           ResponsiveService.triggerMediumFeedback(context);
@@ -252,7 +252,7 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
                           ));
                         }
                       : null,
-                  style: ElevatedButton.styleFrom(
+                  style: FilledButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     minimumSize: Size(
@@ -275,7 +275,7 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text('Cancel'),
               ),
-              ElevatedButton.icon(
+              FilledButton.icon(
                 onPressed: (_selectedBranch != null && _selectedSemester != null)
                     ? () {
                         Navigator.of(context).pop(AutoLoadCDCResult(
@@ -284,7 +284,7 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
                         ));
                       }
                     : null,
-                style: ElevatedButton.styleFrom(
+                style: FilledButton.styleFrom(
                   backgroundColor: Theme.of(context).colorScheme.primary,
                   foregroundColor: Theme.of(context).colorScheme.onPrimary,
                 ),

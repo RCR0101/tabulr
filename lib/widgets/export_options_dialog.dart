@@ -199,12 +199,12 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
               SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton.icon(
+                child: FilledButton.icon(
                   onPressed: () {
                     ResponsiveService.triggerMediumFeedback(context);
                     Navigator.of(context).pop(_options);
                   },
-                  style: ElevatedButton.styleFrom(
+                  style: FilledButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     minimumSize: Size(
@@ -256,14 +256,14 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
               child: const Text('Reset'),
             ),
             SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
-            ElevatedButton.icon(
+            FilledButton.icon(
               onPressed: () {
                 ResponsiveService.triggerMediumFeedback(context);
                 Navigator.of(context).pop(_options);
               },
               icon: Icon(Icons.download, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
               label: const Text('Export PNG'),
-              style: ElevatedButton.styleFrom(
+              style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
                 minimumSize: Size(

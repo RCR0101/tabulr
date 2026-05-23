@@ -131,7 +131,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                ElevatedButton.icon(
+                FilledButton.icon(
                   onPressed: _showSortDialog,
                   icon: const Icon(Icons.sort),
                   label: const Text('Sort'),
@@ -196,7 +196,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          ElevatedButton.icon(
+          FilledButton.icon(
             onPressed: _loadProfessors,
             icon: const Icon(Icons.refresh),
             label: const Text('Retry'),
@@ -239,7 +239,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
           ),
           if (hasSearch) ...[
             const SizedBox(height: 24),
-            ElevatedButton.icon(
+            FilledButton.icon(
               onPressed: _clearSearch,
               icon: const Icon(Icons.clear),
               label: const Text('Clear Search'),

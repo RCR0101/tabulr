@@ -65,7 +65,7 @@ class GeneratedTimetableCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    ElevatedButton(
+                    FilledButton(
                       onPressed: onSelect,
                       child: const Text('Select'),
                     ),
