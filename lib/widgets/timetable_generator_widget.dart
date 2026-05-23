@@ -315,38 +315,47 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   }
 
   Widget _buildEmptyResults() {
+    final scheme = Theme.of(context).colorScheme;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.auto_awesome_outlined,
-            size: 64,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: scheme.onSurface.withValues(alpha: 0.05),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              _isGenerating ? Icons.hourglass_top_rounded : Icons.table_chart_outlined,
+              size: 48,
+              color: scheme.onSurface.withValues(alpha: 0.35),
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           Text(
             _isGenerating ? 'Generating timetables...' : 'No timetables generated yet',
             style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface,
+              color: scheme.onSurface,
               fontSize: 18,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            _isGenerating 
+            _isGenerating
                 ? 'This may take a few moments'
                 : 'Select courses and click Generate to see results',
             style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              color: scheme.onSurface.withValues(alpha: 0.5),
               fontSize: 14,
             ),
           ),
           if (_isGenerating) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             CircularProgressIndicator(
-              color: Theme.of(context).colorScheme.primary,
+              color: scheme.primary,
+              strokeWidth: 3,
             ),
           ],
         ],
@@ -517,8 +526,8 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Constraints & Preferences:', style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
+        const Text('Constraints & Preferences', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+        const SizedBox(height: 10),
 
         // Schedule group
         _buildConstraintGroup(
@@ -526,43 +535,56 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           title: 'Schedule',
           children: [
             _buildRowConstraint('Max hours/day', SizedBox(
-              width: 60,
-              child: TextField(
-                controller: TextEditingController(text: _maxHoursPerDay.toString()),
-                keyboardType: TextInputType.number,
-                style: const TextStyle(fontSize: 14),
-                decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8), border: OutlineInputBorder()),
-                onChanged: (value) {
-                  final hours = int.tryParse(value);
-                  if (hours != null && hours > 0 && hours <= 12) _maxHoursPerDay = hours;
+              width: 72,
+              child: DropdownMenu<int>(
+                initialSelection: _maxHoursPerDay,
+                textStyle: const TextStyle(fontSize: 13),
+                inputDecorationTheme: InputDecorationTheme(
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  constraints: const BoxConstraints(maxHeight: 36),
+                ),
+                dropdownMenuEntries: List.generate(12, (i) => DropdownMenuEntry(
+                  value: i + 1,
+                  label: '${i + 1}',
+                )),
+                onSelected: (value) {
+                  if (value != null) setState(() { _maxHoursPerDay = value; });
                 },
               ),
             )),
             _buildCheckConstraint('Avoid back-to-back classes', _avoidBackToBack, (v) => setState(() { _avoidBackToBack = v ?? false; })),
             _buildCheckConstraint('Minimize gaps between classes', _minimizeGaps, (v) => setState(() { _minimizeGaps = v ?? false; })),
             _buildCheckConstraint('Protect lunch break (12–2 PM)', _protectLunchBreak, (v) => setState(() { _protectLunchBreak = v ?? false; })),
-            _buildRowConstraint('Prefer classes in', DropdownButton<TimeOfDayPreference>(
-              value: _timeOfDayPreference,
-              isExpanded: true,
-              underline: const SizedBox(),
-              isDense: true,
-              style: TextStyle(fontSize: 14, color: scheme.onSurface),
-              items: const [
-                DropdownMenuItem(value: TimeOfDayPreference.none, child: Text('No preference', style: TextStyle(fontSize: 14))),
-                DropdownMenuItem(value: TimeOfDayPreference.morning, child: Text('Morning', style: TextStyle(fontSize: 14))),
-                DropdownMenuItem(value: TimeOfDayPreference.afternoon, child: Text('Afternoon', style: TextStyle(fontSize: 14))),
-              ],
-              onChanged: (value) { setState(() { _timeOfDayPreference = value ?? TimeOfDayPreference.none; }); },
+            _buildRowConstraint('Prefer classes in', SizedBox(
+              width: 160,
+              child: DropdownMenu<TimeOfDayPreference>(
+                initialSelection: _timeOfDayPreference,
+                textStyle: const TextStyle(fontSize: 13),
+                inputDecorationTheme: InputDecorationTheme(
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  constraints: const BoxConstraints(maxHeight: 36),
+                ),
+                dropdownMenuEntries: const [
+                  DropdownMenuEntry(value: TimeOfDayPreference.none, label: 'No preference'),
+                  DropdownMenuEntry(value: TimeOfDayPreference.morning, label: 'Morning'),
+                  DropdownMenuEntry(value: TimeOfDayPreference.afternoon, label: 'Afternoon'),
+                ],
+                onSelected: (value) { setState(() { _timeOfDayPreference = value ?? TimeOfDayPreference.none; }); },
+              ),
             )),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildFreeDayRanking(),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildTimeAvoidance(),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildLabAvoidance(),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
 
         // Instructors group
         _buildConstraintGroup(
@@ -570,48 +592,54 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           title: 'Instructors',
           children: [
             _buildInstructorAvoidance(),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildInstructorRanking(),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
 
         // Exams group
         _buildConstraintGroup(
           icon: Icons.event,
           title: 'Exams',
           children: [
-            _buildRowConstraint('Preferred midsem', DropdownButton<TimeSlot?>(
-              value: _preferredMidsemSlot,
-              hint: const Text('Any', style: TextStyle(fontSize: 14)),
-              isExpanded: true,
-              underline: const SizedBox(),
-              isDense: true,
-              style: TextStyle(fontSize: 14, color: scheme.onSurface),
-              items: [
-                const DropdownMenuItem<TimeSlot?>(value: null, child: Text('Any', style: TextStyle(fontSize: 14))),
-                ...TimeSlotInfo.getMidSemSlots().map((slot) => DropdownMenuItem(
+            _buildRowConstraint('Preferred midsem', DropdownMenu<TimeSlot?>(
+              initialSelection: _preferredMidsemSlot,
+              textStyle: const TextStyle(fontSize: 13),
+              inputDecorationTheme: InputDecorationTheme(
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                constraints: const BoxConstraints(maxHeight: 36),
+              ),
+              expandedInsets: EdgeInsets.zero,
+              dropdownMenuEntries: [
+                const DropdownMenuEntry<TimeSlot?>(value: null, label: 'Any'),
+                ...TimeSlotInfo.getMidSemSlots().map((slot) => DropdownMenuEntry<TimeSlot?>(
                   value: slot,
-                  child: Text(TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode), style: const TextStyle(fontSize: 14)),
+                  label: TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode),
                 )),
               ],
-              onChanged: (value) { setState(() { _preferredMidsemSlot = value; }); },
+              onSelected: (value) { setState(() { _preferredMidsemSlot = value; }); },
             )),
-            _buildRowConstraint('Preferred compre', DropdownButton<TimeSlot?>(
-              value: _preferredCompreSlot,
-              hint: const Text('Any', style: TextStyle(fontSize: 14)),
-              isExpanded: true,
-              underline: const SizedBox(),
-              isDense: true,
-              style: TextStyle(fontSize: 14, color: scheme.onSurface),
-              items: [
-                const DropdownMenuItem<TimeSlot?>(value: null, child: Text('Any', style: TextStyle(fontSize: 14))),
-                ...TimeSlotInfo.getEndSemSlots().map((slot) => DropdownMenuItem(
+            _buildRowConstraint('Preferred compre', DropdownMenu<TimeSlot?>(
+              initialSelection: _preferredCompreSlot,
+              textStyle: const TextStyle(fontSize: 13),
+              inputDecorationTheme: InputDecorationTheme(
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                constraints: const BoxConstraints(maxHeight: 36),
+              ),
+              expandedInsets: EdgeInsets.zero,
+              dropdownMenuEntries: [
+                const DropdownMenuEntry<TimeSlot?>(value: null, label: 'Any'),
+                ...TimeSlotInfo.getEndSemSlots().map((slot) => DropdownMenuEntry<TimeSlot?>(
                   value: slot,
-                  child: Text(TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode), style: const TextStyle(fontSize: 14)),
+                  label: TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode),
                 )),
               ],
-              onChanged: (value) { setState(() { _preferredCompreSlot = value; }); },
+              onSelected: (value) { setState(() { _preferredCompreSlot = value; }); },
             )),
           ],
         ),
@@ -622,15 +650,15 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   Widget _buildConstraintGroup({required IconData icon, required String title, required List<Widget> children}) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.5)),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
-        leading: Icon(icon, size: 18),
+        leading: Icon(icon, size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
         title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+        childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
         dense: true,
         children: children,
       ),
@@ -650,12 +678,12 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
 
   Widget _buildRowConstraint(String label, Widget trailing) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
           Text(label, style: const TextStyle(fontSize: 13)),
-          const SizedBox(width: 8),
-          Expanded(child: trailing),
+          const Spacer(),
+          trailing,
         ],
       ),
     );
@@ -677,9 +705,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
 
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Theme.of(context).colorScheme.outline),
+        color: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
       ),
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -821,15 +849,17 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       children: [
         Row(
           children: [
-            const Text('Avoid time slots:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            const Text('Avoid time slots:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
             const Spacer(),
-            FilledButton(
+            TextButton.icon(
               onPressed: _addTimeAvoidance,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                minimumSize: const Size(0, 32),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Add', style: TextStyle(fontSize: 12)),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Add', style: TextStyle(fontSize: 12)),
             ),
           ],
         ),
@@ -838,9 +868,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           Container(
             constraints: const BoxConstraints(maxHeight: 80),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Theme.of(context).colorScheme.outline),
+              color: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
             ),
             padding: const EdgeInsets.all(8),
             child: SingleChildScrollView(
@@ -879,26 +909,28 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       children: [
         Row(
           children: [
-            const Text('Avoid labs on:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            const Text('Avoid labs on:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
             const Spacer(),
-            FilledButton(
+            TextButton.icon(
               onPressed: _addLabAvoidance,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                minimumSize: const Size(0, 32),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Add', style: TextStyle(fontSize: 12)),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Add', style: TextStyle(fontSize: 12)),
             ),
           ],
         ),
-        if (_avoidLabs.isNotEmpty) ...[ 
+        if (_avoidLabs.isNotEmpty) ...[
           const SizedBox(height: 8),
           Container(
             constraints: const BoxConstraints(maxHeight: 80),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Theme.of(context).colorScheme.outline),
+              color: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
             ),
             padding: const EdgeInsets.all(8),
             child: SingleChildScrollView(
@@ -937,15 +969,17 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       children: [
         Row(
           children: [
-            const Text('Avoid instructors:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            const Text('Avoid instructors:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
             const Spacer(),
-            FilledButton(
+            TextButton.icon(
               onPressed: _mandatoryCourses.isNotEmpty ? _addInstructorAvoidance : null,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                minimumSize: const Size(0, 32),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Add', style: TextStyle(fontSize: 12)),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Add', style: TextStyle(fontSize: 12)),
             ),
           ],
         ),
@@ -954,9 +988,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           Container(
             constraints: const BoxConstraints(maxHeight: 80),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Theme.of(context).colorScheme.outline),
+              color: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
             ),
             padding: const EdgeInsets.all(8),
             child: SingleChildScrollView(
@@ -988,9 +1022,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.3)),
+              color: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
             ),
             child: const Text(
               'Select courses first to see available instructors',
@@ -1008,15 +1042,17 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       children: [
         Row(
           children: [
-            const Text('Rank instructors:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            const Text('Rank instructors:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
             const Spacer(),
-            FilledButton(
+            TextButton.icon(
               onPressed: _mandatoryCourses.isNotEmpty ? _showInstructorRankingDialog : null,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                minimumSize: const Size(0, 32),
+              icon: const Icon(Icons.sort, size: 16),
+              label: const Text('Rank', style: TextStyle(fontSize: 12)),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Rank', style: TextStyle(fontSize: 12)),
             ),
           ],
         ),
@@ -1025,9 +1061,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           Container(
             constraints: const BoxConstraints(maxHeight: 160),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.3)),
+              color: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
             ),
             padding: const EdgeInsets.all(12),
             child: Column(

@@ -488,14 +488,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Theme.of(context).colorScheme.primary,
-                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
-                    ],
-                  ),
+                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(24),
                     topRight: Radius.circular(24),
@@ -506,12 +499,12 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
                         Icons.analytics_rounded,
-                        color: Theme.of(context).colorScheme.onPrimary,
+                        color: Theme.of(context).colorScheme.primary,
                         size: 24,
                       ),
                     ),
@@ -523,7 +516,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                           Text(
                             'Semester Breakdown',
                             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: Theme.of(context).colorScheme.onPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -531,7 +524,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                           Text(
                             'SGPA for each semester',
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                             ),
                           ),
                         ],
@@ -541,7 +534,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                       onPressed: () => Navigator.of(context).pop(),
                       icon: Icon(
                         Icons.close_rounded,
-                        color: Theme.of(context).colorScheme.onPrimary,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                         size: 24,
                       ),
                     ),
@@ -680,13 +673,13 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                     Icon(
                       Icons.calculate_rounded,
                       size: 16,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Overall CGPA: ${_cgpaData.cgpa.toStringAsFixed(2)}',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -704,9 +697,8 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     final scheme = Theme.of(context).colorScheme;
     if (sgpa >= 9.0) return scheme.primary;
     if (sgpa >= 8.0) return scheme.secondary;
-    if (sgpa >= 7.0) return AppDesign.success(context);
-    if (sgpa >= 6.0) return AppDesign.warning(context);
-    if (sgpa >= 5.0) return scheme.error;
+    if (sgpa >= 7.0) return Color.lerp(scheme.primary, scheme.secondary, 0.5)!;
+    if (sgpa >= 6.0) return Color.lerp(scheme.secondary, scheme.error, 0.5)!;
     return scheme.error;
   }
 
@@ -746,14 +738,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Theme.of(context).colorScheme.secondary,
-                      Theme.of(context).colorScheme.secondary.withValues(alpha: 0.8),
-                    ],
-                  ),
+                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(24),
                     topRight: Radius.circular(24),
@@ -764,12 +749,12 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
+                        color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
                         Icons.school_rounded,
-                        color: Theme.of(context).colorScheme.onPrimary,
+                        color: Theme.of(context).colorScheme.secondary,
                         size: 24,
                       ),
                     ),
@@ -781,7 +766,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                           Text(
                             'Credits Breakdown',
                             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: Theme.of(context).colorScheme.onPrimary,
+                              color: Theme.of(context).colorScheme.onSurface,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -789,7 +774,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                           Text(
                             'Credits for each semester',
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                             ),
                           ),
                         ],
@@ -799,7 +784,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                       onPressed: () => Navigator.of(context).pop(),
                       icon: Icon(
                         Icons.close_rounded,
-                        color: Theme.of(context).colorScheme.onPrimary,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                         size: 24,
                       ),
                     ),
@@ -938,13 +923,13 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                     Icon(
                       Icons.school_rounded,
                       size: 16,
-                      color: Theme.of(context).colorScheme.secondary,
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Total Credits: ${_cgpaData.semesters.values.fold<double>(0.0, (sum, sem) => sum + sem.totalCredits).toStringAsFixed(0)}',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.secondary,
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -959,12 +944,12 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
   }
 
   Color _getCreditsColor(double credits) {
-    if (credits >= 24) return const Color(0xFF0D9488); // High load - Teal
-    if (credits >= 20) return const Color(0xFF059669); // Good load - Green
-    if (credits >= 16) return const Color(0xFF3B82F6); // Normal load - Blue
-    if (credits >= 12) return const Color(0xFFF59E0B); // Light load - Amber
-    if (credits >= 8) return const Color(0xFFEF4444); // Very light - Red
-    return const Color(0xFFDC2626); // Minimal - Deep Red
+    final scheme = Theme.of(context).colorScheme;
+    if (credits >= 24) return scheme.primary;
+    if (credits >= 20) return scheme.secondary;
+    if (credits >= 16) return Color.lerp(scheme.primary, scheme.secondary, 0.5)!;
+    if (credits >= 12) return Color.lerp(scheme.secondary, scheme.error, 0.5)!;
+    return scheme.error;
   }
 
   void _removeSemester(String semesterName) async {
@@ -1367,44 +1352,31 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     return Container(
       padding: EdgeInsets.all(isMobile ? 8 : 12),
       decoration: BoxDecoration(
-        gradient:
-            isPrimary
-                ? LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Theme.of(context).colorScheme.primary,
-                    Theme.of(context).colorScheme.primary.withOpacity(0.8),
-                  ],
-                )
-                : LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHigh.withOpacity(0.7),
-                    Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainer.withOpacity(0.4),
-                  ],
-                ),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Theme.of(
+              context,
+            ).colorScheme.surfaceContainerHigh.withOpacity(isPrimary ? 0.9 : 0.7),
+            Theme.of(
+              context,
+            ).colorScheme.surfaceContainer.withOpacity(isPrimary ? 0.6 : 0.4),
+          ],
+        ),
         borderRadius: BorderRadius.circular(isMobile ? 10 : 12),
         border: Border.all(
           color:
               isPrimary
-                  ? Theme.of(context).colorScheme.primary.withOpacity(0.4)
+                  ? Theme.of(context).colorScheme.primary.withOpacity(0.25)
                   : Theme.of(context).colorScheme.outline.withOpacity(0.2),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color:
-                isPrimary
-                    ? Theme.of(context).colorScheme.primary.withOpacity(0.25)
-                    : Theme.of(context).colorScheme.shadow.withOpacity(0.08),
-            blurRadius: isPrimary ? 8 : 6,
-            offset: Offset(0, isPrimary ? 2 : 1),
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.08),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -1416,8 +1388,8 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
             size: isMobile ? 16 : 18,
             color:
                 isPrimary
-                    ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9)
-                    : Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+                    ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.8)
+                    : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
           ),
           SizedBox(height: isMobile ? 4 : 6),
           Text(
@@ -1426,11 +1398,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
               fontSize: isMobile ? 18 : 22,
               fontWeight: FontWeight.bold,
               color:
-                  isPrimary
-                      ? Theme.of(context).colorScheme.onPrimary
-                      : Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.85),
+                  Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85),
               letterSpacing: -0.3,
             ),
             maxLines: 1,
@@ -1442,11 +1410,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               fontSize: isMobile ? 10 : 11,
               color:
-                  isPrimary
-                      ? Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85)
-                      : Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.6),
+                  Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               fontWeight: FontWeight.w500,
               letterSpacing: 0.2,
             ),
@@ -1515,7 +1479,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                             decoration: BoxDecoration(
                               color: Theme.of(
                                 context,
-                              ).colorScheme.primary.withOpacity(0.08),
+                              ).colorScheme.onSurface.withOpacity(0.06),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
@@ -1524,7 +1488,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                                   ResponsiveService.isMobile(context) ? 48 : 56,
                               color: Theme.of(
                                 context,
-                              ).colorScheme.primary.withOpacity(0.7),
+                              ).colorScheme.onSurface.withOpacity(0.35),
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -1604,7 +1568,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                         flex: 3,
                         child: SizedBox(
                           height: 44,
-                          child: FilledButton.icon(
+                          child: FilledButton.tonalIcon(
                             onPressed: () => _showAddCourseDialog(semesterName),
                             icon: const Icon(Icons.add_rounded, size: 18),
                             label: const Text(
@@ -1615,10 +1579,6 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                               ),
                             ),
                             style: FilledButton.styleFrom(
-                              backgroundColor:
-                                  Theme.of(context).colorScheme.primary,
-                              foregroundColor:
-                                  Theme.of(context).colorScheme.onPrimary,
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
@@ -1632,7 +1592,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                         flex: 2,
                         child: SizedBox(
                           height: 44,
-                          child: FilledButton.icon(
+                          child: OutlinedButton.icon(
                             onPressed:
                                 _isSaving
                                     ? null
@@ -1648,7 +1608,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                                             AlwaysStoppedAnimation<Color>(
                                               Theme.of(
                                                 context,
-                                              ).colorScheme.onSecondary,
+                                              ).colorScheme.primary,
                                             ),
                                       ),
                                     )
@@ -1660,12 +1620,12 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            style: FilledButton.styleFrom(
-                              backgroundColor:
-                                  Theme.of(context).colorScheme.secondary,
+                            style: OutlinedButton.styleFrom(
                               foregroundColor:
-                                  Theme.of(context).colorScheme.onSecondary,
-                              elevation: 0,
+                                  Theme.of(context).colorScheme.primary,
+                              side: BorderSide(
+                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10),
                               ),
@@ -1680,7 +1640,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                       Expanded(
                         child: SizedBox(
                           height: 48,
-                          child: FilledButton.icon(
+                          child: FilledButton.tonalIcon(
                             onPressed: () => _showAddCourseDialog(semesterName),
                             icon: const Icon(Icons.add_rounded, size: 20),
                             label: const Text(
@@ -1691,10 +1651,6 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                               ),
                             ),
                             style: FilledButton.styleFrom(
-                              backgroundColor:
-                                  Theme.of(context).colorScheme.primary,
-                              foregroundColor:
-                                  Theme.of(context).colorScheme.onPrimary,
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -1707,7 +1663,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                       SizedBox(
                         width: 140,
                         height: 48,
-                        child: FilledButton.icon(
+                        child: OutlinedButton.icon(
                           onPressed:
                               _isSaving
                                   ? null
@@ -1722,7 +1678,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                                       valueColor: AlwaysStoppedAnimation<Color>(
                                         Theme.of(
                                           context,
-                                        ).colorScheme.onSecondary,
+                                        ).colorScheme.primary,
                                       ),
                                     ),
                                   )
@@ -1734,12 +1690,12 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          style: FilledButton.styleFrom(
-                            backgroundColor:
-                                Theme.of(context).colorScheme.secondary,
+                          style: OutlinedButton.styleFrom(
                             foregroundColor:
-                                Theme.of(context).colorScheme.onSecondary,
-                            elevation: 0,
+                                Theme.of(context).colorScheme.primary,
+                            side: BorderSide(
+                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -1772,7 +1728,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
           Icon(
             icon,
             size: isMobile ? 14 : 16,
-            color: scheme.primary.withValues(alpha: AppDesign.opacityMedium),
+            color: scheme.onSurface.withValues(alpha: 0.45),
           ),
           SizedBox(height: isMobile ? 3 : 4),
           Text(
@@ -2163,7 +2119,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     );
   }
 
-  Color _getGradeColor(String grade) => grade_utils.getGradeColor(grade, brightness: Theme.of(context).brightness);
+  Color _getGradeColor(String grade) => grade_utils.getGradeColor(grade, scheme: Theme.of(context).colorScheme);
 
   String _getGradeDescription(String grade) {
     switch (grade) {
@@ -3008,7 +2964,7 @@ class _PerformanceSheetPreviewDialog extends StatelessWidget {
     );
   }
 
-  Color _getGradeColor(String grade, BuildContext context) => grade_utils.getGradeColor(grade, brightness: Theme.of(context).brightness);
+  Color _getGradeColor(String grade, BuildContext context) => grade_utils.getGradeColor(grade, scheme: Theme.of(context).colorScheme);
 }
 
 class _SummaryItem extends StatelessWidget {

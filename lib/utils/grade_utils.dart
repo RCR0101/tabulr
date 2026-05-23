@@ -1,6 +1,36 @@
 import 'package:flutter/material.dart';
 
-Color getGradeColor(String grade, {Brightness brightness = Brightness.light}) {
+Color getGradeColor(String grade, {Brightness brightness = Brightness.light, ColorScheme? scheme}) {
+  if (scheme != null) {
+    switch (grade) {
+      case 'A':
+        return scheme.primary;
+      case 'A-':
+        return Color.lerp(scheme.primary, scheme.secondary, 0.3)!;
+      case 'B':
+        return scheme.secondary;
+      case 'B-':
+        return Color.lerp(scheme.secondary, scheme.primary, 0.2)!.withValues(alpha: 0.85);
+      case 'C':
+        return Color.lerp(scheme.secondary, scheme.error, 0.35)!;
+      case 'C-':
+        return Color.lerp(scheme.secondary, scheme.error, 0.5)!;
+      case 'D':
+        return Color.lerp(scheme.error, scheme.secondary, 0.15)!;
+      case 'D-':
+      case 'E':
+        return scheme.error;
+      case 'GD':
+        return scheme.primary.withValues(alpha: 0.8);
+      case 'PR':
+        return scheme.secondary.withValues(alpha: 0.8);
+      case 'NC':
+        return scheme.onSurface.withValues(alpha: 0.45);
+      default:
+        return scheme.onSurface.withValues(alpha: 0.45);
+    }
+  }
+
   final isDark = brightness == Brightness.dark;
   switch (grade) {
     case 'A':

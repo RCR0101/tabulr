@@ -28,7 +28,7 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
   double get _totalCredits => widget.cgpaData.effectiveTotalCredits;
   double get _totalGradePoints => widget.cgpaData.effectiveTotalGradePoints;
 
-  Color _gradeColor(String grade) => grade_utils.getGradeColor(grade, brightness: Theme.of(context).brightness);
+  Color _gradeColor(String grade) => grade_utils.getGradeColor(grade, scheme: Theme.of(context).colorScheme);
 
   @override
   void initState() {
