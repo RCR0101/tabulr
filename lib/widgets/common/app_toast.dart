@@ -120,20 +120,30 @@ class _ToastOverlayState extends State<_ToastOverlay>
       ),
     };
 
+    final String typeLabel = switch (widget.type) {
+      ToastType.success => 'Success',
+      ToastType.error => 'Error',
+      ToastType.info => 'Info',
+      ToastType.warning => 'Warning',
+    };
+
     return Positioned(
       bottom: 40,
       left: 0,
       right: 0,
       child: Center(
-        child: SlideTransition(
-          position: _slideAnimation,
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Material(
-              color: Colors.transparent,
-              child: GestureDetector(
-                onTap: widget.onDismiss,
-                child: Container(
+        child: Semantics(
+          liveRegion: true,
+          label: '$typeLabel: ${widget.message}',
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: Material(
+                color: Colors.transparent,
+                child: GestureDetector(
+                  onTap: widget.onDismiss,
+                  child: Container(
                   constraints: const BoxConstraints(maxWidth: 420),
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppDesign.spacingMd,
@@ -167,6 +177,7 @@ class _ToastOverlayState extends State<_ToastOverlay>
               ),
             ),
           ),
+        ),
         ),
       ),
     );

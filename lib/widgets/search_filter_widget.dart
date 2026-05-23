@@ -96,6 +96,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                       suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear),
+                            tooltip: 'Clear search',
                             onPressed: () {
                               setState(() {
                                 _searchController.clear();
@@ -157,6 +158,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                       suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear),
+                            tooltip: 'Clear search',
                             onPressed: () {
                               setState(() {
                                 _searchController.clear();

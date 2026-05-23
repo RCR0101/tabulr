@@ -35,6 +35,7 @@ class InlineErrorCard extends StatelessWidget {
               IconButton(
                 icon: const Icon(Icons.close, size: 18),
                 onPressed: onDismiss,
+                tooltip: 'Dismiss error',
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),

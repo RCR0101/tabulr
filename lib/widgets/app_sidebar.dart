@@ -221,7 +221,11 @@ class _AppSidebarState extends State<AppSidebar> {
           message: collapsed ? item.label : '',
           preferBelow: false,
           waitDuration: const Duration(milliseconds: 400),
-          child: GestureDetector(
+          child: Semantics(
+            label: item.label,
+            button: true,
+            selected: isSelected,
+            child: GestureDetector(
             onTap: () => widget.onScreenSelected(item.screen),
             child: AnimatedContainer(
               duration: AppDesign.animDurationFast,
@@ -242,6 +246,7 @@ class _AppSidebarState extends State<AppSidebar> {
               ),
               child: content,
             ),
+          ),
           ),
         ),
       ),

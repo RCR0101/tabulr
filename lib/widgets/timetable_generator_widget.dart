@@ -781,6 +781,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                           });
                         },
                         icon: const Icon(Icons.close, size: 14),
+                        tooltip: 'Remove ${_dayNames[day]}',
                         constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                         padding: EdgeInsets.zero,
                       ),

@@ -1232,7 +1232,9 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     
     // Use RepaintBoundary for performance on mobile
     return RepaintBoundary(
-      child: MouseRegion(
+      child: Semantics(
+        label: '${slot.courseCode} ${slot.sectionId}, ${slot.instructor}, ${slot.room}',
+        child: MouseRegion(
         onEnter: (_) {
           setState(() {
             _hoveredCourse = '${slot.courseCode}-${slot.sectionId}';
@@ -1404,7 +1406,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                 Positioned(
                   top: 2,
                   right: 2,
-                  child: GestureDetector(
+                  child: Semantics(
+                    label: 'Remove ${slot.courseCode} ${slot.sectionId}',
+                    button: true,
+                    child: GestureDetector(
                     onTap: () {
                       ResponsiveService.triggerHeavyFeedback(context);
                       widget.onRemoveSection!(slot.courseCode, slot.sectionId);
@@ -1430,11 +1435,13 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                       ),
                     ),
                   ),
+                  ),
                 ),
             ],
           ),
         ),
         ),
+      ),
       ),
     );
   }
