@@ -534,46 +534,51 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           icon: Icons.schedule,
           title: 'Schedule',
           children: [
-            _buildRowConstraint('Max hours/day', SizedBox(
-              width: 72,
-              child: DropdownMenu<int>(
-                initialSelection: _maxHoursPerDay,
-                textStyle: const TextStyle(fontSize: 13),
-                inputDecorationTheme: InputDecorationTheme(
+            _buildRowConstraint('Max hours/day', Container(
+              width: 80,
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<int>(
+                  value: _maxHoursPerDay,
                   isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                  constraints: const BoxConstraints(maxHeight: 36),
+                  style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface),
+                  items: List.generate(12, (i) => DropdownMenuItem(
+                    value: i + 1,
+                    child: Text('${i + 1}'),
+                  )),
+                  onChanged: (value) {
+                    if (value != null) setState(() { _maxHoursPerDay = value; });
+                  },
                 ),
-                dropdownMenuEntries: List.generate(12, (i) => DropdownMenuEntry(
-                  value: i + 1,
-                  label: '${i + 1}',
-                )),
-                onSelected: (value) {
-                  if (value != null) setState(() { _maxHoursPerDay = value; });
-                },
               ),
             )),
             _buildCheckConstraint('Avoid back-to-back classes', _avoidBackToBack, (v) => setState(() { _avoidBackToBack = v ?? false; })),
             _buildCheckConstraint('Minimize gaps between classes', _minimizeGaps, (v) => setState(() { _minimizeGaps = v ?? false; })),
             _buildCheckConstraint('Protect lunch break (12–2 PM)', _protectLunchBreak, (v) => setState(() { _protectLunchBreak = v ?? false; })),
-            _buildRowConstraint('Prefer classes in', SizedBox(
-              width: 160,
-              child: DropdownMenu<TimeOfDayPreference>(
-                initialSelection: _timeOfDayPreference,
-                textStyle: const TextStyle(fontSize: 13),
-                inputDecorationTheme: InputDecorationTheme(
+            _buildRowConstraint('Prefer classes in', Container(
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<TimeOfDayPreference>(
+                  value: _timeOfDayPreference,
                   isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                  constraints: const BoxConstraints(maxHeight: 36),
+                  style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface),
+                  items: const [
+                    DropdownMenuItem(value: TimeOfDayPreference.none, child: Text('No preference')),
+                    DropdownMenuItem(value: TimeOfDayPreference.morning, child: Text('Morning (before 12 PM)')),
+                    DropdownMenuItem(value: TimeOfDayPreference.afternoon, child: Text('Afternoon (after 12 PM)')),
+                  ],
+                  onChanged: (value) { setState(() { _timeOfDayPreference = value ?? TimeOfDayPreference.none; }); },
                 ),
-                dropdownMenuEntries: const [
-                  DropdownMenuEntry(value: TimeOfDayPreference.none, label: 'No preference'),
-                  DropdownMenuEntry(value: TimeOfDayPreference.morning, label: 'Morning'),
-                  DropdownMenuEntry(value: TimeOfDayPreference.afternoon, label: 'Afternoon'),
-                ],
-                onSelected: (value) { setState(() { _timeOfDayPreference = value ?? TimeOfDayPreference.none; }); },
               ),
             )),
             const SizedBox(height: 12),
@@ -603,43 +608,53 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           icon: Icons.event,
           title: 'Exams',
           children: [
-            _buildRowConstraint('Preferred midsem', DropdownMenu<TimeSlot?>(
-              initialSelection: _preferredMidsemSlot,
-              textStyle: const TextStyle(fontSize: 13),
-              inputDecorationTheme: InputDecorationTheme(
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                constraints: const BoxConstraints(maxHeight: 36),
+            _buildRowConstraint('Preferred midsem', Container(
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
               ),
-              expandedInsets: EdgeInsets.zero,
-              dropdownMenuEntries: [
-                const DropdownMenuEntry<TimeSlot?>(value: null, label: 'Any'),
-                ...TimeSlotInfo.getMidSemSlots().map((slot) => DropdownMenuEntry<TimeSlot?>(
-                  value: slot,
-                  label: TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode),
-                )),
-              ],
-              onSelected: (value) { setState(() { _preferredMidsemSlot = value; }); },
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<TimeSlot?>(
+                  value: _preferredMidsemSlot,
+                  hint: const Text('Any', style: TextStyle(fontSize: 13)),
+                  isDense: true,
+                  style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface),
+                  items: [
+                    const DropdownMenuItem<TimeSlot?>(value: null, child: Text('Any')),
+                    ...TimeSlotInfo.getMidSemSlots().map((slot) => DropdownMenuItem(
+                      value: slot,
+                      child: Text(TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode)),
+                    )),
+                  ],
+                  onChanged: (value) { setState(() { _preferredMidsemSlot = value; }); },
+                ),
+              ),
             )),
-            _buildRowConstraint('Preferred compre', DropdownMenu<TimeSlot?>(
-              initialSelection: _preferredCompreSlot,
-              textStyle: const TextStyle(fontSize: 13),
-              inputDecorationTheme: InputDecorationTheme(
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                constraints: const BoxConstraints(maxHeight: 36),
+            _buildRowConstraint('Preferred compre', Container(
+              height: 34,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
               ),
-              expandedInsets: EdgeInsets.zero,
-              dropdownMenuEntries: [
-                const DropdownMenuEntry<TimeSlot?>(value: null, label: 'Any'),
-                ...TimeSlotInfo.getEndSemSlots().map((slot) => DropdownMenuEntry<TimeSlot?>(
-                  value: slot,
-                  label: TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode),
-                )),
-              ],
-              onSelected: (value) { setState(() { _preferredCompreSlot = value; }); },
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<TimeSlot?>(
+                  value: _preferredCompreSlot,
+                  hint: const Text('Any', style: TextStyle(fontSize: 13)),
+                  isDense: true,
+                  style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface),
+                  items: [
+                    const DropdownMenuItem<TimeSlot?>(value: null, child: Text('Any')),
+                    ...TimeSlotInfo.getEndSemSlots().map((slot) => DropdownMenuItem(
+                      value: slot,
+                      child: Text(TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode)),
+                    )),
+                  ],
+                  onChanged: (value) { setState(() { _preferredCompreSlot = value; }); },
+                ),
+              ),
             )),
           ],
         ),
@@ -648,20 +663,28 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   }
 
   Widget _buildConstraintGroup({required IconData icon, required String title, required List<Widget> children}) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: ExpansionTile(
-        leading: Icon(icon, size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-        title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-        tilePadding: const EdgeInsets.symmetric(horizontal: 14),
-        childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-        dense: true,
-        children: children,
-      ),
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 16, color: scheme.onSurface.withValues(alpha: 0.5)),
+            const SizedBox(width: 8),
+            Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: scheme.onSurface.withValues(alpha: 0.7))),
+            const SizedBox(width: 12),
+            Expanded(child: Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.4))),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.only(left: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: children,
+          ),
+        ),
+      ],
     );
   }
 
