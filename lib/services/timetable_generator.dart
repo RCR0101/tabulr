@@ -532,28 +532,39 @@ class TimetableGenerator {
 
   static double _calculateExamSpreadPenalty(List<ConstraintSelectedSection> sections, List<Course> courses) {
     final courseCodes = sections.map((s) => s.courseCode).toSet();
-    final examDates = <DateTime>[];
+    final midsemDates = <DateTime>[];
+    final compreDates = <DateTime>[];
 
     for (final code in courseCodes) {
       final course = courses.firstWhere((c) => c.courseCode == code, orElse: () => Course(
         courseCode: code, courseTitle: '', lectureCredits: 0, practicalCredits: 0, totalCredits: 0, sections: [],
       ));
-      if (course.midSemExam != null) examDates.add(course.midSemExam!.date);
-      if (course.endSemExam != null) examDates.add(course.endSemExam!.date);
+      if (course.midSemExam != null) midsemDates.add(course.midSemExam!.date);
+      if (course.endSemExam != null) compreDates.add(course.endSemExam!.date);
     }
-
-    if (examDates.length < 2) return 0;
-    examDates.sort();
 
     double penalty = 0;
-    for (int i = 1; i < examDates.length; i++) {
-      final daysDiff = examDates[i].difference(examDates[i - 1]).inDays;
-      if (daysDiff == 0) {
-        penalty += 4;
-      } else if (daysDiff == 1) {
-        penalty += 2;
+
+    // Compres: back-to-back is avoidable and costly
+    if (compreDates.length >= 2) {
+      compreDates.sort();
+      for (int i = 1; i < compreDates.length; i++) {
+        final daysDiff = compreDates[i].difference(compreDates[i - 1]).inDays;
+        if (daysDiff == 0) penalty += 4;
+        else if (daysDiff == 1) penalty += 2;
       }
     }
+
+    // Midsems: crammed into one week, back-to-back is common — light penalty
+    if (midsemDates.length >= 2) {
+      midsemDates.sort();
+      for (int i = 1; i < midsemDates.length; i++) {
+        final daysDiff = midsemDates[i].difference(midsemDates[i - 1]).inDays;
+        if (daysDiff == 0) penalty += 2;
+        else if (daysDiff == 1) penalty += 0.5;
+      }
+    }
+
     return penalty;
   }
 
@@ -741,31 +752,30 @@ class TimetableGenerator {
       }
     }
 
-    // Exam spread
+    // Compre exam spread (midsems are too crammed to be useful here)
     final courseCodes = sections.map((s) => s.courseCode).toSet();
-    final examDates = <DateTime>[];
+    final compreDates = <DateTime>[];
     for (final code in courseCodes) {
       final course = courses.firstWhere((c) => c.courseCode == code, orElse: () => Course(
         courseCode: code, courseTitle: '', lectureCredits: 0, practicalCredits: 0, totalCredits: 0, sections: [],
       ));
-      if (course.midSemExam != null) examDates.add(course.midSemExam!.date);
-      if (course.endSemExam != null) examDates.add(course.endSemExam!.date);
+      if (course.endSemExam != null) compreDates.add(course.endSemExam!.date);
     }
-    if (examDates.length >= 2) {
-      examDates.sort();
+    if (compreDates.length >= 2) {
+      compreDates.sort();
       bool sameDay = false;
       bool backToBack = false;
-      for (int i = 1; i < examDates.length; i++) {
-        final diff = examDates[i].difference(examDates[i - 1]).inDays;
+      for (int i = 1; i < compreDates.length; i++) {
+        final diff = compreDates[i].difference(compreDates[i - 1]).inDays;
         if (diff == 0) sameDay = true;
         if (diff == 1) backToBack = true;
       }
       if (sameDay) {
-        cons.add('Multiple exams on the same day');
+        cons.add('Multiple compres on the same day');
       } else if (backToBack) {
-        cons.add('Back-to-back exam days');
+        cons.add('Back-to-back compre days');
       } else {
-        pros.add('Exams are well-spaced');
+        pros.add('Compres are well-spaced');
       }
     }
 

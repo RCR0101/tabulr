@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:crypto/crypto.dart';
+import 'package:http/http.dart' as http;
 import '../models/cgpa_data.dart';
 import 'auth_service.dart';
 import 'secure_logger.dart';
@@ -50,52 +50,30 @@ class CGPAService {
   // Grade options for ATC courses
   static const List<String> atcGrades = ['GD', 'PR', 'NC'];
 
-  // Generate encryption key from user ID
-  String _generateEncryptionKey(String userId) {
-    // Use HMAC-SHA256 to derive a consistent key from user ID
-    final key = utf8.encode('tabulr_cgpa_encryption_key_v1');
-    final bytes = utf8.encode(userId);
-    final hmac = Hmac(sha256, key);
-    final digest = hmac.convert(bytes);
-    return digest.toString();
+  static const String _workerUrl = 'https://cgpa-encryption.dalmia-aryan.workers.dev';
+
+  Future<String> _encryptData(String data, String userId) async {
+    final response = await http.post(
+      Uri.parse(_workerUrl),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'action': 'encrypt', 'data': data, 'userId': userId}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Encryption failed: ${response.statusCode}');
+    }
+    return (jsonDecode(response.body) as Map<String, dynamic>)['result'] as String;
   }
 
-  // Encrypt data using simple XOR cipher (for basic obfuscation)
-  String _encryptData(String data, String userId) {
-    try {
-      final key = _generateEncryptionKey(userId);
-      final dataBytes = utf8.encode(data);
-      final keyBytes = utf8.encode(key);
-
-      final encrypted = <int>[];
-      for (int i = 0; i < dataBytes.length; i++) {
-        encrypted.add(dataBytes[i] ^ keyBytes[i % keyBytes.length]);
-      }
-
-      return base64Encode(encrypted);
-    } catch (e) {
-      SecureLogger.error('CGPA', 'Failed to encrypt data', e);
-      rethrow;
+  Future<String> _decryptData(String encryptedData, String userId) async {
+    final response = await http.post(
+      Uri.parse(_workerUrl),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'action': 'decrypt', 'data': encryptedData, 'userId': userId}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Decryption failed: ${response.statusCode}');
     }
-  }
-
-  // Decrypt data
-  String _decryptData(String encryptedData, String userId) {
-    try {
-      final key = _generateEncryptionKey(userId);
-      final encrypted = base64Decode(encryptedData);
-      final keyBytes = utf8.encode(key);
-
-      final decrypted = <int>[];
-      for (int i = 0; i < encrypted.length; i++) {
-        decrypted.add(encrypted[i] ^ keyBytes[i % keyBytes.length]);
-      }
-
-      return utf8.decode(decrypted);
-    } catch (e) {
-      SecureLogger.error('CGPA', 'Failed to decrypt data', e);
-      rethrow;
-    }
+    return (jsonDecode(response.body) as Map<String, dynamic>)['result'] as String;
   }
 
   // Save semester data to Firestore (encrypted)
@@ -114,7 +92,7 @@ class CGPAService {
       final jsonData = jsonEncode(semesterData.toJson());
 
       // Encrypt the data
-      final encryptedData = _encryptData(jsonData, _authService.userDocId!);
+      final encryptedData = await _encryptData(jsonData, _authService.userDocId!);
 
       // Save to Firestore
       final docRef = _firestore
@@ -125,6 +103,7 @@ class CGPAService {
 
       await docRef.set({
         'encryptedData': encryptedData,
+        'encryptionVersion': 2,
         'lastUpdated': FieldValue.serverTimestamp(),
       });
 
@@ -149,9 +128,10 @@ class CGPAService {
 
       for (final entry in semesters.entries) {
         final jsonData = jsonEncode(entry.value.toJson());
-        final encryptedData = _encryptData(jsonData, _authService.userDocId!);
+        final encryptedData = await _encryptData(jsonData, _authService.userDocId!);
         batch.set(colRef.doc(entry.key), {
           'encryptedData': encryptedData,
+          'encryptionVersion': 2,
           'lastUpdated': FieldValue.serverTimestamp(),
         });
       }
@@ -193,7 +173,7 @@ class CGPAService {
       }
 
       // Decrypt the data
-      final decryptedData = _decryptData(
+      final decryptedData = await _decryptData(
         data['encryptedData'] as String,
         _authService.userDocId!,
       );
@@ -234,7 +214,7 @@ class CGPAService {
         try {
           final data = doc.data();
           if (data.containsKey('encryptedData')) {
-            final decryptedData = _decryptData(
+            final decryptedData = await _decryptData(
               data['encryptedData'] as String,
               _authService.userDocId!,
             );

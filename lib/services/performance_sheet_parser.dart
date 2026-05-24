@@ -77,12 +77,33 @@ class PerformanceSheetParser {
     caseSensitive: false,
   );
 
+  static const _maxPdfSize = 10 * 1024 * 1024; // 10 MB
+  static const _pdfMagic = [0x25, 0x50, 0x44, 0x46]; // %PDF
+
   static Future<ParsedPerformanceSheet> parse(Uint8List pdfBytes) async {
     final warnings = <String>[];
     String? studentId;
     String? studentName;
     double? cgpa;
     final semesters = <ParsedSemester>[];
+
+    if (pdfBytes.length < 4 ||
+        pdfBytes[0] != _pdfMagic[0] ||
+        pdfBytes[1] != _pdfMagic[1] ||
+        pdfBytes[2] != _pdfMagic[2] ||
+        pdfBytes[3] != _pdfMagic[3]) {
+      return ParsedPerformanceSheet(
+        semesters: [],
+        warnings: ['File is not a valid PDF'],
+      );
+    }
+
+    if (pdfBytes.length > _maxPdfSize) {
+      return ParsedPerformanceSheet(
+        semesters: [],
+        warnings: ['File is too large (max 10 MB)'],
+      );
+    }
 
     try {
       final document = PdfDocument(inputBytes: pdfBytes);
@@ -100,15 +121,18 @@ class PerformanceSheetParser {
       for (final line in lines.take(10)) {
         if (studentId == null) {
           final m = RegExp(r'Student ID:\s*(\w+)').firstMatch(line);
-          if (m != null) studentId = m.group(1);
+          if (m != null) studentId = _sanitize(m.group(1), maxLen: 20);
         }
         if (studentName == null) {
           final m = RegExp(r'Name:\s*([A-Z][A-Z\s]+?)(?=CGPA|ERP|\n|$)').firstMatch(line);
-          if (m != null) studentName = m.group(1)?.trim();
+          if (m != null) studentName = _sanitize(m.group(1)?.trim(), maxLen: 100);
         }
         if (cgpa == null) {
           final m = RegExp(r'CGPA:\s*([\d.]+)').firstMatch(line);
-          if (m != null) cgpa = double.tryParse(m.group(1) ?? '');
+          if (m != null) {
+            final parsed = double.tryParse(m.group(1) ?? '');
+            if (parsed != null && parsed >= 0 && parsed <= 10) cgpa = parsed;
+          }
         }
       }
 
@@ -315,14 +339,15 @@ class PerformanceSheetParser {
 
     // Step 4: Pair courses with grades
     for (int c = 0; c < codes.length; c++) {
-      if (c < grades.length) {
+      if (c < grades.length && _validGrades.contains(grades[c])) {
+        final code = codes[c];
+        if (!_courseCodePattern.hasMatch(code)) continue;
         results.add(ParsedCourseEntry(
-          courseCode: codes[c],
+          courseCode: code,
           grade: grades[c],
-          tag: (c < tags.length && tags[c].isNotEmpty) ? tags[c] : null,
+          tag: (c < tags.length && _validTags.contains(tags[c])) ? tags[c] : null,
         ));
       }
-      // If no grade for this course (current semester), skip it
     }
 
     return results;
@@ -393,6 +418,13 @@ class PerformanceSheetParser {
     }
 
     return CGPAData(semesters: semesterMap);
+  }
+
+  static String? _sanitize(String? input, {int maxLen = 50}) {
+    if (input == null || input.isEmpty) return null;
+    final trimmed = input.length > maxLen ? input.substring(0, maxLen) : input;
+    final cleaned = trimmed.replaceAll(RegExp(r'[^\w\s.\-/]'), '').trim();
+    return cleaned.isEmpty ? null : cleaned;
   }
 }
 
