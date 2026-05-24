@@ -71,12 +71,12 @@ class PageInfoHelper {
     title: 'Timetable Creator',
     purpose: 'Build your semester timetable by adding courses and sections. Clash detection prevents scheduling conflicts.',
     features: [
-      FeatureInfo(Icons.add, 'Add Course', 'search and add courses from the catalog'),
-      FeatureInfo(Icons.auto_awesome, 'Auto-Generate', 'generates optimal timetables based on your constraints'),
+      FeatureInfo(Icons.swap_horiz, 'Add/Swap', 'search and add or swap courses from the catalog'),
+      FeatureInfo(Icons.auto_awesome_mosaic, 'Auto-Generate', 'generates optimal timetables based on your constraints'),
       FeatureInfo(Icons.share, 'Share', 'share your timetable via a code others can import'),
       FeatureInfo(Icons.menu_book, 'Tools', 'course guide, prerequisites, discipline & humanities electives'),
-      FeatureInfo(Icons.file_download, 'Import/Export', 'import/export .tt files, export to .ics calendar or .png image'),
-      FeatureInfo(Icons.palette, 'Theme', 'switch theme and color scheme'),
+      FeatureInfo(Icons.more_vert, 'More', 'import/export .tt files, export to .ics calendar or .png image'),
+      FeatureInfo(Icons.brightness_auto, 'Theme', 'switch between light, dark, and system theme'),
     ],
   );
 
@@ -84,9 +84,10 @@ class PageInfoHelper {
     title: 'Calendar',
     purpose: 'View your timetable as a weekly calendar with custom events. Navigate between weeks and temporarily hide slots.',
     features: [
-      FeatureInfo(Icons.event, 'Custom Events', 'add personal events alongside your classes'),
-      FeatureInfo(Icons.visibility_off, 'Scrap Slots', 'temporarily hide individual slots, courses, days, or the entire week'),
-      FeatureInfo(Icons.chevron_left, 'Week Navigation', 'browse past and future weeks'),
+      FeatureInfo(Icons.add, 'Add Event', 'add personal events alongside your classes'),
+      FeatureInfo(Icons.event_busy, 'Scrap Slots', 'temporarily hide individual slots, courses, days, or the entire week'),
+      FeatureInfo(Icons.restore, 'Restore', 'bring back scrapped slots'),
+      FeatureInfo(Icons.chevron_right, 'Week Navigation', 'browse past and future weeks'),
     ],
   );
 
@@ -94,8 +95,8 @@ class PageInfoHelper {
     title: 'Free Time Finder',
     purpose: 'Compare multiple timetables side-by-side to find common free slots — useful for planning group activities.',
     features: [
-      FeatureInfo(Icons.add, 'Add Timetables', 'add your own or import a friend\'s timetable via share code'),
-      FeatureInfo(Icons.grid_on, 'Free Slot Grid', 'color-coded grid showing who is busy when'),
+      FeatureInfo(Icons.group, 'Add Timetables', 'add your own or import a friend\'s timetable via share code'),
+      FeatureInfo(Icons.download, 'Import from Code', 'import a shared timetable by code'),
       FeatureInfo(Icons.touch_app, 'Select & Save', 'tap free slots to create a shared event'),
     ],
   );
@@ -104,11 +105,12 @@ class PageInfoHelper {
     title: 'CGPA Calculator',
     purpose: 'Track grades across semesters and calculate your SGPA/CGPA. Import courses from timetables or performance sheets.',
     features: [
-      FeatureInfo(Icons.add, 'Add Course', 'manually add a course with credits and grade'),
-      FeatureInfo(Icons.file_download, 'Import', 'import from a timetable or PDF performance sheet'),
-      FeatureInfo(Icons.school, 'Load CDCs', 'auto-load compulsory courses for your branch'),
-      FeatureInfo(Icons.calculate, 'Grade Planner', 'plan what grades you need to reach a target CG'),
-      FeatureInfo(Icons.bolt, 'CG Booster', 'find which courses have the biggest CG impact'),
+      FeatureInfo(Icons.add_rounded, 'Add Course', 'manually add a course with credits and grade'),
+      FeatureInfo(Icons.file_download_outlined, 'Import from Timetable', 'pull courses from an existing timetable'),
+      FeatureInfo(Icons.picture_as_pdf_outlined, 'Import Performance Sheet', 'import grades from a PDF performance sheet'),
+      FeatureInfo(Icons.school_outlined, 'Load CDCs', 'auto-load compulsory courses for your branch'),
+      FeatureInfo(Icons.calculate_outlined, 'Grade Planner', 'plan what grades you need to reach a target CG'),
+      FeatureInfo(Icons.bolt_outlined, 'CG Booster', 'find which courses have the biggest CG impact'),
     ],
   );
 
@@ -116,8 +118,8 @@ class PageInfoHelper {
     title: 'Exam Seating',
     purpose: 'Look up your exam room and seat number for midsems and compres.',
     features: [
-      FeatureInfo(Icons.file_download, 'Import Courses', 'pull courses from an existing timetable'),
-      FeatureInfo(Icons.save, 'Save', 'save your course list for quick access next time'),
+      FeatureInfo(Icons.file_download_outlined, 'Import Courses', 'pull courses from an existing timetable'),
+      FeatureInfo(Icons.save_outlined, 'Save', 'save your course list for quick access next time'),
       FeatureInfo(Icons.search, 'Search', 'search by course code or ID number'),
     ],
   );
@@ -126,7 +128,7 @@ class PageInfoHelper {
     title: 'Academic Drives',
     purpose: 'Browse and download past papers, notes, and resources shared by students, organised by course.',
     features: [
-      FeatureInfo(Icons.cloud_upload, 'Submit Resource', 'upload a file or link for a course'),
+      FeatureInfo(Icons.cloud_upload_outlined, 'Submit Resource', 'upload a file or link for a course'),
       FeatureInfo(Icons.search, 'Search', 'search across all courses and resources'),
     ],
   );
@@ -145,9 +147,9 @@ class PageInfoHelper {
     purpose: 'Course-specific announcements posted by students — schedule changes, extra classes, exam updates.',
     features: [
       FeatureInfo(Icons.add, 'Post', 'create an announcement for a course'),
-      FeatureInfo(Icons.thumb_up, 'Vote', 'upvote or downvote announcements'),
-      FeatureInfo(Icons.flag, 'Flag', 'report incorrect information'),
-      FeatureInfo(Icons.verified, 'Verify', 'confirm or deny announcements'),
+      FeatureInfo(Icons.arrow_upward_rounded, 'Vote', 'upvote or downvote announcements'),
+      FeatureInfo(Icons.flag_outlined, 'Flag', 'report incorrect information'),
+      FeatureInfo(Icons.check_circle_outline, 'Verify', 'confirm or deny announcements'),
     ],
   );
 }

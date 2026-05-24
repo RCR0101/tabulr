@@ -79,7 +79,14 @@
         var resp = await fetch('version.json?t=' + Date.now());
         var data = await resp.json();
         var prev = localStorage.getItem('app_version');
+        var needsClear = false;
         if (prev && prev !== data.version) {
+          needsClear = true;
+        } else if (!prev && 'serviceWorker' in navigator) {
+          var regs = await navigator.serviceWorker.getRegistrations();
+          if (regs.length > 0) needsClear = true;
+        }
+        if (needsClear) {
           var regs = await navigator.serviceWorker.getRegistrations();
           for (var r of regs) await r.unregister();
           var keys = await caches.keys();
