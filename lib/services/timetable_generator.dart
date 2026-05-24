@@ -259,24 +259,23 @@ class TimetableGenerator {
   }
 
   static double _scoreTimetable(List<ConstraintSelectedSection> sections, TimetableConstraints constraints, List<Course> courses) {
+    final w = constraints.scoringWeights;
     double bonus = 0;
     double penalty = 0;
 
     final hoursPerDay = _calculateHoursPerDay(sections);
     final slotsPerDay = _getSlotsPerDay(sections);
 
-    // --- Penalties (max total: 90) ---
+    // --- Penalties ---
 
-    // Exceeding max hours per day: up to 15 pts
     double hoursPenalty = 0;
     for (final hours in hoursPerDay.values) {
       if (hours > constraints.maxHoursPerDay) {
         hoursPenalty += (hours - constraints.maxHoursPerDay) * 5;
       }
     }
-    penalty += hoursPenalty.clamp(0, 15);
+    penalty += hoursPenalty.clamp(0, w.maxHoursPerDayPenalty);
 
-    // Time conflicts with avoidTimes: up to 15 pts
     double timePenalty = 0;
     for (final avoidTime in constraints.avoidTimes) {
       for (final section in sections) {
@@ -289,9 +288,8 @@ class TimetableGenerator {
         }
       }
     }
-    penalty += timePenalty.clamp(0, 15);
+    penalty += timePenalty.clamp(0, w.avoidTimesPenalty);
 
-    // Lab conflicts with avoidLabs: up to 10 pts
     double labPenalty = 0;
     for (final avoidLab in constraints.avoidLabs) {
       for (final section in sections) {
@@ -306,30 +304,26 @@ class TimetableGenerator {
         }
       }
     }
-    penalty += labPenalty.clamp(0, 10);
+    penalty += labPenalty.clamp(0, w.avoidLabsPenalty);
 
-    // Avoided instructors: up to 15 pts
     double avoidedPenalty = 0;
     for (final section in sections) {
       if (constraints.avoidedInstructors.contains(section.section.instructor)) {
         avoidedPenalty += 15;
       }
     }
-    penalty += avoidedPenalty.clamp(0, 15);
+    penalty += avoidedPenalty.clamp(0, w.avoidedInstructorsPenalty);
 
-    // Back-to-back classes: up to 8 pts
     if (constraints.avoidBackToBackClasses) {
       final backToBackCount = _calculateBackToBackPenalty(sections);
-      penalty += (backToBackCount * 3.0).clamp(0, 8);
+      penalty += (backToBackCount * 3.0).clamp(0, w.backToBackPenalty);
     }
 
-    // Gaps between classes: up to 8 pts
     if (constraints.minimizeGaps) {
       final gapPenalty = _calculateGapPenalty(slotsPerDay);
-      penalty += gapPenalty.clamp(0, 8);
+      penalty += gapPenalty.clamp(0, w.gapsPenalty);
     }
 
-    // Lunch break violation (hours 5-6): up to 5 pts
     if (constraints.protectLunchBreak) {
       double lunchPenalty = 0;
       for (final section in sections) {
@@ -338,30 +332,26 @@ class TimetableGenerator {
           lunchPenalty += lunchHits * entry.days.length * 1.5;
         }
       }
-      penalty += lunchPenalty.clamp(0, 5);
+      penalty += lunchPenalty.clamp(0, w.lunchBreakPenalty);
     }
 
-    // Time-of-day mismatch: up to 7 pts
     if (constraints.timeOfDayPreference != TimeOfDayPreference.none) {
       final todPenalty = _calculateTimeOfDayPenalty(sections, constraints.timeOfDayPreference);
-      penalty += todPenalty.clamp(0, 7);
+      penalty += todPenalty.clamp(0, w.timeOfDayPenalty);
     }
 
-    // Exam spread: up to 7 pts
     final examSpreadPenalty = _calculateExamSpreadPenalty(sections, courses);
-    penalty += examSpreadPenalty.clamp(0, 7);
+    penalty += examSpreadPenalty.clamp(0, w.examSpreadPenalty);
 
-    // --- Bonuses (max total: 10) ---
+    // --- Bonuses ---
 
-    // Preferred instructors: up to 2 pts
     if (constraints.preferredInstructors.isNotEmpty) {
       final matched = sections
           .where((s) => constraints.preferredInstructors.contains(s.section.instructor))
           .length;
-      bonus += (matched / sections.length * 2).clamp(0, 2);
+      bonus += (matched / sections.length * w.preferredInstructorsBonus).clamp(0, w.preferredInstructorsBonus);
     }
 
-    // Instructor rankings: up to 2 pts
     if (constraints.instructorRankings.isNotEmpty) {
       double rankBonus = 0;
       int ranked = 0;
@@ -376,11 +366,10 @@ class TimetableGenerator {
         }
       }
       if (ranked > 0) {
-        bonus += (rankBonus / ranked).clamp(0, 2);
+        bonus += (rankBonus / ranked).clamp(0, w.instructorRankingsBonus);
       }
     }
 
-    // Free day preference / compact schedule: up to 3 pts
     final freeDays = hoursPerDay.entries
         .where((e) => e.value == 0)
         .map((e) => e.key)
@@ -391,18 +380,17 @@ class TimetableGenerator {
       final total = constraints.freeDayPreference.length;
       for (int i = 0; i < total; i++) {
         if (freeDays.contains(constraints.freeDayPreference[i])) {
-          fdBonus += (total - i) / total * 1.5;
+          fdBonus += (total - i) / total * (w.freeDayBonus / 2);
         }
       }
-      bonus += fdBonus.clamp(0, 3);
+      bonus += fdBonus.clamp(0, w.freeDayBonus);
     } else {
       final daysWithClasses = hoursPerDay.values.where((hours) => hours > 0).length;
       if (daysWithClasses <= 4) {
-        bonus += ((5 - daysWithClasses) * 1.0).clamp(0, 3);
+        bonus += ((5 - daysWithClasses) * 1.0).clamp(0, w.freeDayBonus);
       }
     }
 
-    // Exam slot preference: up to 2 pts
     if (constraints.preferredMidsemSlot != null || constraints.preferredCompreSlot != null) {
       final courseCodes = sections.map((s) => s.courseCode).toSet();
       int matched = 0;
@@ -420,17 +408,16 @@ class TimetableGenerator {
           if (course.endSemExam!.timeSlot == constraints.preferredCompreSlot) matched++;
         }
       }
-      if (total > 0) bonus += (matched / total * 2).clamp(0, 2);
+      if (total > 0) bonus += (matched / total * w.examSlotBonus).clamp(0, w.examSlotBonus);
     }
 
-    // Optional courses bonus: reward fitting more optionals (up to 3 pts)
     final optionalCodes = constraints.optionalCourses.toSet();
     final includedOptionals = sections.map((s) => s.courseCode).toSet().intersection(optionalCodes);
     if (optionalCodes.isNotEmpty) {
-      bonus += (includedOptionals.length / optionalCodes.length * 3).clamp(0, 3);
+      bonus += (includedOptionals.length / optionalCodes.length * w.optionalCoursesBonus).clamp(0, w.optionalCoursesBonus);
     }
 
-    final rawScore = 90 - penalty + bonus.clamp(0, 15);
+    final rawScore = 90 - penalty + bonus.clamp(0, w.totalBonusCap);
     return rawScore.clamp(0, 100);
   }
 

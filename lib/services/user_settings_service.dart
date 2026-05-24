@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import '../models/user_settings.dart';
+import '../models/timetable_constraints.dart';
 import '../widgets/timetable_widget.dart';
 import 'auth_service.dart';
 import 'theme_service.dart' as theme_service;
@@ -277,6 +278,23 @@ class UserSettingsService extends ChangeNotifier {
     }
   }
 
+  // Update scoring weights
+  Future<void> updateScoringWeights(ScoringWeights weights) async {
+    if (_userSettings == null) {
+      await initializeSettings();
+    }
+    if (_userSettings == null) return;
+
+    _userSettings = _userSettings!.copyWith(scoringWeights: weights);
+    notifyListeners();
+
+    if (_authService.isAuthenticated) {
+      await _saveToFirestore();
+    } else {
+      await _saveToLocalStorage();
+    }
+  }
+
   // Update timetable-specific settings
   Future<void> updateTimetableSettings(
     String timetableId,
@@ -332,6 +350,9 @@ class UserSettingsService extends ChangeNotifier {
   
   // Get dont show top announcement dismissal time
   DateTime? get dontShowTopUpdated => _userSettings?.dontShowTopUpdated;
+
+  // Get scoring weights
+  ScoringWeights get scoringWeights => _userSettings?.scoringWeights ?? const ScoringWeights();
 
   // Get timetable settings
   TimetableSettings getTimetableSettings(String timetableId) {

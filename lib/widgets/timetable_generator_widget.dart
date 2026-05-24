@@ -6,6 +6,7 @@ import '../services/timetable_generator.dart';
 import '../services/toast_service.dart';
 import '../services/responsive_service.dart';
 import '../services/campus_service.dart';
+import '../services/user_settings_service.dart';
 import '../utils/design_constants.dart';
 import 'common/app_dialog.dart';
 import 'common/app_button.dart';
@@ -44,12 +45,15 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   List<GeneratedTimetable> _generatedTimetables = [];
   bool _isGenerating = false;
   final Map<String, InstructorRankings> _instructorRankings = {};
+  ScoringWeights _scoringWeights = const ScoringWeights();
+  bool _advancedExpanded = false;
   TabController? _tabController;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _scoringWeights = UserSettingsService().scoringWeights;
   }
 
   @override
@@ -95,6 +99,8 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                                 _buildConfigurationPanel(),
                                 const SizedBox(height: 16),
                                 _buildConstraintsPanel(),
+                                const SizedBox(height: 16),
+                                _buildAdvancedWeightsPanel(),
                               ],
                             ),
                           ),
@@ -133,11 +139,12 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                       _buildConfigurationPanel(),
                       const SizedBox(height: 16),
                       _buildConstraintsPanel(),
+                      const SizedBox(height: 16),
+                      _buildAdvancedWeightsPanel(),
                     ],
                   ),
                 ),
               ),
-              // Fixed generate button at bottom
               _buildGenerateButton(),
             ],
           ),
@@ -1495,6 +1502,216 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     }
   }
 
+  void _updateScoringWeights(ScoringWeights weights) {
+    setState(() { _scoringWeights = weights; });
+    UserSettingsService().updateScoringWeights(weights);
+  }
+
+  Widget _buildAdvancedWeightsPanel() {
+    final scheme = Theme.of(context).colorScheme;
+    final isDefault = _scoringWeights == const ScoringWeights();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.outline),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () => setState(() { _advancedExpanded = !_advancedExpanded; }),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: scheme.surface,
+                borderRadius: _advancedExpanded
+                    ? const BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12))
+                    : BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.science, color: scheme.primary, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Advanced Scoring',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: scheme.onSurface),
+                  ),
+                  if (!isDefault) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: scheme.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text('Custom', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: scheme.primary)),
+                    ),
+                  ],
+                  const Spacer(),
+                  if (!isDefault && _advancedExpanded)
+                    GestureDetector(
+                      onTap: () => _updateScoringWeights(const ScoringWeights()),
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Text('Reset', style: TextStyle(fontSize: 12, color: scheme.primary, fontWeight: FontWeight.w500)),
+                      ),
+                    ),
+                  Icon(
+                    _advancedExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: scheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_advancedExpanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Adjust how much each factor affects timetable ranking. Higher values = stronger effect on score.',
+                    style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.6)),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildWeightSection(
+                    title: 'Penalties',
+                    subtitle: 'Negative factors that lower score',
+                    color: Colors.red,
+                    icon: Icons.remove_circle_outline,
+                    weights: [
+                      _WeightEntry('Max hours/day exceeded', _scoringWeights.maxHoursPerDayPenalty, 15, 0, 25,
+                        (v) => _updateScoringWeights(_scoringWeights.copyWith(maxHoursPerDayPenalty: v))),
+                      _WeightEntry('Avoid time conflicts', _scoringWeights.avoidTimesPenalty, 15, 0, 25,
+                        (v) => _updateScoringWeights(_scoringWeights.copyWith(avoidTimesPenalty: v))),
+                      _WeightEntry('Lab time conflicts', _scoringWeights.avoidLabsPenalty, 10, 0, 20,
+                        (v) => _updateScoringWeights(_scoringWeights.copyWith(avoidLabsPenalty: v))),
+                      _WeightEntry('Avoided instructors', _scoringWeights.avoidedInstructorsPenalty, 15, 0, 25,
+                        (v) => _updateScoringWeights(_scoringWeights.copyWith(avoidedInstructorsPenalty: v))),
+                      _WeightEntry('Back-to-back classes', _scoringWeights.backToBackPenalty, 8, 0, 15,
+                        (v) => _updateScoringWeights(_scoringWeights.copyWith(backToBackPenalty: v))),
+                      _WeightEntry('Gaps between classes', _scoringWeights.gapsPenalty, 8, 0, 15,
+                        (v) => _updateScoringWeights(_scoringWeights.copyWith(gapsPenalty: v))),
+                      _WeightEntry('Lunch break violation', _scoringWeights.lunchBreakPenalty, 5, 0, 10,
+                        (v) => _updateScoringWeights(_scoringWeights.copyWith(lunchBreakPenalty: v))),
+                      _WeightEntry('Time-of-day mismatch', _scoringWeights.timeOfDayPenalty, 7, 0, 15,
+                        (v) => _updateScoringWeights(_scoringWeights.copyWith(timeOfDayPenalty: v))),
+                      _WeightEntry('Exam spread (close exams)', _scoringWeights.examSpreadPenalty, 7, 0, 15,
+                        (v) => _updateScoringWeights(_scoringWeights.copyWith(examSpreadPenalty: v))),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _buildWeightSection(
+                    title: 'Bonuses',
+                    subtitle: 'Positive factors that raise score',
+                    color: Colors.green,
+                    icon: Icons.add_circle_outline,
+                    weights: [
+                      _WeightEntry('Preferred instructors', _scoringWeights.preferredInstructorsBonus, 2, 0, 5,
+                        (v) => _updateScoringWeights(_scoringWeights.copyWith(preferredInstructorsBonus: v))),
+                      _WeightEntry('Instructor rankings', _scoringWeights.instructorRankingsBonus, 2, 0, 5,
+                        (v) => _updateScoringWeights(_scoringWeights.copyWith(instructorRankingsBonus: v))),
+                      _WeightEntry('Free day / compact', _scoringWeights.freeDayBonus, 3, 0, 8,
+                        (v) => _updateScoringWeights(_scoringWeights.copyWith(freeDayBonus: v))),
+                      _WeightEntry('Exam slot preference', _scoringWeights.examSlotBonus, 2, 0, 5,
+                        (v) => _updateScoringWeights(_scoringWeights.copyWith(examSlotBonus: v))),
+                      _WeightEntry('Optional courses fit', _scoringWeights.optionalCoursesBonus, 3, 0, 8,
+                        (v) => _updateScoringWeights(_scoringWeights.copyWith(optionalCoursesBonus: v))),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeightSection({
+    required String title,
+    required String subtitle,
+    required Color color,
+    required IconData icon,
+    required List<_WeightEntry> weights,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 16, color: color.withValues(alpha: 0.7)),
+            const SizedBox(width: 6),
+            Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: scheme.onSurface)),
+            const SizedBox(width: 8),
+            Text(subtitle, style: TextStyle(fontSize: 11, color: scheme.onSurface.withValues(alpha: 0.5))),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ...weights.map((w) => _buildWeightRow(w, color)),
+      ],
+    );
+  }
+
+  Widget _buildWeightRow(_WeightEntry entry, Color accentColor) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDefault = entry.value == entry.defaultValue;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 160,
+            child: Text(
+              entry.label,
+              style: TextStyle(
+                fontSize: 12,
+                color: isDefault ? scheme.onSurface.withValues(alpha: 0.7) : scheme.onSurface,
+                fontWeight: isDefault ? FontWeight.normal : FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: SliderTheme(
+              data: SliderThemeData(
+                trackHeight: 3,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                activeTrackColor: accentColor.withValues(alpha: 0.6),
+                inactiveTrackColor: scheme.outlineVariant.withValues(alpha: 0.3),
+                thumbColor: accentColor,
+              ),
+              child: Slider(
+                value: entry.value,
+                min: entry.min,
+                max: entry.max,
+                divisions: (entry.max - entry.min).toInt(),
+                onChanged: entry.onChanged,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 32,
+            child: Text(
+              entry.value.toInt().toString(),
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isDefault ? scheme.onSurface.withValues(alpha: 0.5) : accentColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildGenerateButton() {
     return Container(
       width: double.infinity,
@@ -1599,6 +1816,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         protectLunchBreak: _protectLunchBreak,
         preferredMidsemSlot: _preferredMidsemSlot,
         preferredCompreSlot: _preferredCompreSlot,
+        scoringWeights: _scoringWeights,
       );
 
       final timetables = TimetableGenerator.generateTimetables(
@@ -2477,4 +2695,15 @@ class _InstructorRankingDialogState extends State<_InstructorRankingDialog>
       ),
     );
   }
+}
+
+class _WeightEntry {
+  final String label;
+  final double value;
+  final double defaultValue;
+  final double min;
+  final double max;
+  final ValueChanged<double> onChanged;
+
+  _WeightEntry(this.label, this.value, this.defaultValue, this.min, this.max, this.onChanged);
 }

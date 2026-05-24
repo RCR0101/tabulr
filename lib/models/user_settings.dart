@@ -1,6 +1,7 @@
 import '../widgets/timetable_widget.dart';
 import '../services/theme_service.dart' as theme_service;
 import '../utils/datetime_utils.dart';
+import 'timetable_constraints.dart';
 
 enum ThemeMode { light, dark, system }
 
@@ -70,6 +71,7 @@ class UserSettings {
   final List<String> customTimetableOrder; // for custom sorting
   final bool dontShowBottomDisclaimer; // whether to hide the bottom disclaimer permanently
   final DateTime? dontShowTopUpdated; // when the user last dismissed the top announcement
+  final ScoringWeights scoringWeights;
   final DateTime lastUpdated;
 
   const UserSettings({
@@ -81,6 +83,7 @@ class UserSettings {
     required this.customTimetableOrder,
     this.dontShowBottomDisclaimer = false,
     this.dontShowTopUpdated,
+    this.scoringWeights = const ScoringWeights(),
     required this.lastUpdated,
   });
 
@@ -96,6 +99,7 @@ class UserSettings {
       'customTimetableOrder': customTimetableOrder,
       'dontShowBottomDisclaimer': dontShowBottomDisclaimer,
       'dontShowTopUpdated': dontShowTopUpdated?.toIso8601String(),
+      if (scoringWeights != const ScoringWeights()) 'scoringWeights': scoringWeights.toJson(),
       'lastUpdated': lastUpdated.toIso8601String(),
     };
   }
@@ -123,6 +127,9 @@ class UserSettings {
       customTimetableOrder: List<String>.from(json['customTimetableOrder'] ?? []),
       dontShowBottomDisclaimer: json['dontShowBottomDisclaimer'] ?? false,
       dontShowTopUpdated: json['dontShowTopUpdated'] != null ? parseDateTime(json['dontShowTopUpdated']) : null,
+      scoringWeights: json['scoringWeights'] != null
+          ? ScoringWeights.fromJson(json['scoringWeights'] as Map<String, dynamic>)
+          : const ScoringWeights(),
       lastUpdated: parseDateTime(json['lastUpdated']),
     );
   }
@@ -150,6 +157,7 @@ class UserSettings {
     List<String>? customTimetableOrder,
     bool? dontShowBottomDisclaimer,
     DateTime? dontShowTopUpdated,
+    ScoringWeights? scoringWeights,
     DateTime? lastUpdated,
   }) {
     return UserSettings(
@@ -161,6 +169,7 @@ class UserSettings {
       customTimetableOrder: customTimetableOrder ?? this.customTimetableOrder,
       dontShowBottomDisclaimer: dontShowBottomDisclaimer ?? this.dontShowBottomDisclaimer,
       dontShowTopUpdated: dontShowTopUpdated ?? this.dontShowTopUpdated,
+      scoringWeights: scoringWeights ?? this.scoringWeights,
       lastUpdated: lastUpdated ?? DateTime.now(),
     );
   }

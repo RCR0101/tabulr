@@ -17,6 +17,7 @@ class TimetableConstraints {
   final bool protectLunchBreak;
   final TimeSlot? preferredMidsemSlot;
   final TimeSlot? preferredCompreSlot;
+  final ScoringWeights scoringWeights;
 
   TimetableConstraints({
     this.mandatoryCourses = const [],
@@ -35,6 +36,7 @@ class TimetableConstraints {
     this.protectLunchBreak = false,
     this.preferredMidsemSlot,
     this.preferredCompreSlot,
+    this.scoringWeights = const ScoringWeights(),
   });
 }
 
@@ -135,6 +137,149 @@ class InstructorRankings {
     // Higher rank for earlier position (most preferred first)
     return relevantList.length - index;
   }
+}
+
+class ScoringWeights {
+  // Penalty caps (negative factors — higher = penalised more)
+  final double maxHoursPerDayPenalty;
+  final double avoidTimesPenalty;
+  final double avoidLabsPenalty;
+  final double avoidedInstructorsPenalty;
+  final double backToBackPenalty;
+  final double gapsPenalty;
+  final double lunchBreakPenalty;
+  final double timeOfDayPenalty;
+  final double examSpreadPenalty;
+
+  // Bonus caps (positive factors — higher = rewarded more)
+  final double preferredInstructorsBonus;
+  final double instructorRankingsBonus;
+  final double freeDayBonus;
+  final double examSlotBonus;
+  final double optionalCoursesBonus;
+
+  const ScoringWeights({
+    this.maxHoursPerDayPenalty = 15,
+    this.avoidTimesPenalty = 15,
+    this.avoidLabsPenalty = 10,
+    this.avoidedInstructorsPenalty = 15,
+    this.backToBackPenalty = 8,
+    this.gapsPenalty = 8,
+    this.lunchBreakPenalty = 5,
+    this.timeOfDayPenalty = 7,
+    this.examSpreadPenalty = 7,
+    this.preferredInstructorsBonus = 2,
+    this.instructorRankingsBonus = 2,
+    this.freeDayBonus = 3,
+    this.examSlotBonus = 2,
+    this.optionalCoursesBonus = 3,
+  });
+
+  static const ScoringWeights defaults = ScoringWeights();
+
+  ScoringWeights copyWith({
+    double? maxHoursPerDayPenalty,
+    double? avoidTimesPenalty,
+    double? avoidLabsPenalty,
+    double? avoidedInstructorsPenalty,
+    double? backToBackPenalty,
+    double? gapsPenalty,
+    double? lunchBreakPenalty,
+    double? timeOfDayPenalty,
+    double? examSpreadPenalty,
+    double? preferredInstructorsBonus,
+    double? instructorRankingsBonus,
+    double? freeDayBonus,
+    double? examSlotBonus,
+    double? optionalCoursesBonus,
+  }) {
+    return ScoringWeights(
+      maxHoursPerDayPenalty: maxHoursPerDayPenalty ?? this.maxHoursPerDayPenalty,
+      avoidTimesPenalty: avoidTimesPenalty ?? this.avoidTimesPenalty,
+      avoidLabsPenalty: avoidLabsPenalty ?? this.avoidLabsPenalty,
+      avoidedInstructorsPenalty: avoidedInstructorsPenalty ?? this.avoidedInstructorsPenalty,
+      backToBackPenalty: backToBackPenalty ?? this.backToBackPenalty,
+      gapsPenalty: gapsPenalty ?? this.gapsPenalty,
+      lunchBreakPenalty: lunchBreakPenalty ?? this.lunchBreakPenalty,
+      timeOfDayPenalty: timeOfDayPenalty ?? this.timeOfDayPenalty,
+      examSpreadPenalty: examSpreadPenalty ?? this.examSpreadPenalty,
+      preferredInstructorsBonus: preferredInstructorsBonus ?? this.preferredInstructorsBonus,
+      instructorRankingsBonus: instructorRankingsBonus ?? this.instructorRankingsBonus,
+      freeDayBonus: freeDayBonus ?? this.freeDayBonus,
+      examSlotBonus: examSlotBonus ?? this.examSlotBonus,
+      optionalCoursesBonus: optionalCoursesBonus ?? this.optionalCoursesBonus,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'maxHoursPerDayPenalty': maxHoursPerDayPenalty,
+    'avoidTimesPenalty': avoidTimesPenalty,
+    'avoidLabsPenalty': avoidLabsPenalty,
+    'avoidedInstructorsPenalty': avoidedInstructorsPenalty,
+    'backToBackPenalty': backToBackPenalty,
+    'gapsPenalty': gapsPenalty,
+    'lunchBreakPenalty': lunchBreakPenalty,
+    'timeOfDayPenalty': timeOfDayPenalty,
+    'examSpreadPenalty': examSpreadPenalty,
+    'preferredInstructorsBonus': preferredInstructorsBonus,
+    'instructorRankingsBonus': instructorRankingsBonus,
+    'freeDayBonus': freeDayBonus,
+    'examSlotBonus': examSlotBonus,
+    'optionalCoursesBonus': optionalCoursesBonus,
+  };
+
+  factory ScoringWeights.fromJson(Map<String, dynamic> json) => ScoringWeights(
+    maxHoursPerDayPenalty: (json['maxHoursPerDayPenalty'] as num?)?.toDouble() ?? 15,
+    avoidTimesPenalty: (json['avoidTimesPenalty'] as num?)?.toDouble() ?? 15,
+    avoidLabsPenalty: (json['avoidLabsPenalty'] as num?)?.toDouble() ?? 10,
+    avoidedInstructorsPenalty: (json['avoidedInstructorsPenalty'] as num?)?.toDouble() ?? 15,
+    backToBackPenalty: (json['backToBackPenalty'] as num?)?.toDouble() ?? 8,
+    gapsPenalty: (json['gapsPenalty'] as num?)?.toDouble() ?? 8,
+    lunchBreakPenalty: (json['lunchBreakPenalty'] as num?)?.toDouble() ?? 5,
+    timeOfDayPenalty: (json['timeOfDayPenalty'] as num?)?.toDouble() ?? 7,
+    examSpreadPenalty: (json['examSpreadPenalty'] as num?)?.toDouble() ?? 7,
+    preferredInstructorsBonus: (json['preferredInstructorsBonus'] as num?)?.toDouble() ?? 2,
+    instructorRankingsBonus: (json['instructorRankingsBonus'] as num?)?.toDouble() ?? 2,
+    freeDayBonus: (json['freeDayBonus'] as num?)?.toDouble() ?? 3,
+    examSlotBonus: (json['examSlotBonus'] as num?)?.toDouble() ?? 2,
+    optionalCoursesBonus: (json['optionalCoursesBonus'] as num?)?.toDouble() ?? 3,
+  );
+
+  double get totalPenaltyCap =>
+      maxHoursPerDayPenalty + avoidTimesPenalty + avoidLabsPenalty +
+      avoidedInstructorsPenalty + backToBackPenalty + gapsPenalty +
+      lunchBreakPenalty + timeOfDayPenalty + examSpreadPenalty;
+
+  double get totalBonusCap =>
+      preferredInstructorsBonus + instructorRankingsBonus +
+      freeDayBonus + examSlotBonus + optionalCoursesBonus;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ScoringWeights &&
+          maxHoursPerDayPenalty == other.maxHoursPerDayPenalty &&
+          avoidTimesPenalty == other.avoidTimesPenalty &&
+          avoidLabsPenalty == other.avoidLabsPenalty &&
+          avoidedInstructorsPenalty == other.avoidedInstructorsPenalty &&
+          backToBackPenalty == other.backToBackPenalty &&
+          gapsPenalty == other.gapsPenalty &&
+          lunchBreakPenalty == other.lunchBreakPenalty &&
+          timeOfDayPenalty == other.timeOfDayPenalty &&
+          examSpreadPenalty == other.examSpreadPenalty &&
+          preferredInstructorsBonus == other.preferredInstructorsBonus &&
+          instructorRankingsBonus == other.instructorRankingsBonus &&
+          freeDayBonus == other.freeDayBonus &&
+          examSlotBonus == other.examSlotBonus &&
+          optionalCoursesBonus == other.optionalCoursesBonus;
+
+  @override
+  int get hashCode => Object.hash(
+      maxHoursPerDayPenalty, avoidTimesPenalty, avoidLabsPenalty,
+      avoidedInstructorsPenalty, backToBackPenalty, gapsPenalty,
+      lunchBreakPenalty, timeOfDayPenalty, examSpreadPenalty,
+      preferredInstructorsBonus, instructorRankingsBonus,
+      freeDayBonus, examSlotBonus, optionalCoursesBonus);
 }
 
 enum TimetableIssueType {
