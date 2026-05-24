@@ -73,6 +73,25 @@
     <span>Loading Tabulr...</span>
   </div>
 
+  <script>
+    (async function() {
+      try {
+        var resp = await fetch('version.json?t=' + Date.now());
+        var data = await resp.json();
+        var prev = localStorage.getItem('app_version');
+        if (prev && prev !== data.version) {
+          var regs = await navigator.serviceWorker.getRegistrations();
+          for (var r of regs) await r.unregister();
+          var keys = await caches.keys();
+          for (var k of keys) await caches.delete(k);
+          localStorage.setItem('app_version', data.version);
+          window.location.reload(true);
+          return;
+        }
+        localStorage.setItem('app_version', data.version);
+      } catch(e) {}
+    })();
+  </script>
   <script src="flutter_bootstrap.js" async></script>
   <script>
     window.addEventListener('flutter-first-frame', function () {
