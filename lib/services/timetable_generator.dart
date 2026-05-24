@@ -18,17 +18,20 @@ class TimetableGenerator {
       throw Exception('Some mandatory courses not found in available courses');
     }
 
-    final optionalCourses = availableCourses
-        .where((c) => constraints.optionalCourses.contains(c.courseCode))
+    // Preserve user ranking order for optionals
+    final optionalCourses = constraints.optionalCourses
+        .map((code) => availableCourses.firstWhere((c) => c.courseCode == code,
+            orElse: () => Course(courseCode: code, courseTitle: '', lectureCredits: 0, practicalCredits: 0, totalCredits: 0, sections: [])))
+        .where((c) => c.sections.isNotEmpty)
         .toList();
-
-    // Sort optionals by exam slot preference match (best candidates first)
-    _sortOptionalsByPreference(optionalCourses, constraints);
 
     final mandatoryCombos = _generateAllCombinations(mandatoryCourses);
     final allCourses = [...mandatoryCourses, ...optionalCourses];
 
     final mandatoryCredits = mandatoryCourses.fold(0.0, (sum, c) => sum + c.totalCredits);
+
+    // Generate multiple optional orderings for variety
+    final optionalOrderings = _generateOptionalOrderings(optionalCourses);
 
     final seen = <String>{};
     final validTimetables = <GeneratedTimetable>[];
@@ -37,55 +40,115 @@ class TimetableGenerator {
       final base = mandatoryCombos[i];
       if (!_isValidCombination(base, allCourses)) continue;
 
-      // Greedily add optional courses
-      final result = _addOptionalCourses(
-        base, optionalCourses, allCourses, constraints, mandatoryCredits,
-      );
+      for (final ordering in optionalOrderings) {
+        final result = _addOptionalCourses(
+          base, ordering, allCourses, constraints, mandatoryCredits,
+        );
 
-      // Deduplicate by section set
-      final key = (result.sections.map((s) => '${s.courseCode}:${s.sectionId}').toList()..sort()).join('|');
-      if (seen.contains(key)) continue;
-      seen.add(key);
+        final key = (result.sections.map((s) => '${s.courseCode}:${s.sectionId}').toList()..sort()).join('|');
+        if (seen.contains(key)) continue;
+        seen.add(key);
 
-      final score = _scoreTimetable(result.sections, constraints, allCourses);
-      final analysis = _analyzeTimetable(result.sections, constraints, allCourses);
+        final score = _scoreTimetable(result.sections, constraints, allCourses);
+        final analysis = _analyzeTimetable(result.sections, constraints, allCourses);
 
-      if (result.optionalCodes.isNotEmpty) {
-        final optNames = result.optionalCodes.join(', ');
-        (analysis['pros'] as List<String>).insert(0, 'Includes optionals: $optNames');
+        if (result.optionalCodes.isNotEmpty) {
+          final optNames = result.optionalCodes.join(', ');
+          (analysis['pros'] as List<String>).insert(0, 'Includes optionals: $optNames');
+        }
+
+        validTimetables.add(GeneratedTimetable(
+          id: '',
+          sections: result.sections,
+          score: score,
+          pros: analysis['pros'] as List<String>,
+          cons: analysis['cons'] as List<String>,
+          hoursPerDay: _calculateHoursPerDay(result.sections),
+          totalCredits: result.totalCredits,
+          optionalCourseCodes: result.optionalCodes,
+        ));
+
+        if (validTimetables.length >= maxTimetables * 3) break;
       }
-
-      validTimetables.add(GeneratedTimetable(
-        id: 'timetable_${validTimetables.length + 1}',
-        sections: result.sections,
-        score: score,
-        pros: analysis['pros'] as List<String>,
-        cons: analysis['cons'] as List<String>,
-        hoursPerDay: _calculateHoursPerDay(result.sections),
-        totalCredits: result.totalCredits,
-        optionalCourseCodes: result.optionalCodes,
-      ));
-
-      if (validTimetables.length >= maxTimetables * 2) break;
+      if (validTimetables.length >= maxTimetables * 3) break;
     }
 
     validTimetables.sort((a, b) => b.score.compareTo(a.score));
-    return validTimetables.take(maxTimetables).toList();
+    final results = validTimetables.take(maxTimetables).toList();
+
+    // Assign descriptive names
+    for (int i = 0; i < results.length; i++) {
+      final tt = results[i];
+      results[i] = GeneratedTimetable(
+        id: _generateName(tt, i, results.length),
+        sections: tt.sections,
+        score: tt.score,
+        pros: tt.pros,
+        cons: tt.cons,
+        hoursPerDay: tt.hoursPerDay,
+        totalCredits: tt.totalCredits,
+        optionalCourseCodes: tt.optionalCourseCodes,
+      );
+    }
+
+    return results;
   }
 
-  static void _sortOptionalsByPreference(List<Course> optionals, TimetableConstraints constraints) {
-    optionals.sort((a, b) {
-      int scoreA = 0, scoreB = 0;
-      if (constraints.preferredMidsemSlot != null) {
-        if (a.midSemExam?.timeSlot == constraints.preferredMidsemSlot) scoreA += 2;
-        if (b.midSemExam?.timeSlot == constraints.preferredMidsemSlot) scoreB += 2;
-      }
-      if (constraints.preferredCompreSlot != null) {
-        if (a.endSemExam?.timeSlot == constraints.preferredCompreSlot) scoreA += 2;
-        if (b.endSemExam?.timeSlot == constraints.preferredCompreSlot) scoreB += 2;
-      }
-      return scoreB.compareTo(scoreA);
-    });
+  static List<List<Course>> _generateOptionalOrderings(List<Course> optionals) {
+    if (optionals.length <= 1) return [optionals];
+
+    final orderings = <List<Course>>[List.from(optionals)];
+
+    // Add reverse order
+    orderings.add(optionals.reversed.toList());
+
+    // Add orderings that skip each optional (to force different subsets)
+    for (int skip = 0; skip < optionals.length && skip < 4; skip++) {
+      final reordered = <Course>[
+        ...optionals.sublist(skip + 1),
+        ...optionals.sublist(0, skip + 1),
+      ];
+      orderings.add(reordered);
+    }
+
+    return orderings;
+  }
+
+  static String _generateName(GeneratedTimetable tt, int index, int total) {
+    final freeDays = tt.hoursPerDay.entries.where((e) => e.value == 0).map((e) => e.key).toList();
+    final daysWithClasses = tt.hoursPerDay.values.where((h) => h > 0).length;
+    final maxH = tt.hoursPerDay.values.reduce(max);
+
+    final tags = <String>[];
+
+    if (freeDays.length >= 2) {
+      tags.add('${freeDays.length} free days');
+    } else if (freeDays.length == 1) {
+      const names = {DayOfWeek.M: 'Mon', DayOfWeek.T: 'Tue', DayOfWeek.W: 'Wed', DayOfWeek.Th: 'Thu', DayOfWeek.F: 'Fri', DayOfWeek.S: 'Sat'};
+      tags.add('${names[freeDays.first]} off');
+    }
+
+    if (maxH <= 4) {
+      tags.add('light days');
+    } else if (maxH >= 8) {
+      tags.add('packed');
+    }
+
+    if (tt.optionalCourseCodes.isNotEmpty) {
+      tags.add('+${tt.optionalCourseCodes.length} elective${tt.optionalCourseCodes.length > 1 ? 's' : ''}');
+    }
+
+    if (tt.score >= 85) {
+      tags.add('top pick');
+    } else if (daysWithClasses <= 4) {
+      tags.add('compact');
+    }
+
+    if (tags.isEmpty) tags.add('option ${index + 1}');
+
+    final label = tags.take(2).join(', ');
+    final prefix = String.fromCharCode(65 + (index % 26));
+    return '$prefix. ${label[0].toUpperCase()}${label.substring(1)}';
   }
 
   static _OptionalResult _addOptionalCourses(

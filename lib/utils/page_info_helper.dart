@@ -5,6 +5,8 @@ class PageInfoHelper {
   PageInfoHelper._();
 
   static void show(BuildContext context, PageInfo info) {
+    final scheme = Theme.of(context).colorScheme;
+
     AppDialog.adaptive(
       context: context,
       title: info.title,
@@ -13,40 +15,65 @@ class PageInfoHelper {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            info.purpose,
-            style: TextStyle(
-              fontSize: 13,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: scheme.primary.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              info.purpose,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.4,
+                color: scheme.onSurface.withValues(alpha: 0.85),
+              ),
             ),
           ),
           if (info.features.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            ...info.features.map((f) => Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: 14),
+            ...List.generate(info.features.length, (i) {
+              final f = info.features[i];
+              return Column(
                 children: [
+                  if (i > 0)
+                    Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.3)),
                   Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Icon(f.icon, size: 14,
-                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7)),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: RichText(
-                      text: TextSpan(
-                        style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface),
-                        children: [
-                          TextSpan(text: '${f.label}: ', style: const TextStyle(fontWeight: FontWeight.w600)),
-                          TextSpan(text: f.description),
-                        ],
-                      ),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 28,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: scheme.primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Icon(f.icon, size: 15, color: scheme.primary.withValues(alpha: 0.8)),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: RichText(
+                            text: TextSpan(
+                              style: TextStyle(fontSize: 12, color: scheme.onSurface, height: 1.3),
+                              children: [
+                                TextSpan(text: '${f.label}  ', style: const TextStyle(fontWeight: FontWeight.w600)),
+                                TextSpan(
+                                  text: f.description,
+                                  style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.7)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
-              ),
-            )),
+              );
+            }),
           ],
         ],
       ),

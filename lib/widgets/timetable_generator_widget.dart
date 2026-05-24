@@ -3,6 +3,7 @@ import 'package:flutter_typeahead/flutter_typeahead.dart';
 import '../models/course.dart';
 import '../models/timetable_constraints.dart';
 import '../services/timetable_generator.dart';
+import '../services/clash_detector.dart';
 import '../services/toast_service.dart';
 import '../services/responsive_service.dart';
 import '../services/campus_service.dart';
@@ -46,6 +47,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   bool _isGenerating = false;
   final Map<String, InstructorRankings> _instructorRankings = {};
   ScoringWeights _scoringWeights = const ScoringWeights();
+  ScoringWeights _savedScoringWeights = const ScoringWeights();
   bool _advancedExpanded = false;
   TabController? _tabController;
 
@@ -54,6 +56,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _scoringWeights = UserSettingsService().scoringWeights;
+    _savedScoringWeights = _scoringWeights;
   }
 
   @override
@@ -399,7 +402,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         const SizedBox(height: 8),
         _buildCourseSearchField(_optionalCourses, _mandatoryCourses),
         const SizedBox(height: 8),
-        _buildCourseBadges(_optionalCourses, isMandatory: false),
+        _buildOptionalCoursesRanking(),
       ],
     );
   }
@@ -421,6 +424,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         if (pattern.isEmpty) return <Course>[];
 
         return widget.availableCourses.where((course) {
+          if (course.totalCredits == 0) return false;
           final searchLower = pattern.toLowerCase();
           return course.courseCode.toLowerCase().contains(searchLower) ||
                  course.courseTitle.toLowerCase().contains(searchLower);
@@ -523,6 +527,227 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
             );
           }).toList(),
         ),
+      ),
+    );
+  }
+
+  List<List<String>> _buildClashClusters(List<String> courseCodes) {
+    final courses = <String, Course>{};
+    for (final code in courseCodes) {
+      courses[code] = widget.availableCourses.firstWhere(
+        (c) => c.courseCode == code,
+        orElse: () => Course(courseCode: code, courseTitle: 'Unknown', lectureCredits: 0, practicalCredits: 0, totalCredits: 0, sections: []),
+      );
+    }
+
+    final parent = <String, String>{};
+    for (final code in courseCodes) {
+      parent[code] = code;
+    }
+    String find(String x) {
+      while (parent[x] != x) {
+        parent[x] = parent[parent[x]!]!;
+        x = parent[x]!;
+      }
+      return x;
+    }
+    void union(String a, String b) {
+      final ra = find(a), rb = find(b);
+      if (ra != rb) parent[ra] = rb;
+    }
+
+    for (int i = 0; i < courseCodes.length; i++) {
+      for (int j = i + 1; j < courseCodes.length; j++) {
+        if (_coursesClash(courses[courseCodes[i]]!, courses[courseCodes[j]]!)) {
+          union(courseCodes[i], courseCodes[j]);
+        }
+      }
+    }
+
+    final groups = <String, List<String>>{};
+    for (final code in courseCodes) {
+      final root = find(code);
+      (groups[root] ??= []).add(code);
+    }
+    return groups.values.toList();
+  }
+
+  bool _coursesClash(Course a, Course b) {
+    for (final secA in a.sections) {
+      for (final secB in b.sections) {
+        if (ClashDetector.sectionsConflict(secA, secB)) return true;
+      }
+    }
+    if (a.midSemExam != null && b.midSemExam != null) {
+      if (ClashDetector.examDatesConflict(a.midSemExam!, b.midSemExam!)) return true;
+    }
+    if (a.endSemExam != null && b.endSemExam != null) {
+      if (ClashDetector.examDatesConflict(a.endSemExam!, b.endSemExam!)) return true;
+    }
+    return false;
+  }
+
+  Widget _buildOptionalCoursesRanking() {
+    if (_optionalCourses.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Theme.of(context).colorScheme.outline),
+        ),
+        child: Center(
+          child: Text(
+            'No optional courses',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              fontSize: 13,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final clusters = _buildClashClusters(_optionalCourses);
+    final accentColor = Theme.of(context).colorScheme.tertiary;
+    final scheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (int ci = 0; ci < clusters.length; ci++) ...[
+          if (ci > 0) const SizedBox(height: 8),
+          _buildClashCluster(clusters[ci], accentColor, scheme),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildClashCluster(List<String> clusterCodes, Color accentColor, ColorScheme scheme) {
+    final isClashGroup = clusterCodes.length > 1;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surface.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isClashGroup
+              ? scheme.error.withValues(alpha: 0.3)
+              : scheme.outline,
+        ),
+      ),
+      padding: const EdgeInsets.all(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (isClashGroup) ...[
+            Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, size: 13, color: scheme.error.withValues(alpha: 0.7)),
+                const SizedBox(width: 4),
+                Text(
+                  'Timing conflict — drag to set priority',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: scheme.error.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            ReorderableListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              itemCount: clusterCodes.length,
+              onReorder: (oldIndex, newIndex) {
+                setState(() {
+                  if (newIndex > oldIndex) newIndex--;
+                  final globalOld = _optionalCourses.indexOf(clusterCodes[oldIndex]);
+                  final globalNew = _optionalCourses.indexOf(clusterCodes[newIndex]);
+                  final code = _optionalCourses.removeAt(globalOld);
+                  _optionalCourses.insert(globalNew, code);
+                });
+              },
+              itemBuilder: (context, index) {
+                return _buildOptionalCourseRow(
+                  key: ValueKey(clusterCodes[index]),
+                  courseCode: clusterCodes[index],
+                  accentColor: accentColor,
+                  draggable: true,
+                  dragIndex: index,
+                );
+              },
+            ),
+          ] else
+            _buildOptionalCourseRow(
+              key: ValueKey(clusterCodes[0]),
+              courseCode: clusterCodes[0],
+              accentColor: accentColor,
+              draggable: false,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOptionalCourseRow({
+    required Key key,
+    required String courseCode,
+    required Color accentColor,
+    required bool draggable,
+    int? dragIndex,
+  }) {
+    final course = widget.availableCourses.firstWhere(
+      (c) => c.courseCode == courseCode,
+      orElse: () => Course(courseCode: courseCode, courseTitle: 'Unknown', lectureCredits: 0, practicalCredits: 0, totalCredits: 0, sections: []),
+    );
+    return Container(
+      key: key,
+      margin: const EdgeInsets.only(bottom: 4),
+      decoration: BoxDecoration(
+        color: accentColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: accentColor.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          if (draggable)
+            ReorderableDragStartListener(
+              index: dragIndex!,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Icon(Icons.drag_handle, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
+              ),
+            )
+          else
+            const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(course.courseCode, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: accentColor)),
+                  Text(
+                    course.courseTitle,
+                    style: TextStyle(fontSize: ResponsiveService.clampedFontSize(context, 9), color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: () { setState(() { _optionalCourses.remove(courseCode); }); },
+            icon: Icon(Icons.close, size: 14, color: Theme.of(context).colorScheme.error),
+            tooltip: 'Remove $courseCode',
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            padding: EdgeInsets.zero,
+          ),
+        ],
       ),
     );
   }
@@ -1502,9 +1727,13 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     }
   }
 
-  void _updateScoringWeights(ScoringWeights weights) {
+  void _setScoringWeights(ScoringWeights weights) {
     setState(() { _scoringWeights = weights; });
-    UserSettingsService().updateScoringWeights(weights);
+  }
+
+  void _saveScoringWeights() {
+    setState(() { _savedScoringWeights = _scoringWeights; });
+    UserSettingsService().updateScoringWeights(_scoringWeights);
   }
 
   Widget _buildAdvancedWeightsPanel() {
@@ -1552,14 +1781,24 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                     ),
                   ],
                   const Spacer(),
-                  if (!isDefault && _advancedExpanded)
-                    GestureDetector(
-                      onTap: () => _updateScoringWeights(const ScoringWeights()),
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: Text('Reset', style: TextStyle(fontSize: 12, color: scheme.primary, fontWeight: FontWeight.w500)),
+                  if (_advancedExpanded) ...[
+                    if (_scoringWeights != _savedScoringWeights)
+                      GestureDetector(
+                        onTap: _saveScoringWeights,
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: Text('Save', style: TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w600)),
+                        ),
                       ),
-                    ),
+                    if (!isDefault)
+                      GestureDetector(
+                        onTap: () { _setScoringWeights(const ScoringWeights()); _saveScoringWeights(); },
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: Text('Reset', style: TextStyle(fontSize: 12, color: scheme.primary, fontWeight: FontWeight.w500)),
+                        ),
+                      ),
+                  ],
                   Icon(
                     _advancedExpanded ? Icons.expand_less : Icons.expand_more,
                     color: scheme.onSurface.withValues(alpha: 0.5),
@@ -1586,23 +1825,23 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                     icon: Icons.remove_circle_outline,
                     weights: [
                       _WeightEntry('Max hours/day exceeded', _scoringWeights.maxHoursPerDayPenalty, 15, 0, 25,
-                        (v) => _updateScoringWeights(_scoringWeights.copyWith(maxHoursPerDayPenalty: v))),
+                        (v) => _setScoringWeights(_scoringWeights.copyWith(maxHoursPerDayPenalty: v))),
                       _WeightEntry('Avoid time conflicts', _scoringWeights.avoidTimesPenalty, 15, 0, 25,
-                        (v) => _updateScoringWeights(_scoringWeights.copyWith(avoidTimesPenalty: v))),
+                        (v) => _setScoringWeights(_scoringWeights.copyWith(avoidTimesPenalty: v))),
                       _WeightEntry('Lab time conflicts', _scoringWeights.avoidLabsPenalty, 10, 0, 20,
-                        (v) => _updateScoringWeights(_scoringWeights.copyWith(avoidLabsPenalty: v))),
+                        (v) => _setScoringWeights(_scoringWeights.copyWith(avoidLabsPenalty: v))),
                       _WeightEntry('Avoided instructors', _scoringWeights.avoidedInstructorsPenalty, 15, 0, 25,
-                        (v) => _updateScoringWeights(_scoringWeights.copyWith(avoidedInstructorsPenalty: v))),
+                        (v) => _setScoringWeights(_scoringWeights.copyWith(avoidedInstructorsPenalty: v))),
                       _WeightEntry('Back-to-back classes', _scoringWeights.backToBackPenalty, 8, 0, 15,
-                        (v) => _updateScoringWeights(_scoringWeights.copyWith(backToBackPenalty: v))),
+                        (v) => _setScoringWeights(_scoringWeights.copyWith(backToBackPenalty: v))),
                       _WeightEntry('Gaps between classes', _scoringWeights.gapsPenalty, 8, 0, 15,
-                        (v) => _updateScoringWeights(_scoringWeights.copyWith(gapsPenalty: v))),
+                        (v) => _setScoringWeights(_scoringWeights.copyWith(gapsPenalty: v))),
                       _WeightEntry('Lunch break violation', _scoringWeights.lunchBreakPenalty, 5, 0, 10,
-                        (v) => _updateScoringWeights(_scoringWeights.copyWith(lunchBreakPenalty: v))),
+                        (v) => _setScoringWeights(_scoringWeights.copyWith(lunchBreakPenalty: v))),
                       _WeightEntry('Time-of-day mismatch', _scoringWeights.timeOfDayPenalty, 7, 0, 15,
-                        (v) => _updateScoringWeights(_scoringWeights.copyWith(timeOfDayPenalty: v))),
+                        (v) => _setScoringWeights(_scoringWeights.copyWith(timeOfDayPenalty: v))),
                       _WeightEntry('Exam spread (close exams)', _scoringWeights.examSpreadPenalty, 7, 0, 15,
-                        (v) => _updateScoringWeights(_scoringWeights.copyWith(examSpreadPenalty: v))),
+                        (v) => _setScoringWeights(_scoringWeights.copyWith(examSpreadPenalty: v))),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -1613,15 +1852,15 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                     icon: Icons.add_circle_outline,
                     weights: [
                       _WeightEntry('Preferred instructors', _scoringWeights.preferredInstructorsBonus, 2, 0, 5,
-                        (v) => _updateScoringWeights(_scoringWeights.copyWith(preferredInstructorsBonus: v))),
+                        (v) => _setScoringWeights(_scoringWeights.copyWith(preferredInstructorsBonus: v))),
                       _WeightEntry('Instructor rankings', _scoringWeights.instructorRankingsBonus, 2, 0, 5,
-                        (v) => _updateScoringWeights(_scoringWeights.copyWith(instructorRankingsBonus: v))),
+                        (v) => _setScoringWeights(_scoringWeights.copyWith(instructorRankingsBonus: v))),
                       _WeightEntry('Free day / compact', _scoringWeights.freeDayBonus, 3, 0, 8,
-                        (v) => _updateScoringWeights(_scoringWeights.copyWith(freeDayBonus: v))),
+                        (v) => _setScoringWeights(_scoringWeights.copyWith(freeDayBonus: v))),
                       _WeightEntry('Exam slot preference', _scoringWeights.examSlotBonus, 2, 0, 5,
-                        (v) => _updateScoringWeights(_scoringWeights.copyWith(examSlotBonus: v))),
+                        (v) => _setScoringWeights(_scoringWeights.copyWith(examSlotBonus: v))),
                       _WeightEntry('Optional courses fit', _scoringWeights.optionalCoursesBonus, 3, 0, 8,
-                        (v) => _updateScoringWeights(_scoringWeights.copyWith(optionalCoursesBonus: v))),
+                        (v) => _setScoringWeights(_scoringWeights.copyWith(optionalCoursesBonus: v))),
                     ],
                   ),
                 ],

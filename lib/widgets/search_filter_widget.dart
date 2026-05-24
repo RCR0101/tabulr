@@ -450,9 +450,10 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                 children: TimeSlotInfo.hourSlotNames.entries.map((entry) {
                   final hour = entry.key;
                   final timeLabel = entry.value;
+                  final startTime = timeLabel.split('-')[0].trim();
                   return FilterChip(
                     label: Text(
-                      '$hour ($timeLabel)',
+                      '$hour — $startTime',
                       style: TextStyle(
                         fontSize: ResponsiveService.getAdaptiveFontSize(context, 11),
                       ),

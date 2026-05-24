@@ -1425,6 +1425,19 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     );
   }
 
+  double _cumulativeCgpa(String upToSemester) {
+    final semIndex = _semesters.indexOf(upToSemester);
+    if (semIndex < 0) return 0.0;
+
+    final subset = <String, SemesterData>{};
+    for (int i = 0; i <= semIndex; i++) {
+      final sem = _cgpaData.semesters[_semesters[i]];
+      if (sem != null) subset[_semesters[i]] = sem;
+    }
+    final partial = CGPAData(semesters: subset);
+    return partial.cgpa;
+  }
+
   Widget _buildSemesterView(String semesterName) {
     final semester = _cgpaData.semesters[semesterName];
     final courses = semester?.courses ?? [];
@@ -1449,17 +1462,17 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
               const SizedBox(width: 8),
               Expanded(
                 child: _buildStatItem(
-                  'Credits',
-                  semester?.totalCredits.toStringAsFixed(0) ?? '0',
-                  Icons.school_rounded,
+                  'CGPA',
+                  _cumulativeCgpa(semesterName).toStringAsFixed(2),
+                  Icons.grade_rounded,
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: _buildStatItem(
-                  'Courses',
-                  courses.length.toString(),
-                  Icons.book_rounded,
+                  'Courses · Credits',
+                  '${courses.length} · ${semester?.totalCredits.toStringAsFixed(0) ?? '0'}',
+                  Icons.school_rounded,
                 ),
               ),
             ],
