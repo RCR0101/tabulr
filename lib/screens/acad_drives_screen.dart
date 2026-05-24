@@ -11,6 +11,7 @@ import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
 import '../services/courses_master_service.dart';
+import '../utils/page_info_helper.dart';
 
 
 enum CourseSortOption {
@@ -707,6 +708,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
               )
             : null, // This will show the hamburger menu for main screen
         actions: [
+          PageInfoHelper.infoButton(context, PageInfoHelper.acadDrives),
           IconButton(
             onPressed: _showSubmitDialog,
             icon: const Icon(Icons.cloud_upload_outlined),

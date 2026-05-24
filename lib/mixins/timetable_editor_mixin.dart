@@ -42,6 +42,7 @@ import '../screens/course_guide_screen.dart';
 import '../screens/discipline_electives_screen.dart';
 import '../screens/humanities_electives_screen.dart';
 import '../screens/prerequisites_screen.dart';
+import '../utils/page_info_helper.dart';
 
 mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   // Abstract getters/setters that subclasses must implement
@@ -859,6 +860,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
 
   List<Widget> buildCommonActions() {
     return [
+      PageInfoHelper.infoButton(context, PageInfoHelper.timetableCreator),
       if (_showSavedIndicator)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),

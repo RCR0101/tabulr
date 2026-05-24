@@ -16,6 +16,7 @@ import '../utils/design_constants.dart';
 import '../widgets/common/loading_state.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/app_dialog.dart';
+import '../utils/page_info_helper.dart';
 
 
 class CourseAnnouncementsScreen extends StatefulWidget {
@@ -324,6 +325,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
       appBar: AppBar(
         title: const Text('Announcements'),
         actions: [
+          PageInfoHelper.infoButton(context, PageInfoHelper.announcements),
           if (_currentUserRep != null) _buildRepChip(theme),
           const SizedBox(width: 8),
         ],

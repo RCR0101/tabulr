@@ -9,6 +9,7 @@ import '../services/auth_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
+import '../utils/page_info_helper.dart';
 
 
 class ProfessorsScreen extends StatefulWidget {
@@ -58,6 +59,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
       appBar: AppBar(
         title: const Text('Prof Chambers'),
         actions: [
+          PageInfoHelper.infoButton(context, PageInfoHelper.profChambers),
           if (kIsWeb)
             IconButton(
               onPressed: _professorService.refresh,

@@ -21,6 +21,7 @@ import '../models/cgpa_data.dart';
 import '../models/all_course.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
+import '../utils/page_info_helper.dart';
 
 import 'cg_booster_screen.dart';
 import 'grade_planner_screen.dart';
@@ -1198,6 +1199,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
           ),
         ),
         actions: [
+          PageInfoHelper.infoButton(context, PageInfoHelper.cgpaCalculator),
           IconButton(
             icon: const Icon(Icons.refresh, size: 22),
             tooltip: 'Reload Data',

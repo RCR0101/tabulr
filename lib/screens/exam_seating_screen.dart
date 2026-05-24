@@ -7,6 +7,7 @@ import '../services/responsive_service.dart';
 import '../services/toast_service.dart';
 import '../models/timetable.dart';
 import '../utils/design_constants.dart';
+import '../utils/page_info_helper.dart';
 
 
 class ExamSeatingScreen extends StatefulWidget {
@@ -223,6 +224,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       appBar: AppBar(
         title: const Text('Exam Seating'),
         actions: [
+          PageInfoHelper.infoButton(context, PageInfoHelper.examSeating),
           IconButton(
             icon: const Icon(Icons.file_download_outlined),
             tooltip: 'Import Courses from Timetable',

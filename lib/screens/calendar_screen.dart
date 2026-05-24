@@ -17,6 +17,7 @@ import '../services/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
+import '../utils/page_info_helper.dart';
 
 
 int _timeToSlotHour(TimeOfDay t) => t.hour - 7;
@@ -854,6 +855,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       appBar: AppBar(
         title: const Text('Calendar'),
         actions: [
+          PageInfoHelper.infoButton(context, PageInfoHelper.calendar),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (val) {
