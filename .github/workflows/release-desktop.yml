@@ -1,0 +1,129 @@
+name: Release Desktop Apps
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 1.8.4)'
+        required: true
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - run: echo "$FIREBASE_OPTIONS" > lib/firebase_options.dart
+        env:
+          FIREBASE_OPTIONS: ${{ secrets.FIREBASE_OPTIONS_DART }}
+
+      - run: echo "$DOT_ENV" > .env
+        env:
+          DOT_ENV: ${{ secrets.DOT_ENV }}
+
+      - run: flutter build macos --release
+
+      - name: Create DMG
+        run: |
+          cd build/macos/Build/Products/Release
+          mkdir -p dmg-contents
+          cp -R "Tabulr.app" dmg-contents/ 2>/dev/null || cp -R *.app dmg-contents/
+          hdiutil create -volname "Tabulr" -srcfolder dmg-contents -ov -format UDZO "Tabulr-${{ inputs.version }}-macos.dmg"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          path: build/macos/Build/Products/Release/Tabulr-${{ inputs.version }}-macos.dmg
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - run: echo "$env:FIREBASE_OPTIONS" > lib/firebase_options.dart
+        env:
+          FIREBASE_OPTIONS: ${{ secrets.FIREBASE_OPTIONS_DART }}
+
+      - run: echo "$env:DOT_ENV" > .env
+        env:
+          DOT_ENV: ${{ secrets.DOT_ENV }}
+
+      - run: flutter build windows --release
+
+      - name: Create ZIP
+        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "Tabulr-${{ inputs.version }}-windows.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: Tabulr-${{ inputs.version }}-windows.zip
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+
+      - run: flutter pub get
+
+      - run: echo "$FIREBASE_OPTIONS" > lib/firebase_options.dart
+        env:
+          FIREBASE_OPTIONS: ${{ secrets.FIREBASE_OPTIONS_DART }}
+
+      - run: echo "$DOT_ENV" > .env
+        env:
+          DOT_ENV: ${{ secrets.DOT_ENV }}
+
+      - run: flutter build linux --release
+
+      - name: Create tarball
+        run: tar -czf "Tabulr-${{ inputs.version }}-linux.tar.gz" -C build/linux/x64/release bundle
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-release
+          path: Tabulr-${{ inputs.version }}-linux.tar.gz
+
+  create-release:
+    needs: [build-macos, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          name: Tabulr v${{ inputs.version }}
+          draft: true
+          files: |
+            Tabulr-${{ inputs.version }}-macos.dmg
+            Tabulr-${{ inputs.version }}-windows.zip
+            Tabulr-${{ inputs.version }}-linux.tar.gz

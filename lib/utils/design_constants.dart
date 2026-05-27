@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/theme_service.dart';
+import '../services/ui/theme_service.dart';
 
 class AppDesign {
   AppDesign._();

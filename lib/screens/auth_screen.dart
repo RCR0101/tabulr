@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import '../services/data/auth_service.dart';
 import '../widgets/disclaimer_widget.dart';
 import '../widgets/error_dialog.dart';
 

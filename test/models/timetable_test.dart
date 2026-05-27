@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:timetable_maker/models/course.dart';
 import 'package:timetable_maker/models/timetable.dart';
-import 'package:timetable_maker/services/campus_service.dart';
+import 'package:timetable_maker/services/data/campus_service.dart';
 import '../helpers/test_data.dart';
 
 void main() {

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:url_launcher/url_launcher.dart';
 
-import '../services/professor_service.dart';
+import '../services/data/professor_service.dart';
 import '../widgets/common/shimmer_loading.dart';
-import '../services/responsive_service.dart';
-import '../services/auth_service.dart';
+import '../services/ui/responsive_service.dart';
+import '../services/data/auth_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';

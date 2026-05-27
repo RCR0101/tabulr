@@ -1,19 +1,19 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/responsive_service.dart';
+import '../services/ui/responsive_service.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../models/course_announcement.dart';
-import '../services/timetable_service.dart';
-import '../services/exam_seating_service.dart';
-import '../services/course_announcement_service.dart';
-import '../services/professor_service.dart';
-import '../services/auth_service.dart';
-import '../services/config_service.dart';
-import '../services/course_data_service.dart';
-import '../services/toast_service.dart';
+import '../services/core/timetable_service.dart';
+import '../services/data/exam_seating_service.dart';
+import '../services/data/course_announcement_service.dart';
+import '../services/data/professor_service.dart';
+import '../services/data/auth_service.dart';
+import '../services/data/calendar_prefs_service.dart';
+import '../services/data/config_service.dart';
+import '../services/data/course_data_service.dart';
+import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
@@ -139,7 +139,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       CourseAnnouncementService();
   final ProfessorService _professorService = ProfessorService();
   final AuthService _authService = AuthService();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final CalendarPrefsService _calendarPrefsService = CalendarPrefsService();
 
   List<Timetable> _timetables = [];
   Timetable? _selectedTimetable;
@@ -184,15 +184,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     super.dispose();
   }
 
-  DocumentReference? get _calendarPrefsRef {
-    final uid = _authService.userDocId;
-    if (uid == null) return null;
-    return _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('calendar_prefs')
-        .doc('data');
-  }
+  String? get _calendarPrefsUid => _authService.userDocId;
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
@@ -205,7 +197,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _examSeatingService.fetchAllExamSeating(),
         _professorService.loadProfessors(),
         CourseDataService().fetchCourses().catchError((_) => <Course>[]),
-        _calendarPrefsRef?.get() ?? Future.value(null),
+        _calendarPrefsUid != null
+            ? _calendarPrefsService.getPrefs(_calendarPrefsUid!)
+            : Future.value(null),
       ).wait;
 
       _courseMap = {for (final c in courses) c.courseCode: c};
@@ -290,10 +284,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Future<void> _savePrefs() async {
-    final prefsRef = _calendarPrefsRef;
-    if (prefsRef == null) return;
+    final uid = _calendarPrefsUid;
+    if (uid == null) return;
 
-    await prefsRef.set({
+    await _calendarPrefsService.savePrefs(uid, {
       'selectedTimetableId': _selectedTimetable?.id,
       'customEvents': _customEvents.map((e) => e.toJson()).toList(),
     });

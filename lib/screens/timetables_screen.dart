@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:html' as html;
+import 'package:url_launcher/url_launcher.dart';
+import '../utils/web_utils.dart' as web_utils;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/timetable.dart';
 import '../utils/page_transitions.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/empty_state.dart';
 import '../widgets/disclaimer_widget.dart';
-import '../services/timetable_service.dart';
-import '../services/auth_service.dart';
-import '../services/toast_service.dart';
-import '../services/campus_service.dart';
-import '../services/course_data_service.dart';
-import '../services/user_settings_service.dart';
-import '../services/responsive_service.dart';
+import '../services/core/timetable_service.dart';
+import '../services/data/auth_service.dart';
+import '../services/ui/toast_service.dart';
+import '../services/data/campus_service.dart';
+import '../services/data/course_data_service.dart';
+import '../services/data/user_settings_service.dart';
+import '../services/ui/responsive_service.dart';
 import '../models/user_settings.dart';
 import '../utils/design_constants.dart';
 import '../widgets/theme_selector_widget.dart';
@@ -508,17 +509,13 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   }
 
   Future<void> _openGitHub() async {
-    // Replace with your GitHub repository URL
     const String githubUrl = 'https://github.com/RCR0101/timetable_maker';
 
     try {
-      // For web, open in new tab
       if (kIsWeb) {
-        html.window.open(githubUrl, '_blank');
+        web_utils.openUrl(githubUrl);
       } else {
-        // For mobile, you'd need url_launcher package
-        // await launchUrl(Uri.parse(githubUrl));
-        print('Open GitHub: $githubUrl');
+        await launchUrl(Uri.parse(githubUrl));
       }
     } catch (e) {
       print('Error opening GitHub: $e');

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/cgpa_data.dart';
-import '../services/responsive_service.dart';
-import '../services/toast_service.dart';
+import '../services/ui/responsive_service.dart';
+import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../utils/grade_utils.dart' as grade_utils;
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
-import '../services/campus_service.dart';
+import '../services/data/campus_service.dart';
 import '../utils/design_constants.dart';
 
 enum SortColumn { course, midSem, endSem }

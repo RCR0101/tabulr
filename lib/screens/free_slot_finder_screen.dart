@@ -1,11 +1,11 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/timetable.dart';
 import '../models/course.dart';
-import '../services/auth_service.dart';
-import '../services/timetable_service.dart';
-import '../services/responsive_service.dart';
-import '../services/toast_service.dart';
+import '../services/data/auth_service.dart';
+import '../services/data/calendar_prefs_service.dart';
+import '../services/core/timetable_service.dart';
+import '../services/ui/responsive_service.dart';
+import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
@@ -25,6 +25,7 @@ class FreeSlotFinderScreen extends StatefulWidget {
 class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
   final TimetableService _timetableService = TimetableService();
   final AuthService _authService = AuthService();
+  final CalendarPrefsService _calendarPrefsService = CalendarPrefsService();
   List<Timetable> _myTimetables = [];
   final List<_SlotSource> _sources = [];
   bool _isLoading = true;
@@ -324,13 +325,7 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
     final uid = _authService.userDocId;
     if (uid == null) throw Exception('Not authenticated');
 
-    final ref = FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('calendar_prefs')
-        .doc('data');
-
-    final doc = await ref.get();
+    final doc = await _calendarPrefsService.getPrefs(uid);
     final existing = <Map<String, dynamic>>[];
     if (doc.exists) {
       final data = doc.data();
@@ -342,7 +337,7 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
     }
     existing.add(event.toJson());
 
-    await ref.set({
+    await _calendarPrefsService.savePrefs(uid, {
       if (doc.exists && doc.data()?['selectedTimetableId'] != null)
         'selectedTimetableId': doc.data()!['selectedTimetableId'],
       'customEvents': existing,

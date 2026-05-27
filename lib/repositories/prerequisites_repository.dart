@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/prerequisite.dart';
-import '../services/courses_master_service.dart';
+import '../services/data/courses_master_service.dart';
 
 class PrerequisitesRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;

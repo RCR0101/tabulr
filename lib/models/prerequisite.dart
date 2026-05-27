@@ -1,4 +1,4 @@
-import '../services/courses_master_service.dart';
+import '../services/data/courses_master_service.dart';
 
 class Prerequisite {
   final String courseCode;

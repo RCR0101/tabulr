@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../services/responsive_service.dart';
-import '../services/user_settings_service.dart';
-import '../services/announcement_service.dart';
+import '../services/ui/responsive_service.dart';
+import '../services/data/user_settings_service.dart';
+import '../services/data/announcement_service.dart';
 
 enum DisclaimerType {
   general,

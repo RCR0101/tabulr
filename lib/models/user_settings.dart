@@ -1,5 +1,5 @@
 import '../widgets/timetable_widget.dart';
-import '../services/theme_service.dart' as theme_service;
+import '../services/ui/theme_service.dart' as theme_service;
 import '../utils/datetime_utils.dart';
 import 'timetable_constraints.dart';
 

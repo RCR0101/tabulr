@@ -2,26 +2,27 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
-import 'dart:html' as html;
+import 'package:url_launcher/url_launcher.dart';
+import '../utils/web_utils.dart' as web_utils;
 import '../models/course.dart';
 import '../utils/page_transitions.dart';
 import '../models/timetable.dart';
 import '../models/timetable.dart' as timetable_models;
 import '../models/export_options.dart';
-import '../services/timetable_service.dart';
-import '../services/course_utils.dart';
-import '../services/export_service.dart';
-import '../services/auth_service.dart';
-import '../services/toast_service.dart';
-import '../services/auto_load_cdc_service.dart';
-import '../services/campus_service.dart';
-import '../services/page_leave_warning_service.dart';
-import '../services/timetable_sharing_service.dart';
-import '../services/undo_redo_service.dart';
-import '../services/clash_detector.dart';
-import '../services/course_data_service.dart';
-import '../services/responsive_service.dart';
-import '../services/user_settings_service.dart';
+import '../services/core/timetable_service.dart';
+import '../services/core/course_utils.dart';
+import '../services/ui/export_service.dart';
+import '../services/data/auth_service.dart';
+import '../services/ui/toast_service.dart';
+import '../services/data/auto_load_cdc_service.dart';
+import '../services/data/campus_service.dart';
+import '../services/ui/page_leave_warning_service.dart';
+import '../services/data/timetable_sharing_service.dart';
+import '../services/core/undo_redo_service.dart';
+import '../services/core/clash_detector.dart';
+import '../services/data/course_data_service.dart';
+import '../services/ui/responsive_service.dart';
+import '../services/data/user_settings_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/timetable_widget.dart';
@@ -1251,16 +1252,13 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   }
 
   Future<void> openGitHub() async {
-    // Replace with your GitHub repository URL
     const String githubUrl = 'https://github.com/RCR0101/timetable_maker';
 
     try {
-      // For web, open in new tab
       if (kIsWeb) {
-        html.window.open(githubUrl, '_blank');
+        web_utils.openUrl(githubUrl);
       } else {
-        // For mobile, you'd need url_launcher package
-        print('Open GitHub: $githubUrl');
+        await launchUrl(Uri.parse(githubUrl));
       }
     } catch (e) {
       print('Error opening GitHub: $e');

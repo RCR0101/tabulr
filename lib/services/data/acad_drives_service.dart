@@ -1,0 +1,58 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class AcadDrivesService {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  CollectionReference<Map<String, dynamic>> get _indexRef =>
+      _firestore.collection('acad_drives_index');
+
+  CollectionReference<Map<String, dynamic>> get _filesRef =>
+      _firestore.collection('acad_drives_files');
+
+  CollectionReference<Map<String, dynamic>> get _submissionsRef =>
+      _firestore.collection('acad_drives_submissions');
+
+  Future<int> getCourseCount() async {
+    final snapshot = await _indexRef.count().get();
+    return snapshot.count ?? 0;
+  }
+
+  Query<Map<String, dynamic>> buildCourseQuery(String sortField, {bool descending = false, String? secondarySort, bool secondaryDescending = false}) {
+    final query = _indexRef.orderBy(sortField, descending: descending);
+    if (secondarySort != null) {
+      return query.orderBy(secondarySort, descending: secondaryDescending);
+    }
+    return query;
+  }
+
+  Future<QuerySnapshot<Map<String, dynamic>>> fetchCourses(
+    Query<Map<String, dynamic>> query, {
+    int limit = 40,
+    DocumentSnapshot? startAfter,
+  }) {
+    var q = query.limit(limit);
+    if (startAfter != null) {
+      q = query.startAfterDocument(startAfter).limit(limit);
+    }
+    return q.get();
+  }
+
+  Future<QuerySnapshot<Map<String, dynamic>>> fetchAllCourses() {
+    return _indexRef.get();
+  }
+
+  Future<QuerySnapshot<Map<String, dynamic>>> fetchCourseFiles(
+    String courseCode, {
+    int limit = 500,
+  }) {
+    return _filesRef
+        .where('course_codes', arrayContains: courseCode)
+        .orderBy('uploadedAt', descending: true)
+        .limit(limit)
+        .get();
+  }
+
+  Future<void> submitDriveLink(Map<String, dynamic> data) {
+    return _submissionsRef.add(data);
+  }
+}

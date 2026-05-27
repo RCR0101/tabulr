@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 import '../models/export_options.dart';
-import '../services/responsive_service.dart';
+import '../services/ui/responsive_service.dart';
 import '../screens/quick_replace_screen.dart';
 import '../utils/datetime_utils.dart';
 import '../utils/design_constants.dart';

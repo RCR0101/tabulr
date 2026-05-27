@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:timetable_maker/models/course.dart';
 import 'package:timetable_maker/models/timetable_constraints.dart';
-import 'package:timetable_maker/services/timetable_generator.dart';
+import 'package:timetable_maker/services/core/timetable_generator.dart';
 import '../helpers/test_data.dart';
 import '../helpers/test_reporter.dart';
 

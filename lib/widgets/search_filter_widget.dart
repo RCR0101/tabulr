@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/course.dart';
-import '../services/responsive_service.dart';
+import '../services/ui/responsive_service.dart';
 
 class SearchFilterWidget extends StatefulWidget {
   final Function(String query, Map<String, dynamic> filters) onSearchChanged;

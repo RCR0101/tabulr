@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
-import '../services/responsive_service.dart';
+import '../services/data/auth_service.dart';
+import '../services/ui/responsive_service.dart';
 import '../utils/page_transitions.dart';
 import '../screens/timetables_screen.dart';
 import '../screens/cgpa_calculator_screen.dart';
@@ -10,7 +10,7 @@ import '../screens/professors_screen.dart';
 import '../screens/course_announcements_screen.dart';
 import '../screens/calendar_screen.dart';
 import '../screens/free_slot_finder_screen.dart';
-import '../services/course_announcement_service.dart';
+import '../services/data/course_announcement_service.dart';
 
 enum DrawerScreen {
   timetables,

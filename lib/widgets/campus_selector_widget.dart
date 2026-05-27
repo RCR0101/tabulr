@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../services/campus_service.dart';
+import '../services/data/campus_service.dart';
 
 class CampusSelectorWidget extends StatefulWidget {
   final Function(Campus)? onCampusChanged;

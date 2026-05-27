@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/prerequisite.dart';
 import '../repositories/prerequisites_repository.dart';
-import '../services/toast_service.dart';
+import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/loading_state.dart';
 import '../widgets/common/shimmer_loading.dart';

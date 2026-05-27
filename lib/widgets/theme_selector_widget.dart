@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../services/theme_service.dart' as theme_service;
-import '../services/user_settings_service.dart';
-import '../services/responsive_service.dart';
+import '../services/ui/theme_service.dart' as theme_service;
+import '../services/data/user_settings_service.dart';
+import '../services/ui/responsive_service.dart';
 import '../models/user_settings.dart' as user_settings;
 
 class ThemeSelectorWidget extends StatefulWidget {

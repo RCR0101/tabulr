@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/timetable.dart';
-import '../services/timetable_sharing_service.dart';
-import '../services/toast_service.dart';
+import '../services/data/timetable_sharing_service.dart';
+import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import 'common/app_dialog.dart';
 

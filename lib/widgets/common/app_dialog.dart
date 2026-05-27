@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/responsive_service.dart';
+import '../../services/ui/responsive_service.dart';
 import '../../utils/design_constants.dart';
 import 'app_button.dart';
 

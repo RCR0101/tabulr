@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:timetable_maker/models/course.dart';
 import 'package:timetable_maker/models/timetable.dart';
-import 'package:timetable_maker/services/clash_detector.dart';
+import 'package:timetable_maker/services/core/clash_detector.dart';
 import '../helpers/test_data.dart';
 import '../helpers/test_reporter.dart';
 

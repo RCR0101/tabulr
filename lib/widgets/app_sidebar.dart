@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
-import '../services/course_announcement_service.dart';
+import '../services/data/auth_service.dart';
+import '../services/data/course_announcement_service.dart';
 import '../utils/design_constants.dart';
 import 'app_drawer.dart';
 

@@ -1,17 +1,17 @@
 import 'dart:async';
-import 'dart:html' as html;
+import '../utils/web_utils.dart' as web_utils;
 import 'package:flutter/material.dart';
 import '../models/announcement_source.dart';
 import '../models/announcement_verification.dart';
 import '../models/course_announcement.dart';
 import '../models/timetable.dart';
 import '../models/user_reputation.dart';
-import '../services/auth_service.dart';
-import '../services/course_announcement_service.dart';
-import '../services/reputation_service.dart';
-import '../services/responsive_service.dart';
-import '../services/timetable_service.dart';
-import '../services/toast_service.dart';
+import '../services/data/auth_service.dart';
+import '../services/data/course_announcement_service.dart';
+import '../services/data/reputation_service.dart';
+import '../services/ui/responsive_service.dart';
+import '../services/core/timetable_service.dart';
+import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/loading_state.dart';
 import '../widgets/common/shimmer_loading.dart';
@@ -281,7 +281,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
   }
 
   void _openGoogleCalendar(CourseAnnouncement announcement) {
-    html.window.open(announcement.googleCalendarUrl, '_blank');
+    web_utils.openUrl(announcement.googleCalendarUrl);
   }
 
   // ── Formatting helpers ────────────────────────────────────────────────
@@ -846,8 +846,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
           if (announcement.correctionSource != null) ...[
             const SizedBox(height: 4),
             InkWell(
-              onTap: () => html.window
-                  .open(announcement.correctionSource!, '_blank'),
+              onTap: () => web_utils.openUrl(announcement.correctionSource!),
               child: Text(
                 'Source: ${announcement.correctionSource}',
                 style: TextStyle(

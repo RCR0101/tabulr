@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:html' as html;
+import '../utils/web_utils.dart' as web_utils;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/responsive_service.dart';
-import '../services/toast_service.dart';
-import '../services/auth_service.dart';
+import '../services/data/acad_drives_service.dart';
+import '../services/ui/responsive_service.dart';
+import '../services/ui/toast_service.dart';
+import '../services/data/auth_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/loading_state.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
-import '../services/courses_master_service.dart';
+import '../services/data/courses_master_service.dart';
 import '../utils/page_info_helper.dart';
 
 
@@ -83,7 +84,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
   final ScrollController _coursesScrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final AcadDrivesService _drivesService = AcadDrivesService();
 
   // Submit form controllers
   final TextEditingController _driveLinkController = TextEditingController();
@@ -125,14 +126,10 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     });
 
     try {
-      final countSnapshot = await _firestore
-          .collection('acad_drives_index')
-          .count()
-          .get();
-      _totalCourseCount = countSnapshot.count ?? 0;
+      _totalCourseCount = await _drivesService.getCourseCount();
 
       final query = _buildCourseQuery();
-      final snapshot = await query.limit(_coursePageSize).get();
+      final snapshot = await _drivesService.fetchCourses(query, limit: _coursePageSize);
 
       setState(() {
         _courses = _parseCourses(snapshot.docs);
@@ -155,10 +152,12 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     setState(() => _isLoadingMore = true);
 
     try {
-      final query = _buildCourseQuery()
-          .startAfterDocument(_lastCourseDoc!)
-          .limit(_coursePageSize);
-      final snapshot = await query.get();
+      final query = _buildCourseQuery();
+      final snapshot = await _drivesService.fetchCourses(
+        query,
+        limit: _coursePageSize,
+        startAfter: _lastCourseDoc!,
+      );
 
       setState(() {
         _courses.addAll(_parseCourses(snapshot.docs));
@@ -173,16 +172,15 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   }
 
   Query<Map<String, dynamic>> _buildCourseQuery() {
-    final collection = _firestore.collection('acad_drives_index');
     switch (_courseSortOption) {
       case CourseSortOption.nameAsc:
-        return collection.orderBy('code');
+        return _drivesService.buildCourseQuery('code');
       case CourseSortOption.nameDesc:
-        return collection.orderBy('code', descending: true);
+        return _drivesService.buildCourseQuery('code', descending: true);
       case CourseSortOption.fileCountAsc:
-        return collection.orderBy('fileCount').orderBy('code');
+        return _drivesService.buildCourseQuery('fileCount', secondarySort: 'code');
       case CourseSortOption.fileCountDesc:
-        return collection.orderBy('fileCount', descending: true).orderBy('code', descending: true);
+        return _drivesService.buildCourseQuery('fileCount', descending: true, secondarySort: 'code', secondaryDescending: true);
     }
   }
 
@@ -204,7 +202,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   Future<void> _loadAllCoursesForSearch() async {
     setState(() => _isLoading = true);
     try {
-      final snapshot = await _firestore.collection('acad_drives_index').get();
+      final snapshot = await _drivesService.fetchAllCourses();
       setState(() {
         _courses = _parseCourses(snapshot.docs);
         _hasMoreCourses = false;
@@ -224,12 +222,10 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     });
 
     try {
-      final filesSnapshot = await _firestore
-          .collection('acad_drives_files')
-          .where('course_codes', arrayContains: courseCode)
-          .orderBy('uploadedAt', descending: true)
-          .limit(_filePageSize)
-          .get();
+      final filesSnapshot = await _drivesService.fetchCourseFiles(
+        courseCode,
+        limit: _filePageSize,
+      );
 
       final files = filesSnapshot.docs.map((doc) {
         final data = doc.data();
@@ -355,7 +351,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       }
       
       if (url != null) {
-              html.window.open(url, '_blank');
+              web_utils.openUrl(url);
             } else {
         ToastService.showError('File URL not available');
       }
@@ -514,7 +510,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         'submittedAt': FieldValue.serverTimestamp(),
       };
 
-      await _firestore.collection('acad_drives_submissions').add(submissionData);
+      await _drivesService.submitDriveLink(submissionData);
 
       ToastService.showSuccess('✅ Thank you! Your submission has been received and is pending approval.');
       

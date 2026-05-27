@@ -1,5 +1,5 @@
 import '../models/course.dart';
-import '../services/branch_structure_service.dart';
+import '../services/data/branch_structure_service.dart';
 
 class ElectiveClashDetector {
   static final BranchStructureService _branchService = BranchStructureService();

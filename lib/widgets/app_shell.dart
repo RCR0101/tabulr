@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
-import '../services/course_announcement_service.dart';
-import '../services/responsive_service.dart';
-import '../services/theme_service.dart' as theme_service;
-import '../services/toast_service.dart';
-import '../services/user_settings_service.dart';
+import '../services/data/auth_service.dart';
+import '../services/data/course_announcement_service.dart';
+import '../services/ui/responsive_service.dart';
+import '../services/ui/theme_service.dart' as theme_service;
+import '../services/ui/toast_service.dart';
+import '../services/data/user_settings_service.dart';
 import '../models/user_settings.dart' as user_settings;
 import '../screens/timetables_screen.dart';
 import '../screens/calendar_screen.dart';

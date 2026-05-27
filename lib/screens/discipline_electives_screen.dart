@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../services/discipline_electives_service.dart';
-import '../services/course_data_service.dart';
-import '../services/campus_service.dart';
-import '../services/responsive_service.dart';
+import '../services/data/discipline_electives_service.dart';
+import '../services/data/course_data_service.dart';
+import '../services/data/campus_service.dart';
+import '../services/ui/responsive_service.dart';
 import '../models/course.dart';
 import '../widgets/course_list_widget.dart';
 import '../widgets/common/loading_state.dart';

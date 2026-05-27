@@ -3,8 +3,8 @@ import '../models/course.dart';
 import '../models/timetable.dart';
 import 'course_list_widget.dart';
 import 'exam_dates_widget.dart';
-import '../services/responsive_service.dart';
-import '../services/toast_service.dart';
+import '../services/ui/responsive_service.dart';
+import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 
 class CoursesTabWidget extends StatefulWidget {

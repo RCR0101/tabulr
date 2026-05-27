@@ -1,5 +1,5 @@
 import 'course.dart';
-import '../services/campus_service.dart';
+import '../services/data/campus_service.dart';
 import '../utils/datetime_utils.dart';
 
 class Timetable {

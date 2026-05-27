@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/export_options.dart';
-import '../services/responsive_service.dart';
+import '../services/ui/responsive_service.dart';
 
 class ExportOptionsDialog extends StatefulWidget {
   final ExportOptions initialOptions;

@@ -1,8 +1,8 @@
 import '../models/normalized_timetable.dart';
 import '../models/timetable.dart';
 import '../models/course.dart';
-import '../services/incremental_timetable_service.dart';
-import '../services/course_data_service.dart';
+import '../services/core/incremental_timetable_service.dart';
+import '../services/data/course_data_service.dart';
 import 'timetable_repository.dart';
 
 /// Implementation of TimetableRepository using hybrid storage

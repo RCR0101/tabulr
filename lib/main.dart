@@ -2,8 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:html' as html;
-import 'dart:js' as js;
+import 'utils/web_utils.dart' as web_utils;
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'screens/auth_screen.dart';
@@ -11,15 +10,15 @@ import 'screens/home_screen.dart';
 import 'screens/timetables_screen.dart';
 import 'widgets/common/shimmer_loading.dart';
 import 'widgets/app_shell.dart';
-import 'services/auth_service.dart';
-import 'services/theme_service.dart' as theme_service;
-import 'services/campus_service.dart';
-import 'services/courses_master_service.dart';
-import 'services/preferences_service.dart';
-import 'services/user_settings_service.dart';
+import 'services/data/auth_service.dart';
+import 'services/ui/theme_service.dart' as theme_service;
+import 'services/data/campus_service.dart';
+import 'services/data/courses_master_service.dart';
+import 'services/data/preferences_service.dart';
+import 'services/data/user_settings_service.dart';
 import 'models/user_settings.dart' as user_settings;
-import 'services/secure_logger.dart';
-import 'services/performance_monitor.dart';
+import 'services/ui/secure_logger.dart';
+import 'services/ui/performance_monitor.dart';
 
 void main() async {
   final totalStopwatch = Stopwatch()..start();
@@ -69,35 +68,22 @@ void main() async {
 void _setupWebCacheClearOnClose() {
   if (kIsWeb) {
     try {
-      // Clear localStorage when the page is about to unload (only for guest users)
-      html.window.addEventListener('beforeunload', (event) {
+      void clearGuestData() {
         try {
-          // Only clear if user is in guest mode
           final authService = AuthService();
           if (!authService.isAuthenticated) {
-            js.context.callMethod('eval', [
-              'window.localStorage.removeItem("user_timetable_data")'
-            ]);
+            web_utils.clearLocalStorageItem('user_timetable_data');
           }
         } catch (e) {
           print('Error clearing localStorage: $e');
         }
+      }
+
+      web_utils.addBeforeUnloadListener(() {
+        clearGuestData();
+        return false;
       });
-      
-      // Also clear on page hide (covers mobile scenarios)
-      html.window.addEventListener('pagehide', (event) {
-        try {
-          // Only clear if user is in guest mode
-          final authService = AuthService();
-          if (!authService.isAuthenticated) {
-            js.context.callMethod('eval', [
-              'window.localStorage.removeItem("user_timetable_data")'
-            ]);
-          }
-        } catch (e) {
-          print('Error clearing localStorage: $e');
-        }
-      });
+      web_utils.addPageHideListener(clearGuestData);
     } catch (e) {
       print('Error setting up cache clearing: $e');
     }

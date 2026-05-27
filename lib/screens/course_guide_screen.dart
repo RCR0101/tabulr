@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../utils/design_constants.dart';
 import '../widgets/course_guide_widget.dart';
 import '../widgets/common/app_dialog.dart';
-import '../services/auth_service.dart';
-import '../services/toast_service.dart';
+import '../services/data/auth_service.dart';
+import '../services/ui/toast_service.dart';
 import '../widgets/theme_selector_widget.dart';
 
 class CourseGuideScreen extends StatefulWidget {

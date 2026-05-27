@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:timetable_maker/models/user_settings.dart';
 import 'package:timetable_maker/widgets/timetable_widget.dart';
-import 'package:timetable_maker/services/theme_service.dart' as theme_service;
+import 'package:timetable_maker/services/ui/theme_service.dart' as theme_service;
 
 void main() {
   group('TimetableSettings', () {

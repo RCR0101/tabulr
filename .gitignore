@@ -56,6 +56,4 @@ coursewise_timetable.csv
 scripts/compare_courses.py
 courses.txt
 
-!README\.md
-[A-Z][A-Z]*\.md
 data.txt
