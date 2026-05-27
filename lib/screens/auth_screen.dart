@@ -23,7 +23,6 @@ class _AuthScreenState extends State<AuthScreen> {
       final userCredential = await _authService.signInWithGoogle();
       if (userCredential != null) {
         // Authentication successful, AuthWrapper will handle navigation
-        print('Google sign-in successful');
       } else {
         // User cancelled the sign-in
         _showErrorDialog('Sign-in was cancelled. Please try again if you want to sign in.');
@@ -58,7 +57,6 @@ class _AuthScreenState extends State<AuthScreen> {
     try {
       await _authService.signInAsGuest();
       // Guest mode set, AuthWrapper will handle navigation
-      print('Guest mode activated');
     } catch (e) {
       _showErrorDialog('Failed to continue as guest: $e');
     } finally {

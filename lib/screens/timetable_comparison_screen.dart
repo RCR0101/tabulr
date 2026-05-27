@@ -53,16 +53,12 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
 
     try {
       final timetables = await _timetableService.getAllTimetables();
-      print('Found ${timetables.length} timetables');
-      
       setState(() {
         _allTimetables = timetables;
         _isLoading = false;
       });
 
-      print('Loaded ${timetables.length} timetables for comparison');
     } catch (e) {
-      print('Error loading timetables: $e');
       setState(() {
         _isLoading = false;
       });

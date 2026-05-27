@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:excel/excel.dart';
 import '../../models/course.dart';
+import '../ui/secure_logger.dart';
 
 class XlsxParser {
   static Future<List<Course>> parseXlsxFile(String filePath) async {
@@ -300,10 +301,10 @@ class XlsxParser {
         }
       }
       
-      print('Hour value $hourValue could not be parsed');
+      SecureLogger.warning('XLSX_PARSER', 'Hour value $hourValue could not be parsed');
       return [];
     } catch (e) {
-      print('Error parsing hours "$hoursStr": $e');
+      SecureLogger.warning('XLSX_PARSER', 'Error parsing hours "$hoursStr"');
       return [];
     }
   }
@@ -404,7 +405,7 @@ class XlsxParser {
             timeSlot = TimeSlot.MS4;
             break;
           default:
-            print('Unknown MidSem time format: $timePart');
+            SecureLogger.warning('XLSX_PARSER', 'Unknown MidSem time format: $timePart');
             timeSlot = TimeSlot.MS1; // Default fallback
         }
       }

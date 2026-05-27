@@ -518,7 +518,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
         await launchUrl(Uri.parse(githubUrl));
       }
     } catch (e) {
-      print('Error opening GitHub: $e');
+      // ignored
     }
   }
 
@@ -1120,25 +1120,21 @@ class _TimetableEditorScreenState extends State<TimetableEditorScreen> {
 
   Future<void> _loadTimetable() async {
     try {
-      print('Loading timetable with ID: ${widget.timetableId}');
       final timetable = await _timetableService.getTimetableById(
         widget.timetableId,
       );
       if (timetable != null) {
-        print('Timetable loaded successfully: ${timetable.name}');
         setState(() {
           _timetable = timetable;
           _isLoading = false;
         });
       } else {
-        print('Timetable not found, going back');
         if (mounted) {
           Navigator.pop(context);
           ToastService.showError('Timetable not found');
         }
       }
     } catch (e) {
-      print('Error loading timetable: $e');
       if (mounted) {
         Navigator.pop(context);
         ToastService.showError('Error loading timetable: $e');

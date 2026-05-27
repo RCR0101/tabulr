@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
+import 'secure_logger.dart';
 
 /// Mobile/Desktop implementation for platform-specific exports
 class ExportServiceStub {
@@ -71,7 +72,7 @@ class ExportServiceStub {
       }
       return null;
     } catch (e) {
-      print('Error picking file: $e');
+      SecureLogger.error('EXPORT', 'Error picking file', e);
       return null;
     }
   }
@@ -86,7 +87,7 @@ class ExportServiceStub {
       );
       return outputFile;
     } catch (e) {
-      print('Error picking save location: $e');
+      SecureLogger.error('EXPORT', 'Error picking save location', e);
       return null;
     }
   }

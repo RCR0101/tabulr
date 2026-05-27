@@ -30,7 +30,6 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
 
     // Listen for campus changes
     _campusSubscription = CampusService.campusChangeStream.listen((_) {
-      print('Campus changed in generator, reloading courses...');
       _loadCourses();
     });
   }

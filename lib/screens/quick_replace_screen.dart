@@ -99,9 +99,8 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
       // Don't load DEL courses automatically - only when DEL category is selected
       // and user has configured branch/semester
       
-      print('Loaded ${_huelCourses.length} HUEL courses. DEL courses will load when configured.');
     } catch (e) {
-      print('Error loading course categories: $e');
+      // ignored
     } finally {
       setState(() {
         _isLoadingCategories = false;
@@ -123,7 +122,6 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
         );
         _delCourses = delElectives.map((del) => del.courseCode).toSet();
       } catch (e) {
-        print('Error loading filtered DEL courses: $e');
         // Fallback to all DEL courses
         await _loadAllDelCourses();
       }

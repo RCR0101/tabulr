@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/data/cgpa_service.dart';
@@ -361,11 +360,6 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
 
   Future<void> _loadCDCs() async {
     try {
-      print('Starting Load CDCs process...');
-      if (kDebugMode) {
-        print('Debug mode enabled');
-      }
-
       // Show branch and semester selection dialog
       final autoLoadService = AutoLoadCDCService();
       final result = await showDialog<AutoLoadCDCResult>(
@@ -374,11 +368,8 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       );
 
       if (result == null) {
-        print('User cancelled CDC loading');
         return; // User cancelled
       }
-
-      print('Selected branch: ${result.branch}, semester: ${result.year}');
 
       if (!mounted) return;
 
@@ -390,7 +381,6 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       );
 
       final cdcCourses = cdcData[result.year] ?? <CourseGuideEntry>[];
-      print('Found ${cdcCourses.length} CDC courses total');
 
       if (cdcCourses.isEmpty) {
         ToastService.showInfo(
@@ -404,12 +394,8 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       // Use the currently selected semester instead of creating a new one
       final semesterName = _semesters[_tabController.index];
       
-      print('Adding courses to currently selected semester: $semesterName');
-      print('CDC courses are from semester: ${result.year}');
-
       // Add courses to semester
       for (final cdcCourse in cdcCourses) {
-        print('Processing course: ${cdcCourse.code} - ${cdcCourse.name}');
 
         // Check if course already exists in this semester
         final existingSemester = _cgpaData.semesters[semesterName];
@@ -418,7 +404,6 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
         ) ?? false;
 
         if (!courseExists) {
-          print('Adding new course: ${cdcCourse.code}');
           final masterService = CoursesMasterService();
           final title = cdcCourse.name.isNotEmpty
               ? cdcCourse.name
@@ -431,12 +416,9 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
           );
           _addCourseToSemester(semesterName, allCourse);
           importedCount++;
-        } else {
-          print('Course ${cdcCourse.code} already exists, skipping');
         }
       }
 
-      print('Successfully imported $importedCount courses');
 
       if (mounted) {
         if (importedCount > 0) {

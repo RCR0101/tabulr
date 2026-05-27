@@ -74,7 +74,7 @@ void _setupWebCacheClearOnClose() {
             web_utils.clearLocalStorageItem('user_timetable_data');
           }
         } catch (e) {
-          print('Error clearing localStorage: $e');
+          // Silently ignore localStorage errors
         }
       }
 
@@ -84,7 +84,7 @@ void _setupWebCacheClearOnClose() {
       });
       web_utils.addPageHideListener(clearGuestData);
     } catch (e) {
-      print('Error setting up cache clearing: $e');
+      // Silently ignore cache clearing setup errors
     }
   }
 }

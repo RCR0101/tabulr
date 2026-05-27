@@ -29,25 +29,21 @@ class TimetableService {
         updatedAt: DateTime.now(),
       );
       
-      print('Saving timetable "${timetable.name}" with campus: ${CampusService.getCampusDisplayName(timetable.campus)}');
-      
       // If user is authenticated, save to Firestore
       if (_authService.isAuthenticated) {
-        print('Saving timetable to Firestore...');
         final success = await _firestoreService.saveTimetable(updatedTimetable);
         if (success) {
-          print('Timetable saved successfully to Firestore');
+          // saved to Firestore
         } else {
-          print('Failed to save to Firestore, falling back to local storage');
+          SecureLogger.error('TIMETABLE_SVC', 'Failed to save to Firestore, falling back to local storage');
           await saveTimetableToStorage(updatedTimetable);
         }
       } else {
         // Guest user - save to local storage using new format
-        print('Guest user - saving timetable to local storage...');
         await saveTimetableToStorage(updatedTimetable);
       }
     } catch (e) {
-      print('Error saving timetable: $e');
+      SecureLogger.error('TIMETABLE_SVC', 'Error saving timetable: $e');
       // Fallback to local storage
       await saveTimetableToStorage(timetable);
     } finally {
@@ -59,34 +55,29 @@ class TimetableService {
   // Helper method to save to local storage
   Future<void> _saveToLocalStorage(Timetable timetable) async {
     try {
-      print('Saving timetable to local storage...');
-      
       // Initialize SharedPreferences for web compatibility
       if (kIsWeb) {
         try {
           SharedPreferences.setMockInitialValues({});
         } catch (e) {
-          print('Mock values already set or not needed: $e');
+          // Mock values already set or not needed
         }
       }
-      
+
       final prefs = await SharedPreferences.getInstance();
       final data = jsonEncode(timetable.toJson());
-      
+
       await prefs.setString(_storageKey, data);
-      
-      print('Timetable saved successfully to local storage');
     } catch (e) {
-      print('Error saving timetable to local storage: $e');
+      SecureLogger.error('TIMETABLE_SVC', 'Error saving timetable to local storage: $e');
       // In web, if SharedPreferences fails, let's use localStorage directly
       if (kIsWeb) {
         try {
           // Access localStorage through JavaScript interop
           final data = jsonEncode(timetable.toJson());
           web_utils.setLocalStorageItem(_storageKey, data);
-          print('Saved to localStorage directly');
         } catch (jsError) {
-          print('Error saving to localStorage: $jsError');
+          SecureLogger.error('TIMETABLE_SVC', 'Error saving to localStorage: $jsError');
         }
       }
     }
@@ -99,23 +90,17 @@ class TimetableService {
       
       // If user is authenticated, try to load from Firestore
       if (_authService.isAuthenticated) {
-        print('Loading timetable from Firestore...');
         timetable = await _firestoreService.loadTimetable();
-        if (timetable != null) {
-          print('Timetable loaded successfully from Firestore');
-        } else {
-          print('No timetable found in Firestore, checking local storage...');
+        if (timetable == null) {
           timetable = await _loadFromLocalStorage();
         }
       } else {
         // Guest user - load from local storage
-        print('Guest user - loading timetable from local storage...');
         timetable = await _loadFromLocalStorage();
       }
-      
+
       // If no timetable found, create a new one
       if (timetable == null) {
-        print('No existing timetable found, creating new one');
         final now = DateTime.now();
         timetable = Timetable(
           id: now.millisecondsSinceEpoch.toString(),
@@ -132,15 +117,14 @@ class TimetableService {
       // Set the campus to match the timetable's campus
       if (CampusService.currentCampus != timetable.campus) {
         await CampusService.setCampus(timetable.campus);
-        print('Campus automatically switched to ${CampusService.getCampusDisplayName(timetable.campus)} to match timetable');
       }
-      
+
       // Always check for updated courses from Firestore
       await _loadCoursesFromFirestore(timetable);
-      
+
       return timetable;
     } catch (e) {
-      print('Error loading timetable: $e');
+      SecureLogger.error('TIMETABLE_SVC', 'Error loading timetable: $e');
       final now = DateTime.now();
       final timetable = Timetable(
         id: now.millisecondsSinceEpoch.toString(),
@@ -160,60 +144,46 @@ class TimetableService {
   // Helper method to load from local storage
   Future<Timetable?> _loadFromLocalStorage() async {
     try {
-      print('Loading timetable from local storage...');
-      
       // Initialize SharedPreferences for web compatibility
       if (kIsWeb) {
         try {
           SharedPreferences.setMockInitialValues({});
         } catch (e) {
-          print('Mock values already set or not needed: $e');
+          // Mock values already set or not needed
         }
       }
-      
+
       final prefs = await SharedPreferences.getInstance();
       final data = prefs.getString(_storageKey);
-      
+
       if (data == null) {
-        print('No existing timetable found in local storage');
         return null;
       } else {
-        print('Found existing timetable data in local storage');
         final jsonData = jsonDecode(data);
         return Timetable.fromJson(jsonData);
       }
     } catch (e) {
-      print('Error loading timetable from local storage: $e');
+      SecureLogger.error('TIMETABLE_SVC', 'Error loading timetable from local storage: $e');
       return null;
     }
   }
 
   Future<void> _loadCoursesFromFirestore(Timetable timetable) async {
     try {
-      print('Attempting to load courses from Firestore...');
-      
       // Try to fetch courses directly without checking metadata first
       final courses = await _courseDataService.fetchCourses();
-      
+
       if (courses.isEmpty) {
-        print('No courses found in Firestore. This might be a configuration issue.');
         throw Exception('No course data found in Firestore. Please ensure the upload script has been run successfully.');
       }
-      
-      print('Loaded ${courses.length} courses from Firestore');
-      
+
       // Clear existing courses before adding new ones
       timetable.availableCourses.clear();
       timetable.availableCourses.addAll(courses);
-      
-      if (courses.isNotEmpty) {
-        print('First course: ${courses.first.courseCode} - ${courses.first.courseTitle}');
-      }
-      
+
       await saveTimetable(timetable);
-      print('Saved timetable with Firestore courses');
     } catch (e) {
-      print('Error loading courses from Firestore: $e');
+      SecureLogger.error('TIMETABLE_SVC', 'Error loading courses from Firestore: $e');
       
       // Show a more user-friendly error message
       String userMessage = 'Failed to load course data.';
@@ -231,19 +201,15 @@ class TimetableService {
 
   Future<bool> addSection(String courseCode, String sectionId, Timetable timetable) async {
     try {
-      print('Attempting to add section: $courseCode - $sectionId');
-      
       final course = timetable.availableCourses.firstWhere(
         (c) => c.courseCode == courseCode,
         orElse: () => throw Exception('Course not found: $courseCode'),
       );
-      print('Found course: ${course.courseCode}');
 
       final section = course.sections.firstWhere(
         (s) => s.sectionId == sectionId,
         orElse: () => throw Exception('Section not found: $sectionId'),
       );
-      print('Found section: ${section.sectionId}');
 
       final newSelection = SelectedSection(
         courseCode: courseCode,
@@ -251,24 +217,18 @@ class TimetableService {
         section: section,
       );
 
-      print('Checking for clashes...');
       if (ClashDetector.canAddSection(newSelection, timetable.selectedSections, timetable.availableCourses)) {
-        print('No clashes found, adding section');
         timetable.selectedSections.add(newSelection);
         timetable.clashWarnings.clear();
         timetable.clashWarnings.addAll(
           ClashDetector.detectClashes(timetable.selectedSections, timetable.availableCourses)
         );
-        print('Saving timetable...');
         await saveTimetable(timetable);
-        print('Section added successfully');
         return true;
-      } else {
-        print('Clash detected, cannot add section');
       }
       return false;
     } catch (e) {
-      print('Error in addSection: $e');
+      SecureLogger.error('TIMETABLE_SVC', 'Error in addSection: $e');
       rethrow;
     }
   }
@@ -287,8 +247,6 @@ class TimetableService {
   // Non-saving versions for manual save functionality
   bool addSectionWithoutSaving(String courseCode, String sectionId, Timetable timetable) {
     try {
-      print('Attempting to add section (no save): $courseCode - $sectionId');
-      
       final course = timetable.availableCourses.firstWhere(
         (c) => c.courseCode == courseCode,
         orElse: () => throw Exception('Course not found: $courseCode'),
@@ -311,14 +269,11 @@ class TimetableService {
         timetable.clashWarnings.addAll(
           ClashDetector.detectClashes(timetable.selectedSections, timetable.availableCourses)
         );
-        print('Section added successfully (no save)');
         return true;
-      } else {
-        print('Clash detected, cannot add section');
       }
       return false;
     } catch (e) {
-      print('Error in addSectionWithoutSaving: $e');
+      SecureLogger.error('TIMETABLE_SVC', 'Error in addSectionWithoutSaving: $e');
       rethrow;
     }
   }
@@ -419,41 +374,32 @@ class TimetableService {
   Future<List<Timetable>> getAllTimetables() async {
     final perfSw = Stopwatch()..start();
     try {
-      print('Getting all timetables...');
       List<Timetable> timetables = [];
-      
+
       if (_authService.isAuthenticated) {
-        print('User is authenticated, loading from Firestore...');
         timetables = await _firestoreService.getAllTimetables();
         if (timetables.isEmpty) {
-          print('No timetables found in Firestore, checking local storage...');
           timetables = await _getAllTimetablesFromLocalStorage();
         }
       } else {
-        print('User is guest, using local storage');
         timetables = await _getAllTimetablesFromLocalStorage();
       }
-      
-      print('Found ${timetables.length} timetables from storage');
-      
+
       // If no timetables exist, try to migrate from old format or create a default one
       if (timetables.isEmpty) {
-        print('No timetables found, attempting migration or creating default');
         // Try to migrate from old timetable format
         final oldTimetable = await _migrateFromOldFormat();
         if (oldTimetable != null) {
-          print('Migration successful, using migrated timetable');
           timetables.add(oldTimetable);
         } else {
-          print('No migration data, creating default timetable');
           final defaultTimetable = await createNewTimetable("My Timetable");
           timetables.add(defaultTimetable);
         }
       }
-      
+
       return timetables;
     } catch (e) {
-      print('Error getting all timetables: $e');
+      SecureLogger.error('TIMETABLE_SVC', 'Error getting all timetables: $e');
       // Return a default timetable if there's an error
       final defaultTimetable = await createNewTimetable("My Timetable");
       return [defaultTimetable];
@@ -465,43 +411,34 @@ class TimetableService {
 
   Future<List<Timetable>> _getAllTimetablesFromLocalStorage() async {
     try {
-      print('Loading timetables from local storage...');
-      
       if (kIsWeb) {
         try {
           SharedPreferences.setMockInitialValues({});
         } catch (e) {
-          print('Mock values already set or not needed: $e');
+          // Mock values already set or not needed
         }
       }
-      
+
       final prefs = await SharedPreferences.getInstance();
       final timetableIds = prefs.getStringList(_timetablesListKey) ?? [];
-      
-      print('Timetable IDs from list: $timetableIds');
-      
+
       List<Timetable> timetables = [];
       for (String id in timetableIds) {
-        print('Loading timetable with id: $id');
         final data = prefs.getString('timetable_$id');
         if (data != null) {
           try {
             final jsonData = jsonDecode(data);
             final timetable = Timetable.fromJson(jsonData);
             timetables.add(timetable);
-            print('Successfully loaded timetable: ${timetable.name}');
           } catch (e) {
-            print('Error parsing timetable $id: $e');
+            SecureLogger.error('TIMETABLE_SVC', 'Error parsing timetable $id: $e');
           }
-        } else {
-          print('No data found for timetable $id');
         }
       }
-      
-      print('Total timetables loaded: ${timetables.length}');
+
       return timetables;
     } catch (e) {
-      print('Error loading timetables from local storage: $e');
+      SecureLogger.error('TIMETABLE_SVC', 'Error loading timetables from local storage: $e');
       return [];
     }
   }
@@ -510,15 +447,12 @@ class TimetableService {
     final now = DateTime.now();
     final id = now.millisecondsSinceEpoch.toString();
     
-    print('Creating new timetable with id: $id, name: $name');
-    
     // Load available courses
     List<Course> courses = [];
     try {
       courses = await _courseDataService.fetchCourses();
-      print('Loaded ${courses.length} courses for new timetable');
     } catch (e) {
-      print('Error loading courses for new timetable: $e');
+      SecureLogger.error('TIMETABLE_SVC', 'Error loading courses for new timetable: $e');
     }
     
     final timetable = Timetable(
@@ -534,31 +468,25 @@ class TimetableService {
     
     try {
       if (_authService.isAuthenticated) {
-        print('Saving new timetable to Firestore...');
         final success = await _firestoreService.saveTimetable(timetable);
-        if (success) {
-          print('Timetable saved successfully to Firestore');
-        } else {
-          print('Failed to save to Firestore, falling back to local storage');
+        if (!success) {
+          SecureLogger.error('TIMETABLE_SVC', 'Failed to save new timetable to Firestore, falling back to local storage');
           await saveTimetableToStorage(timetable);
           await _addTimetableToList(id);
         }
       } else {
-        print('Guest user - saving to local storage');
         await saveTimetableToStorage(timetable);
         await _addTimetableToList(id);
       }
-      
+
       // Verify it was saved properly
       final savedTimetable = await getTimetableById(id);
-      if (savedTimetable != null) {
-        print('Verification: Timetable saved successfully');
-      } else {
-        print('Verification: Failed to save timetable');
+      if (savedTimetable == null) {
+        SecureLogger.error('TIMETABLE_SVC', 'Verification failed: new timetable not found after save');
       }
-      
+
     } catch (e) {
-      print('Error saving new timetable: $e');
+      SecureLogger.error('TIMETABLE_SVC', 'Error saving new timetable: $e');
       throw e;
     }
     
@@ -567,33 +495,27 @@ class TimetableService {
 
   Future<void> saveTimetableToStorage(Timetable timetable) async {
     try {
-      print('Saving timetable ${timetable.id} to storage...');
-      
       if (kIsWeb) {
         try {
           SharedPreferences.setMockInitialValues({});
         } catch (e) {
-          print('Mock values already set or not needed: $e');
+          // Mock values already set or not needed
         }
       }
-      
+
       final prefs = await SharedPreferences.getInstance();
       final data = jsonEncode(timetable.toJson());
       final key = 'timetable_${timetable.id}';
-      
-      print('Saving with key: $key');
+
       await prefs.setString(key, data);
-      
+
       // Verify it was saved
       final savedData = prefs.getString(key);
-      if (savedData != null) {
-        print('Successfully saved timetable to storage');
-      } else {
-        print('Failed to save timetable to storage - verification failed');
+      if (savedData == null) {
         throw Exception('Failed to save timetable to storage');
       }
     } catch (e) {
-      print('Error saving timetable to storage: $e');
+      SecureLogger.error('TIMETABLE_SVC', 'Error saving timetable to storage: $e');
       rethrow;
     }
   }
@@ -604,87 +526,70 @@ class TimetableService {
         try {
           SharedPreferences.setMockInitialValues({});
         } catch (e) {
-          print('Mock values already set or not needed: $e');
+          // Mock values already set or not needed
         }
       }
-      
+
       final prefs = await SharedPreferences.getInstance();
       final timetableIds = prefs.getStringList(_timetablesListKey) ?? [];
-      
+
       if (!timetableIds.contains(id)) {
         timetableIds.add(id);
         await prefs.setStringList(_timetablesListKey, timetableIds);
       }
     } catch (e) {
-      print('Error adding timetable to list: $e');
+      SecureLogger.error('TIMETABLE_SVC', 'Error adding timetable to list: $e');
     }
   }
 
   Future<Timetable?> getTimetableById(String id) async {
     try {
-      print('Getting timetable by id: $id');
-      
       if (_authService.isAuthenticated) {
-        print('User is authenticated, checking Firestore first...');
         final timetable = await _firestoreService.getTimetableById(id);
         if (timetable != null) {
-          print('Found timetable in Firestore: ${timetable.name}');
-          
           // Set the campus to match the timetable's campus
           if (CampusService.currentCampus != timetable.campus) {
             await CampusService.setCampus(timetable.campus);
-            print('Campus automatically switched to ${CampusService.getCampusDisplayName(timetable.campus)} to match timetable');
           }
-          
+
           // Always check for updated courses from Firestore
           await _loadCoursesFromFirestore(timetable);
-          
+
           return timetable;
         }
-        print('Timetable not found in Firestore, checking local storage...');
       }
-      
+
       // Check local storage (for guests or as fallback)
       if (kIsWeb) {
         try {
           SharedPreferences.setMockInitialValues({});
         } catch (e) {
-          print('Mock values already set or not needed: $e');
+          // Mock values already set or not needed
         }
       }
-      
+
       final prefs = await SharedPreferences.getInstance();
       final key = 'timetable_$id';
       final data = prefs.getString(key);
-      
-      print('Looking for key: $key');
+
       if (data != null) {
-        print('Found timetable data, parsing...');
         final jsonData = jsonDecode(data);
         final timetable = Timetable.fromJson(jsonData);
-        print('Successfully parsed timetable: ${timetable.name}');
-        
+
         // Set the campus to match the timetable's campus
         if (CampusService.currentCampus != timetable.campus) {
           await CampusService.setCampus(timetable.campus);
-          print('Campus automatically switched to ${CampusService.getCampusDisplayName(timetable.campus)} to match timetable');
         }
-        
+
         // Always check for updated courses from Firestore
         await _loadCoursesFromFirestore(timetable);
-        
+
         return timetable;
-      } else {
-        print('No data found for key: $key');
-        
-        // Debug: List all keys to see what's actually stored
-        final allKeys = prefs.getKeys();
-        print('All stored keys: $allKeys');
       }
-      
+
       return null;
     } catch (e) {
-      print('Error getting timetable by id: $e');
+      SecureLogger.error('TIMETABLE_SVC', 'Error getting timetable by id: $e');
       return null;
     }
   }
@@ -692,19 +597,18 @@ class TimetableService {
   Future<void> deleteTimetable(String id) async {
     try {
       if (_authService.isAuthenticated) {
-        print('Deleting timetable from Firestore...');
         final success = await _firestoreService.deleteTimetableById(id);
         if (!success) {
-          print('Failed to delete from Firestore, deleting from local storage...');
+          SecureLogger.error('TIMETABLE_SVC', 'Failed to delete timetable from Firestore');
         }
       }
-      
+
       // Also delete from local storage (for guests or as cleanup)
       if (kIsWeb) {
         try {
           SharedPreferences.setMockInitialValues({});
         } catch (e) {
-          print('Mock values already set or not needed: $e');
+          // Mock values already set or not needed
         }
       }
       
@@ -718,15 +622,13 @@ class TimetableService {
       timetableIds.remove(id);
       await prefs.setStringList(_timetablesListKey, timetableIds);
     } catch (e) {
-      print('Error deleting timetable: $e');
+      SecureLogger.error('TIMETABLE_SVC', 'Error deleting timetable: $e');
     }
   }
 
   Future<Timetable> duplicateTimetable(Timetable sourceTimetable, String newName) async {
     final now = DateTime.now();
     final newId = now.millisecondsSinceEpoch.toString();
-    
-    print('Duplicating timetable "${sourceTimetable.name}" to "$newName" with id: $newId');
     
     final duplicatedTimetable = Timetable(
       id: newId,
@@ -747,31 +649,25 @@ class TimetableService {
     
     try {
       if (_authService.isAuthenticated) {
-        print('Saving duplicated timetable to Firestore...');
         final success = await _firestoreService.saveTimetable(duplicatedTimetable);
-        if (success) {
-          print('Duplicated timetable saved successfully to Firestore');
-        } else {
-          print('Failed to save to Firestore, falling back to local storage');
+        if (!success) {
+          SecureLogger.error('TIMETABLE_SVC', 'Failed to save duplicated timetable to Firestore, falling back to local storage');
           await saveTimetableToStorage(duplicatedTimetable);
           await _addTimetableToList(newId);
         }
       } else {
-        print('Guest user - saving duplicated timetable to local storage');
         await saveTimetableToStorage(duplicatedTimetable);
         await _addTimetableToList(newId);
       }
-      
+
       // Verify it was saved properly
       final savedTimetable = await getTimetableById(newId);
-      if (savedTimetable != null) {
-        print('Verification: Duplicated timetable saved successfully');
-      } else {
-        print('Verification: Failed to save duplicated timetable');
+      if (savedTimetable == null) {
+        SecureLogger.error('TIMETABLE_SVC', 'Verification failed: duplicated timetable not found after save');
       }
-      
+
     } catch (e) {
-      print('Error saving duplicated timetable: $e');
+      SecureLogger.error('TIMETABLE_SVC', 'Error saving duplicated timetable: $e');
       throw e;
     }
     
@@ -799,21 +695,18 @@ class TimetableService {
   // Migration method to convert old timetable format to new format
   Future<Timetable?> _migrateFromOldFormat() async {
     try {
-      print('Attempting to migrate from old timetable format...');
-      
       if (kIsWeb) {
         try {
           SharedPreferences.setMockInitialValues({});
         } catch (e) {
-          print('Mock values already set or not needed: $e');
+          // Mock values already set or not needed
         }
       }
-      
+
       final prefs = await SharedPreferences.getInstance();
       final oldData = prefs.getString(_storageKey);
-      
+
       if (oldData != null) {
-        print('Found old timetable data, migrating...');
         final jsonData = jsonDecode(oldData);
         
         // Check if this is old format (missing id, name, etc.)
@@ -845,16 +738,14 @@ class TimetableService {
           
           // Remove old format
           await prefs.remove(_storageKey);
-          
-          print('Migration completed successfully');
+
           return migratedTimetable;
         }
       }
-      
-      print('No old format timetable found');
+
       return null;
     } catch (e) {
-      print('Error during migration: $e');
+      SecureLogger.error('TIMETABLE_SVC', 'Error during migration: $e');
       return null;
     }
   }

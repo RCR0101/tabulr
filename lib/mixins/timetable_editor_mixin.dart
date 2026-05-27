@@ -1265,7 +1265,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         await launchUrl(Uri.parse(githubUrl));
       }
     } catch (e) {
-      print('Error opening GitHub: $e');
+      // Silently ignore URL launch errors
     }
   }
 

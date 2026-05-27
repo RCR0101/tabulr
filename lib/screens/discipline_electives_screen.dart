@@ -53,7 +53,6 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
 
     // Listen for campus changes
     _campusSubscription = CampusService.campusChangeStream.listen((_) {
-      print('Campus changed, reloading disciplinary electives data...');
       _loadInitialData();
     });
   }
@@ -72,20 +71,12 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
       });
 
       // Load available branches
-      print('Loading available branches...');
       final branches = await _disciplineElectivesService
           .getAvailableBranches()
           .timeout(Duration(seconds: 15));
-      print(
-        'Loaded ${branches.length} branches: ${branches.map((b) => b.name).join(', ')}',
-      );
 
       // Load courses for current campus
-      print('Loading courses for current campus...');
       final courses = await _courseDataService.fetchCourses();
-      print(
-        'Loaded ${courses.length} courses for ${CampusService.getCampusDisplayName(CampusService.currentCampus)} campus',
-      );
 
       setState(() {
         _availableBranches = branches;
@@ -93,7 +84,6 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error in _loadInitialData: $e');
       setState(() {
         _errorMessage = 'Failed to load data: $e';
         _isLoading = false;
@@ -116,8 +106,6 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
         _disciplineElectives = [];
       });
 
-      print('Fetching all discipline electives without clash filtering');
-
       final electives = await _disciplineElectivesService
           .getAllDisciplineElectives(
             _selectedPrimaryBranch!.code,
@@ -137,7 +125,6 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
         });
       }
     } catch (e) {
-      print('Error in _viewAllDisciplineElectives: $e');
       setState(() {
         _errorMessage =
             'Unable to load discipline electives at this time. Please try again later.';
@@ -161,10 +148,6 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
         _disciplineElectives = [];
       });
 
-      print(
-        'Searching electives for: ${_selectedPrimaryBranch!.name} ${_selectedSemester!}${_selectedSecondaryBranch != null ? ' and ${_selectedSecondaryBranch!.name} ${_selectedSemester!}' : ''}',
-      );
-
       final electives = await _disciplineElectivesService
           .getFilteredDisciplineElectivesWithClashDetection(
             _selectedPrimaryBranch!.code,
@@ -174,8 +157,6 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
             _availableCourses,
           )
           .timeout(Duration(seconds: 20));
-
-      print('Found ${electives.length} electives');
 
       setState(() {
         _disciplineElectives = electives;
@@ -189,7 +170,6 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
         });
       }
     } catch (e) {
-      print('Error in _searchDisciplineElectives: $e');
       setState(() {
         _errorMessage =
             'Unable to load discipline electives at this time. Please try again later.';

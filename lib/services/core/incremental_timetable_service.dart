@@ -28,7 +28,7 @@ class IncrementalTimetableService {
         await _saveFirestoreTimetable(timetable, userId);
       }
     } catch (e) {
-      print('Error saving timetable: $e');
+      SecureLogger.error('INCREMENTAL_SVC', 'Error saving timetable', e);
       // Ensure local save succeeded even if Firestore fails
       await _saveLocalTimetable(timetable);
     } finally {
@@ -65,14 +65,14 @@ class IncrementalTimetableService {
         await _applyFirestoreUpdate(updateBatch, userId);
       }
     } catch (e) {
-      print('Error applying incremental update: $e');
+      SecureLogger.error('INCREMENTAL_SVC', 'Error applying incremental update', e);
       
       // Rollback local changes if Firestore update failed
       if (originalTimetable != null && userId != null) {
         try {
           await _saveLocalTimetable(originalTimetable);
         } catch (rollbackError) {
-          print('Failed to rollback local changes: $rollbackError');
+          SecureLogger.error('INCREMENTAL_SVC', 'Failed to rollback local changes', rollbackError);
         }
       }
       
@@ -122,7 +122,7 @@ class IncrementalTimetableService {
       // Fallback to local storage
       return await _getLocalTimetable(timetableId);
     } catch (e) {
-      print('Error getting timetable: $e');
+      SecureLogger.error('INCREMENTAL_SVC', 'Error getting timetable', e);
       return await _getLocalTimetable(timetableId);
     }
   }
@@ -137,7 +137,7 @@ class IncrementalTimetableService {
         return await _getAllLocalTimetables();
       }
     } catch (e) {
-      print('Error getting all timetables: $e');
+      SecureLogger.error('INCREMENTAL_SVC', 'Error getting all timetables', e);
       return await _getAllLocalTimetables();
     } finally {
       perfSw.stop();
@@ -176,7 +176,7 @@ class IncrementalTimetableService {
       final metadata = await _getCurrentCourseMetadata();
       return currentVersion != metadata.version;
     } catch (e) {
-      print('Error checking course data update: $e');
+      SecureLogger.error('INCREMENTAL_SVC', 'Error checking course data update', e);
       // If we can't check, assume update is needed
       return true;
     }
@@ -187,7 +187,7 @@ class IncrementalTimetableService {
     try {
       return await getAllTimetables(userId);
     } catch (e) {
-      print('Error getting timetables safely: $e');
+      SecureLogger.error('INCREMENTAL_SVC', 'Error getting timetables safely', e);
       // Return empty list as fallback
       return [];
     }
@@ -408,7 +408,7 @@ class IncrementalTimetableService {
         // Cache locally for offline access
         await _saveLocalTimetable(timetable);
       } catch (e) {
-        print('Error parsing timetable ${doc.id}: $e');
+        SecureLogger.error('INCREMENTAL_SVC', 'Error parsing timetable', e);
         // Skip invalid timetables but continue with others
       }
     }
@@ -450,7 +450,7 @@ class IncrementalTimetableService {
         }
       }
     } catch (e) {
-      print('Section validation error: $e');
+      SecureLogger.error('INCREMENTAL_SVC', 'Section validation error', e);
       // In production, you might want to be more lenient here
       // For now, we'll allow invalid sections but log the error
     }
@@ -480,7 +480,7 @@ class IncrementalTimetableService {
       await prefs.setStringList(_timetableListKey, timetableIds);
       
     } catch (e) {
-      print('Error deleting timetable: $e');
+      SecureLogger.error('INCREMENTAL_SVC', 'Error deleting timetable', e);
       throw Exception('Failed to delete timetable: $e');
     }
   }
@@ -503,7 +503,7 @@ class IncrementalTimetableService {
         }
       }
     } catch (e) {
-      print('Error getting cached course metadata: $e');
+      SecureLogger.error('INCREMENTAL_SVC', 'Error getting cached course metadata', e);
     }
     
     return null;
@@ -515,7 +515,7 @@ class IncrementalTimetableService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_courseMetadataKey, json.encode(metadata.toJson()));
     } catch (e) {
-      print('Error saving course metadata: $e');
+      SecureLogger.error('INCREMENTAL_SVC', 'Error saving course metadata', e);
     }
   }
 
@@ -536,7 +536,7 @@ class IncrementalTimetableService {
           final hash = md5.convert(utf8.encode(courseJson)).toString();
           courseHashes[course.courseCode] = hash;
         } catch (e) {
-          print('Error hashing course ${course.courseCode}: $e');
+          SecureLogger.error('INCREMENTAL_SVC', 'Error hashing course', e);
           // Use course code as fallback hash
           courseHashes[course.courseCode] = course.courseCode;
         }
@@ -555,7 +555,7 @@ class IncrementalTimetableService {
       
       return metadata;
     } catch (e) {
-      print('Error generating course metadata: $e');
+      SecureLogger.error('INCREMENTAL_SVC', 'Error generating course metadata', e);
       // Return fallback metadata
       return CourseMetadata(
         version: 'fallback_${DateTime.now().millisecondsSinceEpoch}',
