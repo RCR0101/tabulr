@@ -1,32 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'firestore_service.dart';
 import '../ui/secure_logger.dart';
-import '../../utils/datetime_utils.dart';
+import '../../models/announcement.dart';
 
-class Announcement {
-  final String topWidget;
-  final DateTime lastUpdated;
-
-  const Announcement({
-    required this.topWidget,
-    required this.lastUpdated,
-  });
-
-  factory Announcement.fromJson(Map<String, dynamic> json) {
-    return Announcement(
-      topWidget: json['topWidget'] ?? '',
-      lastUpdated: parseDateTime(json['lastUpdated']),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'topWidget': topWidget,
-      'lastUpdated': lastUpdated.toIso8601String(),
-    };
-  }
-}
-
+export '../../models/announcement.dart';
 
 class AnnouncementService extends ChangeNotifier {
   static final AnnouncementService _instance = AnnouncementService._internal();

@@ -2,15 +2,28 @@ import 'course.dart';
 import '../services/data/campus_service.dart';
 import '../utils/datetime_utils.dart';
 
+/// Legacy timetable model that embeds the full course catalog alongside the
+/// user's section selections. Persisted to Firestore and local storage.
+///
+/// See [NormalizedTimetable] for the newer, lighter representation that stores
+/// only [SectionReference]s. Bridge via `toLegacyTimetable` /
+/// `fromLegacyTimetable`.
 class Timetable {
   final String id;
   final String name;
   final DateTime createdAt;
   final DateTime updatedAt;
   final Campus campus;
+
+  /// Full course catalog for this campus+semester — embedded so the timetable
+  /// is self-contained even offline.
   final List<Course> availableCourses;
+
+  /// The sections the user has chosen (one L/P/T per course).
   final List<SelectedSection> selectedSections;
   final List<ClashWarning> clashWarnings;
+
+  /// Non-null when the timetable has been shared via a public link.
   final String? shareId;
   int projectCount;
 
@@ -103,6 +116,8 @@ class Timetable {
   }
 }
 
+/// A user's choice of one section within a course (e.g. CS F111 → L1).
+/// Carries the full [Section] data for display without a catalog lookup.
 class SelectedSection {
   final String courseCode;
   final String sectionId;
@@ -131,10 +146,14 @@ class SelectedSection {
   }
 }
 
+/// A detected scheduling conflict between two or more courses.
+/// Produced by [ClashDetector.detectClashes].
 class ClashWarning {
   final ClashType type;
   final String message;
   final List<String> conflictingCourses;
+
+  /// [ClashSeverity.error] blocks the combination; [ClashSeverity.warning] is informational.
   final ClashSeverity severity;
 
   ClashWarning({
@@ -179,6 +198,8 @@ enum ClashSeverity {
   error 
 }
 
+/// A flattened view of one course-section occupying specific hours on a
+/// single day. Used by grid/export renderers.
 class TimetableSlot {
   final DayOfWeek day;
   final List<int> hours;

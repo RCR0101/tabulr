@@ -1,12 +1,9 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../models/campus.dart';
 
-enum Campus {
-  hyderabad,
-  pilani,
-  goa,
-}
+export '../../models/campus.dart';
 
 class CampusService {
   static const String _campusKey = 'selected_campus';

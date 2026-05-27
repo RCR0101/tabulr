@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../widgets/timetable_widget.dart';
+import '../../models/timetable_display.dart';
 
 class PreferencesService extends ChangeNotifier {
   static final PreferencesService _instance = PreferencesService._internal();

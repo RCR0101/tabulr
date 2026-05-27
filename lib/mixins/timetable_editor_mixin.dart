@@ -15,6 +15,7 @@ import '../services/ui/export_service.dart';
 import '../services/data/auth_service.dart';
 import '../services/ui/toast_service.dart';
 import '../services/data/auto_load_cdc_service.dart';
+import '../widgets/auto_load_cdc_dialog.dart';
 import '../services/data/campus_service.dart';
 import '../services/ui/page_leave_warning_service.dart';
 import '../services/data/timetable_sharing_service.dart';
@@ -380,7 +381,10 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
 
     try {
       final autoLoadService = AutoLoadCDCService();
-      final result = await autoLoadService.showBranchYearDialog(context);
+      final result = await showDialog<AutoLoadCDCResult>(
+        context: context,
+        builder: (context) => const AutoLoadCDCDialog(),
+      );
 
       if (!mounted) return;
 

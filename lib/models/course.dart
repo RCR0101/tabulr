@@ -1,9 +1,17 @@
+/// A BITS course offering for a particular semester and campus.
+///
+/// Contains the full catalog entry: credits, all available sections
+/// (lectures, practicals, tutorials), and exam schedules.
+/// Deserialized from Firestore via [Course.fromJson]; the JSON uses
+/// both snake_case (uploader output) and camelCase (app-serialized) keys.
 class Course {
   final String courseCode;
   final String courseTitle;
   final double lectureCredits;
   final double practicalCredits;
   final double totalCredits;
+
+  /// Every section offered for this course (L, P, and T combined).
   final List<Section> sections;
   final ExamSchedule? midSemExam;
   final ExamSchedule? endSemExam;
@@ -55,12 +63,17 @@ class Course {
   }
 }
 
+/// One section (lecture, practical, or tutorial) of a [Course].
+///
+/// A section can have multiple [ScheduleEntry]s when it meets at different
+/// day/hour combinations (e.g. MWF hour 3 + T hour 7).
 class Section {
+  /// E.g. "L1", "P2", "T1".
   final String sectionId;
   final SectionType type;
   final String instructor;
   final String room;
-  final List<ScheduleEntry> schedule; // Changed to list of schedule entries
+  final List<ScheduleEntry> schedule;
 
   Section({
     required this.sectionId,
@@ -99,8 +112,13 @@ class Section {
   }
 }
 
+/// A set of days × hours when a section meets (cartesian: every listed day
+/// at every listed hour). Multiple entries per section allow disjoint
+/// day/hour blocks.
 class ScheduleEntry {
   final List<DayOfWeek> days;
+
+  /// 1-based hour indices (1 = 8:00 AM, see [TimeSlotInfo.hourSlotNames]).
   final List<int> hours;
 
   ScheduleEntry({
@@ -128,7 +146,10 @@ class ScheduleEntry {
 }
 
 
+/// Date + time-slot for a midsem or comprehensive exam.
 class ExamSchedule {
+  /// Date only (time component is midnight); the actual exam window is
+  /// determined by [timeSlot] and the campus.
   final DateTime date;
   final TimeSlot timeSlot;
 
@@ -161,10 +182,13 @@ class ExamSchedule {
   }
 }
 
+/// L = Lecture, P = Practical, T = Tutorial.
 enum SectionType { L, P, T }
 
+/// Monday through Saturday; [T] is Tuesday, [Th] is Thursday.
 enum DayOfWeek { M, T, W, Th, F, S }
 
+/// Exam time windows. MS* slots are for midsems; FN/AN are for compres.
 enum TimeSlot {
   FN, // 8:00AM-11:00AM (EndSem only)
   AN, // 3:00PM-6:00PM (EndSem only)
@@ -174,6 +198,8 @@ enum TimeSlot {
   MS4, // 4:00-5:30 (MidSem - Updated)
 }
 
+/// Maps hour indices and [TimeSlot]s to human-readable clock strings,
+/// with campus-specific overrides for exam windows.
 class TimeSlotInfo {
   // Campus-specific time slot mappings for EndSem exams
   static const Map<String, Map<TimeSlot, String>> _campusTimeSlotNames = {

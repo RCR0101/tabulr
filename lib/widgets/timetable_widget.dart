@@ -2,23 +2,14 @@ import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 import '../models/export_options.dart';
+import '../models/timetable_display.dart';
 import '../services/ui/responsive_service.dart';
 import '../screens/quick_replace_screen.dart';
 import '../utils/datetime_utils.dart';
 import '../utils/design_constants.dart';
 import '../utils/page_transitions.dart';
 
-enum TimetableSize {
-  compact,
-  medium,
-  large,
-  extraLarge,
-}
-
-enum TimetableLayout {
-  horizontal, // Days on Y-axis, Hours on X-axis
-  vertical,   // Hours on Y-axis, Days on X-axis (current default)
-}
+export '../models/timetable_display.dart';
 
 class TimetableWidget extends StatefulWidget {
   final List<TimetableSlot> timetableSlots;

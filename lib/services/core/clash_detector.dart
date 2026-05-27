@@ -3,7 +3,28 @@ import '../../models/timetable.dart';
 import '../../utils/datetime_utils.dart';
 import '../data/campus_service.dart';
 
+/// Detects scheduling conflicts between selected course sections.
+///
+/// ## Strategy
+///
+/// **Class clashes** — builds a `Map<"day_hour", List<SelectedSection>>`;
+/// any key with >1 entry is a conflict. O(total scheduled slots).
+///
+/// **Exam clashes** — builds two maps keyed by `"isoDate_timeSlot"`, one for
+/// midsems and one for compres. Two courses sharing a key clash.
+///
+/// ## Hook points
+///
+/// - To add a new clash type, create a `_detectXxxClashes` method and append
+///   its results in [detectClashes].
+/// - [canAddSection] is the UI gatekeeper — it must remain fast (called on
+///   every section tap). It delegates to [detectClashes] after a trial add.
+/// - [checkScheduleConflicts] / [checkExamConflicts] serve the add/swap
+///   screen where conflict info is shown per-section rather than globally.
+/// - [findSafeCombination] does a cartesian search across section types for
+///   one course, returning the first combination with zero conflicts.
 class ClashDetector {
+  /// Returns all class-time and exam clashes among [selectedSections].
   static List<ClashWarning> detectClashes(List<SelectedSection> selectedSections, List<Course> courses) {
     List<ClashWarning> warnings = [];
 
@@ -115,6 +136,9 @@ class ClashDetector {
     return warnings;
   }
 
+  /// Whether [newSection] can be added without creating any error-level clash.
+  /// Enforces one section per type per course, then checks exams, then trial-adds
+  /// and runs [detectClashes].
   static bool canAddSection(SelectedSection newSection, List<SelectedSection> currentSections, List<Course> courses) {
     // Check if user is trying to add multiple sections of same type for same course
     final sameCourseTypeSections = currentSections.where(
@@ -487,6 +511,7 @@ class ClashDetector {
 
 // ── Data classes used by add/swap conflict detection ────────────────
 
+/// Pre-add validation result for one section shown in the add/swap UI.
 class ValidationResult {
   final String courseCode;
   final String sectionId;
@@ -505,6 +530,7 @@ class ValidationResult {
   });
 }
 
+/// Details of a single day+hour or exam conflict between two sections.
 class ConflictInfo {
   final String conflictingCourse;
   final String conflictingSectionId;
@@ -519,6 +545,8 @@ class ConflictInfo {
   });
 }
 
+/// A course + its first conflict-free section combination, returned by
+/// [ClashDetector.findSafeCombination] for the "add course" flow.
 class SafeCourseResult {
   final String courseCode;
   final String courseTitle;

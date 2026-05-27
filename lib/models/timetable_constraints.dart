@@ -1,7 +1,14 @@
 import 'course.dart';
 
+/// User preferences fed to [TimetableGenerator.generateTimetables].
+///
+/// Mandatory courses must all appear in every generated timetable; optional
+/// courses are greedily added if they fit within [maxCredits] and don't
+/// introduce clashes. Ordering of [optionalCourses] encodes user priority.
 class TimetableConstraints {
   final List<String> mandatoryCourses;
+
+  /// Ordered by user preference (first = most wanted).
   final List<String> optionalCourses;
   final double maxCredits;
   final List<TimeAvoidance> avoidTimes;
@@ -40,6 +47,7 @@ class TimetableConstraints {
   });
 }
 
+/// A day + hour range the user wants to keep free from classes.
 class TimeAvoidance {
   final DayOfWeek day;
   final List<int> hours;
@@ -50,6 +58,7 @@ class TimeAvoidance {
   });
 }
 
+/// Like [TimeAvoidance] but only penalizes practical (lab) sections.
 class LabAvoidance {
   final DayOfWeek day;
   final List<int> hours;
@@ -60,7 +69,12 @@ class LabAvoidance {
   });
 }
 
+/// One candidate timetable produced by [TimetableGenerator].
+///
+/// [score] is 0–100 (base 90 − penalties + bonuses). [pros] and [cons]
+/// are human-readable analysis strings shown in the comparison UI.
 class GeneratedTimetable {
+  /// Descriptive name assigned by the generator (e.g. "A. Mon off, top pick").
   final String id;
   final List<ConstraintSelectedSection> sections;
   final double score;
@@ -82,6 +96,7 @@ class GeneratedTimetable {
   });
 }
 
+/// Generator-internal version of [SelectedSection] (avoids importing timetable.dart).
 class ConstraintSelectedSection {
   final String courseCode;
   final String sectionId;
@@ -94,6 +109,9 @@ class ConstraintSelectedSection {
   });
 }
 
+/// Per-course instructor preference lists, one per section type.
+/// First element = most preferred. [getInstructorRank] returns a score
+/// proportional to list position (higher = more preferred).
 class InstructorRankings {
   final List<String> lectureInstructors;
   final List<String> practicalInstructors;
@@ -139,6 +157,8 @@ class InstructorRankings {
   }
 }
 
+/// Per-category caps for the scoring function in [TimetableGenerator].
+/// Each weight is the maximum points that category can contribute.
 class ScoringWeights {
   // Penalty caps (negative factors — higher = penalised more)
   final double maxHoursPerDayPenalty;
@@ -295,6 +315,8 @@ enum TimetableIssueType {
   noValidCombinations,
 }
 
+/// A problem detected during timetable generation (e.g. missing course,
+/// unresolvable conflict). Shown in the generation results UI.
 class TimetableIssue {
   final TimetableIssueType type;
   final String message;
@@ -311,6 +333,8 @@ class TimetableIssue {
   });
 }
 
+/// Wraps the output of a generation run: candidate timetables, any issues
+/// encountered, and aggregate statistics.
 class TimetableGenerationResult {
   final List<GeneratedTimetable> timetables;
   final List<TimetableIssue> issues;

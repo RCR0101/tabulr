@@ -1,16 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../models/screen_size.dart';
 
-enum ScreenSize {
-  mobile,    // ≤ 600px
-  tablet,    // 601px - 900px  
-  desktop,   // > 900px
-}
-
-enum Orientation {
-  portrait,
-  landscape,
-}
+export '../../models/screen_size.dart';
 
 class ResponsiveService {
   static const double mobileBreakpoint = 600.0;
@@ -76,21 +68,21 @@ class ResponsiveService {
   }
   
   /// Get orientation
-  static Orientation getOrientation(BuildContext context) {
+  static ScreenOrientation getOrientation(BuildContext context) {
     final orientation = MediaQuery.orientationOf(context);
     return orientation.name == 'portrait'
-        ? Orientation.portrait 
-        : Orientation.landscape;
+        ? ScreenOrientation.portrait 
+        : ScreenOrientation.landscape;
   }
   
   /// Check if device is in landscape mode
   static bool isLandscape(BuildContext context) {
-    return getOrientation(context) == Orientation.landscape;
+    return getOrientation(context) == ScreenOrientation.landscape;
   }
   
   /// Check if device is in portrait mode
   static bool isPortrait(BuildContext context) {
-    return getOrientation(context) == Orientation.portrait;
+    return getOrientation(context) == ScreenOrientation.portrait;
   }
   
   /// Get adaptive padding based on screen size

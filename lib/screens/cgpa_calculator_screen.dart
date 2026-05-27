@@ -10,6 +10,7 @@ import '../services/data/auth_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/core/timetable_service.dart';
 import '../services/data/auto_load_cdc_service.dart';
+import '../widgets/auto_load_cdc_dialog.dart';
 import '../services/ui/toast_service.dart';
 import '../services/data/course_guide_service.dart';
 import '../widgets/error_dialog.dart';
@@ -367,7 +368,10 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       
       // Show branch and semester selection dialog
       final autoLoadService = AutoLoadCDCService();
-      final result = await autoLoadService.showBranchYearDialog(context);
+      final result = await showDialog<AutoLoadCDCResult>(
+        context: context,
+        builder: (context) => const AutoLoadCDCDialog(),
+      );
       
       if (result == null) {
         print('User cancelled CDC loading');

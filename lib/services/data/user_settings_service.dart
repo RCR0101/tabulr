@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import '../../models/user_settings.dart';
 import '../../models/timetable_constraints.dart';
-import '../../widgets/timetable_widget.dart';
+import '../../models/timetable_display.dart';
 import 'auth_service.dart';
 import '../ui/theme_service.dart' as theme_service;
 

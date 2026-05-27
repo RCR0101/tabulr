@@ -4,7 +4,46 @@ import '../../models/timetable_constraints.dart';
 import '../../models/timetable.dart' as timetable;
 import 'clash_detector.dart';
 
+/// Generates ranked timetable options from a set of courses and user preferences.
+///
+/// ## Pipeline
+///
+/// 1. **Cartesian product** — for each mandatory course, enumerate every valid
+///    (L × P × T) section combination. Products are capped at 10 000 to bound
+///    memory. See [_generateAllCombinations].
+/// 2. **Validate** — reject any combination with a class or exam clash
+///    (delegates to [ClashDetector.detectClashes]). See [_isValidCombination].
+/// 3. **Greedy optional insertion** — for each surviving mandatory combo, try
+///    adding optional courses one at a time (best-scoring section combo wins),
+///    respecting maxCredits. Multiple orderings of optionals are tried for
+///    variety. See [_addOptionalCourses], [_generateOptionalOrderings].
+/// 4. **Deduplicate** — a section-key string set prevents identical timetables
+///    generated via different orderings.
+/// 5. **Score** — base 90, subtract penalties, add bonuses (clamped 0–100).
+///    See [_scoreTimetable] for the full breakdown.
+/// 6. **Sort & trim** — top [maxTimetables] by score are returned with
+///    descriptive names.
+///
+/// ## Scoring (see [_scoreTimetable])
+///
+/// **Penalties** (subtracted from 90): maxHoursPerDay exceeded, avoided time
+/// slots, avoided lab slots, avoided instructors, back-to-back classes, gaps
+/// between classes, lunch-hour classes, time-of-day mismatch, exam spread
+/// (back-to-back compres penalized more than midsems).
+///
+/// **Bonuses** (added, capped per category and overall): preferred instructors,
+/// instructor ranking match, free day preference, exam slot preference,
+/// optional course inclusion.
+///
+/// ## Hook points
+///
+/// - New penalty/bonus: add a calculation in [_scoreTimetable] and mirror in
+///   [_analyzeTimetable] for pros/cons text. Add a weight field to
+///   `ScoringWeights` in `timetable_constraints.dart`.
+/// - New section type: extend the L/P/T branching in
+///   [_generateAllCombinations].
 class TimetableGenerator {
+  /// Entry point. Returns up to [maxTimetables] clash-free, scored timetables.
   static List<GeneratedTimetable> generateTimetables(
     List<Course> availableCourses,
     TimetableConstraints constraints, {

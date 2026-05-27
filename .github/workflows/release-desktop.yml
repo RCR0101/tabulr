@@ -15,7 +15,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version-file: .fvmrc
           cache: true
 
       - run: flutter pub get
@@ -49,7 +49,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version-file: .fvmrc
           cache: true
 
       - run: flutter pub get
@@ -79,7 +79,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version-file: .fvmrc
           cache: true
 
       - name: Install Linux build dependencies
