@@ -725,7 +725,10 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
               children: [
                 // Search Field
                 Expanded(
-                  child: TextField(
+                  child: Semantics(
+                    label: 'Search Acad Drives',
+                    textField: true,
+                    child: TextField(
                     controller: _searchController,
                     onChanged: (value) {
                       final wasEmpty = _searchQuery.isEmpty;
@@ -761,6 +764,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
+                  ),
                   ),
                 ),
                 

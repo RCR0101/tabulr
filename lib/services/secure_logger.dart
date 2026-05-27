@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
+import 'performance_monitor.dart';
 
 /// Log levels with priority ordering
 enum LogLevel { debug, info, warning, error, critical }
@@ -309,6 +310,8 @@ class SecureLogger {
       perfContext['performance'] = 'fast';
       debug('PERFORMANCE', '$operation took ${duration.inMilliseconds}ms', perfContext);
     }
+
+    PerformanceMonitor().record(operation, duration.inMilliseconds, perfContext['performance'] as String, context);
   }
   
   /// Log user actions with privacy protection

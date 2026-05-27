@@ -5,6 +5,7 @@ import 'dart:convert';
 import '../models/normalized_timetable.dart';
 import '../models/course.dart';
 import 'course_data_service.dart';
+import 'secure_logger.dart';
 
 /// Service for handling normalized timetable storage with incremental updates
 class IncrementalTimetableService {
@@ -17,10 +18,11 @@ class IncrementalTimetableService {
   
   /// Save timetable with incremental updates
   Future<void> saveTimetable(NormalizedTimetable timetable, String? userId) async {
+    final perfSw = Stopwatch()..start();
     try {
       // Always save locally first
       await _saveLocalTimetable(timetable);
-      
+
       // Save to Firestore if user is authenticated
       if (userId != null) {
         await _saveFirestoreTimetable(timetable, userId);
@@ -29,6 +31,9 @@ class IncrementalTimetableService {
       print('Error saving timetable: $e');
       // Ensure local save succeeded even if Firestore fails
       await _saveLocalTimetable(timetable);
+    } finally {
+      perfSw.stop();
+      SecureLogger.performance('incremental_save_timetable', perfSw.elapsed);
     }
   }
 
@@ -124,6 +129,7 @@ class IncrementalTimetableService {
 
   /// Get all user timetables
   Future<List<NormalizedTimetable>> getAllTimetables(String? userId) async {
+    final perfSw = Stopwatch()..start();
     try {
       if (userId != null) {
         return await _getAllFirestoreTimetables(userId);
@@ -133,6 +139,9 @@ class IncrementalTimetableService {
     } catch (e) {
       print('Error getting all timetables: $e');
       return await _getAllLocalTimetables();
+    } finally {
+      perfSw.stop();
+      SecureLogger.performance('incremental_get_all_timetables', perfSw.elapsed);
     }
   }
 

@@ -21,10 +21,16 @@ class CourseAnnouncementService {
 
   static const String _collection = 'announcements';
 
+  static const _testUsers = String.fromEnvironment('TEST_USERS');
+
   bool isHyderabadUser() {
-    return _authService.userEmail
-            ?.endsWith('@hyderabad.bits-pilani.ac.in') ??
-        false;
+    final email = _authService.userEmail;
+    if (email == null) return false;
+    if (email.endsWith('@hyderabad.bits-pilani.ac.in')) return true;
+    if (_testUsers.isNotEmpty) {
+      return _testUsers.split(',').contains(email);
+    }
+    return false;
   }
 
   // --- Announcements CRUD ---

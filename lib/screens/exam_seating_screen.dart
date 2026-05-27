@@ -293,12 +293,16 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
                   .toList();
             },
             builder: (context, controller, focusNode) {
-              return TextField(
-                controller: controller,
-                focusNode: focusNode,
-                decoration: const InputDecoration(
-                  hintText: 'Search for a course...',
-                  prefixIcon: Icon(Icons.search),
+              return Semantics(
+                label: 'Search Exam Seating',
+                textField: true,
+                child: TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  decoration: const InputDecoration(
+                    hintText: 'Search for a course...',
+                    prefixIcon: Icon(Icons.search),
+                  ),
                 ),
               );
             },
@@ -346,16 +350,20 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              FilledButton.icon(
-                onPressed: _isSearching ? null : _searchForRoom,
-                icon: _isSearching
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.search),
-                label: const Text('Find Room'),
+              Semantics(
+                label: 'Find Room',
+                button: true,
+                child: FilledButton.icon(
+                  onPressed: _isSearching ? null : _searchForRoom,
+                  icon: _isSearching
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.search),
+                  label: const Text('Find Room'),
+                ),
               ),
             ],
           ),

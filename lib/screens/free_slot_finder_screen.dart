@@ -515,10 +515,14 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
             child: const Text('Cancel'),
           ),
           if (hasRange)
-            FilledButton.icon(
-              onPressed: _createEventFromSelection,
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Create Event'),
+            Semantics(
+              label: 'Create Event',
+              button: true,
+              child: FilledButton.icon(
+                onPressed: _createEventFromSelection,
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Create Event'),
+              ),
             ),
         ],
       ),

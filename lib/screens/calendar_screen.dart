@@ -887,9 +887,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addEvent,
-        child: const Icon(Icons.add),
+      floatingActionButton: Semantics(
+        label: 'Add Event',
+        button: true,
+        child: FloatingActionButton(
+          onPressed: _addEvent,
+          child: const Icon(Icons.add),
+        ),
       ),
       body: _isLoading
           ? const CalendarSkeleton()

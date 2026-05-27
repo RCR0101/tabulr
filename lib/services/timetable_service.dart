@@ -10,6 +10,7 @@ import 'firestore_service.dart';
 import 'course_data_service.dart';
 import 'campus_service.dart';
 import 'course_catalog_service.dart';
+import 'secure_logger.dart';
 
 class TimetableService {
   static const String _storageKey = 'user_timetable_data';
@@ -21,6 +22,7 @@ class TimetableService {
   
   // Save timetable using Firestore for authenticated users or local storage for guests
   Future<void> saveTimetable(Timetable timetable) async {
+    final perfSw = Stopwatch()..start();
     try {
       // Update the timetable's updatedAt timestamp
       final updatedTimetable = timetable.copyWith(
@@ -48,6 +50,9 @@ class TimetableService {
       print('Error saving timetable: $e');
       // Fallback to local storage
       await saveTimetableToStorage(timetable);
+    } finally {
+      perfSw.stop();
+      SecureLogger.performance('save_timetable', perfSw.elapsed);
     }
   }
 
@@ -414,6 +419,7 @@ class TimetableService {
 
   // Multiple timetables functionality
   Future<List<Timetable>> getAllTimetables() async {
+    final perfSw = Stopwatch()..start();
     try {
       print('Getting all timetables...');
       List<Timetable> timetables = [];
@@ -453,6 +459,9 @@ class TimetableService {
       // Return a default timetable if there's an error
       final defaultTimetable = await createNewTimetable("My Timetable");
       return [defaultTimetable];
+    } finally {
+      perfSw.stop();
+      SecureLogger.performance('get_all_timetables', perfSw.elapsed);
     }
   }
 

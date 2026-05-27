@@ -112,7 +112,10 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
             Row(
               children: [
                 Expanded(
-                  child: TextField(
+                  child: Semantics(
+                    label: 'Search Professors',
+                    textField: true,
+                    child: TextField(
                     controller: _searchController,
                     focusNode: _searchFocusNode,
                     decoration: InputDecoration(
@@ -130,6 +133,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                     ),
                     onChanged: (value) => setState(() {}),
                     onSubmitted: (value) => _searchFocusNode.unfocus(),
+                  ),
                   ),
                 ),
                 const SizedBox(width: 12),

@@ -110,21 +110,25 @@ class _AuthScreenState extends State<AuthScreen> {
                     const SizedBox(height: 48),
 
                     // Sign in with Google Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: FilledButton.icon(
-                        onPressed: _isLoading ? null : _signInWithGoogle,
-                        icon: _isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.login),
-                        label: Text(
-                          _isLoading ? 'Signing in...' : 'Sign in with Google',
-                          style: const TextStyle(fontSize: 16),
+                    Semantics(
+                      label: 'Sign in with Google',
+                      button: true,
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: FilledButton.icon(
+                          onPressed: _isLoading ? null : _signInWithGoogle,
+                          icon: _isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.login),
+                          label: Text(
+                            _isLoading ? 'Signing in...' : 'Sign in with Google',
+                            style: const TextStyle(fontSize: 16),
+                          ),
                         ),
                       ),
                     ),
@@ -201,19 +205,23 @@ class _AuthScreenState extends State<AuthScreen> {
                     const SizedBox(height: 32),
 
                     // Continue as Guest Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: OutlinedButton.icon(
-                        onPressed: _isLoading ? null : _continueAsGuest,
-                        icon: const Icon(Icons.person_outline),
-                        label: const Text(
-                          'Continue as Guest',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                            color: Theme.of(context).colorScheme.outline,
+                    Semantics(
+                      label: 'Continue as Guest',
+                      button: true,
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: OutlinedButton.icon(
+                          onPressed: _isLoading ? null : _continueAsGuest,
+                          icon: const Icon(Icons.person_outline),
+                          label: const Text(
+                            'Continue as Guest',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
                           ),
                         ),
                       ),

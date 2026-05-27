@@ -17,6 +17,7 @@ class FirestoreService {
   String? get _userDocId => _authService.userDocId;
 
   Future<bool> saveTimetable(Timetable timetable) async {
+    final perfSw = Stopwatch()..start();
     try {
       final user = _authService.currentUser;
       if (user == null || _userDocId == null) {
@@ -46,6 +47,9 @@ class FirestoreService {
     } catch (e) {
       SecureLogger.error('FIRESTORE', 'Failed to save timetable', e);
       return false;
+    } finally {
+      perfSw.stop();
+      SecureLogger.performance('firestore_save_timetable', perfSw.elapsed);
     }
   }
 
@@ -204,6 +208,7 @@ class FirestoreService {
 
   // Multiple timetables support
   Future<List<Timetable>> getAllTimetables() async {
+    final perfSw = Stopwatch()..start();
     try {
       final user = _authService.currentUser;
       if (user == null || _userDocId == null) {
@@ -239,6 +244,9 @@ class FirestoreService {
     } catch (e) {
       SecureLogger.error('FIRESTORE', 'Failed to load timetables', e);
       return [];
+    } finally {
+      perfSw.stop();
+      SecureLogger.performance('firestore_get_all_timetables', perfSw.elapsed);
     }
   }
 

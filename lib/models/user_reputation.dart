@@ -97,7 +97,7 @@ class UserReputation {
     final inactiveDays = DateTime.now().difference(lastActive).inDays;
     if (inactiveDays < 30) return score;
     final weeksInactive = (inactiveDays - 30) ~/ 7 + 1;
-    final tierFloor = tierMinScore(tier) - 5;
+    final tierFloor = tierMinScore(tierForScore(score)) - 5;
     var s = score;
     for (var i = 0; i < weeksInactive; i++) {
       s = (s * 0.95).round();

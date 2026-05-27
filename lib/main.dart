@@ -18,28 +18,30 @@ import 'services/courses_master_service.dart';
 import 'services/preferences_service.dart';
 import 'services/user_settings_service.dart';
 import 'models/user_settings.dart' as user_settings;
+import 'services/secure_logger.dart';
+import 'services/performance_monitor.dart';
 
 void main() async {
+  final totalStopwatch = Stopwatch()..start();
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize Firebase
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  
-  // Initialize campus service
-  await CampusService.initializeCampus();
 
-  // Run remaining service inits in parallel (all depend on campus, not each other)
+  PerformanceMonitor().initialize();
+
+  await SecureLogger.measureAsync('firebase_init', () => Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  ));
+
+  await SecureLogger.measureAsync('campus_init', () => CampusService.initializeCampus());
+
   final userSettingsService = UserSettingsService();
   final themeService = theme_service.ThemeService();
-  await Future.wait([
+  await SecureLogger.measureAsync('parallel_services', () => Future.wait([
     CoursesMasterService().loadForCampus(),
     AuthService().initialize(),
     userSettingsService.initializeSettings(),
     themeService.initialize(),
     PreferencesService().initialize(),
-  ]);
+  ]));
 
   // Sync theme from UserSettings (Firestore source of truth) to ThemeService
   final savedSettings = userSettingsService.userSettings;
@@ -57,7 +59,10 @@ void main() async {
     setUrlStrategy(PathUrlStrategy());
     _setupWebCacheClearOnClose();
   }
-  
+
+  totalStopwatch.stop();
+  SecureLogger.performance('total_startup', totalStopwatch.elapsed);
+
   runApp(const TimetableMakerApp());
 }
 

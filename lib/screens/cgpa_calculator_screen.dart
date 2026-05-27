@@ -1583,7 +1583,10 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                         flex: 3,
                         child: SizedBox(
                           height: 44,
-                          child: FilledButton.tonalIcon(
+                          child: Semantics(
+                            label: 'Add Course',
+                            button: true,
+                            child: FilledButton.tonalIcon(
                             onPressed: () => _showAddCourseDialog(semesterName),
                             icon: const Icon(Icons.add_rounded, size: 18),
                             label: const Text(
@@ -1599,6 +1602,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                                 borderRadius: BorderRadius.circular(10),
                               ),
                             ),
+                          ),
                           ),
                         ),
                       ),

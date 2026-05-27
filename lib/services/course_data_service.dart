@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/course.dart';
 import 'campus_service.dart';
 import 'courses_master_service.dart';
+import 'secure_logger.dart';
 
 class CourseDataService {
   static final CourseDataService _instance = CourseDataService._internal();
@@ -64,13 +65,16 @@ class CourseDataService {
 
   /// Fetch all courses from Firestore using pagination (optimized)
   Future<List<Course>> fetchCourses() async {
+    final perfSw = Stopwatch()..start();
+    bool cacheHit = false;
     try {
       final currentCampus = CampusService.currentCampus;
-      
+
       // Check if cache is valid by comparing version with database
       final cacheValid = await _isCacheValid(currentCampus);
-      
+
       if (cacheValid && _cachedCourses != null) {
+        cacheHit = true;
         return _cachedCourses!;
       }
       
@@ -149,6 +153,9 @@ class CourseDataService {
       }
       
       throw Exception('Failed to fetch courses: $e');
+    } finally {
+      perfSw.stop();
+      SecureLogger.performance('fetch_courses', perfSw.elapsed, {'cache_hit': cacheHit});
     }
   }
 

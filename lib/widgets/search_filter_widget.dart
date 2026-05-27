@@ -86,7 +86,10 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
               mobile: Column(
                 children: [
                   // Search field for mobile - full width
-                  TextField(
+                  Semantics(
+                    label: 'Search Courses',
+                    textField: true,
+                    child: TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
                       labelText: 'Search courses, instructors...',
@@ -107,6 +110,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                         : null,
                     ),
                     onChanged: (_) => _updateSearch(),
+                  ),
                   ),
                   SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
                   // Action buttons row for mobile
@@ -148,27 +152,31 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
               desktop: Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      labelText: 'Search courses, instructors...',
-                      hintText: 'e.g., CS F211, Data Structures',
-                      prefixIcon: const Icon(Icons.search),
-                      border: const OutlineInputBorder(),
-                      suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            tooltip: 'Clear search',
-                            onPressed: () {
-                              setState(() {
-                                _searchController.clear();
-                              });
-                              _updateSearch();
-                            },
-                          )
-                        : null,
+                  child: Semantics(
+                    label: 'Search Courses',
+                    textField: true,
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        labelText: 'Search courses, instructors...',
+                        hintText: 'e.g., CS F211, Data Structures',
+                        prefixIcon: const Icon(Icons.search),
+                        border: const OutlineInputBorder(),
+                        suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              tooltip: 'Clear search',
+                              onPressed: () {
+                                setState(() {
+                                  _searchController.clear();
+                                });
+                                _updateSearch();
+                              },
+                            )
+                          : null,
+                      ),
+                      onChanged: (_) => _updateSearch(),
                     ),
-                    onChanged: (_) => _updateSearch(),
                   ),
                 ),
                 const SizedBox(width: 8),

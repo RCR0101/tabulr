@@ -7,6 +7,7 @@ import '../services/clash_detector.dart';
 import '../services/toast_service.dart';
 import '../services/responsive_service.dart';
 import '../services/campus_service.dart';
+import '../services/secure_logger.dart';
 import '../services/user_settings_service.dart';
 import '../utils/design_constants.dart';
 import 'common/app_dialog.dart';
@@ -1952,7 +1953,10 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   }
 
   Widget _buildGenerateButton() {
-    return Container(
+    return Semantics(
+      label: 'Generate Timetables',
+      button: true,
+      child: Container(
       width: double.infinity,
       height: 56,
       decoration: BoxDecoration(
@@ -2024,6 +2028,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                 ],
               ),
       ),
+    ),
     );
   }
 
@@ -2058,10 +2063,13 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         scoringWeights: _scoringWeights,
       );
 
-      final timetables = TimetableGenerator.generateTimetables(
-        widget.availableCourses,
-        constraints,
-        maxTimetables: 30,
+      final timetables = SecureLogger.measure('timetable_generation', () =>
+        TimetableGenerator.generateTimetables(
+          widget.availableCourses,
+          constraints,
+          maxTimetables: 30,
+        ),
+        {'mandatory_count': _mandatoryCourses.length, 'optional_count': _optionalCourses.length},
       );
 
       setState(() {
