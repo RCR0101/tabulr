@@ -1,5 +1,6 @@
 import 'dart:html' as html;
 import 'dart:js' as js;
+import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
 void openUrl(String url) {
   html.window.open(url, '_blank');
@@ -40,4 +41,8 @@ void setLocalStorageItem(String key, String value) {
   js.context.callMethod('eval', [
     'window.localStorage.setItem("$key", \'$value\')'
   ]);
+}
+
+void usePathUrlStrategy() {
+  setUrlStrategy(PathUrlStrategy());
 }

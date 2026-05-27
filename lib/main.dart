@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'utils/web_utils.dart' as web_utils;
 import 'package:firebase_core/firebase_core.dart';
@@ -55,7 +54,7 @@ void main() async {
   }
 
   if (kIsWeb) {
-    setUrlStrategy(PathUrlStrategy());
+    web_utils.usePathUrlStrategy();
     _setupWebCacheClearOnClose();
   }
 
