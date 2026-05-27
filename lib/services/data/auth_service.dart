@@ -50,14 +50,7 @@ class AuthService {
       // Print configuration in debug mode
       _config.printConfiguration();
 
-      // Initialize SharedPreferences for web compatibility
       if (kIsWeb) {
-        try {
-          SharedPreferences.setMockInitialValues({});
-        } catch (e) {
-          SecureLogger.debug('AUTH', 'SharedPreferences mock setup status', {'info': 'Already set or not needed'});
-        }
-        
         // Check for redirect result on web
         try {
           final redirectResult = await _firebaseAuth.getRedirectResult();
@@ -122,7 +115,7 @@ class AuthService {
           SecureLogger.info('AUTH', 'Starting Google Sign-In popup');
           userCredential = await _firebaseAuth.signInWithPopup(googleProvider);
           
-          if (userCredential?.user == null) {
+          if (userCredential.user == null) {
             return null;
           }
           

@@ -6,7 +6,6 @@ import '../services/data/campus_service.dart';
 import '../models/course.dart';
 import '../widgets/course_list_widget.dart';
 import '../services/ui/responsive_service.dart';
-import '../widgets/common/loading_state.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/inline_error_card.dart';
 
@@ -187,7 +186,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: _selectedSemester,
+              initialValue: _selectedSemester,
               decoration: const InputDecoration(
                 labelText: 'Semester',
                 border: OutlineInputBorder(),
@@ -217,7 +216,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: _selectedPrimaryBranch,
+              initialValue: _selectedPrimaryBranch,
               decoration: const InputDecoration(
                 labelText: 'Primary Branch',
                 border: OutlineInputBorder(),
@@ -262,7 +261,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: _selectedSecondaryBranch,
+              initialValue: _selectedSecondaryBranch,
               decoration: const InputDecoration(
                 labelText: 'Secondary Branch',
                 border: OutlineInputBorder(),

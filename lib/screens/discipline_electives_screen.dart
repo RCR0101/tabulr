@@ -6,7 +6,6 @@ import '../services/data/campus_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../models/course.dart';
 import '../widgets/course_list_widget.dart';
-import '../widgets/common/loading_state.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/inline_error_card.dart';
 

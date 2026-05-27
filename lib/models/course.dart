@@ -186,15 +186,22 @@ class ExamSchedule {
 enum SectionType { L, P, T }
 
 /// Monday through Saturday; [T] is Tuesday, [Th] is Thursday.
+// ignore: constant_identifier_names
 enum DayOfWeek { M, T, W, Th, F, S }
 
 /// Exam time windows. MS* slots are for midsems; FN/AN are for compres.
 enum TimeSlot {
+  // ignore: constant_identifier_names
   FN, // 8:00AM-11:00AM (EndSem only)
+  // ignore: constant_identifier_names
   AN, // 3:00PM-6:00PM (EndSem only)
+  // ignore: constant_identifier_names
   MS1, // 9:30-11:00 (MidSem - Updated)
+  // ignore: constant_identifier_names
   MS2, // 11:30-1:00 (MidSem - Updated)
+  // ignore: constant_identifier_names
   MS3, // 2:00-3:30 (MidSem - Updated)
+  // ignore: constant_identifier_names
   MS4, // 4:00-5:30 (MidSem - Updated)
 }
 

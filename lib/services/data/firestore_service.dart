@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/timetable.dart';
 import 'auth_service.dart';
 import '../ui/secure_logger.dart';

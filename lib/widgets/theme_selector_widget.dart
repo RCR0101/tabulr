@@ -375,7 +375,7 @@ class ThemePreviewCard extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Container(
+          child: SizedBox(
             height: 120,
             child: Column(
               children: [

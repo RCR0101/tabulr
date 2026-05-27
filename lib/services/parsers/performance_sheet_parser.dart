@@ -163,7 +163,9 @@ class PerformanceSheetParser {
         if (line.startsWith('Academic Year') ||
             line.startsWith('Completed') ||
             line.startsWith('Performance') ||
-            line.startsWith('Count of')) continue;
+            line.startsWith('Count of')) {
+          continue;
+        }
 
         // Find semester headers in this line
         final semHeaders = <String>[];

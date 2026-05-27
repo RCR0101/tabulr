@@ -24,7 +24,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
   final TextEditingController _idController = TextEditingController();
 
   List<ExamSeating> _allExams = [];
-  List<ExamSeating> _selectedCourses = [];
+  final List<ExamSeating> _selectedCourses = [];
   Map<String, ExamRoom?> _searchResults = {};
   bool _isLoading = true;
   bool _isSearching = false;
@@ -748,7 +748,7 @@ class _TimetableCourseSelectionDialogState
           children: [
             // Timetable selector
             DropdownButtonFormField<Timetable>(
-              value: _selectedTimetable,
+              initialValue: _selectedTimetable,
               decoration: const InputDecoration(
                 labelText: 'Select Timetable',
               ),

@@ -589,8 +589,11 @@ class TimetableGenerator {
       compreDates.sort();
       for (int i = 1; i < compreDates.length; i++) {
         final daysDiff = compreDates[i].difference(compreDates[i - 1]).inDays;
-        if (daysDiff == 0) penalty += 4;
-        else if (daysDiff == 1) penalty += 2;
+        if (daysDiff == 0) {
+          penalty += 4;
+        } else if (daysDiff == 1) {
+          penalty += 2;
+        }
       }
     }
 
@@ -599,8 +602,11 @@ class TimetableGenerator {
       midsemDates.sort();
       for (int i = 1; i < midsemDates.length; i++) {
         final daysDiff = midsemDates[i].difference(midsemDates[i - 1]).inDays;
-        if (daysDiff == 0) penalty += 2;
-        else if (daysDiff == 1) penalty += 0.5;
+        if (daysDiff == 0) {
+          penalty += 2;
+        } else if (daysDiff == 1) {
+          penalty += 0.5;
+        }
       }
     }
 

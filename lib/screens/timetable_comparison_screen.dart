@@ -7,7 +7,6 @@ import '../services/core/course_catalog_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
-import '../widgets/common/loading_state.dart';
 import '../widgets/common/shimmer_loading.dart';
 
 enum ComparisonViewMode { grid, list }

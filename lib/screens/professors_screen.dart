@@ -5,7 +5,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/data/professor_service.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../services/ui/responsive_service.dart';
-import '../services/data/auth_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
@@ -21,7 +20,6 @@ class ProfessorsScreen extends StatefulWidget {
 
 class _ProfessorsScreenState extends State<ProfessorsScreen> {
   final ProfessorService _professorService = ProfessorService();
-  final AuthService _authService = AuthService();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
 
@@ -403,7 +401,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
       context: context,
       title: 'Sort Professors',
       icon: Icons.sort,
-      content: Container(
+      content: SizedBox(
         width: ResponsiveService.getValue(context, mobile: MediaQuery.of(context).size.width * 0.9, tablet: 400, desktop: 480),
         child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -414,7 +412,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                 alignment: WrapAlignment.spaceEvenly,
                 children: ProfessorSortType.values.map((sortType) {
                   final isSelected = currentSort == sortType;
-                  return Container(
+                  return SizedBox(
                     width: ResponsiveService.getValue(context, mobile: (MediaQuery.of(context).size.width * 0.9 - 24) / 2, tablet: 180, desktop: 220),
                     child: Material(
                       color: isSelected

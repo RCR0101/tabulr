@@ -30,8 +30,6 @@ class _ThemeColors {
   final Color? buttonForeground;
   final Color? chipSecondaryLabel;
   final Color? appBarForeground;
-  final Color? cardShadowColor;
-  final Color? buttonShadowColor;
   final Color? surfaceContainerHighest;
   final Color? surfaceContainer;
   final Color? surfaceContainerHigh;
@@ -64,8 +62,6 @@ class _ThemeColors {
     this.buttonForeground,
     this.chipSecondaryLabel,
     this.appBarForeground,
-    this.cardShadowColor,
-    this.buttonShadowColor,
     this.surfaceContainerHighest,
     this.surfaceContainer,
     this.surfaceContainerHigh,
@@ -587,12 +583,10 @@ ThemeData _buildTheme(_ThemeColors c) {
       primary: c.primary,
       secondary: c.secondary,
       surface: c.surface,
-      background: c.background,
       error: c.error,
       onPrimary: c.onPrimary,
       onSecondary: c.onSecondary,
       onSurface: c.onSurface,
-      onBackground: c.onSurface,
       onError: c.onError,
       outline: c.outline,
       surfaceContainerHighest: c.surfaceContainerHighest,
@@ -619,14 +613,12 @@ ThemeData _buildTheme(_ThemeColors c) {
       color: c.surface,
       elevation: c.cardElevation,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      shadowColor: c.cardShadowColor,
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: c.primary,
         foregroundColor: c.buttonForeground ?? c.onPrimary,
         elevation: c.buttonElevation,
-        shadowColor: c.buttonShadowColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     ),

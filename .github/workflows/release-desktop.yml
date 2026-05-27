@@ -16,7 +16,6 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version-file: .fvmrc
-          cache: true
 
       - run: flutter pub get
 
@@ -28,6 +27,8 @@ jobs:
         env:
           DOT_ENV: ${{ secrets.DOT_ENV }}
 
+      - run: flutter analyze
+      - run: flutter test
       - run: flutter build macos --release
 
       - name: Create DMG
@@ -50,7 +51,6 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version-file: .fvmrc
-          cache: true
 
       - run: flutter pub get
 
@@ -62,6 +62,8 @@ jobs:
         env:
           DOT_ENV: ${{ secrets.DOT_ENV }}
 
+      - run: flutter analyze
+      - run: flutter test
       - run: flutter build windows --release
 
       - name: Create ZIP
@@ -80,7 +82,6 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version-file: .fvmrc
-          cache: true
 
       - name: Install Linux build dependencies
         run: |
@@ -97,6 +98,8 @@ jobs:
         env:
           DOT_ENV: ${{ secrets.DOT_ENV }}
 
+      - run: flutter analyze
+      - run: flutter test
       - run: flutter build linux --release
 
       - name: Create tarball

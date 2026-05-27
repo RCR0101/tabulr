@@ -119,7 +119,7 @@ class ExportTimetableWidget extends StatelessWidget {
   }
 
   Widget _buildTimeRow(int hour, Map<DayOfWeek, TimetableSlot?> daySlots) {
-    return Container(
+    return SizedBox(
       height: _getRowHeight(),
       child: Row(
         children: [

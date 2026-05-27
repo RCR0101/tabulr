@@ -9,7 +9,6 @@ import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
-import '../widgets/common/loading_state.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/share_timetable_dialog.dart';
 import 'calendar_screen.dart';

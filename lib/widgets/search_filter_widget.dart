@@ -22,8 +22,8 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
   DateTime? _selectedEndSemDate;
   int? _minCredits;
   int? _maxCredits;
-  List<DayOfWeek> _selectedDays = [];
-  List<int> _selectedHours = [];
+  final List<DayOfWeek> _selectedDays = [];
+  final List<int> _selectedHours = [];
   bool _showAdvancedFilters = false;
 
   void _updateSearch() {

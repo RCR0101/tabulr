@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use, depend_on_referenced_packages
 import 'dart:html' as html;
 import 'dart:js' as js;
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';

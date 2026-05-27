@@ -366,7 +366,6 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
   @override
   Widget build(BuildContext context) {
     final isMobile = ResponsiveService.isMobile(context);
-    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(

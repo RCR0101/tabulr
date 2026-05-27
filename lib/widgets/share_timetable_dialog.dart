@@ -25,7 +25,7 @@ class ShareTimetableDialog extends StatefulWidget {
 
 class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
   String? _code;
-  bool _isLoading = false;
+  final bool _isLoading = false;
   bool _isRevoking = false;
   String? _error;
 

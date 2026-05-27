@@ -1,9 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import '../ui/secure_logger.dart';
 import 'branch_structure_service.dart';
 import 'courses_master_service.dart';
-import '../../utils/branch_constants.dart' as constants;
 
 class CourseGuideService {
   static final CourseGuideService _instance = CourseGuideService._internal();

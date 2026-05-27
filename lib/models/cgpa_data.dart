@@ -202,7 +202,9 @@ class CGPAData {
       for (final course in semester.courses) {
         if (course.courseType != 'Normal' ||
             course.grade == null ||
-            course.grade!.isEmpty) continue;
+            course.grade!.isEmpty) {
+          continue;
+        }
         latest[course.courseCode] = course;
       }
     }

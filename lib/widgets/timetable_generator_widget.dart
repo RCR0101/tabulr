@@ -754,8 +754,6 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   }
 
   Widget _buildConstraints() {
-    final scheme = Theme.of(context).colorScheme;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2208,7 +2206,7 @@ class _TimeAvoidanceDialogState extends State<_TimeAvoidanceDialog> {
           children: [
             DropdownButtonFormField<DayOfWeek>(
               decoration: const InputDecoration(labelText: 'Day'),
-              value: _selectedDay,
+              initialValue: _selectedDay,
               items: DayOfWeek.values.map((day) => DropdownMenuItem(
                 value: day,
                 child: Text(day.name),
@@ -2222,7 +2220,7 @@ class _TimeAvoidanceDialogState extends State<_TimeAvoidanceDialog> {
             const SizedBox(height: 16),
             const Text('Hours to avoid:'),
             const SizedBox(height: 8),
-            Container(
+            SizedBox(
               height: 200,
               width: double.infinity,
               child: GridView.builder(
@@ -2304,7 +2302,7 @@ class _LabAvoidanceDialogState extends State<_LabAvoidanceDialog> {
           children: [
             DropdownButtonFormField<DayOfWeek>(
               decoration: const InputDecoration(labelText: 'Day'),
-              value: _selectedDay,
+              initialValue: _selectedDay,
               items: DayOfWeek.values.map((day) => DropdownMenuItem(
                 value: day,
                 child: Text(day.name),
@@ -2318,7 +2316,7 @@ class _LabAvoidanceDialogState extends State<_LabAvoidanceDialog> {
             const SizedBox(height: 16),
             const Text('Hours to avoid labs:'),
             const SizedBox(height: 8),
-            Container(
+            SizedBox(
               height: 200,
               width: double.infinity,
               child: GridView.builder(

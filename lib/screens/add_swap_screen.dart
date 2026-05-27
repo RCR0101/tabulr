@@ -11,7 +11,6 @@ import '../utils/datetime_utils.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
 import '../utils/design_constants.dart';
-import '../widgets/common/loading_state.dart';
 import '../widgets/common/shimmer_loading.dart';
 
 class AddSwapScreen extends StatefulWidget {
@@ -37,7 +36,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
   
   List<Course> _availableCourses = [];
   List<Course> _filteredCourses = [];
-  Map<String, Map<SectionType, String>> _selectedSections = {}; // courseCode -> {type -> sectionId}
+  final Map<String, Map<SectionType, String>> _selectedSections = {}; // courseCode -> {type -> sectionId}
   List<ValidationResult> _validationResults = [];
   List<SafeCourseResult> _safeCourseResults = [];
   List<SafeCourseResult> _filteredSafeCourseResults = [];
@@ -156,9 +155,8 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
         final courseCode = entry.key;
         final sectionsByType = entry.value;
         final course = _availableCourses.firstWhere((c) => c.courseCode == courseCode);
-        
+
         for (final typeEntry in sectionsByType.entries) {
-          final sectionType = typeEntry.key;
           final sectionId = typeEntry.value;
           final section = course.sections.firstWhere((s) => s.sectionId == sectionId);
           
@@ -824,7 +822,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                   margin: const EdgeInsets.all(16),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.3),
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
@@ -937,8 +935,8 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                       ),
                       leading: Radio<String>(
                         value: section.sectionId,
-                        groupValue: selectedSectionId,
-                        onChanged: (value) {
+                        groupValue: selectedSectionId, // ignore: deprecated_member_use
+                        onChanged: (value) { // ignore: deprecated_member_use
                           setState(() {
                             if (value != null) {
                               _selectedSections.putIfAbsent(course.courseCode, () => {})[sectionType] = value;
@@ -1361,7 +1359,6 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     // Create SelectedSection objects from the safe combination
     final List<SelectedSection> newSections = [];
     for (final entry in result.safeCombination.entries) {
-      final sectionType = entry.key;
       final sectionId = entry.value;
       final section = result.course.sections.firstWhere((s) => s.sectionId == sectionId);
       

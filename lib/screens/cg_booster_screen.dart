@@ -49,7 +49,9 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
       for (final course in entry.value.courses) {
         if (course.courseType != 'Normal' ||
             course.grade == null ||
-            course.grade!.isEmpty) continue;
+            course.grade!.isEmpty) {
+          continue;
+        }
         latest[course.courseCode] = _CandidateInfo(
           entry: course,
           semester: entry.key,

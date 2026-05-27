@@ -7,7 +7,6 @@ import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../services/data/auth_service.dart';
 import '../utils/design_constants.dart';
-import '../widgets/common/loading_state.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
@@ -588,8 +587,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
           return RadioListTile<CourseSortOption>(
             value: option,
-            groupValue: _courseSortOption,
-            onChanged: (value) {
+            groupValue: _courseSortOption, // ignore: deprecated_member_use
+            onChanged: (value) { // ignore: deprecated_member_use
               setState(() {
                 _courseSortOption = value!;
               });
@@ -654,8 +653,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
           return RadioListTile<FileSortOption>(
             value: option,
-            groupValue: _fileSortOption,
-            onChanged: (value) {
+            groupValue: _fileSortOption, // ignore: deprecated_member_use
+            onChanged: (value) { // ignore: deprecated_member_use
               setState(() {
                 _fileSortOption = value!;
               });

@@ -1,6 +1,4 @@
 import '../models/normalized_timetable.dart';
-import '../models/timetable.dart';
-import '../models/course.dart';
 
 /// Abstract interface for timetable data operations
 abstract class TimetableRepository {

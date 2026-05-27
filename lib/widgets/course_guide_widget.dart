@@ -206,7 +206,7 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
               style: TextStyle(fontSize: labelFontSize, fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: _selectedSemester,
+            initialValue: _selectedSemester,
             decoration: const InputDecoration(
               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
             ),
@@ -224,7 +224,7 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
               style: TextStyle(fontSize: labelFontSize, fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: _selectedPrimaryBranch,
+            initialValue: _selectedPrimaryBranch,
             decoration: const InputDecoration(
               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
             ),
@@ -267,7 +267,7 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: _selectedSecondaryBranch,
+            initialValue: _selectedSecondaryBranch,
             decoration: const InputDecoration(
               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
             ),

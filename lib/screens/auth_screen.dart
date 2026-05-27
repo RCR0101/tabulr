@@ -101,7 +101,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     Text(
                       'Create and manage your class timetables',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.onBackground.withValues(alpha: 0.7),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -189,7 +189,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           child: Text(
                             'OR',
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onBackground.withValues(alpha: 0.6),
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                             ),
                           ),
                         ),

@@ -23,8 +23,6 @@ class AutoLoadCDCService {
         final course = availableCourses.where((c) => c.courseCode == code).firstOrNull;
         if (course != null) {
           final lectureSections = course.sections.where((s) => s.type == SectionType.L).toList();
-          bool added = false;
-
           for (final lectureSection in lectureSections) {
             final tempSection = SelectedSection(
               courseCode: course.courseCode,
@@ -42,7 +40,6 @@ class AutoLoadCDCService {
 
             if (!hasConflict) {
               selectedSections.add(tempSection);
-              added = true;
               break;
             }
           }

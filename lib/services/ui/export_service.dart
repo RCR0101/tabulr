@@ -49,7 +49,7 @@ String _formatUtcForICS(DateTime dt) {
   String hour = two(utc.hour);
   String minute = two(utc.minute);
   String second = two(utc.second);
-  return '$year${month}${day}T$hour${minute}${second}Z';
+  return '$year$month${day}T$hour$minute${second}Z';
 }
 
 /// Generate EXDATE entries for holiday breaks
@@ -242,7 +242,7 @@ class ExportService {
     lines.add('END:VCALENDAR');
 
     // Join with CRLF line endings
-    final icsContent = lines.join('\r\n') + '\r\n';
+    final icsContent = '${lines.join('\r\n')}\r\n';
 
     return await ExportServiceStub.saveIcsContent(icsContent);
   }

@@ -44,7 +44,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
   bool _isLoadingCategories = false;
   Set<String> _huelCourses = {};
   Set<String> _delCourses = {};
-  Set<CourseCategory> _selectedCategories = {CourseCategory.huel, CourseCategory.other}; // DEL not selected by default
+  final Set<CourseCategory> _selectedCategories = {CourseCategory.huel, CourseCategory.other}; // DEL not selected by default
   
   // DEL-specific filtering parameters
   List<BranchInfo> _availableBranches = [];

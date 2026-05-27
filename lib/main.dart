@@ -6,7 +6,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/timetables_screen.dart';
 import 'widgets/common/shimmer_loading.dart';
 import 'widgets/app_shell.dart';
 import 'services/data/auth_service.dart';

@@ -181,10 +181,8 @@ class SecureLogger {
       // Always use debugPrint for Flutter compatibility
       debugPrint(formatted);
       
-      // In production, you could add additional loggers here
       if (_isProduction && (level == LogLevel.error || level == LogLevel.critical)) {
-        // TODO: Add crash reporting or analytics logging
-        // Example: FirebaseCrashlytics.instance.log(formatted);
+        // Crashlytics/analytics hook point for production error reporting
       }
     } catch (e) {
       // Last resort logging

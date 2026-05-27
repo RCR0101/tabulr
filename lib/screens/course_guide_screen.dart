@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../utils/design_constants.dart';
 import '../widgets/course_guide_widget.dart';
 import '../widgets/common/app_dialog.dart';
 import '../services/data/auth_service.dart';

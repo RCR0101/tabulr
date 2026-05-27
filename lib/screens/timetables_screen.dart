@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:url_launcher/url_launcher.dart';
 import '../utils/web_utils.dart' as web_utils;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/timetable.dart';
 import '../utils/page_transitions.dart';
 import '../widgets/common/shimmer_loading.dart';
@@ -473,22 +472,6 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
         return 'Name (Z-A)';
       case TimetableListSortOrder.custom:
         return 'Custom Order';
-    }
-  }
-
-  String _getSortOrderDescription(TimetableListSortOrder sortOrder) {
-    switch (sortOrder) {
-      case TimetableListSortOrder.dateCreatedAsc:
-      case TimetableListSortOrder.dateCreatedDesc:
-        return 'Sort by creation date';
-      case TimetableListSortOrder.dateModifiedAsc:
-      case TimetableListSortOrder.dateModifiedDesc:
-        return 'Sort by last modification';
-      case TimetableListSortOrder.alphabeticalAsc:
-      case TimetableListSortOrder.alphabeticalDesc:
-        return 'Sort alphabetically by name';
-      case TimetableListSortOrder.custom:
-        return 'Drag to reorder manually';
     }
   }
 

@@ -13,7 +13,6 @@ import '../services/ui/responsive_service.dart';
 import '../services/core/timetable_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
-import '../widgets/common/loading_state.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/app_dialog.dart';
 import '../utils/page_info_helper.dart';
@@ -416,7 +415,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
         ],
       ),
       child: DropdownButtonFormField<String>(
-        value: _selectedTimetable?.id,
+        initialValue: _selectedTimetable?.id,
         decoration: InputDecoration(
           labelText: 'Select Timetable',
           contentPadding:
@@ -1405,7 +1404,7 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
                       ?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 20),
               DropdownButtonFormField<String>(
-                value: _selectedCourse,
+                initialValue: _selectedCourse,
                 decoration: InputDecoration(
                   labelText: 'Course *',
                 ),
@@ -1422,7 +1421,7 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
                   widget.courseSections[_selectedCourse]!.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _selectedSection.isEmpty
+                  initialValue: _selectedSection.isEmpty
                       ? null
                       : _selectedSection,
                   decoration: const InputDecoration(
@@ -1534,7 +1533,7 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
                       ?.copyWith(fontWeight: FontWeight.w600)),
               const SizedBox(height: 12),
               DropdownButtonFormField<SourceType>(
-                value: _selectedSourceType,
+                initialValue: _selectedSourceType,
                 decoration: InputDecoration(
                   labelText: 'Source (optional)',
                 ),
@@ -1562,7 +1561,7 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
               ],
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _confidence,
+                initialValue: _confidence,
                 decoration: InputDecoration(
                   labelText: 'How sure are you?',
                 ),
@@ -1702,7 +1701,7 @@ class _FlagDialogState extends State<_FlagDialog> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _confidence,
+                initialValue: _confidence,
                 decoration: InputDecoration(
                   labelText: 'How sure are you?',
                 ),

@@ -74,7 +74,7 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
             ),
             SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 8)),
             DropdownButtonFormField<String>(
-              value: _selectedBranch,
+              initialValue: _selectedBranch,
               decoration: InputDecoration(
                 border: const OutlineInputBorder(),
                 contentPadding: ResponsiveService.getAdaptivePadding(
@@ -110,7 +110,7 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
             ),
             SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 8)),
             DropdownButtonFormField<String>(
-              value: _selectedSemester,
+              initialValue: _selectedSemester,
               decoration: InputDecoration(
                 border: const OutlineInputBorder(),
                 contentPadding: ResponsiveService.getAdaptivePadding(

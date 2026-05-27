@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/course.dart';
 import '../../utils/branch_constants.dart' as constants;
 import 'branch_structure_service.dart';

@@ -3,7 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import '../../models/normalized_timetable.dart';
-import '../../models/course.dart';
 import '../data/course_data_service.dart';
 import '../ui/secure_logger.dart';
 

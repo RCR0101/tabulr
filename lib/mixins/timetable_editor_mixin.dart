@@ -21,7 +21,6 @@ import '../services/ui/page_leave_warning_service.dart';
 import '../services/data/timetable_sharing_service.dart';
 import '../services/core/undo_redo_service.dart';
 import '../services/core/clash_detector.dart';
-import '../services/data/course_data_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/data/user_settings_service.dart';
 import '../utils/design_constants.dart';
@@ -34,8 +33,6 @@ import '../widgets/clash_warnings_widget.dart';
 import '../widgets/search_filter_widget.dart';
 import '../widgets/theme_selector_widget.dart';
 import '../widgets/campus_selector_widget.dart';
-import '../widgets/common/loading_state.dart';
-import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
 import '../screens/generator_screen.dart';
@@ -507,6 +504,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     }
 
     final current = currentTimetable!;
+    if (!mounted) return;
     final returnedShareId = await ShareTimetableDialog.show(context, current);
     // If revoked, the dialog returns a new shareId
     if (returnedShareId != null && returnedShareId != current.shareId && mounted) {
@@ -1174,7 +1172,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   Future<void> importFromTT() async {
     try {
       final importedTimetable = await ExportService.importFromTTWithFilePicker();
-      if (importedTimetable == null) return;
+      if (importedTimetable == null || !mounted) return;
 
       final shouldReplace = await AppDialog.confirm(
         context: context,

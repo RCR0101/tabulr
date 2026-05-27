@@ -3,7 +3,6 @@ import '../models/prerequisite.dart';
 import '../repositories/prerequisites_repository.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
-import '../widgets/common/loading_state.dart';
 import '../widgets/common/shimmer_loading.dart';
 
 class PrerequisitesScreen extends StatefulWidget {
@@ -166,7 +165,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
             onChanged: (value) {
               setState(() {}); // To update suffix icon
               // Start searching after 1 character for better UX
-              if (value.length >= 1) {
+              if (value.isNotEmpty) {
                 _performSearch(value);
               } else if (value.isEmpty) {
                 _clearSearch();
@@ -207,40 +206,6 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
     }
 
     return _buildSearchResults(theme, colorScheme);
-  }
-
-  Widget _buildEmptyState(ThemeData theme, ColorScheme colorScheme) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.school_outlined,
-              size: 80,
-              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Browse Course Prerequisites',
-              style: theme.textTheme.titleLarge?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Showing all courses in alphabetical order\nSearch by course code, name, or department',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Widget _buildNoResults(ThemeData theme, ColorScheme colorScheme) {

@@ -1,6 +1,4 @@
 import 'dart:convert';
-import '../../utils/web_utils.dart' as web_utils;
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/timetable.dart';
 import '../../models/course.dart';
@@ -52,36 +50,6 @@ class TimetableService {
     }
   }
 
-  // Helper method to save to local storage
-  Future<void> _saveToLocalStorage(Timetable timetable) async {
-    try {
-      // Initialize SharedPreferences for web compatibility
-      if (kIsWeb) {
-        try {
-          SharedPreferences.setMockInitialValues({});
-        } catch (e) {
-          // Mock values already set or not needed
-        }
-      }
-
-      final prefs = await SharedPreferences.getInstance();
-      final data = jsonEncode(timetable.toJson());
-
-      await prefs.setString(_storageKey, data);
-    } catch (e) {
-      SecureLogger.error('TIMETABLE_SVC', 'Error saving timetable to local storage: $e');
-      // In web, if SharedPreferences fails, let's use localStorage directly
-      if (kIsWeb) {
-        try {
-          // Access localStorage through JavaScript interop
-          final data = jsonEncode(timetable.toJson());
-          web_utils.setLocalStorageItem(_storageKey, data);
-        } catch (jsError) {
-          SecureLogger.error('TIMETABLE_SVC', 'Error saving to localStorage: $jsError');
-        }
-      }
-    }
-  }
 
   // Load timetable using Firestore for authenticated users or local storage for guests
   Future<Timetable> loadTimetable() async {
@@ -91,9 +59,7 @@ class TimetableService {
       // If user is authenticated, try to load from Firestore
       if (_authService.isAuthenticated) {
         timetable = await _firestoreService.loadTimetable();
-        if (timetable == null) {
-          timetable = await _loadFromLocalStorage();
-        }
+        timetable ??= await _loadFromLocalStorage();
       } else {
         // Guest user - load from local storage
         timetable = await _loadFromLocalStorage();
@@ -144,14 +110,6 @@ class TimetableService {
   // Helper method to load from local storage
   Future<Timetable?> _loadFromLocalStorage() async {
     try {
-      // Initialize SharedPreferences for web compatibility
-      if (kIsWeb) {
-        try {
-          SharedPreferences.setMockInitialValues({});
-        } catch (e) {
-          // Mock values already set or not needed
-        }
-      }
 
       final prefs = await SharedPreferences.getInstance();
       final data = prefs.getString(_storageKey);
@@ -411,13 +369,6 @@ class TimetableService {
 
   Future<List<Timetable>> _getAllTimetablesFromLocalStorage() async {
     try {
-      if (kIsWeb) {
-        try {
-          SharedPreferences.setMockInitialValues({});
-        } catch (e) {
-          // Mock values already set or not needed
-        }
-      }
 
       final prefs = await SharedPreferences.getInstance();
       final timetableIds = prefs.getStringList(_timetablesListKey) ?? [];
@@ -487,7 +438,7 @@ class TimetableService {
 
     } catch (e) {
       SecureLogger.error('TIMETABLE_SVC', 'Error saving new timetable: $e');
-      throw e;
+      rethrow;
     }
     
     return timetable;
@@ -495,13 +446,6 @@ class TimetableService {
 
   Future<void> saveTimetableToStorage(Timetable timetable) async {
     try {
-      if (kIsWeb) {
-        try {
-          SharedPreferences.setMockInitialValues({});
-        } catch (e) {
-          // Mock values already set or not needed
-        }
-      }
 
       final prefs = await SharedPreferences.getInstance();
       final data = jsonEncode(timetable.toJson());
@@ -522,13 +466,6 @@ class TimetableService {
 
   Future<void> _addTimetableToList(String id) async {
     try {
-      if (kIsWeb) {
-        try {
-          SharedPreferences.setMockInitialValues({});
-        } catch (e) {
-          // Mock values already set or not needed
-        }
-      }
 
       final prefs = await SharedPreferences.getInstance();
       final timetableIds = prefs.getStringList(_timetablesListKey) ?? [];
@@ -560,13 +497,6 @@ class TimetableService {
       }
 
       // Check local storage (for guests or as fallback)
-      if (kIsWeb) {
-        try {
-          SharedPreferences.setMockInitialValues({});
-        } catch (e) {
-          // Mock values already set or not needed
-        }
-      }
 
       final prefs = await SharedPreferences.getInstance();
       final key = 'timetable_$id';
@@ -604,13 +534,6 @@ class TimetableService {
       }
 
       // Also delete from local storage (for guests or as cleanup)
-      if (kIsWeb) {
-        try {
-          SharedPreferences.setMockInitialValues({});
-        } catch (e) {
-          // Mock values already set or not needed
-        }
-      }
       
       final prefs = await SharedPreferences.getInstance();
       
@@ -668,7 +591,7 @@ class TimetableService {
 
     } catch (e) {
       SecureLogger.error('TIMETABLE_SVC', 'Error saving duplicated timetable: $e');
-      throw e;
+      rethrow;
     }
     
     return duplicatedTimetable;
@@ -695,13 +618,6 @@ class TimetableService {
   // Migration method to convert old timetable format to new format
   Future<Timetable?> _migrateFromOldFormat() async {
     try {
-      if (kIsWeb) {
-        try {
-          SharedPreferences.setMockInitialValues({});
-        } catch (e) {
-          // Mock values already set or not needed
-        }
-      }
 
       final prefs = await SharedPreferences.getInstance();
       final oldData = prefs.getString(_storageKey);

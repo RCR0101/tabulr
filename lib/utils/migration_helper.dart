@@ -1,9 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import '../models/timetable.dart';
 import '../models/normalized_timetable.dart';
 import '../services/core/incremental_timetable_service.dart';
-import '../services/core/timetable_service.dart';
 
 /// Utility class for migrating from legacy timetable format to normalized format
 class MigrationHelper {

@@ -206,7 +206,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       String? savedTimetableId;
       if (prefsDoc != null && prefsDoc.exists) {
-        final data = prefsDoc.data() as Map<String, dynamic>?;
+        final data = prefsDoc.data();
         if (data != null) {
           savedTimetableId = data['selectedTimetableId'] as String?;
           final eventsRaw = data['customEvents'] as List<dynamic>? ?? [];
@@ -1004,7 +1004,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedTimetable?.id,
+                  initialValue: _selectedTimetable?.id,
                   decoration: const InputDecoration(
                     labelText: 'Timetable',
                     contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),

@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/course.dart';
 import '../ui/secure_logger.dart';
 import 'branch_structure_service.dart';
