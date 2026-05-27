@@ -43,7 +43,7 @@ class ExportTimetableWidget extends StatelessWidget {
 
   Widget _buildTimetableGrid() {
     Map<int, Map<DayOfWeek, TimetableSlot?>> timeTable = {};
-    
+
     // Populate timetable data
     for (var slot in timetableSlots) {
       for (var hour in slot.hours) {
@@ -190,8 +190,8 @@ class ExportTimetableWidget extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            _getCourseColor(slot.courseCode).withOpacity(0.9),
-            _getCourseColor(slot.courseCode).withOpacity(0.7),
+            _getCourseColor(slot.courseCode).withValues(alpha: 0.9),
+            _getCourseColor(slot.courseCode).withValues(alpha: 0.7),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -259,7 +259,7 @@ class ExportTimetableWidget extends StatelessWidget {
       Colors.cyan,
       Colors.amber,
     ];
-    
+
     return colors[hash.abs() % colors.length];
   }
 

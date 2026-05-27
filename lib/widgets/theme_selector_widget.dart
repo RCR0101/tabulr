@@ -39,10 +39,10 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Row(
@@ -66,7 +66,7 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
                               Text(
                                 _getThemeModeDescription(themeMode),
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                                 ),
                               ),
                             ],
@@ -181,14 +181,14 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
                   Icon(
                     Icons.info_outline,
                     size: 16,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Choose your theme mode (light, dark, or system), then select your preferred theme style.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                     ),
                   ),
@@ -315,7 +315,7 @@ class ThemeToggleButton extends StatelessWidget {
         final themeMode = userSettingsService.themeMode;
         IconData icon;
         String tooltip;
-        
+
         switch (themeMode) {
           case user_settings.ThemeMode.light:
             icon = Icons.light_mode;
@@ -330,7 +330,7 @@ class ThemeToggleButton extends StatelessWidget {
             tooltip = 'Theme: System Mode';
             break;
         }
-        
+
         return IconButton(
           onPressed: () => ThemeSelectorDialog.show(context),
           icon: Icon(icon, size: ResponsiveService.getAdaptiveIconSize(context, 24)),
@@ -359,7 +359,7 @@ class ThemePreviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeService = theme_service.ThemeService();
     final themeData = themeService.getThemeData(theme);
-    
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -367,8 +367,8 @@ class ThemePreviewCard extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected 
-                ? themeData.colorScheme.primary 
+            color: isSelected
+                ? themeData.colorScheme.primary
                 : Theme.of(context).colorScheme.outline,
             width: isSelected ? 2 : 1,
           ),

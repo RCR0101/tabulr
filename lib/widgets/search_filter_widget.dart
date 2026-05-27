@@ -4,7 +4,7 @@ import '../services/ui/responsive_service.dart';
 
 class SearchFilterWidget extends StatefulWidget {
   final Function(String query, Map<String, dynamic> filters) onSearchChanged;
-  
+
   const SearchFilterWidget({
     super.key,
     required this.onSearchChanged,
@@ -37,7 +37,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
       'days': _selectedDays,
       'hours': _selectedHours,
     };
-    
+
     widget.onSearchChanged(_searchController.text, filters);
   }
 
@@ -72,7 +72,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).shadowColor.withOpacity(0.3),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -214,7 +214,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
-              
+
               // Course Code and Instructor filters
               ResponsiveService.buildResponsive(
                 context,
@@ -268,7 +268,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                 ),
               ),
               const SizedBox(height: 12),
-              
+
               // Credits filter
               Row(
                 children: [
@@ -306,7 +306,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                 ],
               ),
               const SizedBox(height: 12),
-              
+
               // Exam date filters
               ResponsiveService.buildResponsive(
                 context,
@@ -402,7 +402,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                 ),
               ),
               const SizedBox(height: 12),
-              
+
               // Days filter
               Text(
                 'Filter by Days:',

@@ -29,7 +29,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
   void initState() {
     super.initState();
     _loadProfessors();
-    
+
     // Listen to search changes
     _searchController.addListener(() {
       _professorService.searchProfessors(_searchController.text);
@@ -222,25 +222,25 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
           Icon(
             hasSearch ? Icons.search_off : Icons.school_outlined,
             size: 64,
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
-            hasSearch 
+            hasSearch
                 ? 'No professors found'
                 : 'No professors available',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            hasSearch 
+            hasSearch
                 ? 'Try searching with different keywords'
                 : 'Professor data is not available yet',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
           if (hasSearch) ...[
@@ -258,7 +258,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
 
   Widget _buildProfessorList() {
     final professors = _professorService.professors;
-    
+
     return Card(
       margin: const EdgeInsets.all(16),
       child: Column(
@@ -307,7 +307,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
     return Container(
       decoration: BoxDecoration(
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
         ),
         borderRadius: BorderRadius.circular(8),
       ),
@@ -325,7 +325,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: professor.chamber == 'Unavailable'
                         ? Theme.of(context).colorScheme.error
-                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
             ),
             if (isOccupied && currentClass != null) ...[
@@ -333,7 +333,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
               Text(
                 'In: ${currentClass.courseCode} @ ${currentClass.room}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.error.withOpacity(0.8),
+                      color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
                       fontStyle: FontStyle.italic,
                     ),
               ),
@@ -366,13 +366,13 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: isOccupied
-            ? Theme.of(context).colorScheme.error.withOpacity(0.1)
-            : Theme.of(context).colorScheme.primary.withOpacity(0.1),
+            ? Theme.of(context).colorScheme.error.withValues(alpha: 0.1)
+            : Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isOccupied
-              ? Theme.of(context).colorScheme.error.withOpacity(0.3)
-              : Theme.of(context).colorScheme.primary.withOpacity(0.3),
+              ? Theme.of(context).colorScheme.error.withValues(alpha: 0.3)
+              : Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
         ),
       ),
       child: Text(
@@ -417,7 +417,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                   return Container(
                     width: ResponsiveService.getValue(context, mobile: (MediaQuery.of(context).size.width * 0.9 - 24) / 2, tablet: 180, desktop: 220),
                     child: Material(
-                      color: isSelected 
+                      color: isSelected
                           ? Theme.of(context).colorScheme.primaryContainer
                           : Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(12),
@@ -435,9 +435,9 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: isSelected 
+                              color: isSelected
                                   ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                                  : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
                               width: isSelected ? 2 : 1,
                             ),
                           ),
@@ -448,7 +448,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                               Container(
                                 padding: EdgeInsets.all(ResponsiveService.isMobile(context) ? 8 : 8),
                                 decoration: BoxDecoration(
-                                  color: isSelected 
+                                  color: isSelected
                                       ? Theme.of(context).colorScheme.primary
                                       : Theme.of(context).colorScheme.surfaceContainerHighest,
                                   borderRadius: BorderRadius.circular(8),
@@ -456,7 +456,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                                 child: Icon(
                                   _getSortIcon(sortType),
                                   size: ResponsiveService.isMobile(context) ? 18 : 18,
-                                  color: isSelected 
+                                  color: isSelected
                                       ? Theme.of(context).colorScheme.onPrimary
                                       : Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
@@ -470,7 +470,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                                 style: TextStyle(
                                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                                   fontSize: ResponsiveService.isMobile(context) ? 10 : 12,
-                                  color: isSelected 
+                                  color: isSelected
                                       ? Theme.of(context).colorScheme.onPrimaryContainer
                                       : Theme.of(context).colorScheme.onSurface,
                                 ),

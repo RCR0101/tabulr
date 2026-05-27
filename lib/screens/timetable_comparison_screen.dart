@@ -34,7 +34,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
     super.initState();
     _loadTimetables();
   }
-  
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -50,7 +50,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
     setState(() {
       _isLoading = true;
     });
-    
+
     try {
       final timetables = await _timetableService.getAllTimetables();
       print('Found ${timetables.length} timetables');
@@ -59,7 +59,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
         _allTimetables = timetables;
         _isLoading = false;
       });
-      
+
       print('Loaded ${timetables.length} timetables for comparison');
     } catch (e) {
       print('Error loading timetables: $e');
@@ -74,7 +74,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
 
   List<TimetableSlot> _convertToTimetableSlots(Timetable timetable) {
     List<TimetableSlot> slots = [];
-    
+
     for (var selectedSection in timetable.selectedSections) {
       // Find the course title with improved fallback
       String baseTitle = selectedSection.courseCode; // Default fallback
@@ -97,10 +97,10 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
       for (var scheduleEntry in selectedSection.section.schedule) {
         for (var day in scheduleEntry.days) {
           // Add section type info for non-lecture sections
-          final courseTitle = selectedSection.section.type == SectionType.L 
+          final courseTitle = selectedSection.section.type == SectionType.L
             ? baseTitle
             : '$baseTitle (${selectedSection.section.type.name})';
-            
+
           slots.add(TimetableSlot(
             day: day,
             hours: scheduleEntry.hours,
@@ -113,7 +113,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
         }
       }
     }
-    
+
     return slots;
   }
 
@@ -153,7 +153,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                 items: _allTimetables.asMap().entries.map((entry) {
                   final index = entry.key;
                   final timetable = entry.value;
-                  
+
                   // Use name if not empty and not default, otherwise create a better name
                   String displayName;
                   if (timetable.name.isNotEmpty && timetable.name != 'Untitled Timetable') {
@@ -163,7 +163,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                     final shortDate = _formatShortDate(timetable.createdAt);
                     displayName = 'Timetable ${index + 1} ($shortDate)';
                   }
-                  
+
                   return DropdownMenuItem<Timetable>(
                     value: timetable,
                     child: Padding(
@@ -311,21 +311,21 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
 
     final leftCourses = _leftTimetable!.selectedSections;
     final rightCourses = _rightTimetable!.selectedSections;
-    
+
     // Create comparison data - compare by course code + section type
     final comparisonItems = <ComparisonItem>[];
     final processedSections = <String>{};
-    
+
     // Process left timetable sections
     for (var leftSection in leftCourses) {
       final sectionKey = '${leftSection.courseCode}_${leftSection.section.type.name}';
-      
+
       // Find matching section with same course code AND same section type
       final rightMatches = rightCourses.where(
-        (r) => r.courseCode == leftSection.courseCode && 
+        (r) => r.courseCode == leftSection.courseCode &&
                r.section.type == leftSection.section.type,
       ).toList();
-      
+
       if (rightMatches.isNotEmpty) {
         // Course + section type exists in both timetables
         final rightMatch = rightMatches.first;
@@ -350,11 +350,11 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
       }
       processedSections.add(sectionKey);
     }
-    
+
     // Process right timetable sections that weren't already processed
     for (var rightSection in rightCourses) {
       final sectionKey = '${rightSection.courseCode}_${rightSection.section.type.name}';
-      
+
       if (!processedSections.contains(sectionKey)) {
         comparisonItems.add(ComparisonItem(
           courseCode: '${rightSection.courseCode} (${rightSection.section.type.name})',
@@ -463,23 +463,23 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
   }
 
   Widget _buildSummaryCard(
-    String title, 
-    String value, 
-    IconData icon, 
-    Color color, 
+    String title,
+    String value,
+    IconData icon,
+    Color color,
     ComparisonStatus filterStatus,
     List<ComparisonItem> allItems,
   ) {
     final filteredItems = allItems.where((item) => item.status == filterStatus).toList();
-    
+
     return GestureDetector(
       onTap: () => _showCoursesDialog(title, filteredItems, color, icon),
       child: Container(
         padding: const EdgeInsets.all(12.0),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Column(
           children: [
@@ -502,7 +502,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
             Icon(
               Icons.touch_app,
               size: 12,
-              color: color.withOpacity(0.6),
+              color: color.withValues(alpha: 0.6),
             ),
           ],
         ),
@@ -529,11 +529,11 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                     border: Border(
                       bottom: BorderSide(
-                        color: color.withOpacity(0.3),
+                        color: color.withValues(alpha: 0.3),
                       ),
                     ),
                   ),
@@ -555,7 +555,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                             Text(
                               '${items.length} courses',
                               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                               ),
                             ),
                           ],
@@ -564,7 +564,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),
                         icon: const Icon(Icons.close),
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
                     ],
                   ),
@@ -579,7 +579,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                               Icon(
                                 Icons.inbox_outlined,
                                 size: 64,
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
                               ),
                               const SizedBox(height: 16),
                               Text(
@@ -613,10 +613,10 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: color.withOpacity(0.2),
+          color: color.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -627,7 +627,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
+                  color: color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -661,7 +661,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                 const SizedBox(width: 12),
                 Icon(
                   Icons.arrow_forward,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                   size: 16,
                 ),
                 const SizedBox(width: 12),
@@ -684,7 +684,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
 
   Widget _buildSectionInfo(String label, SelectedSection? section) {
     if (section == null) return const SizedBox.shrink();
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -703,7 +703,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
         Text(
           section.section.instructor,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
           ),
         ),
       ],
@@ -714,7 +714,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
     Color statusColor;
     IconData statusIcon;
     String statusText;
-    
+
     switch (item.status) {
       case ComparisonStatus.sameCourse:
         statusColor = AppDesign.success(context);
@@ -767,9 +767,9 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: statusColor.withOpacity(0.3)),
+                    border: Border.all(color: statusColor.withValues(alpha: 0.3)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -788,7 +788,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                 ),
               ],
             ),
-            if (item.status != ComparisonStatus.onlyInLeft && 
+            if (item.status != ComparisonStatus.onlyInLeft &&
                 item.status != ComparisonStatus.onlyInRight) ...[
               const SizedBox(height: 12),
               Row(
@@ -829,7 +829,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
 
   Widget _buildSectionDetails(String title, SelectedSection? section) {
     if (section == null) return const SizedBox.shrink();
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -844,7 +844,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
         Container(
           padding: const EdgeInsets.all(8.0),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Column(
@@ -954,10 +954,10 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                 Container(
                   padding: const EdgeInsets.all(16.0),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                     border: Border(
                       bottom: BorderSide(
-                        color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
                       ),
                     ),
                   ),

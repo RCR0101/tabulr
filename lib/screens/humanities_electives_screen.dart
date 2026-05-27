@@ -23,11 +23,11 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
   
   List<Course> _huelCourses = [];
   List<Course> _availableCourses = [];
-  
+
   String? _selectedSemester;
   String? _selectedPrimaryBranch;
   String? _selectedSecondaryBranch;
-  
+
   bool _isLoading = true;
   bool _isSearching = false;
   String _errorMessage = '';
@@ -48,14 +48,14 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
   void initState() {
     super.initState();
     _loadInitialData();
-    
+
     // Listen for campus changes
     _campusSubscription = CampusService.campusChangeStream.listen((_) {
       print('Campus changed, reloading humanities electives data...');
       _loadInitialData();
     });
   }
-  
+
   @override
   void dispose() {
     _campusSubscription?.cancel();
@@ -68,12 +68,12 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
         _isLoading = true;
         _errorMessage = '';
       });
-      
+
       // Load courses for current campus
       print('Loading courses for current campus...');
       final courses = await _courseDataService.fetchCourses();
       print('Loaded ${courses.length} courses for ${CampusService.getCampusDisplayName(CampusService.currentCampus)} campus');
-      
+
       setState(() {
         _availableCourses = courses;
         _isLoading = false;
@@ -188,7 +188,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             // Semester Selection
             const Text(
               'Semester *',
@@ -218,7 +218,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
               isExpanded: true,
             ),
             const SizedBox(height: 16),
-            
+
             // Primary Branch Selection
             const Text(
               'Primary Branch *',
@@ -247,9 +247,9 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
               },
               isExpanded: true,
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Secondary Branch Selection (Optional)
             Row(
               children: [
@@ -294,9 +294,9 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
               },
               isExpanded: true,
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Search Buttons
             _buildSearchButtons(
               isMobile: ResponsiveService.isMobile(context),
@@ -393,7 +393,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
                 Text(
                   'Found ${_huelCourses.length} humanities electives for ${_selectedPrimaryBranch!} ${_selectedSemester!}${_selectedSecondaryBranch != null ? ' and ${_selectedSecondaryBranch!} ${_selectedSemester!}' : ''}',
                   style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 const SizedBox(height: 4),

@@ -27,14 +27,14 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   void initState() {
     super.initState();
     _loadCourses();
-    
+
     // Listen for campus changes
     _campusSubscription = CampusService.campusChangeStream.listen((_) {
       print('Campus changed in generator, reloading courses...');
       _loadCourses();
     });
   }
-  
+
   @override
   void dispose() {
     _campusSubscription?.cancel();
@@ -46,10 +46,10 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
       setState(() {
         _isLoading = true;
       });
-      
+
       // Load courses directly for current campus without affecting campus selection
       final courses = await _courseDataService.fetchCourses();
-      
+
       setState(() {
         _availableCourses = courses;
         _isLoading = false;
@@ -117,7 +117,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
@@ -142,7 +142,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                   'Automatic Scheduling',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -166,7 +166,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                   Text(
                     'Loading courses...',
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                       fontSize: 14,
                     ),
                   ),
@@ -181,7 +181,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                       Icon(
                         Icons.school_outlined,
                         size: 64,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                       const SizedBox(height: 16),
                       Text(
@@ -196,7 +196,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
                       Text(
                         'Please ensure course data is loaded',
                         style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                           fontSize: 14,
                         ),
                       ),

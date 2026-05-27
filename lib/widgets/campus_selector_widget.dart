@@ -28,13 +28,13 @@ class _CampusSelectorWidgetState extends State<CampusSelectorWidget> {
       }
     });
   }
-  
+
   @override
   void dispose() {
     _campusSubscription.cancel();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return PopupMenuButton<Campus>(
@@ -61,17 +61,17 @@ class _CampusSelectorWidgetState extends State<CampusSelectorWidget> {
                 Icon(
                   Icons.location_city,
                   size: 20,
-                  color: isSelected 
-                    ? Theme.of(context).colorScheme.primary 
-                    : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  color: isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
                 const SizedBox(width: 12),
                 Text(
                   CampusService.getCampusDisplayName(campus),
                   style: TextStyle(
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected 
-                      ? Theme.of(context).colorScheme.primary 
+                    color: isSelected
+                      ? Theme.of(context).colorScheme.primary
                       : null,
                   ),
                 ),
@@ -92,7 +92,7 @@ class _CampusSelectorWidgetState extends State<CampusSelectorWidget> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           border: Border.all(
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
             width: 1,
           ),
           borderRadius: BorderRadius.circular(20),

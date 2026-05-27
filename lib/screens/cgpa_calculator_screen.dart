@@ -365,14 +365,14 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       if (kDebugMode) {
         print('Debug mode enabled');
       }
-      
+
       // Show branch and semester selection dialog
       final autoLoadService = AutoLoadCDCService();
       final result = await showDialog<AutoLoadCDCResult>(
         context: context,
         builder: (context) => const AutoLoadCDCDialog(),
       );
-      
+
       if (result == null) {
         print('User cancelled CDC loading');
         return; // User cancelled
@@ -410,7 +410,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       // Add courses to semester
       for (final cdcCourse in cdcCourses) {
         print('Processing course: ${cdcCourse.code} - ${cdcCourse.name}');
-        
+
         // Check if course already exists in this semester
         final existingSemester = _cgpaData.semesters[semesterName];
         final courseExists = existingSemester?.courses.any(
@@ -1364,23 +1364,23 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
           colors: [
             Theme.of(
               context,
-            ).colorScheme.surfaceContainerHigh.withOpacity(isPrimary ? 0.9 : 0.7),
+            ).colorScheme.surfaceContainerHigh.withValues(alpha: isPrimary ? 0.9 : 0.7),
             Theme.of(
               context,
-            ).colorScheme.surfaceContainer.withOpacity(isPrimary ? 0.6 : 0.4),
+            ).colorScheme.surfaceContainer.withValues(alpha: isPrimary ? 0.6 : 0.4),
           ],
         ),
         borderRadius: BorderRadius.circular(isMobile ? 10 : 12),
         border: Border.all(
           color:
               isPrimary
-                  ? Theme.of(context).colorScheme.primary.withOpacity(0.25)
-                  : Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.25)
+                  : Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withOpacity(0.08),
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.08),
             blurRadius: 6,
             offset: const Offset(0, 1),
           ),
@@ -1498,7 +1498,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                             decoration: BoxDecoration(
                               color: Theme.of(
                                 context,
-                              ).colorScheme.onSurface.withOpacity(0.06),
+                              ).colorScheme.onSurface.withValues(alpha: 0.06),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
@@ -1507,7 +1507,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                                   ResponsiveService.isMobile(context) ? 48 : 56,
                               color: Theme.of(
                                 context,
-                              ).colorScheme.onSurface.withOpacity(0.35),
+                              ).colorScheme.onSurface.withValues(alpha: 0.35),
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -1533,7 +1533,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                                   ResponsiveService.isMobile(context) ? 14 : 15,
                               color: Theme.of(
                                 context,
-                              ).colorScheme.onSurface.withOpacity(0.7),
+                              ).colorScheme.onSurface.withValues(alpha: 0.7),
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -1924,12 +1924,12 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                   decoration: BoxDecoration(
                     color: Theme.of(
                       context,
-                    ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                    ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
                       color: Theme.of(
                         context,
-                      ).colorScheme.outline.withOpacity(0.15),
+                      ).colorScheme.outline.withValues(alpha: 0.15),
                     ),
                   ),
                   child: Row(
@@ -1940,7 +1940,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                         size: 13,
                         color: Theme.of(
                           context,
-                        ).colorScheme.onSurface.withOpacity(0.4),
+                        ).colorScheme.onSurface.withValues(alpha: 0.4),
                       ),
                       const SizedBox(width: 6),
                       Expanded(
@@ -1952,7 +1952,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                             fontSize: 10,
                             color: Theme.of(
                               context,
-                            ).colorScheme.onSurface.withOpacity(0.45),
+                            ).colorScheme.onSurface.withValues(alpha: 0.45),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -2507,7 +2507,7 @@ class _CourseSelectionDialogState extends State<_CourseSelectionDialog> {
 
                       if (_selectedTimetable != null) ...[
                         const SizedBox(height: 24),
-                        
+
                         // Semester selector
                         Text(
                           'Select Semester',

@@ -49,7 +49,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -152,7 +152,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                         ),
                         Padding(
                           padding: const EdgeInsets.all(12),
-                          child: exam.midSemText.isNotEmpty 
+                          child: exam.midSemText.isNotEmpty
                             ? Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -162,7 +162,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF7C3AED).withOpacity(0.2),
+                                      color: const Color(0xFF7C3AED).withValues(alpha: 0.2),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
@@ -193,7 +193,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                         ),
                         Padding(
                           padding: const EdgeInsets.all(12),
-                          child: exam.endSemText.isNotEmpty 
+                          child: exam.endSemText.isNotEmpty
                             ? Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -203,7 +203,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFDA3633).withOpacity(0.2),
+                                      color: const Color(0xFFDA3633).withValues(alpha: 0.2),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
@@ -252,30 +252,30 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
       if (processedCourses.contains(selectedSection.courseCode)) {
         continue;
       }
-      
+
       final course = widget.courses.where(
         (c) => c.courseCode == selectedSection.courseCode,
       ).firstOrNull;
-      
+
       if (course == null) {
         continue; // Skip if course not found instead of throwing exception
       }
 
       processedCourses.add(selectedSection.courseCode);
 
-      final midSemText = course.midSemExam != null 
+      final midSemText = course.midSemExam != null
         ? '${course.midSemExam!.date.day}/${course.midSemExam!.date.month}'
         : '';
-      
-      final midSemTime = course.midSemExam != null 
+
+      final midSemTime = course.midSemExam != null
         ? TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot, campus: CampusService.currentCampusCode)
         : '';
 
-      final endSemText = course.endSemExam != null 
+      final endSemText = course.endSemExam != null
         ? '${course.endSemExam!.date.day}/${course.endSemExam!.date.month}'
         : '';
-      
-      final endSemTime = course.endSemExam != null 
+
+      final endSemTime = course.endSemExam != null
         ? TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot, campus: CampusService.currentCampusCode)
         : '';
 
@@ -298,19 +298,19 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
     final isCurrentColumn = _sortColumn == column;
     final isAscending = _sortDirection == SortDirection.ascending;
     final isSmallScreen = MediaQuery.of(context).size.width < 768;
-    
+
     // On small screens, headers are not clickable (sorting buttons are in separate row)
     if (isSmallScreen) {
       return _buildMobileHeader(title, isCurrentColumn, isAscending);
     }
-    
+
     // On large screens, headers are clickable
     return GestureDetector(
       onTap: () {
         setState(() {
           if (isCurrentColumn) {
-            _sortDirection = isAscending 
-              ? SortDirection.descending 
+            _sortDirection = isAscending
+              ? SortDirection.descending
               : SortDirection.ascending;
           } else {
             _sortColumn = column;
@@ -341,8 +341,8 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
         Container(
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
-            color: isCurrentColumn 
-              ? const Color(0xFF58A6FF).withOpacity(0.1)
+            color: isCurrentColumn
+              ? const Color(0xFF58A6FF).withValues(alpha: 0.1)
               : Colors.transparent,
             borderRadius: BorderRadius.circular(4),
           ),
@@ -352,16 +352,16 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
               Icon(
                 Icons.keyboard_arrow_up,
                 size: 20,
-                color: isCurrentColumn && isAscending 
-                  ? const Color(0xFF58A6FF) 
+                color: isCurrentColumn && isAscending
+                  ? const Color(0xFF58A6FF)
                   : const Color(0xFF8B949E),
               ),
               const SizedBox(height: 1),
               Icon(
                 Icons.keyboard_arrow_down,
                 size: 20,
-                color: isCurrentColumn && !isAscending 
-                  ? const Color(0xFF58A6FF) 
+                color: isCurrentColumn && !isAscending
+                  ? const Color(0xFF58A6FF)
                   : const Color(0xFF8B949E),
               ),
             ],
@@ -390,13 +390,13 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
   Widget _buildMobileSortButton(SortColumn column) {
     final isCurrentColumn = _sortColumn == column;
     final isAscending = _sortDirection == SortDirection.ascending;
-    
+
     return GestureDetector(
       onTap: () {
         setState(() {
           if (isCurrentColumn) {
-            _sortDirection = isAscending 
-              ? SortDirection.descending 
+            _sortDirection = isAscending
+              ? SortDirection.descending
               : SortDirection.ascending;
           } else {
             _sortColumn = column;
@@ -413,8 +413,8 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
               'Sort',
               style: TextStyle(
                 fontSize: 12,
-                color: isCurrentColumn 
-                  ? const Color(0xFF58A6FF) 
+                color: isCurrentColumn
+                  ? const Color(0xFF58A6FF)
                   : const Color(0xFF8B949E),
                 fontWeight: isCurrentColumn ? FontWeight.bold : FontWeight.normal,
               ),
@@ -423,8 +423,8 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
             Container(
               padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
-                color: isCurrentColumn 
-                  ? const Color(0xFF58A6FF).withOpacity(0.1)
+                color: isCurrentColumn
+                  ? const Color(0xFF58A6FF).withValues(alpha: 0.1)
                   : Colors.transparent,
                 borderRadius: BorderRadius.circular(4),
               ),
@@ -434,15 +434,15 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                   Icon(
                     Icons.keyboard_arrow_up,
                     size: 16,
-                    color: isCurrentColumn && isAscending 
-                      ? const Color(0xFF58A6FF) 
+                    color: isCurrentColumn && isAscending
+                      ? const Color(0xFF58A6FF)
                       : const Color(0xFF8B949E),
                   ),
                   Icon(
                     Icons.keyboard_arrow_down,
                     size: 16,
-                    color: isCurrentColumn && !isAscending 
-                      ? const Color(0xFF58A6FF) 
+                    color: isCurrentColumn && !isAscending
+                      ? const Color(0xFF58A6FF)
                       : const Color(0xFF8B949E),
                   ),
                 ],
@@ -469,9 +469,9 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
           compareResult = _compareDates(a.endSemText, b.endSemText);
           break;
       }
-      
-      return _sortDirection == SortDirection.ascending 
-        ? compareResult 
+
+      return _sortDirection == SortDirection.ascending
+        ? compareResult
         : -compareResult;
     });
   }
@@ -486,16 +486,16 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
     try {
       final partsA = dateA.split('/');
       final partsB = dateB.split('/');
-      
+
       if (partsA.length != 2 || partsB.length != 2) {
         return dateA.compareTo(dateB);
       }
-      
+
       final dayA = int.parse(partsA[0]);
       final monthA = int.parse(partsA[1]);
       final dayB = int.parse(partsB[0]);
       final monthB = int.parse(partsB[1]);
-      
+
       // Compare month first, then day
       if (monthA != monthB) {
         return monthA.compareTo(monthB);

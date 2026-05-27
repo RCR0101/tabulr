@@ -28,7 +28,7 @@ class TimetableGeneratorWidget extends StatefulWidget {
   State<TimetableGeneratorWidget> createState() => _TimetableGeneratorWidgetState();
 }
 
-class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget> 
+class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     with SingleTickerProviderStateMixin {
   final List<String> _mandatoryCourses = [];
   final List<String> _optionalCourses = [];
@@ -69,7 +69,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   @override
   Widget build(BuildContext context) {
     final isMobile = ResponsiveService.isMobile(context) || ResponsiveService.isTablet(context);
-    
+
     if (isMobile) {
       return Column(
           children: [
@@ -82,7 +82,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                   Tab(icon: Icon(Icons.view_list), text: 'Results'),
                 ],
                 labelColor: Theme.of(context).colorScheme.primary,
-                unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 indicatorColor: Theme.of(context).colorScheme.primary,
               ),
             ),
@@ -124,7 +124,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           ],
         );
     }
-    
+
     // Desktop layout
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -300,7 +300,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -391,7 +391,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       children: [
         Text('Mandatory Courses (${mandatoryCredits.toStringAsFixed(1)} credits):', style: const TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 4),
-        Text('Must be included in every timetable', style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
+        Text('Must be included in every timetable', style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
         const SizedBox(height: 8),
         _buildCourseSearchField(_mandatoryCourses, _optionalCourses),
         const SizedBox(height: 8),
@@ -399,7 +399,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         const SizedBox(height: 16),
         Text('Optional Courses (${optionalCredits.toStringAsFixed(1)} credits):', style: const TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 4),
-        Text('Generator will fit as many as possible within credit limit', style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6))),
+        Text('Generator will fit as many as possible within credit limit', style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
         const SizedBox(height: 8),
         _buildCourseSearchField(_optionalCourses, _mandatoryCourses),
         const SizedBox(height: 8),
@@ -467,7 +467,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       return Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
+          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Theme.of(context).colorScheme.outline),
         ),
@@ -475,7 +475,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           child: Text(
             isMandatory ? 'No mandatory courses' : 'No optional courses',
             style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
               fontSize: 13,
             ),
           ),
@@ -490,7 +490,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     return Container(
       constraints: const BoxConstraints(maxHeight: 150),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
@@ -512,7 +512,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                   Text(course.courseCode, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: badgeColor)),
                   Text(
                     course.courseTitle,
-                    style: TextStyle(fontSize: ResponsiveService.clampedFontSize(context, 9), color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                    style: TextStyle(fontSize: ResponsiveService.clampedFontSize(context, 9), color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -522,9 +522,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
               onDeleted: () {
                 setState(() { courseList.remove(courseCode); });
               },
-              backgroundColor: badgeColor.withOpacity(0.1),
+              backgroundColor: badgeColor.withValues(alpha: 0.1),
               deleteIconColor: Theme.of(context).colorScheme.error,
-              side: BorderSide(color: badgeColor.withOpacity(0.3), width: 1),
+              side: BorderSide(color: badgeColor.withValues(alpha: 0.3), width: 1),
             );
           }).toList(),
         ),
@@ -994,7 +994,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
             'Tap days in order of preference (most wanted free day first)',
             style: TextStyle(
               fontSize: 11,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 8),
@@ -1017,10 +1017,10 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                   key: ValueKey(day),
                   margin: const EdgeInsets.only(bottom: 4),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(
@@ -1033,7 +1033,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                           child: Icon(
                             Icons.drag_handle,
                             size: 16,
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                           ),
                         ),
                       ),
@@ -1147,7 +1147,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                         _avoidTimes.removeAt(index);
                       });
                     },
-                    backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                     deleteIconColor: AppDesign.danger(context),
                   );
                 }).toList(),
@@ -1207,7 +1207,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                         _avoidLabs.removeAt(index);
                       });
                     },
-                    backgroundColor: Theme.of(context).colorScheme.error.withOpacity(0.1),
+                    backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
                     deleteIconColor: AppDesign.danger(context),
                   );
                 }).toList(),
@@ -1267,7 +1267,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                         _avoidedInstructors.removeAt(index);
                       });
                     },
-                    backgroundColor: Theme.of(context).colorScheme.error.withOpacity(0.1),
+                    backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
                     deleteIconColor: AppDesign.danger(context),
                   );
                 }).toList(),
@@ -1388,10 +1388,10 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                       children: _instructorRankings.entries.map((entry) {
                         final courseCode = entry.key;
                         final rankings = entry.value;
-                        final totalRanked = rankings.lectureInstructors.length + 
-                                          rankings.practicalInstructors.length + 
+                        final totalRanked = rankings.lectureInstructors.length +
+                                          rankings.practicalInstructors.length +
                                           rankings.tutorialInstructors.length;
-                        
+
                         return GestureDetector(
                           onTap: () => _showInstructorRankingDialog(),
                           child: Container(
@@ -1399,15 +1399,15 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  Theme.of(context).colorScheme.primaryContainer.withOpacity(0.7),
-                                  Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+                                  Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.7),
+                                  Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
                                 ],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
-                                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                               ),
                             ),
                             child: Column(
@@ -1463,7 +1463,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                                   _getTopInstructorSummary(rankings),
                                   style: TextStyle(
                                     fontSize: 10,
-                                    color: Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.8),
+                                    color: Theme.of(context).colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -1483,7 +1483,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface.withOpacity(0.3),
+              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: Theme.of(context).colorScheme.outline),
             ),
@@ -1533,7 +1533,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
 
   String _getTopInstructorSummary(InstructorRankings rankings) {
     final topInstructors = <String>[];
-    
+
     if (rankings.lectureInstructors.isNotEmpty) {
       topInstructors.add('L: ${rankings.lectureInstructors.first}');
     }
@@ -1543,7 +1543,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     if (rankings.tutorialInstructors.isNotEmpty) {
       topInstructors.add('T: ${rankings.tutorialInstructors.first}');
     }
-    
+
     if (topInstructors.isEmpty) return 'No rankings set';
     return topInstructors.join(' • ');
   }
@@ -1553,7 +1553,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     if (hours.length == 1) {
       return TimeSlotInfo.getHourSlotName(hours.first);
     }
-    
+
     // Sort hours and format as range
     final sortedHours = [...hours]..sort();
     return TimeSlotInfo.getHourRangeName(sortedHours);
@@ -1564,7 +1564,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       context: context,
       builder: (context) => const _TimeAvoidanceDialog(),
     );
-    
+
     if (result != null && mounted) {
       setState(() {
         _avoidTimes.add(result);
@@ -1577,7 +1577,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       context: context,
       builder: (context) => const _LabAvoidanceDialog(),
     );
-    
+
     if (result != null && mounted) {
       setState(() {
         _avoidLabs.add(result);
@@ -1589,7 +1589,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     // Get instructors organized by course and section type to avoid duplicates
     final Map<String, Map<String, List<String>>> courseSectionInstructors = {};
     final Set<String> seenInstructorsLower = <String>{};
-    
+
     for (final courseCode in [..._mandatoryCourses, ..._optionalCourses]) {
       final course = widget.availableCourses.firstWhere(
         (c) => c.courseCode == courseCode,
@@ -1602,20 +1602,20 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           sections: [],
         ),
       );
-      
+
       final sectionTypeInstructors = <String, Set<String>>{
         'Lecture': <String>{},
         'Tutorial': <String>{},
         'Practical': <String>{},
       };
-      
+
       // Track seen instructors per section type to avoid duplicates within each section type
       final sectionTypeSeenLower = <String, Set<String>>{
         'Lecture': <String>{},
         'Tutorial': <String>{},
         'Practical': <String>{},
       };
-      
+
       for (final section in course.sections) {
         if (section.instructor.isNotEmpty) {
           // Determine section type
@@ -1627,24 +1627,24 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           } else if (section.type.toString().contains('SectionType.P')) {
             sectionType = 'Practical';
           }
-          
+
           // Split comma-separated instructors into individual instructors
           final instructorList = section.instructor.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty);
           for (final instructor in instructorList) {
             final instructorLower = instructor.toLowerCase();
-            
+
             // Only add if we haven't seen this instructor in this section type before
             if (!sectionTypeSeenLower[sectionType]!.contains(instructorLower)) {
               sectionTypeSeenLower[sectionType]!.add(instructorLower);
               sectionTypeInstructors[sectionType]!.add(instructor);
-              
+
               // Also track globally to avoid duplicates across courses
               seenInstructorsLower.add(instructorLower);
             }
           }
         }
       }
-      
+
       // Convert sets to sorted lists and filter out empty section types
       final filteredSectionInstructors = <String, List<String>>{};
       for (final entry in sectionTypeInstructors.entries) {
@@ -1652,7 +1652,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           filteredSectionInstructors[entry.key] = entry.value.toList()..sort();
         }
       }
-      
+
       if (filteredSectionInstructors.isNotEmpty) {
         courseSectionInstructors[courseCode] = filteredSectionInstructors;
       }
@@ -1665,7 +1665,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         currentlyAvoided: _avoidedInstructors,
       ),
     );
-    
+
     if (result != null && mounted) {
       setState(() {
         for (final sectionSpecificKey in result) {
@@ -1687,24 +1687,24 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   Future<void> _showInstructorRankingDialog() async {
     // Get instructors organized by course and section type
     final Map<String, Map<String, List<String>>> courseSectionInstructors = {};
-    
+
     for (final courseCode in [..._mandatoryCourses, ..._optionalCourses]) {
       final course = widget.availableCourses.firstWhere(
         (c) => c.courseCode == courseCode,
         orElse: () => throw Exception('Course not found: $courseCode'),
       );
-      
+
       courseSectionInstructors[courseCode] = {
         'L': [],
         'P': [],
         'T': [],
       };
-      
+
       for (final section in course.sections) {
         final sectionTypeStr = section.type.toString().split('.').last;
         if (courseSectionInstructors[courseCode]!.containsKey(sectionTypeStr)) {
           final instructor = section.instructor.trim();
-          if (instructor.isNotEmpty && 
+          if (instructor.isNotEmpty &&
               !courseSectionInstructors[courseCode]![sectionTypeStr]!.contains(instructor)) {
             courseSectionInstructors[courseCode]![sectionTypeStr]!.add(instructor);
           }
@@ -1719,7 +1719,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         currentRankings: Map.from(_instructorRankings),
       ),
     );
-    
+
     if (result != null && mounted) {
       setState(() {
         _instructorRankings.clear();
@@ -1963,7 +1963,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         borderRadius: BorderRadius.circular(12),
         gradient: _mandatoryCourses.isNotEmpty && !_isGenerating
             ? LinearGradient(
-                colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withOpacity(0.8)],
+                colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withValues(alpha: 0.8)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               )
@@ -2009,9 +2009,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                 children: [
                   Icon(
                     Icons.auto_awesome,
-                    color: _mandatoryCourses.isNotEmpty 
-                        ? Theme.of(context).scaffoldBackgroundColor 
-                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    color: _mandatoryCourses.isNotEmpty
+                        ? Theme.of(context).scaffoldBackgroundColor
+                        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     size: 20,
                   ),
                   const SizedBox(width: 8),
@@ -2020,9 +2020,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: _mandatoryCourses.isNotEmpty 
-                          ? Theme.of(context).scaffoldBackgroundColor 
-                          : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      color: _mandatoryCourses.isNotEmpty
+                          ? Theme.of(context).scaffoldBackgroundColor
+                          : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                   ),
                 ],
@@ -2036,7 +2036,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     setState(() {
       _isGenerating = true;
     });
-    
+
     // Switch to results tab on mobile when starting generation
     final isMobile = ResponsiveService.isMobile(context) || ResponsiveService.isTablet(context);
     if (isMobile && _tabController != null) {
@@ -2085,7 +2085,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       setState(() {
         _isGenerating = false;
       });
-      
+
       ToastService.showError('Error generating timetables: $e');
     }
   }
@@ -2148,10 +2148,10 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+              color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
               ),
             ),
             child: Row(
@@ -2340,7 +2340,7 @@ class _LabAvoidanceDialogState extends State<_LabAvoidanceDialog> {
                     ),
                     tooltip: TimeSlotInfo.getHourSlotName(hour),
                     selected: isSelected,
-                    selectedColor: Theme.of(context).colorScheme.error.withOpacity(0.3),
+                    selectedColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
                     checkmarkColor: Theme.of(context).colorScheme.error,
                     onSelected: (selected) {
                       setState(() {
@@ -2448,13 +2448,13 @@ class _InstructorAvoidanceDialogState extends State<_InstructorAvoidanceDialog> 
                           final courseCode = widget.courseSectionInstructors.keys.elementAt(index);
                           final sectionInstructors = widget.courseSectionInstructors[courseCode]!;
                           final isExpanded = _expandedCourses.contains(courseCode);
-                          
+
                           // Count total instructors across all section types
                           final totalInstructors = sectionInstructors.values
                               .expand((instructors) => instructors)
                               .toSet()
                               .length;
-                          
+
                           return Card(
                             margin: const EdgeInsets.only(bottom: 8),
                             child: Column(
@@ -2492,7 +2492,7 @@ class _InstructorAvoidanceDialogState extends State<_InstructorAvoidanceDialog> 
                                       children: sectionInstructors.entries.map((sectionEntry) {
                                         final sectionType = sectionEntry.key;
                                         final instructors = sectionEntry.value;
-                                        
+
                                         return Container(
                                           margin: const EdgeInsets.only(bottom: 12),
                                           child: Column(
@@ -2515,25 +2515,25 @@ class _InstructorAvoidanceDialogState extends State<_InstructorAvoidanceDialog> 
                                                   final sectionSpecificKey = '$courseCode-$sectionType-$instructor';
                                                   final isSelected = _selectedInstructors.contains(sectionSpecificKey);
                                                   final isAlreadyAvoided = widget.currentlyAvoided.contains(instructor);
-                                                  
+
                                                   return FilterChip(
                                                     label: Text(
                                                       instructor,
                                                       style: TextStyle(
                                                         fontSize: 10,
-                                                        color: isAlreadyAvoided 
-                                                            ? Theme.of(context).colorScheme.onSurface.withOpacity(0.5)
+                                                        color: isAlreadyAvoided
+                                                            ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)
                                                             : null,
                                                       ),
                                                     ),
                                                     selected: isSelected,
-                                                    selectedColor: Theme.of(context).colorScheme.error.withOpacity(0.3),
+                                                    selectedColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
                                                     checkmarkColor: Theme.of(context).colorScheme.error,
-                                                    backgroundColor: isAlreadyAvoided 
-                                                        ? Theme.of(context).colorScheme.surface.withOpacity(0.5)
+                                                    backgroundColor: isAlreadyAvoided
+                                                        ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.5)
                                                         : null,
-                                                    onSelected: isAlreadyAvoided 
-                                                        ? null 
+                                                    onSelected: isAlreadyAvoided
+                                                        ? null
                                                         : (selected) {
                                                             setState(() {
                                                               if (selected) {
@@ -2565,10 +2565,10 @@ class _InstructorAvoidanceDialogState extends State<_InstructorAvoidanceDialog> 
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+                  color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                   ),
                 ),
                 child: Column(
@@ -2676,7 +2676,7 @@ class _InstructorRankingDialogState extends State<_InstructorRankingDialog>
               'Drag to reorder instructors from most preferred (top) to least preferred (bottom)',
               style: TextStyle(
                 fontSize: 14,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
               textAlign: TextAlign.center,
             ),
@@ -2686,14 +2686,14 @@ class _InstructorRankingDialogState extends State<_InstructorRankingDialog>
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.3)),
+                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
               ),
               child: TabBar(
                 controller: _tabController,
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
                 labelColor: Theme.of(context).colorScheme.primary,
-                unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 indicatorColor: Theme.of(context).colorScheme.primary,
                 indicatorWeight: 2,
                 tabs: _courseList.map((courseCode) {
@@ -2719,7 +2719,7 @@ class _InstructorRankingDialogState extends State<_InstructorRankingDialog>
                 controller: _tabController,
                 children: _courseList.map((courseCode) {
                   final instructorsByType = widget.courseSectionInstructors[courseCode]!;
-                  
+
                   return SingleChildScrollView(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -2767,7 +2767,7 @@ class _InstructorRankingDialogState extends State<_InstructorRankingDialog>
   Widget _buildSectionTypeRanking(String courseCode, String typeName, String typeKey, List<String> availableInstructors) {
     final currentRankings = _rankings[courseCode]!;
     List<String> rankedInstructors;
-    
+
     switch (typeKey) {
       case 'L':
         rankedInstructors = List.from(currentRankings.lectureInstructors);
@@ -2781,14 +2781,14 @@ class _InstructorRankingDialogState extends State<_InstructorRankingDialog>
       default:
         rankedInstructors = [];
     }
-    
+
     // Add any new instructors that aren't ranked yet
     for (final instructor in availableInstructors) {
       if (!rankedInstructors.contains(instructor)) {
         rankedInstructors.add(instructor);
       }
     }
-    
+
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 16),
@@ -2828,7 +2828,7 @@ class _InstructorRankingDialogState extends State<_InstructorRankingDialog>
                   '${rankedInstructors.length} instructor${rankedInstructors.length == 1 ? '' : 's'}',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
@@ -2836,9 +2836,9 @@ class _InstructorRankingDialogState extends State<_InstructorRankingDialog>
             const SizedBox(height: 12),
             Container(
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface.withOpacity(0.5),
+                color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.2)),
+                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
               ),
               child: ReorderableListView.builder(
                 shrinkWrap: true,
@@ -2849,7 +2849,7 @@ class _InstructorRankingDialogState extends State<_InstructorRankingDialog>
                     if (newIndex > oldIndex) newIndex--;
                     final instructor = rankedInstructors.removeAt(oldIndex);
                     rankedInstructors.insert(newIndex, instructor);
-                    
+
                     // Update the rankings
                     switch (typeKey) {
                       case 'L':
@@ -2874,17 +2874,17 @@ class _InstructorRankingDialogState extends State<_InstructorRankingDialog>
                   final instructor = rankedInstructors[index];
                   final position = index + 1;
                   final isTopRank = position <= 3;
-                  
+
                   return Container(
                     key: ValueKey('$courseCode-$typeKey-$instructor'),
                     margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: isTopRank 
-                        ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3)
+                      color: isTopRank
+                        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
                         : Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(6),
-                      border: isTopRank 
-                        ? Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.3))
+                      border: isTopRank
+                        ? Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3))
                         : null,
                     ),
                     child: ListTile(
@@ -2893,9 +2893,9 @@ class _InstructorRankingDialogState extends State<_InstructorRankingDialog>
                         width: 32,
                         height: 32,
                         decoration: BoxDecoration(
-                          color: isTopRank 
+                          color: isTopRank
                             ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.outline.withOpacity(0.6),
+                            : Theme.of(context).colorScheme.outline.withValues(alpha: 0.6),
                           shape: BoxShape.circle,
                         ),
                         child: Center(
@@ -2914,14 +2914,14 @@ class _InstructorRankingDialogState extends State<_InstructorRankingDialog>
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: isTopRank ? FontWeight.w600 : FontWeight.normal,
-                          color: isTopRank 
+                          color: isTopRank
                             ? Theme.of(context).colorScheme.onSurface
-                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                         ),
                       ),
                       subtitle: isTopRank ? Text(
-                        position == 1 ? 'Most preferred' : 
-                        position == 2 ? '2nd preference' : 
+                        position == 1 ? 'Most preferred' :
+                        position == 2 ? '2nd preference' :
                         '3rd preference',
                         style: TextStyle(
                           fontSize: 11,
@@ -2930,7 +2930,7 @@ class _InstructorRankingDialogState extends State<_InstructorRankingDialog>
                       ) : null,
                       trailing: Icon(
                         Icons.drag_handle,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                   );
