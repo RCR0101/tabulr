@@ -802,8 +802,6 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     final isMobile =
         ResponsiveService.isMobile(context) ||
         ResponsiveService.isTablet(context);
-    final stats = tt.selectedSections.isNotEmpty ? TimetableStats.fromTimetable(tt) : null;
-
     return Column(
       children: [
         if (tt.clashWarnings.isNotEmpty)
@@ -811,8 +809,6 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
             margin: EdgeInsets.all(isMobile ? 4 : 8),
             child: ClashWarningsWidget(warnings: tt.clashWarnings),
           ),
-        if (stats != null)
-          _buildStatsStrip(context, stats, isMobile),
         Expanded(
           child: Card(
             margin: EdgeInsets.all(isMobile ? 4 : 8),
@@ -858,6 +854,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
                 onRedo: redo,
                 canUndo: undoRedoService.canUndo,
                 canRedo: undoRedoService.canRedo,
+                onShowStats: () => _showStatsSheet(context),
               ),
             ),
           ),
@@ -875,9 +872,52 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     DayOfWeek.S => 'Sat',
   };
 
-  void _showExamTimeline(BuildContext context) {
+  void _showStatsSheet(BuildContext context) {
     final tt = currentTimetable;
     if (tt == null) return;
+    final stats = TimetableStats.fromTimetable(tt);
+    final scheme = Theme.of(context).colorScheme;
+
+    Widget statsContent(BuildContext ctx) {
+      final labelStyle = Theme.of(ctx).textTheme.labelSmall?.copyWith(
+        color: scheme.onSurface.withValues(alpha: 0.6),
+      );
+      final valueStyle = Theme.of(ctx).textTheme.titleMedium?.copyWith(
+        fontWeight: FontWeight.w700,
+      );
+
+      Widget statTile(IconData icon, String value, String label) {
+        return Column(
+          children: [
+            Icon(icon, size: 20, color: scheme.primary),
+            const SizedBox(height: 4),
+            Text(value, style: valueStyle),
+            Text(label, style: labelStyle),
+          ],
+        );
+      }
+
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                statTile(Icons.schedule, '${stats.totalHoursPerWeek}', 'hrs/wk'),
+                statTile(Icons.trending_up, '${_dayLabel(stats.busiestDay)} (${stats.busiestDayHours}h)', 'busiest'),
+                statTile(Icons.event_available, '${stats.freeDayCount}', 'free days'),
+                if (stats.longestGapHours > 0)
+                  statTile(Icons.hourglass_empty, '${stats.longestGapHours}h', 'gap ${_dayLabel(stats.longestGapDay!)}'),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Flexible(child: ExamTimelineWidget(timetable: tt)),
+        ],
+      );
+    }
 
     final isMobile = ResponsiveService.isMobile(context);
     if (isMobile) {
@@ -901,10 +941,10 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text('Exam Schedule', style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
+                padding: const EdgeInsets.all(12),
+                child: Text('Timetable Stats', style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
               ),
-              Expanded(child: ExamTimelineWidget(timetable: tt)),
+              Expanded(child: statsContent(ctx)),
             ],
           ),
         ),
@@ -914,105 +954,27 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         context: context,
         builder: (ctx) => Dialog(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
+            constraints: const BoxConstraints(maxWidth: 520, maxHeight: 650),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
                   child: Row(
                     children: [
-                      Text('Exam Schedule', style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
+                      Text('Timetable Stats', style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
                       const Spacer(),
                       IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
                     ],
                   ),
                 ),
-                Flexible(child: ExamTimelineWidget(timetable: tt)),
+                Flexible(child: statsContent(ctx)),
               ],
             ),
           ),
         ),
       );
     }
-  }
-
-  Widget _buildStatsStrip(BuildContext context, TimetableStats stats, bool isMobile) {
-    final scheme = Theme.of(context).colorScheme;
-    final labelStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
-      color: scheme.onSurface.withValues(alpha: 0.6),
-    );
-    final valueStyle = Theme.of(context).textTheme.labelMedium?.copyWith(
-      fontWeight: FontWeight.w600,
-    );
-
-    Widget stat(IconData icon, String value, String label) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: scheme.primary.withValues(alpha: 0.7)),
-          const SizedBox(width: 4),
-          Text(value, style: valueStyle),
-          const SizedBox(width: 2),
-          Text(label, style: labelStyle),
-        ],
-      );
-    }
-
-    return Card(
-      margin: EdgeInsets.fromLTRB(isMobile ? 4 : 8, isMobile ? 4 : 8, isMobile ? 4 : 8, 0),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          children: [
-            Wrap(
-              spacing: 16,
-              runSpacing: 6,
-              alignment: WrapAlignment.center,
-              children: [
-                stat(Icons.schedule, '${stats.totalHoursPerWeek}', 'hrs/wk'),
-                stat(Icons.school, stats.totalCredits % 1 == 0 ? '${stats.totalCredits.toInt()}' : stats.totalCredits.toStringAsFixed(1), 'credits'),
-                stat(Icons.trending_up, _dayLabel(stats.busiestDay), '(${stats.busiestDayHours}h)'),
-                if (stats.freeDayCount > 0)
-                  stat(Icons.event_available, '${stats.freeDayCount}', 'free day${stats.freeDayCount > 1 ? 's' : ''}'),
-                if (stats.longestGapHours > 0)
-                  stat(Icons.hourglass_empty, '${stats.longestGapHours}h', 'gap ${_dayLabel(stats.longestGapDay!)}'),
-              ],
-            ),
-            const SizedBox(height: 4),
-            InkWell(
-              borderRadius: BorderRadius.circular(6),
-              onTap: () => _showExamTimeline(context),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      stats.hasExamClusters ? Icons.warning_amber_rounded : Icons.event_note,
-                      size: 13,
-                      color: stats.hasExamClusters ? scheme.error : scheme.primary,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      stats.hasExamClusters
-                          ? 'Exam clusters detected — tap to view schedule'
-                          : 'View exam schedule',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: stats.hasExamClusters ? scheme.error : scheme.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 2),
-                    Icon(Icons.chevron_right, size: 14, color: stats.hasExamClusters ? scheme.error : scheme.primary),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   List<Widget> buildCommonActions() {

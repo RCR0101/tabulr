@@ -35,6 +35,7 @@ class TimetableWidget extends StatefulWidget {
   final VoidCallback? onRedo;
   final bool canUndo;
   final bool canRedo;
+  final VoidCallback? onShowStats;
 
   const TimetableWidget({
     super.key,
@@ -61,6 +62,7 @@ class TimetableWidget extends StatefulWidget {
     this.onRedo,
     this.canUndo = false,
     this.canRedo = false,
+    this.onShowStats,
   });
 
   @override
@@ -387,6 +389,16 @@ class _TimetableWidgetState extends State<TimetableWidget> {
         icon: Icons.clear_all,
         label: 'Clear',
         color: Theme.of(context).colorScheme.error,
+      ));
+    }
+
+    // TT Stats button
+    if (!widget.isForExport && widget.onShowStats != null && widget.timetableSlots.isNotEmpty) {
+      buttons.add(_buildMobileButton(
+        onPressed: widget.onShowStats!,
+        icon: Icons.insights,
+        label: 'TT Stats',
+        color: Theme.of(context).colorScheme.primary,
       ));
     }
     
@@ -822,6 +834,31 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   ),
                 ),
               if (_canShowQuickReplace)
+                const SizedBox(width: 8),
+              // TT Stats button (desktop)
+              if (!widget.isForExport && widget.onShowStats != null && widget.timetableSlots.isNotEmpty)
+                FilledButton.icon(
+                  onPressed: widget.onShowStats!,
+                  icon: Icon(
+                    Icons.insights,
+                    size: ResponsiveService.getAdaptiveIconSize(context, 16),
+                  ),
+                  label: const Text('TT Stats'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                    foregroundColor: Theme.of(context).colorScheme.primary,
+                    side: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
+                    elevation: 0,
+                    minimumSize: Size(
+                      0,
+                      ResponsiveService.getTouchTargetSize(context),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              if (!widget.isForExport && widget.onShowStats != null && widget.timetableSlots.isNotEmpty)
                 const SizedBox(width: 8),
               if (widget.timetableSlots.isNotEmpty && widget.onClear != null)
                 TextButton.icon(

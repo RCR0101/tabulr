@@ -192,12 +192,21 @@ class TimetableStats {
   String get summaryLine {
     final parts = <String>[];
     parts.add('$totalHoursPerWeek hrs/wk');
-    parts.add('${totalCredits.toStringAsFixed(totalCredits == totalCredits.roundToDouble() ? 0 : 1)} credits');
     if (freeDayCount > 0) {
       parts.add('$freeDayCount free day${freeDayCount > 1 ? 's' : ''}');
     }
+    parts.add('Busiest: ${_shortDay(busiestDay)} (${busiestDayHours}h)');
     return parts.join(' · ');
   }
+
+  static String _shortDay(DayOfWeek day) => switch (day) {
+    DayOfWeek.M => 'Mon',
+    DayOfWeek.T => 'Tue',
+    DayOfWeek.W => 'Wed',
+    DayOfWeek.Th => 'Thu',
+    DayOfWeek.F => 'Fri',
+    DayOfWeek.S => 'Sat',
+  };
 }
 
 class ExamEntry {
