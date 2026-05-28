@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/timetable.dart';
+import '../models/timetable_stats.dart';
 import '../models/course.dart';
 import '../widgets/timetable_widget.dart';
 import '../services/core/timetable_service.dart';
@@ -206,6 +207,79 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
     );
   }
 
+  static String _dayLabel(DayOfWeek day) => switch (day) {
+    DayOfWeek.M => 'Mon',
+    DayOfWeek.T => 'Tue',
+    DayOfWeek.W => 'Wed',
+    DayOfWeek.Th => 'Thu',
+    DayOfWeek.F => 'Fri',
+    DayOfWeek.S => 'Sat',
+  };
+
+  Widget _buildStatsRow(TimetableStats stats) {
+    final scheme = Theme.of(context).colorScheme;
+    final style = Theme.of(context).textTheme.labelSmall?.copyWith(
+      color: scheme.onSurface.withValues(alpha: 0.6),
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 2,
+        alignment: WrapAlignment.center,
+        children: [
+          Text('${stats.totalHoursPerWeek} hrs/wk', style: style),
+          Text('${stats.totalCredits % 1 == 0 ? stats.totalCredits.toInt() : stats.totalCredits.toStringAsFixed(1)} cr', style: style),
+          Text('Busiest: ${_dayLabel(stats.busiestDay)} (${stats.busiestDayHours}h)', style: style),
+          if (stats.freeDayCount > 0)
+            Text('${stats.freeDayCount} free day${stats.freeDayCount > 1 ? 's' : ''}', style: style),
+          if (stats.longestGapHours > 0)
+            Text('${stats.longestGapHours}h gap ${_dayLabel(stats.longestGapDay!)}', style: style),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGridTimetable(Timetable timetable) {
+    final stats = TimetableStats.fromTimetable(timetable);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            children: [
+              Text(
+                timetable.name,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              if (timetable.selectedSections.isNotEmpty)
+                _buildStatsRow(stats)
+              else
+                Text(
+                  'Created ${_formatDateTime(timetable.createdAt)}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: TimetableWidget(
+            timetableSlots: _convertToTimetableSlots(timetable),
+            size: TimetableSize.compact,
+            incompleteSelectionWarnings: const [],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildGridView() {
     if (_leftTimetable == null && _rightTimetable == null) {
       return const Center(
@@ -217,39 +291,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
       children: [
         Expanded(
           child: _leftTimetable != null
-              ? Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        children: [
-                          Text(
-                            _leftTimetable!.name,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Created ${_formatDateTime(_leftTimetable!.createdAt)}',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: TimetableWidget(
-                        timetableSlots: _convertToTimetableSlots(_leftTimetable!),
-                        size: TimetableSize.compact,
-                        incompleteSelectionWarnings: const [],
-                      ),
-                    ),
-                  ],
-                )
+              ? _buildGridTimetable(_leftTimetable!)
               : const Center(child: Text('Select left timetable')),
         ),
         Container(
@@ -258,39 +300,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
         ),
         Expanded(
           child: _rightTimetable != null
-              ? Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        children: [
-                          Text(
-                            _rightTimetable!.name,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Created ${_formatDateTime(_rightTimetable!.createdAt)}',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: TimetableWidget(
-                        timetableSlots: _convertToTimetableSlots(_rightTimetable!),
-                        size: TimetableSize.compact,
-                        incompleteSelectionWarnings: const [],
-                      ),
-                    ),
-                  ],
-                )
+              ? _buildGridTimetable(_rightTimetable!)
               : const Center(child: Text('Select right timetable')),
         ),
       ],
@@ -381,11 +391,29 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
     );
   }
 
+  Widget _buildStatCompare(String label, String leftVal, String rightVal) {
+    final scheme = Theme.of(context).colorScheme;
+    final style = Theme.of(context).textTheme.bodySmall;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(child: Text(leftVal, style: style, textAlign: TextAlign.center)),
+          Expanded(child: Text(label, style: style?.copyWith(color: scheme.onSurface.withValues(alpha: 0.5)), textAlign: TextAlign.center)),
+          Expanded(child: Text(rightVal, style: style, textAlign: TextAlign.center)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildComparisonSummary(List<ComparisonItem> items) {
     final sameCourses = items.where((i) => i.status == ComparisonStatus.sameCourse).length;
     final differentSections = items.where((i) => i.status == ComparisonStatus.differentSection).length;
     final onlyInLeft = items.where((i) => i.status == ComparisonStatus.onlyInLeft).length;
     final onlyInRight = items.where((i) => i.status == ComparisonStatus.onlyInRight).length;
+
+    final leftStats = TimetableStats.fromTimetable(_leftTimetable!);
+    final rightStats = TimetableStats.fromTimetable(_rightTimetable!);
 
     return Card(
       child: Padding(
@@ -397,6 +425,32 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
               'Comparison Summary',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: Text(_leftTimetable!.name, style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
+                      const Expanded(child: SizedBox()),
+                      Expanded(child: Text(_rightTimetable!.name, style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600), textAlign: TextAlign.center)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  _buildStatCompare('Hours/week', '${leftStats.totalHoursPerWeek}', '${rightStats.totalHoursPerWeek}'),
+                  _buildStatCompare('Credits', '${leftStats.totalCredits % 1 == 0 ? leftStats.totalCredits.toInt() : leftStats.totalCredits.toStringAsFixed(1)}', '${rightStats.totalCredits % 1 == 0 ? rightStats.totalCredits.toInt() : rightStats.totalCredits.toStringAsFixed(1)}'),
+                  _buildStatCompare('Busiest day', '${_dayLabel(leftStats.busiestDay)} (${leftStats.busiestDayHours}h)', '${_dayLabel(rightStats.busiestDay)} (${rightStats.busiestDayHours}h)'),
+                  _buildStatCompare('Free days', '${leftStats.freeDayCount}', '${rightStats.freeDayCount}'),
+                  if (leftStats.longestGapHours > 0 || rightStats.longestGapHours > 0)
+                    _buildStatCompare('Longest gap', leftStats.longestGapHours > 0 ? '${leftStats.longestGapHours}h (${_dayLabel(leftStats.longestGapDay!)})' : '–', rightStats.longestGapHours > 0 ? '${rightStats.longestGapHours}h (${_dayLabel(rightStats.longestGapDay!)})' : '–'),
+                ],
               ),
             ),
             const SizedBox(height: 16),

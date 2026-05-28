@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'package:archive/archive.dart';
 import '../services/data/acad_drives_service.dart';
+import '../services/core/timetable_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../services/data/auth_service.dart';
@@ -87,6 +88,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   final ScrollController _coursesScrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   final AcadDrivesService _drivesService = AcadDrivesService();
+  Set<String> _enrolledCourseCodes = {};
 
   // Submit form controllers
   final TextEditingController _driveLinkController = TextEditingController();
@@ -97,6 +99,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   void initState() {
     super.initState();
     _coursesScrollController.addListener(_onCoursesScroll);
+    _loadEnrolledCourses();
     _loadCourses();
   }
 
@@ -108,6 +111,19 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     _titleController.dispose();
     _contributorController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadEnrolledCourses() async {
+    try {
+      final timetables = await TimetableService().getAllTimetables();
+      final codes = <String>{};
+      for (final tt in timetables) {
+        for (final sel in tt.selectedSections) {
+          codes.add(sel.courseCode);
+        }
+      }
+      if (mounted) setState(() => _enrolledCourseCodes = codes);
+    } catch (_) {}
   }
 
   void _onCoursesScroll() {
@@ -259,30 +275,48 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     });
   }
 
+  bool _isEnrolledCourse(Map<String, dynamic> course) {
+    return _enrolledCourseCodes.contains(course['code']);
+  }
+
   List<Map<String, dynamic>> get _filteredCourses {
+    List<Map<String, dynamic>> result;
+
     if (_searchQuery.isEmpty) {
-      return _courses;
+      result = List.of(_courses);
+    } else {
+      final query = _searchQuery.toLowerCase();
+      result = _courses.where((course) {
+        final code = (course['code'] ?? '').toString().toLowerCase();
+        final name = (course['name'] ?? '').toString().toLowerCase();
+        return code.contains(query) || name.contains(query);
+      }).toList();
+
+      switch (_courseSortOption) {
+        case CourseSortOption.nameAsc:
+          result.sort((a, b) => (a['code'] ?? '').toString().toLowerCase().compareTo((b['code'] ?? '').toString().toLowerCase()));
+        case CourseSortOption.nameDesc:
+          result.sort((a, b) => (b['code'] ?? '').toString().toLowerCase().compareTo((a['code'] ?? '').toString().toLowerCase()));
+        case CourseSortOption.fileCountAsc:
+          result.sort((a, b) => (a['fileCount'] as int).compareTo(b['fileCount'] as int));
+        case CourseSortOption.fileCountDesc:
+          result.sort((a, b) => (b['fileCount'] as int).compareTo(a['fileCount'] as int));
+      }
     }
 
-    final query = _searchQuery.toLowerCase();
-    final filtered = _courses.where((course) {
-      final code = (course['code'] ?? '').toString().toLowerCase();
-      final name = (course['name'] ?? '').toString().toLowerCase();
-      return code.contains(query) || name.contains(query);
-    }).toList();
-
-    switch (_courseSortOption) {
-      case CourseSortOption.nameAsc:
-        filtered.sort((a, b) => (a['code'] ?? '').toString().toLowerCase().compareTo((b['code'] ?? '').toString().toLowerCase()));
-      case CourseSortOption.nameDesc:
-        filtered.sort((a, b) => (b['code'] ?? '').toString().toLowerCase().compareTo((a['code'] ?? '').toString().toLowerCase()));
-      case CourseSortOption.fileCountAsc:
-        filtered.sort((a, b) => (a['fileCount'] as int).compareTo(b['fileCount'] as int));
-      case CourseSortOption.fileCountDesc:
-        filtered.sort((a, b) => (b['fileCount'] as int).compareTo(a['fileCount'] as int));
+    // Put enrolled courses first (only when not searching)
+    if (_searchQuery.isEmpty && _enrolledCourseCodes.isNotEmpty) {
+      final enrolled = result.where(_isEnrolledCourse).toList();
+      final rest = result.where((c) => !_isEnrolledCourse(c)).toList();
+      return [...enrolled, ...rest];
     }
 
-    return filtered;
+    return result;
+  }
+
+  int get _enrolledCourseCount {
+    if (_searchQuery.isNotEmpty || _enrolledCourseCodes.isEmpty) return 0;
+    return _filteredCourses.where(_isEnrolledCourse).length;
   }
 
   List<Map<String, dynamic>> get _filteredFiles {
@@ -940,7 +974,36 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       );
     }
 
-    final itemCount = courses.length + (_hasMoreCourses && _searchQuery.isEmpty ? 1 : 0);
+    final enrolledCount = _enrolledCourseCount;
+    final hasEnrolledSection = enrolledCount > 0;
+    // Extra items: "Your Courses" header + "All Courses" header
+    final extraItems = hasEnrolledSection ? 2 : 0;
+    final itemCount = courses.length + extraItems + (_hasMoreCourses && _searchQuery.isEmpty ? 1 : 0);
+
+    int courseIndexFromListIndex(int index) {
+      if (!hasEnrolledSection) return index;
+      if (index == 0) return -1; // "Your Courses" header
+      if (index <= enrolledCount) return index - 1;
+      if (index == enrolledCount + 1) return -2; // "All Courses" header
+      return index - 2;
+    }
+
+    Widget sectionHeader(String text, IconData icon) {
+      final scheme = Theme.of(context).colorScheme;
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: scheme.primary),
+            const SizedBox(width: 6),
+            Text(text, style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: scheme.primary,
+              fontWeight: FontWeight.w600,
+            )),
+          ],
+        ),
+      );
+    }
 
     final isMobile = ResponsiveService.isMobile(context);
     if (isMobile) {
@@ -955,13 +1018,15 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                 padding: const EdgeInsets.only(bottom: 16),
                 itemCount: itemCount,
                 itemBuilder: (context, index) {
-                  if (index >= courses.length) {
-                    return _buildLoadingFooter();
-                  }
-                  final course = courses[index];
+                  final ci = courseIndexFromListIndex(index);
+                  if (ci == -1) return sectionHeader('Your Courses', Icons.school);
+                  if (ci == -2) return sectionHeader('All Courses', Icons.library_books);
+                  if (ci >= courses.length) return _buildLoadingFooter();
+                  final course = courses[ci];
                   return _CourseCard(
                     course: course,
                     onTap: () => _loadCourseFiles(course['code']),
+                    enrolled: hasEnrolledSection && ci < enrolledCount,
                   );
                 },
               ),
@@ -971,31 +1036,66 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       );
     }
 
+    // Desktop: use SliverList for mixed headers + grid
     return Column(
       children: [
         _buildCourseCountBar(courses.length),
         Expanded(
-          child: GridView.builder(
+          child: CustomScrollView(
             controller: _coursesScrollController,
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 360,
-              mainAxisExtent: 80,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
-            itemCount: itemCount,
-            itemBuilder: (context, index) {
-              if (index >= courses.length) {
-                return _buildLoadingFooter();
-              }
-              final course = courses[index];
-              return _CourseCard(
-                course: course,
-                onTap: () => _loadCourseFiles(course['code']),
-                compact: true,
-              );
-            },
+            slivers: [
+              if (hasEnrolledSection) ...[
+                SliverToBoxAdapter(child: sectionHeader('Your Courses', Icons.school)),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  sliver: SliverGrid(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final course = courses[index];
+                        return _CourseCard(
+                          course: course,
+                          onTap: () => _loadCourseFiles(course['code']),
+                          compact: true,
+                          enrolled: true,
+                        );
+                      },
+                      childCount: enrolledCount,
+                    ),
+                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 360,
+                      mainAxisExtent: 80,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(child: sectionHeader('All Courses', Icons.library_books)),
+              ],
+              SliverPadding(
+                padding: const EdgeInsets.all(16),
+                sliver: SliverGrid(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final ci = hasEnrolledSection ? enrolledCount + index : index;
+                      if (ci >= courses.length) return _buildLoadingFooter();
+                      final course = courses[ci];
+                      return _CourseCard(
+                        course: course,
+                        onTap: () => _loadCourseFiles(course['code']),
+                        compact: true,
+                      );
+                    },
+                    childCount: (courses.length - (hasEnrolledSection ? enrolledCount : 0)) + (_hasMoreCourses && _searchQuery.isEmpty ? 1 : 0),
+                  ),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 360,
+                    mainAxisExtent: 80,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -1117,11 +1217,13 @@ class _CourseCard extends StatelessWidget {
   final Map<String, dynamic> course;
   final VoidCallback onTap;
   final bool compact;
+  final bool enrolled;
 
   const _CourseCard({
     required this.course,
     required this.onTap,
     this.compact = false,
+    this.enrolled = false,
   });
 
   @override
@@ -1135,9 +1237,9 @@ class _CourseCard extends StatelessWidget {
     return Container(
       margin: compact ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
       decoration: BoxDecoration(
-        color: scheme.surface,
+        color: enrolled ? scheme.primaryContainer.withValues(alpha: 0.15) : scheme.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+        border: Border.all(color: enrolled ? scheme.primary.withValues(alpha: 0.4) : scheme.outlineVariant.withValues(alpha: 0.3)),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),

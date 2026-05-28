@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 
 class TestReporter {
   static final String _workerUrl = Platform.environment['TEST_LOGGER_URL'] ??
-      'https://test-logger.tabulr.workers.dev';
+      'https://test-logger.dalmia-aryan.workers.dev';
   static final String _apiKey =
       Platform.environment['TEST_LOGGER_API_KEY'] ?? '';
 

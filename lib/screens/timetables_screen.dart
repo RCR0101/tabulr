@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:url_launcher/url_launcher.dart';
 import '../utils/web_utils.dart' as web_utils;
 import '../models/timetable.dart';
+import '../models/timetable_stats.dart';
 import '../utils/page_transitions.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/empty_state.dart';
@@ -895,6 +896,41 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                         );
                                       }).toList(),
                                     ),
+                                  ],
+                                  if (courseCodes.isNotEmpty) ...[
+                                    const SizedBox(height: 6),
+                                    Builder(builder: (context) {
+                                      final stats = TimetableStats.fromTimetable(timetable);
+                                      return Row(
+                                        children: [
+                                          Icon(Icons.schedule, size: 13, color: scheme.onSurface.withValues(alpha: 0.4)),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              stats.summaryLine,
+                                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                                color: scheme.onSurface.withValues(alpha: 0.5),
+                                              ),
+                                            ),
+                                          ),
+                                          if (stats.hasExamClusters)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                              decoration: BoxDecoration(
+                                                color: scheme.error.withValues(alpha: 0.1),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                '${stats.worstClusterSize} exams clustered',
+                                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                                  color: scheme.error,
+                                                  fontSize: 10,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      );
+                                    }),
                                   ],
                                   const SizedBox(height: AppDesign.spacingSm),
                                   Row(

@@ -9,7 +9,7 @@ class PerformanceMonitor {
   factory PerformanceMonitor() => _instance;
   PerformanceMonitor._();
 
-  static const String _defaultWorkerUrl = 'https://test-logger.tabulr.workers.dev';
+  static const String _defaultWorkerUrl = 'https://test-logger.dalmia-aryan.workers.dev';
   static const int _flushThreshold = 50;
   static const Duration _flushInterval = Duration(seconds: 30);
 
