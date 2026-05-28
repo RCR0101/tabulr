@@ -52,6 +52,18 @@ class AcadDrivesService {
         .get();
   }
 
+  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> fetchCoursesByCodes(Set<String> codes) async {
+    if (codes.isEmpty) return [];
+    final results = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+    final codeList = codes.toList();
+    for (var i = 0; i < codeList.length; i += 30) {
+      final batch = codeList.sublist(i, i + 30 > codeList.length ? codeList.length : i + 30);
+      final snapshot = await _indexRef.where('code', whereIn: batch).get();
+      results.addAll(snapshot.docs);
+    }
+    return results;
+  }
+
   Future<void> submitDriveLink(Map<String, dynamic> data) {
     return _submissionsRef.add(data);
   }

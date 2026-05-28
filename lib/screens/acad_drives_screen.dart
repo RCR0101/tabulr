@@ -89,6 +89,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   final TextEditingController _searchController = TextEditingController();
   final AcadDrivesService _drivesService = AcadDrivesService();
   Set<String> _enrolledCourseCodes = {};
+  List<Map<String, dynamic>> _enrolledCourseEntries = [];
 
   // Submit form controllers
   final TextEditingController _driveLinkController = TextEditingController();
@@ -119,10 +120,32 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       final codes = <String>{};
       for (final tt in timetables) {
         for (final sel in tt.selectedSections) {
-          codes.add(sel.courseCode);
+          codes.add(sel.courseCode.trim());
         }
       }
-      if (mounted) setState(() => _enrolledCourseCodes = codes);
+      if (codes.isEmpty) return;
+
+      final docs = await _drivesService.fetchCoursesByCodes(codes);
+      final master = CoursesMasterService();
+      final entries = docs.map((doc) {
+        final data = doc.data();
+        final code = data['code'] ?? doc.id;
+        final title = master.getTitle(code);
+        return {
+          'code': code,
+          'name': title != code ? title : '',
+          'fileCount': data['fileCount'] ?? 0,
+          'driveCount': data['driveCount'] ?? 0,
+        };
+      }).toList();
+
+      final normalizedCodes = codes.map((c) => c.toUpperCase()).toSet();
+      if (mounted) {
+        setState(() {
+          _enrolledCourseCodes = normalizedCodes;
+          _enrolledCourseEntries = entries;
+        });
+      }
     } catch (_) {}
   }
 
@@ -276,7 +299,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   }
 
   bool _isEnrolledCourse(Map<String, dynamic> course) {
-    return _enrolledCourseCodes.contains(course['code']);
+    final code = (course['code'] ?? '').toString().trim().toUpperCase();
+    return _enrolledCourseCodes.contains(code);
   }
 
   List<Map<String, dynamic>> get _filteredCourses {
@@ -305,18 +329,17 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     }
 
     // Put enrolled courses first (only when not searching)
-    if (_searchQuery.isEmpty && _enrolledCourseCodes.isNotEmpty) {
-      final enrolled = result.where(_isEnrolledCourse).toList();
+    if (_searchQuery.isEmpty && _enrolledCourseEntries.isNotEmpty) {
       final rest = result.where((c) => !_isEnrolledCourse(c)).toList();
-      return [...enrolled, ...rest];
+      return [..._enrolledCourseEntries, ...rest];
     }
 
     return result;
   }
 
   int get _enrolledCourseCount {
-    if (_searchQuery.isNotEmpty || _enrolledCourseCodes.isEmpty) return 0;
-    return _filteredCourses.where(_isEnrolledCourse).length;
+    if (_searchQuery.isNotEmpty || _enrolledCourseEntries.isEmpty) return 0;
+    return _enrolledCourseEntries.length;
   }
 
   List<Map<String, dynamic>> get _filteredFiles {
