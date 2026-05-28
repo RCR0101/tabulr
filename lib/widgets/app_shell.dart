@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/data/auth_service.dart';
 import '../services/data/course_announcement_service.dart';
 import '../services/ui/responsive_service.dart';
-import '../services/ui/theme_service.dart' as theme_service;
 import '../services/ui/toast_service.dart';
-import '../services/data/user_settings_service.dart';
-import '../models/user_settings.dart' as user_settings;
 import '../screens/timetables_screen.dart';
 import '../screens/calendar_screen.dart';
 import '../screens/cgpa_calculator_screen.dart';
@@ -32,32 +29,35 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   late DrawerScreen _currentScreen;
   bool _sidebarCollapsed = false;
+  final Set<DrawerScreen> _visitedScreens = {};
+
+  static const _allScreens = DrawerScreen.values;
 
   @override
   void initState() {
     super.initState();
     _currentScreen = widget.initialScreen;
-    _syncThemeFromSettings();
+    _visitedScreens.add(_currentScreen);
   }
 
-  Future<void> _syncThemeFromSettings() async {
-    final settingsService = UserSettingsService();
-    await settingsService.initializeSettings();
-    final saved = settingsService.userSettings;
-    if (saved == null) return;
-
-    final themeService = theme_service.ThemeService();
-    await themeService.setTheme(saved.themeVariant);
-    final flutterMode = switch (saved.themeMode) {
-      user_settings.ThemeMode.light => ThemeMode.light,
-      user_settings.ThemeMode.dark => ThemeMode.dark,
-      user_settings.ThemeMode.system => ThemeMode.system,
-    };
-    await themeService.setThemeMode(flutterMode);
+  void _onScreenSelected(DrawerScreen screen) {
+    if (screen == _currentScreen) return;
+    setState(() {
+      _currentScreen = screen;
+      _visitedScreens.add(screen);
+    });
   }
 
-  Widget _buildScreen() {
-    return switch (_currentScreen) {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ToastService.init(context);
+    });
+  }
+
+  Widget _screenFor(DrawerScreen screen) {
+    return switch (screen) {
       DrawerScreen.timetables => const TimetablesScreen(),
       DrawerScreen.calendar => const CalendarScreen(),
       DrawerScreen.freeSlotFinder => const FreeSlotFinderScreen(),
@@ -69,17 +69,15 @@ class _AppShellState extends State<AppShell> {
     };
   }
 
-  void _onScreenSelected(DrawerScreen screen) {
-    if (screen == _currentScreen) return;
-    setState(() => _currentScreen = screen);
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ToastService.init(context);
-    });
+  Widget _buildIndexedStack() {
+    final currentIndex = _allScreens.indexOf(_currentScreen);
+    return IndexedStack(
+      index: currentIndex,
+      children: _allScreens.map((screen) {
+        if (!_visitedScreens.contains(screen)) return const SizedBox.shrink();
+        return _screenFor(screen);
+      }).toList(),
+    );
   }
 
   @override
@@ -98,16 +96,15 @@ class _AppShellState extends State<AppShell> {
                 ? null
                 : () => setState(() => _sidebarCollapsed = !_sidebarCollapsed),
           ),
-          Expanded(child: _buildScreen()),
+          Expanded(child: _buildIndexedStack()),
         ],
       );
     }
 
-    // Mobile: use drawer-based navigation
     return _MobileShell(
       currentScreen: _currentScreen,
       onScreenSelected: _onScreenSelected,
-      child: _buildScreen(),
+      child: _buildIndexedStack(),
     );
   }
 }

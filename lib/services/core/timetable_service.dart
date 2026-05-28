@@ -11,15 +11,24 @@ import 'course_catalog_service.dart';
 import '../ui/secure_logger.dart';
 
 class TimetableService {
+  static final TimetableService _instance = TimetableService._internal();
+  factory TimetableService() => _instance;
+  TimetableService._internal();
+
   static const String _storageKey = 'user_timetable_data';
   static const String _timetablesListKey = 'user_timetables_list';
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
   final CourseDataService _courseDataService = CourseDataService();
   final CourseCatalogService _allCourseService = CourseCatalogService();
+
+  List<Timetable>? _cachedTimetables;
+
+  void invalidateCache() => _cachedTimetables = null;
   
   // Save timetable using Firestore for authenticated users or local storage for guests
   Future<void> saveTimetable(Timetable timetable) async {
+    invalidateCache();
     final perfSw = Stopwatch()..start();
     try {
       // Update the timetable's updatedAt timestamp
@@ -330,6 +339,8 @@ class TimetableService {
 
   // Multiple timetables functionality
   Future<List<Timetable>> getAllTimetables() async {
+    if (_cachedTimetables != null) return _cachedTimetables!;
+
     final perfSw = Stopwatch()..start();
     try {
       List<Timetable> timetables = [];
@@ -355,6 +366,7 @@ class TimetableService {
         }
       }
 
+      _cachedTimetables = timetables;
       return timetables;
     } catch (e) {
       SecureLogger.error('TIMETABLE_SVC', 'Error getting all timetables: $e');
@@ -395,6 +407,7 @@ class TimetableService {
   }
 
   Future<Timetable> createNewTimetable(String name) async {
+    invalidateCache();
     final now = DateTime.now();
     final id = now.millisecondsSinceEpoch.toString();
     
@@ -525,6 +538,7 @@ class TimetableService {
   }
 
   Future<void> deleteTimetable(String id) async {
+    invalidateCache();
     try {
       if (_authService.isAuthenticated) {
         final success = await _firestoreService.deleteTimetableById(id);
@@ -550,6 +564,7 @@ class TimetableService {
   }
 
   Future<Timetable> duplicateTimetable(Timetable sourceTimetable, String newName) async {
+    invalidateCache();
     final now = DateTime.now();
     final newId = now.millisecondsSinceEpoch.toString();
     

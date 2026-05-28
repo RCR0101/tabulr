@@ -21,12 +21,13 @@ class UserSettingsService extends ChangeNotifier {
 
   UserSettings? _userSettings;
   bool _isLoading = false;
+  bool _initialized = false;
 
   UserSettings? get userSettings => _userSettings;
   bool get isLoading => _isLoading;
 
-  // Initialize user settings
-  Future<void> initializeSettings() async {
+  Future<void> initializeSettings({bool force = false}) async {
+    if (_initialized && !force) return;
     _isLoading = true;
     notifyListeners();
 
@@ -45,10 +46,10 @@ class UserSettingsService extends ChangeNotifier {
     }
 
     _isLoading = false;
+    _initialized = true;
     notifyListeners();
   }
 
-  // Load settings from Firestore
   Future<void> _loadFromFirestore() async {
     try {
       final userId = _authService.userDocId;
@@ -125,7 +126,7 @@ class UserSettingsService extends ChangeNotifier {
   Future<void> updateThemeMode(ThemeMode themeMode) async {
     // Ensure settings are initialized
     if (_userSettings == null) {
-      await initializeSettings();
+      await initializeSettings(force: true);
     }
     
     if (_userSettings == null) {
@@ -146,7 +147,7 @@ class UserSettingsService extends ChangeNotifier {
   Future<void> updateThemeVariant(theme_service.AppTheme themeVariant) async {
     // Ensure settings are initialized
     if (_userSettings == null) {
-      await initializeSettings();
+      await initializeSettings(force: true);
     }
     
     if (_userSettings == null) {
@@ -167,7 +168,7 @@ class UserSettingsService extends ChangeNotifier {
   Future<void> updateSortOrder(TimetableListSortOrder sortOrder) async {
     // Ensure settings are initialized
     if (_userSettings == null) {
-      await initializeSettings();
+      await initializeSettings(force: true);
     }
     
     if (_userSettings == null) {
@@ -188,7 +189,7 @@ class UserSettingsService extends ChangeNotifier {
   Future<void> updateCustomTimetableOrder(List<String> order) async {
     // Ensure settings are initialized
     if (_userSettings == null) {
-      await initializeSettings();
+      await initializeSettings(force: true);
     }
     
     if (_userSettings == null) return;
@@ -210,7 +211,7 @@ class UserSettingsService extends ChangeNotifier {
   Future<void> updateDontShowBottomDisclaimer(bool dontShow) async {
     // Ensure settings are initialized
     if (_userSettings == null) {
-      await initializeSettings();
+      await initializeSettings(force: true);
     }
     
     if (_userSettings == null) {
@@ -236,7 +237,7 @@ class UserSettingsService extends ChangeNotifier {
   Future<void> updateDontShowTopUpdated() async {
     // Ensure settings are initialized
     if (_userSettings == null) {
-      await initializeSettings();
+      await initializeSettings(force: true);
     }
     
     if (_userSettings == null) {
@@ -256,7 +257,7 @@ class UserSettingsService extends ChangeNotifier {
   // Reset top announcement setting (useful for testing)
   Future<void> resetTopAnnouncementSetting() async {
     if (_userSettings == null) {
-      await initializeSettings();
+      await initializeSettings(force: true);
     }
     
     if (_userSettings == null) {
@@ -276,7 +277,7 @@ class UserSettingsService extends ChangeNotifier {
   // Update scoring weights
   Future<void> updateScoringWeights(ScoringWeights weights) async {
     if (_userSettings == null) {
-      await initializeSettings();
+      await initializeSettings(force: true);
     }
     if (_userSettings == null) return;
 

@@ -122,18 +122,24 @@ class ExamSeatingService {
   ExamSeatingService._internal();
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  List<ExamSeating>? _cachedExams;
+
+  void invalidateCache() => _cachedExams = null;
 
   CollectionReference<Map<String, dynamic>> get _collectionRef =>
       CampusService.examSeatingRef(_firestore);
 
   Future<List<ExamSeating>> fetchAllExamSeating() async {
+    if (_cachedExams != null) return _cachedExams!;
+
     try {
       final querySnapshot = await _collectionRef.get();
 
-      return querySnapshot.docs
+      _cachedExams = querySnapshot.docs
           .map((doc) => ExamSeating.fromFirestore(doc))
           .where((exam) => exam.rooms.isNotEmpty)
           .toList();
+      return _cachedExams!;
     } catch (e) {
       SecureLogger.error('EXAM_SEATING', 'Error fetching exam seating', e);
       return [];

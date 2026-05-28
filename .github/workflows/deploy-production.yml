@@ -28,6 +28,7 @@ jobs:
       - run: flutter analyze
       - run: flutter test
       - run: flutter build web --release --pwa-strategy=none
+      - run: rm -f build/web/flutter_service_worker.js
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:

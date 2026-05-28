@@ -76,23 +76,22 @@
   <script>
     (async function() {
       try {
+        // Always unregister any leftover service workers
+        if ('serviceWorker' in navigator) {
+          var regs = await navigator.serviceWorker.getRegistrations();
+          for (var r of regs) await r.unregister();
+        }
+
+        // Check for version change and bust caches
         var resp = await fetch('version.json?t=' + Date.now());
         var data = await resp.json();
         var prev = localStorage.getItem('app_version');
-        var needsClear = false;
+
         if (prev && prev !== data.version) {
-          needsClear = true;
-        } else if (!prev && 'serviceWorker' in navigator) {
-          var regs = await navigator.serviceWorker.getRegistrations();
-          if (regs.length > 0) needsClear = true;
-        }
-        if (needsClear) {
-          var regs = await navigator.serviceWorker.getRegistrations();
-          for (var r of regs) await r.unregister();
           var keys = await caches.keys();
           for (var k of keys) await caches.delete(k);
           localStorage.setItem('app_version', data.version);
-          window.location.reload(true);
+          window.location.reload();
           return;
         }
         localStorage.setItem('app_version', data.version);
