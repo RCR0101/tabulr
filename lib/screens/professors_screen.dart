@@ -152,19 +152,24 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
     return ListenableBuilder(
       listenable: _professorService,
       builder: (context, _) {
+        Widget child;
         if (_professorService.isLoading) {
-          return _buildLoadingView();
+          child = _buildLoadingView();
+        } else if (_professorService.error != null) {
+          child = _buildErrorView();
+        } else if (_professorService.professors.isEmpty) {
+          child = _buildEmptyView();
+        } else {
+          child = _buildProfessorList();
         }
 
-        if (_professorService.error != null) {
-          return _buildErrorView();
-        }
-
-        if (_professorService.professors.isEmpty) {
-          return _buildEmptyView();
-        }
-
-        return _buildProfessorList();
+        return AnimatedSwitcher(
+          duration: AppDesign.animDurationNormal,
+          child: KeyedSubtree(
+            key: ValueKey(_professorService.isLoading ? 'loading' : 'content'),
+            child: child,
+          ),
+        );
       },
     );
   }
@@ -537,11 +542,11 @@ class _ProfessorDetailDialog extends StatelessWidget {
 
     return DefaultTabController(
       length: hasContact ? 2 : 1,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: ResponsiveService.isMobile(context) ? MediaQuery.of(context).size.width * 0.92 : 480,
+      child: AlertDialog(
+        insetPadding: EdgeInsets.symmetric(
+          horizontal: ResponsiveService.isMobile(context) ? 16 : (MediaQuery.of(context).size.width - 480) / 2,
+          vertical: 24,
         ),
-        child: AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
         contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
@@ -628,7 +633,6 @@ class _ProfessorDetailDialog extends StatelessWidget {
             child: const Text('Close'),
           ),
         ],
-      ),
       ),
     );
   }

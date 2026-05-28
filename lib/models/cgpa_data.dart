@@ -211,6 +211,8 @@ class CGPAData {
     return latest.values.toList();
   }
 
+  int get uniqueCourseCount => _deduplicatedCourses().length;
+
   double get effectiveTotalCredits {
     return _deduplicatedCourses().fold<double>(0.0, (sum, c) => sum + c.credits);
   }

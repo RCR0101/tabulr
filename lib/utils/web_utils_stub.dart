@@ -13,3 +13,5 @@ void clearLocalStorageItem(String key) {}
 void setLocalStorageItem(String key, String value) {}
 
 void usePathUrlStrategy() {}
+
+void downloadBlob(List<int> bytes, String filename) {}

@@ -2407,8 +2407,8 @@ class _InstructorAvoidanceDialogState extends State<_InstructorAvoidanceDialog> 
     return AlertDialog(
       title: const Text('Select Instructors to Avoid'),
       content: SizedBox(
-        width: 600,
-        height: 500,
+        width: ResponsiveService.isMobile(context) ? double.infinity : 600,
+        height: MediaQuery.of(context).size.height * 0.5,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2666,8 +2666,8 @@ class _InstructorRankingDialogState extends State<_InstructorRankingDialog>
     return AlertDialog(
       title: const Text('Rank Instructors by Preference'),
       content: SizedBox(
-        width: 650,
-        height: 550,
+        width: ResponsiveService.isMobile(context) ? double.infinity : 650,
+        height: MediaQuery.of(context).size.height * 0.5,
         child: Column(
           children: [
             Text(

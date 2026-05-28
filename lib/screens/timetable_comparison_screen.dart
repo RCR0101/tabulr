@@ -515,8 +515,8 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
             borderRadius: BorderRadius.circular(16),
           ),
           child: Container(
-            width: 500,
-            constraints: const BoxConstraints(maxHeight: 600),
+            width: ResponsiveService.isMobile(context) ? double.infinity : 500,
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

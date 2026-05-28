@@ -1265,13 +1265,9 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                       onTap: () => _showSemesterCreditsDetails(),
                       child: _buildSummaryCard(
                         'Credits',
-                        _cgpaData.semesters.values
-                            .fold<double>(
-                              0.0,
-                              (sum, sem) => sum + sem.totalCredits,
-                            )
-                            .toStringAsFixed(0),
+                        _cgpaData.effectiveTotalCredits.toStringAsFixed(0),
                         Icons.school_rounded,
+                        subtitle: '${_cgpaData.uniqueCourseCount} courses',
                       ),
                     ),
                   ),
@@ -1304,13 +1300,9 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                       onTap: () => _showSemesterCreditsDetails(),
                       child: _buildSummaryCard(
                         'Total Credits',
-                        _cgpaData.semesters.values
-                            .fold<double>(
-                              0.0,
-                              (sum, sem) => sum + sem.totalCredits,
-                            )
-                            .toStringAsFixed(0),
+                        _cgpaData.effectiveTotalCredits.toStringAsFixed(0),
                         Icons.school_rounded,
+                        subtitle: '${_cgpaData.uniqueCourseCount} courses',
                       ),
                     ),
                   ),
@@ -1332,6 +1324,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     String value,
     IconData icon, {
     bool isPrimary = false,
+    String? subtitle,
   }) {
     final isMobile = ResponsiveService.isMobile(context);
 
@@ -1404,6 +1397,20 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 1),
+            Text(
+              subtitle,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontSize: isMobile ? 9 : 10,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
+                fontWeight: FontWeight.w400,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ],
       ),
     );
@@ -2354,7 +2361,7 @@ class _CourseSelectionDialogState extends State<_CourseSelectionDialog> {
       child: Container(
         width: isMobile ? double.infinity : 600,
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.8,
+          maxHeight: MediaQuery.of(context).size.height * 0.7,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

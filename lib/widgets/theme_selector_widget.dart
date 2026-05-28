@@ -267,8 +267,8 @@ class ThemeSelectorDialog extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Container(
-        width: 500,
-        height: 600,
+        width: ResponsiveService.isMobile(context) ? double.infinity : 500,
+        height: MediaQuery.of(context).size.height * 0.7,
         padding: const EdgeInsets.only(top: 8),
         child: Column(
           children: [

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'secure_logger.dart';
 
 class PerformanceMonitor {
   static final PerformanceMonitor _instance = PerformanceMonitor._();
@@ -77,7 +78,7 @@ class PerformanceMonitor {
         }),
       );
     } catch (e) {
-      debugPrint('[PerformanceMonitor] Flush failed: $e');
+      SecureLogger.error('PerformanceMonitor', 'Flush failed', e);
     }
   }
 

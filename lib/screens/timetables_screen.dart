@@ -792,8 +792,20 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                         }
                         totalCredits += timetable.projectCount * 3;
                         final scheme = Theme.of(context).colorScheme;
-                        return Card(
+                        final delay = (index * 60).clamp(0, 300);
+                        return TweenAnimationBuilder<double>(
                           key: ValueKey(timetable.id),
+                          tween: Tween(begin: 0.0, end: 1.0),
+                          duration: Duration(milliseconds: 300 + delay),
+                          curve: AppDesign.animCurve,
+                          builder: (context, value, child) => Opacity(
+                            opacity: value,
+                            child: Transform.translate(
+                              offset: Offset(0, 12 * (1 - value)),
+                              child: child,
+                            ),
+                          ),
+                          child: Card(
                           margin: const EdgeInsets.only(bottom: 12),
                           child: InkWell(
                             borderRadius: AppDesign.borderRadiusMd,
@@ -906,6 +918,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                               ),
                             ),
                           ),
+                        ),
                         );
                       },
                     ),

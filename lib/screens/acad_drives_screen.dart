@@ -1,7 +1,10 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../utils/web_utils.dart' as web_utils;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
+import 'package:archive/archive.dart';
 import '../services/data/acad_drives_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
@@ -356,6 +359,126 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       }
     }
     }
+
+  bool _isDownloading = false;
+
+  Future<void> _downloadAsZip(String zipName, _FolderTree folderTree) async {
+    if (!kIsWeb) {
+      ToastService.showError('Mass download is only available on web');
+      return;
+    }
+    if (_isDownloading) return;
+
+    final allFiles = folderTree.collectAllFiles();
+    final downloadable = allFiles.where((f) {
+      final url = f.file['url'];
+      return url != null && url != 'NA' && url.toString().trim().isNotEmpty;
+    }).toList();
+
+    if (downloadable.isEmpty) {
+      ToastService.showError('No downloadable files found');
+      return;
+    }
+
+    _isDownloading = true;
+    final total = downloadable.length;
+    final progressNotifier = ValueNotifier<String>('Preparing $total files...');
+    final progressValue = ValueNotifier<double>(0);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              ValueListenableBuilder<double>(
+                valueListenable: progressValue,
+                builder: (_, value, __) => LinearProgressIndicator(
+                  value: value > 0 ? value : null,
+                  minHeight: 6,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ValueListenableBuilder<String>(
+                valueListenable: progressNotifier,
+                builder: (_, text, __) => Text(
+                  text,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(ctx).textTheme.bodyMedium,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final archive = Archive();
+      int fetched = 0;
+      int failed = 0;
+
+      for (final entry in downloadable) {
+        try {
+          final response = await http.get(Uri.parse(entry.file['url']));
+          if (response.statusCode == 200) {
+            archive.addFile(ArchiveFile(
+              entry.path,
+              response.bodyBytes.length,
+              response.bodyBytes,
+            ));
+            fetched++;
+          } else {
+            failed++;
+          }
+        } catch (_) {
+          failed++;
+        }
+        progressValue.value = (fetched + failed) / total;
+        progressNotifier.value = 'Downloading ${fetched + failed}/$total files...';
+      }
+
+      if (fetched == 0) {
+        if (mounted) Navigator.of(context).pop();
+        ToastService.showError('Failed to download any files');
+        return;
+      }
+
+      progressNotifier.value = 'Creating zip...';
+      progressValue.value = 0;
+
+      await Future.delayed(const Duration(milliseconds: 50));
+
+      final zipBytes = ZipEncoder().encode(archive);
+      if (mounted) Navigator.of(context).pop();
+
+      if (zipBytes == null) {
+        ToastService.showError('Failed to create zip file');
+        return;
+      }
+
+      final sanitized = zipName.replaceAll(RegExp(r'[^\w\s\-.]'), '_');
+      web_utils.downloadBlob(Uint8List.fromList(zipBytes), '$sanitized.zip');
+
+      ToastService.showSuccess(
+        failed > 0
+            ? 'Downloaded $fetched files ($failed failed)'
+            : 'Downloaded $fetched files',
+      );
+    } catch (e) {
+      if (mounted) Navigator.of(context).pop();
+      ToastService.showError('Download failed: $e');
+    } finally {
+      _isDownloading = false;
+      progressNotifier.dispose();
+      progressValue.dispose();
+    }
+  }
 
   Future<void> _showFileInfo(Map<String, dynamic> file) async {
     return AppDialog.adaptive(
@@ -777,9 +900,15 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
           // Content
           Expanded(
-            child: _selectedCourse == null
-                ? _buildCoursesView()
-                : _buildFilesView(),
+            child: AnimatedSwitcher(
+              duration: AppDesign.animDurationNormal,
+              child: KeyedSubtree(
+                key: ValueKey(_selectedCourse ?? '_courses'),
+                child: _selectedCourse == null
+                    ? _buildCoursesView()
+                    : _buildFilesView(),
+              ),
+            ),
           ),
         ],
       ),
@@ -976,6 +1105,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
             onShowFileInfo: (file) => _showFileInfo(file),
             formatFileSize: _formatFileSize,
             formatDate: _formatDate,
+            onDownloadZip: _downloadAsZip,
           );
         },
       ),
@@ -1217,6 +1347,19 @@ class _FolderTree {
     }
     return count;
   }
+
+  List<({String path, Map<String, dynamic> file})> collectAllFiles([String prefix = '']) {
+    final result = <({String path, Map<String, dynamic> file})>[];
+    for (final file in files) {
+      final name = file['name'] ?? 'unknown';
+      result.add((path: prefix.isEmpty ? name : '$prefix/$name', file: file));
+    }
+    for (final entry in subfolders.entries) {
+      final subPrefix = prefix.isEmpty ? entry.key : '$prefix/${entry.key}';
+      result.addAll(entry.value.collectAllFiles(subPrefix));
+    }
+    return result;
+  }
 }
 
 // Hierarchical Drive Section Widget
@@ -1228,6 +1371,7 @@ class _DriveHierarchySection extends StatefulWidget {
   final Function(Map<String, dynamic>) onShowFileInfo;
   final String Function(int) formatFileSize;
   final String Function(dynamic) formatDate;
+  final Future<void> Function(String zipName, _FolderTree folderTree) onDownloadZip;
 
   const _DriveHierarchySection({
     required this.driveName,
@@ -1237,6 +1381,7 @@ class _DriveHierarchySection extends StatefulWidget {
     required this.onShowFileInfo,
     required this.formatFileSize,
     required this.formatDate,
+    required this.onDownloadZip,
   });
 
   @override
@@ -1303,6 +1448,14 @@ class _DriveHierarchySectionState extends State<_DriveHierarchySection> {
                       ],
                     ),
                   ),
+                  if (kIsWeb)
+                    IconButton(
+                      onPressed: () => widget.onDownloadZip(widget.driveName, widget.folderTree),
+                      icon: Icon(Icons.download_rounded, size: 18),
+                      tooltip: 'Download all files as zip',
+                      visualDensity: VisualDensity.compact,
+                      color: scheme.onSurface.withValues(alpha: 0.5),
+                    ),
                   Icon(
                     _isExpanded ? Icons.expand_less : Icons.expand_more,
                     color: scheme.onSurface.withValues(alpha: 0.4),
@@ -1313,17 +1466,28 @@ class _DriveHierarchySectionState extends State<_DriveHierarchySection> {
             ),
           ),
 
-          if (_isExpanded) ...[
-            Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.3)),
-            _FolderNode(
-              folderTree: widget.folderTree,
-              level: 0,
-              onOpenFile: widget.onOpenFile,
-              onShowFileInfo: widget.onShowFileInfo,
-              formatFileSize: widget.formatFileSize,
-              formatDate: widget.formatDate,
-              ),
-          ],
+          AnimatedCrossFade(
+            duration: AppDesign.animDurationNormal,
+            sizeCurve: AppDesign.animCurve,
+            crossFadeState: _isExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            firstChild: const SizedBox.shrink(),
+            secondChild: Column(
+              children: [
+                Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.3)),
+                _FolderNode(
+                  folderTree: widget.folderTree,
+                  level: 0,
+                  onOpenFile: widget.onOpenFile,
+                  onShowFileInfo: widget.onShowFileInfo,
+                  formatFileSize: widget.formatFileSize,
+                  formatDate: widget.formatDate,
+                  onDownloadZip: widget.onDownloadZip,
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1339,6 +1503,7 @@ class _FolderNode extends StatefulWidget {
   final Function(Map<String, dynamic>) onShowFileInfo;
   final String Function(int) formatFileSize;
   final String Function(dynamic) formatDate;
+  final Future<void> Function(String zipName, _FolderTree folderTree) onDownloadZip;
 
   const _FolderNode({
     required this.folderTree,
@@ -1348,6 +1513,7 @@ class _FolderNode extends StatefulWidget {
     required this.onShowFileInfo,
     required this.formatFileSize,
     required this.formatDate,
+    required this.onDownloadZip,
   });
 
   @override
@@ -1409,7 +1575,17 @@ class _FolderNodeState extends State<_FolderNode> {
                           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      if (kIsWeb)
+                        IconButton(
+                          onPressed: () => widget.onDownloadZip(folderName, subfolder),
+                          icon: Icon(Icons.download_rounded, size: 16),
+                          tooltip: 'Download folder as zip',
+                          visualDensity: VisualDensity.compact,
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          padding: EdgeInsets.zero,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
+                        ),
+                      const SizedBox(width: 4),
                       Icon(
                         isExpanded ? Icons.expand_less : Icons.expand_more,
                         color: _getFolderIconColor(context, widget.level),
@@ -1421,8 +1597,14 @@ class _FolderNodeState extends State<_FolderNode> {
               ),
               
               // Folder Contents (Recursive)
-              if (isExpanded) ...[
-                _FolderNode(
+              AnimatedCrossFade(
+                duration: AppDesign.animDurationNormal,
+                sizeCurve: AppDesign.animCurve,
+                crossFadeState: isExpanded
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                firstChild: const SizedBox.shrink(),
+                secondChild: _FolderNode(
                   folderTree: subfolder,
                   level: widget.level + 1,
                   folderName: folderName,
@@ -1430,8 +1612,9 @@ class _FolderNodeState extends State<_FolderNode> {
                   onShowFileInfo: widget.onShowFileInfo,
                   formatFileSize: widget.formatFileSize,
                   formatDate: widget.formatDate,
-                      ),
-              ],
+                  onDownloadZip: widget.onDownloadZip,
+                ),
+              ),
             ],
           );
         }),

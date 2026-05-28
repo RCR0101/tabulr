@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import '../ui/secure_logger.dart';
 
 enum ProfessorSortType {
   nameAsc,
@@ -306,14 +307,10 @@ class ProfessorService extends ChangeNotifier {
 
       _applyFilters();
       
-      if (kDebugMode) {
-        print('ProfessorService: Loaded ${_professors.length} professors');
-      }
+      SecureLogger.info('ProfessorService', 'Loaded ${_professors.length} professors');
     } catch (e) {
       _error = 'Failed to load professors: ${e.toString()}';
-      if (kDebugMode) {
-        print('ProfessorService error: $_error');
-      }
+      SecureLogger.error('ProfessorService', _error!);
     } finally {
       _isLoading = false;
       notifyListeners();

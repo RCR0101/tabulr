@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../services/ui/responsive_service.dart';
+import '../utils/design_constants.dart';
 
 class SearchFilterWidget extends StatefulWidget {
   final Function(String query, Map<String, dynamic> filters) onSearchChanged;
@@ -61,7 +62,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
     final isMobile = ResponsiveService.isMobile(context);
     return ConstrainedBox(
       constraints: BoxConstraints(
-        maxHeight: isMobile && _showAdvancedFilters ? 320 : double.infinity,
+        maxHeight: isMobile && _showAdvancedFilters ? MediaQuery.of(context).size.height * 0.4 : double.infinity,
       ),
       child: SingleChildScrollView(
       child: Container(
@@ -207,7 +208,16 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
               ],
             ),
             ),
-            if (_showAdvancedFilters) ...[
+            AnimatedCrossFade(
+              duration: AppDesign.animDurationNormal,
+              crossFadeState: _showAdvancedFilters
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              firstChild: const SizedBox.shrink(),
+              sizeCurve: AppDesign.animCurve,
+              secondChild: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
               const SizedBox(height: 16),
               const Text(
                 'Advanced Filters',
@@ -484,7 +494,9 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                   );
                 }).toList(),
               ),
-            ],
+                ],
+              ),
+            ),
         ],
       ),
     ),
