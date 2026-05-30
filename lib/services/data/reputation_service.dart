@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../../models/user_reputation.dart';
 import 'auth_service.dart';
 
@@ -9,11 +10,10 @@ class ReputationService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AuthService _authService = AuthService();
+  final FirebaseFunctions _functions =
+      FirebaseFunctions.instanceFor(region: 'asia-south1');
 
   static const String _collection = 'reputation';
-  static const int _scoreFloor = -20;
-  static const int _suspensionDays = 7;
-  static const int _maxEvents = 50;
 
   DocumentReference<Map<String, dynamic>> _docRef(String uid) =>
       _firestore.collection(_collection).doc(uid);
@@ -50,53 +50,18 @@ class ReputationService {
     required String description,
     String? announcementId,
   }) async {
-    final ref = _docRef(uid);
-
-    await _firestore.runTransaction((tx) async {
-      final snap = await tx.get(ref);
-      final rep = snap.exists
-          ? UserReputation.fromFirestore(snap)
-          : UserReputation.empty(uid);
-
-      if (rep.isSuspended) return;
-
-      var newScore = rep.score + points;
-
-      DateTime? suspendedUntil = rep.suspendedUntil;
-      if (newScore <= _scoreFloor) {
-        newScore = 0;
-        suspendedUntil = DateTime.now().add(const Duration(days: _suspensionDays));
-      }
-
-      final event = ReputationEvent(
-        type: type,
-        points: points,
-        timestamp: DateTime.now(),
-        announcementId: announcementId,
-        description: description,
-      );
-
-      final events = [event, ...rep.events];
-      if (events.length > _maxEvents) {
-        events.removeRange(_maxEvents, events.length);
-      }
-
-      final updated = UserReputation(
-        uid: uid,
-        score: newScore,
-        lastActive: DateTime.now(),
-        suspendedUntil: suspendedUntil,
-        events: events,
-      );
-
-      tx.set(ref, updated.toFirestore());
+    await _functions.httpsCallable('addReputationEvent').call({
+      'targetUid': uid,
+      'type': type,
+      'points': points,
+      'description': description,
+      'announcementId': announcementId,
     });
   }
 
   Future<void> touchActivity(String uid) async {
-    await _docRef(uid).set(
-      {'lastActive': FieldValue.serverTimestamp()},
-      SetOptions(merge: true),
-    );
+    await _functions.httpsCallable('touchReputationActivity').call({
+      'targetUid': uid,
+    });
   }
 }

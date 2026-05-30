@@ -1,4 +1,21 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "course_announcements",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "courseCode", "order": "ASCENDING" },
+        { "fieldPath": "eventDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "acad_drives_files",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "course_codes", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "uploadedAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }

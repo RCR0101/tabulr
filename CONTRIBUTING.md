@@ -45,7 +45,7 @@ lib/
 - Services must not call `showDialog` or own UI — return data and let the caller handle presentation.
 - Services under `data/` and `core/` should import `foundation.dart` not `material.dart` when they only need `ChangeNotifier`.
 - `home_screen.dart` has **two** state classes — mirror changes in both.
-- Firestore query changes may need a composite index; check `FIREBASE_INDEXES.md`.
+- Firestore query changes may need a composite index; check `firestore.indexes.json`.
 
 ### Style
 
