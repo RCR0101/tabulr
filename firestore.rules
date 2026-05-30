@@ -44,42 +44,33 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
-    // Announcements
+    // Announcements — reads by BITS users; create/delete by author; updates only via Cloud Functions
     match /announcements/{announcementId} {
       allow read: if isBitsEmail();
       allow create: if isBitsEmail()
         && request.resource.data.authorUid == userDocId();
       allow delete: if isBitsEmail()
         && resource.data.authorUid == userDocId();
-      allow update: if isBitsEmail()
-        && request.resource.data.authorUid == resource.data.authorUid
-        && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['upvotes', 'downvotes', 'totalFlagWeight', 'topFlagReason',
-                      'topFlagCounterSource', 'disputeState', 'correctionText',
-                      'correctionSource', 'confirmWeight', 'denyWeight',
-                      'confirmCount', 'denyCount', 'verificationState']);
+      allow update: if false;
 
       match /votes/{visitorUid} {
         allow read: if isBitsEmail();
-        allow write: if isBitsEmail() && visitorUid == userDocId();
+        allow write: if false;
       }
       match /flags/{flagUid} {
         allow read: if isBitsEmail();
-        allow write: if isBitsEmail() && flagUid == userDocId();
+        allow write: if false;
       }
       match /verifications/{verifUid} {
         allow read: if isBitsEmail();
-        allow write: if isBitsEmail() && verifUid == userDocId();
+        allow write: if false;
       }
     }
 
-    // Reputation
+    // Reputation — reads by BITS users; writes only via Cloud Functions (Admin SDK)
     match /reputation/{uid} {
       allow read: if isBitsEmail();
-      allow create: if isBitsEmail();
-      allow update: if isBitsEmail()
-        && request.resource.data.diff(resource.data).affectedKeys()
-           .hasOnly(['score', 'lastActive', 'events', 'suspendedUntil']);
+      allow write: if false;
     }
 
     // Academic drives — three top-level collections
