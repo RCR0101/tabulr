@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import '../../models/cgpa_data.dart';
 import 'auth_service.dart';
@@ -52,11 +53,23 @@ class CGPAService {
 
   static const String _workerUrl = 'https://cgpa-encryption.dalmia-aryan.workers.dev';
 
-  Future<String> _encryptData(String data, String userId) async {
+  Future<String> _getIdToken() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception('Not authenticated');
+    final token = await user.getIdToken();
+    if (token == null) throw Exception('Failed to get ID token');
+    return token;
+  }
+
+  Future<String> _encryptData(String data) async {
+    final token = await _getIdToken();
     final response = await http.post(
       Uri.parse(_workerUrl),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'action': 'encrypt', 'data': data, 'userId': userId}),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'action': 'encrypt', 'data': data}),
     );
     if (response.statusCode != 200) {
       throw Exception('Encryption failed: ${response.statusCode}');
@@ -64,11 +77,15 @@ class CGPAService {
     return (jsonDecode(response.body) as Map<String, dynamic>)['result'] as String;
   }
 
-  Future<String> _decryptData(String encryptedData, String userId) async {
+  Future<String> _decryptData(String encryptedData) async {
+    final token = await _getIdToken();
     final response = await http.post(
       Uri.parse(_workerUrl),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'action': 'decrypt', 'data': encryptedData, 'userId': userId}),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'action': 'decrypt', 'data': encryptedData}),
     );
     if (response.statusCode != 200) {
       throw Exception('Decryption failed: ${response.statusCode}');
@@ -92,7 +109,7 @@ class CGPAService {
       final jsonData = jsonEncode(semesterData.toJson());
 
       // Encrypt the data
-      final encryptedData = await _encryptData(jsonData, _authService.userDocId!);
+      final encryptedData = await _encryptData(jsonData);
 
       // Save to Firestore
       final docRef = _firestore
@@ -128,7 +145,7 @@ class CGPAService {
 
       for (final entry in semesters.entries) {
         final jsonData = jsonEncode(entry.value.toJson());
-        final encryptedData = await _encryptData(jsonData, _authService.userDocId!);
+        final encryptedData = await _encryptData(jsonData);
         batch.set(colRef.doc(entry.key), {
           'encryptedData': encryptedData,
           'encryptionVersion': 2,
@@ -175,7 +192,6 @@ class CGPAService {
       // Decrypt the data
       final decryptedData = await _decryptData(
         data['encryptedData'] as String,
-        _authService.userDocId!,
       );
 
       // Parse JSON
@@ -216,7 +232,6 @@ class CGPAService {
           if (data.containsKey('encryptedData')) {
             final decryptedData = await _decryptData(
               data['encryptedData'] as String,
-              _authService.userDocId!,
             );
             final jsonData = jsonDecode(decryptedData) as Map<String, dynamic>;
             final semesterData = SemesterData.fromJson(jsonData);
