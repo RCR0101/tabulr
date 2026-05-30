@@ -531,3 +531,9 @@ exports.acceptCorrection = onCall({ region: REGION }, async (request) => {
 
   return { success: true };
 });
+
+// ─── Admin functions (Node.js — checkAdmin, professors) ───
+// uploadTimetable and uploadExamSeating are in functions-python/
+const adminFunctions = require("./admin");
+exports.checkAdminStatus = adminFunctions.checkAdminStatus;
+exports.rebuildProfessorSchedules = adminFunctions.rebuildProfessorSchedules;

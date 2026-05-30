@@ -1,0 +1,827 @@
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import '../services/data/admin_service.dart';
+import '../services/ui/responsive_service.dart';
+import '../services/ui/toast_service.dart';
+import '../utils/design_constants.dart';
+import '../widgets/common/app_button.dart';
+
+class AdminScreen extends StatefulWidget {
+  const AdminScreen({super.key});
+
+  @override
+  State<AdminScreen> createState() => _AdminScreenState();
+}
+
+class _AdminScreenState extends State<AdminScreen> {
+  final AdminService _adminService = AdminService();
+
+  static const _campuses = ['hyderabad', 'pilani', 'goa'];
+  static const _campusLabels = {
+    'hyderabad': 'Hyderabad',
+    'pilani': 'Pilani',
+    'goa': 'Goa',
+  };
+
+  final Map<String, PlatformFile?> _timetableFiles = {};
+  PlatformFile? _examFile;
+  PlatformFile? _profsFile;
+
+  final Map<String, List<TextEditingController>> _timetableHeaders = {
+    for (final c in _campuses) c: [TextEditingController()],
+  };
+  final List<TextEditingController> _examHeaders = [TextEditingController()];
+  final Map<String, TextEditingController> _pageFromControllers = {
+    for (final c in _campuses) c: TextEditingController(),
+  };
+  final Map<String, TextEditingController> _pageToControllers = {
+    for (final c in _campuses) c: TextEditingController(),
+  };
+  final TextEditingController _examYearController =
+      TextEditingController(text: '2026');
+
+  bool _uploadingTimetable = false;
+  bool _uploadingExam = false;
+  bool _rebuildingProfs = false;
+
+  String? _timetableResult;
+  String? _timetableProgress;
+  String? _examResult;
+  String? _examProgress;
+  String? _profsResult;
+  String? _profsProgress;
+
+  @override
+  void dispose() {
+    for (final list in _timetableHeaders.values) {
+      for (final c in list) {
+        c.dispose();
+      }
+    }
+    for (final c in _examHeaders) {
+      c.dispose();
+    }
+    for (final c in _pageFromControllers.values) {
+      c.dispose();
+    }
+    for (final c in _pageToControllers.values) {
+      c.dispose();
+    }
+    _examYearController.dispose();
+    super.dispose();
+  }
+
+  List<String> _getHeaders(List<TextEditingController> controllers) {
+    return controllers
+        .map((c) => c.text.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+  }
+
+  Future<void> _pickFile({
+    required List<String> extensions,
+    required ValueChanged<PlatformFile> onPicked,
+  }) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: extensions,
+      withData: true,
+    );
+    if (result != null && result.files.isNotEmpty) {
+      onPicked(result.files.first);
+    }
+  }
+
+  Future<void> _uploadTimetables() async {
+    final toUpload = <String, PlatformFile>{};
+    for (final campus in _campuses) {
+      final file = _timetableFiles[campus];
+      if (file != null && file.bytes != null) toUpload[campus] = file;
+    }
+    if (toUpload.isEmpty) return;
+
+    setState(() {
+      _uploadingTimetable = true;
+      _timetableResult = null;
+      _timetableProgress = null;
+    });
+
+    final results = <String>[];
+    final total = toUpload.length;
+    var done = 0;
+    try {
+      for (final entry in toUpload.entries) {
+        final campus = entry.key;
+        final label = _campusLabels[campus]!;
+        setState(() => _timetableProgress =
+            'Uploading $label (${ done + 1}/$total)...');
+        final from = int.tryParse(_pageFromControllers[campus]!.text.trim());
+        final to = int.tryParse(_pageToControllers[campus]!.text.trim());
+        final year = int.tryParse(_examYearController.text.trim()) ?? 2026;
+        final count = await _adminService.uploadTimetable(
+          campusCode: campus,
+          fileBytes: entry.value.bytes!,
+          fileName: entry.value.name,
+          excludeHeaders: _getHeaders(_timetableHeaders[campus]!),
+          pageRange: (from != null && to != null) ? [from, to] : null,
+          examYear: year,
+        );
+        done++;
+        results.add('$label: $count courses');
+        setState(() => _timetableProgress =
+            '${results.join(' | ')}${done < total ? ' | Processing...' : ''}');
+      }
+      setState(() {
+        _timetableResult = results.join('\n');
+        _timetableProgress = null;
+      });
+      ToastService.showSuccess('Timetable upload complete');
+    } catch (e) {
+      setState(() {
+        _timetableResult = 'Error: $e';
+        _timetableProgress = null;
+      });
+      ToastService.showError('Upload failed');
+    } finally {
+      setState(() => _uploadingTimetable = false);
+    }
+  }
+
+  Future<void> _uploadExamSeating() async {
+    if (_examFile == null || _examFile!.bytes == null) return;
+    setState(() {
+      _uploadingExam = true;
+      _examResult = null;
+      _examProgress = 'Uploading PDF...';
+    });
+    try {
+      setState(() => _examProgress = 'Processing exam seating...');
+      final count = await _adminService.uploadExamSeating(
+        campusCode: 'hyderabad',
+        fileBytes: _examFile!.bytes!,
+        fileName: _examFile!.name,
+        excludeHeaders: _getHeaders(_examHeaders),
+      );
+      setState(() {
+        _examResult = 'Uploaded $count exams';
+        _examProgress = null;
+      });
+      ToastService.showSuccess('Uploaded $count exams');
+    } catch (e) {
+      setState(() {
+        _examResult = 'Error: $e';
+        _examProgress = null;
+      });
+      ToastService.showError('Upload failed');
+    } finally {
+      setState(() => _uploadingExam = false);
+    }
+  }
+
+  Future<void> _rebuildProfessors() async {
+    setState(() {
+      _rebuildingProfs = true;
+      _profsResult = null;
+      _profsProgress = 'Rebuilding professor schedules...';
+    });
+    try {
+      final result = await _adminService.rebuildProfessorSchedules(
+        profsJsonBytes: _profsFile?.bytes,
+      );
+      final total = result['professorsUpdated'] ?? 0;
+      final matched = result['withSchedule'] ?? 0;
+      setState(() {
+        _profsResult = 'Updated $total professors ($matched matched)';
+        _profsProgress = null;
+      });
+      ToastService.showSuccess('Updated $total professors');
+    } catch (e) {
+      setState(() {
+        _profsResult = 'Error: $e';
+        _profsProgress = null;
+      });
+      ToastService.showError('Rebuild failed');
+    } finally {
+      setState(() => _rebuildingProfs = false);
+    }
+  }
+
+  bool get _hasTimetableFiles =>
+      _timetableFiles.values.any((f) => f != null);
+
+  Widget _buildSection({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppDesign.spacingMd),
+      decoration: AppDesign.cardDecoration(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(AppDesign.spacingMd),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: scheme.outline.withValues(alpha: AppDesign.opacityDivider),
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppDesign.spacingSm),
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.1),
+                    borderRadius: AppDesign.borderRadiusSm,
+                  ),
+                  child: Icon(icon, size: 20, color: scheme.primary),
+                ),
+                const SizedBox(width: AppDesign.spacingSm + 4),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: scheme.onSurface),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(AppDesign.spacingMd),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilePicker({
+    required String label,
+    required PlatformFile? file,
+    required List<String> extensions,
+    required ValueChanged<PlatformFile?> onChanged,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppDesign.spacingSm),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppDesign.spacingSm + 4, vertical: AppDesign.spacingSm),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        borderRadius: AppDesign.borderRadiusSm,
+        border: Border.all(
+          color: file != null
+              ? scheme.primary.withValues(alpha: 0.3)
+              : scheme.outline.withValues(alpha: 0.15),
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: scheme.onSurface.withValues(alpha: AppDesign.opacityHigh),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppDesign.spacingSm),
+          Expanded(
+            child: InkWell(
+              onTap: () => _pickFile(
+                extensions: extensions,
+                onPicked: (f) => onChanged(f),
+              ),
+              borderRadius: AppDesign.borderRadiusSm,
+              child: Row(
+                children: [
+                  Icon(
+                    file != null
+                        ? Icons.check_circle_rounded
+                        : Icons.upload_file_rounded,
+                    size: 18,
+                    color: file != null
+                        ? scheme.primary
+                        : scheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
+                  ),
+                  const SizedBox(width: AppDesign.spacingSm),
+                  Expanded(
+                    child: Text(
+                      file?.name ?? 'No file selected',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: file != null
+                            ? scheme.onSurface
+                            : scheme.onSurface.withValues(alpha: AppDesign.opacityLow),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (file != null)
+            IconButton(
+              icon: Icon(Icons.close_rounded,
+                  size: 16,
+                  color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium)),
+              onPressed: () => onChanged(null),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+              splashRadius: 14,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExamYearField() {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppDesign.spacingSm + 4),
+      child: Row(
+        children: [
+          Text(
+            'Exam year',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: scheme.onSurface.withValues(alpha: AppDesign.opacityHigh),
+            ),
+          ),
+          const SizedBox(width: AppDesign.spacingSm + 4),
+          SizedBox(
+            width: 80,
+            child: TextField(
+              controller: _examYearController,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(fontSize: 13),
+              decoration: InputDecoration(
+                hintText: '2026',
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppDesign.spacingSm + 4,
+                  vertical: AppDesign.spacingSm + 2,
+                ),
+                filled: true,
+                fillColor:
+                    scheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                border: OutlineInputBorder(
+                  borderRadius: AppDesign.borderRadiusSm,
+                  borderSide:
+                      BorderSide(color: scheme.outline.withValues(alpha: 0.15)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: AppDesign.borderRadiusSm,
+                  borderSide:
+                      BorderSide(color: scheme.outline.withValues(alpha: 0.15)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: AppDesign.borderRadiusSm,
+                  borderSide: BorderSide(color: scheme.primary, width: 1.5),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppDesign.spacingSm),
+          Text(
+            '(for exam dates without year)',
+            style: TextStyle(
+              fontSize: 11,
+              color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCampusSubheading(String campus) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(
+          top: AppDesign.spacingSm, bottom: AppDesign.spacingXs),
+      child: Text(
+        _campusLabels[campus]!,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: scheme.primary,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPageRange(String campus) {
+    final scheme = Theme.of(context).colorScheme;
+    InputDecoration inputDeco(String hint) => InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(
+            fontSize: 12,
+            color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow),
+          ),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppDesign.spacingSm + 4,
+            vertical: AppDesign.spacingSm + 2,
+          ),
+          filled: true,
+          fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
+          border: OutlineInputBorder(
+            borderRadius: AppDesign.borderRadiusSm,
+            borderSide: BorderSide(color: scheme.outline.withValues(alpha: 0.15)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: AppDesign.borderRadiusSm,
+            borderSide: BorderSide(color: scheme.outline.withValues(alpha: 0.15)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: AppDesign.borderRadiusSm,
+            borderSide: BorderSide(color: scheme.primary, width: 1.5),
+          ),
+        );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppDesign.spacingSm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Page range',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: scheme.onSurface.withValues(alpha: AppDesign.opacityHigh),
+                ),
+              ),
+              const SizedBox(width: AppDesign.spacingXs),
+              Text(
+                '(optional — leave empty for all pages)',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppDesign.spacingSm),
+          Row(
+            children: [
+              SizedBox(
+                width: 80,
+                child: TextField(
+                  controller: _pageFromControllers[campus]!,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(fontSize: 13),
+                  decoration: inputDeco('From'),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppDesign.spacingSm),
+                child: Text('–',
+                    style: TextStyle(
+                        color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium))),
+              ),
+              SizedBox(
+                width: 80,
+                child: TextField(
+                  controller: _pageToControllers[campus]!,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(fontSize: 13),
+                  decoration: inputDeco('To'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppDesign.spacingSm),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderExclusions(List<TextEditingController> controllers) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'Additional headers to exclude',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: scheme.onSurface.withValues(alpha: AppDesign.opacityHigh),
+              ),
+            ),
+            const SizedBox(width: AppDesign.spacingXs),
+            Text(
+              '(defaults are built-in, add semester-specific ones here)',
+              style: TextStyle(
+                fontSize: 11,
+                color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppDesign.spacingSm),
+        for (var i = 0; i < controllers.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppDesign.spacingXs + 2),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controllers[i],
+                    style: const TextStyle(fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: 'e.g. COMP CODE, SEATING ARRANGEMENT...',
+                      hintStyle: TextStyle(
+                        fontSize: 12,
+                        color: scheme.onSurface
+                            .withValues(alpha: AppDesign.opacityLow),
+                      ),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppDesign.spacingSm + 4,
+                        vertical: AppDesign.spacingSm + 2,
+                      ),
+                      filled: true,
+                      fillColor: scheme.surfaceContainerHighest
+                          .withValues(alpha: 0.3),
+                      border: OutlineInputBorder(
+                        borderRadius: AppDesign.borderRadiusSm,
+                        borderSide: BorderSide(
+                          color: scheme.outline.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: AppDesign.borderRadiusSm,
+                        borderSide: BorderSide(
+                          color: scheme.outline.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: AppDesign.borderRadiusSm,
+                        borderSide: BorderSide(
+                          color: scheme.primary,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                if (controllers.length > 1)
+                  IconButton(
+                    icon: Icon(Icons.remove_circle_outline_rounded,
+                        size: 18,
+                        color: scheme.error.withValues(alpha: 0.7)),
+                    onPressed: () {
+                      setState(() {
+                        controllers[i].dispose();
+                        controllers.removeAt(i);
+                      });
+                    },
+                    padding: const EdgeInsets.only(left: AppDesign.spacingXs),
+                    constraints:
+                        const BoxConstraints(minWidth: 28, minHeight: 28),
+                  ),
+              ],
+            ),
+          ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: InkWell(
+            onTap: () {
+              setState(() => controllers.add(TextEditingController()));
+            },
+            borderRadius: AppDesign.borderRadiusSm,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                  vertical: AppDesign.spacingXs,
+                  horizontal: AppDesign.spacingSm),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add_rounded, size: 16, color: scheme.primary),
+                  const SizedBox(width: AppDesign.spacingXs),
+                  Text(
+                    'Add header',
+                    style: TextStyle(fontSize: 13, color: scheme.primary),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppDesign.spacingSm),
+      ],
+    );
+  }
+
+  Widget _buildProgressIndicator(String message) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.only(top: AppDesign.spacingSm),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppDesign.spacingSm + 4, vertical: AppDesign.spacingSm + 2),
+      decoration: BoxDecoration(
+        color: scheme.primary.withValues(alpha: 0.05),
+        borderRadius: AppDesign.borderRadiusSm,
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: scheme.primary,
+            ),
+          ),
+          const SizedBox(width: AppDesign.spacingSm + 2),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(fontSize: 13, color: scheme.onSurface),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildResultBadge(String result) {
+    final isError = result.startsWith('Error');
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.only(top: AppDesign.spacingSm),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppDesign.spacingSm + 4, vertical: AppDesign.spacingSm),
+      decoration: BoxDecoration(
+        color: isError
+            ? scheme.error.withValues(alpha: 0.1)
+            : scheme.primary.withValues(alpha: 0.08),
+        borderRadius: AppDesign.borderRadiusSm,
+        border: Border.all(
+          color: isError
+              ? scheme.error.withValues(alpha: 0.2)
+              : scheme.primary.withValues(alpha: 0.15),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isError ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
+            size: 16,
+            color: isError ? scheme.error : scheme.primary,
+          ),
+          const SizedBox(width: AppDesign.spacingSm),
+          Expanded(
+            child: Text(
+              result,
+              style: TextStyle(
+                fontSize: 13,
+                color: isError ? scheme.error : scheme.onSurface,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final padding = ResponsiveService.getAdaptivePadding(
+      context,
+      const EdgeInsets.all(AppDesign.spacingMd),
+    );
+
+    return Scaffold(
+      appBar: AppDesign.appBar(context, title: 'Admin Dashboard'),
+      body: SingleChildScrollView(
+        padding: padding,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: Column(
+              children: [
+                _buildSection(
+                  title: 'Timetable Upload',
+                  icon: Icons.schedule_rounded,
+                  children: [
+                    for (final campus in _campuses) ...[
+                      _buildCampusSubheading(campus),
+                      _buildFilePicker(
+                        label: 'PDF',
+                        file: _timetableFiles[campus],
+                        extensions: ['pdf'],
+                        onChanged: (f) =>
+                            setState(() => _timetableFiles[campus] = f),
+                      ),
+                      if (_timetableFiles[campus] != null) ...[
+                        _buildPageRange(campus),
+                        _buildHeaderExclusions(_timetableHeaders[campus]!),
+                      ],
+                    ],
+                    const SizedBox(height: AppDesign.spacingSm),
+                    _buildExamYearField(),
+                    AppButton(
+                      label: 'Upload Timetables',
+                      icon: Icons.cloud_upload_rounded,
+                      onTap: _hasTimetableFiles && !_uploadingTimetable
+                          ? _uploadTimetables
+                          : null,
+                      isLoading: _uploadingTimetable,
+                      expand: true,
+                    ),
+                    if (_timetableProgress != null)
+                      _buildProgressIndicator(_timetableProgress!),
+                    if (_timetableResult != null)
+                      _buildResultBadge(_timetableResult!),
+                  ],
+                ),
+
+                _buildSection(
+                  title: 'Exam Seating (Hyderabad)',
+                  icon: Icons.event_seat_rounded,
+                  children: [
+                    _buildFilePicker(
+                      label: 'PDF File',
+                      file: _examFile,
+                      extensions: ['pdf'],
+                      onChanged: (f) => setState(() => _examFile = f),
+                    ),
+                    const SizedBox(height: AppDesign.spacingSm),
+                    _buildHeaderExclusions(_examHeaders),
+                    AppButton(
+                      label: 'Upload Exam Seating',
+                      icon: Icons.cloud_upload_rounded,
+                      onTap: _examFile != null && !_uploadingExam
+                          ? _uploadExamSeating
+                          : null,
+                      isLoading: _uploadingExam,
+                      expand: true,
+                    ),
+                    if (_examProgress != null)
+                      _buildProgressIndicator(_examProgress!),
+                    if (_examResult != null) _buildResultBadge(_examResult!),
+                  ],
+                ),
+
+                _buildSection(
+                  title: 'Professor Schedules',
+                  icon: Icons.school_rounded,
+                  children: [
+                    _buildFilePicker(
+                      label: 'profs.json',
+                      file: _profsFile,
+                      extensions: ['json'],
+                      onChanged: (f) => setState(() => _profsFile = f),
+                    ),
+                    Text(
+                      'Optional — uses stored data if not provided',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: AppDesign.opacityLow),
+                      ),
+                    ),
+                    const SizedBox(height: AppDesign.spacingSm + 4),
+                    AppButton(
+                      label: 'Rebuild Schedules',
+                      icon: Icons.sync_rounded,
+                      onTap: !_rebuildingProfs ? _rebuildProfessors : null,
+                      isLoading: _rebuildingProfs,
+                      expand: true,
+                    ),
+                    if (_profsProgress != null)
+                      _buildProgressIndicator(_profsProgress!),
+                    if (_profsResult != null) _buildResultBadge(_profsResult!),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

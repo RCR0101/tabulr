@@ -109,5 +109,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if false;
     }
+
+    // Admin users — only readable by Admin SDK (Cloud Functions)
+    match /admin_users/{userId} {
+      allow read: if false;
+      allow write: if false;
+    }
   }
 }

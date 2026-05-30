@@ -1,0 +1,4 @@
+firebase-functions>=0.4.0
+firebase-admin>=6.0.0
+pdfplumber>=0.10.0
+pandas>=2.0.0

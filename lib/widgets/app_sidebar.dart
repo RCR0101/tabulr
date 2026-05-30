@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/data/admin_service.dart';
 import '../services/data/auth_service.dart';
 import '../services/data/course_announcement_service.dart';
 import '../utils/design_constants.dart';
@@ -24,7 +25,24 @@ class AppSidebar extends StatefulWidget {
 
 class _AppSidebarState extends State<AppSidebar> {
   final AuthService _auth = AuthService();
+  final AdminService _adminService = AdminService();
   int? _hoveredIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _adminService.addListener(_onAdminChanged);
+  }
+
+  @override
+  void dispose() {
+    _adminService.removeListener(_onAdminChanged);
+    super.dispose();
+  }
+
+  void _onAdminChanged() {
+    if (mounted) setState(() {});
+  }
 
   List<_SidebarItem> _buildItems() {
     final items = <_SidebarItem>[
@@ -81,6 +99,14 @@ class _AppSidebarState extends State<AppSidebar> {
         screen: DrawerScreen.announcements,
         icon: Icons.campaign,
         label: 'Announcements',
+      ));
+    }
+
+    if (_auth.isAuthenticated && AdminService().isAdmin) {
+      items.add(_SidebarItem(
+        screen: DrawerScreen.admin,
+        icon: Icons.admin_panel_settings,
+        label: 'Admin',
       ));
     }
 

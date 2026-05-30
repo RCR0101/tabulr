@@ -10,7 +10,9 @@ import '../screens/exam_seating_screen.dart';
 import '../screens/acad_drives_screen.dart';
 import '../screens/professors_screen.dart';
 import '../screens/course_announcements_screen.dart';
+import '../screens/admin_screen.dart';
 import '../screens/free_slot_finder_screen.dart';
+import '../services/data/admin_service.dart';
 import 'app_drawer.dart';
 import 'app_sidebar.dart';
 
@@ -66,6 +68,7 @@ class _AppShellState extends State<AppShell> {
       DrawerScreen.acadDrives => const AcadDrivesScreen(),
       DrawerScreen.profChambers => const ProfessorsScreen(),
       DrawerScreen.announcements => const CourseAnnouncementsScreen(),
+      DrawerScreen.admin => const AdminScreen(),
     };
   }
 
@@ -136,6 +139,9 @@ class _MobileShell extends StatelessWidget {
     if (auth.isAuthenticated && CourseAnnouncementService().isHyderabadUser()) {
       items.add(DrawerScreen.announcements);
     }
+    if (auth.isAuthenticated && AdminService().isAdmin) {
+      items.add(DrawerScreen.admin);
+    }
     return items;
   }
 
@@ -195,6 +201,7 @@ class _MobileShell extends StatelessWidget {
         DrawerScreen.acadDrives => Icons.folder_shared,
         DrawerScreen.profChambers => Icons.person,
         DrawerScreen.announcements => Icons.campaign,
+        DrawerScreen.admin => Icons.admin_panel_settings,
       };
 
   static String _labelFor(DrawerScreen screen) => switch (screen) {
@@ -206,6 +213,7 @@ class _MobileShell extends StatelessWidget {
         DrawerScreen.acadDrives => 'Acad Drives',
         DrawerScreen.profChambers => 'Prof Chambers',
         DrawerScreen.announcements => 'Announcements',
+        DrawerScreen.admin => 'Admin',
       };
 
   @override

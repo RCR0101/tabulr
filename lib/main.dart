@@ -15,6 +15,7 @@ import 'services/data/courses_master_service.dart';
 import 'services/data/preferences_service.dart';
 import 'services/data/user_settings_service.dart';
 import 'models/user_settings.dart' as user_settings;
+import 'services/data/admin_service.dart';
 import 'services/ui/secure_logger.dart';
 import 'services/ui/performance_monitor.dart';
 
@@ -51,6 +52,9 @@ void main() async {
     };
     await themeService.setThemeMode(flutterMode);
   }
+
+  // Non-blocking admin check — runs in background after auth is ready
+  AdminService().checkAdminStatus();
 
   if (kIsWeb) {
     web_utils.usePathUrlStrategy();
