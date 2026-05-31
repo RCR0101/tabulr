@@ -97,13 +97,18 @@ class BranchStructureService {
     return data.huels;
   }
 
-  /// Returns merged CDC map for an MSc primary + BE secondary combination.
-  /// BE semesters are shifted forward by 2 half-semesters:
+  /// Returns CDC map for an MSc+BE dual degree combination.
+  /// First checks for an override doc ({msc}_{be}). If it exists, uses that
+  /// directly. Otherwise falls back to merging with semester shifting:
   /// BE 2-1 → 3-1, BE 2-2 → 3-2, BE 3-1 → 4-1, BE 3-2 → 4-2
   Future<Map<String, List<String>>> getMergedCDCs(
     String mscBranch,
     String beBranch,
   ) async {
+    final overrideKey = '${mscBranch}_$beBranch';
+    final overrideData = await getBranchData(overrideKey);
+    if (overrideData.cdcs.isNotEmpty) return overrideData.cdcs;
+
     final mscData = await getBranchData(mscBranch);
     final beData = await getBranchData(beBranch);
 
@@ -139,29 +144,25 @@ class BranchStructureService {
     String? secondarySemester,
     String? secondaryBranch,
   ) async {
-    final codes = <String>{};
+    if (secondaryBranch != null &&
+        constants.isMscBranch(primaryBranch) &&
+        constants.isBeBranch(secondaryBranch)) {
+      final merged = await getMergedCDCs(primaryBranch, secondaryBranch);
+      final codes = <String>{};
+      codes.addAll(merged[primarySemester] ?? []);
+      if (secondarySemester != null) {
+        codes.addAll(merged[secondarySemester] ?? []);
+      }
+      return codes;
+    }
 
+    final codes = <String>{};
     final primaryData = await getBranchData(primaryBranch);
     codes.addAll(primaryData.cdcsForSemester(primarySemester));
 
-    if (secondaryBranch != null) {
+    if (secondaryBranch != null && secondarySemester != null) {
       final secondaryData = await getBranchData(secondaryBranch);
-
-      if (secondarySemester != null) {
-        // If primary is MSc and secondary is BE, apply semester shift
-        if (constants.isMscBranch(primaryBranch) && constants.isBeBranch(secondaryBranch)) {
-          const reverseShift = {
-            '3-1': '2-1',
-            '3-2': '2-2',
-            '4-1': '3-1',
-            '4-2': '3-2',
-          };
-          final beSemester = reverseShift[secondarySemester] ?? secondarySemester;
-          codes.addAll(secondaryData.cdcsForSemester(beSemester));
-        } else {
-          codes.addAll(secondaryData.cdcsForSemester(secondarySemester));
-        }
-      }
+      codes.addAll(secondaryData.cdcsForSemester(secondarySemester));
     }
 
     return codes;

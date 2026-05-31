@@ -5,6 +5,7 @@ import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_button.dart';
+import 'admin/course_guide_management_screen.dart';
 import 'admin/course_management_screen.dart';
 import 'admin/exam_seating_management_screen.dart';
 import 'admin/professor_management_screen.dart';
@@ -791,6 +792,16 @@ class _AdminScreenState extends State<AdminScreen> {
             context,
             MaterialPageRoute(
                 builder: (_) => const ProfessorManagementScreen())),
+      ),
+      _managementCard(
+        icon: Icons.auto_stories_rounded,
+        title: 'Course Guide',
+        subtitle: 'Edit CDC structure per branch and semester',
+        color: accent,
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => const CourseGuideManagementScreen())),
       ),
     ];
   }

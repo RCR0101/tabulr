@@ -941,37 +941,27 @@ def parse_exam_seating_rows(data):
 def upload_courses_to_firestore(courses, campus_code, clear_first=True):
     campus_id = CAMPUS_IDS.get(campus_code.lower(), "hyderabad")
     db = get_db()
-    master_ref = db.collection(f"campuses/{campus_id}/courses_master")
     timetable_ref = db.collection(f"campuses/{campus_id}/timetable")
 
     if clear_first:
-        for ref in [master_ref, timetable_ref]:
-            docs = ref.get()
-            batch = db.batch()
-            count = 0
-            for doc in docs:
-                batch.delete(doc.reference)
-                count += 1
-                if count >= BATCH_SIZE:
-                    batch.commit()
-                    batch = db.batch()
-                    count = 0
-            if count > 0:
+        docs = timetable_ref.get()
+        batch = db.batch()
+        count = 0
+        for doc in docs:
+            batch.delete(doc.reference)
+            count += 1
+            if count >= BATCH_SIZE:
                 batch.commit()
+                batch = db.batch()
+                count = 0
+        if count > 0:
+            batch.commit()
 
     for i in range(0, len(courses), BATCH_SIZE):
         batch = db.batch()
         sl = courses[i : i + BATCH_SIZE]
         for course in sl:
             doc_id = course_code_to_doc_id(course["courseCode"])
-            code = sanitize(course["courseCode"])
-
-            batch.set(master_ref.document(doc_id), {
-                "course_code": code,
-                "title": sanitize(course.get("courseTitle", "")),
-                "credits": course.get("totalCredits", 0) or course.get("lectureCredits", 0),
-                "type": course.get("type", "Normal"),
-            })
 
             sections = []
             for s in course.get("sections", []):
