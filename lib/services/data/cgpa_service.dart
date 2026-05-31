@@ -88,7 +88,7 @@ class CGPAService {
       body: jsonEncode({'action': 'decrypt', 'data': encryptedData}),
     );
     if (response.statusCode != 200) {
-      throw Exception('Decryption failed: ${response.statusCode}');
+      throw Exception('Decryption failed: ${response.statusCode} ${response.body}');
     }
     return (jsonDecode(response.body) as Map<String, dynamic>)['result'] as String;
   }

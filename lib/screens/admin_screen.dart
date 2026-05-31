@@ -5,6 +5,9 @@ import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_button.dart';
+import 'admin/course_management_screen.dart';
+import 'admin/exam_seating_management_screen.dart';
+import 'admin/professor_management_screen.dart';
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
@@ -353,7 +356,7 @@ class _AdminScreenState extends State<AdminScreen> {
       child: Row(
         children: [
           Text(
-            'Exam year',
+            'Exam Year',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
@@ -392,14 +395,6 @@ class _AdminScreenState extends State<AdminScreen> {
                   borderSide: BorderSide(color: scheme.primary, width: 1.5),
                 ),
               ),
-            ),
-          ),
-          const SizedBox(width: AppDesign.spacingSm),
-          Text(
-            '(for exam dates without year)',
-            style: TextStyle(
-              fontSize: 11,
-              color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow),
             ),
           ),
         ],
@@ -705,123 +700,267 @@ class _AdminScreenState extends State<AdminScreen> {
     );
   }
 
+  Widget _managementCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surface,
+      borderRadius: AppDesign.borderRadiusSm,
+      child: InkWell(
+        borderRadius: AppDesign.borderRadiusSm,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: AppDesign.borderRadiusSm,
+            border: Border.all(color: scheme.outline.withValues(alpha: 0.12)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(AppDesign.spacingSm + 2),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: AppDesign.borderRadiusSm,
+                ),
+                child: Icon(icon, size: 22, color: color),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: scheme.onSurface)),
+                    const SizedBox(height: 2),
+                    Text(subtitle,
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: scheme.onSurface
+                                .withValues(alpha: AppDesign.opacityMedium))),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded,
+                  color:
+                      scheme.onSurface.withValues(alpha: AppDesign.opacityLow)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _managementCards() {
+    final accent = Theme.of(context).colorScheme.primary;
+    final secondary = Theme.of(context).colorScheme.secondary;
+    final tertiary = Theme.of(context).colorScheme.tertiary;
+    return [
+      _managementCard(
+        icon: Icons.menu_book_rounded,
+        title: 'Course Management',
+        subtitle: 'Edit courses, sections, and exam schedules',
+        color: accent,
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const CourseManagementScreen())),
+      ),
+      _managementCard(
+        icon: Icons.event_seat_rounded,
+        title: 'Exam Seating',
+        subtitle: 'Edit room assignments and student allocations',
+        color: secondary,
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => const ExamSeatingManagementScreen())),
+      ),
+      _managementCard(
+        icon: Icons.person_rounded,
+        title: 'Professor Chambers',
+        subtitle: 'Edit professor details and chamber info',
+        color: tertiary,
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => const ProfessorManagementScreen())),
+      ),
+    ];
+  }
+
+  Widget _timetableUploadSection() {
+    return _buildSection(
+      title: 'Timetable Upload',
+      icon: Icons.schedule_rounded,
+      children: [
+        for (final campus in _campuses) ...[
+          _buildCampusSubheading(campus),
+          _buildFilePicker(
+            label: 'PDF',
+            file: _timetableFiles[campus],
+            extensions: ['pdf'],
+            onChanged: (f) =>
+                setState(() => _timetableFiles[campus] = f),
+          ),
+          if (_timetableFiles[campus] != null) ...[
+            _buildPageRange(campus),
+            _buildHeaderExclusions(_timetableHeaders[campus]!),
+          ],
+        ],
+        const SizedBox(height: AppDesign.spacingSm),
+        _buildExamYearField(),
+        AppButton(
+          label: 'Upload Timetables',
+          icon: Icons.cloud_upload_rounded,
+          onTap: _hasTimetableFiles && !_uploadingTimetable
+              ? _uploadTimetables
+              : null,
+          isLoading: _uploadingTimetable,
+          expand: true,
+        ),
+        if (_timetableProgress != null)
+          _buildProgressIndicator(_timetableProgress!),
+        if (_timetableResult != null)
+          _buildResultBadge(_timetableResult!),
+      ],
+    );
+  }
+
+  Widget _examUploadSection() {
+    return _buildSection(
+      title: 'Exam Seating (Hyderabad)',
+      icon: Icons.event_seat_rounded,
+      children: [
+        _buildFilePicker(
+          label: 'PDF File',
+          file: _examFile,
+          extensions: ['pdf'],
+          onChanged: (f) => setState(() => _examFile = f),
+        ),
+        const SizedBox(height: AppDesign.spacingSm),
+        _buildHeaderExclusions(_examHeaders),
+        AppButton(
+          label: 'Upload Exam Seating',
+          icon: Icons.cloud_upload_rounded,
+          onTap: _examFile != null && !_uploadingExam
+              ? _uploadExamSeating
+              : null,
+          isLoading: _uploadingExam,
+          expand: true,
+        ),
+        if (_examProgress != null)
+          _buildProgressIndicator(_examProgress!),
+        if (_examResult != null) _buildResultBadge(_examResult!),
+      ],
+    );
+  }
+
+  Widget _profsSection() {
+    return _buildSection(
+      title: 'Professor Schedules',
+      icon: Icons.school_rounded,
+      children: [
+        _buildFilePicker(
+          label: 'profs.json',
+          file: _profsFile,
+          extensions: ['json'],
+          onChanged: (f) => setState(() => _profsFile = f),
+        ),
+        Text(
+          'Optional — uses stored data if not provided',
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context)
+                .colorScheme
+                .onSurface
+                .withValues(alpha: AppDesign.opacityLow),
+          ),
+        ),
+        const SizedBox(height: AppDesign.spacingSm + 4),
+        AppButton(
+          label: 'Rebuild Schedules',
+          icon: Icons.sync_rounded,
+          onTap: !_rebuildingProfs ? _rebuildProfessors : null,
+          isLoading: _rebuildingProfs,
+          expand: true,
+        ),
+        if (_profsProgress != null)
+          _buildProgressIndicator(_profsProgress!),
+        if (_profsResult != null) _buildResultBadge(_profsResult!),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final padding = ResponsiveService.getAdaptivePadding(
       context,
       const EdgeInsets.all(AppDesign.spacingMd),
     );
+    final wide = MediaQuery.of(context).size.width >= 800;
 
     return Scaffold(
       appBar: AppDesign.appBar(context, title: 'Admin Dashboard'),
       body: SingleChildScrollView(
         padding: padding,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: Column(
-              children: [
-                _buildSection(
-                  title: 'Timetable Upload',
-                  icon: Icons.schedule_rounded,
-                  children: [
-                    for (final campus in _campuses) ...[
-                      _buildCampusSubheading(campus),
-                      _buildFilePicker(
-                        label: 'PDF',
-                        file: _timetableFiles[campus],
-                        extensions: ['pdf'],
-                        onChanged: (f) =>
-                            setState(() => _timetableFiles[campus] = f),
-                      ),
-                      if (_timetableFiles[campus] != null) ...[
-                        _buildPageRange(campus),
-                        _buildHeaderExclusions(_timetableHeaders[campus]!),
-                      ],
-                    ],
-                    const SizedBox(height: AppDesign.spacingSm),
-                    _buildExamYearField(),
-                    AppButton(
-                      label: 'Upload Timetables',
-                      icon: Icons.cloud_upload_rounded,
-                      onTap: _hasTimetableFiles && !_uploadingTimetable
-                          ? _uploadTimetables
-                          : null,
-                      isLoading: _uploadingTimetable,
-                      expand: true,
-                    ),
-                    if (_timetableProgress != null)
-                      _buildProgressIndicator(_timetableProgress!),
-                    if (_timetableResult != null)
-                      _buildResultBadge(_timetableResult!),
-                  ],
-                ),
-
-                _buildSection(
-                  title: 'Exam Seating (Hyderabad)',
-                  icon: Icons.event_seat_rounded,
-                  children: [
-                    _buildFilePicker(
-                      label: 'PDF File',
-                      file: _examFile,
-                      extensions: ['pdf'],
-                      onChanged: (f) => setState(() => _examFile = f),
-                    ),
-                    const SizedBox(height: AppDesign.spacingSm),
-                    _buildHeaderExclusions(_examHeaders),
-                    AppButton(
-                      label: 'Upload Exam Seating',
-                      icon: Icons.cloud_upload_rounded,
-                      onTap: _examFile != null && !_uploadingExam
-                          ? _uploadExamSeating
-                          : null,
-                      isLoading: _uploadingExam,
-                      expand: true,
-                    ),
-                    if (_examProgress != null)
-                      _buildProgressIndicator(_examProgress!),
-                    if (_examResult != null) _buildResultBadge(_examResult!),
-                  ],
-                ),
-
-                _buildSection(
-                  title: 'Professor Schedules',
-                  icon: Icons.school_rounded,
-                  children: [
-                    _buildFilePicker(
-                      label: 'profs.json',
-                      file: _profsFile,
-                      extensions: ['json'],
-                      onChanged: (f) => setState(() => _profsFile = f),
-                    ),
-                    Text(
-                      'Optional — uses stored data if not provided',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: AppDesign.opacityLow),
-                      ),
-                    ),
-                    const SizedBox(height: AppDesign.spacingSm + 4),
-                    AppButton(
-                      label: 'Rebuild Schedules',
-                      icon: Icons.sync_rounded,
-                      onTap: !_rebuildingProfs ? _rebuildProfessors : null,
-                      isLoading: _rebuildingProfs,
-                      expand: true,
-                    ),
-                    if (_profsProgress != null)
-                      _buildProgressIndicator(_profsProgress!),
-                    if (_profsResult != null) _buildResultBadge(_profsResult!),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
+        child: wide ? _wideLayout() : _narrowLayout(),
       ),
+    );
+  }
+
+  Widget _narrowLayout() {
+    return Column(
+      children: [
+        ..._managementCards().map((c) => Padding(
+              padding: const EdgeInsets.only(bottom: AppDesign.spacingSm),
+              child: c,
+            )),
+        const SizedBox(height: AppDesign.spacingSm),
+        _timetableUploadSection(),
+        _examUploadSection(),
+        _profsSection(),
+      ],
+    );
+  }
+
+  Widget _wideLayout() {
+    final cards = _managementCards();
+    return Column(
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var i = 0; i < cards.length; i++) ...[
+              if (i > 0) const SizedBox(width: AppDesign.spacingMd),
+              Expanded(child: cards[i]),
+            ],
+          ],
+        ),
+        const SizedBox(height: AppDesign.spacingMd),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(flex: 3, child: _timetableUploadSection()),
+            const SizedBox(width: AppDesign.spacingMd),
+            Expanded(
+              flex: 2,
+              child: Column(
+                children: [
+                  _examUploadSection(),
+                  _profsSection(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

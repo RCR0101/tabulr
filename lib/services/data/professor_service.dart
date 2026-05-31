@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../ui/secure_logger.dart';
+import 'campus_service.dart';
 
 enum ProfessorSortType {
   nameAsc,
@@ -296,8 +297,9 @@ class ProfessorService extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final campusId = CampusService.campusId;
       final snapshot = await _firestore
-          .collection('reference').doc('professors').collection('entries')
+          .collection('reference').doc('professors').collection('$campusId-entries')
           .orderBy('name')
           .get();
 

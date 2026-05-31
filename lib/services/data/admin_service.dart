@@ -109,8 +109,11 @@ class AdminService extends ChangeNotifier {
 
   Future<Map<String, dynamic>> rebuildProfessorSchedules({
     Uint8List? profsJsonBytes,
+    String campusCode = 'hyderabad',
   }) async {
-    final data = <String, dynamic>{};
+    final data = <String, dynamic>{
+      'campusCode': campusCode,
+    };
     if (profsJsonBytes != null) {
       data['profsJsonBase64'] = base64Encode(profsJsonBytes);
     }

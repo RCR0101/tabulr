@@ -241,7 +241,14 @@ exports.rebuildProfessorSchedules = onCall(
   async (request) => {
     await requireAdmin(request);
 
-    const { profsJsonBase64 } = request.data || {};
+    const { profsJsonBase64, campusCode } = request.data || {};
+    const campus = campusCode || "hyderabad";
+    const validCampuses = ["hyderabad", "pilani", "goa"];
+    if (!validCampuses.includes(campus)) {
+      throw new HttpsError("invalid-argument", "Invalid campus: " + campus);
+    }
+
+    const profsMetaKey = `admin_metadata/professors_data_${campus}`;
 
     if (profsJsonBase64) {
       const profsBuffer = Buffer.from(profsJsonBase64, "base64");
@@ -252,20 +259,20 @@ exports.rebuildProfessorSchedules = onCall(
           'Invalid profs.json format — expected { "profs": [...] }'
         );
       }
-      await db.doc("admin_metadata/professors_data").set({ profs: profsData.profs });
+      await db.doc(profsMetaKey).set({ profs: profsData.profs });
     }
 
-    const profsDoc = await db.doc("admin_metadata/professors_data").get();
+    const profsDoc = await db.doc(profsMetaKey).get();
     if (!profsDoc.exists || !profsDoc.data().profs) {
       throw new HttpsError(
         "failed-precondition",
-        "No professors data found. Upload profs.json first."
+        "No professors data found for " + campus + ". Upload profs.json first."
       );
     }
     const professorData = profsDoc.data();
 
     const coursesSnapshot = await db
-      .collection("campuses/hyderabad/timetable")
+      .collection(`campuses/${campus}/timetable`)
       .get();
 
     const professorScheduleMap = {};
@@ -323,7 +330,7 @@ exports.rebuildProfessorSchedules = onCall(
       }
     }
 
-    const professorsRef = db.collection("reference/professors/entries");
+    const professorsRef = db.collection(`reference/professors/${campus}-entries`);
     const existingSnapshot = await professorsRef.get();
     const deletePromises = [];
     existingSnapshot.forEach((doc) => deletePromises.push(doc.ref.delete()));
@@ -359,7 +366,7 @@ exports.rebuildProfessorSchedules = onCall(
 
     await Promise.all(uploadPromises);
 
-    await db.doc("admin_metadata/professors").set({
+    await db.doc(`admin_metadata/professors_${campus}`).set({
       totalProfessors: uploadPromises.length,
       professorsWithSchedule: matchedCount,
       professorsWithoutSchedule: unmatchedCount,

@@ -18,6 +18,11 @@ service cloud.firestore {
       );
     }
 
+    function isAdmin() {
+      return request.auth != null &&
+             exists(/databases/$(database)/documents/admin_users/$(request.auth.uid));
+    }
+
     function userDocId() {
       let email = request.auth.token.email;
       let username = email.split('@')[0];
@@ -30,13 +35,13 @@ service cloud.firestore {
     // Campus data (courses_master, timetable, exam_seating, metadata)
     match /campuses/{campusId}/{sub=**} {
       allow read: if true;
-      allow write: if false;
+      allow write: if isAdmin();
     }
 
-    // Reference data
+    // Reference data (professors, etc.)
     match /reference/{category}/{sub=**} {
       allow read: if true;
-      allow write: if false;
+      allow write: if isAdmin();
     }
 
     // User data — owner only
