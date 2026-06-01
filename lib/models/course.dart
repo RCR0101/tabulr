@@ -1,3 +1,6 @@
+import '../constants/app_constants.dart';
+export '../constants/app_constants.dart' show TimeSlot, ExamSlotConstants;
+
 /// A BITS course offering for a particular semester and campus.
 ///
 /// Contains the full catalog entry: credits, all available sections
@@ -190,80 +193,20 @@ enum SectionType { L, P, T }
 enum DayOfWeek { M, T, W, Th, F, S }
 
 /// Exam time windows. MS* slots are for midsems; FN/AN are for compres.
-enum TimeSlot {
-  // ignore: constant_identifier_names
-  FN, // 8:00AM-11:00AM (EndSem only)
-  // ignore: constant_identifier_names
-  AN, // 3:00PM-6:00PM (EndSem only)
-  // ignore: constant_identifier_names
-  MS1, // 9:30-11:00 (MidSem - Updated)
-  // ignore: constant_identifier_names
-  MS2, // 11:30-1:00 (MidSem - Updated)
-  // ignore: constant_identifier_names
-  MS3, // 2:00-3:30 (MidSem - Updated)
-  // ignore: constant_identifier_names
-  MS4, // 4:00-5:30 (MidSem - Updated)
-}
-
 /// Maps hour indices and [TimeSlot]s to human-readable clock strings,
 /// with campus-specific overrides for exam windows.
+/// Data lives in [ExamSlotConstants] and [ScheduleConstants]; this class
+/// provides convenience accessors.
 class TimeSlotInfo {
-  // Campus-specific time slot mappings for EndSem exams
-  static const Map<String, Map<TimeSlot, String>> _campusTimeSlotNames = {
-    'pilani': {
-      TimeSlot.FN: '8:00AM-11:00AM',
-      TimeSlot.AN: '3:00PM-6:00PM',
-      TimeSlot.MS1: '9:30AM-11:00AM',
-      TimeSlot.MS2: '11:30AM-1:00PM',
-      TimeSlot.MS3: '2:00PM-3:30PM',
-      TimeSlot.MS4: '4:00PM-5:30PM',
-    },
-    'goa': {
-      TimeSlot.FN: '10:00AM-1:00PM',
-      TimeSlot.AN: '2:00PM-5:00PM',
-      TimeSlot.MS1: '9:30AM-11:00AM',
-      TimeSlot.MS2: '11:30AM-1:00PM',
-      TimeSlot.MS3: '2:00PM-3:30PM',
-      TimeSlot.MS4: '4:00PM-5:30PM',
-    },
-    'hyderabad': {
-      TimeSlot.FN: '9:30AM-12:30PM',
-      TimeSlot.AN: '2:00PM-5:00PM',
-      TimeSlot.MS1: '9:30AM-11:00AM',
-      TimeSlot.MS2: '11:30AM-1:00PM',
-      TimeSlot.MS3: '2:00PM-3:30PM',
-      TimeSlot.MS4: '4:00PM-5:30PM',
-    },
-  };
-  
-  // Default time slot names (fallback)
-  static const Map<TimeSlot, String> timeSlotNames = {
-    TimeSlot.FN: '8:00AM-11:00AM',
-    TimeSlot.AN: '3:00PM-6:00PM',
-    TimeSlot.MS1: '9:30AM-11:00AM',
-    TimeSlot.MS2: '11:30AM-1:00PM',
-    TimeSlot.MS3: '2:00PM-3:30PM',
-    TimeSlot.MS4: '4:00PM-5:30PM',
-  };
+  static const Map<TimeSlot, String> timeSlotNames =
+      ExamSlotConstants.defaultTimeSlotNames;
 
-  static const Map<int, String> hourSlotNames = {
-    1: '8:00-8:50 AM',
-    2: '9:00-9:50 AM',
-    3: '10:00-10:50 AM',
-    4: '11:00-11:50 AM',
-    5: '12:00-12:50 PM',
-    6: '1:00-1:50 PM',
-    7: '2:00-2:50 PM',
-    8: '3:00-3:50 PM',
-    9: '4:00-4:50 PM',
-    10: '5:00-5:50 PM',
-    11: '6:00-6:50 PM',
-    12: '7:00-7:50 PM',
-  };
+  static final Map<int, String> hourSlotNames = ScheduleConstants.hourSlotNames;
 
   static String getTimeSlotName(TimeSlot slot, {String? campus}) {
-    if (campus != null && _campusTimeSlotNames.containsKey(campus)) {
-      return _campusTimeSlotNames[campus]![slot] ?? '';
+    if (campus != null &&
+        ExamSlotConstants.campusTimeSlotNames.containsKey(campus)) {
+      return ExamSlotConstants.campusTimeSlotNames[campus]![slot] ?? '';
     }
     return timeSlotNames[slot] ?? '';
   }
@@ -275,41 +218,32 @@ class TimeSlotInfo {
   static String getHourRangeName(List<int> hours) {
     if (hours.isEmpty) return '';
     if (hours.length == 1) return getHourSlotName(hours.first);
-    
     hours.sort();
-    int startHour = hours.first;
-    int endHour = hours.last;
-    String startTime = hourSlotNames[startHour]?.split('-')[0] ?? '';
-    String endTime = hourSlotNames[endHour]?.split('-')[1] ?? '';
+    String startTime = hourSlotNames[hours.first]?.split('-')[0] ?? '';
+    String endTime = hourSlotNames[hours.last]?.split('-')[1] ?? '';
     return '$startTime-$endTime';
   }
 
-  // New method to handle schedule entries with individual day-hour pairs
   static List<String> getScheduleEntryNames(List<ScheduleEntry> schedule) {
     List<String> result = [];
-    
     for (var entry in schedule) {
-      // For each day in the entry, pair it with the hour range
       for (var day in entry.days) {
         String dayStr = day.toString().split('.').last;
         String hourStr = getHourRangeName(entry.hours);
         result.add('$dayStr $hourStr');
       }
     }
-    
     return result;
   }
 
-  // New method to get formatted string for all schedule entries
   static String getFormattedSchedule(List<ScheduleEntry> schedule) {
     if (schedule.isEmpty) return '';
-    
-    List<String> entryNames = getScheduleEntryNames(schedule);
-    return entryNames.join(', ');
+    return getScheduleEntryNames(schedule).join(', ');
   }
 
   static bool isMidSemSlot(TimeSlot slot) {
-    return [TimeSlot.MS1, TimeSlot.MS2, TimeSlot.MS3, TimeSlot.MS4].contains(slot);
+    return [TimeSlot.MS1, TimeSlot.MS2, TimeSlot.MS3, TimeSlot.MS4]
+        .contains(slot);
   }
 
   static bool isEndSemSlot(TimeSlot slot) {
@@ -323,38 +257,9 @@ class TimeSlotInfo {
   static List<TimeSlot> getEndSemSlots() {
     return [TimeSlot.FN, TimeSlot.AN];
   }
-  
-  // Get campus-specific exam time data for export services
+
   static Map<TimeSlot, List<int>> getCampusExamTimes(String campus) {
-    switch (campus) {
-      case 'pilani':
-        return {
-          TimeSlot.FN: [8, 0], // 8:00AM-11:00AM
-          TimeSlot.AN: [15, 0], // 3:00PM-6:00PM
-          TimeSlot.MS1: [9, 30], // 9:30-11:00
-          TimeSlot.MS2: [11, 30], // 11:30-1:00
-          TimeSlot.MS3: [14, 0], // 2:00-3:30
-          TimeSlot.MS4: [16, 0], // 4:00-5:30
-        };
-      case 'goa':
-      return {
-          TimeSlot.FN: [10, 0], // 10:00AM-1PM
-          TimeSlot.AN: [14, 0], // 2:00PM-5:00PM
-          TimeSlot.MS1: [9, 30], // 9:30-11:00
-          TimeSlot.MS2: [11, 30], // 11:30-1:00
-          TimeSlot.MS3: [14, 0], // 2:00-3:30
-          TimeSlot.MS4: [16, 0], // 4:00-5:30
-        };
-      case 'hyderabad':
-      default:
-        return {
-          TimeSlot.FN: [9, 30], // 9:30AM-12:30PM
-          TimeSlot.AN: [14, 0], // 2:00PM-5:00PM
-          TimeSlot.MS1: [9, 30], // 9:30-11:00
-          TimeSlot.MS2: [11, 30], // 11:30-1:00
-          TimeSlot.MS3: [14, 0], // 2:00-3:30
-          TimeSlot.MS4: [16, 0], // 4:00-5:30
-        };
-    }
+    return ExamSlotConstants.campusExamStartTimes[campus] ??
+        ExamSlotConstants.campusExamStartTimes['hyderabad']!;
   }
 }

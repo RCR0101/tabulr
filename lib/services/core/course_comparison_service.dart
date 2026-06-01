@@ -1,13 +1,14 @@
+import '../../constants/app_constants.dart';
 import '../../models/course.dart';
 
 /// Service for comparing courses based on time similarity
 /// Considers lecture timings, tutorial timings, practical timings, and exam times
 class CourseComparisonService {
-  static const double _lectureWeight = 0.4;
-  static const double _tutorialWeight = 0.3;
-  static const double _practicalWeight = 0.3;
-  static const double _midSemWeight = 0.4;
-  static const double _endSemWeight = 0.6;
+  static const double _lectureWeight = ComparisonWeights.lecture;
+  static const double _tutorialWeight = ComparisonWeights.tutorial;
+  static const double _practicalWeight = ComparisonWeights.practical;
+  static const double _midSemWeight = ComparisonWeights.midSem;
+  static const double _endSemWeight = ComparisonWeights.endSem;
 
   /// Calculates similarity score between two courses
   /// Returns a score between 0 and 1, where 1 is most similar

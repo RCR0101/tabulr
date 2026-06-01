@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../../constants/app_constants.dart';
 import 'secure_logger.dart';
 
 class PerformanceMonitor {
@@ -9,15 +10,11 @@ class PerformanceMonitor {
   factory PerformanceMonitor() => _instance;
   PerformanceMonitor._();
 
-  static const String _defaultWorkerUrl = 'https://test-logger.dalmia-aryan.workers.dev';
-  static const int _flushThreshold = 50;
-  static const Duration _flushInterval = Duration(seconds: 30);
-
   final List<Map<String, dynamic>> _buffer = [];
   Timer? _flushTimer;
   bool _initialized = false;
   bool _enabled = false;
-  String _workerUrl = _defaultWorkerUrl;
+  String _workerUrl = AppUrls.perfLoggerWorker;
   String? _apiKey;
 
   void initialize({String? workerUrl, String? apiKey, bool? enabled}) {
@@ -30,7 +27,7 @@ class PerformanceMonitor {
 
     if (workerUrl != null) _workerUrl = workerUrl;
     _apiKey = apiKey;
-    _flushTimer = Timer.periodic(_flushInterval, (_) => flush());
+    _flushTimer = Timer.periodic(AppDurations.perfFlushInterval, (_) => flush());
   }
 
   bool get isEnabled => _enabled;
@@ -46,7 +43,7 @@ class PerformanceMonitor {
       if (metadata != null) ...metadata,
     });
 
-    if (_buffer.length >= _flushThreshold) {
+    if (_buffer.length >= AppLimits.perfFlushThreshold) {
       flush();
     }
   }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../../constants/app_constants.dart';
 import '../../services/data/admin_service.dart';
 import '../../services/data/courses_master_service.dart';
 import '../../services/ui/toast_service.dart';
@@ -61,7 +62,7 @@ class _CourseGuideManagementScreenState
   }
 
   CollectionReference<Map<String, dynamic>> get _branchesRef =>
-      _db.collection('reference').doc('branches').collection('data');
+      _db.collection(FirestoreCollections.reference).doc(FirestoreCollections.branches).collection(FirestoreCollections.data);
 
   Future<void> _loadBranch(String branchCode) async {
     setState(() {
@@ -348,9 +349,9 @@ class _CourseGuideManagementScreenState
     }
   }
 
-  static const _semesters = [
-    '1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'
-  ];
+  static final _semesters = SemesterConstants.all
+      .where((s) => !s.startsWith('ST') && s != '5-1' && s != '5-2')
+      .toList();
 
   @override
   Widget build(BuildContext context) {

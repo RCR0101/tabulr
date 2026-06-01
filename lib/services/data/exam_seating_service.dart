@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../constants/app_constants.dart';
 import 'campus_service.dart';
 import 'auth_service.dart';
 import 'courses_master_service.dart';
@@ -190,7 +191,7 @@ class ExamSeatingService {
   final AuthService _authService = AuthService();
 
   DocumentReference<Map<String, dynamic>> _userPrefsRef(String uid) =>
-      _firestore.collection('users').doc(uid).collection('exam_seating_prefs').doc('data');
+      _firestore.collection(FirestoreCollections.users).doc(uid).collection(FirestoreCollections.examSeatingPrefs).doc(FirestoreCollections.data);
 
   Future<bool> saveUserData({
     required List<String> selectedCourseCodes,

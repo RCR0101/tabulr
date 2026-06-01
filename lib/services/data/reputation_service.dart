@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import '../../models/user_reputation.dart';
 import 'auth_service.dart';
+import '../../constants/app_constants.dart';
 
 class ReputationService {
   static final ReputationService _instance = ReputationService._internal();
@@ -11,12 +12,10 @@ class ReputationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AuthService _authService = AuthService();
   final FirebaseFunctions _functions =
-      FirebaseFunctions.instanceFor(region: 'asia-south1');
-
-  static const String _collection = 'reputation';
+      FirebaseFunctions.instanceFor(region: FirebaseConfig.functionsRegion);
 
   DocumentReference<Map<String, dynamic>> _docRef(String uid) =>
-      _firestore.collection(_collection).doc(uid);
+      _firestore.collection(FirestoreCollections.reputation).doc(uid);
 
   Future<UserReputation> getReputation(String uid) async {
     final doc = await _docRef(uid).get();

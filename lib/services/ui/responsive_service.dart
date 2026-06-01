@@ -1,27 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../constants/app_constants.dart';
 import '../../models/screen_size.dart';
 
 export '../../models/screen_size.dart';
 
 class ResponsiveService {
-  static const double mobileBreakpoint = 600.0;
-  static const double tabletBreakpoint = 900.0;
-  
-  // Touch target sizes
-  static const double minTouchTarget = 48.0;
-  static const double preferredTouchTarget = 56.0;
-  static const double largeTouchTarget = 64.0;
-  
-  // Padding and margin scales
-  static const double mobilePaddingScale = 0.75;
-  static const double tabletPaddingScale = 0.9;
-  static const double desktopPaddingScale = 1.0;
-  
-  // Font size scales
-  static const double mobileFontScale = 0.9;
-  static const double tabletFontScale = 0.95;
-  static const double desktopFontScale = 1.0;
+  static const double mobileBreakpoint = ResponsiveConstants.mobileBreakpoint;
+  static const double tabletBreakpoint = ResponsiveConstants.tabletBreakpoint;
+
+  static const double minTouchTarget = ResponsiveConstants.minTouchTarget;
+  static const double preferredTouchTarget = ResponsiveConstants.preferredTouchTarget;
+  static const double largeTouchTarget = ResponsiveConstants.largeTouchTarget;
+
+  static const double mobilePaddingScale = ResponsiveConstants.mobilePaddingScale;
+  static const double tabletPaddingScale = ResponsiveConstants.tabletPaddingScale;
+  static const double desktopPaddingScale = ResponsiveConstants.desktopPaddingScale;
+
+  static const double mobileFontScale = ResponsiveConstants.mobileFontScale;
+  static const double tabletFontScale = ResponsiveConstants.tabletFontScale;
+  static const double desktopFontScale = ResponsiveConstants.desktopFontScale;
 
   /// Get current screen size category
   static ScreenSize getScreenSize(BuildContext context) {
@@ -135,7 +133,7 @@ class ResponsiveService {
     return baseFontSize * scale;
   }
 
-  static const double _mobileMinFontSize = 11.0;
+  static const double _mobileMinFontSize = ResponsiveConstants.mobileMinFontSize;
 
   /// Returns [baseFontSize] on desktop/tablet, but clamps to at least 11px on mobile.
   static double clampedFontSize(BuildContext context, double baseFontSize) {

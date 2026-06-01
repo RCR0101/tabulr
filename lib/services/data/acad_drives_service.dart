@@ -1,16 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../constants/app_constants.dart';
 
 class AcadDrivesService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _indexRef =>
-      _firestore.collection('acad_drives_index');
+      _firestore.collection(FirestoreCollections.acadDrivesIndex);
 
   CollectionReference<Map<String, dynamic>> get _filesRef =>
-      _firestore.collection('acad_drives_files');
+      _firestore.collection(FirestoreCollections.acadDrivesFiles);
 
   CollectionReference<Map<String, dynamic>> get _submissionsRef =>
-      _firestore.collection('acad_drives_submissions');
+      _firestore.collection(FirestoreCollections.acadDrivesSubmissions);
 
   Future<int> getCourseCount() async {
     final snapshot = await _indexRef.count().get();

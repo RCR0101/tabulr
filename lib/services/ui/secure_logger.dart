@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
+import '../../constants/app_constants.dart';
 import 'performance_monitor.dart';
 
 /// Log levels with priority ordering
@@ -16,7 +17,7 @@ class LogConfig {
 
 /// Secure logging service that prevents PII exposure and provides structured logging
 class SecureLogger {
-  static const String _tag = 'TimetableMaker';
+  static const String _tag = AppMeta.logTag;
   
   // Compiled regex patterns for performance
   static final RegExp _emailPattern = RegExp(

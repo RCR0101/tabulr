@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../constants/app_constants.dart';
 import '../services/data/discipline_electives_service.dart';
 import '../services/data/course_data_service.dart';
 import '../services/data/campus_service.dart';
@@ -72,7 +73,7 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
       // Load available branches
       final branches = await _disciplineElectivesService
           .getAvailableBranches()
-          .timeout(Duration(seconds: 15));
+          .timeout(AppDurations.shortNetworkTimeout);
 
       // Load courses for current campus
       final courses = await _courseDataService.fetchCourses();
@@ -155,7 +156,7 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
             _selectedSemester,
             _availableCourses,
           )
-          .timeout(Duration(seconds: 20));
+          .timeout(AppDurations.networkTimeout);
 
       setState(() {
         _disciplineElectives = electives;

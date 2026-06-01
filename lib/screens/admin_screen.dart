@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/data/admin_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
+import '../constants/app_constants.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_button.dart';
 import 'admin/course_guide_management_screen.dart';
@@ -20,12 +21,8 @@ class AdminScreen extends StatefulWidget {
 class _AdminScreenState extends State<AdminScreen> {
   final AdminService _adminService = AdminService();
 
-  static const _campuses = ['hyderabad', 'pilani', 'goa'];
-  static const _campusLabels = {
-    'hyderabad': 'Hyderabad',
-    'pilani': 'Pilani',
-    'goa': 'Goa',
-  };
+  static const _campuses = CampusConstants.ids;
+  static const _campusLabels = CampusConstants.labels;
 
   final Map<String, PlatformFile?> _timetableFiles = {};
   PlatformFile? _examFile;

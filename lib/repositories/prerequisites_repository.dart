@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../constants/app_constants.dart';
 import '../models/prerequisite.dart';
 import '../services/data/courses_master_service.dart';
 
@@ -6,7 +7,7 @@ class PrerequisitesRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _prereqsRef =>
-      _firestore.collection('reference').doc('prerequisites').collection('courses');
+      _firestore.collection(FirestoreCollections.reference).doc(FirestoreCollections.prerequisites).collection(FirestoreCollections.courses);
 
   List<CoursePrerequisites>? _cache;
 

@@ -10,6 +10,7 @@ import '../services/core/timetable_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../services/data/auth_service.dart';
+import '../constants/app_constants.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/app_dialog.dart';
@@ -82,8 +83,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   String _searchQuery = '';
   CourseSortOption _courseSortOption = CourseSortOption.fileCountDesc;
   FileSortOption _fileSortOption = FileSortOption.nameAsc;
-  static const _coursePageSize = 40;
-  static const _filePageSize = 500;
+  static const _coursePageSize = AppLimits.acadDriveCoursePageSize;
+  static const _filePageSize = AppLimits.acadDriveFilePageSize;
 
   final ScrollController _coursesScrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();

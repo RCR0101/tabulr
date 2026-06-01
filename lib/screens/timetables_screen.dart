@@ -16,6 +16,7 @@ import '../services/data/course_data_service.dart';
 import '../services/data/user_settings_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../models/user_settings.dart';
+import '../constants/app_constants.dart';
 import '../utils/design_constants.dart';
 import '../widgets/theme_selector_widget.dart';
 import '../widgets/campus_selector_widget.dart';
@@ -493,7 +494,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   }
 
   Future<void> _openGitHub() async {
-    const String githubUrl = 'https://github.com/RCR0101/timetable_maker';
+    const String githubUrl = AppUrls.githubRepo;
 
     try {
       if (kIsWeb) {

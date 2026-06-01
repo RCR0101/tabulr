@@ -5,6 +5,7 @@ import '../../services/data/admin_crud_service.dart';
 import '../../services/data/admin_service.dart';
 import '../../services/data/campus_service.dart';
 import '../../services/ui/toast_service.dart';
+import '../../constants/app_constants.dart';
 import '../../utils/design_constants.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_dialog.dart';
@@ -32,8 +33,8 @@ Widget _examBadge(String label, Color color) {
 
 class _ExamSeatingManagementScreenState
     extends State<ExamSeatingManagementScreen> {
-  static const _campusIds = ['hyderabad', 'pilani', 'goa'];
-  static const _campusLabels = {'hyderabad': 'Hyderabad', 'pilani': 'Pilani', 'goa': 'Goa'};
+  static const _campusIds = CampusConstants.ids;
+  static const _campusLabels = CampusConstants.labels;
 
   final _crud = AdminCrudService();
   final _searchController = TextEditingController();

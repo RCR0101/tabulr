@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../constants/app_constants.dart';
 import '../../models/campus.dart';
 
 export '../../models/campus.dart';
 
 class CampusService {
-  static const String _campusKey = 'selected_campus';
   
   static Campus _currentCampus = Campus.hyderabad;
   static final StreamController<Campus> _campusChangeController = StreamController<Campus>.broadcast();
@@ -51,24 +51,24 @@ class CampusService {
   }
 
   static CollectionReference<Map<String, dynamic>> coursesMasterRef(FirebaseFirestore firestore) {
-    return firestore.collection('campuses').doc(campusId).collection('courses_master');
+    return firestore.collection(FirestoreCollections.campuses).doc(campusId).collection(FirestoreCollections.coursesMaster);
   }
 
   static CollectionReference<Map<String, dynamic>> timetableRef(FirebaseFirestore firestore) {
-    return firestore.collection('campuses').doc(campusId).collection('timetable');
+    return firestore.collection(FirestoreCollections.campuses).doc(campusId).collection(FirestoreCollections.timetable);
   }
 
   static CollectionReference<Map<String, dynamic>> examSeatingRef(FirebaseFirestore firestore) {
-    return firestore.collection('campuses').doc(campusId).collection('exam_seating');
+    return firestore.collection(FirestoreCollections.campuses).doc(campusId).collection(FirestoreCollections.examSeating);
   }
 
   static DocumentReference<Map<String, dynamic>> metadataDocRef(FirebaseFirestore firestore) {
-    return firestore.collection('campuses').doc(campusId).collection('metadata').doc('current');
+    return firestore.collection(FirestoreCollections.campuses).doc(campusId).collection(FirestoreCollections.metadata).doc(FirestoreCollections.current);
   }
   
   static Future<void> initializeCampus() async {
     final prefs = await SharedPreferences.getInstance();
-    final campusIndex = prefs.getInt(_campusKey) ?? Campus.hyderabad.index;
+    final campusIndex = prefs.getInt(StorageKeys.selectedCampus) ?? Campus.hyderabad.index;
     if (campusIndex >= 0 && campusIndex < Campus.values.length) {
       _currentCampus = Campus.values[campusIndex];
     } else {
@@ -81,7 +81,7 @@ class CampusService {
   static Future<void> setCampus(Campus campus) async {
     _currentCampus = campus;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_campusKey, campus.index);
+    await prefs.setInt(StorageKeys.selectedCampus, campus.index);
     _campusChangeController.add(campus); // Notify listeners
   }
   

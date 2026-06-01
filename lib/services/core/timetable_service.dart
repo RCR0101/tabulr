@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../constants/app_constants.dart';
 import '../../models/timetable.dart';
 import '../../models/course.dart';
 import 'clash_detector.dart';
@@ -15,8 +16,6 @@ class TimetableService {
   factory TimetableService() => _instance;
   TimetableService._internal();
 
-  static const String _storageKey = 'user_timetable_data';
-  static const String _timetablesListKey = 'user_timetables_list';
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
   final CourseDataService _courseDataService = CourseDataService();
@@ -121,7 +120,7 @@ class TimetableService {
     try {
 
       final prefs = await SharedPreferences.getInstance();
-      final data = prefs.getString(_storageKey);
+      final data = prefs.getString(StorageKeys.userTimetableData);
 
       if (data == null) {
         return null;
@@ -383,7 +382,7 @@ class TimetableService {
     try {
 
       final prefs = await SharedPreferences.getInstance();
-      final timetableIds = prefs.getStringList(_timetablesListKey) ?? [];
+      final timetableIds = prefs.getStringList(StorageKeys.userTimetablesList) ?? [];
 
       List<Timetable> timetables = [];
       for (String id in timetableIds) {
@@ -481,11 +480,11 @@ class TimetableService {
     try {
 
       final prefs = await SharedPreferences.getInstance();
-      final timetableIds = prefs.getStringList(_timetablesListKey) ?? [];
+      final timetableIds = prefs.getStringList(StorageKeys.userTimetablesList) ?? [];
 
       if (!timetableIds.contains(id)) {
         timetableIds.add(id);
-        await prefs.setStringList(_timetablesListKey, timetableIds);
+        await prefs.setStringList(StorageKeys.userTimetablesList, timetableIds);
       }
     } catch (e) {
       SecureLogger.error('TIMETABLE_SVC', 'Error adding timetable to list: $e');
@@ -555,9 +554,9 @@ class TimetableService {
       await prefs.remove('timetable_$id');
       
       // Remove from list
-      final timetableIds = prefs.getStringList(_timetablesListKey) ?? [];
+      final timetableIds = prefs.getStringList(StorageKeys.userTimetablesList) ?? [];
       timetableIds.remove(id);
-      await prefs.setStringList(_timetablesListKey, timetableIds);
+      await prefs.setStringList(StorageKeys.userTimetablesList, timetableIds);
     } catch (e) {
       SecureLogger.error('TIMETABLE_SVC', 'Error deleting timetable: $e');
     }
@@ -635,7 +634,7 @@ class TimetableService {
     try {
 
       final prefs = await SharedPreferences.getInstance();
-      final oldData = prefs.getString(_storageKey);
+      final oldData = prefs.getString(StorageKeys.userTimetableData);
 
       if (oldData != null) {
         final jsonData = jsonDecode(oldData);
@@ -668,7 +667,7 @@ class TimetableService {
           await _addTimetableToList(id);
           
           // Remove old format
-          await prefs.remove(_storageKey);
+          await prefs.remove(StorageKeys.userTimetableData);
 
           return migratedTimetable;
         }

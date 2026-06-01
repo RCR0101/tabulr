@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../constants/app_constants.dart';
 import '../../models/timetable_display.dart';
 
 class PreferencesService extends ChangeNotifier {
@@ -10,8 +11,6 @@ class PreferencesService extends ChangeNotifier {
   TimetableSize _timetableSize = TimetableSize.medium;
   TimetableLayout _timetableLayout = TimetableLayout.vertical;
   
-  static const String _timetableSizeKey = 'timetable_size';
-  static const String _timetableLayoutKey = 'timetable_layout';
 
   TimetableSize get timetableSize => _timetableSize;
   TimetableLayout get timetableLayout => _timetableLayout;
@@ -20,11 +19,11 @@ class PreferencesService extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     
     // Load timetable size preference
-    final sizeIndex = prefs.getInt(_timetableSizeKey) ?? TimetableSize.medium.index;
+    final sizeIndex = prefs.getInt(StorageKeys.timetableSize) ?? TimetableSize.medium.index;
     _timetableSize = TimetableSize.values[sizeIndex];
     
     // Load timetable layout preference
-    final layoutIndex = prefs.getInt(_timetableLayoutKey) ?? TimetableLayout.vertical.index;
+    final layoutIndex = prefs.getInt(StorageKeys.timetableLayout) ?? TimetableLayout.vertical.index;
     _timetableLayout = TimetableLayout.values[layoutIndex];
     
     notifyListeners();
@@ -33,14 +32,14 @@ class PreferencesService extends ChangeNotifier {
   Future<void> setTimetableSize(TimetableSize size) async {
     _timetableSize = size;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_timetableSizeKey, size.index);
+    await prefs.setInt(StorageKeys.timetableSize, size.index);
     notifyListeners();
   }
 
   Future<void> setTimetableLayout(TimetableLayout layout) async {
     _timetableLayout = layout;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_timetableLayoutKey, layout.index);
+    await prefs.setInt(StorageKeys.timetableLayout, layout.index);
     notifyListeners();
   }
 

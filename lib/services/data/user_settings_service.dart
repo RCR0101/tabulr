@@ -8,13 +8,12 @@ import '../../models/timetable_display.dart';
 import 'auth_service.dart';
 import '../ui/theme_service.dart' as theme_service;
 import '../ui/secure_logger.dart';
+import '../../constants/app_constants.dart';
 
 class UserSettingsService extends ChangeNotifier {
   static final UserSettingsService _instance = UserSettingsService._internal();
   factory UserSettingsService() => _instance;
   UserSettingsService._internal();
-
-  static const String _localStorageKey = 'user_settings';
 
   final AuthService _authService = AuthService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -56,7 +55,7 @@ class UserSettingsService extends ChangeNotifier {
       if (userId == null) return;
 
       final doc = await _firestore
-          .collection('users').doc(userId).collection('settings').doc('preferences')
+          .collection(FirestoreCollections.users).doc(userId).collection(FirestoreCollections.settings).doc(FirestoreCollections.preferences)
           .get();
       if (doc.exists && doc.data() != null) {
         _userSettings = UserSettings.fromJson(doc.data()!);
@@ -74,7 +73,7 @@ class UserSettingsService extends ChangeNotifier {
   Future<void> _loadFromLocalStorage() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final settingsJson = prefs.getString(_localStorageKey);
+      final settingsJson = prefs.getString(StorageKeys.userSettings);
       
       if (settingsJson != null) {
         final settingsMap = jsonDecode(settingsJson) as Map<String, dynamic>;
@@ -99,7 +98,7 @@ class UserSettingsService extends ChangeNotifier {
       if (userId == null) return;
 
       await _firestore
-          .collection('users').doc(userId).collection('settings').doc('preferences')
+          .collection(FirestoreCollections.users).doc(userId).collection(FirestoreCollections.settings).doc(FirestoreCollections.preferences)
           .set(_userSettings!.toJson());
 
     } catch (e) {
@@ -116,7 +115,7 @@ class UserSettingsService extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final settingsJson = jsonEncode(_userSettings!.toJson());
-      await prefs.setString(_localStorageKey, settingsJson);
+      await prefs.setString(StorageKeys.userSettings, settingsJson);
     } catch (e) {
       SecureLogger.error('USER_SETTINGS', 'Error saving settings to local storage', e);
     }
@@ -378,7 +377,7 @@ class UserSettingsService extends ChangeNotifier {
     
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_localStorageKey);
+      await prefs.remove(StorageKeys.userSettings);
     } catch (e) {
       SecureLogger.error('USER_SETTINGS', 'Error clearing local settings', e);
     }

@@ -2,6 +2,7 @@ import 'dart:math';
 import '../../models/course.dart';
 import '../../models/timetable_constraints.dart';
 import '../../models/timetable.dart' as timetable;
+import '../../constants/app_constants.dart';
 import 'clash_detector.dart';
 
 /// Generates ranked timetable options from a set of courses and user preferences.
@@ -318,9 +319,9 @@ class TimetableGenerator {
       
       
       // Limit combinations to prevent exponential explosion
-      if (combinations.length > 10000) {
-        
-        combinations = combinations.take(10000).toList();
+      if (combinations.length > AppLimits.combinationCap) {
+
+        combinations = combinations.take(AppLimits.combinationCap).toList();
       }
       
       if (combinations.isEmpty) {

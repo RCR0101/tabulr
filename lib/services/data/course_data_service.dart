@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../constants/app_constants.dart';
 import '../../models/course.dart';
 import 'campus_service.dart';
 import 'courses_master_service.dart';
@@ -22,10 +23,6 @@ class CourseDataService {
   DateTime? _lastFetchTime;
   Campus? _cachedCampus;
   String? _cachedVersion; // Track the version of cached data
-  static const Duration _cacheTimeout = Duration(hours: 24);
-  
-  // Pagination constants
-  static const int _pageSize = 100;
   bool _isLoadingAllCourses = false;
 
   /// Fetch courses with pagination support
@@ -95,7 +92,7 @@ class CourseDataService {
         
         while (hasMore) {
           Query query = CampusService.timetableRef(_firestore)
-              .limit(_pageSize);
+              .limit(AppLimits.coursePageSize);
           
           if (lastDocument != null) {
             query = query.startAfterDocument(lastDocument);
@@ -118,7 +115,7 @@ class CourseDataService {
               }
             }
             
-            if (snapshot.docs.length < _pageSize) {
+            if (snapshot.docs.length < AppLimits.coursePageSize) {
               hasMore = false;
             } else {
               lastDocument = snapshot.docs.last;
@@ -179,7 +176,6 @@ class CourseDataService {
     }
   }
 
-  static const Duration _versionCheckInterval = Duration(minutes: 5);
 
   /// Check if the current cache is valid by comparing versions
   Future<bool> _isCacheValid(Campus currentCampus) async {
@@ -188,10 +184,10 @@ class CourseDataService {
       if (_cachedCampus != currentCampus) return false;
 
       final age = DateTime.now().difference(_lastFetchTime!);
-      if (age > _cacheTimeout) return false;
+      if (age > AppDurations.cacheTimeout) return false;
 
       // Skip Firestore version check if cache is very fresh
-      if (age < _versionCheckInterval) return true;
+      if (age < AppDurations.versionCheckInterval) return true;
 
       final metadata = await _getCurrentMetadata(currentCampus);
       final currentVersion = metadata?['version'] as String?;
@@ -201,7 +197,7 @@ class CourseDataService {
       return _cachedVersion != null && _cachedVersion == currentVersion;
     } catch (e) {
       return _lastFetchTime != null &&
-             DateTime.now().difference(_lastFetchTime!) < _cacheTimeout;
+             DateTime.now().difference(_lastFetchTime!) < AppDurations.cacheTimeout;
     }
   }
   

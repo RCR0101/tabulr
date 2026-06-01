@@ -6,6 +6,7 @@ import '../services/data/calendar_prefs_service.dart';
 import '../services/core/timetable_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
+import '../constants/app_constants.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
@@ -38,8 +39,8 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
     DayOfWeek.M, DayOfWeek.T, DayOfWeek.W,
     DayOfWeek.Th, DayOfWeek.F, DayOfWeek.S,
   ];
-  static const _dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  static const _hours = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  static const _dayLabels = DayConstants.shortLabels;
+  static const _hours = ScheduleConstants.classHours;
 
   static String _hourStartTime(int hour) {
     final full = TimeSlotInfo.hourSlotNames[hour] ?? '';

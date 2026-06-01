@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../constants/app_constants.dart';
 import '../utils/web_utils.dart' as web_utils;
 import '../models/course.dart';
 import '../utils/page_transitions.dart';
@@ -1370,7 +1371,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   }
 
   Future<void> openGitHub() async {
-    const String githubUrl = 'https://github.com/RCR0101/timetable_maker';
+    const String githubUrl = AppUrls.githubRepo;
 
     try {
       if (kIsWeb) {

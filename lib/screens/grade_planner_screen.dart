@@ -3,6 +3,7 @@ import '../models/cgpa_data.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
+import '../constants/app_constants.dart';
 import '../utils/grade_utils.dart' as grade_utils;
 
 class GradePlannerScreen extends StatefulWidget {
@@ -22,8 +23,8 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
   bool _isCalculating = false;
 
   // Grade system
-  static const grades = ['A', 'A-', 'B', 'B-', 'C', 'C-', 'D', 'D-', 'E'];
-  static const gradePoints = [10.0, 9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0];
+  static const grades = GradeConstants.normal;
+  static const gradePoints = GradeConstants.points;
 
   List<String> get _semestersWithCourses {
     return widget.cgpaData.semesters.entries

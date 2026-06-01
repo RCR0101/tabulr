@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:uuid/uuid.dart';
+import '../../constants/app_constants.dart';
 import '../../models/course.dart';
 import '../../models/timetable.dart';
 import 'dart:convert';
@@ -15,20 +16,7 @@ import 'export_service_stub.dart'
     if (dart.library.html) 'export_service_web.dart'
     if (dart.library.io) 'export_service_io.dart';
 
-const Map<int, List<int>> _hourToTime = {
-  1: [8, 0],
-  2: [9, 0],
-  3: [10, 0],
-  4: [11, 0],
-  5: [12, 0],
-  6: [13, 0],
-  7: [14, 0],
-  8: [15, 0],
-  9: [16, 0],
-  10: [17, 0],
-  11: [18, 0],
-  12: [19, 0],
-};
+final Map<int, List<int>> _hourToTime = ScheduleConstants.hourToTime;
 
 /// Escape text per RFC 5545: commas, semicolons, backslashes, and newlines
 String _escapeText(String input) {
@@ -586,11 +574,10 @@ class ExportService {
     );
 
     if (endTime) {
-      // MidSem exams are 1.5 hours, EndSem exams are 3 hours
       final duration =
           exam.timeSlot.toString().startsWith('TimeSlot.MS')
-              ? Duration(minutes: 90) // 1.5 hours for midsems
-              : Duration(hours: 3); // 3 hours for endsems
+              ? ScheduleConstants.midsemExamDuration
+              : ScheduleConstants.endsemExamDuration;
       return baseTime.add(duration);
     }
 

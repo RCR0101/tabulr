@@ -9,6 +9,7 @@ import '../../models/course_announcement.dart';
 import 'auth_service.dart';
 import 'reputation_service.dart';
 import '../ui/secure_logger.dart';
+import '../../constants/app_constants.dart';
 
 class CourseAnnouncementService {
   static final CourseAnnouncementService _instance =
@@ -20,9 +21,7 @@ class CourseAnnouncementService {
   final AuthService _authService = AuthService();
   final ReputationService _reputationService = ReputationService();
   final FirebaseFunctions _functions =
-      FirebaseFunctions.instanceFor(region: 'asia-south1');
-
-  static const String _collection = 'announcements';
+      FirebaseFunctions.instanceFor(region: FirebaseConfig.functionsRegion);
 
   static const _testUsers = String.fromEnvironment('TEST_USERS');
 
@@ -43,7 +42,7 @@ class CourseAnnouncementService {
     if (courseCodes.isEmpty) return Stream.value([]);
 
     return _firestore
-        .collection(_collection)
+        .collection(FirestoreCollections.announcements)
         .where('courseCode', whereIn: courseCodes)
         .orderBy('eventDate', descending: true)
         .snapshots()
@@ -66,7 +65,7 @@ class CourseAnnouncementService {
     final user = _authService.currentUser;
     if (user == null) throw Exception('Not authenticated');
 
-    final docRef = _firestore.collection(_collection).doc();
+    final docRef = _firestore.collection(FirestoreCollections.announcements).doc();
     final announcement = CourseAnnouncement(
       id: docRef.id,
       title: title,
@@ -100,7 +99,7 @@ class CourseAnnouncementService {
   }
 
   Future<void> deleteAnnouncement(String id) async {
-    final docRef = _firestore.collection(_collection).doc(id);
+    final docRef = _firestore.collection(FirestoreCollections.announcements).doc(id);
     final snap = await docRef.get();
 
     if (snap.exists) {
@@ -120,9 +119,9 @@ class CourseAnnouncementService {
       }
     }
 
-    final flagsSnap = await docRef.collection('flags').get();
-    final verifSnap = await docRef.collection('verifications').get();
-    final votesSnap = await docRef.collection('votes').get();
+    final flagsSnap = await docRef.collection(FirestoreCollections.flags).get();
+    final verifSnap = await docRef.collection(FirestoreCollections.verifications).get();
+    final votesSnap = await docRef.collection(FirestoreCollections.votes).get();
     final batch = _firestore.batch();
     for (final d in flagsSnap.docs) {
       batch.delete(d.reference);
@@ -153,9 +152,9 @@ class CourseAnnouncementService {
     if (uid == null) return Stream.value(null);
 
     return _firestore
-        .collection(_collection)
+        .collection(FirestoreCollections.announcements)
         .doc(announcementId)
-        .collection('votes')
+        .collection(FirestoreCollections.votes)
         .doc(uid)
         .snapshots()
         .map((snap) => snap.exists ? (snap.data()?['vote'] as int?) : null);
@@ -179,9 +178,9 @@ class CourseAnnouncementService {
 
   Stream<List<AnnouncementFlag>> watchFlags(String announcementId) {
     return _firestore
-        .collection(_collection)
+        .collection(FirestoreCollections.announcements)
         .doc(announcementId)
-        .collection('flags')
+        .collection(FirestoreCollections.flags)
         .snapshots()
         .map((snap) =>
             snap.docs.map((d) => AnnouncementFlag.fromFirestore(d)).toList());
@@ -191,9 +190,9 @@ class CourseAnnouncementService {
     final uid = _authService.userDocId;
     if (uid == null) return Stream.value(null);
     return _firestore
-        .collection(_collection)
+        .collection(FirestoreCollections.announcements)
         .doc(announcementId)
-        .collection('flags')
+        .collection(FirestoreCollections.flags)
         .doc(uid)
         .snapshots()
         .map((snap) =>
@@ -233,9 +232,9 @@ class CourseAnnouncementService {
     final uid = _authService.userDocId;
     if (uid == null) return Stream.value(null);
     return _firestore
-        .collection(_collection)
+        .collection(FirestoreCollections.announcements)
         .doc(announcementId)
-        .collection('verifications')
+        .collection(FirestoreCollections.verifications)
         .doc(uid)
         .snapshots()
         .map((snap) => snap.exists

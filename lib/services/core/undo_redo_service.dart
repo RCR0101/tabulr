@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../constants/app_constants.dart';
 import '../../models/timetable.dart';
 
 class TimetableSnapshot {
@@ -14,7 +15,6 @@ class TimetableSnapshot {
 class UndoRedoService extends ChangeNotifier {
   final List<TimetableSnapshot> _undoStack = [];
   final List<TimetableSnapshot> _redoStack = [];
-  static const int _maxStackSize = 50;
 
   bool get canUndo => _undoStack.isNotEmpty;
   bool get canRedo => _redoStack.isNotEmpty;
@@ -36,7 +36,7 @@ class UndoRedoService extends ChangeNotifier {
       sections: _copySelections(timetable.selectedSections),
       description: description,
     ));
-    if (_undoStack.length > _maxStackSize) {
+    if (_undoStack.length > AppLimits.maxUndoStackSize) {
       _undoStack.removeAt(0);
     }
     _redoStack.clear();

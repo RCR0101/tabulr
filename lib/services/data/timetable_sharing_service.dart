@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/timetable.dart';
 import 'auth_service.dart';
 import 'campus_service.dart';
+import '../../constants/app_constants.dart';
 
 class SharedTimetableData {
   final String code;
@@ -30,8 +31,6 @@ class TimetableSharingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AuthService _authService = AuthService();
 
-  static const _collection = 'shared_timetables';
-
   static String _generateUuid() {
     final rng = Random.secure();
     final bytes = List<int>.generate(16, (_) => rng.nextInt(256));
@@ -50,7 +49,7 @@ class TimetableSharingService {
     final campus = CampusService.currentCampus.name;
     final sectionsJson = timetable.selectedSections.map((s) => s.toJson()).toList();
 
-    await _firestore.collection(_collection).doc(code).set({
+    await _firestore.collection(FirestoreCollections.sharedTimetables).doc(code).set({
       'name': timetable.name,
       'ownerName': ownerName,
       'ownerId': _authService.userDocId,
@@ -63,7 +62,7 @@ class TimetableSharingService {
   Future<String> revokeAndReshare(Timetable timetable) async {
     if (timetable.shareId != null) {
       try {
-        await _firestore.collection(_collection).doc(timetable.shareId).delete();
+        await _firestore.collection(FirestoreCollections.sharedTimetables).doc(timetable.shareId).delete();
       } catch (_) {}
     }
 
@@ -73,12 +72,12 @@ class TimetableSharingService {
   }
 
   Future<void> deleteShare(String shareId) async {
-    await _firestore.collection(_collection).doc(shareId).delete();
+    await _firestore.collection(FirestoreCollections.sharedTimetables).doc(shareId).delete();
   }
 
   Future<SharedTimetableData?> fetchSharedTimetable(String code) async {
     final trimmed = code.trim().toLowerCase();
-    final doc = await _firestore.collection(_collection).doc(trimmed).get();
+    final doc = await _firestore.collection(FirestoreCollections.sharedTimetables).doc(trimmed).get();
     if (!doc.exists) return null;
 
     final data = doc.data()!;

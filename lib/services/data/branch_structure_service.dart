@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/branch_constants.dart' as constants;
+import '../../constants/app_constants.dart';
 
 class BranchStructure {
   final String branchCode;
@@ -43,7 +44,7 @@ class BranchStructureService {
   List<String>? _availableBranches;
 
   CollectionReference<Map<String, dynamic>> get _branchesRef =>
-      _firestore.collection('reference').doc('branches').collection('data');
+      _firestore.collection(FirestoreCollections.reference).doc(FirestoreCollections.branches).collection(FirestoreCollections.data);
 
   Future<List<String>> getAvailableBranches() async {
     if (_availableBranches != null) return _availableBranches!;

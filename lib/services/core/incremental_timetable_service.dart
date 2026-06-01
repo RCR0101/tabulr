@@ -5,12 +5,10 @@ import 'dart:convert';
 import '../../models/normalized_timetable.dart';
 import '../data/course_data_service.dart';
 import '../ui/secure_logger.dart';
+import '../../constants/app_constants.dart';
 
 /// Service for handling normalized timetable storage with incremental updates
 class IncrementalTimetableService {
-  static const String _localTimetablePrefix = 'normalized_timetable_';
-  static const String _courseMetadataKey = 'course_metadata';
-  static const String _timetableListKey = 'user_timetables_list';
   
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final CourseDataService _courseDataService = CourseDataService();
@@ -252,7 +250,7 @@ class IncrementalTimetableService {
 
   Future<void> _saveLocalTimetable(NormalizedTimetable timetable) async {
     final prefs = await SharedPreferences.getInstance();
-    final key = '$_localTimetablePrefix${timetable.id}';
+    final key = '${StorageKeys.normalizedTimetablePrefix}${timetable.id}';
     await prefs.setString(key, json.encode(timetable.toJson()));
     
     // Update timetable list
@@ -261,7 +259,7 @@ class IncrementalTimetableService {
 
   Future<NormalizedTimetable?> _getLocalTimetable(String timetableId) async {
     final prefs = await SharedPreferences.getInstance();
-    final key = '$_localTimetablePrefix$timetableId';
+    final key = '${StorageKeys.normalizedTimetablePrefix}$timetableId';
     final jsonString = prefs.getString(key);
     
     if (jsonString != null) {
@@ -273,9 +271,9 @@ class IncrementalTimetableService {
 
   Future<void> _saveFirestoreTimetable(NormalizedTimetable timetable, String userId) async {
     final docRef = _firestore
-        .collection('users')
+        .collection(FirestoreCollections.users)
         .doc(userId)
-        .collection('timetables')
+        .collection(FirestoreCollections.timetables)
         .doc(timetable.id);
     
     await docRef.set(timetable.toJson());
@@ -283,9 +281,9 @@ class IncrementalTimetableService {
 
   Future<NormalizedTimetable?> _getFirestoreTimetable(String timetableId, String userId) async {
     final docRef = _firestore
-        .collection('users')
+        .collection(FirestoreCollections.users)
         .doc(userId)
-        .collection('timetables')
+        .collection(FirestoreCollections.timetables)
         .doc(timetableId);
     
     final doc = await docRef.get();
@@ -332,9 +330,9 @@ class IncrementalTimetableService {
 
   Future<void> _applyFirestoreUpdate(TimetableUpdateBatch updateBatch, String userId) async {
     final docRef = _firestore
-        .collection('users')
+        .collection(FirestoreCollections.users)
         .doc(userId)
-        .collection('timetables')
+        .collection(FirestoreCollections.timetables)
         .doc(updateBatch.timetableId);
 
     // Check if document exists first
@@ -377,7 +375,7 @@ class IncrementalTimetableService {
 
   Future<List<NormalizedTimetable>> _getAllLocalTimetables() async {
     final prefs = await SharedPreferences.getInstance();
-    final timetableIds = prefs.getStringList(_timetableListKey) ?? [];
+    final timetableIds = prefs.getStringList(StorageKeys.userTimetablesList) ?? [];
     
     final timetables = <NormalizedTimetable>[];
     for (final id in timetableIds) {
@@ -392,9 +390,9 @@ class IncrementalTimetableService {
 
   Future<List<NormalizedTimetable>> _getAllFirestoreTimetables(String userId) async {
     final collection = _firestore
-        .collection('users')
+        .collection(FirestoreCollections.users)
         .doc(userId)
-        .collection('timetables');
+        .collection(FirestoreCollections.timetables);
     
     final querySnapshot = await collection.get();
     final timetables = <NormalizedTimetable>[];
@@ -417,11 +415,11 @@ class IncrementalTimetableService {
 
   Future<void> _updateLocalTimetableList(String timetableId) async {
     final prefs = await SharedPreferences.getInstance();
-    final timetableIds = prefs.getStringList(_timetableListKey) ?? [];
+    final timetableIds = prefs.getStringList(StorageKeys.userTimetablesList) ?? [];
     
     if (!timetableIds.contains(timetableId)) {
       timetableIds.add(timetableId);
-      await prefs.setStringList(_timetableListKey, timetableIds);
+      await prefs.setStringList(StorageKeys.userTimetablesList, timetableIds);
     }
   }
 
@@ -461,22 +459,22 @@ class IncrementalTimetableService {
       // Delete from Firestore if user is authenticated
       if (userId != null) {
         await _firestore
-            .collection('users')
+            .collection(FirestoreCollections.users)
             .doc(userId)
-            .collection('timetables')
+            .collection(FirestoreCollections.timetables)
             .doc(timetableId)
             .delete();
       }
       
       // Delete from local storage
       final prefs = await SharedPreferences.getInstance();
-      final key = '$_localTimetablePrefix$timetableId';
+      final key = '${StorageKeys.normalizedTimetablePrefix}$timetableId';
       await prefs.remove(key);
       
       // Update local timetable list
-      final timetableIds = prefs.getStringList(_timetableListKey) ?? [];
+      final timetableIds = prefs.getStringList(StorageKeys.userTimetablesList) ?? [];
       timetableIds.remove(timetableId);
-      await prefs.setStringList(_timetableListKey, timetableIds);
+      await prefs.setStringList(StorageKeys.userTimetablesList, timetableIds);
       
     } catch (e) {
       SecureLogger.error('INCREMENTAL_SVC', 'Error deleting timetable', e);
@@ -488,7 +486,7 @@ class IncrementalTimetableService {
   Future<CourseMetadata?> _getCachedCourseMetadata() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final metadataString = prefs.getString(_courseMetadataKey);
+      final metadataString = prefs.getString(StorageKeys.courseMetadata);
       
       if (metadataString != null) {
         final metadataJson = json.decode(metadataString);
@@ -512,7 +510,7 @@ class IncrementalTimetableService {
   Future<void> _saveCourseMetadata(CourseMetadata metadata) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_courseMetadataKey, json.encode(metadata.toJson()));
+      await prefs.setString(StorageKeys.courseMetadata, json.encode(metadata.toJson()));
     } catch (e) {
       SecureLogger.error('INCREMENTAL_SVC', 'Error saving course metadata', e);
     }

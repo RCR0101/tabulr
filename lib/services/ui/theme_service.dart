@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../constants/app_constants.dart';
 import '../../models/app_theme.dart';
 
 export '../../models/app_theme.dart';
@@ -690,17 +691,13 @@ class ThemeService extends ChangeNotifier {
 
   AppTheme _currentTheme = AppTheme.githubDark;
   ThemeMode _currentThemeMode = ThemeMode.system;
-  static const String _themeKey = 'selected_theme';
-  static const String _themeNameKey = 'selected_theme_name';
-  static const String _themeModeKey = 'theme_mode';
-
   AppTheme get currentTheme => _currentTheme;
   ThemeMode get currentThemeMode => _currentThemeMode;
   bool get isLightMode => _currentThemeMode == ThemeMode.light;
 
   Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
-    final themeName = prefs.getString(_themeNameKey);
+    final themeName = prefs.getString(StorageKeys.selectedThemeName);
 
     if (themeName != null) {
       _currentTheme = AppTheme.values.firstWhere(
@@ -709,15 +706,15 @@ class ThemeService extends ChangeNotifier {
       );
     } else {
       // Migrate from old integer-based storage
-      final oldIndex = prefs.getInt(_themeKey);
+      final oldIndex = prefs.getInt(StorageKeys.selectedTheme);
       if (oldIndex != null) {
         _currentTheme = _migrateOldThemeIndex(oldIndex);
-        await prefs.setString(_themeNameKey, _currentTheme.name);
-        await prefs.remove(_themeKey);
+        await prefs.setString(StorageKeys.selectedThemeName, _currentTheme.name);
+        await prefs.remove(StorageKeys.selectedTheme);
       }
     }
 
-    final themeModeIndex = prefs.getInt(_themeModeKey) ?? 2;
+    final themeModeIndex = prefs.getInt(StorageKeys.themeMode) ?? 2;
     switch (themeModeIndex) {
       case 0:
         _currentThemeMode = ThemeMode.dark;
@@ -755,7 +752,7 @@ class ThemeService extends ChangeNotifier {
   Future<void> setTheme(AppTheme theme) async {
     _currentTheme = theme;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_themeNameKey, theme.name);
+    await prefs.setString(StorageKeys.selectedThemeName, theme.name);
     notifyListeners();
   }
 
@@ -776,7 +773,7 @@ class ThemeService extends ChangeNotifier {
         break;
     }
 
-    await prefs.setInt(_themeModeKey, modeIndex);
+    await prefs.setInt(StorageKeys.themeMode, modeIndex);
     notifyListeners();
   }
 

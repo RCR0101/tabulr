@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'campus_service.dart';
+import '../../constants/app_constants.dart';
 
 class CourseMasterEntry {
   final String courseCode;
@@ -49,9 +50,9 @@ class CoursesMasterService {
 
     final campusId = CampusService.campusId;
     final snapshot = await _firestore
-        .collection('campuses')
+        .collection(FirestoreCollections.campuses)
         .doc(campusId)
-        .collection('courses_master')
+        .collection(FirestoreCollections.coursesMaster)
         .get();
 
     _cache = {

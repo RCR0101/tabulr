@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../constants/app_constants.dart';
 
 class AdminCrudService {
   static final AdminCrudService _instance = AdminCrudService._internal();
@@ -8,16 +9,16 @@ class AdminCrudService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> _timetableRef(String campusId) =>
-      _db.collection('campuses').doc(campusId).collection('timetable');
+      _db.collection(FirestoreCollections.campuses).doc(campusId).collection('timetable');
 
   CollectionReference<Map<String, dynamic>> _masterRef(String campusId) =>
-      _db.collection('campuses').doc(campusId).collection('courses_master');
+      _db.collection(FirestoreCollections.campuses).doc(campusId).collection(FirestoreCollections.coursesMaster);
 
   CollectionReference<Map<String, dynamic>> _examRef(String campusId) =>
-      _db.collection('campuses').doc(campusId).collection('exam_seating');
+      _db.collection(FirestoreCollections.campuses).doc(campusId).collection(FirestoreCollections.examSeating);
 
   CollectionReference<Map<String, dynamic>> _profsRef(String campusId) =>
-      _db.collection('reference').doc('professors').collection('$campusId-entries');
+      _db.collection(FirestoreCollections.reference).doc(FirestoreCollections.professors).collection('$campusId-entries');
 
   // ── Courses ──
 

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../constants/app_constants.dart';
 import '../services/data/humanities_electives_service.dart';
 import '../services/data/course_data_service.dart';
 import '../services/data/campus_service.dart';
@@ -133,7 +134,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
         _selectedSemester,
         _selectedSecondaryBranch,
         _availableCourses,
-      ).timeout(Duration(seconds: 20));
+      ).timeout(AppDurations.networkTimeout);
 
       setState(() {
         _huelCourses = huelCourses;

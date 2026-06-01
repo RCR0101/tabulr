@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/timetable.dart';
 import '../models/timetable_stats.dart';
+import '../constants/app_constants.dart';
 import '../models/course.dart';
 
 class ExamTimelineWidget extends StatelessWidget {
@@ -8,8 +9,8 @@ class ExamTimelineWidget extends StatelessWidget {
 
   const ExamTimelineWidget({super.key, required this.timetable});
 
-  static const _monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  static const _weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  static const _monthNames = DayConstants.monthNames;
+  static const _weekDays = DayConstants.weekDays;
 
   @override
   Widget build(BuildContext context) {

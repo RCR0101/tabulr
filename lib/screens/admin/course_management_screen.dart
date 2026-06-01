@@ -6,6 +6,7 @@ import '../../services/data/admin_service.dart';
 import '../../services/data/campus_service.dart';
 import '../../services/data/professor_service.dart';
 import '../../services/ui/toast_service.dart';
+import '../../constants/app_constants.dart';
 import '../../utils/design_constants.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_dialog.dart';
@@ -31,8 +32,8 @@ Widget _badge(String label, Color color) {
 }
 
 class _CourseManagementScreenState extends State<CourseManagementScreen> {
-  static const _campusIds = ['hyderabad', 'pilani', 'goa'];
-  static const _campusLabels = {'hyderabad': 'Hyderabad', 'pilani': 'Pilani', 'goa': 'Goa'};
+  static const _campusIds = CampusConstants.ids;
+  static const _campusLabels = CampusConstants.labels;
 
   final _crud = AdminCrudService();
   final _searchController = TextEditingController();
@@ -90,16 +91,12 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
   String _docId(String courseCode) =>
       courseCode.trim().replaceAll(RegExp(r'\s+'), '_');
 
-  static const _dayLabels = ['M', 'T', 'W', 'Th', 'F', 'S'];
+  static const _dayLabels = DayConstants.singleChar;
   static const _dayValues = [
     'DayOfWeek.M', 'DayOfWeek.T', 'DayOfWeek.W',
     'DayOfWeek.Th', 'DayOfWeek.F', 'DayOfWeek.S',
   ];
-  static const _hourLabels = {
-    1: '8AM', 2: '9AM', 3: '10AM', 4: '11AM', 5: '12PM',
-    6: '1PM', 7: '2PM', 8: '3PM', 9: '4PM', 10: '5PM',
-    11: '6PM', 12: '7PM',
-  };
+  static const _hourLabels = ScheduleConstants.hourLabels;
 
   Widget _scheduleEditor(
       Map<String, dynamic> section, StateSetter setDialogState) {

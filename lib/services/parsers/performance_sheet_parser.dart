@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
+import '../../constants/app_constants.dart';
 import '../../models/cgpa_data.dart';
 import '../../models/all_course.dart';
 
@@ -53,11 +54,8 @@ class ParsedPerformanceSheet {
 }
 
 class PerformanceSheetParser {
-  static const _validGrades = {
-    'A', 'A-', 'B', 'B-', 'C', 'C-', 'D', 'D-', 'E', 'NC', 'GD', 'PR'
-  };
-
-  static const _validTags = {'HEL', 'DEL', 'EL'};
+  static const _validGrades = GradeConstants.allValid;
+  static const _validTags = GradeConstants.electiveTags;
 
   // Course code: 2-4 uppercase letters + 1-3 spaces + F/G + 3 digits
   static final _courseCodePattern = RegExp(r'([A-Z]{2,4})\s{1,3}([FG]\d{3})');
@@ -77,7 +75,7 @@ class PerformanceSheetParser {
     caseSensitive: false,
   );
 
-  static const _maxPdfSize = 10 * 1024 * 1024; // 10 MB
+  static const _maxPdfSize = AppLimits.maxPdfSize;
   static const _pdfMagic = [0x25, 0x50, 0x44, 0x46]; // %PDF
 
   static Future<ParsedPerformanceSheet> parse(Uint8List pdfBytes) async {

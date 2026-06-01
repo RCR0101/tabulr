@@ -1,27 +1,24 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import '../constants/app_constants.dart';
 import '../models/normalized_timetable.dart';
 import '../services/core/incremental_timetable_service.dart';
 
 /// Utility class for migrating from legacy timetable format to normalized format
 class MigrationHelper {
-  static const String _migrationVersionKey = 'migration_version';
-  static const String _currentMigrationVersion = '1.0.0';
-  static const String _legacyTimetableKey = 'user_timetable_data';
-  static const String _legacyTimetableListKey = 'user_timetables_list';
 
   /// Check if migration is needed
   static Future<bool> needsMigration() async {
     final prefs = await SharedPreferences.getInstance();
-    final currentVersion = prefs.getString(_migrationVersionKey);
+    final currentVersion = prefs.getString(StorageKeys.migrationVersion);
     
-    if (currentVersion == _currentMigrationVersion) {
+    if (currentVersion == StorageKeys.currentMigrationVersion) {
       return false;
     }
     
     // Check if there's legacy data to migrate
-    final hasLegacyData = prefs.containsKey(_legacyTimetableKey) ||
-                          prefs.containsKey(_legacyTimetableListKey);
+    final hasLegacyData = prefs.containsKey(StorageKeys.userTimetableData) ||
+                          prefs.containsKey(StorageKeys.userTimetablesList);
     
     return hasLegacyData;
   }
@@ -41,7 +38,7 @@ class MigrationHelper {
       await _migrateMultipleTimetables(prefs, incrementalService, result);
       
       // Mark migration as complete
-      await prefs.setString(_migrationVersionKey, _currentMigrationVersion);
+      await prefs.setString(StorageKeys.migrationVersion, StorageKeys.currentMigrationVersion);
       
       result.success = true;
       result.message = 'Migration completed successfully';
@@ -61,7 +58,7 @@ class MigrationHelper {
     IncrementalTimetableService incrementalService,
     MigrationResult result,
   ) async {
-    final legacyDataString = prefs.getString(_legacyTimetableKey);
+    final legacyDataString = prefs.getString(StorageKeys.userTimetableData);
     if (legacyDataString == null) return;
     
     try {
@@ -75,7 +72,7 @@ class MigrationHelper {
       await incrementalService.saveTimetable(normalized, null);
       
       // Remove legacy data
-      await prefs.remove(_legacyTimetableKey);
+      await prefs.remove(StorageKeys.userTimetableData);
       
       result.migratedTimetables.add(normalized);
       
@@ -90,7 +87,7 @@ class MigrationHelper {
     IncrementalTimetableService incrementalService,
     MigrationResult result,
   ) async {
-    final legacyTimetableIds = prefs.getStringList(_legacyTimetableListKey);
+    final legacyTimetableIds = prefs.getStringList(StorageKeys.userTimetablesList);
     if (legacyTimetableIds == null) return;
     
     for (final timetableId in legacyTimetableIds) {
@@ -119,7 +116,7 @@ class MigrationHelper {
     }
     
     // Remove legacy timetable list
-    await prefs.remove(_legacyTimetableListKey);
+    await prefs.remove(StorageKeys.userTimetablesList);
   }
 
   /// Create backup of legacy data before migration
@@ -128,13 +125,13 @@ class MigrationHelper {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     
     // Backup single timetable
-    final legacyData = prefs.getString(_legacyTimetableKey);
+    final legacyData = prefs.getString(StorageKeys.userTimetableData);
     if (legacyData != null) {
       await prefs.setString('backup_${timestamp}_single', legacyData);
     }
     
     // Backup multiple timetables
-    final legacyTimetableIds = prefs.getStringList(_legacyTimetableListKey);
+    final legacyTimetableIds = prefs.getStringList(StorageKeys.userTimetablesList);
     if (legacyTimetableIds != null) {
       await prefs.setStringList('backup_${timestamp}_list', legacyTimetableIds);
       
@@ -155,13 +152,13 @@ class MigrationHelper {
     // Restore single timetable
     final backupSingle = prefs.getString('backup_${timestamp}_single');
     if (backupSingle != null) {
-      await prefs.setString(_legacyTimetableKey, backupSingle);
+      await prefs.setString(StorageKeys.userTimetableData, backupSingle);
     }
     
     // Restore multiple timetables
     final backupList = prefs.getStringList('backup_${timestamp}_list');
     if (backupList != null) {
-      await prefs.setStringList(_legacyTimetableListKey, backupList);
+      await prefs.setStringList(StorageKeys.userTimetablesList, backupList);
       
       for (final timetableId in backupList) {
         final backupData = prefs.getString('backup_${timestamp}_$timetableId');
@@ -178,15 +175,15 @@ class MigrationHelper {
     final stats = MigrationStats();
     
     // Check current version
-    stats.currentVersion = prefs.getString(_migrationVersionKey);
-    stats.isLatestVersion = stats.currentVersion == _currentMigrationVersion;
+    stats.currentVersion = prefs.getString(StorageKeys.migrationVersion);
+    stats.isLatestVersion = stats.currentVersion == StorageKeys.currentMigrationVersion;
     
     // Count legacy data
-    if (prefs.containsKey(_legacyTimetableKey)) {
+    if (prefs.containsKey(StorageKeys.userTimetableData)) {
       stats.legacyTimetablesCount++;
     }
     
-    final legacyTimetableIds = prefs.getStringList(_legacyTimetableListKey);
+    final legacyTimetableIds = prefs.getStringList(StorageKeys.userTimetablesList);
     if (legacyTimetableIds != null) {
       stats.legacyTimetablesCount += legacyTimetableIds.length;
     }
@@ -243,24 +240,24 @@ class EnhancedMigrationHelper {
       
       // Count total items to migrate
       int totalItems = 0;
-      if (prefs.containsKey(MigrationHelper._legacyTimetableKey)) totalItems++;
+      if (prefs.containsKey(StorageKeys.userTimetableData)) totalItems++;
       
-      final legacyTimetableIds = prefs.getStringList(MigrationHelper._legacyTimetableListKey);
+      final legacyTimetableIds = prefs.getStringList(StorageKeys.userTimetablesList);
       if (legacyTimetableIds != null) totalItems += legacyTimetableIds.length;
       
       int completedItems = 0;
       
       // Migrate single timetable
-      if (prefs.containsKey(MigrationHelper._legacyTimetableKey)) {
+      if (prefs.containsKey(StorageKeys.userTimetableData)) {
         onProgress?.call(completedItems, totalItems, 'Main timetable');
         
-        final legacyDataString = prefs.getString(MigrationHelper._legacyTimetableKey);
+        final legacyDataString = prefs.getString(StorageKeys.userTimetableData);
         if (legacyDataString != null) {
           final legacyData = json.decode(legacyDataString);
           final legacyTimetable = Timetable.fromJson(legacyData);
           final normalized = await incrementalService.migrateFromLegacy(legacyTimetable);
           await incrementalService.saveTimetable(normalized, null);
-          await prefs.remove(MigrationHelper._legacyTimetableKey);
+          await prefs.remove(StorageKeys.userTimetableData);
           result.migratedTimetables.add(normalized);
         }
         
@@ -291,11 +288,11 @@ class EnhancedMigrationHelper {
           completedItems++;
         }
         
-        await prefs.remove(MigrationHelper._legacyTimetableListKey);
+        await prefs.remove(StorageKeys.userTimetablesList);
       }
       
       // Mark migration as complete
-      await prefs.setString(MigrationHelper._migrationVersionKey, MigrationHelper._currentMigrationVersion);
+      await prefs.setString(StorageKeys.migrationVersion, StorageKeys.currentMigrationVersion);
       
       result.success = true;
       result.message = 'Migration completed successfully';

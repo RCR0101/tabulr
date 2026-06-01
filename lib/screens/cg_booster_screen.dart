@@ -3,6 +3,7 @@ import '../models/cgpa_data.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
+import '../constants/app_constants.dart';
 import '../utils/grade_utils.dart' as grade_utils;
 
 class CGBoosterScreen extends StatefulWidget {
@@ -21,8 +22,8 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
   List<_BoostResult> _results = [];
   bool _isCalculating = false;
 
-  static const _grades = ['A', 'A-', 'B', 'B-', 'C', 'C-', 'D', 'D-', 'E'];
-  static const _gradePoints = [10.0, 9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0];
+  static const _grades = GradeConstants.normal;
+  static const _gradePoints = GradeConstants.points;
 
   double get _currentCGPA => widget.cgpaData.cgpa;
   double get _totalCredits => widget.cgpaData.effectiveTotalCredits;

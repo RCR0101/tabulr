@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../constants/app_constants.dart';
 import '../services/ui/responsive_service.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
@@ -1106,7 +1107,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildMobileDaySelector(ThemeData theme) {
     final days = List.generate(6, (i) => _weekStart.add(Duration(days: i)));
-    final dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    final dayLabels = DayConstants.shortLabels;
     final today = DateTime.now();
     final selected = _mobileDayIndex.clamp(0, 5);
 
@@ -1336,7 +1337,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildWeekView(ThemeData theme) {
     final days = List.generate(6, (i) => _weekStart.add(Duration(days: i)));
-    final dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    final dayLabels = DayConstants.shortLabels;
     final today = DateTime.now();
     final bitsDays = [
       DayOfWeek.M,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/app_constants.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 import '../services/core/course_comparison_service.dart';
@@ -60,9 +61,9 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
   final DisciplineElectivesService _delService = DisciplineElectivesService();
   
   // Common semester options (simplified)
-  static const List<String> _semesterOptions = [
-    '1-1', '1-2', '2-1', '2-2', '3-1', '3-2'
-  ];
+  static final List<String> _semesterOptions = SemesterConstants.all
+      .where((s) => !s.startsWith('ST') && int.tryParse(s[0]) != null && int.parse(s[0]) <= 3)
+      .toList();
 
   // Section shuffle state
   Course? _shuffleCourse;

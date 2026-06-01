@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../models/cgpa_data.dart';
 import 'auth_service.dart';
 import '../ui/secure_logger.dart';
+import '../../constants/app_constants.dart';
 
 class CGPAService {
   static final CGPAService _instance = CGPAService._internal();
@@ -14,44 +15,9 @@ class CGPAService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AuthService _authService = AuthService();
 
-  // Collection name for CGPA data
-  static const String _collectionName = 'users';
-
-  // Default semesters list
-  static const List<String> defaultSemesters = [
-    '1-1',
-    '1-2',
-    '2-1',
-    '2-2',
-    'ST 1',
-    '3-1',
-    '3-2',
-    'ST 2',
-    '4-1',
-    '4-2',
-    'ST 3',
-    '5-1',
-    '5-2',
-  ];
-
-  // Grade options for Normal courses
-  static const List<String> normalGrades = [
-    'A',
-    'A-',
-    'B',
-    'B-',
-    'C',
-    'C-',
-    'D',
-    'D-',
-    'E',
-    'NC',
-  ];
-
-  // Grade options for ATC courses
-  static const List<String> atcGrades = ['GD', 'PR', 'NC'];
-
-  static const String _workerUrl = 'https://cgpa-encryption.dalmia-aryan.workers.dev';
+  static const List<String> defaultSemesters = SemesterConstants.all;
+  static const List<String> normalGrades = GradeConstants.normalWithNc;
+  static const List<String> atcGrades = GradeConstants.atc;
 
   Future<String> _getIdToken() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -64,7 +30,7 @@ class CGPAService {
   Future<String> _encryptData(String data) async {
     final token = await _getIdToken();
     final response = await http.post(
-      Uri.parse(_workerUrl),
+      Uri.parse(AppUrls.cgpaEncryptionWorker),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -80,7 +46,7 @@ class CGPAService {
   Future<String> _decryptData(String encryptedData) async {
     final token = await _getIdToken();
     final response = await http.post(
-      Uri.parse(_workerUrl),
+      Uri.parse(AppUrls.cgpaEncryptionWorker),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -113,9 +79,9 @@ class CGPAService {
 
       // Save to Firestore
       final docRef = _firestore
-          .collection(_collectionName)
+          .collection(FirestoreCollections.users)
           .doc(_authService.userDocId!)
-          .collection('cgpa_semesters')
+          .collection(FirestoreCollections.cgpaSemesters)
           .doc(semesterName);
 
       await docRef.set({
@@ -139,9 +105,9 @@ class CGPAService {
 
       final batch = _firestore.batch();
       final colRef = _firestore
-          .collection(_collectionName)
+          .collection(FirestoreCollections.users)
           .doc(_authService.userDocId!)
-          .collection('cgpa_semesters');
+          .collection(FirestoreCollections.cgpaSemesters);
 
       for (final entry in semesters.entries) {
         final jsonData = jsonEncode(entry.value.toJson());
@@ -171,9 +137,9 @@ class CGPAService {
       }
 
       final docRef = _firestore
-          .collection(_collectionName)
+          .collection(FirestoreCollections.users)
           .doc(_authService.userDocId!)
-          .collection('cgpa_semesters')
+          .collection(FirestoreCollections.cgpaSemesters)
           .doc(semesterName);
 
       final doc = await docRef.get();
@@ -213,9 +179,9 @@ class CGPAService {
       }
 
       final snapshot = await _firestore
-          .collection(_collectionName)
+          .collection(FirestoreCollections.users)
           .doc(_authService.userDocId!)
-          .collection('cgpa_semesters')
+          .collection(FirestoreCollections.cgpaSemesters)
           .get();
 
       if (snapshot.docs.isEmpty) {
@@ -286,9 +252,9 @@ class CGPAService {
       }
 
       await _firestore
-          .collection(_collectionName)
+          .collection(FirestoreCollections.users)
           .doc(_authService.userDocId!)
-          .collection('cgpa_semesters')
+          .collection(FirestoreCollections.cgpaSemesters)
           .doc(semesterName)
           .delete();
 
@@ -311,9 +277,9 @@ class CGPAService {
 
       final snapshot =
           await _firestore
-              .collection(_collectionName)
+              .collection(FirestoreCollections.users)
               .doc(_authService.userDocId!)
-              .collection('cgpa_semesters')
+              .collection(FirestoreCollections.cgpaSemesters)
               .get();
 
       final batch = _firestore.batch();

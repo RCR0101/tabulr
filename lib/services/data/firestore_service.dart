@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/timetable.dart';
 import 'auth_service.dart';
 import '../ui/secure_logger.dart';
+import '../../constants/app_constants.dart';
 
 class FirestoreService {
   static final FirestoreService _instance = FirestoreService._internal();
@@ -10,8 +11,6 @@ class FirestoreService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AuthService _authService = AuthService();
-
-  String get _collectionName => 'users';
 
   String? get _userDocId => _authService.userDocId;
 
@@ -26,9 +25,9 @@ class FirestoreService {
 
       // Save individual timetable as a subcollection document
       final docRef = _firestore
-          .collection(_collectionName)
+          .collection(FirestoreCollections.users)
           .doc(_userDocId!)
-          .collection('timetables')
+          .collection(FirestoreCollections.timetables)
           .doc(timetable.id);
       
       final Map<String, dynamic> timetableData = {
@@ -61,7 +60,7 @@ class FirestoreService {
       }
 
       final doc = await _firestore
-          .collection(_collectionName)
+          .collection(FirestoreCollections.users)
           .doc(_userDocId!)
           .get();
 
@@ -99,7 +98,7 @@ class FirestoreService {
       }
 
       await _firestore
-          .collection(_collectionName)
+          .collection(FirestoreCollections.users)
           .doc(_userDocId!)
           .delete();
 
@@ -119,7 +118,7 @@ class FirestoreService {
       }
 
       final doc = await _firestore
-          .collection(_collectionName)
+          .collection(FirestoreCollections.users)
           .doc(_userDocId!)
           .get();
 
@@ -148,7 +147,7 @@ class FirestoreService {
       }
 
       final doc = await _firestore
-          .collection(_collectionName)
+          .collection(FirestoreCollections.users)
           .doc(_userDocId!)
           .get();
 
@@ -166,7 +165,7 @@ class FirestoreService {
     }
 
     return _firestore
-        .collection(_collectionName)
+        .collection(FirestoreCollections.users)
         .doc(_userDocId!)
         .snapshots();
   }
@@ -180,7 +179,7 @@ class FirestoreService {
       }
 
       final doc = await _firestore
-          .collection(_collectionName)
+          .collection(FirestoreCollections.users)
           .doc(_userDocId!)
           .get();
 
@@ -218,9 +217,9 @@ class FirestoreService {
       SecureLogger.debug('FIRESTORE', 'Loading timetables for user');
 
       final querySnapshot = await _firestore
-          .collection(_collectionName)
+          .collection(FirestoreCollections.users)
           .doc(_userDocId!)
-          .collection('timetables')
+          .collection(FirestoreCollections.timetables)
           .orderBy('createdAt', descending: false)
           .get();
 
@@ -258,9 +257,9 @@ class FirestoreService {
       }
 
       final doc = await _firestore
-          .collection(_collectionName)
+          .collection(FirestoreCollections.users)
           .doc(_userDocId!)
-          .collection('timetables')
+          .collection(FirestoreCollections.timetables)
           .doc(timetableId)
           .get();
 
@@ -298,9 +297,9 @@ class FirestoreService {
       }
 
       await _firestore
-          .collection(_collectionName)
+          .collection(FirestoreCollections.users)
           .doc(_userDocId!)
-          .collection('timetables')
+          .collection(FirestoreCollections.timetables)
           .doc(timetableId)
           .delete();
 
@@ -321,7 +320,7 @@ class FirestoreService {
         final userId = entry.key;
         final timetable = entry.value;
 
-        final docRef = _firestore.collection(_collectionName).doc(userId);
+        final docRef = _firestore.collection(FirestoreCollections.users).doc(userId);
         final timetableData = {
           'userId': userId,
           'timetableData': timetable.toJson(),

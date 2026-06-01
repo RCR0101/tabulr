@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
+import '../../constants/app_constants.dart';
 import 'auth_service.dart';
 
 class AdminService extends ChangeNotifier {
@@ -21,7 +22,7 @@ class AdminService extends ChangeNotifier {
   }
 
   final FirebaseFunctions _functions =
-      FirebaseFunctions.instanceFor(region: 'asia-south1');
+      FirebaseFunctions.instanceFor(region: FirebaseConfig.functionsRegion);
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final AuthService _authService = AuthService();
 
@@ -79,7 +80,7 @@ class AdminService extends ChangeNotifier {
       }
       payload['examYear'] = examYear;
       final result =
-          await _functions.httpsCallable('upload_timetable', options: HttpsCallableOptions(timeout: const Duration(minutes: 8))).call(payload);
+          await _functions.httpsCallable('upload_timetable', options: HttpsCallableOptions(timeout: AppDurations.uploadTimetableTimeout)).call(payload);
       return result.data['coursesUploaded'] as int;
     } finally {
       _storage.ref(storagePath).delete().ignore();
@@ -96,7 +97,7 @@ class AdminService extends ChangeNotifier {
         await _uploadToStorage(fileBytes, 'exam_seating/$campusCode', fileName);
     try {
       final result =
-          await _functions.httpsCallable('upload_exam_seating', options: HttpsCallableOptions(timeout: const Duration(minutes: 5))).call({
+          await _functions.httpsCallable('upload_exam_seating', options: HttpsCallableOptions(timeout: AppDurations.uploadExamSeatingTimeout)).call({
         'campusCode': campusCode,
         'storagePath': storagePath,
         'excludeHeaders': excludeHeaders,
