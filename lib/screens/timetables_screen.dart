@@ -247,9 +247,6 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     }
 
     setState(() {
-      if (newIndex > oldIndex) {
-        newIndex -= 1;
-      }
       final item = _sortedTimetables.removeAt(oldIndex);
       _sortedTimetables.insert(newIndex, item);
     });
@@ -779,7 +776,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                     child: ReorderableListView.builder(
                       padding: const EdgeInsets.all(AppDesign.spacingMd),
                       itemCount: _sortedTimetables.length,
-                      onReorder: _onReorder,
+                      onReorderItem: _onReorder,
                       buildDefaultDragHandles: false,
                       itemBuilder: (context, index) {
                         final timetable = _sortedTimetables[index];

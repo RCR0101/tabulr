@@ -91,7 +91,6 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
 
   void _onReorder(int oldIndex, int newIndex) {
     setState(() {
-      if (newIndex > oldIndex) newIndex--;
       final item = _rankedCourses.removeAt(oldIndex);
       _rankedCourses.insert(newIndex, item);
     });
@@ -644,7 +643,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
               itemCount: _rankedCourses.length,
-              onReorder: _onReorder,
+              onReorderItem: _onReorder,
               proxyDecorator: (child, index, animation) {
                 return Material(
                   elevation: 4,

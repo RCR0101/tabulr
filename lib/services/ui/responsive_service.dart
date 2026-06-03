@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/services.dart';
 import '../../constants/app_constants.dart';
 import '../../models/screen_size.dart';
@@ -467,7 +468,7 @@ class ResponsiveService {
       padding: padding,
       shrinkWrap: shrinkWrap,
       itemCount: itemCount,
-      cacheExtent: isMobile(context) ? 250.0 : 500.0, // Smaller cache on mobile
+      scrollCacheExtent: ScrollCacheExtent.pixels(isMobile(context) ? 250.0 : 500.0),
       itemBuilder: (context, index) {
         return buildPerformantWidget(
           context: context,
@@ -476,7 +477,7 @@ class ResponsiveService {
       },
     );
   }
-  
+
   /// Build an optimized GridView for mobile performance
   static Widget buildOptimizedGridView({
     required BuildContext context,
@@ -494,7 +495,7 @@ class ResponsiveService {
       shrinkWrap: shrinkWrap,
       gridDelegate: gridDelegate,
       itemCount: itemCount,
-      cacheExtent: isMobile(context) ? 200.0 : 400.0, // Smaller cache on mobile
+      scrollCacheExtent: ScrollCacheExtent.pixels(isMobile(context) ? 200.0 : 400.0),
       itemBuilder: (context, index) {
         return buildPerformantWidget(
           context: context,

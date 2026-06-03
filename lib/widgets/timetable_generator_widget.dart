@@ -661,9 +661,8 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
               itemCount: clusterCodes.length,
-              onReorder: (oldIndex, newIndex) {
+              onReorderItem: (oldIndex, newIndex) {
                 setState(() {
-                  if (newIndex > oldIndex) newIndex--;
                   final globalOld = _optionalCourses.indexOf(clusterCodes[oldIndex]);
                   final globalNew = _optionalCourses.indexOf(clusterCodes[newIndex]);
                   final code = _optionalCourses.removeAt(globalOld);
@@ -1002,9 +1001,8 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
               itemCount: _freeDayPreference.length,
-              onReorder: (oldIndex, newIndex) {
+              onReorderItem: (oldIndex, newIndex) {
                 setState(() {
-                  if (newIndex > oldIndex) newIndex--;
                   final day = _freeDayPreference.removeAt(oldIndex);
                   _freeDayPreference.insert(newIndex, day);
                 });
@@ -2842,9 +2840,8 @@ class _InstructorRankingDialogState extends State<_InstructorRankingDialog>
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: rankedInstructors.length,
-                onReorder: (oldIndex, newIndex) {
+                onReorderItem: (oldIndex, newIndex) {
                   setState(() {
-                    if (newIndex > oldIndex) newIndex--;
                     final instructor = rankedInstructors.removeAt(oldIndex);
                     rankedInstructors.insert(newIndex, instructor);
 

@@ -61,6 +61,7 @@ abstract final class StorageKeys {
 
 abstract final class FirebaseConfig {
   static const String functionsRegion = 'asia-south1';
+  static const String recaptchaSiteKey = '6LddywotAAAAAB_ZxyOdhXcE58f8jVNRLuTP0HE3';
 }
 
 abstract final class AppUrls {

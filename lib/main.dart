@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'constants/app_constants.dart';
 import 'utils/web_utils.dart' as web_utils;
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -28,6 +30,12 @@ void main() async {
   await SecureLogger.measureAsync('firebase_init', () => Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   ));
+
+  await SecureLogger.measureAsync('app_check_init', () =>
+    FirebaseAppCheck.instance.activate(
+      webProvider: ReCaptchaV3Provider(FirebaseConfig.recaptchaSiteKey),
+    ),
+  );
 
   await SecureLogger.measureAsync('campus_init', () => CampusService.initializeCampus());
 
