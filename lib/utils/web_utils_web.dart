@@ -1,10 +1,13 @@
 // ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use, depend_on_referenced_packages
 import 'dart:html' as html;
-import 'dart:js' as js;
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 
 void openUrl(String url) {
-  html.window.open(url, '_blank');
+  final uri = Uri.tryParse(url);
+  if (uri == null) return;
+  final allowed = {'http', 'https', 'mailto', 'tel'};
+  if (!allowed.contains(uri.scheme.toLowerCase())) return;
+  html.window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 html.EventListener? _beforeUnloadListener;
@@ -33,15 +36,7 @@ void addPageHideListener(void Function() callback) {
 }
 
 void clearLocalStorageItem(String key) {
-  js.context.callMethod('eval', [
-    'window.localStorage.removeItem("$key")'
-  ]);
-}
-
-void setLocalStorageItem(String key, String value) {
-  js.context.callMethod('eval', [
-    'window.localStorage.setItem("$key", \'$value\')'
-  ]);
+  html.window.localStorage.remove(key);
 }
 
 void usePathUrlStrategy() {

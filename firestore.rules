@@ -84,7 +84,12 @@ service cloud.firestore {
       allow write: if false;
     }
     match /acad_drives_submissions/{docId} {
-      allow create: if request.auth != null;
+      allow create: if isBitsEmail()
+        && request.resource.data.keys().hasAll(['url', 'course_codes', 'submittedBy'])
+        && request.resource.data.submittedBy == request.auth.token.email
+        && request.resource.data.url is string
+        && request.resource.data.url.size() > 0
+        && request.resource.data.url.size() < 2048;
       allow read: if true;
       allow update, delete: if false;
     }

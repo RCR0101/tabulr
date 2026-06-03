@@ -430,7 +430,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     final allFiles = folderTree.collectAllFiles();
     final downloadable = allFiles.where((f) {
       final url = f.file['url'];
-      return url != null && url != 'NA' && url.toString().trim().isNotEmpty;
+      if (url == null || url == 'NA' || url.toString().trim().isEmpty) return false;
+      final uri = Uri.tryParse(url.toString());
+      return uri != null && uri.scheme == 'https';
     }).toList();
 
     if (downloadable.isEmpty) {
@@ -483,7 +485,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
       for (final entry in downloadable) {
         try {
-          final response = await http.get(Uri.parse(entry.file['url']));
+          final uri = Uri.parse(entry.file['url']);
+          if (uri.scheme != 'https') { failed++; continue; }
+          final response = await http.get(uri);
           if (response.statusCode == 200) {
             archive.addFile(ArchiveFile(
               entry.path,

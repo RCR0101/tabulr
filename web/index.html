@@ -76,30 +76,35 @@
 
   <script>
     (async function() {
+      var version = '';
       try {
-        // Always unregister any leftover service workers
         if ('serviceWorker' in navigator) {
           var regs = await navigator.serviceWorker.getRegistrations();
           for (var r of regs) await r.unregister();
         }
 
-        // Check for version change and bust caches
         var resp = await fetch('version.json?t=' + Date.now());
         var data = await resp.json();
+        version = data.version || '';
         var prev = localStorage.getItem('app_version');
 
-        if (prev && prev !== data.version) {
+        if (prev && prev !== version) {
           var keys = await caches.keys();
           for (var k of keys) await caches.delete(k);
-          localStorage.setItem('app_version', data.version);
+          localStorage.setItem('app_version', version);
           window.location.reload();
           return;
         }
-        localStorage.setItem('app_version', data.version);
+        localStorage.setItem('app_version', version);
       } catch(e) {}
+
+      // Load Flutter bootstrap with version query param for cache busting
+      var s = document.createElement('script');
+      s.src = 'flutter_bootstrap.js' + (version ? '?v=' + encodeURIComponent(version) : '?t=' + Date.now());
+      s.async = true;
+      document.body.appendChild(s);
     })();
   </script>
-  <script src="flutter_bootstrap.js" async></script>
   <script>
     window.addEventListener('flutter-first-frame', function () {
       var el = document.getElementById('loading');

@@ -22,7 +22,7 @@ async function requireAdmin(request) {
 
 // ─── Check admin status ───
 
-exports.checkAdminStatus = onCall({ region: REGION }, async (request) => {
+exports.checkAdminStatus = onCall({ region: REGION, enforceAppCheck: true }, async (request) => {
   if (!request.auth) {
     return { isAdmin: false };
   }
@@ -237,7 +237,7 @@ function normalizeInstructorNames(instructor) {
 // ─── Rebuild Professor Schedules ───
 
 exports.rebuildProfessorSchedules = onCall(
-  { region: REGION, timeoutSeconds: 540, memory: "512MiB" },
+  { region: REGION, enforceAppCheck: true, timeoutSeconds: 540, memory: "512MiB" },
   async (request) => {
     await requireAdmin(request);
 
