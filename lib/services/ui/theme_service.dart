@@ -613,7 +613,7 @@ TextTheme _buildTextTheme(Color onSurface) {
 
 ThemeData _buildTheme(_ThemeColors c) {
   final isDark = c.brightness == Brightness.dark;
-  final base = isDark ? ThemeData.dark(useMaterial3: true) : ThemeData.light(useMaterial3: true);
+  final base = isDark ? ThemeData.dark() : ThemeData.light();
   final effectiveBorderColor = c.borderColor ?? c.outline;
   final textTheme = _buildTextTheme(c.onSurface);
 

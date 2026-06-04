@@ -38,6 +38,11 @@ class AuthService {
         throw Exception('Invalid configuration. Missing: GOOGLE_WEB_CLIENT_ID');
       }
 
+      // Persist auth across browser sessions on web
+      if (kIsWeb) {
+        await _firebaseAuth.setPersistence(Persistence.LOCAL);
+      }
+
       // Initialize GoogleSignIn with web client ID if on web
       if (kIsWeb) {
         _googleSignIn = GoogleSignIn(

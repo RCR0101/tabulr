@@ -41,21 +41,18 @@ void main() async {
 
   final userSettingsService = UserSettingsService();
   final themeService = theme_service.ThemeService();
-
-  // Auth + theme prefs + courses can load in parallel (no dependencies)
-  await SecureLogger.measureAsync('parallel_services_1', () => Future.wait([
+  await SecureLogger.measureAsync('parallel_services', () => Future.wait([
     CoursesMasterService().loadForCampus(),
     AuthService().initialize(),
+    userSettingsService.initializeSettings(),
     themeService.initialize(),
     PreferencesService().initialize(),
   ]));
 
-  // User settings depend on auth being ready (checks isAuthenticated for Firestore)
-  await SecureLogger.measureAsync('user_settings_init', () =>
-    userSettingsService.initializeSettings(),
-  );
-
-  // Sync theme from UserSettings (Firestore source of truth) to ThemeService
+  // Re-load settings if auth won the race (settings may have loaded as guest)
+  if (AuthService().isAuthenticated) {
+    await userSettingsService.initializeSettings(force: true);
+  }
   final savedSettings = userSettingsService.userSettings;
   if (savedSettings != null) {
     await themeService.setTheme(savedSettings.themeVariant);
@@ -168,7 +165,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
           );
         }
 
-        final isAuthenticated = authSnapshot.hasData || _authService.isAuthenticated;
+        final isAuthenticated = _authService.isAuthenticated;
         final isGuest = _authService.isGuest;
         
         // If user is authenticated, go to app shell with sidebar
