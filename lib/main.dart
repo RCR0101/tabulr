@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
-import 'package:firebase_app_check/firebase_app_check.dart';
-import 'constants/app_constants.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'utils/web_utils.dart' as web_utils;
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -31,19 +29,6 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   ));
 
-  try {
-    await SecureLogger.measureAsync('app_check_init', () =>
-      FirebaseAppCheck.instance.activate(
-        webProvider: kDebugMode
-            ? ReCaptchaV3Provider(FirebaseConfig.recaptchaSiteKey)
-            : ReCaptchaV3Provider(FirebaseConfig.recaptchaSiteKey),
-        androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
-        appleProvider: kDebugMode ? AppleProvider.debug : AppleProvider.deviceCheck,
-      ),
-    );
-  } catch (e) {
-    SecureLogger.error('APP_CHECK', 'Failed to activate App Check — app will continue without it', e);
-  }
 
   await SecureLogger.measureAsync('campus_init', () => CampusService.initializeCampus());
 
