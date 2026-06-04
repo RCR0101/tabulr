@@ -73,27 +73,17 @@ class AuthService {
         }
       }
 
-      // Check if user was previously authenticated
+      // Sync prefs if Firebase already has a user (e.g. restored from persistence)
       final prefs = await SharedPreferences.getInstance();
-      final wasAuthenticated = prefs.getBool('is_authenticated') ?? false;
-      
-      // Wait a moment for Firebase to initialize properly
-      await Future.delayed(const Duration(milliseconds: 500));
-      
-      // Check current Firebase auth state
+
       if (currentUser != null) {
         SecureLogger.info('AUTH', 'Current user found during initialization');
-        if (!wasAuthenticated) {
-          // User is signed in but not marked as authenticated in our app
-          SecureLogger.debug('AUTH', 'Marking user as authenticated in preferences');
-          await prefs.setBool('is_authenticated', true);
-        }
+        await prefs.setBool('is_authenticated', true);
       } else {
         SecureLogger.debug('AUTH', 'No current user found during initialization');
-        if (wasAuthenticated) {
-          // Clear stale auth preference
-          await prefs.remove('is_authenticated');
-        }
+        // Don't clear is_authenticated here — on web, App Check may not have
+        // validated yet so currentUser can be null temporarily. The pref is
+        // only cleared on explicit sign-out.
       }
     } catch (e) {
       SecureLogger.error('AUTH', 'Failed to initialize AuthService', e);

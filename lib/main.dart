@@ -135,53 +135,88 @@ class AuthWrapper extends StatefulWidget {
 class _AuthWrapperState extends State<AuthWrapper> {
   final AuthService _authService = AuthService();
   late StreamSubscription<bool> _authMethodSubscription;
+  late StreamSubscription<dynamic> _authSub;
+  bool _authReady = false;
+  bool _themeSynced = false;
+  bool _wasPreviouslyAuthenticated = false;
 
   @override
   void initState() {
     super.initState();
-    // Listen to auth method chosen stream to trigger rebuilds for guest mode
+    _initAuth();
     _authMethodSubscription = _authService.authMethodChosenStream.listen((_) {
-      if (mounted) {
-        setState(() {});
+      if (mounted) setState(() {});
+    });
+  }
+
+  Future<void> _initAuth() async {
+    final wasAuth = await _authService.isValidAuthState();
+    if (mounted) {
+      setState(() => _wasPreviouslyAuthenticated = wasAuth);
+    }
+
+    _authSub = _authService.authStateChanges.listen((user) {
+      if (user != null) {
+        _authReady = true;
+        if (!_themeSynced) {
+          _themeSynced = true;
+          _syncThemeFromFirestore();
+        }
+        if (mounted) setState(() {});
+      } else if (!_wasPreviouslyAuthenticated) {
+        _authReady = true;
+        if (mounted) setState(() {});
+      } else {
+        // User was previously authenticated but Firebase emitted null.
+        // This happens on web when App Check hasn't validated yet.
+        // Wait for the next emission — if the session is truly gone,
+        // Firebase will emit null again and we'll show login.
+        _wasPreviouslyAuthenticated = false;
+        // Don't set _authReady yet — keep showing skeleton
       }
     });
+  }
+
+  Future<void> _syncThemeFromFirestore() async {
+    final userSettingsService = UserSettingsService();
+    await userSettingsService.initializeSettings(force: true);
+    final settings = userSettingsService.userSettings;
+    if (settings != null) {
+      final themeService = theme_service.ThemeService();
+      await themeService.setTheme(settings.themeVariant);
+      final flutterMode = switch (settings.themeMode) {
+        user_settings.ThemeMode.light => ThemeMode.light,
+        user_settings.ThemeMode.dark => ThemeMode.dark,
+        user_settings.ThemeMode.system => ThemeMode.system,
+      };
+      await themeService.setThemeMode(flutterMode);
+    }
   }
 
   @override
   void dispose() {
     _authMethodSubscription.cancel();
+    _authSub.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder(
-      stream: _authService.authStateChanges,
-      builder: (context, authSnapshot) {
-        // Show loading while Firebase is restoring the persisted session
-        if (authSnapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: TimetableListSkeleton(),
-          );
-        }
+    if (_authService.isAuthenticated) {
+      return const AppShell();
+    }
 
-        final isAuthenticated = _authService.isAuthenticated;
-        final isGuest = _authService.isGuest;
-        
-        // If user is authenticated, go to app shell with sidebar
-        if (isAuthenticated) {
-          return const AppShell();
-        }
-        
-        // If user has chosen guest mode, go to simple home screen
-        if (isGuest) {
-          return const HomeScreen();
-        }
-        
-        // Otherwise, show auth screen
-        return const AuthScreen();
-      },
-    );
+    if (_authService.isGuest) {
+      return const HomeScreen();
+    }
+
+    if (!_authReady) {
+      return const Scaffold(
+        body: TimetableListSkeleton(),
+      );
+    }
+
+    return const AuthScreen();
   }
 }
 
