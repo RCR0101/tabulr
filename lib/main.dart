@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'constants/app_constants.dart';
 import 'utils/web_utils.dart' as web_utils;
@@ -31,27 +31,52 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   ));
 
-  await SecureLogger.measureAsync('app_check_init', () =>
-    FirebaseAppCheck.instance.activate(
-      webProvider: ReCaptchaV3Provider(FirebaseConfig.recaptchaSiteKey),
-    ),
-  );
+  try {
+    await SecureLogger.measureAsync('app_check_init', () =>
+      FirebaseAppCheck.instance.activate(
+        webProvider: kDebugMode
+            ? ReCaptchaV3Provider(FirebaseConfig.recaptchaSiteKey)
+            : ReCaptchaV3Provider(FirebaseConfig.recaptchaSiteKey),
+        androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+        appleProvider: kDebugMode ? AppleProvider.debug : AppleProvider.deviceCheck,
+      ),
+    );
+  } catch (e) {
+    SecureLogger.error('APP_CHECK', 'Failed to activate App Check — app will continue without it', e);
+  }
 
   await SecureLogger.measureAsync('campus_init', () => CampusService.initializeCampus());
 
   final userSettingsService = UserSettingsService();
   final themeService = theme_service.ThemeService();
+
+  // Each service is wrapped so a single failure (e.g. Firestore permission-denied
+  // when App Check token is invalid) doesn't kill the entire startup.
   await SecureLogger.measureAsync('parallel_services', () => Future.wait([
-    CoursesMasterService().loadForCampus(),
-    AuthService().initialize(),
-    userSettingsService.initializeSettings(),
-    themeService.initialize(),
-    PreferencesService().initialize(),
+    CoursesMasterService().loadForCampus().catchError((e) {
+      SecureLogger.error('STARTUP', 'Failed to load courses', e);
+    }),
+    AuthService().initialize().catchError((e) {
+      SecureLogger.error('STARTUP', 'Failed to initialize auth', e);
+    }),
+    userSettingsService.initializeSettings().catchError((e) {
+      SecureLogger.error('STARTUP', 'Failed to load user settings', e);
+    }),
+    themeService.initialize().catchError((e) {
+      SecureLogger.error('STARTUP', 'Failed to initialize theme', e);
+    }),
+    PreferencesService().initialize().catchError((e) {
+      SecureLogger.error('STARTUP', 'Failed to initialize preferences', e);
+    }),
   ]));
 
   // Re-load settings if auth won the race (settings may have loaded as guest)
   if (AuthService().isAuthenticated) {
-    await userSettingsService.initializeSettings(force: true);
+    try {
+      await userSettingsService.initializeSettings(force: true);
+    } catch (e) {
+      SecureLogger.error('STARTUP', 'Failed to re-load user settings', e);
+    }
   }
   final savedSettings = userSettingsService.userSettings;
   if (savedSettings != null) {
