@@ -700,40 +700,14 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
           // Main content
           Expanded(
             child: _sortedTimetables.isEmpty
-                ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.schedule,
-                      size: 64,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.5),
-                    ),
-                    const SizedBox(height: AppDesign.spacingMd),
-                    Text(
-                      'No timetables yet',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.headlineSmall?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    const SizedBox(height: AppDesign.spacingSm),
-                    Text(
-                      'Create your first timetable to get started',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurface.withValues(alpha: 0.5),
-                      ),
-                    ),
-                  ],
-                ),
-              )
+                ? EmptyStateWidget(
+                    icon: Icons.schedule,
+                    title: 'No timetables yet',
+                    subtitle: 'Create your first timetable to get started',
+                    actionLabel: 'New Timetable',
+                    actionIcon: Icons.add,
+                    onAction: _createNewTimetable,
+                  )
                 : Column(
                   children: [
                     Padding(

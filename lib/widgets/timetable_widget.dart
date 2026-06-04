@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
@@ -81,6 +83,12 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     if (widget.isForExport) return false;
     return ResponsiveService.isMobile(context) || ResponsiveService.isTablet(context);
   }
+
+  TextScaler get _textScaler => widget.isForExport
+      ? TextScaler.noScaling
+      : MediaQuery.textScalerOf(context);
+
+  double _scaleFont(double size) => _textScaler.scale(size);
 
   @override
   void didChangeDependencies() {
@@ -899,8 +907,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
         Expanded(
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              minWidth: isMobile ? 280 : ResponsiveService.getValue(context, mobile: 480, tablet: 768, desktop: 1000),
-              maxWidth: isMobile ? MediaQuery.of(context).size.width - 16 : double.infinity,
+              minWidth: isMobile ? 260 : ResponsiveService.getValue(context, mobile: 480, tablet: 768, desktop: 1000),
+              maxWidth: isMobile ? MediaQuery.of(context).size.width - 8 : double.infinity,
             ),
             child: widget.isForExport
                 ? Container(
@@ -1032,19 +1040,21 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   _isMobile ? 'H${hour + 1}' : 'Hour ${hour + 1}',
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    fontSize: _isMobile ? 12 : 14,
+                    fontSize: _scaleFont(_isMobile ? 12 : 14),
                     color: Theme.of(context).colorScheme.onSurface,
                   ),
+                  textScaler: TextScaler.noScaling,
                   textAlign: TextAlign.center,
                 ),
                 SizedBox(height: 2),
                 Text(
                   TimeSlotInfo.getHourSlotName(hour + 1),
                   style: TextStyle(
-                    fontSize: _isMobile ? 9 : 11,
+                    fontSize: _scaleFont(_isMobile ? 9 : 11),
                     color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                     fontWeight: FontWeight.w400,
                   ),
+                  textScaler: TextScaler.noScaling,
                   textAlign: TextAlign.center,
                   maxLines: _isMobile ? 1 : 2,
                   overflow: TextOverflow.ellipsis,
@@ -1064,9 +1074,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               'Time',
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                fontSize: 16,
+                fontSize: _scaleFont(16),
                 color: Theme.of(context).colorScheme.onSurface,
               ),
+              textScaler: TextScaler.noScaling,
             ),
           ),
         ),
@@ -1078,9 +1089,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               width: _getDayColumnWidth(widget.size),
               child: Text(
                 day,
+                textScaler: TextScaler.noScaling,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  fontSize: _isMobile ? 13 : 16,
+                  fontSize: _scaleFont(_isMobile ? 13 : 16),
                   color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
@@ -1132,6 +1144,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                       fontWeight: FontWeight.w600,
                       color: Theme.of(context).colorScheme.primary,
                     ),
+                    textScaler: TextScaler.noScaling,
                     textAlign: TextAlign.center,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1143,6 +1156,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                       fontWeight: FontWeight.w400,
                       color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                     ),
+                    textScaler: TextScaler.noScaling,
                     textAlign: TextAlign.center,
                     maxLines: _isMobile ? 1 : 2,
                     overflow: TextOverflow.ellipsis,
@@ -1210,6 +1224,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     fontWeight: FontWeight.w600,
                     color: Theme.of(context).colorScheme.primary,
                   ),
+                  textScaler: TextScaler.noScaling,
                   textAlign: TextAlign.center,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1276,10 +1291,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
           height: _getCellHeight(widget.size),
           margin: EdgeInsets.all(_getCellMargin(widget.size)),
           decoration: BoxDecoration(
-            color: courseColor.withValues(alpha: isHovered ? 0.22 : 0.12),
+            color: courseColor.withValues(alpha: isHovered ? 0.26 : 0.18),
             borderRadius: BorderRadius.circular(_getBorderRadius(widget.size)),
             border: Border.all(
-              color: courseColor.withValues(alpha: isHovered ? 0.4 : 0.2),
+              color: courseColor.withValues(alpha: isHovered ? 0.45 : 0.3),
             ),
           ),
           child: Stack(
@@ -1317,6 +1332,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                             color: _getCourseColor(slot.courseCode),
                             height: 1.1,
                           ),
+                          textScaler: TextScaler.noScaling,
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                         ),
@@ -1330,9 +1346,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                             fontSize: _getCourseTitleFontSize(widget.size),
                             color: Theme.of(context).colorScheme.onSurface,
                             fontWeight: FontWeight.w400,
-                            height: _getLineHeight(widget.size),  // Dynamic line height for better text fitting
-                            letterSpacing: widget.size == TimetableSize.compact ? 0.05 : 0.1,  // Reduced letter spacing for compact mode
+                            height: _getLineHeight(widget.size),
+                            letterSpacing: widget.size == TimetableSize.compact ? 0.05 : 0.1,
                           ),
+                          textScaler: TextScaler.noScaling,
                           overflow: TextOverflow.ellipsis,
                           maxLines: _getCourseTitleMaxLines(widget.size),
                         ),
@@ -1348,6 +1365,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                             fontWeight: FontWeight.w500,
                             height: 1.1,
                           ),
+                          textScaler: TextScaler.noScaling,
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                         ),
@@ -1359,11 +1377,12 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                           slot.instructor,
                           style: TextStyle(
                             fontSize: _getInstructorFontSize(widget.size),
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.88),  // Slightly more opaque
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.88),
                             fontWeight: FontWeight.w400,
-                            height: _getLineHeight(widget.size),  // Dynamic line height
-                            letterSpacing: widget.size == TimetableSize.compact ? 0.1 : 0.15,  // Reduced letter spacing for compact mode
+                            height: _getLineHeight(widget.size),
+                            letterSpacing: widget.size == TimetableSize.compact ? 0.1 : 0.15,
                           ),
+                          textScaler: TextScaler.noScaling,
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                         ),
@@ -1378,6 +1397,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                             color: Theme.of(context).colorScheme.onSurface,
                             height: 1.1,
                           ),
+                          textScaler: TextScaler.noScaling,
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                         ),
@@ -1388,8 +1408,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               // Warning icon for incomplete course selections
               if (_hasIncompleteSelection(slot.courseCode))
                 Positioned(
-                  top: 2,
-                  left: 2,
+                  top: 0,
+                  left: 0,
                   child: Tooltip(
                     message: _getIncompleteSelectionWarning(slot.courseCode),
                     decoration: BoxDecoration(
@@ -1398,32 +1418,39 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                       border: Border.all(color: Theme.of(context).colorScheme.outline),
                     ),
                     textStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12),
-                    child: Container(
-                      width: ResponsiveService.getValue(context, mobile: 24, tablet: 20, desktop: 18),
-                      height: ResponsiveService.getValue(context, mobile: 24, tablet: 20, desktop: 18),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.9),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Theme.of(context).shadowColor.withValues(alpha: 0.3),
-                            blurRadius: 2,
-                            offset: const Offset(0, 1),
+                    child: SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: Center(
+                        child: Container(
+                          width: ResponsiveService.getValue(context, mobile: 24, tablet: 20, desktop: 18),
+                          height: ResponsiveService.getValue(context, mobile: 24, tablet: 20, desktop: 18),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.9),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Theme.of(context).shadowColor.withValues(alpha: 0.3),
+                                blurRadius: 2,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.warning,
-                        size: ResponsiveService.getValue(context, mobile: 16, tablet: 14, desktop: 12),
-                        color: Theme.of(context).colorScheme.onSecondary,
+                          child: Icon(
+                            Icons.warning,
+                            size: ResponsiveService.getValue(context, mobile: 16, tablet: 14, desktop: 12),
+                            color: Theme.of(context).colorScheme.onSecondary,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              if (widget.onRemoveSection != null && _hoveredCourse == '${slot.courseCode}-${slot.sectionId}')
+              if (widget.onRemoveSection != null &&
+                  (_isMobile || _hoveredCourse == '${slot.courseCode}-${slot.sectionId}'))
                 Positioned(
-                  top: 2,
-                  right: 2,
+                  top: 0,
+                  right: 0,
                   child: Semantics(
                     label: 'Remove ${slot.courseCode} ${slot.sectionId}',
                     button: true,
@@ -1432,24 +1459,30 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                       ResponsiveService.triggerHeavyFeedback(context);
                       widget.onRemoveSection!(slot.courseCode, slot.sectionId);
                     },
-                    child: Container(
-                      width: ResponsiveService.getValue(context, mobile: 28, tablet: 24, desktop: 20),
-                      height: ResponsiveService.getValue(context, mobile: 28, tablet: 24, desktop: 20),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Theme.of(context).shadowColor.withValues(alpha: 0.3),
-                            blurRadius: 2,
-                            offset: const Offset(0, 1),
+                    child: SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: Center(
+                        child: Container(
+                          width: ResponsiveService.getValue(context, mobile: 28, tablet: 24, desktop: 20),
+                          height: ResponsiveService.getValue(context, mobile: 28, tablet: 24, desktop: 20),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Theme.of(context).shadowColor.withValues(alpha: 0.3),
+                                blurRadius: 2,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.close,
-                        size: ResponsiveService.getValue(context, mobile: 18, tablet: 16, desktop: 14),
-                        color: Theme.of(context).colorScheme.onSecondary,
+                          child: Icon(
+                            Icons.close,
+                            size: ResponsiveService.getValue(context, mobile: 18, tablet: 16, desktop: 14),
+                            color: Theme.of(context).colorScheme.onSecondary,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -1605,7 +1638,36 @@ class _TimetableWidgetState extends State<TimetableWidget> {
   Color _getCourseColor(String courseCode) {
     final hash = courseCode.hashCode;
     final colors = AppDesign.timetableColors(context);
-    return colors[hash.abs() % colors.length];
+    final color = colors[hash.abs() % colors.length];
+    final bg = Theme.of(context).colorScheme.surface;
+    final contrast = _contrastRatio(color, bg);
+    if (contrast >= 4.5) return color;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark ? _lighten(color, 0.2) : _darken(color, 0.2);
+  }
+
+  static double _luminance(Color c) {
+    double r = c.r, g = c.g, b = c.b;
+    r = r <= 0.04045 ? r / 12.92 : pow((r + 0.055) / 1.055, 2.4).toDouble();
+    g = g <= 0.04045 ? g / 12.92 : pow((g + 0.055) / 1.055, 2.4).toDouble();
+    b = b <= 0.04045 ? b / 12.92 : pow((b + 0.055) / 1.055, 2.4).toDouble();
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+
+  static double _contrastRatio(Color a, Color b) {
+    final la = _luminance(a) + 0.05;
+    final lb = _luminance(b) + 0.05;
+    return la > lb ? la / lb : lb / la;
+  }
+
+  static Color _lighten(Color c, double amount) {
+    final hsl = HSLColor.fromColor(c);
+    return hsl.withLightness((hsl.lightness + amount).clamp(0.0, 1.0)).toColor();
+  }
+
+  static Color _darken(Color c, double amount) {
+    final hsl = HSLColor.fromColor(c);
+    return hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0)).toColor();
   }
 
   bool _hasIncompleteSelection(String courseCode) {
@@ -1639,11 +1701,11 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     // Make cells bigger on mobile for better readability
     if (_isMobile) {
       final screenWidth = MediaQuery.maybeOf(context)?.size.width ?? 400;
-      final availableWidth = screenWidth - 48; // Account for padding and margins
+      final availableWidth = screenWidth - 24;
       final timeColumnWidth = _getTimeColumnWidth(size);
       final remainingWidth = availableWidth - timeColumnWidth;
-      final columnWidth = remainingWidth / 6; // 6 day columns
-      return columnWidth.clamp(80.0, baseWidth * 0.8); // Increased minimum from 60px to 80px
+      final columnWidth = remainingWidth / 6;
+      return columnWidth.clamp(65.0, baseWidth * 0.8);
     }
     
     return baseWidth;
@@ -1716,9 +1778,9 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       TimetableSize.large => 120.0,
       TimetableSize.extraLarge => 140.0,
     };
-    
-    // Make rows taller on mobile for better touch targets
-    return _isMobile ? baseHeight * 1.1 : baseHeight;
+
+    final height = _isMobile ? baseHeight * 1.1 : baseHeight;
+    return _textScaler.scale(height);
   }
 
   IconData _getSizeIcon(TimetableSize size) {
@@ -1743,51 +1805,51 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       TimetableSize.extraLarge => 18.0, // Reduced from 20
     };
     
-    return _isMobile ? baseSize * 0.92 : baseSize;
+    return _scaleFont(_isMobile ? baseSize * 0.92 : baseSize);
   }
 
   double _getCourseTitleFontSize(TimetableSize size) {
     final baseSize = switch (size) {
-      TimetableSize.compact => 10.0,    // Reduced slightly for compact mode to prevent cutoff
-      TimetableSize.medium => 11.5,     // Keep current size
-      TimetableSize.large => 13.0,      // Keep current size
-      TimetableSize.extraLarge => 14.5, // Keep current size
+      TimetableSize.compact => 10.0,
+      TimetableSize.medium => 11.5,
+      TimetableSize.large => 13.0,
+      TimetableSize.extraLarge => 14.5,
     };
-    
-    return _isMobile ? baseSize * 0.92 : baseSize;
+
+    return _scaleFont(_isMobile ? baseSize * 0.92 : baseSize);
   }
 
   double _getSectionIdFontSize(TimetableSize size) {
     final baseSize = switch (size) {
-      TimetableSize.compact => 11.5,    // Increased from 11
-      TimetableSize.medium => 13.0,     // Increased from 12
-      TimetableSize.large => 14.5,      // Increased from 13
-      TimetableSize.extraLarge => 16.5, // Increased from 15
+      TimetableSize.compact => 11.5,
+      TimetableSize.medium => 13.0,
+      TimetableSize.large => 14.5,
+      TimetableSize.extraLarge => 16.5,
     };
-    
-    return _isMobile ? baseSize * 0.92 : baseSize;
+
+    return _scaleFont(_isMobile ? baseSize * 0.92 : baseSize);
   }
 
   double _getRoomFontSize(TimetableSize size) {
     final baseSize = switch (size) {
-      TimetableSize.compact => 10.5,    // Increased from 10
-      TimetableSize.medium => 12.0,     // Increased from 11
-      TimetableSize.large => 13.5,      // Increased from 12
-      TimetableSize.extraLarge => 15.0, // Increased from 13
+      TimetableSize.compact => 10.5,
+      TimetableSize.medium => 12.0,
+      TimetableSize.large => 13.5,
+      TimetableSize.extraLarge => 15.0,
     };
-    
-    return _isMobile ? baseSize * 0.92 : baseSize;
+
+    return _scaleFont(_isMobile ? baseSize * 0.92 : baseSize);
   }
 
   double _getInstructorFontSize(TimetableSize size) {
     final baseSize = switch (size) {
-      TimetableSize.compact => 10.0,    // Increased from 9
-      TimetableSize.medium => 11.0,     // Increased from 10
-      TimetableSize.large => 12.5,      // Increased from 11
-      TimetableSize.extraLarge => 14.0, // Increased from 12
+      TimetableSize.compact => 10.0,
+      TimetableSize.medium => 11.0,
+      TimetableSize.large => 12.5,
+      TimetableSize.extraLarge => 14.0,
     };
-    
-    return _isMobile ? baseSize * 0.92 : baseSize;
+
+    return _scaleFont(_isMobile ? baseSize * 0.92 : baseSize);
   }
 
   double _getHourLabelFontSize(TimetableSize size) {
@@ -1797,9 +1859,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       TimetableSize.large => 14.0,
       TimetableSize.extraLarge => 16.0,
     };
-    
-    // Smaller font for mobile to prevent overflow
-    return _isMobile ? baseSize * 0.8 : baseSize;
+
+    return _scaleFont(_isMobile ? baseSize * 0.8 : baseSize);
   }
 
   double _getHourTimeFontSize(TimetableSize size) {
@@ -1809,9 +1870,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       TimetableSize.large => 11.0,
       TimetableSize.extraLarge => 12.0,
     };
-    
-    // Smaller font for mobile to prevent overflow
-    return _isMobile ? baseSize * 0.8 : baseSize;
+
+    return _scaleFont(_isMobile ? baseSize * 0.8 : baseSize);
   }
 
   double _getCellPadding(TimetableSize size) {
@@ -1908,43 +1968,143 @@ class _TimetableWidgetState extends State<TimetableWidget> {
 
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      margin: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        border: Border(top: BorderSide(color: scheme.outline.withValues(alpha: 0.2))),
+        color: scheme.surface,
+        border: Border(top: BorderSide(color: scheme.outline.withValues(alpha: 0.3), width: 1.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'Exam Schedule',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: scheme.onSurface,
+          Row(
+            children: [
+              Icon(Icons.event_note, size: 20, color: scheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Exam Schedule',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Table(
+            border: TableBorder.all(
+              color: scheme.outline.withValues(alpha: 0.25),
+              width: 1,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            columnWidths: const {
+              0: FlexColumnWidth(2.5),
+              1: FlexColumnWidth(2),
+              2: FlexColumnWidth(2),
+            },
+            children: [
+              TableRow(
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                ),
+                children: [
+                  for (final header in ['Course', 'Midsem', 'Compre'])
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      child: Text(
+                        header,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: scheme.onSurface,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              ...examCourses.map((c) => TableRow(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          c.courseCode,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: _getCourseColor(c.courseCode),
+                          ),
+                        ),
+                        if (c.courseTitle.isNotEmpty)
+                          Text(
+                            c.courseTitle,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: scheme.onSurface.withValues(alpha: 0.6),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                    ),
+                  ),
+                  _buildExamCell(context, c.midSemExam, fmtDate, fmtSlot, scheme.tertiary),
+                  _buildExamCell(context, c.endSemExam, fmtDate, fmtSlot, scheme.error),
+                ],
+              )),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExamCell(
+    BuildContext context,
+    ExamSchedule? exam,
+    String Function(DateTime) fmtDate,
+    String Function(TimeSlot) fmtSlot,
+    Color accent,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    if (exam == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Text('—', style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.3), fontSize: 14)),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              fmtDate(exam.date),
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: accent,
+              ),
             ),
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 24,
-            runSpacing: 6,
-            children: examCourses.map((c) {
-              final parts = <String>[];
-              if (c.midSemExam != null) {
-                parts.add('Mid: ${fmtDate(c.midSemExam!.date)} ${fmtSlot(c.midSemExam!.timeSlot)}');
-              }
-              if (c.endSemExam != null) {
-                parts.add('Compre: ${fmtDate(c.endSemExam!.date)} ${fmtSlot(c.endSemExam!.timeSlot)}');
-              }
-              return Text(
-                '${c.courseCode}: ${parts.join(' | ')}',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: scheme.onSurface.withValues(alpha: 0.8),
-                ),
-              );
-            }).toList(),
+          const SizedBox(height: 3),
+          Text(
+            fmtSlot(exam.timeSlot),
+            style: TextStyle(
+              fontSize: 12,
+              color: scheme.onSurface.withValues(alpha: 0.6),
+            ),
           ),
         ],
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/common/empty_state.dart';
 import '../models/timetable.dart';
 import '../models/timetable_stats.dart';
 import '../models/course.dart';
@@ -282,8 +283,10 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
 
   Widget _buildGridView() {
     if (_leftTimetable == null && _rightTimetable == null) {
-      return const Center(
-        child: Text('Select timetables to compare'),
+      return const EmptyStateWidget(
+        icon: Icons.compare_arrows,
+        title: 'Select timetables to compare',
+        subtitle: 'Pick two timetables from the dropdowns above',
       );
     }
 
@@ -292,7 +295,10 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
         Expanded(
           child: _leftTimetable != null
               ? _buildGridTimetable(_leftTimetable!)
-              : const Center(child: Text('Select left timetable')),
+              : const EmptyStateWidget(
+                  icon: Icons.arrow_back,
+                  title: 'Select left timetable',
+                ),
         ),
         Container(
           width: 1,
@@ -301,7 +307,10 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
         Expanded(
           child: _rightTimetable != null
               ? _buildGridTimetable(_rightTimetable!)
-              : const Center(child: Text('Select right timetable')),
+              : const EmptyStateWidget(
+                  icon: Icons.arrow_forward,
+                  title: 'Select right timetable',
+                ),
         ),
       ],
     );
@@ -309,8 +318,10 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
 
   Widget _buildListView() {
     if (_leftTimetable == null || _rightTimetable == null) {
-      return const Center(
-        child: Text('Select both timetables to see detailed comparison'),
+      return const EmptyStateWidget(
+        icon: Icons.compare_arrows,
+        title: 'Select both timetables',
+        subtitle: 'Pick two timetables to see a detailed comparison',
       );
     }
 

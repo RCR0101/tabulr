@@ -12,6 +12,7 @@ import '../services/data/courses_master_service.dart';
 import '../services/data/user_settings_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../utils/design_constants.dart';
+import '../widgets/common/empty_state.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../mixins/timetable_editor_mixin.dart';
 
@@ -141,7 +142,11 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
                 ],
               ),
             ),
-            body: const Center(child: Text('Failed to load timetable')),
+            body: const EmptyStateWidget(
+              icon: Icons.error_outline,
+              title: 'Failed to load timetable',
+              subtitle: 'Please try again or check your connection',
+            ),
           );
         }
 

@@ -11,6 +11,8 @@ class _ThemeColors {
   final Color surface;
   final Color primary;
   final Color secondary;
+  final Color tertiary;
+  final Color onTertiary;
   final Color error;
   final Color onPrimary;
   final Color onSecondary;
@@ -43,6 +45,8 @@ class _ThemeColors {
     required this.surface,
     required this.primary,
     required this.secondary,
+    required this.tertiary,
+    required this.onTertiary,
     required this.error,
     required this.onPrimary,
     required this.onSecondary,
@@ -79,6 +83,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surface: Color(0xFF161B22),
       primary: Color(0xFF58A6FF),
       secondary: Color(0xFF56D364),
+      tertiary: Color(0xFFD29922),
+      onTertiary: Color(0xFF0D1117),
       error: Color(0xFFFF6B6B),
       onPrimary: Color(0xFF0D1117),
       onSecondary: Color(0xFF0D1117),
@@ -103,6 +109,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surface: Color(0xFFF6F8FA),
       primary: Color(0xFF0969DA),
       secondary: Color(0xFF1F883D),
+      tertiary: Color(0xFF9A6700),
+      onTertiary: Color(0xFFFFFFFF),
       error: Color(0xFFDA3633),
       onPrimary: Color(0xFFFFFFFF),
       onSecondary: Color(0xFFFFFFFF),
@@ -130,6 +138,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surface: Color(0xFF44475A),
       primary: Color(0xFFBD93F9),
       secondary: Color(0xFF50FA7B),
+      tertiary: Color(0xFFFFB86C),
+      onTertiary: Color(0xFF282A36),
       error: Color(0xFFFF5555),
       onPrimary: Color(0xFF282A36),
       onSecondary: Color(0xFF282A36),
@@ -155,6 +165,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surface: Color(0xFFFFFFFF),
       primary: Color(0xFF586A9C),
       secondary: Color(0xFF1A7F37),
+      tertiary: Color(0xFFC4841D),
+      onTertiary: Color(0xFFFFFFFF),
       error: Color(0xFFFF5555),
       onPrimary: Color(0xFFFFFFFF),
       onSecondary: Color(0xFF282A36),
@@ -182,6 +194,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surface: Color(0xFF3B4252),
       primary: Color(0xFF5E81AC),
       secondary: Color(0xFF88C0D0),
+      tertiary: Color(0xFFEBCB8B),
+      onTertiary: Color(0xFF2E3440),
       error: Color(0xFFBF616A),
       onPrimary: Color(0xFFECEFF4),
       onSecondary: Color(0xFF2E3440),
@@ -207,6 +221,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surface: Color(0xFFFFFFFF),
       primary: Color(0xFF4E7499),
       secondary: Color(0xFF81A1C1),
+      tertiary: Color(0xFFC4A44C),
+      onTertiary: Color(0xFF2E3440),
       error: Color(0xFFBF616A),
       onPrimary: Color(0xFFFFFFFF),
       onSecondary: Color(0xFF2E3440),
@@ -233,6 +249,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surface: Color(0xFF24283B),
       primary: Color(0xFF7AA2F7),
       secondary: Color(0xFF9ECE6A),
+      tertiary: Color(0xFFE0AF68),
+      onTertiary: Color(0xFF1A1B26),
       error: Color(0xFFF7768E),
       onPrimary: Color(0xFF1A1B26),
       onSecondary: Color(0xFF1A1B26),
@@ -260,6 +278,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surface: Color(0xFFF7F7F7),
       primary: Color(0xFF3D59A1),
       secondary: Color(0xFF33635C),
+      tertiary: Color(0xFF8F5E15),
+      onTertiary: Color(0xFFFFFFFF),
       error: Color(0xFFCC517A),
       onPrimary: Color(0xFFFFFFFF),
       onSecondary: Color(0xFFFFFFFF),
@@ -286,6 +306,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surface: Color(0xFF282828),
       primary: Color(0xFFD79921),
       secondary: Color(0xFF98971A),
+      tertiary: Color(0xFF458588),
+      onTertiary: Color(0xFFEBDBB2),
       error: Color(0xFFCC241D),
       onPrimary: Color(0xFF1D2021),
       onSecondary: Color(0xFF1D2021),
@@ -311,6 +333,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surface: Color(0xFFF2E5BC),
       primary: Color(0xFF96600D),
       secondary: Color(0xFF79740E),
+      tertiary: Color(0xFF076678),
+      onTertiary: Color(0xFFFBF1C7),
       error: Color(0xFF9D0006),
       onPrimary: Color(0xFFFBF1C7),
       onSecondary: Color(0xFFFBF1C7),
@@ -337,6 +361,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surface: Color(0xFF313244),
       primary: Color(0xFFCBA6F7),
       secondary: Color(0xFFA6E3A1),
+      tertiary: Color(0xFFF9E2AF),
+      onTertiary: Color(0xFF1E1E2E),
       error: Color(0xFFF38BA8),
       onPrimary: Color(0xFF1E1E2E),
       onSecondary: Color(0xFF1E1E2E),
@@ -362,6 +388,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surface: Color(0xFFE6E9EF),
       primary: Color(0xFF6B6D80),
       secondary: Color(0xFF40A02B),
+      tertiary: Color(0xFFDF8E1D),
+      onTertiary: Color(0xFFFFFFFF),
       error: Color(0xFFD20F39),
       onPrimary: Color(0xFFFFFFFF),
       onSecondary: Color(0xFFFFFFFF),
@@ -388,6 +416,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surface: Color(0xFF073642),
       primary: Color(0xFF268BD2),
       secondary: Color(0xFF2AA198),
+      tertiary: Color(0xFFB58900),
+      onTertiary: Color(0xFF002B36),
       error: Color(0xFFDC322F),
       onPrimary: Color(0xFFFDF6E3),
       onSecondary: Color(0xFF002B36),
@@ -412,6 +442,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surface: Color(0xFFEEE8D5),
       primary: Color(0xFF2078B8),
       secondary: Color(0xFF2AA198),
+      tertiary: Color(0xFFB58900),
+      onTertiary: Color(0xFFFFFFFF),
       error: Color(0xFFDC322F),
       onPrimary: Color(0xFFFFFFFF),
       onSecondary: Color(0xFFFFFFFF),
@@ -438,6 +470,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surface: Color(0xFF122032),
       primary: Color(0xFF88C0D0),
       secondary: Color(0xFF81A1C1),
+      tertiary: Color(0xFFEBCB8B),
+      onTertiary: Color(0xFF0B1621),
       error: Color(0xFFBF616A),
       onPrimary: Color(0xFF0B1621),
       onSecondary: Color(0xFF0B1621),
@@ -470,6 +504,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surface: Color(0xFFFFFFFF),
       primary: Color(0xFF3E7D90),
       secondary: Color(0xFF5E81AC),
+      tertiary: Color(0xFFC4A44C),
+      onTertiary: Color(0xFF2E3440),
       error: Color(0xFFBF616A),
       onPrimary: Color(0xFFFFFFFF),
       onSecondary: Color(0xFFFFFFFF),
@@ -494,6 +530,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surface: Color(0xFF0A0A0A),
       primary: Color(0xFF6CB4EE),
       secondary: Color(0xFF4ADE80),
+      tertiary: Color(0xFFFBBF24),
+      onTertiary: Color(0xFF000000),
       error: Color(0xFFFF6B6B),
       onPrimary: Color(0xFF000000),
       onSecondary: Color(0xFF000000),
@@ -524,6 +562,8 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       surface: Color(0xFF0A0A0A),
       primary: Color(0xFF6CB4EE),
       secondary: Color(0xFF4ADE80),
+      tertiary: Color(0xFFFBBF24),
+      onTertiary: Color(0xFF000000),
       error: Color(0xFFFF6B6B),
       onPrimary: Color(0xFF000000),
       onSecondary: Color(0xFF000000),
@@ -553,6 +593,10 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
 
 TextTheme _buildTextTheme(Color onSurface) {
   return TextTheme(
+    displayLarge: TextStyle(fontSize: 57, fontWeight: FontWeight.w400, color: onSurface, letterSpacing: -0.25),
+    displayMedium: TextStyle(fontSize: 45, fontWeight: FontWeight.w400, color: onSurface),
+    displaySmall: TextStyle(fontSize: 36, fontWeight: FontWeight.w400, color: onSurface),
+    headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w600, color: onSurface),
     headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: onSurface),
     headlineSmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: onSurface),
     titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: onSurface),
@@ -569,7 +613,7 @@ TextTheme _buildTextTheme(Color onSurface) {
 
 ThemeData _buildTheme(_ThemeColors c) {
   final isDark = c.brightness == Brightness.dark;
-  final base = isDark ? ThemeData.dark() : ThemeData.light();
+  final base = isDark ? ThemeData.dark(useMaterial3: true) : ThemeData.light(useMaterial3: true);
   final effectiveBorderColor = c.borderColor ?? c.outline;
   final textTheme = _buildTextTheme(c.onSurface);
 
@@ -583,6 +627,8 @@ ThemeData _buildTheme(_ThemeColors c) {
             .copyWith(
       primary: c.primary,
       secondary: c.secondary,
+      tertiary: c.tertiary,
+      onTertiary: c.onTertiary,
       surface: c.surface,
       error: c.error,
       onPrimary: c.onPrimary,

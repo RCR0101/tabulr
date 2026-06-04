@@ -4,6 +4,7 @@ import '../models/timetable.dart';
 import '../services/data/course_data_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
+import '../widgets/common/empty_state.dart';
 import '../widgets/search_filter_widget.dart';
 import '../services/data/campus_service.dart';
 import '../services/core/clash_detector.dart';
@@ -401,11 +402,10 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
         ),
         Expanded(
           child: currentCourses.isEmpty
-              ? Center(
-                  child: Text(
-                    'No courses in current timetable',
-                    style: TextStyle(fontSize: 16, color: AppDesign.muted(context)),
-                  ),
+              ? const EmptyStateWidget(
+                  icon: Icons.library_books_outlined,
+                  title: 'No courses in current timetable',
+                  subtitle: 'Add courses to your timetable first',
                 )
               : ListView.builder(
                   padding: EdgeInsets.fromLTRB(

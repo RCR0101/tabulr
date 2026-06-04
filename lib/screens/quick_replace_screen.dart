@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
+import '../widgets/common/empty_state.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 import '../services/core/course_comparison_service.dart';
@@ -885,11 +886,10 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
 
   Widget _buildCompactSimilarCoursesList() {
     if (_filteredCourses.isEmpty) {
-      return Center(
-        child: Text(
-          'No similar courses found',
-          style: TextStyle(color: AppDesign.muted(context)),
-        ),
+      return const EmptyStateWidget(
+        icon: Icons.search_off,
+        title: 'No similar courses found',
+        subtitle: 'Try adjusting your search or filters',
       );
     }
 
@@ -1604,15 +1604,15 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
         // Results
         Expanded(
           child: _shuffleResults.isEmpty
-              ? Center(
-                  child: Text(
-                    _shuffleCourse == null
-                        ? 'Select a course to get started'
-                        : _closedSectionIds.isEmpty
-                            ? 'Mark closed sections, then tap Find Alternatives'
-                            : 'No results yet',
-                    style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.5)),
-                  ),
+              ? EmptyStateWidget(
+                  icon: _shuffleCourse == null
+                      ? Icons.touch_app_outlined
+                      : Icons.find_replace,
+                  title: _shuffleCourse == null
+                      ? 'Select a course to get started'
+                      : _closedSectionIds.isEmpty
+                          ? 'Mark closed sections, then tap Find Alternatives'
+                          : 'No results yet',
                 )
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 12),

@@ -137,13 +137,13 @@ class _AuthScreenState extends State<AuthScreen> {
                       Row(
                         children: [
                           Icon(
-                            Icons.cloud_upload,
+                            Icons.star_rounded,
                             color: Theme.of(context).colorScheme.primary,
                             size: 20,
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Sign in benefits:',
+                            'Why sign in?',
                             style: Theme.of(context).textTheme.titleSmall?.copyWith(
                               color: Theme.of(context).colorScheme.primary,
                               fontWeight: FontWeight.bold,
@@ -153,9 +153,9 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '• Save your timetables to the cloud\n'
-                        '• Access from any device\n'
-                        '• Never lose your data',
+                        '• CGPA calculator & acad drives\n'
+                        '• Find exam seating & professor details\n'
+                        '• Share timetables & sync across devices',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
                         ),

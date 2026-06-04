@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import '../services/data/exam_seating_service.dart';
+import '../widgets/common/empty_state.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../services/core/timetable_service.dart';
 import '../services/ui/responsive_service.dart';
@@ -484,35 +485,10 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
 
   Widget _buildSelectedCourses() {
     if (_selectedCourses.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.event_seat_outlined,
-                size: 64,
-                color: Theme.of(context).colorScheme.outline,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'No courses selected',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Search for a course above or import from your timetable',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-              ),
-            ],
-          ),
-        ),
+      return const EmptyStateWidget(
+        icon: Icons.event_seat_outlined,
+        title: 'No courses selected',
+        subtitle: 'Search for a course above or import from your timetable',
       );
     }
 

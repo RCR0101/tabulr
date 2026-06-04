@@ -1780,18 +1780,20 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                   const Spacer(),
                   if (_advancedExpanded) ...[
                     if (_scoringWeights != _savedScoringWeights)
-                      GestureDetector(
+                      InkWell(
                         onTap: _saveScoringWeights,
+                        borderRadius: BorderRadius.circular(4),
                         child: Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: Text('Save', style: TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w600)),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          child: Text('Save', style: TextStyle(fontSize: 12, color: AppDesign.success(context), fontWeight: FontWeight.w600)),
                         ),
                       ),
                     if (!isDefault)
-                      GestureDetector(
+                      InkWell(
                         onTap: () { _setScoringWeights(const ScoringWeights()); _saveScoringWeights(); },
+                        borderRadius: BorderRadius.circular(4),
                         child: Padding(
-                          padding: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           child: Text('Reset', style: TextStyle(fontSize: 12, color: scheme.primary, fontWeight: FontWeight.w500)),
                         ),
                       ),
@@ -1818,7 +1820,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                   _buildWeightSection(
                     title: 'Penalties',
                     subtitle: 'Negative factors that lower score',
-                    color: Colors.red,
+                    color: AppDesign.danger(context),
                     icon: Icons.remove_circle_outline,
                     weights: [
                       _WeightEntry('Max hours/day exceeded', _scoringWeights.maxHoursPerDayPenalty, 15, 0, 25,
@@ -1845,7 +1847,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                   _buildWeightSection(
                     title: 'Bonuses',
                     subtitle: 'Positive factors that raise score',
-                    color: Colors.green,
+                    color: AppDesign.success(context),
                     icon: Icons.add_circle_outline,
                     weights: [
                       _WeightEntry('Preferred instructors', _scoringWeights.preferredInstructorsBonus, 2, 0, 5,

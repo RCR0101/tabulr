@@ -41,13 +41,19 @@ void main() async {
 
   final userSettingsService = UserSettingsService();
   final themeService = theme_service.ThemeService();
-  await SecureLogger.measureAsync('parallel_services', () => Future.wait([
+
+  // Auth + theme prefs + courses can load in parallel (no dependencies)
+  await SecureLogger.measureAsync('parallel_services_1', () => Future.wait([
     CoursesMasterService().loadForCampus(),
     AuthService().initialize(),
-    userSettingsService.initializeSettings(),
     themeService.initialize(),
     PreferencesService().initialize(),
   ]));
+
+  // User settings depend on auth being ready (checks isAuthenticated for Firestore)
+  await SecureLogger.measureAsync('user_settings_init', () =>
+    userSettingsService.initializeSettings(),
+  );
 
   // Sync theme from UserSettings (Firestore source of truth) to ThemeService
   final savedSettings = userSettingsService.userSettings;
@@ -155,15 +161,14 @@ class _AuthWrapperState extends State<AuthWrapper> {
     return StreamBuilder(
       stream: _authService.authStateChanges,
       builder: (context, authSnapshot) {
-        // Show loading while checking auth state
+        // Show loading while Firebase is restoring the persisted session
         if (authSnapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: TimetableListSkeleton(),
           );
         }
-        
-        // Force rebuild when auth state changes by checking current state
-        final isAuthenticated = _authService.isAuthenticated;
+
+        final isAuthenticated = authSnapshot.hasData || _authService.isAuthenticated;
         final isGuest = _authService.isGuest;
         
         // If user is authenticated, go to app shell with sidebar

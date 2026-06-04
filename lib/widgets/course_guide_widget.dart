@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'common/empty_state.dart';
 import '../services/data/course_guide_service.dart';
 import '../services/data/courses_master_service.dart';
 import '../services/data/branch_structure_service.dart';
@@ -327,22 +328,23 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
 
   Widget _buildResults() {
     if (_cdcData.isEmpty) {
-      return Center(
-        child: Text(
-          _selectedPrimaryBranch == null
-              ? 'Select a branch to view CDCs'
-              : 'Press "View CDCs" to load data',
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-          ),
-        ),
+      return EmptyStateWidget(
+        icon: _selectedPrimaryBranch == null
+            ? Icons.school_outlined
+            : Icons.playlist_add,
+        title: _selectedPrimaryBranch == null
+            ? 'Select a branch to view CDCs'
+            : 'Press "View CDCs" to load data',
       );
     }
 
     final sortedSemesters = _cdcData.keys.toList()..sort();
 
     if (sortedSemesters.isEmpty) {
-      return const Center(child: Text('No CDCs found for the selected criteria'));
+      return const EmptyStateWidget(
+        icon: Icons.search_off,
+        title: 'No CDCs found for the selected criteria',
+      );
     }
 
     return ListView.builder(

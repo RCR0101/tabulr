@@ -80,7 +80,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Table(
                   border: TableBorder.all(
-                    color: const Color(0xFF30363D),
+                    color: Theme.of(context).colorScheme.outline,
                     width: 1,
                   ),
                   columnWidths: const {
@@ -91,8 +91,8 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                   children: [
                     // Header row
                     TableRow(
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF21262D),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       ),
                       children: [
                         _buildSortableHeader(
@@ -112,8 +112,8 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                     // Small screen sorting buttons row
                     if (MediaQuery.of(context).size.width < 768)
                       TableRow(
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF21262D),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
                         ),
                         children: [
                           _buildMobileSortButton(SortColumn.course),
@@ -131,18 +131,18 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                             children: [
                               Text(
                                 exam.courseCode,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 13,
-                                  color: Color(0xFFF0F6FC),
+                                  color: Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 exam.courseTitle,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
-                                  color: Color(0xFF8B949E),
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                 ),
                                 overflow: TextOverflow.ellipsis,
                                 maxLines: 2,
@@ -162,15 +162,15 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF7C3AED).withValues(alpha: 0.2),
+                                      color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.2),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
                                       exam.midSemText,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
-                                        color: Color(0xFF7C3AED),
+                                        color: Theme.of(context).colorScheme.tertiary,
                                       ),
                                     ),
                                   ),
@@ -178,17 +178,17 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                                     const SizedBox(height: 4),
                                     Text(
                                       exam.midSemTime,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 10,
-                                        color: Color(0xFF8B949E),
+                                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                       ),
                                     ),
                                   ],
                                 ],
                               )
-                            : const Text(
+                            : Text(
                                 '-',
-                                style: TextStyle(color: Color(0xFF656D76)),
+                                style: TextStyle(color: AppDesign.muted(context)),
                               ),
                         ),
                         Padding(
@@ -203,15 +203,15 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFDA3633).withValues(alpha: 0.2),
+                                      color: Theme.of(context).colorScheme.error.withValues(alpha: 0.2),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
                                       exam.endSemText,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
-                                        color: Color(0xFFDA3633),
+                                        color: Theme.of(context).colorScheme.error,
                                       ),
                                     ),
                                   ),
@@ -219,17 +219,17 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                                     const SizedBox(height: 4),
                                     Text(
                                       exam.endSemTime,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 10,
-                                        color: Color(0xFF8B949E),
+                                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                       ),
                                     ),
                                   ],
                                 ],
                               )
-                            : const Text(
+                            : Text(
                                 '-',
-                                style: TextStyle(color: Color(0xFF656D76)),
+                                style: TextStyle(color: AppDesign.muted(context)),
                               ),
                         ),
                       ],
@@ -305,7 +305,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
     }
 
     // On large screens, headers are clickable
-    return GestureDetector(
+    return InkWell(
       onTap: () {
         setState(() {
           if (isCurrentColumn) {
@@ -318,7 +318,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
           }
         });
       },
-      child: Container(
+      child: Padding(
         padding: const EdgeInsets.all(12),
         child: _buildWebHeader(title, isCurrentColumn, isAscending),
       ),
@@ -331,10 +331,10 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
       children: [
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 14,
-            color: Color(0xFFF0F6FC),
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
         const SizedBox(width: 8),
@@ -342,7 +342,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
             color: isCurrentColumn
-              ? const Color(0xFF58A6FF).withValues(alpha: 0.1)
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
               : Colors.transparent,
             borderRadius: BorderRadius.circular(4),
           ),
@@ -353,16 +353,16 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                 Icons.keyboard_arrow_up,
                 size: 20,
                 color: isCurrentColumn && isAscending
-                  ? const Color(0xFF58A6FF)
-                  : const Color(0xFF8B949E),
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
               const SizedBox(height: 1),
               Icon(
                 Icons.keyboard_arrow_down,
                 size: 20,
                 color: isCurrentColumn && !isAscending
-                  ? const Color(0xFF58A6FF)
-                  : const Color(0xFF8B949E),
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ],
           ),
@@ -376,10 +376,10 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
       padding: const EdgeInsets.all(12),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 14,
-          color: Color(0xFFF0F6FC),
+          color: Theme.of(context).colorScheme.onSurface,
         ),
         overflow: TextOverflow.ellipsis,
         textAlign: TextAlign.center,
@@ -391,7 +391,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
     final isCurrentColumn = _sortColumn == column;
     final isAscending = _sortDirection == SortDirection.ascending;
 
-    return GestureDetector(
+    return InkWell(
       onTap: () {
         setState(() {
           if (isCurrentColumn) {
@@ -404,7 +404,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
           }
         });
       },
-      child: Container(
+      child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -414,8 +414,8 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
               style: TextStyle(
                 fontSize: 12,
                 color: isCurrentColumn
-                  ? const Color(0xFF58A6FF)
-                  : const Color(0xFF8B949E),
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                 fontWeight: isCurrentColumn ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -424,7 +424,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
               padding: const EdgeInsets.all(2),
               decoration: BoxDecoration(
                 color: isCurrentColumn
-                  ? const Color(0xFF58A6FF).withValues(alpha: 0.1)
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
                   : Colors.transparent,
                 borderRadius: BorderRadius.circular(4),
               ),
@@ -435,15 +435,15 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                     Icons.keyboard_arrow_up,
                     size: 16,
                     color: isCurrentColumn && isAscending
-                      ? const Color(0xFF58A6FF)
-                      : const Color(0xFF8B949E),
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                   Icon(
                     Icons.keyboard_arrow_down,
                     size: 16,
                     color: isCurrentColumn && !isAscending
-                      ? const Color(0xFF58A6FF)
-                      : const Color(0xFF8B949E),
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ],
               ),
