@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:animations/animations.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../utils/web_utils.dart' as web_utils;
 import '../models/timetable.dart';
@@ -21,6 +21,7 @@ import '../constants/app_constants.dart';
 import '../utils/design_constants.dart';
 import '../widgets/theme_selector_widget.dart';
 import '../widgets/campus_selector_widget.dart';
+import '../utils/page_info_helper.dart';
 
 
 import '../widgets/error_dialog.dart';
@@ -582,6 +583,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                   ],
                 ),
         actions: [
+          PageInfoHelper.infoButton(context, PageInfoHelper.timetableList),
           if (!ResponsiveService.isMobile(context))
             CampusSelectorWidget(
               onCampusChanged: (campus) {
@@ -800,18 +802,69 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                           key: ValueKey(timetable.id),
                           child: Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: OpenContainer<bool>(
-                          transitionDuration: AppDesign.motionStandard,
-                          closedElevation: 1,
-                          openElevation: 0,
-                          closedShape: RoundedRectangleBorder(borderRadius: AppDesign.borderRadiusMd),
-                          closedColor: scheme.surface,
-                          openColor: scheme.surface,
-                          onClosed: (result) {
-                            if (result == true) _loadTimetables();
+                          child: Slidable(
+                          startActionPane: ActionPane(
+                            motion: const BehindMotion(),
+                            extentRatio: 0.4,
+                            children: [
+                              SlidableAction(
+                                onPressed: (_) => _renameTimetable(timetable),
+                                backgroundColor: scheme.primaryContainer,
+                                foregroundColor: scheme.onPrimaryContainer,
+                                icon: Icons.edit,
+                                label: 'Rename',
+                                borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
+                              ),
+                              SlidableAction(
+                                onPressed: (_) => _duplicateTimetable(timetable),
+                                backgroundColor: scheme.secondaryContainer,
+                                foregroundColor: scheme.onSecondaryContainer,
+                                icon: Icons.copy,
+                                label: 'Duplicate',
+                              ),
+                            ],
+                          ),
+                          endActionPane: _sortedTimetables.length > 1
+                              ? ActionPane(
+                                  motion: const BehindMotion(),
+                                  extentRatio: 0.25,
+                                  children: [
+                                    SlidableAction(
+                                      onPressed: (_) => _deleteTimetable(timetable),
+                                      backgroundColor: scheme.error,
+                                      foregroundColor: scheme.onError,
+                                      icon: Icons.delete,
+                                      label: 'Delete',
+                                      borderRadius: const BorderRadius.horizontal(right: Radius.circular(12)),
+                                    ),
+                                  ],
+                                )
+                              : null,
+                          child: Card(
+                          elevation: 1,
+                          shape: RoundedRectangleBorder(borderRadius: AppDesign.borderRadiusMd),
+                          color: scheme.surface,
+                          clipBehavior: Clip.antiAlias,
+                          child: Builder(
+                          builder: (cardContext) => InkWell(
+                          borderRadius: AppDesign.borderRadiusMd,
+                          onTap: () async {
+                            final box = cardContext.findRenderObject() as RenderBox?;
+                            final rect = box != null
+                                ? box.localToGlobal(Offset.zero) & box.size
+                                : Rect.fromLTWH(0, 0, MediaQuery.of(context).size.width, MediaQuery.of(context).size.height);
+                            await Navigator.push<bool>(
+                              context,
+                              ExpandPageRoute(
+                                page: TimetableEditorScreen(timetableId: timetable.id, initialTimetable: timetable),
+                                sourceRect: rect,
+                                sourceColor: scheme.surface,
+                                sourceBorderRadius: AppDesign.borderRadiusMd,
+                              ),
+                            );
+                            _loadTimetables();
                           },
-                          openBuilder: (context, _) => TimetableEditorScreen(timetableId: timetable.id, initialTimetable: timetable),
-                          closedBuilder: (context, openContainer) => Padding(
+                          child: Padding(
                               padding: const EdgeInsets.all(AppDesign.spacingMd),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -954,6 +1007,9 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                               ),
                             ),
                           ),
+                        ),
+                        ),
+                        ),
                         ),
                         );
                       },

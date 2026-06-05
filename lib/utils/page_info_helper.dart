@@ -103,7 +103,21 @@ class PageInfoHelper {
       FeatureInfo(Icons.share, 'Share', 'share your timetable via a code others can import'),
       FeatureInfo(Icons.menu_book, 'Tools', 'course guide, prerequisites, discipline & humanities electives'),
       FeatureInfo(Icons.more_vert, 'More', 'import/export .tt files, export to .ics calendar or .png image'),
-      FeatureInfo(Icons.brightness_auto, 'Theme', 'switch between light, dark, and system theme'),
+      FeatureInfo(Icons.keyboard, '⌘K', 'command palette to quickly jump to any feature or action'),
+    ],
+  );
+
+  static final timetableList = PageInfo(
+    title: 'My Timetables',
+    purpose: 'Manage all your timetables. Swipe cards for quick actions, or use the menu for more options.',
+    features: [
+      FeatureInfo(Icons.swipe_right, 'Swipe Right', 'rename or duplicate a timetable'),
+      FeatureInfo(Icons.swipe_left, 'Swipe Left', 'delete a timetable'),
+      FeatureInfo(Icons.drag_handle, 'Long Press', 'reorder timetables (in custom sort mode)'),
+      FeatureInfo(Icons.add, 'New Timetable', 'create a new timetable from scratch'),
+      FeatureInfo(Icons.download, 'Import', 'import a shared timetable via code'),
+      FeatureInfo(Icons.compare, 'Compare', 'side-by-side timetable comparison'),
+      FeatureInfo(Icons.keyboard, '⌘K', 'command palette to quickly jump to any feature'),
     ],
   );
 

@@ -10,7 +10,7 @@ class ConfigService {
   // App Configuration
   String get appName => 'Tabulr';
   // Keep in sync with pubspec.yaml `version:` field.
-  String get appVersion => '2.2.1';
+  String get appVersion => '2.2.2';
 
   // Debug Settings
   bool get debugMode => false;
