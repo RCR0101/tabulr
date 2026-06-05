@@ -13,7 +13,7 @@ class CourseListWidget extends StatelessWidget {
   final Function(String courseCode, String sectionId, bool isSelected) onSectionToggle;
   final bool showOnlySelected;
 
-  const CourseListWidget({
+  CourseListWidget({
     super.key,
     required this.courses,
     required this.selectedSections,
@@ -21,16 +21,20 @@ class CourseListWidget extends StatelessWidget {
     this.showOnlySelected = false,
   });
 
+  late final Set<String> _selectedKeys = {
+    for (final s in selectedSections) '${s.courseCode}|${s.sectionId}',
+  };
+
+  late final Set<String> _selectedTypeKeys = {
+    for (final s in selectedSections) '${s.courseCode}|${s.section.type}',
+  };
+
   bool _isSectionSelected(String courseCode, String sectionId) {
-    return selectedSections.any(
-      (s) => s.courseCode == courseCode && s.sectionId == sectionId,
-    );
+    return _selectedKeys.contains('$courseCode|$sectionId');
   }
 
   bool _isSectionTypeAlreadySelected(String courseCode, SectionType type) {
-    return selectedSections.any(
-      (s) => s.courseCode == courseCode && s.section.type == type,
-    );
+    return _selectedTypeKeys.contains('$courseCode|$type');
   }
 
   /// Returns a human-readable conflict description for this specific section,
@@ -138,8 +142,9 @@ class CourseListWidget extends StatelessWidget {
     List<Course> displayCourses;
 
     if (showOnlySelected) {
+      final selectedCodes = <String>{for (final s in selectedSections) s.courseCode};
       displayCourses = courses.where((course) =>
-        selectedSections.any((s) => s.courseCode == course.courseCode)
+        selectedCodes.contains(course.courseCode)
       ).toList();
     } else {
       displayCourses = courses;

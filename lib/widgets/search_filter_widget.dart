@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../services/ui/responsive_service.dart';
@@ -26,6 +27,12 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
   final List<DayOfWeek> _selectedDays = [];
   final List<int> _selectedHours = [];
   bool _showAdvancedFilters = false;
+  Timer? _debounce;
+
+  void _updateSearchDebounced() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 250), _updateSearch);
+  }
 
   void _updateSearch() {
     final filters = <String, dynamic>{
@@ -110,7 +117,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                           )
                         : null,
                     ),
-                    onChanged: (_) => _updateSearch(),
+                    onChanged: (_) => _updateSearchDebounced(),
                   ),
                   ),
                   SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
@@ -176,7 +183,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                             )
                           : null,
                       ),
-                      onChanged: (_) => _updateSearch(),
+                      onChanged: (_) => _updateSearchDebounced(),
                     ),
                   ),
                 ),
@@ -237,7 +244,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                         hintText: 'e.g., CS F211, MATH F211',
                         border: OutlineInputBorder(),
                       ),
-                      onChanged: (_) => _updateSearch(),
+                      onChanged: (_) => _updateSearchDebounced(),
                     ),
                     SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
                     TextField(
@@ -246,7 +253,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                         labelText: 'Filter by Instructor',
                         border: OutlineInputBorder(),
                       ),
-                      onChanged: (_) => _updateSearch(),
+                      onChanged: (_) => _updateSearchDebounced(),
                     ),
                   ],
                 ),
@@ -260,7 +267,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                           hintText: 'e.g., CS F211, MATH F211',
                           border: OutlineInputBorder(),
                         ),
-                        onChanged: (_) => _updateSearch(),
+                        onChanged: (_) => _updateSearchDebounced(),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -271,7 +278,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                           labelText: 'Filter by Instructor',
                           border: OutlineInputBorder(),
                         ),
-                        onChanged: (_) => _updateSearch(),
+                        onChanged: (_) => _updateSearchDebounced(),
                       ),
                     ),
                   ],
@@ -506,8 +513,10 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
     _instructorController.dispose();
+    _courseCodeController.dispose();
     super.dispose();
   }
 }

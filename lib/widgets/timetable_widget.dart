@@ -72,7 +72,7 @@ class TimetableWidget extends StatefulWidget {
 }
 
 class _TimetableWidgetState extends State<TimetableWidget> {
-  String? _hoveredCourse;
+  final ValueNotifier<String?> _hoveredCourseNotifier = ValueNotifier<String?>(null);
   double _zoomLevel = 1.0;
   bool _initialZoomApplied = false;
   final TransformationController _transformationController = TransformationController();
@@ -134,6 +134,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
   void dispose() {
     _transformationController.removeListener(_onTransformChanged);
     _transformationController.dispose();
+    _hoveredCourseNotifier.dispose();
     super.dispose();
   }
 
@@ -1257,26 +1258,25 @@ class _TimetableWidgetState extends State<TimetableWidget> {
         .where((s) => s.courseCode == slot.courseCode && s.sectionId == slot.sectionId)
         .toList();
     final courseKey = '${slot.courseCode}-${slot.sectionId}';
-    final isHovered = _hoveredCourse == courseKey;
     final courseColor = _getCourseColor(slot.courseCode);
 
     return RepaintBoundary(
       child: Semantics(
         label: '${slot.courseCode} ${slot.sectionId}, ${slot.instructor}, ${slot.room}',
         child: MouseRegion(
-        onEnter: (_) {
-          setState(() {
-            _hoveredCourse = courseKey;
-          });
-        },
+        onEnter: (_) => _hoveredCourseNotifier.value = courseKey,
         onExit: (_) {
-          setState(() {
-            _hoveredCourse = null;
-          });
+          if (_hoveredCourseNotifier.value == courseKey) {
+            _hoveredCourseNotifier.value = null;
+          }
         },
         child: GestureDetector(
         onTap: () => _showCellDetail(context, slot, sameCourseSlots),
-        child: AnimatedContainer(
+        child: ValueListenableBuilder<String?>(
+          valueListenable: _hoveredCourseNotifier,
+          builder: (context, hoveredCourse, _) {
+            final isHovered = hoveredCourse == courseKey;
+            return AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           width: _getDayColumnWidth(widget.size),
           height: _getCellHeight(widget.size),
@@ -1439,7 +1439,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   ),
                 ),
               if (widget.onRemoveSection != null &&
-                  _hoveredCourse == '${slot.courseCode}-${slot.sectionId}')
+                  hoveredCourse == '${slot.courseCode}-${slot.sectionId}')
                 Positioned(
                   top: 2,
                   right: 2,
@@ -1476,6 +1476,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                 ),
             ],
           ),
+        );
+          },
         ),
         ),
       ),

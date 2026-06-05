@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:url_launcher/url_launcher.dart';
@@ -22,20 +23,24 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
   final ProfessorService _professorService = ProfessorService();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  Timer? _searchDebounce;
 
   @override
   void initState() {
     super.initState();
     _loadProfessors();
 
-    // Listen to search changes
     _searchController.addListener(() {
-      _professorService.searchProfessors(_searchController.text);
+      _searchDebounce?.cancel();
+      _searchDebounce = Timer(const Duration(milliseconds: 250), () {
+        _professorService.searchProfessors(_searchController.text);
+      });
     });
   }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
