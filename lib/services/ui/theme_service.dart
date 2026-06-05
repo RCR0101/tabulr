@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/app_constants.dart';
 import '../../models/app_theme.dart';
@@ -592,22 +593,23 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
 };
 
 TextTheme _buildTextTheme(Color onSurface) {
-  return TextTheme(
-    displayLarge: TextStyle(fontSize: 57, fontWeight: FontWeight.w400, color: onSurface, letterSpacing: -0.25),
-    displayMedium: TextStyle(fontSize: 45, fontWeight: FontWeight.w400, color: onSurface),
-    displaySmall: TextStyle(fontSize: 36, fontWeight: FontWeight.w400, color: onSurface),
-    headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w600, color: onSurface),
-    headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w600, color: onSurface),
-    headlineSmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: onSurface),
-    titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: onSurface),
-    titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: onSurface),
-    titleSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: onSurface),
-    bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: onSurface),
-    bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: onSurface),
-    bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: onSurface),
-    labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: onSurface),
-    labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: onSurface),
-    labelSmall: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: onSurface),
+  final base = GoogleFonts.interTextTheme();
+  return base.copyWith(
+    displayLarge: base.displayLarge!.copyWith(fontSize: 57, fontWeight: FontWeight.w400, color: onSurface, letterSpacing: -1.5, height: 1.12),
+    displayMedium: base.displayMedium!.copyWith(fontSize: 45, fontWeight: FontWeight.w400, color: onSurface, letterSpacing: -0.5, height: 1.16),
+    displaySmall: base.displaySmall!.copyWith(fontSize: 36, fontWeight: FontWeight.w400, color: onSurface, letterSpacing: -0.25, height: 1.22),
+    headlineLarge: base.headlineLarge!.copyWith(fontSize: 32, fontWeight: FontWeight.w600, color: onSurface, letterSpacing: -0.25, height: 1.25),
+    headlineMedium: base.headlineMedium!.copyWith(fontSize: 28, fontWeight: FontWeight.w600, color: onSurface, letterSpacing: 0, height: 1.29),
+    headlineSmall: base.headlineSmall!.copyWith(fontSize: 24, fontWeight: FontWeight.w600, color: onSurface, letterSpacing: 0, height: 1.33),
+    titleLarge: base.titleLarge!.copyWith(fontSize: 20, fontWeight: FontWeight.w600, color: onSurface, letterSpacing: 0, height: 1.4),
+    titleMedium: base.titleMedium!.copyWith(fontSize: 16, fontWeight: FontWeight.w600, color: onSurface, letterSpacing: 0.1, height: 1.5),
+    titleSmall: base.titleSmall!.copyWith(fontSize: 14, fontWeight: FontWeight.w600, color: onSurface, letterSpacing: 0.1, height: 1.43),
+    bodyLarge: base.bodyLarge!.copyWith(fontSize: 16, fontWeight: FontWeight.w400, color: onSurface, letterSpacing: 0.15, height: 1.5),
+    bodyMedium: base.bodyMedium!.copyWith(fontSize: 14, fontWeight: FontWeight.w400, color: onSurface, letterSpacing: 0.25, height: 1.43),
+    bodySmall: base.bodySmall!.copyWith(fontSize: 12, fontWeight: FontWeight.w400, color: onSurface, letterSpacing: 0.4, height: 1.33),
+    labelLarge: base.labelLarge!.copyWith(fontSize: 14, fontWeight: FontWeight.w500, color: onSurface, letterSpacing: 0.1, height: 1.43),
+    labelMedium: base.labelMedium!.copyWith(fontSize: 12, fontWeight: FontWeight.w500, color: onSurface, letterSpacing: 0.5, height: 1.33),
+    labelSmall: base.labelSmall!.copyWith(fontSize: 11, fontWeight: FontWeight.w500, color: onSurface, letterSpacing: 0.5, height: 1.45),
   );
 }
 
@@ -650,7 +652,7 @@ ThemeData _buildTheme(_ThemeColors c) {
     ),
     dialogTheme: DialogThemeData(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      titleTextStyle: TextStyle(
+      titleTextStyle: GoogleFonts.inter(
         fontSize: 18,
         fontWeight: FontWeight.w600,
         color: c.onSurface,

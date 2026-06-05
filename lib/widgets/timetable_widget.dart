@@ -1447,7 +1447,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   ),
                 ),
               if (widget.onRemoveSection != null &&
-                  (_isMobile || _hoveredCourse == '${slot.courseCode}-${slot.sectionId}'))
+                  _hoveredCourse == '${slot.courseCode}-${slot.sectionId}')
                 Positioned(
                   top: 0,
                   right: 0,

@@ -19,6 +19,8 @@ import '../utils/design_constants.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
 import '../utils/page_info_helper.dart';
+import '../widgets/command_palette.dart';
+import '../widgets/app_drawer.dart';
 
 
 int _timeToSlotHour(TimeOfDay t) => t.hour - 7;
@@ -177,11 +179,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void initState() {
     super.initState();
     _loadData();
+    CommandPaletteActions.register(DrawerScreen.calendar, () => [
+      CommandPaletteEntry(
+        label: 'Add Event',
+        subtitle: 'Add a custom calendar event',
+        icon: Icons.add,
+        category: CommandCategory.context,
+        onSelect: _addEvent,
+      ),
+    ]);
   }
 
   @override
   void dispose() {
     _announcementSub?.cancel();
+    CommandPaletteActions.unregister(DrawerScreen.calendar);
     super.dispose();
   }
 

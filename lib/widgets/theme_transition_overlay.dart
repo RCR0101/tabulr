@@ -1,4 +1,5 @@
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import '../utils/design_constants.dart';
@@ -30,9 +31,7 @@ class ThemeTransitionOverlay extends StatefulWidget {
 class _ThemeTransitionOverlayState extends State<ThemeTransitionOverlay>
     with SingleTickerProviderStateMixin {
   ui.Image? _snapshot;
-  Offset _origin = Offset.zero;
   late AnimationController _anim;
-  late Animation<double> _radiusTween;
 
   @override
   void initState() {
@@ -40,7 +39,7 @@ class _ThemeTransitionOverlayState extends State<ThemeTransitionOverlay>
     widget.controller._state = this;
     _anim = AnimationController(
       vsync: this,
-      duration: AppDesign.motionEmphasized,
+      duration: AppDesign.motionStandard,
     );
   }
 
@@ -52,21 +51,20 @@ class _ThemeTransitionOverlayState extends State<ThemeTransitionOverlay>
   }
 
   Future<void> _runReveal(Offset origin) async {
+    if (kIsWeb) {
+      // toImage is too expensive on web — just let the theme swap instantly.
+      return;
+    }
+
     final boundary = widget.screenshotKey.currentContext
         ?.findRenderObject() as RenderRepaintBoundary?;
     if (boundary == null) return;
 
     final image = await boundary.toImage(pixelRatio: 1.0);
-    _origin = origin;
     _snapshot?.dispose();
     _snapshot = image;
 
     if (!mounted) return;
-    final size = MediaQuery.of(context).size;
-    final maxRadius = _maxRadius(size, origin);
-    _radiusTween = Tween<double>(begin: 0, end: maxRadius).animate(
-      CurvedAnimation(parent: _anim, curve: AppDesign.curveEmphasized),
-    );
 
     _anim.reset();
     setState(() {});
@@ -74,16 +72,6 @@ class _ThemeTransitionOverlayState extends State<ThemeTransitionOverlay>
     _snapshot?.dispose();
     _snapshot = null;
     if (mounted) setState(() {});
-  }
-
-  double _maxRadius(Size size, Offset origin) {
-    final corners = [
-      Offset.zero,
-      Offset(size.width, 0),
-      Offset(0, size.height),
-      Offset(size.width, size.height),
-    ];
-    return corners.map((c) => (c - origin).distance).reduce((a, b) => a > b ? a : b);
   }
 
   @override
@@ -96,12 +84,8 @@ class _ThemeTransitionOverlayState extends State<ThemeTransitionOverlay>
             child: AnimatedBuilder(
               animation: _anim,
               builder: (context, child) {
-                return ClipPath(
-                  clipper: _CircleRevealClipper(
-                    center: _origin,
-                    radius: _radiusTween.value,
-                    invert: true,
-                  ),
+                return Opacity(
+                  opacity: 1.0 - _anim.value,
                   child: child,
                 );
               },
@@ -111,32 +95,4 @@ class _ThemeTransitionOverlayState extends State<ThemeTransitionOverlay>
       ],
     );
   }
-}
-
-class _CircleRevealClipper extends CustomClipper<Path> {
-  final Offset center;
-  final double radius;
-  final bool invert;
-
-  _CircleRevealClipper({
-    required this.center,
-    required this.radius,
-    this.invert = false,
-  });
-
-  @override
-  Path getClip(Size size) {
-    final circle = Path()..addOval(Rect.fromCircle(center: center, radius: radius));
-    if (invert) {
-      return Path()
-        ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
-        ..addPath(circle, Offset.zero)
-        ..fillType = PathFillType.evenOdd;
-    }
-    return circle;
-  }
-
-  @override
-  bool shouldReclip(_CircleRevealClipper old) =>
-      old.radius != radius || old.center != center;
 }

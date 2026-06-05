@@ -979,30 +979,38 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   }
 
   List<Widget> buildCommonActions() {
+    final isMobileLayout = ResponsiveService.isMobile(context);
     return [
-      PageInfoHelper.infoButton(context, PageInfoHelper.timetableCreator),
-      if (_showSavedIndicator)
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.check_circle, color: AppDesign.success(context), size: 18),
-              const SizedBox(width: 4),
-              Text('Saved', style: TextStyle(color: AppDesign.success(context), fontSize: 13)),
-            ],
+      if (!isMobileLayout) ...[
+        PageInfoHelper.infoButton(context, PageInfoHelper.timetableCreator),
+        if (_showSavedIndicator)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.check_circle, color: AppDesign.success(context), size: 18),
+                const SizedBox(width: 4),
+                Text('Saved', style: TextStyle(color: AppDesign.success(context), fontSize: 13)),
+              ],
+            ),
           ),
+        CampusSelectorWidget(
+          confirmSwitch: () => confirmCampusSwitch(),
+          onCampusChanged: onCampusChanged,
         ),
-      CampusSelectorWidget(
-        confirmSwitch: () => confirmCampusSwitch(),
-        onCampusChanged: onCampusChanged,
-      ),
-      IconButton(
-        icon: const Icon(Icons.share),
-        onPressed: shareTimetable,
-        tooltip: 'Share Timetable',
-      ),
-      const ThemeToggleButton(),
+        IconButton(
+          icon: const Icon(Icons.share),
+          onPressed: shareTimetable,
+          tooltip: 'Share Timetable',
+        ),
+        const ThemeToggleButton(),
+      ],
+      if (isMobileLayout && _showSavedIndicator)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Icon(Icons.check_circle, color: AppDesign.success(context), size: 18),
+        ),
       PopupMenuButton<String>(
         icon: const Icon(Icons.menu_book),
         tooltip: 'Tools',
@@ -1062,6 +1070,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         tooltip: 'More',
         onSelected: (value) {
           switch (value) {
+            case 'share': shareTimetable(); break;
+            case 'page_info': PageInfoHelper.show(context, PageInfoHelper.timetableCreator); break;
             case 'import_tt': importFromTT(); break;
             case 'export_tt': exportToTTWithFilePicker(); break;
             case 'export_ics': exportToICS(); break;
@@ -1069,8 +1079,27 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
             case 'github': openGitHub(); break;
           }
         },
-        itemBuilder: (context) => const [
-          PopupMenuItem(
+        itemBuilder: (context) => [
+          if (isMobileLayout) ...[
+            const PopupMenuItem(
+              value: 'share',
+              child: ListTile(
+                leading: Icon(Icons.share),
+                title: Text('Share Timetable'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'page_info',
+              child: ListTile(
+                leading: Icon(Icons.info_outline),
+                title: Text('About This Page'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuDivider(),
+          ],
+          const PopupMenuItem(
             value: 'import_tt',
             child: ListTile(
               leading: Icon(Icons.file_download),
@@ -1078,7 +1107,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
               contentPadding: EdgeInsets.zero,
             ),
           ),
-          PopupMenuItem(
+          const PopupMenuItem(
             value: 'export_tt',
             child: ListTile(
               leading: Icon(Icons.file_upload),
@@ -1086,7 +1115,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
               contentPadding: EdgeInsets.zero,
             ),
           ),
-          PopupMenuItem(
+          const PopupMenuItem(
             value: 'export_ics',
             child: ListTile(
               leading: Icon(Icons.calendar_today),
@@ -1094,7 +1123,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
               contentPadding: EdgeInsets.zero,
             ),
           ),
-          PopupMenuItem(
+          const PopupMenuItem(
             value: 'export_png',
             child: ListTile(
               leading: Icon(Icons.image),
@@ -1102,8 +1131,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
               contentPadding: EdgeInsets.zero,
             ),
           ),
-          PopupMenuDivider(),
-          PopupMenuItem(
+          const PopupMenuDivider(),
+          const PopupMenuItem(
             value: 'github',
             child: ListTile(
               leading: Icon(Icons.star_border),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:lottie/lottie.dart';
 import '../../utils/design_constants.dart';
 import 'app_button.dart';
 
@@ -10,6 +11,8 @@ class EmptyStateWidget extends StatelessWidget {
   final String? actionLabel;
   final VoidCallback? onAction;
   final IconData? actionIcon;
+  final String? lottieAsset;
+  final double lottieSize;
 
   const EmptyStateWidget({
     super.key,
@@ -19,6 +22,8 @@ class EmptyStateWidget extends StatelessWidget {
     this.actionLabel,
     this.onAction,
     this.actionIcon,
+    this.lottieAsset,
+    this.lottieSize = 160,
   });
 
   @override
@@ -30,21 +35,25 @@ class EmptyStateWidget extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(AppDesign.spacingLg),
-              decoration: BoxDecoration(
-                color: scheme.primary.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                size: 48,
-                color: scheme.primary.withValues(alpha: 0.6),
-              ),
-            )
-                .animate()
-                .fadeIn(duration: AppDesign.motionStandard, curve: AppDesign.curveStandard)
-                .scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1), duration: AppDesign.motionEmphasized, curve: AppDesign.curveEmphasized),
+            if (lottieAsset != null)
+              SizedBox(
+                width: lottieSize,
+                height: lottieSize,
+                child: Lottie.asset(
+                  lottieAsset!,
+                  repeat: true,
+                  frameRate: FrameRate.max,
+                  errorBuilder: (context, error, stackTrace) => _buildIconFallback(scheme),
+                ),
+              )
+                  .animate()
+                  .fadeIn(duration: AppDesign.motionStandard, curve: AppDesign.curveStandard)
+                  .scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1), duration: AppDesign.motionEmphasized, curve: AppDesign.curveEmphasized)
+            else
+              _buildIconFallback(scheme)
+                  .animate()
+                  .fadeIn(duration: AppDesign.motionStandard, curve: AppDesign.curveStandard)
+                  .scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1), duration: AppDesign.motionEmphasized, curve: AppDesign.curveEmphasized),
             const SizedBox(height: AppDesign.spacingLg),
             Text(
               title,
@@ -74,6 +83,21 @@ class EmptyStateWidget extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildIconFallback(ColorScheme scheme) {
+    return Container(
+      padding: const EdgeInsets.all(AppDesign.spacingLg),
+      decoration: BoxDecoration(
+        color: scheme.primary.withValues(alpha: 0.08),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        icon,
+        size: 48,
+        color: scheme.primary.withValues(alpha: 0.6),
       ),
     );
   }

@@ -26,6 +26,8 @@ import 'cg_booster_screen.dart';
 import 'grade_planner_screen.dart';
 import '../utils/design_constants.dart';
 import '../utils/grade_utils.dart' as grade_utils;
+import '../widgets/command_palette.dart';
+import '../widgets/app_drawer.dart';
 
 class CGPACalculatorScreen extends StatefulWidget {
   const CGPACalculatorScreen({super.key});
@@ -71,11 +73,53 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       if (!_tabController.indexIsChanging) setState(() {});
     });
     _loadData();
+    _registerPaletteActions();
+  }
+
+  void _registerPaletteActions() {
+    CommandPaletteActions.register(DrawerScreen.cgpaCalculator, () => [
+      CommandPaletteEntry(
+        label: 'Grade Planner',
+        subtitle: 'Plan future semester grades',
+        icon: Icons.calculate_outlined,
+        category: CommandCategory.context,
+        onSelect: () => Navigator.push(context, FadeSlidePageRoute(page: GradePlannerScreen(cgpaData: _cgpaData))),
+      ),
+      CommandPaletteEntry(
+        label: 'CG Booster',
+        subtitle: 'Find courses to boost your CG',
+        icon: Icons.bolt_outlined,
+        category: CommandCategory.context,
+        onSelect: () => Navigator.push(context, FadeSlidePageRoute(page: CGBoosterScreen(cgpaData: _cgpaData))),
+      ),
+      CommandPaletteEntry(
+        label: 'Load CDCs',
+        subtitle: 'Auto-load compulsory courses',
+        icon: Icons.school_outlined,
+        category: CommandCategory.context,
+        onSelect: _loadCDCs,
+      ),
+      CommandPaletteEntry(
+        label: 'Import from Timetable',
+        subtitle: 'Import courses from a timetable',
+        icon: Icons.file_download_outlined,
+        category: CommandCategory.context,
+        onSelect: _importCoursesFromTimetable,
+      ),
+      CommandPaletteEntry(
+        label: 'Import Performance Sheet',
+        subtitle: 'Import grades from PDF',
+        icon: Icons.picture_as_pdf_outlined,
+        category: CommandCategory.context,
+        onSelect: _importFromPerformanceSheet,
+      ),
+    ]);
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    CommandPaletteActions.unregister(DrawerScreen.cgpaCalculator);
     super.dispose();
   }
 

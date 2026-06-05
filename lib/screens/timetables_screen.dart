@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:animations/animations.dart';
@@ -29,6 +27,8 @@ import '../widgets/error_dialog.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
 import '../widgets/share_timetable_dialog.dart';
+import '../widgets/command_palette.dart';
+import '../widgets/app_drawer.dart';
 import 'home_screen.dart';
 import 'course_guide_screen.dart';
 import 'timetable_comparison_screen.dart';
@@ -61,6 +61,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
       }
     });
     _initializeAndLoadData();
+    _registerPaletteActions();
   }
 
   Future<void> _initializeAndLoadData() async {
@@ -70,9 +71,36 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     ]);
   }
 
+  void _registerPaletteActions() {
+    CommandPaletteActions.register(DrawerScreen.timetables, () => [
+      CommandPaletteEntry(
+        label: 'New Timetable',
+        subtitle: 'Create a new timetable',
+        icon: Icons.add,
+        category: CommandCategory.context,
+        onSelect: _createNewTimetable,
+      ),
+      CommandPaletteEntry(
+        label: 'Import from Code',
+        subtitle: 'Import a shared timetable',
+        icon: Icons.download,
+        category: CommandCategory.context,
+        onSelect: _importFromShareCode,
+      ),
+      CommandPaletteEntry(
+        label: 'Compare Timetables',
+        subtitle: 'Side-by-side comparison',
+        icon: Icons.compare,
+        category: CommandCategory.context,
+        onSelect: () => Navigator.push(context, FadeSlidePageRoute(page: const TimetableComparisonScreen())),
+      ),
+    ]);
+  }
+
   @override
   void dispose() {
     _userSettingsService.removeListener(_onSettingsChanged);
+    CommandPaletteActions.unregister(DrawerScreen.timetables);
     super.dispose();
   }
 
@@ -533,15 +561,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     }
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: AppDesign.glassTintOpacity),
-        flexibleSpace: ClipRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: AppDesign.glassBlur, sigmaY: AppDesign.glassBlur),
-            child: Container(color: Colors.transparent),
-          ),
-        ),
         title:
             ResponsiveService.isMobile(context)
                 ? null
@@ -781,7 +801,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                           child: Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: OpenContainer<bool>(
-                          transitionDuration: AppDesign.motionEmphasized,
+                          transitionDuration: AppDesign.motionStandard,
                           closedElevation: 1,
                           openElevation: 0,
                           closedShape: RoundedRectangleBorder(borderRadius: AppDesign.borderRadiusMd),
@@ -934,7 +954,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                               ),
                             ),
                           ),
-                        ).motionListItem(index),
+                        ),
                         );
                       },
                     ),

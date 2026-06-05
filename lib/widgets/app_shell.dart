@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/data/auth_service.dart';
 import '../services/data/course_announcement_service.dart';
 import '../services/ui/responsive_service.dart';
@@ -15,6 +16,8 @@ import '../screens/free_slot_finder_screen.dart';
 import '../services/data/admin_service.dart';
 import 'app_drawer.dart';
 import 'app_sidebar.dart';
+import 'command_palette.dart';
+import 'theme_selector_widget.dart';
 
 class AppShell extends StatefulWidget {
   final DrawerScreen initialScreen;
@@ -48,6 +51,18 @@ class _AppShellState extends State<AppShell> {
       _currentScreen = screen;
       _visitedScreens.add(screen);
     });
+  }
+
+  void _showCommandPalette() {
+    CommandPalette.show(
+      context,
+      currentScreen: _currentScreen,
+      onNavigate: (screen) => _onScreenSelected(screen),
+      onToggleTheme: () => ThemeSelectorDialog.show(context),
+      onSignOut: () async {
+        await AuthService().signOut();
+      },
+    );
   }
 
   @override
@@ -88,8 +103,9 @@ class _AppShellState extends State<AppShell> {
     final isDesktop = !ResponsiveService.isMobile(context);
     final isTablet = ResponsiveService.isTablet(context);
 
+    Widget body;
     if (isDesktop) {
-      return Row(
+      body = Row(
         children: [
           AppSidebar(
             currentScreen: _currentScreen,
@@ -102,12 +118,23 @@ class _AppShellState extends State<AppShell> {
           Expanded(child: _buildIndexedStack()),
         ],
       );
+    } else {
+      body = _MobileShell(
+        currentScreen: _currentScreen,
+        onScreenSelected: _onScreenSelected,
+        child: _buildIndexedStack(),
+      );
     }
 
-    return _MobileShell(
-      currentScreen: _currentScreen,
-      onScreenSelected: _onScreenSelected,
-      child: _buildIndexedStack(),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): _showCommandPalette,
+        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): _showCommandPalette,
+      },
+      child: Focus(
+        autofocus: true,
+        child: body,
+      ),
     );
   }
 }
