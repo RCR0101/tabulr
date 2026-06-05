@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import '../../services/ui/responsive_service.dart';
 import '../../utils/design_constants.dart';
@@ -18,12 +20,19 @@ class AppDialog {
       return showModalBottomSheet<T>(
         context: context,
         isScrollControlled: true,
+        backgroundColor: Colors.transparent,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         builder: (ctx) {
           final scheme = Theme.of(ctx).colorScheme;
-          return SafeArea(
+          return ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: AppDesign.glassBlur, sigmaY: AppDesign.glassBlur),
+              child: Container(
+                color: scheme.surface.withValues(alpha: 0.85),
+                child: SafeArea(
             child: Padding(
               padding: EdgeInsets.only(
                 left: 20,
@@ -84,6 +93,9 @@ class AppDialog {
                 ],
               ),
             ),
+          ),
+          ),
+          ),
           );
         },
       );

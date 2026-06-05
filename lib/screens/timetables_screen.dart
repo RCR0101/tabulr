@@ -1,5 +1,8 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:animations/animations.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../utils/web_utils.dart' as web_utils;
 import '../models/timetable.dart';
@@ -530,7 +533,15 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     }
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: AppDesign.glassTintOpacity),
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: AppDesign.glassBlur, sigmaY: AppDesign.glassBlur),
+            child: Container(color: Colors.transparent),
+          ),
+        ),
         title:
             ResponsiveService.isMobile(context)
                 ? null
@@ -765,25 +776,22 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                         }
                         totalCredits += timetable.projectCount * 3;
                         final scheme = Theme.of(context).colorScheme;
-                        final delay = (index * 60).clamp(0, 300);
-                        return TweenAnimationBuilder<double>(
+                        return KeyedSubtree(
                           key: ValueKey(timetable.id),
-                          tween: Tween(begin: 0.0, end: 1.0),
-                          duration: Duration(milliseconds: 300 + delay),
-                          curve: AppDesign.animCurve,
-                          builder: (context, value, child) => Opacity(
-                            opacity: value,
-                            child: Transform.translate(
-                              offset: Offset(0, 12 * (1 - value)),
-                              child: child,
-                            ),
-                          ),
-                          child: Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: InkWell(
-                            borderRadius: AppDesign.borderRadiusMd,
-                            onTap: () => _openTimetable(timetable),
-                            child: Padding(
+                          child: Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: OpenContainer<bool>(
+                          transitionDuration: AppDesign.motionEmphasized,
+                          closedElevation: 1,
+                          openElevation: 0,
+                          closedShape: RoundedRectangleBorder(borderRadius: AppDesign.borderRadiusMd),
+                          closedColor: scheme.surface,
+                          openColor: scheme.surface,
+                          onClosed: (result) {
+                            if (result == true) _loadTimetables();
+                          },
+                          openBuilder: (context, _) => TimetableEditorScreen(timetableId: timetable.id, initialTimetable: timetable),
+                          closedBuilder: (context, openContainer) => Padding(
                               padding: const EdgeInsets.all(AppDesign.spacingMd),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -926,7 +934,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                               ),
                             ),
                           ),
-                        ),
+                        ).motionListItem(index),
                         );
                       },
                     ),
@@ -1103,8 +1111,13 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
 
 class TimetableEditorScreen extends StatefulWidget {
   final String timetableId;
+  final Timetable? initialTimetable;
 
-  const TimetableEditorScreen({super.key, required this.timetableId});
+  const TimetableEditorScreen({
+    super.key,
+    required this.timetableId,
+    this.initialTimetable,
+  });
 
   @override
   State<TimetableEditorScreen> createState() => _TimetableEditorScreenState();
@@ -1119,7 +1132,22 @@ class _TimetableEditorScreenState extends State<TimetableEditorScreen> {
   @override
   void initState() {
     super.initState();
-    _loadTimetable();
+    if (widget.initialTimetable != null) {
+      _timetable = widget.initialTimetable;
+      _isLoading = false;
+      _refreshCoursesInBackground();
+    } else {
+      _loadTimetable();
+    }
+  }
+
+  Future<void> _refreshCoursesInBackground() async {
+    try {
+      final fresh = await _timetableService.getTimetableById(widget.timetableId);
+      if (fresh != null && mounted) {
+        setState(() => _timetable = fresh);
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadTimetable() async {

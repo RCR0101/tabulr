@@ -1,9 +1,12 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/timetable.dart';
 import '../services/data/timetable_sharing_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
+import '../services/ui/responsive_service.dart';
 import 'common/app_dialog.dart';
 
 class ShareTimetableDialog extends StatefulWidget {
@@ -11,8 +14,46 @@ class ShareTimetableDialog extends StatefulWidget {
 
   const ShareTimetableDialog({super.key, required this.timetable});
 
-  /// Returns the current shareId (possibly new if first share or revoked), or null if cancelled before share.
   static Future<String?> show(BuildContext context, Timetable timetable) {
+    if (ResponsiveService.isMobile(context)) {
+      return showModalBottomSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) {
+          final scheme = Theme.of(ctx).colorScheme;
+          return ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: AppDesign.glassBlur, sigmaY: AppDesign.glassBlur),
+              child: Container(
+                color: scheme.surface.withValues(alpha: 0.85),
+                padding: EdgeInsets.only(
+                  left: 20, right: 20, top: 16,
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 32, height: 4,
+                        decoration: BoxDecoration(
+                          color: scheme.onSurface.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ShareTimetableDialog(timetable: timetable),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    }
     return showDialog<String>(
       context: context,
       builder: (_) => ShareTimetableDialog(timetable: timetable),
@@ -82,88 +123,130 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildContent(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final alreadyShared = widget.timetable.shareId != null;
 
-    return AlertDialog(
-      shape: AppDesign.dialogShape,
-      title: Row(
-        children: [
-          Icon(Icons.share, color: scheme.primary),
-          const SizedBox(width: 8),
-          const Text('Share Timetable'),
-        ],
-      ),
-      content: SizedBox(
-        width: 360,
-        child: _isLoading
-            ? const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            : _error != null
-                ? Text(_error!, style: TextStyle(color: scheme.error))
-                : Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        alreadyShared
-                            ? 'Your timetable is shared with the code below.'
-                            : 'Share this code with friends so they can view or import your timetable.',
-                        style: TextStyle(fontSize: 13, color: scheme.onSurface.withValues(alpha: 0.7)),
-                      ),
-                      const SizedBox(height: 20),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                        decoration: BoxDecoration(
-                          color: scheme.primaryContainer.withValues(alpha: 0.3),
-                          borderRadius: AppDesign.borderRadiusMd,
-                          border: Border.all(color: scheme.primary.withValues(alpha: 0.3)),
-                        ),
-                        child: SelectableText(
-                          _code ?? '',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'monospace',
-                            color: scheme.primary,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      if (_code != null)
-                        TextButton.icon(
-                          onPressed: _isRevoking ? null : _revoke,
-                          icon: _isRevoking
-                              ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                              : Icon(Icons.link_off, size: 16, color: scheme.error),
-                          label: Text(
-                            'Revoke & generate new code',
-                            style: TextStyle(fontSize: 12, color: scheme.error),
-                          ),
-                        ),
-                    ],
-                  ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, _code),
-          child: const Text('Close'),
+    if (_isLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_error != null) {
+      return Text(_error!, style: TextStyle(color: scheme.error));
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          alreadyShared
+              ? 'Your timetable is shared with the code below.'
+              : 'Share this code with friends so they can view or import your timetable.',
+          style: TextStyle(fontSize: 13, color: scheme.onSurface.withValues(alpha: 0.7)),
         ),
+        const SizedBox(height: 20),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+          decoration: BoxDecoration(
+            color: scheme.primaryContainer.withValues(alpha: 0.3),
+            borderRadius: AppDesign.borderRadiusMd,
+            border: Border.all(color: scheme.primary.withValues(alpha: 0.3)),
+          ),
+          child: SelectableText(
+            _code ?? '',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'monospace',
+              color: scheme.primary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        const SizedBox(height: 16),
         if (_code != null)
-          FilledButton.icon(
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: _code!));
-              ToastService.showSuccess('Code copied to clipboard');
-            },
-            icon: const Icon(Icons.copy, size: 16),
-            label: const Text('Copy Code'),
+          TextButton.icon(
+            onPressed: _isRevoking ? null : _revoke,
+            icon: _isRevoking
+                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                : Icon(Icons.link_off, size: 16, color: scheme.error),
+            label: Text(
+              'Revoke & generate new code',
+              style: TextStyle(fontSize: 12, color: scheme.error),
+            ),
           ),
       ],
+    );
+  }
+
+  List<Widget> _buildActions(BuildContext context) {
+    return [
+      TextButton(
+        onPressed: () => Navigator.pop(context, _code),
+        child: const Text('Close'),
+      ),
+      if (_code != null)
+        FilledButton.icon(
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: _code!));
+            ToastService.showSuccess('Code copied to clipboard');
+          },
+          icon: const Icon(Icons.copy, size: 16),
+          label: const Text('Copy Code'),
+        ),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isMobile = ResponsiveService.isMobile(context);
+
+    if (isMobile) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.share, color: scheme.primary),
+              const SizedBox(width: 8),
+              const Expanded(child: Text('Share Timetable', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600))),
+              IconButton(
+                onPressed: () => Navigator.pop(context, _code),
+                icon: const Icon(Icons.close, size: 20),
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildContent(context),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: _buildActions(context),
+          ),
+        ],
+      );
+    }
+
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: AppDesign.glassBlur / 2, sigmaY: AppDesign.glassBlur / 2),
+      child: AlertDialog(
+        shape: AppDesign.dialogShape,
+        backgroundColor: scheme.surface.withValues(alpha: 0.88),
+        title: Row(
+          children: [
+            Icon(Icons.share, color: scheme.primary),
+            const SizedBox(width: 8),
+            const Text('Share Timetable'),
+          ],
+        ),
+        content: SizedBox(width: 360, child: _buildContent(context)),
+        actions: _buildActions(context),
+      ),
     );
   }
 }

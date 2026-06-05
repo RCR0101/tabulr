@@ -660,7 +660,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
               ],
             ),
           ),
-        );
+        ).motionListItem(index);
       },
     ),
     );

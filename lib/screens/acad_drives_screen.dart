@@ -1055,7 +1055,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                     course: course,
                     onTap: () => _loadCourseFiles(course['code']),
                     enrolled: hasEnrolledSection && ci < enrolledCount,
-                  );
+                  ).motionListItem(ci);
                 },
               ),
             ),
@@ -1234,7 +1234,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
             formatFileSize: _formatFileSize,
             formatDate: _formatDate,
             onDownloadZip: _downloadAsZip,
-          );
+          ).motionListItem(index);
         },
       ),
     );

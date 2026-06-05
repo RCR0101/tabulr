@@ -637,7 +637,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                           ),
                         ],
                       ),
-                    );
+                    ).motionListItem(index);
                   },
                 ),
               ),

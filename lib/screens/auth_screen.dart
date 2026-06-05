@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/data/auth_service.dart';
+import '../utils/design_constants.dart';
 import '../widgets/disclaimer_widget.dart';
 import '../widgets/error_dialog.dart';
 
@@ -89,7 +90,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       'images/full_logo_bg.png',
                     ),
                   ),
-                ),
+                ).motionEntry(duration: AppDesign.motionEmphasized),
                 const SizedBox(height: 16),
                 Text(
                   'Create and manage your class timetables',
@@ -97,7 +98,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                   textAlign: TextAlign.center,
-                ),
+                ).motionFadeIn(delay: const Duration(milliseconds: 200)),
                 const SizedBox(height: 48),
                 Semantics(
                   label: 'Sign in with Google',

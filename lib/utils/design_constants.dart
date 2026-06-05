@@ -1,4 +1,7 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../services/ui/theme_service.dart';
 
 class AppDesign {
@@ -176,5 +179,93 @@ class AppDesign {
       scheme.tertiary,
       scheme.secondary,
     ];
+  }
+
+  // ── Motion tokens ─────────────────────────────────────────────────
+  static const Duration motionFast = Duration(milliseconds: 200);
+  static const Duration motionStandard = Duration(milliseconds: 350);
+  static const Duration motionEmphasized = Duration(milliseconds: 500);
+
+  static const Curve curveStandard = Curves.easeOutCubic;
+  static const Curve curveEmphasized = Curves.easeInOutCubicEmphasized;
+  static const Curve curveDecelerate = Curves.decelerate;
+
+  // ── Glass / frosted tokens ────────────────────────────────────────
+  static const double glassBlur = 24.0;
+  static const double glassTintOpacity = 0.65;
+  static const double glassBorderOpacity = 0.15;
+}
+
+extension AppMotion on Widget {
+  /// Fade + slide up — default entry for cards, list items, panels.
+  Widget motionEntry({
+    Duration? duration,
+    Duration? delay,
+    Curve? curve,
+    double slideOffset = 16,
+  }) {
+    return animate(delay: delay)
+        .fadeIn(duration: duration ?? AppDesign.motionStandard, curve: curve ?? AppDesign.curveStandard)
+        .slideY(begin: slideOffset / 100, end: 0, duration: duration ?? AppDesign.motionStandard, curve: curve ?? AppDesign.curveStandard);
+  }
+
+  /// Quick fade — for content swaps, tab changes, overlays.
+  Widget motionFadeIn({Duration? duration, Duration? delay}) {
+    return animate(delay: delay)
+        .fadeIn(duration: duration ?? AppDesign.motionFast, curve: AppDesign.curveStandard);
+  }
+
+  /// Scale + fade — for dialogs, modals, FABs.
+  Widget motionScale({Duration? duration, Duration? delay}) {
+    return animate(delay: delay)
+        .fadeIn(duration: duration ?? AppDesign.motionStandard, curve: AppDesign.curveStandard)
+        .scale(begin: const Offset(0.92, 0.92), end: const Offset(1, 1), duration: duration ?? AppDesign.motionStandard, curve: AppDesign.curveEmphasized);
+  }
+
+  /// Staggered list item — use with index for cascading entries.
+  Widget motionListItem(int index, {Duration? stagger}) {
+    final delay = (stagger ?? const Duration(milliseconds: 50)) * index;
+    return motionEntry(delay: delay, duration: AppDesign.motionStandard);
+  }
+}
+
+class FrostedContainer extends StatelessWidget {
+  final Widget child;
+  final BorderRadius? borderRadius;
+  final EdgeInsets? padding;
+  final double? blur;
+
+  const FrostedContainer({
+    super.key,
+    required this.child,
+    this.borderRadius,
+    this.padding,
+    this.blur,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final radius = borderRadius ?? AppDesign.borderRadiusLg;
+    return ClipRRect(
+      borderRadius: radius,
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: blur ?? AppDesign.glassBlur,
+          sigmaY: blur ?? AppDesign.glassBlur,
+        ),
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            color: scheme.surface.withValues(alpha: AppDesign.glassTintOpacity),
+            borderRadius: radius,
+            border: Border.all(
+              color: scheme.outline.withValues(alpha: AppDesign.glassBorderOpacity),
+            ),
+          ),
+          child: child,
+        ),
+      ),
+    );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../utils/design_constants.dart';
 import 'app_button.dart';
 
@@ -40,7 +41,10 @@ class EmptyStateWidget extends StatelessWidget {
                 size: 48,
                 color: scheme.primary.withValues(alpha: 0.6),
               ),
-            ),
+            )
+                .animate()
+                .fadeIn(duration: AppDesign.motionStandard, curve: AppDesign.curveStandard)
+                .scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1), duration: AppDesign.motionEmphasized, curve: AppDesign.curveEmphasized),
             const SizedBox(height: AppDesign.spacingLg),
             Text(
               title,
@@ -49,7 +53,7 @@ class EmptyStateWidget extends StatelessWidget {
                     color: scheme.onSurface,
                   ),
               textAlign: TextAlign.center,
-            ),
+            ).motionFadeIn(delay: const Duration(milliseconds: 150)),
             if (subtitle != null) ...[
               const SizedBox(height: AppDesign.spacingSm),
               Text(
@@ -58,7 +62,7 @@ class EmptyStateWidget extends StatelessWidget {
                       color: scheme.onSurface.withValues(alpha: 0.6),
                     ),
                 textAlign: TextAlign.center,
-              ),
+              ).motionFadeIn(delay: const Duration(milliseconds: 250)),
             ],
             if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: AppDesign.spacingLg),
@@ -66,7 +70,7 @@ class EmptyStateWidget extends StatelessWidget {
                 label: actionLabel!,
                 icon: actionIcon,
                 onTap: onAction,
-              ),
+              ).motionEntry(delay: const Duration(milliseconds: 350)),
             ],
           ],
         ),

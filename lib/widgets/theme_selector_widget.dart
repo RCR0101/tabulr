@@ -1,7 +1,11 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
+import '../main.dart' show TimetableMakerApp;
 import '../services/ui/theme_service.dart' as theme_service;
 import '../services/data/user_settings_service.dart';
 import '../services/ui/responsive_service.dart';
+import '../utils/design_constants.dart';
 import '../models/user_settings.dart' as user_settings;
 
 class ThemeSelectorWidget extends StatefulWidget {
@@ -74,8 +78,19 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
                         ),
                         DropdownButton<user_settings.ThemeMode>(
                           value: themeMode,
-                          onChanged: (value) {
-                            if (value != null) {
+                          onChanged: (value) async {
+                            if (value == null) return;
+                            final controller = TimetableMakerApp.themeTransition;
+                            final box = context.findRenderObject() as RenderBox?;
+                            final origin = box != null
+                                ? box.localToGlobal(Offset(box.size.width - 40, box.size.height / 2))
+                                : Offset.zero;
+                            if (controller != null && origin != Offset.zero) {
+                              final revealFuture = controller.runReveal(origin);
+                              _userSettingsService.updateThemeMode(value);
+                              _updateThemeServiceMode(value);
+                              await revealFuture;
+                            } else {
                               _userSettingsService.updateThemeMode(value);
                               _updateThemeServiceMode(value);
                             }
@@ -111,9 +126,19 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
 
                   final cs = themeData.colorScheme;
                   return InkWell(
-                    onTap: () async {
-                      await _themeService.setTheme(theme);
-                      await _userSettingsService.updateThemeVariant(theme);
+                    onTapDown: (details) async {
+                      if (isSelected) return;
+                      final origin = details.globalPosition;
+                      final controller = TimetableMakerApp.themeTransition;
+                      if (controller != null) {
+                        final revealFuture = controller.runReveal(origin);
+                        await _themeService.setTheme(theme);
+                        await _userSettingsService.updateThemeVariant(theme);
+                        await revealFuture;
+                      } else {
+                        await _themeService.setTheme(theme);
+                        await _userSettingsService.updateThemeVariant(theme);
+                      }
                     },
                     borderRadius: BorderRadius.circular(12),
                     child: AnimatedContainer(
@@ -253,49 +278,90 @@ class ThemeSelectorDialog extends StatelessWidget {
   const ThemeSelectorDialog({super.key});
 
   static Future<void> show(BuildContext context) {
+    if (ResponsiveService.isMobile(context)) {
+      return showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) {
+          final scheme = Theme.of(ctx).colorScheme;
+          return ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: AppDesign.glassBlur, sigmaY: AppDesign.glassBlur),
+              child: Container(
+                color: scheme.surface.withValues(alpha: 0.85),
+                height: MediaQuery.of(ctx).size.height * 0.85,
+                child: const ThemeSelectorDialog(),
+              ),
+            ),
+          );
+        },
+      );
+    }
     return showDialog<void>(
       context: context,
-      builder: (context) => const ThemeSelectorDialog(),
+      builder: (context) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: AppDesign.glassBlur / 2, sigmaY: AppDesign.glassBlur / 2),
+        child: const ThemeSelectorDialog(),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Container(
-        width: ResponsiveService.isMobile(context) ? double.infinity : 500,
-        height: MediaQuery.of(context).size.height * 0.7,
-        padding: const EdgeInsets.only(top: 8),
-        child: Column(
-          children: [
-            // Header with close button
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const SizedBox(width: 48), // For symmetry
-                Text(
-                  'Theme Settings',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+    final isMobile = ResponsiveService.isMobile(context);
+    final scheme = Theme.of(context).colorScheme;
+
+    final content = Column(
+      children: [
+        if (isMobile)
+          Padding(
+            padding: const EdgeInsets.only(top: 12, bottom: 4),
+            child: Center(
+              child: Container(
+                width: 32,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: scheme.onSurface.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close),
-                ),
-              ],
+              ),
             ),
-            const Divider(),
-            // Theme selector
-            const Expanded(
-              child: ThemeSelectorWidget(),
+          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const SizedBox(width: 48),
+            Text(
+              'Theme Settings',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.close),
             ),
           ],
         ),
+        const Divider(),
+        const Expanded(
+          child: ThemeSelectorWidget(),
+        ),
+      ],
+    );
+
+    if (isMobile) return content;
+
+    return Dialog(
+      backgroundColor: scheme.surface.withValues(alpha: 0.92),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: 500,
+        height: MediaQuery.of(context).size.height * 0.7,
+        padding: const EdgeInsets.only(top: 8),
+        child: content,
       ),
     );
   }

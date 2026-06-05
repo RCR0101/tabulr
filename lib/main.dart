@@ -18,6 +18,7 @@ import 'models/user_settings.dart' as user_settings;
 import 'services/data/admin_service.dart';
 import 'services/ui/secure_logger.dart';
 import 'services/ui/performance_monitor.dart';
+import 'widgets/theme_transition_overlay.dart';
 
 void main() async {
   final totalStopwatch = Stopwatch()..start();
@@ -113,8 +114,24 @@ void _setupWebCacheClearOnClose() {
   }
 }
 
-class TimetableMakerApp extends StatelessWidget {
+class TimetableMakerApp extends StatefulWidget {
   const TimetableMakerApp({super.key});
+
+  static ThemeTransitionController? themeTransition;
+
+  @override
+  State<TimetableMakerApp> createState() => _TimetableMakerAppState();
+}
+
+class _TimetableMakerAppState extends State<TimetableMakerApp> {
+  final _screenshotKey = GlobalKey();
+  final _themeTransition = ThemeTransitionController();
+
+  @override
+  void initState() {
+    super.initState();
+    TimetableMakerApp.themeTransition = _themeTransition;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -127,8 +144,15 @@ class TimetableMakerApp extends StatelessWidget {
           theme: themeService.getLightThemeData(themeService.currentTheme),
           darkTheme: themeService.getDarkThemeData(themeService.currentTheme),
           themeMode: themeService.currentThemeMode,
-          home: const AuthWrapper(),
           debugShowCheckedModeBanner: false,
+          home: ThemeTransitionOverlay(
+            controller: _themeTransition,
+            screenshotKey: _screenshotKey,
+            child: RepaintBoundary(
+              key: _screenshotKey,
+              child: const AuthWrapper(),
+            ),
+          ),
         );
       },
     );
