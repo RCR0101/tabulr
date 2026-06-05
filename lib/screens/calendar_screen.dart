@@ -899,6 +899,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         button: true,
         child: FloatingActionButton(
           onPressed: _addEvent,
+          heroTag: 'calendar_add',
           child: const Icon(Icons.add),
         ),
       ),

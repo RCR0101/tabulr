@@ -332,6 +332,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
       floatingActionButton: _selectedTimetable != null
           ? FloatingActionButton(
               onPressed: _showPostDialog,
+              heroTag: 'announcements_post',
               child: const Icon(Icons.add),
             )
           : null,

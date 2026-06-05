@@ -62,6 +62,7 @@ class CommandPaletteActions {
 class CommandPalette extends StatefulWidget {
   final void Function(DrawerScreen screen) onNavigate;
   final DrawerScreen currentScreen;
+  final List<CommandPaletteEntry> contextEntries;
   final VoidCallback? onToggleTheme;
   final VoidCallback? onSignOut;
 
@@ -69,6 +70,7 @@ class CommandPalette extends StatefulWidget {
     super.key,
     required this.onNavigate,
     required this.currentScreen,
+    this.contextEntries = const [],
     this.onToggleTheme,
     this.onSignOut,
   });
@@ -77,6 +79,7 @@ class CommandPalette extends StatefulWidget {
     BuildContext context, {
     required void Function(DrawerScreen screen) onNavigate,
     required DrawerScreen currentScreen,
+    List<CommandPaletteEntry> contextEntries = const [],
     VoidCallback? onToggleTheme,
     VoidCallback? onSignOut,
   }) {
@@ -86,6 +89,7 @@ class CommandPalette extends StatefulWidget {
       builder: (_) => CommandPalette(
         onNavigate: onNavigate,
         currentScreen: currentScreen,
+        contextEntries: contextEntries,
         onToggleTheme: onToggleTheme,
         onSignOut: onSignOut,
       ),
@@ -126,7 +130,11 @@ class _CommandPaletteState extends State<CommandPalette> {
     final nav = Navigator.of(context);
 
     // Context-specific actions for the current screen (shown first)
-    entries.addAll(CommandPaletteActions.entriesFor(widget.currentScreen));
+    if (widget.contextEntries.isNotEmpty) {
+      entries.addAll(widget.contextEntries);
+    } else {
+      entries.addAll(CommandPaletteActions.entriesFor(widget.currentScreen));
+    }
 
     // Sidebar screens
     entries.addAll([
@@ -372,15 +380,17 @@ class _CommandPaletteState extends State<CommandPalette> {
           child: Container(
             width: math.min(560.0, mq.size.width - 48),
             constraints: BoxConstraints(maxHeight: maxHeight),
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: scheme.surface,
-              borderRadius: AppDesign.borderRadiusLg,
-              border: Border.all(color: scheme.outline.withValues(alpha: 0.2)),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: scheme.outline.withValues(alpha: 0.15)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 32,
-                  offset: const Offset(0, 8),
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 40,
+                  spreadRadius: 4,
+                  offset: const Offset(0, 12),
                 ),
               ],
             ),
@@ -401,26 +411,44 @@ class _CommandPaletteState extends State<CommandPalette> {
 
   Widget _buildSearchField(ColorScheme scheme) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
       child: Row(
         children: [
-          Icon(Icons.search, size: 20, color: scheme.onSurface.withValues(alpha: 0.5)),
+          Icon(Icons.search, size: 20, color: scheme.primary.withValues(alpha: 0.7)),
           const SizedBox(width: 12),
           Expanded(
             child: TextField(
               controller: _controller,
               focusNode: _focusNode,
-              style: TextStyle(fontSize: 15, color: scheme.onSurface),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: scheme.onSurface),
               decoration: InputDecoration(
                 hintText: 'Jump to a feature or action...',
-                hintStyle: TextStyle(color: scheme.onSurface.withValues(alpha: 0.4)),
+                hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: 0.35),
+                ),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 8),
               ),
               onChanged: _filter,
               onSubmitted: (_) => _selectCurrent(),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: scheme.outline.withValues(alpha: 0.12)),
+            ),
+            child: Text(
+              '⌘K',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: scheme.onSurface.withValues(alpha: 0.4),
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -491,8 +519,18 @@ class _CommandPaletteState extends State<CommandPalette> {
                 ),
                 child: Row(
                   children: [
-                    Icon(entry.icon, size: 18,
-                        color: isSelected ? scheme.primary : scheme.onSurface.withValues(alpha: 0.5)),
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? scheme.primary.withValues(alpha: 0.15)
+                            : scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(entry.icon, size: 16,
+                          color: isSelected ? scheme.primary : scheme.onSurface.withValues(alpha: 0.5)),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -501,17 +539,15 @@ class _CommandPaletteState extends State<CommandPalette> {
                         children: [
                           Text(
                             entry.label,
-                            style: TextStyle(
-                              fontSize: 14,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                              color: isSelected ? scheme.onSurface : scheme.onSurface.withValues(alpha: 0.9),
+                              color: isSelected ? scheme.onSurface : scheme.onSurface.withValues(alpha: 0.85),
                             ),
                           ),
                           if (entry.subtitle != null)
                             Text(
                               entry.subtitle!,
-                              style: TextStyle(
-                                fontSize: 12,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 color: scheme.onSurface.withValues(alpha: 0.45),
                               ),
                               maxLines: 1,

@@ -76,8 +76,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
   double _zoomLevel = 1.0;
   bool _initialZoomApplied = false;
   final TransformationController _transformationController = TransformationController();
-  final ScrollController _verticalScrollController = ScrollController();
-  final ScrollController _horizontalScrollController = ScrollController();
 
   bool get _isMobile {
     if (widget.isForExport) return false;
@@ -119,10 +117,23 @@ class _TimetableWidgetState extends State<TimetableWidget> {
   }
 
   @override
+  @override
+  void initState() {
+    super.initState();
+    _transformationController.addListener(_onTransformChanged);
+  }
+
+  void _onTransformChanged() {
+    final scale = _transformationController.value.getMaxScaleOnAxis();
+    if ((scale - _zoomLevel).abs() > 0.01) {
+      setState(() => _zoomLevel = scale);
+    }
+  }
+
+  @override
   void dispose() {
+    _transformationController.removeListener(_onTransformChanged);
     _transformationController.dispose();
-    _verticalScrollController.dispose();
-    _horizontalScrollController.dispose();
     super.dispose();
   }
 
@@ -183,14 +194,6 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       matrix.setEntry(2, 2, optimalZoom); // Scale Z
       _transformationController.value = matrix;
     });
-
-    // Reset scroll positions to top-left
-    if (_verticalScrollController.hasClients) {
-      _verticalScrollController.jumpTo(0);
-    }
-    if (_horizontalScrollController.hasClients) {
-      _horizontalScrollController.jumpTo(0);
-    }
   }
 
   void _showQuickReplaceDialog() {
@@ -950,60 +953,48 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   )
                 : Stack(
                     children: [
-                      // Timetable with scrolling
-                      GestureDetector(
-                        // Capture all gestures within this area
-                        behavior: HitTestBehavior.opaque,
-                        child: Container(
-                          margin: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).scaffoldBackgroundColor,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.outline,
-                              width: 1,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Theme.of(context).shadowColor.withValues(alpha: 0.2),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
+                      Container(
+                        margin: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).scaffoldBackgroundColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.outline,
+                            width: 1,
                           ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: SingleChildScrollView(
-                              controller: _verticalScrollController,
-                              scrollDirection: Axis.vertical,
-                              physics: const ClampingScrollPhysics(),
-                              child: SingleChildScrollView(
-                                controller: _horizontalScrollController,
-                                scrollDirection: Axis.horizontal,
-                                physics: const ClampingScrollPhysics(),
-                                child: Transform(
-                                  transform: _transformationController.value,
-                                  child: RepaintBoundary(
-                                    key: widget.tableKey,
-                                    child: DataTable(
-                                      columnSpacing: _getColumnSpacing(widget.size),
-                                      horizontalMargin: _getHorizontalMargin(widget.size),
-                                      dataRowMinHeight: _getDataRowHeight(widget.size),
-                                      dataRowMaxHeight: _getDataRowHeight(widget.size),
-                                      headingRowHeight: 60,
-                                      dividerThickness: 0,
-                                      border: TableBorder.all(color: Colors.transparent, width: 0),
-                                      columns: _buildColumns(context),
-                                      rows: _buildRows(context),
-                                    ),
-                                  ),
-                                ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Theme.of(context).shadowColor.withValues(alpha: 0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: InteractiveViewer(
+                            transformationController: _transformationController,
+                            minScale: 0.4,
+                            maxScale: 2.5,
+                            constrained: false,
+                            boundaryMargin: const EdgeInsets.all(200),
+                            child: RepaintBoundary(
+                              key: widget.tableKey,
+                              child: DataTable(
+                                columnSpacing: _getColumnSpacing(widget.size),
+                                horizontalMargin: _getHorizontalMargin(widget.size),
+                                dataRowMinHeight: _getDataRowHeight(widget.size),
+                                dataRowMaxHeight: _getDataRowHeight(widget.size),
+                                headingRowHeight: 60,
+                                dividerThickness: 0,
+                                border: TableBorder.all(color: Colors.transparent, width: 0),
+                                columns: _buildColumns(context),
+                                rows: _buildRows(context),
                               ),
                             ),
                           ),
                         ),
                       ),
-                      // Zoom controls positioned on bottom left
                       _buildZoomControls(),
                     ],
                   ),
@@ -1291,7 +1282,14 @@ class _TimetableWidgetState extends State<TimetableWidget> {
           height: _getCellHeight(widget.size),
           margin: EdgeInsets.all(_getCellMargin(widget.size)),
           decoration: BoxDecoration(
-            color: courseColor.withValues(alpha: isHovered ? 0.26 : 0.18),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                courseColor.withValues(alpha: isHovered ? 0.28 : 0.20),
+                courseColor.withValues(alpha: isHovered ? 0.18 : 0.10),
+              ],
+            ),
             borderRadius: BorderRadius.circular(_getBorderRadius(widget.size)),
             border: Border.all(
               color: courseColor.withValues(alpha: isHovered ? 0.45 : 0.3),
@@ -1408,8 +1406,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               // Warning icon for incomplete course selections
               if (_hasIncompleteSelection(slot.courseCode))
                 Positioned(
-                  top: 0,
-                  left: 0,
+                  top: 2,
+                  left: 2,
                   child: Tooltip(
                     message: _getIncompleteSelectionWarning(slot.courseCode),
                     decoration: BoxDecoration(
@@ -1418,30 +1416,24 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                       border: Border.all(color: Theme.of(context).colorScheme.outline),
                     ),
                     textStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12),
-                    child: SizedBox(
-                      width: 48,
-                      height: 48,
-                      child: Center(
-                        child: Container(
-                          width: ResponsiveService.getValue(context, mobile: 24, tablet: 20, desktop: 18),
-                          height: ResponsiveService.getValue(context, mobile: 24, tablet: 20, desktop: 18),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.9),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Theme.of(context).shadowColor.withValues(alpha: 0.3),
-                                blurRadius: 2,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
+                    child: Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.9),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Theme.of(context).shadowColor.withValues(alpha: 0.3),
+                            blurRadius: 2,
+                            offset: const Offset(0, 1),
                           ),
-                          child: Icon(
-                            Icons.warning,
-                            size: ResponsiveService.getValue(context, mobile: 16, tablet: 14, desktop: 12),
-                            color: Theme.of(context).colorScheme.onSecondary,
-                          ),
-                        ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.warning,
+                        size: 13,
+                        color: Theme.of(context).colorScheme.onSecondary,
                       ),
                     ),
                   ),
@@ -1449,8 +1441,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               if (widget.onRemoveSection != null &&
                   _hoveredCourse == '${slot.courseCode}-${slot.sectionId}')
                 Positioned(
-                  top: 0,
-                  right: 0,
+                  top: 2,
+                  right: 2,
                   child: Semantics(
                     label: 'Remove ${slot.courseCode} ${slot.sectionId}',
                     button: true,
@@ -1459,30 +1451,24 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                       ResponsiveService.triggerHeavyFeedback(context);
                       widget.onRemoveSection!(slot.courseCode, slot.sectionId);
                     },
-                    child: SizedBox(
-                      width: 48,
-                      height: 48,
-                      child: Center(
-                        child: Container(
-                          width: ResponsiveService.getValue(context, mobile: 28, tablet: 24, desktop: 20),
-                          height: ResponsiveService.getValue(context, mobile: 28, tablet: 24, desktop: 20),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Theme.of(context).shadowColor.withValues(alpha: 0.3),
-                                blurRadius: 2,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
+                    child: Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.error.withValues(alpha: 0.85),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Theme.of(context).shadowColor.withValues(alpha: 0.3),
+                            blurRadius: 2,
+                            offset: const Offset(0, 1),
                           ),
-                          child: Icon(
-                            Icons.close,
-                            size: ResponsiveService.getValue(context, mobile: 18, tablet: 16, desktop: 14),
-                            color: Theme.of(context).colorScheme.onSecondary,
-                          ),
-                        ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.close,
+                        size: 13,
+                        color: Theme.of(context).colorScheme.onError,
                       ),
                     ),
                   ),

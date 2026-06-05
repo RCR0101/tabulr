@@ -34,6 +34,8 @@ import '../widgets/courses_tab_widget.dart';
 import '../widgets/clash_warnings_widget.dart';
 import '../widgets/search_filter_widget.dart';
 import '../widgets/theme_selector_widget.dart';
+import '../widgets/command_palette.dart';
+import '../widgets/app_drawer.dart';
 import '../widgets/campus_selector_widget.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
@@ -101,6 +103,61 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     if (snapshot != null) _applySnapshot(snapshot);
   }
 
+  void _showCommandPalette() {
+    CommandPalette.show(
+      context,
+      currentScreen: DrawerScreen.timetables,
+      contextEntries: [
+        if (hasUnsavedChanges && !isSaving)
+          CommandPaletteEntry(
+            label: 'Save Timetable',
+            subtitle: 'Save current changes',
+            icon: Icons.save,
+            category: CommandCategory.context,
+            onSelect: saveTimetable,
+          ),
+        CommandPaletteEntry(
+          label: 'Share Timetable',
+          subtitle: 'Share via code',
+          icon: Icons.share,
+          category: CommandCategory.context,
+          onSelect: shareTimetable,
+        ),
+        CommandPaletteEntry(
+          label: 'Export as Image',
+          subtitle: 'Save timetable as PNG',
+          icon: Icons.image,
+          category: CommandCategory.context,
+          onSelect: exportToPNG,
+        ),
+        CommandPaletteEntry(
+          label: 'Export to Calendar',
+          subtitle: 'Save as .ics file',
+          icon: Icons.calendar_today,
+          category: CommandCategory.context,
+          onSelect: exportToICS,
+        ),
+        CommandPaletteEntry(
+          label: 'Export Timetable File',
+          subtitle: 'Save as .tt file',
+          icon: Icons.file_upload,
+          category: CommandCategory.context,
+          onSelect: exportToTTWithFilePicker,
+        ),
+        CommandPaletteEntry(
+          label: 'Import Timetable File',
+          subtitle: 'Load from .tt file',
+          icon: Icons.file_download,
+          category: CommandCategory.context,
+          onSelect: importFromTT,
+        ),
+      ],
+      onNavigate: (_) {},
+      onToggleTheme: () => ThemeSelectorDialog.show(context),
+      onSignOut: () => authService.signOut(),
+    );
+  }
+
   Widget wrapWithKeyboardShortcuts(Widget child) {
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
@@ -114,6 +171,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         const SingleActivator(LogicalKeyboardKey.keyS, meta: true): () {
           if (hasUnsavedChanges && !isSaving) saveTimetable();
         },
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): _showCommandPalette,
+        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): _showCommandPalette,
       },
       child: Focus(
         autofocus: true,
