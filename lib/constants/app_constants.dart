@@ -286,3 +286,13 @@ abstract final class ComparisonWeights {
 abstract final class AppMeta {
   static const String logTag = 'TimetableMaker';
 }
+
+// ── Tutorial sections ──────────────────────────────────────────────────
+
+abstract final class TutorialSections {
+  static const String timetableList = 'timetable_list';
+  static const String editor = 'editor';
+  static const String cgpa = 'cgpa';
+  static const String acadDrives = 'acad_drives';
+  static const String admin = 'admin';
+}

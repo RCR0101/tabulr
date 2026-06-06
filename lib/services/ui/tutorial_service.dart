@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
+import '../../constants/app_constants.dart';
 import '../data/user_settings_service.dart';
 import '../data/auth_service.dart';
 
@@ -18,6 +19,9 @@ class TutorialKeys {
   static final timetableGrid = GlobalKey(debugLabel: 'tutorial_grid');
   static final generatorFab = GlobalKey(debugLabel: 'tutorial_generator');
   static final addSwapFab = GlobalKey(debugLabel: 'tutorial_add_swap');
+  static final campusSelector = GlobalKey(debugLabel: 'tutorial_campus');
+  static final shareButton = GlobalKey(debugLabel: 'tutorial_share');
+  static final toolsMenu = GlobalKey(debugLabel: 'tutorial_tools');
 
   // CGPA Calculator
   static final cgpaSummary = GlobalKey(debugLabel: 'tutorial_cgpa_summary');
@@ -28,6 +32,11 @@ class TutorialKeys {
   static final acadDrivesYourCourses = GlobalKey(debugLabel: 'tutorial_your_courses');
   static final acadDrivesSubmit = GlobalKey(debugLabel: 'tutorial_submit_drive');
   static final acadDrivesSearch = GlobalKey(debugLabel: 'tutorial_acad_search');
+
+  // Admin
+  static final adminManagement = GlobalKey(debugLabel: 'tutorial_admin_mgmt');
+  static final adminTimetableUpload = GlobalKey(debugLabel: 'tutorial_admin_tt_upload');
+  static final adminExamUpload = GlobalKey(debugLabel: 'tutorial_admin_exam_upload');
 
   // Page info buttons (per screen)
   static final infoTimetableList = GlobalKey(debugLabel: 'tutorial_info_tt_list');
@@ -63,10 +72,11 @@ class TutorialService {
     return !UserSettingsService().isTutorialCompleted(section);
   }
 
-  static const _sectionTimetableList = 'timetable_list';
-  static const _sectionEditor = 'editor';
-  static const _sectionCGPA = 'cgpa';
-  static const _sectionAcadDrives = 'acad_drives';
+  static const _sectionTimetableList = TutorialSections.timetableList;
+  static const _sectionEditor = TutorialSections.editor;
+  static const _sectionCGPA = TutorialSections.cgpa;
+  static const _sectionAcadDrives = TutorialSections.acadDrives;
+  static const _sectionAdmin = TutorialSections.admin;
 
   void showTimetableListTutorial(BuildContext context) {
     if (_isShowing || !_shouldShow(_sectionTimetableList)) return;
@@ -121,6 +131,15 @@ class TutorialService {
 
     _addTarget(
       targets,
+      key: TutorialKeys.campusSelector,
+      title: 'Select Campus',
+      description: 'Choose your campus — Pilani, Goa, or Hyderabad. This loads the correct course catalog and time slots.',
+      shape: ShapeLightFocus.RRect,
+      align: ContentAlign.bottom,
+    );
+
+    _addTarget(
+      targets,
       key: TutorialKeys.courseSearch,
       title: 'Search Courses',
       description: 'Search by course code, name, or instructor. Tap a section to add it to your timetable.',
@@ -128,13 +147,15 @@ class TutorialService {
       align: ContentAlign.bottom,
     );
 
+    final isMobile = MediaQuery.of(context).size.width < ResponsiveConstants.mobileBreakpoint;
     _addTarget(
       targets,
       key: TutorialKeys.timetableGrid,
       title: 'Your Timetable',
       description: 'Your weekly schedule builds here as you add sections. Clashes are detected automatically.',
       shape: ShapeLightFocus.RRect,
-      align: ContentAlign.top,
+      align: isMobile ? ContentAlign.bottom : ContentAlign.left,
+      maxContentWidth: isMobile ? null : 280,
     );
 
     _addTarget(
@@ -153,6 +174,24 @@ class TutorialService {
       description: 'Add a new course or swap sections without rebuilding your entire timetable.',
       shape: ShapeLightFocus.RRect,
       align: ContentAlign.top,
+    );
+
+    _addTarget(
+      targets,
+      key: TutorialKeys.shareButton,
+      title: 'Share',
+      description: 'Share your timetable with friends via a short code they can import.',
+      shape: ShapeLightFocus.Circle,
+      align: ContentAlign.bottom,
+    );
+
+    _addTarget(
+      targets,
+      key: TutorialKeys.toolsMenu,
+      title: 'Tools',
+      description: 'Course guide, prerequisites, discipline & humanities electives, import/export, and more.',
+      shape: ShapeLightFocus.Circle,
+      align: ContentAlign.bottom,
     );
 
     if (targets.isEmpty) {
@@ -262,6 +301,50 @@ class TutorialService {
     _showTutorial(context, targets);
   }
 
+  void showAdminTutorial(BuildContext context) {
+    if (_isShowing || !_shouldShow(_sectionAdmin)) return;
+    _isShowing = true;
+    _currentSection = _sectionAdmin;
+
+    final targets = <TargetFocus>[];
+
+    _addTarget(
+      targets,
+      key: TutorialKeys.adminManagement,
+      title: 'Data Management',
+      description: 'Edit courses, exam seating, professor chambers, and CDC structure. Changes go live immediately.',
+      shape: ShapeLightFocus.RRect,
+      align: ContentAlign.bottom,
+    );
+
+    _addTarget(
+      targets,
+      key: TutorialKeys.adminTimetableUpload,
+      title: 'Timetable Upload',
+      description: 'Upload timetable PDFs per campus. Set page ranges and header exclusions, then parse and push to Firestore.',
+      shape: ShapeLightFocus.RRect,
+      align: ContentAlign.top,
+      maxContentWidth: 320,
+    );
+
+    _addTarget(
+      targets,
+      key: TutorialKeys.adminExamUpload,
+      title: 'Exam Seating Upload',
+      description: 'Upload exam seating PDFs to parse room and seat assignments for students.',
+      shape: ShapeLightFocus.RRect,
+      align: ContentAlign.top,
+      maxContentWidth: 320,
+    );
+
+    if (targets.isEmpty) {
+      _isShowing = false;
+      return;
+    }
+
+    _showTutorial(context, targets);
+  }
+
   void _showTutorial(BuildContext context, List<TargetFocus> targets) {
     _currentTutorial = TutorialCoachMark(
       targets: targets,
@@ -303,6 +386,7 @@ class TutorialService {
     ShapeLightFocus shape = ShapeLightFocus.RRect,
     ContentAlign align = ContentAlign.bottom,
     CustomTargetContentPosition? customPosition,
+    double? maxContentWidth,
   }) {
     if (key.currentContext == null) return;
 
@@ -321,6 +405,9 @@ class TutorialService {
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 child: Container(
+                  constraints: maxContentWidth != null
+                      ? BoxConstraints(maxWidth: maxContentWidth)
+                      : null,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: scheme.surface.withValues(alpha: 0.95),

@@ -1110,6 +1110,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             FloatingActionButton(
+              key: TutorialKeys.importCodeBtn,
               onPressed: _importFromShareCode,
               tooltip: 'Import from Code',
               backgroundColor: Theme.of(context).colorScheme.primaryContainer,
@@ -1119,6 +1120,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
             ),
             SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 8)),
             FloatingActionButton(
+              key: TutorialKeys.compareBtn,
               onPressed: () {
                 Navigator.push(
                   context,
@@ -1137,6 +1139,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
               label: 'Create Timetable',
               button: true,
               child: FloatingActionButton.extended(
+                key: TutorialKeys.newTimetableBtn,
                 onPressed: _createNewTimetable,
                 icon: const Icon(Icons.add),
                 label: const Text('New Timetable'),

@@ -10,6 +10,7 @@ import 'admin/course_guide_management_screen.dart';
 import 'admin/course_management_screen.dart';
 import 'admin/exam_seating_management_screen.dart';
 import 'admin/professor_management_screen.dart';
+import '../services/ui/tutorial_service.dart';
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
@@ -40,6 +41,16 @@ class _AdminScreenState extends State<AdminScreen> {
   };
   final TextEditingController _examYearController =
       TextEditingController(text: '2026');
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 400), () {
+        if (mounted) TutorialService().showAdminTutorial(context);
+      });
+    });
+  }
 
   bool _uploadingTimetable = false;
   bool _uploadingExam = false;
@@ -214,9 +225,11 @@ class _AdminScreenState extends State<AdminScreen> {
     required String title,
     required IconData icon,
     required List<Widget> children,
+    Key? key,
   }) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
+      key: key,
       margin: const EdgeInsets.only(bottom: AppDesign.spacingMd),
       decoration: AppDesign.cardDecoration(context),
       child: Column(
@@ -704,9 +717,11 @@ class _AdminScreenState extends State<AdminScreen> {
     required String subtitle,
     required Color color,
     required VoidCallback onTap,
+    Key? key,
   }) {
     final scheme = Theme.of(context).colorScheme;
     return Material(
+      key: key,
       color: scheme.surface,
       borderRadius: AppDesign.borderRadiusSm,
       child: InkWell(
@@ -763,6 +778,7 @@ class _AdminScreenState extends State<AdminScreen> {
     final tertiary = Theme.of(context).colorScheme.tertiary;
     return [
       _managementCard(
+        key: TutorialKeys.adminManagement,
         icon: Icons.menu_book_rounded,
         title: 'Course Management',
         subtitle: 'Edit courses, sections, and exam schedules',
@@ -805,6 +821,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Widget _timetableUploadSection() {
     return _buildSection(
+      key: TutorialKeys.adminTimetableUpload,
       title: 'Timetable Upload',
       icon: Icons.schedule_rounded,
       children: [
@@ -843,6 +860,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Widget _examUploadSection() {
     return _buildSection(
+      key: TutorialKeys.adminExamUpload,
       title: 'Exam Seating (Hyderabad)',
       icon: Icons.event_seat_rounded,
       children: [

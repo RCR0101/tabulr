@@ -1090,10 +1090,12 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
             ),
           ),
         CampusSelectorWidget(
+          key: TutorialKeys.campusSelector,
           confirmSwitch: () => confirmCampusSwitch(),
           onCampusChanged: onCampusChanged,
         ),
         IconButton(
+          key: TutorialKeys.shareButton,
           icon: const Icon(Icons.share),
           onPressed: shareTimetable,
           tooltip: 'Share Timetable',
@@ -1106,6 +1108,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
           child: Icon(Icons.check_circle, color: AppDesign.success(context), size: 18),
         ),
       PopupMenuButton<String>(
+        key: TutorialKeys.toolsMenu,
         icon: const Icon(Icons.menu_book),
         tooltip: 'Tools',
         onSelected: (value) {
@@ -1385,6 +1388,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       mainAxisSize: MainAxisSize.min,
       children: [
         FloatingActionButton(
+          key: TutorialKeys.addSwapFab,
           onPressed: openAddSwap,
           backgroundColor: Theme.of(context).colorScheme.secondary,
           foregroundColor: Theme.of(context).colorScheme.onSecondary,
@@ -1394,6 +1398,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         ),
         const SizedBox(height: 8),
         FloatingActionButton(
+          key: TutorialKeys.generatorFab,
           onPressed: openGenerator,
           backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Theme.of(context).colorScheme.onPrimary,
