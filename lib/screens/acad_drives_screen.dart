@@ -13,6 +13,9 @@ import '../services/data/auth_service.dart';
 import '../constants/app_constants.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/shimmer_loading.dart';
+import '../widgets/command_palette.dart';
+import '../widgets/app_drawer.dart';
+import '../services/ui/tutorial_service.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
 import '../services/data/courses_master_service.dart';
@@ -102,11 +105,37 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     super.initState();
     _coursesScrollController.addListener(_onCoursesScroll);
     _loadEnrolledCourses();
-    _loadCourses();
+    _loadCourses().then((_) {
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Future.delayed(const Duration(milliseconds: 400), () {
+            if (mounted) TutorialService().showAcadDrivesTutorial(context);
+          });
+        });
+      }
+    });
+    CommandPaletteActions.register(DrawerScreen.acadDrives, () => [
+      CommandPaletteEntry(
+        label: 'Submit Drive Link',
+        subtitle: 'Submit a new academic resource link',
+        icon: Icons.add_link,
+        category: CommandCategory.context,
+        onSelect: _showSubmitDialog,
+      ),
+      if (_selectedCourse != null)
+        CommandPaletteEntry(
+          label: 'Back to Courses',
+          subtitle: 'Return to course list',
+          icon: Icons.arrow_back,
+          category: CommandCategory.context,
+          onSelect: _goBackToCourses,
+        ),
+    ]);
   }
 
   @override
   void dispose() {
+    CommandPaletteActions.unregister(DrawerScreen.acadDrives);
     _coursesScrollController.dispose();
     _searchController.dispose();
     _driveLinkController.dispose();
@@ -888,8 +917,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
               )
             : null, // This will show the hamburger menu for main screen
         actions: [
-          PageInfoHelper.infoButton(context, PageInfoHelper.acadDrives),
+          PageInfoHelper.infoButton(context, PageInfoHelper.acadDrives, key: TutorialKeys.infoAcadDrives),
           IconButton(
+            key: TutorialKeys.acadDrivesSubmit,
             onPressed: _showSubmitDialog,
             icon: const Icon(Icons.cloud_upload_outlined),
             tooltip: 'Submit Resource',
@@ -900,6 +930,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         children: [
           // Search Section
           Container(
+            key: TutorialKeys.acadDrivesSearch,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Row(
               children: [
@@ -1016,9 +1047,10 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       return index - 2;
     }
 
-    Widget sectionHeader(String text, IconData icon) {
+    Widget sectionHeader(String text, IconData icon, {Key? key}) {
       final scheme = Theme.of(context).colorScheme;
       return Padding(
+        key: key,
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
         child: Row(
           children: [
@@ -1047,7 +1079,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                 itemCount: itemCount,
                 itemBuilder: (context, index) {
                   final ci = courseIndexFromListIndex(index);
-                  if (ci == -1) return sectionHeader('Your Courses', Icons.school);
+                  if (ci == -1) return sectionHeader('Your Courses', Icons.school, key: TutorialKeys.acadDrivesYourCourses);
                   if (ci == -2) return sectionHeader('All Courses', Icons.library_books);
                   if (ci >= courses.length) return _buildLoadingFooter();
                   final course = courses[ci];
@@ -1073,7 +1105,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
             controller: _coursesScrollController,
             slivers: [
               if (hasEnrolledSection) ...[
-                SliverToBoxAdapter(child: sectionHeader('Your Courses', Icons.school)),
+                SliverToBoxAdapter(child: sectionHeader('Your Courses', Icons.school, key: TutorialKeys.acadDrivesYourCourses)),
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   sliver: SliverGrid(

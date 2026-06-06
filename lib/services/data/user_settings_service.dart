@@ -273,6 +273,27 @@ class UserSettingsService extends ChangeNotifier {
     }
   }
 
+  Future<void> markTutorialCompleted(String section) async {
+    if (_userSettings == null) {
+      await initializeSettings(force: true);
+    }
+    if (_userSettings == null) return;
+
+    final updated = {..._userSettings!.completedTutorials, section};
+    _userSettings = _userSettings!.copyWith(completedTutorials: updated);
+    notifyListeners();
+
+    if (_authService.isAuthenticated) {
+      await _saveToFirestore();
+    } else {
+      await _saveToLocalStorage();
+    }
+  }
+
+  bool isTutorialCompleted(String section) {
+    return _userSettings?.completedTutorials.contains(section) ?? false;
+  }
+
   // Update scoring weights
   Future<void> updateScoringWeights(ScoringWeights weights) async {
     if (_userSettings == null) {

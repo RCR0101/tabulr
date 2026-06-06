@@ -15,6 +15,7 @@ import '../utils/design_constants.dart';
 import '../widgets/common/empty_state.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../mixins/timetable_editor_mixin.dart';
+import '../services/ui/tutorial_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -102,6 +103,13 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
         _filteredCourses = timetable.availableCourses;
         _isLoading = false;
       });
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Future.delayed(const Duration(milliseconds: 400), () {
+            if (mounted) TutorialService().showEditorTutorial(context);
+          });
+        });
+      }
     } catch (e) {
       setState(() => _isLoading = false);
       String errorMessage = 'Error loading timetable: $e';
@@ -205,6 +213,11 @@ class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with 
     _timetable = widget.timetable;
     _filteredCourses = _timetable.availableCourses;
     initializeUserSettings();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 400), () {
+        if (mounted) TutorialService().showEditorTutorial(context);
+      });
+    });
   }
 
   @override

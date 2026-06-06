@@ -28,6 +28,7 @@ import '../utils/design_constants.dart';
 import '../utils/grade_utils.dart' as grade_utils;
 import '../widgets/command_palette.dart';
 import '../widgets/app_drawer.dart';
+import '../services/ui/tutorial_service.dart';
 
 class CGPACalculatorScreen extends StatefulWidget {
   const CGPACalculatorScreen({super.key});
@@ -137,6 +138,13 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       _cgpaData = results[1] as CGPAData;
       _isLoading = false;
     });
+    if (mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 400), () {
+          if (mounted) TutorialService().showCGPATutorial(context);
+        });
+      });
+    }
   }
 
   Future<void> _saveSemester(String semesterName) async {
@@ -1130,6 +1138,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       appBar: AppBar(
         title: const Text('CGPA Calculator'),
         bottom: PreferredSize(
+          key: TutorialKeys.semesterTabs,
           preferredSize: const Size.fromHeight(52),
           child: SizedBox(
             height: 52,
@@ -1227,13 +1236,14 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
           ),
         ),
         actions: [
-          PageInfoHelper.infoButton(context, PageInfoHelper.cgpaCalculator),
+          PageInfoHelper.infoButton(context, PageInfoHelper.cgpaCalculator, key: TutorialKeys.infoCGPA),
           IconButton(
             icon: const Icon(Icons.refresh, size: 22),
             tooltip: 'Reload Data',
             onPressed: _loadData,
           ),
           PopupMenuButton<String>(
+            key: TutorialKeys.cgpaActions,
             icon: const Icon(Icons.more_vert, size: 22),
             tooltip: 'More',
             onSelected: (value) {
@@ -1286,6 +1296,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     final isMobile = ResponsiveService.isMobile(context);
 
     return Container(
+      key: TutorialKeys.cgpaSummary,
       margin: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 20, vertical: 6),
       child:
           isMobile

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/data/admin_service.dart';
 import '../services/data/auth_service.dart';
 import '../services/data/course_announcement_service.dart';
+import '../services/ui/tutorial_service.dart';
 import '../utils/design_constants.dart';
 import 'app_drawer.dart';
 
@@ -120,6 +121,7 @@ class _AppSidebarState extends State<AppSidebar> {
     final collapsed = widget.collapsed;
 
     return AnimatedContainer(
+      key: TutorialKeys.sidebarNav,
       duration: AppDesign.animDurationNormal,
       curve: AppDesign.animCurve,
       clipBehavior: Clip.hardEdge,

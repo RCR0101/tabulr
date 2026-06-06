@@ -16,6 +16,7 @@ import '../utils/design_constants.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/app_dialog.dart';
 import '../utils/page_info_helper.dart';
+import '../services/ui/tutorial_service.dart';
 
 
 class CourseAnnouncementsScreen extends StatefulWidget {
@@ -324,7 +325,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
       appBar: AppBar(
         title: const Text('Announcements'),
         actions: [
-          PageInfoHelper.infoButton(context, PageInfoHelper.announcements),
+          PageInfoHelper.infoButton(context, PageInfoHelper.announcements, key: TutorialKeys.infoAnnouncements),
           if (_currentUserRep != null) _buildRepChip(theme),
           const SizedBox(width: 8),
         ],

@@ -19,6 +19,7 @@ class CommandPaletteEntry {
   final IconData icon;
   final CommandCategory category;
   final VoidCallback onSelect;
+  final String? shortcut;
 
   const CommandPaletteEntry({
     required this.label,
@@ -26,10 +27,12 @@ class CommandPaletteEntry {
     required this.icon,
     required this.category,
     required this.onSelect,
+    this.shortcut,
   });
 }
 
 enum CommandCategory {
+  recent('Recent', Icons.history),
   context('This Page', Icons.push_pin_outlined),
   navigation('Navigate', Icons.navigation),
   action('Actions', Icons.bolt);
@@ -45,6 +48,8 @@ class CommandPaletteActions {
   CommandPaletteActions._();
 
   static final Map<DrawerScreen, List<CommandPaletteEntry> Function()> _providers = {};
+  static final List<String> _recentLabels = [];
+  static const int _maxRecent = 5;
 
   static void register(DrawerScreen screen, List<CommandPaletteEntry> Function() provider) {
     _providers[screen] = provider;
@@ -57,6 +62,16 @@ class CommandPaletteActions {
   static List<CommandPaletteEntry> entriesFor(DrawerScreen screen) {
     return _providers[screen]?.call() ?? [];
   }
+
+  static void recordUsage(String label) {
+    _recentLabels.remove(label);
+    _recentLabels.insert(0, label);
+    if (_recentLabels.length > _maxRecent) {
+      _recentLabels.removeLast();
+    }
+  }
+
+  static List<String> get recentLabels => List.unmodifiable(_recentLabels);
 }
 
 class CommandPalette extends StatefulWidget {
@@ -129,15 +144,18 @@ class _CommandPaletteState extends State<CommandPalette> {
     final auth = AuthService();
     final nav = Navigator.of(context);
 
+    // All non-recent entries first (we'll inject recents at the end)
+    final nonRecentEntries = <CommandPaletteEntry>[];
+
     // Context-specific actions for the current screen (shown first)
     if (widget.contextEntries.isNotEmpty) {
-      entries.addAll(widget.contextEntries);
+      nonRecentEntries.addAll(widget.contextEntries);
     } else {
-      entries.addAll(CommandPaletteActions.entriesFor(widget.currentScreen));
+      nonRecentEntries.addAll(CommandPaletteActions.entriesFor(widget.currentScreen));
     }
 
     // Sidebar screens
-    entries.addAll([
+    nonRecentEntries.addAll([
       CommandPaletteEntry(
         label: 'Timetables',
         subtitle: 'View and manage your timetables',
@@ -162,7 +180,7 @@ class _CommandPaletteState extends State<CommandPalette> {
     ]);
 
     if (auth.isAuthenticated) {
-      entries.addAll([
+      nonRecentEntries.addAll([
         CommandPaletteEntry(
           label: 'Free Slot Finder',
           subtitle: 'Find common free slots with friends',
@@ -194,7 +212,7 @@ class _CommandPaletteState extends State<CommandPalette> {
       ]);
 
       if (CourseAnnouncementService().isHyderabadUser()) {
-        entries.add(CommandPaletteEntry(
+        nonRecentEntries.add(CommandPaletteEntry(
           label: 'Announcements',
           subtitle: 'Course announcements',
           icon: Icons.campaign,
@@ -204,7 +222,7 @@ class _CommandPaletteState extends State<CommandPalette> {
       }
 
       if (AdminService().isAdmin) {
-        entries.add(CommandPaletteEntry(
+        nonRecentEntries.add(CommandPaletteEntry(
           label: 'Admin',
           subtitle: 'Admin panel',
           icon: Icons.admin_panel_settings,
@@ -215,7 +233,7 @@ class _CommandPaletteState extends State<CommandPalette> {
     }
 
     // Tool screens (pushed as routes)
-    entries.addAll([
+    nonRecentEntries.addAll([
       CommandPaletteEntry(
         label: 'Course Guide',
         subtitle: 'Browse course details and sections',
@@ -255,7 +273,7 @@ class _CommandPaletteState extends State<CommandPalette> {
 
     // Global actions
     if (widget.onToggleTheme != null) {
-      entries.add(CommandPaletteEntry(
+      nonRecentEntries.add(CommandPaletteEntry(
         label: 'Change Theme',
         subtitle: 'Switch theme or mode',
         icon: Icons.brightness_6,
@@ -265,7 +283,7 @@ class _CommandPaletteState extends State<CommandPalette> {
     }
 
     if (widget.onSignOut != null && auth.isAuthenticated) {
-      entries.add(CommandPaletteEntry(
+      nonRecentEntries.add(CommandPaletteEntry(
         label: 'Sign Out',
         icon: Icons.logout,
         category: CommandCategory.action,
@@ -273,6 +291,25 @@ class _CommandPaletteState extends State<CommandPalette> {
       ));
     }
 
+    // Inject recent entries at the top
+    final recentLabels = CommandPaletteActions.recentLabels;
+    if (recentLabels.isNotEmpty) {
+      for (final label in recentLabels) {
+        final match = nonRecentEntries.where((e) => e.label == label).firstOrNull;
+        if (match != null) {
+          entries.add(CommandPaletteEntry(
+            label: match.label,
+            subtitle: match.subtitle,
+            icon: match.icon,
+            category: CommandCategory.recent,
+            onSelect: match.onSelect,
+            shortcut: match.shortcut,
+          ));
+        }
+      }
+    }
+
+    entries.addAll(nonRecentEntries);
     return entries;
   }
 
@@ -304,15 +341,42 @@ class _CommandPaletteState extends State<CommandPalette> {
   double _fuzzyScore(CommandPaletteEntry entry, String query) {
     final label = entry.label.toLowerCase();
     final subtitle = (entry.subtitle ?? '').toLowerCase();
+    final combined = '$label $subtitle';
 
+    // Exact match
     if (label == query) return 100;
-    if (label.startsWith(query)) return 80;
-    if (label.contains(query)) return 60;
+
+    // Prefix match
+    if (label.startsWith(query)) return 90;
+
+    // Word-start match (e.g. "gen" matches "TT Generator")
+    final words = label.split(RegExp(r'[\s/]+'));
+    if (words.any((w) => w.startsWith(query))) return 80;
+
+    // Acronym match (e.g. "ttg" matches "TT Generator", "fsl" matches "Free Slot Finder")
+    if (words.length >= 2) {
+      final acronym = words.map((w) => w.isNotEmpty ? w[0] : '').join();
+      if (acronym.startsWith(query)) return 75;
+    }
+
+    // Contains in label
+    if (label.contains(query)) return 65;
+
+    // Multi-word: all query words appear in combined text
+    final queryWords = query.split(RegExp(r'\s+'));
+    if (queryWords.length > 1 && queryWords.every((qw) => combined.contains(qw))) {
+      return 60;
+    }
+
+    // Subtitle matches
     if (subtitle.startsWith(query)) return 50;
     if (subtitle.contains(query)) return 40;
+    if (queryWords.length > 1 && queryWords.every((qw) => subtitle.contains(qw))) {
+      return 35;
+    }
 
+    // Subsequence match
     int qi = 0;
-    final combined = '$label $subtitle';
     for (int i = 0; i < combined.length && qi < query.length; i++) {
       if (combined[i] == query[qi]) qi++;
     }
@@ -324,6 +388,7 @@ class _CommandPaletteState extends State<CommandPalette> {
   void _selectCurrent() {
     if (_filtered.isEmpty) return;
     final entry = _filtered[_selectedIndex];
+    CommandPaletteActions.recordUsage(entry.label);
     Navigator.of(context).pop();
     entry.onSelect();
   }
@@ -359,19 +424,24 @@ class _CommandPaletteState extends State<CommandPalette> {
     final mq = MediaQuery.of(context);
     final maxHeight = math.min(mq.size.height * 0.6, 480.0);
 
-    return KeyboardListener(
-      focusNode: FocusNode(),
-      onKeyEvent: (event) {
-        if (event is! KeyDownEvent && event is! KeyRepeatEvent) return;
+    return Focus(
+      autofocus: true,
+      onKeyEvent: (node, event) {
+        if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
         if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
           _moveSelection(1);
+          return KeyEventResult.handled;
         } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
           _moveSelection(-1);
+          return KeyEventResult.handled;
         } else if (event.logicalKey == LogicalKeyboardKey.enter) {
           _selectCurrent();
+          return KeyEventResult.handled;
         } else if (event.logicalKey == LogicalKeyboardKey.escape) {
           Navigator.of(context).pop();
+          return KeyEventResult.handled;
         }
+        return KeyEventResult.ignored;
       },
       child: Align(
         alignment: const Alignment(0, -0.3),
@@ -444,7 +514,7 @@ class _CommandPaletteState extends State<CommandPalette> {
               border: Border.all(color: scheme.outline.withValues(alpha: 0.12)),
             ),
             child: Text(
-              '⌘K',
+              'Cmd+K',
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: scheme.onSurface.withValues(alpha: 0.4),
                 fontWeight: FontWeight.w600,
@@ -556,6 +626,22 @@ class _CommandPaletteState extends State<CommandPalette> {
                         ],
                       ),
                     ),
+                    if (entry.shortcut != null)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: scheme.outline.withValues(alpha: 0.12)),
+                          ),
+                          child: Text(
+                            entry.shortcut!,
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: scheme.onSurface.withValues(alpha: 0.4)),
+                          ),
+                        ),
+                      ),
                     if (isSelected)
                       Icon(Icons.keyboard_return, size: 14,
                           color: scheme.onSurface.withValues(alpha: 0.3)),

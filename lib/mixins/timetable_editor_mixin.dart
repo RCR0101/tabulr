@@ -36,6 +36,7 @@ import '../widgets/search_filter_widget.dart';
 import '../widgets/theme_selector_widget.dart';
 import '../widgets/command_palette.dart';
 import '../widgets/app_drawer.dart';
+import '../services/ui/tutorial_service.dart';
 import '../widgets/campus_selector_widget.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
@@ -108,13 +109,46 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       context,
       currentScreen: DrawerScreen.timetables,
       contextEntries: [
+        CommandPaletteEntry(
+          label: 'TT Generator',
+          subtitle: 'Auto-generate optimal timetables',
+          icon: Icons.auto_awesome_mosaic,
+          category: CommandCategory.context,
+          onSelect: openGenerator,
+        ),
+        CommandPaletteEntry(
+          label: 'Add/Swap Courses',
+          subtitle: 'Add a course or swap sections',
+          icon: Icons.swap_horiz,
+          category: CommandCategory.context,
+          onSelect: openAddSwap,
+        ),
         if (hasUnsavedChanges && !isSaving)
           CommandPaletteEntry(
             label: 'Save Timetable',
             subtitle: 'Save current changes',
             icon: Icons.save,
             category: CommandCategory.context,
+            shortcut: '⌘S',
             onSelect: saveTimetable,
+          ),
+        if (undoRedoService.canUndo)
+          CommandPaletteEntry(
+            label: 'Undo',
+            subtitle: undoRedoService.undoDescription ?? 'Undo last change',
+            icon: Icons.undo,
+            category: CommandCategory.context,
+            shortcut: '⌘Z',
+            onSelect: undo,
+          ),
+        if (undoRedoService.canRedo)
+          CommandPaletteEntry(
+            label: 'Redo',
+            subtitle: undoRedoService.redoDescription ?? 'Redo last change',
+            icon: Icons.redo,
+            category: CommandCategory.context,
+            shortcut: '⇧⌘Z',
+            onSelect: redo,
           ),
         CommandPaletteEntry(
           label: 'Share Timetable',
@@ -828,7 +862,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     final tt = currentTimetable!;
     return Column(
       children: [
-        SearchFilterWidget(onSearchChanged: onSearchChanged),
+        SearchFilterWidget(key: TutorialKeys.courseSearch, onSearchChanged: onSearchChanged),
         Expanded(
           child: Card(
             margin: const EdgeInsets.all(8),
@@ -871,6 +905,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
           ),
         Expanded(
           child: Card(
+            key: TutorialKeys.timetableGrid,
             margin: EdgeInsets.all(isMobile ? 4 : 8),
             child: RepaintBoundary(
               key: timetableKey,
@@ -1325,6 +1360,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         mainAxisSize: MainAxisSize.min,
         children: [
           FloatingActionButton.extended(
+            key: TutorialKeys.addSwapFab,
             onPressed: openAddSwap,
             icon: const Icon(Icons.swap_horiz),
             label: const Text('Add/Swap'),
@@ -1334,6 +1370,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
           ),
           const SizedBox(width: 8),
           FloatingActionButton.extended(
+            key: TutorialKeys.generatorFab,
             onPressed: openGenerator,
             icon: const Icon(Icons.auto_awesome_mosaic),
             label: const Text('TT Generator'),

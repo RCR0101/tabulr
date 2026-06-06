@@ -86,8 +86,9 @@ class PageInfoHelper {
     );
   }
 
-  static Widget infoButton(BuildContext context, PageInfo info) {
+  static Widget infoButton(BuildContext context, PageInfo info, {Key? key}) {
     return IconButton(
+      key: key,
       icon: const Icon(Icons.info_outline, size: 20),
       tooltip: 'Page info',
       onPressed: () => show(context, info),
@@ -103,7 +104,7 @@ class PageInfoHelper {
       FeatureInfo(Icons.share, 'Share', 'share your timetable via a code others can import'),
       FeatureInfo(Icons.menu_book, 'Tools', 'course guide, prerequisites, discipline & humanities electives'),
       FeatureInfo(Icons.more_vert, 'More', 'import/export .tt files, export to .ics calendar or .png image'),
-      FeatureInfo(Icons.keyboard, '⌘K', 'command palette to quickly jump to any feature or action'),
+      FeatureInfo(Icons.keyboard, 'Ctrl+K / Cmd+K', 'command palette to quickly jump to any feature or action'),
     ],
   );
 
@@ -117,7 +118,7 @@ class PageInfoHelper {
       FeatureInfo(Icons.add, 'New Timetable', 'create a new timetable from scratch'),
       FeatureInfo(Icons.download, 'Import', 'import a shared timetable via code'),
       FeatureInfo(Icons.compare, 'Compare', 'side-by-side timetable comparison'),
-      FeatureInfo(Icons.keyboard, '⌘K', 'command palette to quickly jump to any feature'),
+      FeatureInfo(Icons.keyboard, 'Ctrl+K / Cmd+K', 'command palette to quickly jump to any feature'),
     ],
   );
 

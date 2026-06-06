@@ -12,6 +12,9 @@ import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/share_timetable_dialog.dart';
+import '../widgets/command_palette.dart';
+import '../widgets/app_drawer.dart';
+import '../services/ui/tutorial_service.dart';
 import 'calendar_screen.dart';
 import '../utils/page_info_helper.dart';
 
@@ -59,6 +62,41 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
   void initState() {
     super.initState();
     _loadTimetables();
+    _registerPaletteActions();
+  }
+
+  @override
+  void dispose() {
+    CommandPaletteActions.unregister(DrawerScreen.freeSlotFinder);
+    super.dispose();
+  }
+
+  void _registerPaletteActions() {
+    CommandPaletteActions.register(DrawerScreen.freeSlotFinder, () => [
+      CommandPaletteEntry(
+        label: 'Add from Code',
+        subtitle: "Import a friend's timetable via share code",
+        icon: Icons.download,
+        category: CommandCategory.context,
+        onSelect: _addFromCode,
+      ),
+      if (_selDayIdx != null)
+        CommandPaletteEntry(
+          label: 'Create Event',
+          subtitle: 'Create calendar event from selected slots',
+          icon: Icons.event,
+          category: CommandCategory.context,
+          onSelect: _createEventFromSelection,
+        ),
+      if (_selDayIdx != null)
+        CommandPaletteEntry(
+          label: 'Clear Selection',
+          subtitle: 'Deselect all slots',
+          icon: Icons.clear,
+          category: CommandCategory.context,
+          onSelect: _clearSelection,
+        ),
+    ]);
   }
 
   Future<void> _loadTimetables() async {
@@ -352,7 +390,7 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Free Time Finder'),
-        actions: [PageInfoHelper.infoButton(context, PageInfoHelper.freeSlotFinder)],
+        actions: [PageInfoHelper.infoButton(context, PageInfoHelper.freeSlotFinder, key: TutorialKeys.infoFreeSlot)],
       ),
       body: _isLoading
           ? const CalendarSkeleton()

@@ -8,6 +8,9 @@ import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../models/timetable.dart';
 import '../utils/design_constants.dart';
+import '../widgets/command_palette.dart';
+import '../widgets/app_drawer.dart';
+import '../services/ui/tutorial_service.dart';
 import '../utils/page_info_helper.dart';
 
 
@@ -35,10 +38,27 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
   void initState() {
     super.initState();
     _loadExamData();
+    CommandPaletteActions.register(DrawerScreen.examSeating, () => [
+      CommandPaletteEntry(
+        label: 'Import from Timetable',
+        subtitle: 'Load exam courses from a saved timetable',
+        icon: Icons.file_download,
+        category: CommandCategory.context,
+        onSelect: _importCoursesFromTimetable,
+      ),
+      CommandPaletteEntry(
+        label: 'Search Room',
+        subtitle: 'Find your seat by ID number',
+        icon: Icons.search,
+        category: CommandCategory.context,
+        onSelect: _searchForRoom,
+      ),
+    ]);
   }
 
   @override
   void dispose() {
+    CommandPaletteActions.unregister(DrawerScreen.examSeating);
     _searchController.dispose();
     _idController.dispose();
     super.dispose();
@@ -225,7 +245,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       appBar: AppBar(
         title: const Text('Exam Seating'),
         actions: [
-          PageInfoHelper.infoButton(context, PageInfoHelper.examSeating),
+          PageInfoHelper.infoButton(context, PageInfoHelper.examSeating, key: TutorialKeys.infoExamSeating),
           IconButton(
             icon: const Icon(Icons.file_download_outlined),
             tooltip: 'Import Courses from Timetable',

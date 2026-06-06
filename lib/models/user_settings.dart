@@ -72,6 +72,7 @@ class UserSettings {
   final bool dontShowBottomDisclaimer; // whether to hide the bottom disclaimer permanently
   final DateTime? dontShowTopUpdated; // when the user last dismissed the top announcement
   final ScoringWeights scoringWeights;
+  final Set<String> completedTutorials;
   final DateTime lastUpdated;
 
   const UserSettings({
@@ -84,6 +85,7 @@ class UserSettings {
     this.dontShowBottomDisclaimer = false,
     this.dontShowTopUpdated,
     this.scoringWeights = const ScoringWeights(),
+    this.completedTutorials = const {},
     required this.lastUpdated,
   });
 
@@ -100,6 +102,7 @@ class UserSettings {
       'dontShowBottomDisclaimer': dontShowBottomDisclaimer,
       'dontShowTopUpdated': dontShowTopUpdated?.toIso8601String(),
       if (scoringWeights != const ScoringWeights()) 'scoringWeights': scoringWeights.toJson(),
+      'completedTutorials': completedTutorials.toList(),
       'lastUpdated': lastUpdated.toIso8601String(),
     };
   }
@@ -130,6 +133,7 @@ class UserSettings {
       scoringWeights: json['scoringWeights'] != null
           ? ScoringWeights.fromJson(json['scoringWeights'] as Map<String, dynamic>)
           : const ScoringWeights(),
+      completedTutorials: Set<String>.from(json['completedTutorials'] ?? []),
       lastUpdated: parseDateTime(json['lastUpdated']),
     );
   }
@@ -144,6 +148,7 @@ class UserSettings {
       customTimetableOrder: [],
       dontShowBottomDisclaimer: false,
       dontShowTopUpdated: null,
+      completedTutorials: const {},
       lastUpdated: DateTime.now(),
     );
   }
@@ -158,6 +163,7 @@ class UserSettings {
     bool? dontShowBottomDisclaimer,
     DateTime? dontShowTopUpdated,
     ScoringWeights? scoringWeights,
+    Set<String>? completedTutorials,
     DateTime? lastUpdated,
   }) {
     return UserSettings(
@@ -170,6 +176,7 @@ class UserSettings {
       dontShowBottomDisclaimer: dontShowBottomDisclaimer ?? this.dontShowBottomDisclaimer,
       dontShowTopUpdated: dontShowTopUpdated ?? this.dontShowTopUpdated,
       scoringWeights: scoringWeights ?? this.scoringWeights,
+      completedTutorials: completedTutorials ?? this.completedTutorials,
       lastUpdated: lastUpdated ?? DateTime.now(),
     );
   }

@@ -13,12 +13,14 @@ import '../services/data/professor_service.dart';
 import '../services/data/auth_service.dart';
 import '../services/data/calendar_prefs_service.dart';
 import '../services/data/config_service.dart';
+import '../services/data/campus_service.dart';
 import '../services/data/course_data_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
 import '../utils/page_info_helper.dart';
+import '../services/ui/tutorial_service.dart';
 import '../widgets/command_palette.dart';
 import '../widgets/app_drawer.dart';
 
@@ -709,24 +711,29 @@ class _CalendarScreenState extends State<CalendarScreen> {
         continue;
       }
 
-      // Map TimeSlot to grid hours
-      int startHour;
-      int spanHours;
-      String timeLabel;
-      switch (exam.timeSlot) {
-        case TimeSlot.MS1:
-          startHour = 2; timeLabel = '9:30 - 11:00'; spanHours = 2;
-        case TimeSlot.MS2:
-          startHour = 4; timeLabel = '11:30 - 1:00'; spanHours = 2;
-        case TimeSlot.MS3:
-          startHour = 7; timeLabel = '2:00 - 3:30'; spanHours = 2;
-        case TimeSlot.MS4:
-          startHour = 9; timeLabel = '4:00 - 5:30'; spanHours = 2;
-        case TimeSlot.FN:
-          startHour = 1; timeLabel = '9:00 - 12:00'; spanHours = 4;
-        case TimeSlot.AN:
-          startHour = 8; timeLabel = '2:00 - 5:00'; spanHours = 3;
-      }
+      // Map TimeSlot to grid hours using campus-specific times
+      final campusCode = CampusService.getCampusCode(_selectedTimetable!.campus);
+      final examTimes = ExamSlotConstants.campusExamStartTimes[campusCode]
+          ?? ExamSlotConstants.campusExamStartTimes['hyderabad']!;
+      final examLabels = ExamSlotConstants.campusTimeSlotNames[campusCode]
+          ?? ExamSlotConstants.defaultTimeSlotNames;
+
+      final examStartTime = examTimes[exam.timeSlot]!;
+      final examStartHour = examStartTime[0];
+      final examStartMin = examStartTime[1];
+
+      // Fractional grid position: hour 1.0 = 8:00 AM, 2.5 = 9:30 AM, etc.
+      final fractionalStart = (examStartHour - 8) + 1 + examStartMin / 60.0;
+      // Integer hour for mobile list view (floor to nearest hour row)
+      final gridHour = (examStartHour - 8) + 1;
+
+      final durationMin = isMidsem
+          ? ScheduleConstants.midsemExamDuration.inMinutes
+          : ScheduleConstants.endsemExamDuration.inMinutes;
+      final fractionalDuration = durationMin / 60.0;
+      final intSpan = (durationMin / 60).ceil();
+
+      final timeLabel = examLabels[exam.timeSlot] ?? '';
 
       // Look up exam room if we have student ID
       final roomInfo = _examRooms[sel.courseCode];
@@ -736,8 +743,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
         title: '$examLabel: ${sel.courseCode}',
         subtitle: timeLabel,
         examRoom: roomInfo?.roomNo,
-        hour: startHour,
-        spanHours: spanHours,
+        hour: gridHour,
+        spanHours: intSpan,
+        fractionalHour: fractionalStart,
+        fractionalSpan: fractionalDuration,
         color: isMidsem
             ? Theme.of(context).colorScheme.tertiary
             : Theme.of(context).colorScheme.error,
@@ -862,7 +871,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       appBar: AppBar(
         title: const Text('Calendar'),
         actions: [
-          PageInfoHelper.infoButton(context, PageInfoHelper.calendar),
+          PageInfoHelper.infoButton(context, PageInfoHelper.calendar, key: TutorialKeys.infoCalendar),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (val) {
@@ -1559,9 +1568,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               // Items
                               ...dayItems.map((item) {
                                 final top =
-                                    (item.hour - startHour) * hourHeight;
+                                    (item.effectiveHour - startHour) * hourHeight;
                                 final height =
-                                    item.spanHours * hourHeight - 2;
+                                    item.effectiveSpan * hourHeight - 2;
                                 return Positioned(
                                   top: top + 1,
                                   left: 2,
@@ -2451,6 +2460,8 @@ class _CalendarItem {
   final String subtitle;
   final int hour;
   final int spanHours;
+  final double? fractionalHour;
+  final double? fractionalSpan;
   final Color color;
   final String? instructor;
   final String? examDate;
@@ -2466,6 +2477,8 @@ class _CalendarItem {
     required this.subtitle,
     required this.hour,
     this.spanHours = 1,
+    this.fractionalHour,
+    this.fractionalSpan,
     required this.color,
     this.instructor,
     this.examDate,
@@ -2475,6 +2488,9 @@ class _CalendarItem {
     this.scrapped = false,
     this.event,
   });
+
+  double get effectiveHour => fractionalHour ?? hour.toDouble();
+  double get effectiveSpan => fractionalSpan ?? spanHours.toDouble();
 }
 
 class _RawSlotGroup {

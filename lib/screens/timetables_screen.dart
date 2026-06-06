@@ -30,6 +30,7 @@ import '../widgets/common/app_button.dart';
 import '../widgets/share_timetable_dialog.dart';
 import '../widgets/command_palette.dart';
 import '../widgets/app_drawer.dart';
+import '../services/ui/tutorial_service.dart';
 import 'home_screen.dart';
 import 'course_guide_screen.dart';
 import 'timetable_comparison_screen.dart';
@@ -70,6 +71,13 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
       _userSettingsService.initializeSettings(),
       _loadTimetables(),
     ]);
+    if (mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 400), () {
+          if (mounted) TutorialService().showTimetableListTutorial(context);
+        });
+      });
+    }
   }
 
   void _registerPaletteActions() {
@@ -583,7 +591,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                   ],
                 ),
         actions: [
-          PageInfoHelper.infoButton(context, PageInfoHelper.timetableList),
+          PageInfoHelper.infoButton(context, PageInfoHelper.timetableList, key: TutorialKeys.infoTimetableList),
           if (!ResponsiveService.isMobile(context))
             CampusSelectorWidget(
               onCampusChanged: (campus) {
@@ -1143,6 +1151,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             FloatingActionButton.extended(
+              key: TutorialKeys.importCodeBtn,
               onPressed: _importFromShareCode,
               icon: const Icon(Icons.download),
               label: const Text('Import Code'),
@@ -1152,6 +1161,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
             ),
             const SizedBox(width: 12),
             FloatingActionButton.extended(
+              key: TutorialKeys.compareBtn,
               onPressed: () {
                 Navigator.push(
                   context,
@@ -1170,6 +1180,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
               label: 'Create Timetable',
               button: true,
               child: FloatingActionButton.extended(
+                key: TutorialKeys.newTimetableBtn,
                 onPressed: _createNewTimetable,
                 icon: const Icon(Icons.add),
                 label: const Text('New Timetable'),
