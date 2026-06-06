@@ -154,8 +154,13 @@ class TutorialService {
       title: 'Your Timetable',
       description: 'Your weekly schedule builds here as you add sections. Clashes are detected automatically.',
       shape: ShapeLightFocus.RRect,
-      align: isMobile ? ContentAlign.bottom : ContentAlign.left,
-      maxContentWidth: isMobile ? null : 280,
+      align: ContentAlign.custom,
+      customPosition: CustomTargetContentPosition(
+        top: isMobile ? 40 : 60,
+        left: isMobile ? 16 : null,
+        right: isMobile ? 16 : null,
+      ),
+      maxContentWidth: isMobile ? null : 300,
     );
 
     _addTarget(

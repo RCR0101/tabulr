@@ -984,7 +984,7 @@ def upload_courses_to_firestore(courses, campus_code, clear_first=True):
 # ─── Cloud Functions ───
 
 
-@https_fn.on_call(region="asia-south1", enforce_app_check=False, timeout_sec=540, memory=options.MemoryOption.GB_1)
+@https_fn.on_call(region="asia-south1", enforce_app_check=True, timeout_sec=540, memory=options.MemoryOption.GB_1)
 def upload_timetable(req: https_fn.CallableRequest):
     require_admin(req)
     db = get_db()
@@ -1040,7 +1040,7 @@ def upload_timetable(req: https_fn.CallableRequest):
     return {"success": True, "coursesUploaded": len(courses)}
 
 
-@https_fn.on_call(region="asia-south1", enforce_app_check=False, timeout_sec=300, memory=options.MemoryOption.MB_512)
+@https_fn.on_call(region="asia-south1", enforce_app_check=True, timeout_sec=300, memory=options.MemoryOption.MB_512)
 def upload_exam_seating(req: https_fn.CallableRequest):
     require_admin(req)
     db = get_db()

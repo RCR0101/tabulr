@@ -142,7 +142,7 @@ function computeVerificationState(cw, dw) {
 
 // ─── Reputation functions ───
 
-exports.addReputationEvent = onCall({ region: REGION, enforceAppCheck: false }, async (request) => {
+exports.addReputationEvent = onCall({ region: REGION, enforceAppCheck: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Must be signed in");
   }
@@ -167,7 +167,7 @@ exports.addReputationEvent = onCall({ region: REGION, enforceAppCheck: false }, 
   return { success: true };
 });
 
-exports.touchReputationActivity = onCall({ region: REGION, enforceAppCheck: false }, async (request) => {
+exports.touchReputationActivity = onCall({ region: REGION, enforceAppCheck: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Must be signed in");
   }
@@ -190,7 +190,7 @@ exports.touchReputationActivity = onCall({ region: REGION, enforceAppCheck: fals
 
 // ─── Announcement: Vote ───
 
-exports.toggleVote = onCall({ region: REGION, enforceAppCheck: false }, async (request) => {
+exports.toggleVote = onCall({ region: REGION, enforceAppCheck: true }, async (request) => {
   const callerDocId = requireHydAuth(request);
 
   const { announcementId, voteValue } = request.data;
@@ -245,7 +245,7 @@ exports.toggleVote = onCall({ region: REGION, enforceAppCheck: false }, async (r
 
 // ─── Announcement: Flag ───
 
-exports.submitFlag = onCall({ region: REGION, enforceAppCheck: false }, async (request) => {
+exports.submitFlag = onCall({ region: REGION, enforceAppCheck: true }, async (request) => {
   const callerDocId = requireHydAuth(request);
 
   const { announcementId, reason, counterSourceUrl, confidence } = request.data;
@@ -335,7 +335,7 @@ exports.submitFlag = onCall({ region: REGION, enforceAppCheck: false }, async (r
 
 // ─── Announcement: Verify ───
 
-exports.submitVerification = onCall({ region: REGION, enforceAppCheck: false }, async (request) => {
+exports.submitVerification = onCall({ region: REGION, enforceAppCheck: true }, async (request) => {
   const callerDocId = requireHydAuth(request);
 
   const { announcementId, type, note } = request.data;
@@ -477,7 +477,7 @@ exports.submitVerification = onCall({ region: REGION, enforceAppCheck: false }, 
 
 // ─── Announcement: Accept Correction ───
 
-exports.acceptCorrection = onCall({ region: REGION, enforceAppCheck: false }, async (request) => {
+exports.acceptCorrection = onCall({ region: REGION, enforceAppCheck: true }, async (request) => {
   const callerDocId = requireHydAuth(request);
 
   const { announcementId, correctionText, correctionSource } = request.data;
