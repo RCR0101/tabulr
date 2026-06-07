@@ -74,6 +74,7 @@ class UserSettings {
   final ScoringWeights scoringWeights;
   final Set<String> completedTutorials;
   final Set<String> acadDriveBookmarks;
+  final Set<String> starredCourses;
   final DateTime lastUpdated;
 
   const UserSettings({
@@ -88,6 +89,7 @@ class UserSettings {
     this.scoringWeights = const ScoringWeights(),
     this.completedTutorials = const {},
     this.acadDriveBookmarks = const {},
+    this.starredCourses = const {},
     required this.lastUpdated,
   });
 
@@ -106,6 +108,7 @@ class UserSettings {
       if (scoringWeights != const ScoringWeights()) 'scoringWeights': scoringWeights.toJson(),
       'completedTutorials': completedTutorials.toList(),
       'acadDriveBookmarks': acadDriveBookmarks.toList(),
+      'starredCourses': starredCourses.toList(),
       'lastUpdated': lastUpdated.toIso8601String(),
     };
   }
@@ -138,6 +141,7 @@ class UserSettings {
           : const ScoringWeights(),
       completedTutorials: Set<String>.from(json['completedTutorials'] ?? []),
       acadDriveBookmarks: Set<String>.from(json['acadDriveBookmarks'] ?? []),
+      starredCourses: Set<String>.from(json['starredCourses'] ?? []),
       lastUpdated: parseDateTime(json['lastUpdated']),
     );
   }
@@ -154,6 +158,7 @@ class UserSettings {
       dontShowTopUpdated: null,
       completedTutorials: const {},
       acadDriveBookmarks: const {},
+      starredCourses: const {},
       lastUpdated: DateTime.now(),
     );
   }
@@ -170,6 +175,7 @@ class UserSettings {
     ScoringWeights? scoringWeights,
     Set<String>? completedTutorials,
     Set<String>? acadDriveBookmarks,
+    Set<String>? starredCourses,
     DateTime? lastUpdated,
   }) {
     return UserSettings(
@@ -184,6 +190,7 @@ class UserSettings {
       scoringWeights: scoringWeights ?? this.scoringWeights,
       completedTutorials: completedTutorials ?? this.completedTutorials,
       acadDriveBookmarks: acadDriveBookmarks ?? this.acadDriveBookmarks,
+      starredCourses: starredCourses ?? this.starredCourses,
       lastUpdated: lastUpdated ?? DateTime.now(),
     );
   }

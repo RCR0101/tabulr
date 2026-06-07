@@ -99,8 +99,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   final AcadDrivesService _drivesService = AcadDrivesService();
   Set<String> _enrolledCourseCodes = {};
   List<Map<String, dynamic>> _enrolledCourseEntries = [];
+  bool _starredExpanded = true;
   bool _yourCoursesExpanded = true;
-  bool _bookmarksSectionExpanded = true;
 
   // Submit form controllers
   final TextEditingController _driveLinkController = TextEditingController();
@@ -1105,11 +1105,12 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
     Widget sectionHeader(String text, IconData icon, {Key? key, int? count, bool? expanded, VoidCallback? onToggle}) {
       final scheme = Theme.of(context).colorScheme;
-      return InkWell(
+      return GestureDetector(
         key: key,
         onTap: onToggle,
+        behavior: HitTestBehavior.opaque,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
           child: Row(
             children: [
               Icon(icon, size: 16, color: scheme.primary),
@@ -1128,7 +1129,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
               if (expanded != null)
                 AnimatedRotation(
                   turns: expanded ? 0.0 : -0.25,
-                  duration: AppDesign.animDurationNormal,
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeInOut,
                   child: Icon(Icons.expand_more, size: 18, color: scheme.primary.withValues(alpha: 0.7)),
                 ),
             ],
@@ -1140,6 +1142,39 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     final isMobile = ResponsiveService.isMobile(context);
     final bookmarkCount = UserSettingsService().acadDriveBookmarks.length;
     final hasBookmarks = bookmarkCount > 0 && _searchQuery.isEmpty;
+    final starredCodes = UserSettingsService().starredCourses;
+    final starredCourseEntries = _searchQuery.isEmpty
+        ? courses.where((c) => starredCodes.contains(c['code'])).toList()
+        : <Map<String, dynamic>>[];
+    final hasStarred = starredCourseEntries.isNotEmpty;
+
+    Widget collapsibleCourseList(List<Map<String, dynamic>> items, {bool expanded = true, bool enrolled = false, bool starred = false, bool compact = false}) {
+      return SliverToBoxAdapter(
+        child: AnimatedSize(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          alignment: Alignment.topCenter,
+          child: expanded
+              ? Column(
+                  children: items.map((course) {
+                    final code = course['code'] ?? '';
+                    return _CourseCard(
+                      course: course,
+                      onTap: () => _loadCourseFiles(code),
+                      compact: compact,
+                      enrolled: enrolled,
+                      starred: starredCodes.contains(code),
+                      onToggleStar: () {
+                        UserSettingsService().toggleStarredCourse(code);
+                        setState(() {});
+                      },
+                    );
+                  }).toList(),
+                )
+              : const SizedBox.shrink(),
+        ),
+      );
+    }
 
     if (isMobile) {
       return Column(
@@ -1151,28 +1186,15 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
               child: CustomScrollView(
                 controller: _coursesScrollController,
                 slivers: [
-                  if (hasBookmarks) ...[
+                  if (hasStarred) ...[
                     SliverToBoxAdapter(
-                      child: sectionHeader('Bookmarks', Icons.bookmark_rounded,
-                        count: bookmarkCount,
-                        expanded: _bookmarksSectionExpanded,
-                        onToggle: () => setState(() => _bookmarksSectionExpanded = !_bookmarksSectionExpanded),
+                      child: sectionHeader('Starred', Icons.star_rounded,
+                        count: starredCourseEntries.length,
+                        expanded: _starredExpanded,
+                        onToggle: () => setState(() => _starredExpanded = !_starredExpanded),
                       ),
                     ),
-                    if (_bookmarksSectionExpanded)
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          child: OutlinedButton.icon(
-                            onPressed: _loadBookmarks,
-                            icon: const Icon(Icons.bookmark_rounded, size: 18),
-                            label: Text('View $bookmarkCount bookmarked file${bookmarkCount == 1 ? '' : 's'}'),
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(double.infinity, 44),
-                            ),
-                          ),
-                        ),
-                      ),
+                    collapsibleCourseList(starredCourseEntries, expanded: _starredExpanded, starred: true),
                   ],
                   if (hasEnrolledSection) ...[
                     SliverToBoxAdapter(
@@ -1183,31 +1205,24 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                         onToggle: () => setState(() => _yourCoursesExpanded = !_yourCoursesExpanded),
                       ),
                     ),
-                    if (_yourCoursesExpanded)
-                      SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final course = enrolledCourses[index];
-                            return _CourseCard(
-                              course: course,
-                              onTap: () => _loadCourseFiles(course['code']),
-                              enrolled: true,
-                            ).motionListItem(index);
-                          },
-                          childCount: enrolledCourses.length,
-                        ),
-                      ),
+                    collapsibleCourseList(enrolledCourses, expanded: _yourCoursesExpanded, enrolled: true),
                   ],
-                  if (hasEnrolledSection || hasBookmarks)
+                  if (hasEnrolledSection || hasStarred)
                     SliverToBoxAdapter(child: sectionHeader('All Courses', Icons.library_books)),
                   SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         if (index >= restCourses.length) return _buildLoadingFooter();
                         final course = restCourses[index];
+                        final code = course['code'] ?? '';
                         return _CourseCard(
                           course: course,
-                          onTap: () => _loadCourseFiles(course['code']),
+                          onTap: () => _loadCourseFiles(code),
+                          starred: starredCodes.contains(code),
+                          onToggleStar: () {
+                            UserSettingsService().toggleStarredCourse(code);
+                            setState(() {});
+                          },
                         ).motionListItem(index);
                       },
                       childCount: restCourses.length + (_hasMoreCourses && _searchQuery.isEmpty ? 1 : 0),
@@ -1222,7 +1237,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       );
     }
 
-    // Desktop: use SliverList for mixed headers + grid
+    // Desktop: use CustomScrollView with grid
     return Column(
       children: [
         _buildCourseCountBar(courses.length),
@@ -1230,28 +1245,15 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           child: CustomScrollView(
             controller: _coursesScrollController,
             slivers: [
-              if (hasBookmarks) ...[
+              if (hasStarred) ...[
                 SliverToBoxAdapter(
-                  child: sectionHeader('Bookmarks', Icons.bookmark_rounded,
-                    count: bookmarkCount,
-                    expanded: _bookmarksSectionExpanded,
-                    onToggle: () => setState(() => _bookmarksSectionExpanded = !_bookmarksSectionExpanded),
+                  child: sectionHeader('Starred', Icons.star_rounded,
+                    count: starredCourseEntries.length,
+                    expanded: _starredExpanded,
+                    onToggle: () => setState(() => _starredExpanded = !_starredExpanded),
                   ),
                 ),
-                if (_bookmarksSectionExpanded)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      child: OutlinedButton.icon(
-                        onPressed: _loadBookmarks,
-                        icon: const Icon(Icons.bookmark_rounded, size: 18),
-                        label: Text('View $bookmarkCount bookmarked file${bookmarkCount == 1 ? '' : 's'}'),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 44),
-                        ),
-                      ),
-                    ),
-                  ),
+                collapsibleCourseList(starredCourseEntries, expanded: _starredExpanded, starred: true, compact: true),
               ],
               if (hasEnrolledSection) ...[
                 SliverToBoxAdapter(
@@ -1262,32 +1264,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                     onToggle: () => setState(() => _yourCoursesExpanded = !_yourCoursesExpanded),
                   ),
                 ),
-                if (_yourCoursesExpanded)
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    sliver: SliverGrid(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final course = enrolledCourses[index];
-                          return _CourseCard(
-                            course: course,
-                            onTap: () => _loadCourseFiles(course['code']),
-                            compact: true,
-                            enrolled: true,
-                          );
-                        },
-                        childCount: enrolledCourses.length,
-                      ),
-                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 360,
-                        mainAxisExtent: 80,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                      ),
-                    ),
-                  ),
+                collapsibleCourseList(enrolledCourses, expanded: _yourCoursesExpanded, enrolled: true, compact: true),
               ],
-              if (hasEnrolledSection || hasBookmarks)
+              if (hasEnrolledSection || hasStarred)
                 SliverToBoxAdapter(child: sectionHeader('All Courses', Icons.library_books)),
               SliverPadding(
                 padding: const EdgeInsets.all(16),
@@ -1296,13 +1275,19 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                     (context, index) {
                       if (index >= restCourses.length) return _buildLoadingFooter();
                       final course = restCourses[index];
+                      final code = course['code'] ?? '';
                       return _CourseCard(
                         course: course,
-                        onTap: () => _loadCourseFiles(course['code']),
+                        onTap: () => _loadCourseFiles(code),
                         compact: true,
+                        starred: starredCodes.contains(code),
+                        onToggleStar: () {
+                          UserSettingsService().toggleStarredCourse(code);
+                          setState(() {});
+                        },
                       );
                     },
-                    childCount: (courses.length - (hasEnrolledSection ? enrolledCount : 0)) + (_hasMoreCourses && _searchQuery.isEmpty ? 1 : 0),
+                    childCount: restCourses.length + (_hasMoreCourses && _searchQuery.isEmpty ? 1 : 0),
                   ),
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 360,
@@ -1520,12 +1505,16 @@ class _CourseCard extends StatelessWidget {
   final VoidCallback onTap;
   final bool compact;
   final bool enrolled;
+  final bool starred;
+  final VoidCallback? onToggleStar;
 
   const _CourseCard({
     required this.course,
     required this.onTap,
     this.compact = false,
     this.enrolled = false,
+    this.starred = false,
+    this.onToggleStar,
   });
 
   @override
@@ -1602,6 +1591,17 @@ class _CourseCard extends StatelessWidget {
                   color: scheme.onSurface.withValues(alpha: 0.4),
                 ),
               ),
+              if (onToggleStar != null) ...[
+                const SizedBox(width: 2),
+                GestureDetector(
+                  onTap: onToggleStar,
+                  child: Icon(
+                    starred ? Icons.star_rounded : Icons.star_outline_rounded,
+                    size: 20,
+                    color: starred ? scheme.tertiary : scheme.onSurface.withValues(alpha: 0.25),
+                  ),
+                ),
+              ],
               const SizedBox(width: 4),
               Icon(Icons.chevron_right, size: 18,
                   color: scheme.onSurface.withValues(alpha: 0.3)),

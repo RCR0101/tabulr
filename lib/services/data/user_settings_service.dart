@@ -322,6 +322,34 @@ class UserSettingsService extends ChangeNotifier {
 
   Set<String> get acadDriveBookmarks => _userSettings?.acadDriveBookmarks ?? const {};
 
+  Future<void> toggleStarredCourse(String courseCode) async {
+    if (_userSettings == null) {
+      await initializeSettings(force: true);
+    }
+    if (_userSettings == null) return;
+
+    final starred = {..._userSettings!.starredCourses};
+    if (starred.contains(courseCode)) {
+      starred.remove(courseCode);
+    } else {
+      starred.add(courseCode);
+    }
+    _userSettings = _userSettings!.copyWith(starredCourses: starred);
+    notifyListeners();
+
+    if (_authService.isAuthenticated) {
+      await _saveToFirestore();
+    } else {
+      await _saveToLocalStorage();
+    }
+  }
+
+  bool isStarredCourse(String courseCode) {
+    return _userSettings?.starredCourses.contains(courseCode) ?? false;
+  }
+
+  Set<String> get starredCourses => _userSettings?.starredCourses ?? const {};
+
   // Update scoring weights
   Future<void> updateScoringWeights(ScoringWeights weights) async {
     if (_userSettings == null) {
