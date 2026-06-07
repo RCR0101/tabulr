@@ -39,6 +39,7 @@ class _ThemeColors {
   final Color? surfaceContainerHigh;
   final Color? surfaceContainerLow;
   final List<Color>? timetableAccents;
+  final ThemeGeometry geometry;
 
   const _ThemeColors({
     required this.brightness,
@@ -73,6 +74,7 @@ class _ThemeColors {
     this.surfaceContainerHigh,
     this.surfaceContainerLow,
     this.timetableAccents,
+    this.geometry = const ThemeGeometry(),
   });
 }
 
@@ -103,6 +105,7 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
         Color(0xFFFF7B72), Color(0xFF79C0FF), Color(0xFFFFA657),
         Color(0xFF7EE787),
       ],
+      geometry: ThemeGeometry(cardRadius: 6, buttonRadius: 6, dialogRadius: 12, inputRadius: 8, chipRadius: 16, cardBorderWidth: 1),
     ),
     light: _ThemeColors(
       brightness: Brightness.light,
@@ -130,6 +133,7 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
         Color(0xFFCF222E), Color(0xFF0550AE), Color(0xFFBC4C00),
         Color(0xFF116329),
       ],
+      geometry: ThemeGeometry(cardRadius: 6, buttonRadius: 6, dialogRadius: 12, inputRadius: 8, chipRadius: 16, cardBorderWidth: 1),
     ),
   ),
   AppTheme.draculaDark: (
@@ -159,6 +163,7 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
         Color(0xFFFF5555), Color(0xFF6272A4), Color(0xFFE6ACFF),
         Color(0xFF69FF94),
       ],
+      geometry: ThemeGeometry(cardRadius: 14, buttonRadius: 10, dialogRadius: 20, inputRadius: 14, chipRadius: 20, cardElevation: 3),
     ),
     light: _ThemeColors(
       brightness: Brightness.light,
@@ -186,6 +191,7 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
         Color(0xFFCF222E), Color(0xFF6272A4), Color(0xFF9B59B6),
         Color(0xFF27AE60),
       ],
+      geometry: ThemeGeometry(cardRadius: 14, buttonRadius: 10, dialogRadius: 20, inputRadius: 14, chipRadius: 20, cardElevation: 3),
     ),
   ),
   AppTheme.nordDark: (
@@ -215,6 +221,7 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
         Color(0xFFBF616A), Color(0xFF8FBCBB), Color(0xFFD08770),
         Color(0xFFC6AA78),
       ],
+      geometry: ThemeGeometry(cardRadius: 10, buttonRadius: 8, dialogRadius: 14, inputRadius: 10, chipRadius: 18, cardBorderWidth: 0.5, headingWeight: FontWeight.w500),
     ),
     light: _ThemeColors(
       brightness: Brightness.light,
@@ -241,6 +248,7 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
         Color(0xFFA04850), Color(0xFF5F9A98), Color(0xFFAA6B50),
         Color(0xFF9E8458),
       ],
+      geometry: ThemeGeometry(cardRadius: 10, buttonRadius: 8, dialogRadius: 14, inputRadius: 10, chipRadius: 18, cardBorderWidth: 0.5, headingWeight: FontWeight.w500),
     ),
   ),
   AppTheme.tokyoNightDark: (
@@ -272,6 +280,7 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
         Color(0xFFFF9E64), Color(0xFF2AC3DE), Color(0xFFB4F9F8),
         Color(0xFF73DACA),
       ],
+      geometry: ThemeGeometry(cardRadius: 12, buttonRadius: 8, dialogRadius: 16, inputRadius: 12, chipRadius: 20, cardElevation: 1, cardBorderWidth: 0.5),
     ),
     light: _ThemeColors(
       brightness: Brightness.light,
@@ -298,6 +307,7 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
         Color(0xFFB15C2B), Color(0xFF2E7DE9), Color(0xFF188B8D),
         Color(0xFF38919F),
       ],
+      geometry: ThemeGeometry(cardRadius: 12, buttonRadius: 8, dialogRadius: 16, inputRadius: 12, chipRadius: 20, cardElevation: 1, cardBorderWidth: 0.5),
     ),
   ),
   AppTheme.gruvboxDark: (
@@ -327,6 +337,7 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
         Color(0xFFD65D0E), Color(0xFF83A598), Color(0xFFFABD2F),
         Color(0xFFB8BB26),
       ],
+      geometry: ThemeGeometry(cardRadius: 8, buttonRadius: 6, dialogRadius: 12, inputRadius: 8, chipRadius: 14, cardElevation: 0, cardBorderWidth: 1.5, headingWeight: FontWeight.w700),
     ),
     light: _ThemeColors(
       brightness: Brightness.light,
@@ -353,6 +364,7 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
         Color(0xFFAF3A03), Color(0xFF458588), Color(0xFF8B7A26),
         Color(0xFF6A8538),
       ],
+      geometry: ThemeGeometry(cardRadius: 8, buttonRadius: 6, dialogRadius: 12, inputRadius: 8, chipRadius: 14, cardElevation: 0, cardBorderWidth: 1.5, headingWeight: FontWeight.w700),
     ),
   ),
   AppTheme.catppuccinDark: (
@@ -382,6 +394,7 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
         Color(0xFFFAB387), Color(0xFF74C7EC), Color(0xFFEBA0AC),
         Color(0xFFF2CDCD),
       ],
+      geometry: ThemeGeometry(cardRadius: 16, buttonRadius: 12, dialogRadius: 24, inputRadius: 16, chipRadius: 24, cardElevation: 0, cardBorderWidth: 1),
     ),
     light: _ThemeColors(
       brightness: Brightness.light,
@@ -408,6 +421,7 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
         Color(0xFFFE640B), Color(0xFF04A5E5), Color(0xFFE64553),
         Color(0xFF7287FD),
       ],
+      geometry: ThemeGeometry(cardRadius: 16, buttonRadius: 12, dialogRadius: 24, inputRadius: 16, chipRadius: 24, cardElevation: 0, cardBorderWidth: 1),
     ),
   ),
   AppTheme.solarizedDark: (
@@ -436,6 +450,7 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
         Color(0xFFCB4B16), Color(0xFF839496), Color(0xFFDC322F),
         Color(0xFF93A1A1),
       ],
+      geometry: ThemeGeometry(cardRadius: 8, buttonRadius: 6, dialogRadius: 12, inputRadius: 8, chipRadius: 16, cardElevation: 1, cardBorderWidth: 0.5),
     ),
     light: _ThemeColors(
       brightness: Brightness.light,
@@ -462,6 +477,7 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
         Color(0xFFCB4B16), Color(0xFF586E75), Color(0xFFDC322F),
         Color(0xFF657B83),
       ],
+      geometry: ThemeGeometry(cardRadius: 8, buttonRadius: 6, dialogRadius: 12, inputRadius: 8, chipRadius: 16, cardElevation: 1, cardBorderWidth: 0.5),
     ),
   ),
   AppTheme.arcticFrost: (
@@ -498,6 +514,7 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
         Color(0xFFBF616A), Color(0xFFC6AA78), Color(0xFFD08770),
         Color(0xFFD4879C),
       ],
+      geometry: ThemeGeometry(cardRadius: 14, buttonRadius: 10, dialogRadius: 20, inputRadius: 14, chipRadius: 22, cardElevation: 2),
     ),
     light: _ThemeColors(
       brightness: Brightness.light,
@@ -522,6 +539,7 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
         Color(0xFFA04850), Color(0xFF9E8458), Color(0xFFAA6B50),
         Color(0xFFA8657C),
       ],
+      geometry: ThemeGeometry(cardRadius: 14, buttonRadius: 10, dialogRadius: 20, inputRadius: 14, chipRadius: 22, cardElevation: 2),
     ),
   ),
   AppTheme.amoledDark: (
@@ -556,6 +574,7 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
         Color(0xFFFB923C), Color(0xFF38BDF8), Color(0xFFF87171),
         Color(0xFF34D399),
       ],
+      geometry: ThemeGeometry(cardRadius: 4, buttonRadius: 4, dialogRadius: 8, inputRadius: 6, chipRadius: 12, cardElevation: 0, cardBorderWidth: 1),
     ),
     light: _ThemeColors(
       brightness: Brightness.dark,
@@ -588,6 +607,7 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
         Color(0xFFFB923C), Color(0xFF38BDF8), Color(0xFFF87171),
         Color(0xFF34D399),
       ],
+      geometry: ThemeGeometry(cardRadius: 4, buttonRadius: 4, dialogRadius: 8, inputRadius: 6, chipRadius: 12, cardElevation: 0, cardBorderWidth: 1),
     ),
   ),
 };
@@ -617,6 +637,7 @@ ThemeData _buildTheme(_ThemeColors c) {
   final isDark = c.brightness == Brightness.dark;
   final base = isDark ? ThemeData.dark() : ThemeData.light();
   final effectiveBorderColor = c.borderColor ?? c.outline;
+  final g = c.geometry;
   final textTheme = _buildTextTheme(c.onSurface);
 
   return base.copyWith(
@@ -651,45 +672,56 @@ ThemeData _buildTheme(_ThemeColors c) {
       centerTitle: true,
     ),
     dialogTheme: DialogThemeData(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(g.dialogRadius)),
       titleTextStyle: GoogleFonts.inter(
         fontSize: 18,
-        fontWeight: FontWeight.w600,
+        fontWeight: g.headingWeight,
         color: c.onSurface,
       ),
     ),
     cardTheme: CardThemeData(
       color: c.surface,
-      elevation: c.cardElevation,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: g.cardElevation,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(g.cardRadius),
+        side: g.cardBorderWidth > 0
+            ? BorderSide(color: c.outline.withValues(alpha: 0.3), width: g.cardBorderWidth)
+            : BorderSide.none,
+      ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: c.primary,
         foregroundColor: c.buttonForeground ?? c.onPrimary,
         elevation: c.buttonElevation,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(g.buttonRadius)),
       ),
     ),
-    textButtonTheme: c.inputFill != null
-        ? TextButtonThemeData(
-            style: TextButton.styleFrom(foregroundColor: c.primary),
-          )
-        : null,
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(g.buttonRadius)),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: c.primary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(g.buttonRadius)),
+      ),
+    ),
     inputDecorationTheme: c.inputFill != null
         ? InputDecorationTheme(
             filled: true,
             fillColor: c.inputFill,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(g.inputRadius),
               borderSide: BorderSide(color: effectiveBorderColor),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(g.inputRadius),
               borderSide: BorderSide(color: effectiveBorderColor),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(g.inputRadius),
               borderSide:
                   BorderSide(color: c.primary, width: c.focusedBorderWidth),
             ),
@@ -707,7 +739,7 @@ ThemeData _buildTheme(_ThemeColors c) {
             secondaryLabelStyle:
                 TextStyle(color: c.chipSecondaryLabel ?? c.onPrimary),
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20)),
+                borderRadius: BorderRadius.circular(g.chipRadius)),
           )
         : null,
     dataTableTheme: c.headingRowColor != null
@@ -727,6 +759,7 @@ ThemeData _buildTheme(_ThemeColors c) {
         : null,
     visualDensity: VisualDensity.adaptivePlatformDensity,
     extensions: [
+      g,
       if (c.timetableAccents != null) TimetableTheme(c.timetableAccents!),
     ],
   );

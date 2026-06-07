@@ -45,9 +45,7 @@ class _CourseGuideScreenState extends State<CourseGuideScreen> {
           if (_authService.isAuthenticated)
             PopupMenuButton<String>(
               onSelected: (value) {
-                if (value == 'logout') {
-                  _logout();
-                }
+                if (value == 'logout') _logout();
               },
               itemBuilder: (context) => [
                 PopupMenuItem(

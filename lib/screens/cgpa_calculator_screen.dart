@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:file_picker/file_picker.dart';
+import '../constants/app_constants.dart';
 import '../services/data/cgpa_service.dart';
 import '../utils/page_transitions.dart';
 import '../widgets/common/shimmer_loading.dart';
@@ -133,9 +134,17 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       _cgpaService.loadAllCGPAData(),
     ]);
 
+    final cgpaData = results[1] as CGPAData;
     setState(() {
       _allCourses = results[0] as List<AllCourse>;
-      _cgpaData = results[1] as CGPAData;
+      _cgpaData = cgpaData;
+      if (cgpaData.semesters.isNotEmpty) {
+        final savedKeys = cgpaData.semesters.keys.toSet();
+        final ordered = SemesterConstants.all.where(savedKeys.contains).toList();
+        final extra = savedKeys.difference(ordered.toSet());
+        _semesters = [...ordered, ...extra];
+        _rebuildTabController();
+      }
       _isLoading = false;
     });
     if (mounted) {

@@ -556,12 +556,12 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     if (confirmed) {
       try {
         await _authService.signOut();
-        // Navigation will be handled by AuthWrapper
       } catch (e) {
         _showErrorDialog('Error signing out: $e');
       }
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

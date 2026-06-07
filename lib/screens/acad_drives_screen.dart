@@ -529,6 +529,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     }
 
   bool _isDownloading = false;
+  bool _downloadCancelled = false;
 
   Future<void> _downloadAsZip(String zipName, _FolderTree folderTree) async {
     if (!kIsWeb) {
@@ -551,6 +552,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     }
 
     _isDownloading = true;
+    _downloadCancelled = false;
     final total = downloadable.length;
     final progressNotifier = ValueNotifier<String>('Preparing $total files...');
     final progressValue = ValueNotifier<double>(0);
@@ -584,6 +586,15 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
               ),
             ],
           ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                _downloadCancelled = true;
+                Navigator.of(ctx).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+          ],
         ),
       ),
     );
@@ -594,10 +605,12 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       int failed = 0;
 
       for (final entry in downloadable) {
+        if (_downloadCancelled) break;
         try {
           final uri = Uri.parse(entry.file['url']);
           if (uri.scheme != 'https') { failed++; continue; }
           final response = await http.get(uri);
+          if (_downloadCancelled) break;
           if (response.statusCode == 200) {
             archive.addFile(ArchiveFile(
               entry.path,
@@ -613,6 +626,13 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         }
         progressValue.value = (fetched + failed) / total;
         progressNotifier.value = 'Downloading ${fetched + failed}/$total files...';
+      }
+
+      if (_downloadCancelled) {
+        _isDownloading = false;
+        _downloadCancelled = false;
+        ToastService.showInfo('Download cancelled');
+        return;
       }
 
       if (fetched == 0) {

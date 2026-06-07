@@ -163,6 +163,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   // Scrapped (dismissed) slots: keys are "day-hour" for timetable, event IDs for custom
   Set<String> _scrappedForWeek = {};
+  Timer? _timeIndicatorTimer;
 
   DateTime _weekStart = _mondayOf(DateTime.now());
   int _mobileDayIndex = DateTime.now().weekday - 1; // 0=Mon, 5=Sat
@@ -181,6 +182,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void initState() {
     super.initState();
     _loadData();
+    _timeIndicatorTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
     CommandPaletteActions.register(DrawerScreen.calendar, () => [
       CommandPaletteEntry(
         label: 'Add Event',
@@ -194,6 +198,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   void dispose() {
+    _timeIndicatorTimer?.cancel();
     _announcementSub?.cancel();
     CommandPaletteActions.unregister(DrawerScreen.calendar);
     super.dispose();
@@ -921,9 +926,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   _buildMobileDaySelector(theme),
                   Expanded(child: _buildSingleDayView(theme)),
                 ] else ...[
-                  _buildHeader(theme),
-                  _buildWeekNav(theme),
-                  const Divider(height: 1),
+                  _buildDesktopHeader(theme),
                   Expanded(child: _buildWeekView(theme)),
                 ],
               ],
@@ -931,68 +934,115 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildHeader(ThemeData theme) {
+  bool get isToday => _sameDay(_weekStart, _mondayOf(DateTime.now()));
+
+  Widget _buildDesktopHeader(ThemeData theme) {
+    final scheme = theme.colorScheme;
+    final weekEnd = _weekStart.add(const Duration(days: 5));
+    const months = DayConstants.monthNames;
+
+    String weekLabel;
+    if (_weekStart.month == weekEnd.month) {
+      weekLabel = '${_weekStart.day} – ${weekEnd.day} ${months[_weekStart.month]} ${_weekStart.year}';
+    } else {
+      weekLabel = '${_weekStart.day} ${months[_weekStart.month]} – ${weekEnd.day} ${months[weekEnd.month]} ${weekEnd.year}';
+    }
+
     if (_timetables.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(AppDesign.spacingMd),
         child: Text(
           'No timetables found. Create one in TT Builder first.',
           style: theme.textTheme.bodyLarge?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
+            color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
           ),
         ),
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        border: Border(bottom: BorderSide(color: scheme.outline.withValues(alpha: 0.1))),
+      ),
       child: Row(
         children: [
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              initialValue: _selectedTimetable?.id,
-              decoration: const InputDecoration(
-                labelText: 'Timetable',
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          // Timetable selector
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: scheme.outline.withValues(alpha: 0.2)),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedTimetable?.id,
                 isDense: true,
+                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                icon: Icon(Icons.unfold_more, size: 16, color: scheme.onSurface.withValues(alpha: 0.5)),
+                items: _timetables.map((tt) {
+                  return DropdownMenuItem(value: tt.id, child: Text(tt.name));
+                }).toList(),
+                onChanged: (id) {
+                  if (id == null) return;
+                  final tt = _timetables.firstWhere((t) => t.id == id);
+                  _onTimetableChanged(tt);
+                },
               ),
-              items: _timetables.map((tt) {
-                return DropdownMenuItem(value: tt.id, child: Text(tt.name));
-              }).toList(),
-              onChanged: (id) {
-                if (id == null) return;
-                final tt = _timetables.firstWhere((t) => t.id == id);
-                _onTimetableChanged(tt);
-              },
             ),
           ),
-          const SizedBox(width: 12),
+
+          const Spacer(),
+
+          // Week navigation
+          IconButton(
+            icon: const Icon(Icons.chevron_left, size: 20),
+            onPressed: _previousWeek,
+            visualDensity: VisualDensity.compact,
+            tooltip: 'Previous week',
+          ),
+          GestureDetector(
+            onTap: isToday ? null : _goToToday,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: isToday ? scheme.primary.withValues(alpha: 0.1) : null,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                weekLabel,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: isToday ? scheme.primary : null,
+                ),
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.chevron_right, size: 20),
+            onPressed: _nextWeek,
+            visualDensity: VisualDensity.compact,
+            tooltip: 'Next week',
+          ),
+
+          const Spacer(),
+
+          // Student ID chip
           ActionChip(
             avatar: const Icon(Icons.badge, size: 16),
             label: Text(
-              _studentId != null && _studentId!.isNotEmpty
-                  ? _studentId!
-                  : 'Set ID',
+              _studentId != null && _studentId!.isNotEmpty ? _studentId! : 'Set ID',
               style: const TextStyle(fontSize: 12),
             ),
             onPressed: _editStudentId,
             tooltip: 'Set Student ID',
           ),
-          if (!isToday) ...[
-            const SizedBox(width: AppDesign.spacingSm),
-            IconButton(
-              icon: const Icon(Icons.today, size: 20),
-              tooltip: 'Go to today',
-              onPressed: _goToToday,
-            ),
-          ],
         ],
       ),
     );
   }
-
-  bool get isToday => _sameDay(_weekStart, _mondayOf(DateTime.now()));
 
   Widget _buildMobileHeader(ThemeData theme) {
     if (_timetables.isEmpty) {
@@ -1089,39 +1139,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWeekNav(ThemeData theme) {
-    final weekEnd = _weekStart.add(const Duration(days: 5));
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-
-    String label;
-    if (_weekStart.month == weekEnd.month) {
-      label =
-          '${_weekStart.day} - ${weekEnd.day} ${months[_weekStart.month - 1]} ${_weekStart.year}';
-    } else {
-      label =
-          '${_weekStart.day} ${months[_weekStart.month - 1]} - ${weekEnd.day} ${months[weekEnd.month - 1]} ${weekEnd.year}';
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          IconButton(
-              icon: const Icon(Icons.chevron_left), onPressed: _previousWeek),
-          Text(label,
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w600)),
-          IconButton(
-              icon: const Icon(Icons.chevron_right), onPressed: _nextWeek),
         ],
       ),
     );
@@ -1358,6 +1375,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildWeekView(ThemeData theme) {
+    final scheme = theme.colorScheme;
     final days = List.generate(6, (i) => _weekStart.add(Duration(days: i)));
     final dayLabels = DayConstants.shortLabels;
     final today = DateTime.now();
@@ -1373,8 +1391,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     const startHour = 1;
     const endHour = 12;
     const hourHeight = 64.0;
-    const headerHeight = 60.0;
-    const timeColWidth = 56.0;
+    const headerHeight = 64.0;
+    const timeColWidth = 60.0;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1383,85 +1401,79 @@ class _CalendarScreenState extends State<CalendarScreen> {
         return Column(
           children: [
             // Day headers
-            SizedBox(
+            Container(
               height: headerHeight,
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: scheme.outline.withValues(alpha: 0.12))),
+              ),
               child: Row(
                 children: [
                   SizedBox(width: timeColWidth),
                   ...List.generate(6, (i) {
-                    final isToday = _sameDay(days[i], today);
+                    final isDayToday = _sameDay(days[i], today);
                     final banners = _bannersForDay(days[i]);
-                    final hasExam =
-                        banners.any((b) => b.type == _ItemType.exam);
-                    final hasAnn =
-                        banners.any((b) => b.type == _ItemType.announcement);
+                    final hasExam = banners.any((b) => b.type == _ItemType.exam);
+                    final hasAnn = banners.any((b) => b.type == _ItemType.announcement);
 
                     return GestureDetector(
                       onLongPress: () => _showDayMenu(bitsDays[i]),
-                      child: SizedBox(
+                      child: Container(
                         width: dayWidth.clamp(44.0, double.infinity),
+                        decoration: BoxDecoration(
+                          color: isDayToday ? scheme.primary.withValues(alpha: 0.04) : null,
+                          border: i > 0
+                              ? Border(left: BorderSide(color: scheme.outline.withValues(alpha: 0.06)))
+                              : null,
+                        ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
                               dayLabels[i],
                               style: theme.textTheme.labelSmall?.copyWith(
-                                color: isToday
-                                    ? theme.colorScheme.primary
-                                    : theme.colorScheme.onSurface
-                                        .withValues(alpha: AppDesign.opacityMedium),
-                                fontWeight: isToday
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
+                                color: isDayToday ? scheme.primary : scheme.onSurface.withValues(alpha: 0.5),
+                                fontWeight: isDayToday ? FontWeight.w700 : FontWeight.w500,
+                                letterSpacing: 0.5,
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 4),
                             Container(
-                              width: 30,
-                              height: 30,
+                              width: 34,
+                              height: 34,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: isToday
-                                    ? theme.colorScheme.primary
-                                    : Colors.transparent,
+                                color: isDayToday ? scheme.primary : Colors.transparent,
                               ),
                               alignment: Alignment.center,
                               child: Text(
                                 '${days[i].day}',
                                 style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: isToday
-                                      ? theme.colorScheme.onPrimary
-                                      : null,
+                                  color: isDayToday ? scheme.onPrimary : scheme.onSurface,
                                   fontWeight: FontWeight.w600,
+                                  fontSize: 14,
                                 ),
                               ),
                             ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (hasExam)
-                                  Container(
-                                    width: 6,
-                                    height: 6,
-                                    margin: const EdgeInsets.only(
-                                        top: 2, right: 2),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: theme.colorScheme.error,
-                                    ),
-                                  ),
-                                if (hasAnn)
-                                  Container(
-                                    width: 6,
-                                    height: 6,
-                                    margin: const EdgeInsets.only(top: 2),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: const Color(0xFFEF6C00),
-                                    ),
-                                  ),
-                              ],
-                            ),
+                            if (hasExam || hasAnn)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 3),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (hasExam)
+                                      Container(
+                                        width: 5, height: 5,
+                                        margin: const EdgeInsets.only(right: 3),
+                                        decoration: BoxDecoration(shape: BoxShape.circle, color: scheme.error),
+                                      ),
+                                    if (hasAnn)
+                                      Container(
+                                        width: 5, height: 5,
+                                        decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFEF6C00)),
+                                      ),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -1501,14 +1513,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 alignment: Alignment.topRight,
                                 child: Padding(
                                   padding:
-                                      const EdgeInsets.only(right: 6, top: 2),
+                                      const EdgeInsets.only(right: 8, top: 2),
                                   child: Text(
                                     label,
                                     style:
                                         theme.textTheme.labelSmall?.copyWith(
-                                      color: theme.colorScheme.onSurface
-                                          .withValues(alpha: 0.5),
+                                      color: scheme.onSurface.withValues(alpha: 0.4),
                                       fontSize: ResponsiveService.clampedFontSize(context, 10),
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                 ),
@@ -1536,10 +1548,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           width: dayWidth,
                           child: Stack(
                             children: [
-                              // Grid lines + alternating background
+                              // Today column tint
+                              if (isToday)
+                                Positioned.fill(
+                                  child: Container(color: scheme.primary.withValues(alpha: 0.03)),
+                                ),
+                              // Grid lines
                               ...List.generate(endHour - startHour + 1, (i) {
-                                final hour = startHour + i;
-                                final hasItem = dayItems.any((it) => it.hour == hour || (it.hour < hour && it.hour + it.spanHours > hour));
                                 return Positioned(
                                   top: i * hourHeight,
                                   left: 0,
@@ -1547,22 +1562,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   height: hourHeight,
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color: hasItem ? null : (i.isEven ? theme.colorScheme.surfaceContainerLowest : null),
                                       border: Border(
-                                        top: BorderSide(color: theme.colorScheme.outline.withValues(alpha: 0.08)),
+                                        top: BorderSide(color: scheme.outline.withValues(alpha: 0.1)),
                                       ),
                                     ),
                                   ),
                                 );
                               }),
+                              // Column separator
                               Positioned(
                                 top: 0,
                                 bottom: 0,
                                 left: 0,
                                 child: Container(
                                   width: 1,
-                                  color: theme.colorScheme.outline
-                                      .withValues(alpha: 0.08),
+                                  color: scheme.outline.withValues(alpha: 0.1),
                                 ),
                               ),
                               // Items
@@ -1587,23 +1601,38 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               }),
                               if (isToday && nowInRange)
                                 Positioned(
-                                  top: nowFractional * hourHeight,
+                                  top: nowFractional * hourHeight - 1,
                                   left: 0,
                                   right: 0,
                                   child: Row(
                                     children: [
                                       Container(
-                                        width: 8,
-                                        height: 8,
+                                        width: 10,
+                                        height: 10,
                                         decoration: BoxDecoration(
-                                          color: theme.colorScheme.error,
+                                          color: scheme.error,
                                           shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: scheme.error.withValues(alpha: 0.3),
+                                              blurRadius: 4,
+                                            ),
+                                          ],
                                         ),
                                       ),
                                       Expanded(
                                         child: Container(
                                           height: 2,
-                                          color: theme.colorScheme.error,
+                                          decoration: BoxDecoration(
+                                            color: scheme.error,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: scheme.error.withValues(alpha: 0.2),
+                                                blurRadius: 3,
+                                                offset: const Offset(0, 1),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ],

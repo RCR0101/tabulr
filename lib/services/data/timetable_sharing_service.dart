@@ -75,8 +75,22 @@ class TimetableSharingService {
     await _firestore.collection(FirestoreCollections.sharedTimetables).doc(shareId).delete();
   }
 
+  static String _sanitize(String input) {
+    return input
+        .replaceAll(RegExp(r'<[^>]*>'), '')
+        .replaceAll(RegExp(r'javascript:', caseSensitive: false), '')
+        .replaceAll(RegExp(r'on\w+=', caseSensitive: false), '')
+        .replaceAll(RegExp(r'[\x00-\x08\x0B\x0C\x0E-\x1F]'), '')
+        .trim();
+  }
+
+  static String _sanitizeCode(String input) {
+    return input.replaceAll(RegExp(r'[^a-zA-Z0-9\-]'), '').toLowerCase();
+  }
+
   Future<SharedTimetableData?> fetchSharedTimetable(String code) async {
-    final trimmed = code.trim().toLowerCase();
+    final trimmed = _sanitizeCode(code);
+    if (trimmed.isEmpty) return null;
     final doc = await _firestore.collection(FirestoreCollections.sharedTimetables).doc(trimmed).get();
     if (!doc.exists) return null;
 
@@ -98,9 +112,9 @@ class TimetableSharingService {
 
     return SharedTimetableData(
       code: trimmed,
-      name: data['name'] as String? ?? 'Shared Timetable',
-      ownerName: data['ownerName'] as String? ?? 'Unknown',
-      campus: data['campus'] as String? ?? '',
+      name: _sanitize(data['name'] as String? ?? 'Shared Timetable'),
+      ownerName: _sanitize(data['ownerName'] as String? ?? 'Unknown'),
+      campus: _sanitize(data['campus'] as String? ?? ''),
       sections: sections,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
