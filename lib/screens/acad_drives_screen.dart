@@ -1140,8 +1140,6 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     }
 
     final isMobile = ResponsiveService.isMobile(context);
-    final bookmarkCount = UserSettingsService().acadDriveBookmarks.length;
-    final hasBookmarks = bookmarkCount > 0 && _searchQuery.isEmpty;
     final starredCodes = UserSettingsService().starredCourses;
     final starredCourseEntries = _searchQuery.isEmpty
         ? courses.where((c) => starredCodes.contains(c['code'])).toList()
