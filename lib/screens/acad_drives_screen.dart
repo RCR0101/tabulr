@@ -293,6 +293,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     }
   }
 
+  bool _isLoadingMoreFiles = false;
+
   Future<void> _loadCourseFiles(String courseCode) async {
     final courseEntry = _courses.firstWhere(
       (c) => c['code'] == courseCode,
@@ -300,6 +302,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     );
     setState(() {
       _isLoadingFiles = true;
+      _isLoadingMoreFiles = false;
       _selectedCourse = courseCode;
       _selectedDriveLinks = (courseEntry['driveLinks'] as Map<String, dynamic>?) ?? {};
       _courseFiles = [];
@@ -323,12 +326,39 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         _courseFiles = files;
         _isLoadingFiles = false;
       });
+
+      if (files.length == _filePageSize) {
+        _loadRemainingFiles(courseCode, filesSnapshot.docs.last);
+      }
     } catch (e) {
       setState(() {
         _courseFiles = [];
         _isLoadingFiles = false;
       });
       ToastService.showError('Failed to load course files: $e');
+    }
+  }
+
+  Future<void> _loadRemainingFiles(String courseCode, DocumentSnapshot lastDoc) async {
+    if (_selectedCourse != courseCode) return;
+    setState(() => _isLoadingMoreFiles = true);
+
+    try {
+      final snapshot = await _drivesService.fetchCourseFiles(
+        courseCode,
+        limit: AppLimits.acadDriveFileMaxSize - _filePageSize,
+        startAfter: lastDoc,
+      );
+
+      if (_selectedCourse != courseCode || !mounted) return;
+
+      final moreFiles = snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList();
+      setState(() {
+        _courseFiles.addAll(moreFiles);
+        _isLoadingMoreFiles = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingMoreFiles = false);
     }
   }
 
@@ -1146,30 +1176,48 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         : <Map<String, dynamic>>[];
     final hasStarred = starredCourseEntries.isNotEmpty;
 
-    Widget collapsibleCourseList(List<Map<String, dynamic>> items, {bool expanded = true, bool enrolled = false, bool starred = false, bool compact = false}) {
+    Widget courseCardWithStar(Map<String, dynamic> course, {bool compact = false, bool enrolled = false}) {
+      final code = course['code'] ?? '';
+      return _CourseCard(
+        course: course,
+        onTap: () => _loadCourseFiles(code),
+        compact: compact,
+        enrolled: enrolled,
+        starred: starredCodes.contains(code),
+        onToggleStar: () {
+          UserSettingsService().toggleStarredCourse(code);
+          setState(() {});
+        },
+      );
+    }
+
+    Widget collapsibleSection(List<Map<String, dynamic>> items, {required bool expanded, bool enrolled = false, bool useGrid = false}) {
       return SliverToBoxAdapter(
         child: AnimatedSize(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
           alignment: Alignment.topCenter,
-          child: expanded
-              ? Column(
-                  children: items.map((course) {
-                    final code = course['code'] ?? '';
-                    return _CourseCard(
-                      course: course,
-                      onTap: () => _loadCourseFiles(code),
-                      compact: compact,
-                      enrolled: enrolled,
-                      starred: starredCodes.contains(code),
-                      onToggleStar: () {
-                        UserSettingsService().toggleStarredCourse(code);
-                        setState(() {});
-                      },
-                    );
-                  }).toList(),
-                )
-              : const SizedBox.shrink(),
+          clipBehavior: Clip.hardEdge,
+          child: !expanded
+              ? const SizedBox(width: double.infinity)
+              : useGrid
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: items.map((course) => SizedBox(
+                          width: 340,
+                          height: 80,
+                          child: courseCardWithStar(course, compact: true, enrolled: enrolled),
+                        )).toList(),
+                      ),
+                    )
+                  : Column(
+                      children: items.map((course) =>
+                        courseCardWithStar(course, enrolled: enrolled),
+                      ).toList(),
+                    ),
         ),
       );
     }
@@ -1192,7 +1240,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                         onToggle: () => setState(() => _starredExpanded = !_starredExpanded),
                       ),
                     ),
-                    collapsibleCourseList(starredCourseEntries, expanded: _starredExpanded, starred: true),
+                    collapsibleSection(starredCourseEntries, expanded: _starredExpanded),
                   ],
                   if (hasEnrolledSection) ...[
                     SliverToBoxAdapter(
@@ -1203,7 +1251,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                         onToggle: () => setState(() => _yourCoursesExpanded = !_yourCoursesExpanded),
                       ),
                     ),
-                    collapsibleCourseList(enrolledCourses, expanded: _yourCoursesExpanded, enrolled: true),
+                    collapsibleSection(enrolledCourses, expanded: _yourCoursesExpanded, enrolled: true),
                   ],
                   if (hasEnrolledSection || hasStarred)
                     SliverToBoxAdapter(child: sectionHeader('All Courses', Icons.library_books)),
@@ -1211,17 +1259,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         if (index >= restCourses.length) return _buildLoadingFooter();
-                        final course = restCourses[index];
-                        final code = course['code'] ?? '';
-                        return _CourseCard(
-                          course: course,
-                          onTap: () => _loadCourseFiles(code),
-                          starred: starredCodes.contains(code),
-                          onToggleStar: () {
-                            UserSettingsService().toggleStarredCourse(code);
-                            setState(() {});
-                          },
-                        ).motionListItem(index);
+                        return courseCardWithStar(restCourses[index]).motionListItem(index);
                       },
                       childCount: restCourses.length + (_hasMoreCourses && _searchQuery.isEmpty ? 1 : 0),
                     ),
@@ -1235,7 +1273,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       );
     }
 
-    // Desktop: use CustomScrollView with grid
+    // Desktop: grid layout
     return Column(
       children: [
         _buildCourseCountBar(courses.length),
@@ -1251,7 +1289,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                     onToggle: () => setState(() => _starredExpanded = !_starredExpanded),
                   ),
                 ),
-                collapsibleCourseList(starredCourseEntries, expanded: _starredExpanded, starred: true, compact: true),
+                collapsibleSection(starredCourseEntries, expanded: _starredExpanded, useGrid: true),
               ],
               if (hasEnrolledSection) ...[
                 SliverToBoxAdapter(
@@ -1262,7 +1300,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                     onToggle: () => setState(() => _yourCoursesExpanded = !_yourCoursesExpanded),
                   ),
                 ),
-                collapsibleCourseList(enrolledCourses, expanded: _yourCoursesExpanded, enrolled: true, compact: true),
+                collapsibleSection(enrolledCourses, expanded: _yourCoursesExpanded, enrolled: true, useGrid: true),
               ],
               if (hasEnrolledSection || hasStarred)
                 SliverToBoxAdapter(child: sectionHeader('All Courses', Icons.library_books)),
@@ -1272,18 +1310,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       if (index >= restCourses.length) return _buildLoadingFooter();
-                      final course = restCourses[index];
-                      final code = course['code'] ?? '';
-                      return _CourseCard(
-                        course: course,
-                        onTap: () => _loadCourseFiles(code),
-                        compact: true,
-                        starred: starredCodes.contains(code),
-                        onToggleStar: () {
-                          UserSettingsService().toggleStarredCourse(code);
-                          setState(() {});
-                        },
-                      );
+                      return courseCardWithStar(restCourses[index], compact: true);
                     },
                     childCount: restCourses.length + (_hasMoreCourses && _searchQuery.isEmpty ? 1 : 0),
                   ),
@@ -1473,8 +1500,25 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     return RefreshIndicator(
       onRefresh: () => _loadCourseFiles(_selectedCourse!),
       child: ListView.builder(
-        itemCount: driveNames.length,
+        itemCount: driveNames.length + (_isLoadingMoreFiles ? 1 : 0),
         itemBuilder: (context, index) {
+          if (index >= driveNames.length) {
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                    const SizedBox(width: 12),
+                    Text('Loading more files...', style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                    )),
+                  ],
+                ),
+              ),
+            );
+          }
           final driveName = driveNames[index];
           final folderTree = driveTrees[driveName]!;
           final contributor = driveContributors[driveName];

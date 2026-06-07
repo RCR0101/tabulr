@@ -22,7 +22,7 @@ class PerformanceMonitor {
     _initialized = true;
 
     // Disabled in release mode unless explicitly enabled
-    _enabled = enabled ?? kDebugMode;
+    _enabled = enabled ?? true;
     if (!_enabled) return;
 
     if (workerUrl != null) _workerUrl = workerUrl;

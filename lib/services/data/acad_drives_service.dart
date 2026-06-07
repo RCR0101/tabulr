@@ -45,12 +45,15 @@ class AcadDrivesService {
   Future<QuerySnapshot<Map<String, dynamic>>> fetchCourseFiles(
     String courseCode, {
     int limit = 500,
+    DocumentSnapshot? startAfter,
   }) {
-    return _filesRef
+    var query = _filesRef
         .where('course_codes', arrayContains: courseCode)
-        .orderBy('uploadedAt', descending: true)
-        .limit(limit)
-        .get();
+        .orderBy('uploadedAt', descending: true);
+    if (startAfter != null) {
+      query = query.startAfterDocument(startAfter);
+    }
+    return query.limit(limit).get();
   }
 
   Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> fetchCoursesByCodes(Set<String> codes) async {
