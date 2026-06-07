@@ -81,13 +81,13 @@ class _AuthScreenState extends State<AuthScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Transform.scale(
-                  alignment: Alignment.bottomCenter,
-                  scale: 0.5,
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 200, maxHeight: 200),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Image.asset(
                       'images/full_logo_bg.png',
+                      fit: BoxFit.contain,
                     ),
                   ),
                 ).motionEntry(duration: AppDesign.motionEmphasized),

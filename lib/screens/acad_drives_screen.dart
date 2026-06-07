@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../utils/web_utils.dart' as web_utils;
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -73,6 +74,7 @@ class AcadDrivesScreen extends StatefulWidget {
 
 class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   String? _selectedCourse;
+  Map<String, dynamic> _selectedDriveLinks = {};
   List<Map<String, dynamic>> _courses = [];
   List<Map<String, dynamic>> _courseFiles = [];
   bool _isLoading = true;
@@ -249,9 +251,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       case CourseSortOption.nameDesc:
         return _drivesService.buildCourseQuery('code', descending: true);
       case CourseSortOption.fileCountAsc:
-        return _drivesService.buildCourseQuery('fileCount', secondarySort: 'code');
+        return _drivesService.buildCourseQuery('fileCount');
       case CourseSortOption.fileCountDesc:
-        return _drivesService.buildCourseQuery('fileCount', descending: true, secondarySort: 'code', secondaryDescending: true);
+        return _drivesService.buildCourseQuery('fileCount', descending: true);
     }
   }
 
@@ -266,6 +268,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         'name': title != code ? title : '',
         'fileCount': data['fileCount'] ?? 0,
         'driveCount': data['driveCount'] ?? 0,
+        'driveLinks': data['driveLinks'] as Map<String, dynamic>? ?? {},
       };
     }).toList();
   }
@@ -286,9 +289,14 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   }
 
   Future<void> _loadCourseFiles(String courseCode) async {
+    final courseEntry = _courses.firstWhere(
+      (c) => c['code'] == courseCode,
+      orElse: () => <String, dynamic>{},
+    );
     setState(() {
       _isLoadingFiles = true;
       _selectedCourse = courseCode;
+      _selectedDriveLinks = (courseEntry['driveLinks'] as Map<String, dynamic>?) ?? {};
       _courseFiles = [];
     });
 
@@ -322,6 +330,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   void _goBackToCourses() {
     setState(() {
       _selectedCourse = null;
+      _selectedDriveLinks = {};
       _courseFiles = [];
       _searchController.clear();
       _searchQuery = '';
@@ -1260,6 +1269,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           return _DriveHierarchySection(
             driveName: driveName,
             contributor: contributor,
+            driveLink: _selectedDriveLinks[driveName] as String?,
             folderTree: folderTree,
             onOpenFile: (file, type) => _openFile(file, type),
             onShowFileInfo: (file) => _showFileInfo(file),
@@ -1528,6 +1538,7 @@ class _FolderTree {
 class _DriveHierarchySection extends StatefulWidget {
   final String driveName;
   final String? contributor;
+  final String? driveLink;
   final _FolderTree folderTree;
   final Function(Map<String, dynamic>, String) onOpenFile;
   final Function(Map<String, dynamic>) onShowFileInfo;
@@ -1538,6 +1549,7 @@ class _DriveHierarchySection extends StatefulWidget {
   const _DriveHierarchySection({
     required this.driveName,
     this.contributor,
+    this.driveLink,
     required this.folderTree,
     required this.onOpenFile,
     required this.onShowFileInfo,
@@ -1610,6 +1622,14 @@ class _DriveHierarchySectionState extends State<_DriveHierarchySection> {
                       ],
                     ),
                   ),
+                  if (widget.driveLink != null)
+                    IconButton(
+                      onPressed: () => launchUrl(Uri.parse(widget.driveLink!)),
+                      icon: Icon(Icons.open_in_new_rounded, size: 18),
+                      tooltip: 'Open in Google Drive',
+                      visualDensity: VisualDensity.compact,
+                      color: scheme.onSurface.withValues(alpha: 0.5),
+                    ),
                   if (kIsWeb)
                     IconButton(
                       onPressed: () => widget.onDownloadZip(widget.driveName, widget.folderTree),

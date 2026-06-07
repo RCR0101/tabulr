@@ -15,6 +15,22 @@
         { "fieldPath": "course_codes", "arrayConfig": "CONTAINS" },
         { "fieldPath": "uploadedAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "acad_drives_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fileCount", "order": "ASCENDING" },
+        { "fieldPath": "code", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "acad_drives_index",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "fileCount", "order": "DESCENDING" },
+        { "fieldPath": "code", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
