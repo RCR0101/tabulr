@@ -73,6 +73,7 @@ class UserSettings {
   final DateTime? dontShowTopUpdated; // when the user last dismissed the top announcement
   final ScoringWeights scoringWeights;
   final Set<String> completedTutorials;
+  final Set<String> acadDriveBookmarks;
   final DateTime lastUpdated;
 
   const UserSettings({
@@ -86,6 +87,7 @@ class UserSettings {
     this.dontShowTopUpdated,
     this.scoringWeights = const ScoringWeights(),
     this.completedTutorials = const {},
+    this.acadDriveBookmarks = const {},
     required this.lastUpdated,
   });
 
@@ -103,6 +105,7 @@ class UserSettings {
       'dontShowTopUpdated': dontShowTopUpdated?.toIso8601String(),
       if (scoringWeights != const ScoringWeights()) 'scoringWeights': scoringWeights.toJson(),
       'completedTutorials': completedTutorials.toList(),
+      'acadDriveBookmarks': acadDriveBookmarks.toList(),
       'lastUpdated': lastUpdated.toIso8601String(),
     };
   }
@@ -134,6 +137,7 @@ class UserSettings {
           ? ScoringWeights.fromJson(json['scoringWeights'] as Map<String, dynamic>)
           : const ScoringWeights(),
       completedTutorials: Set<String>.from(json['completedTutorials'] ?? []),
+      acadDriveBookmarks: Set<String>.from(json['acadDriveBookmarks'] ?? []),
       lastUpdated: parseDateTime(json['lastUpdated']),
     );
   }
@@ -149,6 +153,7 @@ class UserSettings {
       dontShowBottomDisclaimer: false,
       dontShowTopUpdated: null,
       completedTutorials: const {},
+      acadDriveBookmarks: const {},
       lastUpdated: DateTime.now(),
     );
   }
@@ -164,6 +169,7 @@ class UserSettings {
     DateTime? dontShowTopUpdated,
     ScoringWeights? scoringWeights,
     Set<String>? completedTutorials,
+    Set<String>? acadDriveBookmarks,
     DateTime? lastUpdated,
   }) {
     return UserSettings(
@@ -177,6 +183,7 @@ class UserSettings {
       dontShowTopUpdated: dontShowTopUpdated ?? this.dontShowTopUpdated,
       scoringWeights: scoringWeights ?? this.scoringWeights,
       completedTutorials: completedTutorials ?? this.completedTutorials,
+      acadDriveBookmarks: acadDriveBookmarks ?? this.acadDriveBookmarks,
       lastUpdated: lastUpdated ?? DateTime.now(),
     );
   }

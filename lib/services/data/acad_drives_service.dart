@@ -65,6 +65,20 @@ class AcadDrivesService {
     return results;
   }
 
+  Future<List<Map<String, dynamic>>> fetchFilesByIds(Set<String> fileIds) async {
+    if (fileIds.isEmpty) return [];
+    final results = <Map<String, dynamic>>[];
+    final idList = fileIds.toList();
+    for (var i = 0; i < idList.length; i += 30) {
+      final batch = idList.sublist(i, i + 30 > idList.length ? idList.length : i + 30);
+      final snapshot = await _filesRef.where(FieldPath.documentId, whereIn: batch).get();
+      for (final doc in snapshot.docs) {
+        results.add({'id': doc.id, ...doc.data()});
+      }
+    }
+    return results;
+  }
+
   Future<void> submitDriveLink(Map<String, dynamic> data) {
     return _submissionsRef.add(data);
   }

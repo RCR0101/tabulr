@@ -234,7 +234,7 @@ abstract final class AppLimits {
   static const int combinationCap = 10000;
   static const int coursePageSize = 100;
   static const int acadDriveCoursePageSize = 40;
-  static const int acadDriveFilePageSize = 500;
+  static const int acadDriveFilePageSize = 5000;
   static const int perfFlushThreshold = 50;
   static const int maxPdfSize = 10 * 1024 * 1024; // 10 MB
 }

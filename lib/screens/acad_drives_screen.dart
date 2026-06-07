@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'package:archive/archive.dart';
 import '../services/data/acad_drives_service.dart';
+import '../services/data/user_settings_service.dart';
 import '../services/core/timetable_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
@@ -74,9 +75,11 @@ class AcadDrivesScreen extends StatefulWidget {
 
 class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   String? _selectedCourse;
+  bool _showingBookmarks = false;
   Map<String, dynamic> _selectedDriveLinks = {};
   List<Map<String, dynamic>> _courses = [];
   List<Map<String, dynamic>> _courseFiles = [];
+  List<Map<String, dynamic>> _bookmarkedFiles = [];
   bool _isLoading = true;
   bool _isLoadingMore = false;
   bool _hasMoreCourses = true;
@@ -96,6 +99,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   final AcadDrivesService _drivesService = AcadDrivesService();
   Set<String> _enrolledCourseCodes = {};
   List<Map<String, dynamic>> _enrolledCourseEntries = [];
+  bool _yourCoursesExpanded = true;
+  bool _bookmarksSectionExpanded = true;
 
   // Submit form controllers
   final TextEditingController _driveLinkController = TextEditingController();
@@ -330,11 +335,48 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   void _goBackToCourses() {
     setState(() {
       _selectedCourse = null;
+      _showingBookmarks = false;
       _selectedDriveLinks = {};
       _courseFiles = [];
+      _bookmarkedFiles = [];
       _searchController.clear();
       _searchQuery = '';
     });
+  }
+
+  void _toggleBookmark(String fileId) {
+    UserSettingsService().toggleAcadDriveBookmark(fileId);
+    setState(() {});
+  }
+
+  Future<void> _loadBookmarks() async {
+    setState(() {
+      _isLoadingFiles = true;
+      _showingBookmarks = true;
+      _selectedCourse = null;
+    });
+
+    try {
+      final bookmarkIds = UserSettingsService().acadDriveBookmarks;
+      if (bookmarkIds.isEmpty) {
+        setState(() {
+          _bookmarkedFiles = [];
+          _isLoadingFiles = false;
+        });
+        return;
+      }
+      final files = await _drivesService.fetchFilesByIds(bookmarkIds);
+      setState(() {
+        _bookmarkedFiles = files;
+        _isLoadingFiles = false;
+      });
+    } catch (e) {
+      setState(() {
+        _bookmarkedFiles = [];
+        _isLoadingFiles = false;
+      });
+      ToastService.showError('Failed to load bookmarks: $e');
+    }
   }
 
   bool _isEnrolledCourse(Map<String, dynamic> course) {
@@ -917,15 +959,25 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_selectedCourse ?? 'Academic Drives'),
-        leading: _selectedCourse != null
+        title: Text(_showingBookmarks ? 'Bookmarks' : (_selectedCourse ?? 'Academic Drives')),
+        leading: (_selectedCourse != null || _showingBookmarks)
             ? IconButton(
                 onPressed: _goBackToCourses,
                 icon: const Icon(Icons.arrow_back),
                 tooltip: 'Back to Courses',
               )
-            : null, // This will show the hamburger menu for main screen
+            : null,
         actions: [
+          if (!_showingBookmarks && _selectedCourse == null)
+            IconButton(
+              onPressed: _loadBookmarks,
+              icon: Badge(
+                isLabelVisible: UserSettingsService().acadDriveBookmarks.isNotEmpty,
+                label: Text('${UserSettingsService().acadDriveBookmarks.length}'),
+                child: const Icon(Icons.bookmark_rounded),
+              ),
+              tooltip: 'Bookmarks',
+            ),
           PageInfoHelper.infoButton(context, PageInfoHelper.acadDrives, key: TutorialKeys.infoAcadDrives),
           IconButton(
             key: TutorialKeys.acadDrivesSubmit,
@@ -1005,10 +1057,12 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
             child: AnimatedSwitcher(
               duration: AppDesign.animDurationNormal,
               child: KeyedSubtree(
-                key: ValueKey(_selectedCourse ?? '_courses'),
-                child: _selectedCourse == null
-                    ? _buildCoursesView()
-                    : _buildFilesView(),
+                key: ValueKey(_showingBookmarks ? '_bookmarks' : (_selectedCourse ?? '_courses')),
+                child: _showingBookmarks
+                    ? _buildBookmarksView()
+                    : _selectedCourse == null
+                        ? _buildCoursesView()
+                        : _buildFilesView(),
               ),
             ),
           ),
@@ -1044,37 +1098,49 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
     final enrolledCount = _enrolledCourseCount;
     final hasEnrolledSection = enrolledCount > 0;
-    // Extra items: "Your Courses" header + "All Courses" header
-    final extraItems = hasEnrolledSection ? 2 : 0;
-    final itemCount = courses.length + extraItems + (_hasMoreCourses && _searchQuery.isEmpty ? 1 : 0);
 
-    int courseIndexFromListIndex(int index) {
-      if (!hasEnrolledSection) return index;
-      if (index == 0) return -1; // "Your Courses" header
-      if (index <= enrolledCount) return index - 1;
-      if (index == enrolledCount + 1) return -2; // "All Courses" header
-      return index - 2;
-    }
+    // Split courses into enrolled and rest
+    final enrolledCourses = hasEnrolledSection ? courses.sublist(0, enrolledCount) : <Map<String, dynamic>>[];
+    final restCourses = hasEnrolledSection ? courses.sublist(enrolledCount) : courses;
 
-    Widget sectionHeader(String text, IconData icon, {Key? key}) {
+    Widget sectionHeader(String text, IconData icon, {Key? key, int? count, bool? expanded, VoidCallback? onToggle}) {
       final scheme = Theme.of(context).colorScheme;
-      return Padding(
+      return InkWell(
         key: key,
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-        child: Row(
-          children: [
-            Icon(icon, size: 16, color: scheme.primary),
-            const SizedBox(width: 6),
-            Text(text, style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: scheme.primary,
-              fontWeight: FontWeight.w600,
-            )),
-          ],
+        onTap: onToggle,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Row(
+            children: [
+              Icon(icon, size: 16, color: scheme.primary),
+              const SizedBox(width: 6),
+              Text(text, style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: scheme.primary,
+                fontWeight: FontWeight.w600,
+              )),
+              if (count != null) ...[
+                const SizedBox(width: 6),
+                Text('($count)', style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: 0.5),
+                )),
+              ],
+              const Spacer(),
+              if (expanded != null)
+                AnimatedRotation(
+                  turns: expanded ? 0.0 : -0.25,
+                  duration: AppDesign.animDurationNormal,
+                  child: Icon(Icons.expand_more, size: 18, color: scheme.primary.withValues(alpha: 0.7)),
+                ),
+            ],
+          ),
         ),
       );
     }
 
     final isMobile = ResponsiveService.isMobile(context);
+    final bookmarkCount = UserSettingsService().acadDriveBookmarks.length;
+    final hasBookmarks = bookmarkCount > 0 && _searchQuery.isEmpty;
+
     if (isMobile) {
       return Column(
         children: [
@@ -1082,22 +1148,73 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           Expanded(
             child: RefreshIndicator(
               onRefresh: _loadCourses,
-              child: ListView.builder(
+              child: CustomScrollView(
                 controller: _coursesScrollController,
-                padding: const EdgeInsets.only(bottom: 16),
-                itemCount: itemCount,
-                itemBuilder: (context, index) {
-                  final ci = courseIndexFromListIndex(index);
-                  if (ci == -1) return sectionHeader('Your Courses', Icons.school, key: TutorialKeys.acadDrivesYourCourses);
-                  if (ci == -2) return sectionHeader('All Courses', Icons.library_books);
-                  if (ci >= courses.length) return _buildLoadingFooter();
-                  final course = courses[ci];
-                  return _CourseCard(
-                    course: course,
-                    onTap: () => _loadCourseFiles(course['code']),
-                    enrolled: hasEnrolledSection && ci < enrolledCount,
-                  ).motionListItem(ci);
-                },
+                slivers: [
+                  if (hasBookmarks) ...[
+                    SliverToBoxAdapter(
+                      child: sectionHeader('Bookmarks', Icons.bookmark_rounded,
+                        count: bookmarkCount,
+                        expanded: _bookmarksSectionExpanded,
+                        onToggle: () => setState(() => _bookmarksSectionExpanded = !_bookmarksSectionExpanded),
+                      ),
+                    ),
+                    if (_bookmarksSectionExpanded)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          child: OutlinedButton.icon(
+                            onPressed: _loadBookmarks,
+                            icon: const Icon(Icons.bookmark_rounded, size: 18),
+                            label: Text('View $bookmarkCount bookmarked file${bookmarkCount == 1 ? '' : 's'}'),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(double.infinity, 44),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                  if (hasEnrolledSection) ...[
+                    SliverToBoxAdapter(
+                      child: sectionHeader('Your Courses', Icons.school,
+                        key: TutorialKeys.acadDrivesYourCourses,
+                        count: enrolledCount,
+                        expanded: _yourCoursesExpanded,
+                        onToggle: () => setState(() => _yourCoursesExpanded = !_yourCoursesExpanded),
+                      ),
+                    ),
+                    if (_yourCoursesExpanded)
+                      SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final course = enrolledCourses[index];
+                            return _CourseCard(
+                              course: course,
+                              onTap: () => _loadCourseFiles(course['code']),
+                              enrolled: true,
+                            ).motionListItem(index);
+                          },
+                          childCount: enrolledCourses.length,
+                        ),
+                      ),
+                  ],
+                  if (hasEnrolledSection || hasBookmarks)
+                    SliverToBoxAdapter(child: sectionHeader('All Courses', Icons.library_books)),
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        if (index >= restCourses.length) return _buildLoadingFooter();
+                        final course = restCourses[index];
+                        return _CourseCard(
+                          course: course,
+                          onTap: () => _loadCourseFiles(course['code']),
+                        ).motionListItem(index);
+                      },
+                      childCount: restCourses.length + (_hasMoreCourses && _searchQuery.isEmpty ? 1 : 0),
+                    ),
+                  ),
+                  const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
+                ],
               ),
             ),
           ),
@@ -1113,41 +1230,72 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           child: CustomScrollView(
             controller: _coursesScrollController,
             slivers: [
-              if (hasEnrolledSection) ...[
-                SliverToBoxAdapter(child: sectionHeader('Your Courses', Icons.school, key: TutorialKeys.acadDrivesYourCourses)),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  sliver: SliverGrid(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final course = courses[index];
-                        return _CourseCard(
-                          course: course,
-                          onTap: () => _loadCourseFiles(course['code']),
-                          compact: true,
-                          enrolled: true,
-                        );
-                      },
-                      childCount: enrolledCount,
-                    ),
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 360,
-                      mainAxisExtent: 80,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                    ),
+              if (hasBookmarks) ...[
+                SliverToBoxAdapter(
+                  child: sectionHeader('Bookmarks', Icons.bookmark_rounded,
+                    count: bookmarkCount,
+                    expanded: _bookmarksSectionExpanded,
+                    onToggle: () => setState(() => _bookmarksSectionExpanded = !_bookmarksSectionExpanded),
                   ),
                 ),
-                SliverToBoxAdapter(child: sectionHeader('All Courses', Icons.library_books)),
+                if (_bookmarksSectionExpanded)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      child: OutlinedButton.icon(
+                        onPressed: _loadBookmarks,
+                        icon: const Icon(Icons.bookmark_rounded, size: 18),
+                        label: Text('View $bookmarkCount bookmarked file${bookmarkCount == 1 ? '' : 's'}'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 44),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
+              if (hasEnrolledSection) ...[
+                SliverToBoxAdapter(
+                  child: sectionHeader('Your Courses', Icons.school,
+                    key: TutorialKeys.acadDrivesYourCourses,
+                    count: enrolledCount,
+                    expanded: _yourCoursesExpanded,
+                    onToggle: () => setState(() => _yourCoursesExpanded = !_yourCoursesExpanded),
+                  ),
+                ),
+                if (_yourCoursesExpanded)
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    sliver: SliverGrid(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final course = enrolledCourses[index];
+                          return _CourseCard(
+                            course: course,
+                            onTap: () => _loadCourseFiles(course['code']),
+                            compact: true,
+                            enrolled: true,
+                          );
+                        },
+                        childCount: enrolledCourses.length,
+                      ),
+                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                        maxCrossAxisExtent: 360,
+                        mainAxisExtent: 80,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                      ),
+                    ),
+                  ),
+              ],
+              if (hasEnrolledSection || hasBookmarks)
+                SliverToBoxAdapter(child: sectionHeader('All Courses', Icons.library_books)),
               SliverPadding(
                 padding: const EdgeInsets.all(16),
                 sliver: SliverGrid(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      final ci = hasEnrolledSection ? enrolledCount + index : index;
-                      if (ci >= courses.length) return _buildLoadingFooter();
-                      final course = courses[ci];
+                      if (index >= restCourses.length) return _buildLoadingFooter();
+                      final course = restCourses[index];
                       return _CourseCard(
                         course: course,
                         onTap: () => _loadCourseFiles(course['code']),
@@ -1197,6 +1345,88 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     return const Padding(
       padding: EdgeInsets.all(16),
       child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+    );
+  }
+
+  Widget _buildBookmarksView() {
+    if (_isLoadingFiles) {
+      return const GenericListSkeleton(count: 8, itemHeight: 56);
+    }
+
+    if (_bookmarkedFiles.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.bookmark_border_rounded, size: 64, color: AppDesign.muted(context)),
+            const SizedBox(height: 16),
+            Text(
+              'No bookmarks yet',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: AppDesign.muted(context),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Bookmark files from any course for quick access',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppDesign.muted(context),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final filtered = _searchQuery.isEmpty
+        ? _bookmarkedFiles
+        : _bookmarkedFiles.where((file) {
+            final name = (file['name'] ?? '').toString().toLowerCase();
+            final course = (file['courseName'] ?? '').toString().toLowerCase();
+            final code = ((file['course_codes'] as List?)?.firstOrNull ?? '').toString().toLowerCase();
+            final q = _searchQuery.toLowerCase();
+            return name.contains(q) || course.contains(q) || code.contains(q);
+          }).toList();
+
+    return ListView.builder(
+      itemCount: filtered.length,
+      itemBuilder: (context, index) {
+        final file = filtered[index];
+        final fileId = file['id'] as String? ?? '';
+        final codes = (file['course_codes'] as List?)?.join(', ') ?? '';
+        return Column(
+          children: [
+            if (codes.isNotEmpty)
+              Padding(
+                padding: EdgeInsets.only(left: 16, top: index == 0 ? 8 : 4),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    codes,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            _FileCard(
+              file: file,
+              onOpen: (type) => _openFile(file, type),
+              onInfo: () => _showFileInfo(file),
+              formatFileSize: _formatFileSize,
+              formatDate: _formatDate,
+              isBookmarked: true,
+              onToggleBookmark: () {
+                _toggleBookmark(fileId);
+                setState(() {
+                  _bookmarkedFiles.removeWhere((f) => f['id'] == fileId);
+                });
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1276,6 +1506,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
             formatFileSize: _formatFileSize,
             formatDate: _formatDate,
             onDownloadZip: _downloadAsZip,
+            isBookmarked: (fileId) => UserSettingsService().isAcadDriveBookmarked(fileId),
+            onToggleBookmark: (fileId) => _toggleBookmark(fileId),
           ).motionListItem(index);
         },
       ),
@@ -1388,6 +1620,8 @@ class _FileCard extends StatelessWidget {
   final VoidCallback onInfo;
   final String Function(int) formatFileSize;
   final String Function(dynamic) formatDate;
+  final bool isBookmarked;
+  final VoidCallback? onToggleBookmark;
 
   const _FileCard({
     required this.file,
@@ -1395,6 +1629,8 @@ class _FileCard extends StatelessWidget {
     required this.onInfo,
     required this.formatFileSize,
     required this.formatDate,
+    this.isBookmarked = false,
+    this.onToggleBookmark,
   });
 
   @override
@@ -1466,6 +1702,16 @@ class _FileCard extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (onToggleBookmark != null)
+                  IconButton(
+                    onPressed: onToggleBookmark,
+                    icon: Icon(
+                      isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                      size: 20,
+                    ),
+                    tooltip: isBookmarked ? 'Remove bookmark' : 'Bookmark',
+                    color: isBookmarked ? Theme.of(context).colorScheme.primary : null,
+                  ),
                 // Info Button
                 IconButton(
                   onPressed: onInfo,
@@ -1545,6 +1791,8 @@ class _DriveHierarchySection extends StatefulWidget {
   final String Function(int) formatFileSize;
   final String Function(dynamic) formatDate;
   final Future<void> Function(String zipName, _FolderTree folderTree) onDownloadZip;
+  final bool Function(String)? isBookmarked;
+  final Function(String)? onToggleBookmark;
 
   const _DriveHierarchySection({
     required this.driveName,
@@ -1556,6 +1804,8 @@ class _DriveHierarchySection extends StatefulWidget {
     required this.formatFileSize,
     required this.formatDate,
     required this.onDownloadZip,
+    this.isBookmarked,
+    this.onToggleBookmark,
   });
 
   @override
@@ -1666,6 +1916,8 @@ class _DriveHierarchySectionState extends State<_DriveHierarchySection> {
                   formatFileSize: widget.formatFileSize,
                   formatDate: widget.formatDate,
                   onDownloadZip: widget.onDownloadZip,
+                  isBookmarked: widget.isBookmarked,
+                  onToggleBookmark: widget.onToggleBookmark,
                 ),
               ],
             ),
@@ -1686,6 +1938,8 @@ class _FolderNode extends StatefulWidget {
   final String Function(int) formatFileSize;
   final String Function(dynamic) formatDate;
   final Future<void> Function(String zipName, _FolderTree folderTree) onDownloadZip;
+  final bool Function(String)? isBookmarked;
+  final Function(String)? onToggleBookmark;
 
   const _FolderNode({
     required this.folderTree,
@@ -1696,6 +1950,8 @@ class _FolderNode extends StatefulWidget {
     required this.formatFileSize,
     required this.formatDate,
     required this.onDownloadZip,
+    this.isBookmarked,
+    this.onToggleBookmark,
   });
 
   @override
@@ -1795,6 +2051,8 @@ class _FolderNodeState extends State<_FolderNode> {
                   formatFileSize: widget.formatFileSize,
                   formatDate: widget.formatDate,
                   onDownloadZip: widget.onDownloadZip,
+                  isBookmarked: widget.isBookmarked,
+                  onToggleBookmark: widget.onToggleBookmark,
                 ),
               ),
             ],
@@ -1802,16 +2060,23 @@ class _FolderNodeState extends State<_FolderNode> {
         }),
         
         // Render files at this level
-        ...widget.folderTree.files.map((file) => Container(
-          margin: EdgeInsets.only(left: 16.0 + (widget.level * 20.0)),
-          child: _FileCard(
-            file: file,
-            onOpen: (type) => widget.onOpenFile(file, type),
-            onInfo: () => widget.onShowFileInfo(file),
-            formatFileSize: widget.formatFileSize,
-            formatDate: widget.formatDate,
-          ),
-        )),
+        ...widget.folderTree.files.map((file) {
+          final fileId = file['id'] as String? ?? '';
+          return Container(
+            margin: EdgeInsets.only(left: 16.0 + (widget.level * 20.0)),
+            child: _FileCard(
+              file: file,
+              onOpen: (type) => widget.onOpenFile(file, type),
+              onInfo: () => widget.onShowFileInfo(file),
+              formatFileSize: widget.formatFileSize,
+              formatDate: widget.formatDate,
+              isBookmarked: widget.isBookmarked?.call(fileId) ?? false,
+              onToggleBookmark: widget.onToggleBookmark != null && fileId.isNotEmpty
+                  ? () => widget.onToggleBookmark!(fileId)
+                  : null,
+            ),
+          );
+        }),
       ],
     );
   }

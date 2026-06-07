@@ -294,6 +294,34 @@ class UserSettingsService extends ChangeNotifier {
     return _userSettings?.completedTutorials.contains(section) ?? false;
   }
 
+  Future<void> toggleAcadDriveBookmark(String fileId) async {
+    if (_userSettings == null) {
+      await initializeSettings(force: true);
+    }
+    if (_userSettings == null) return;
+
+    final bookmarks = {..._userSettings!.acadDriveBookmarks};
+    if (bookmarks.contains(fileId)) {
+      bookmarks.remove(fileId);
+    } else {
+      bookmarks.add(fileId);
+    }
+    _userSettings = _userSettings!.copyWith(acadDriveBookmarks: bookmarks);
+    notifyListeners();
+
+    if (_authService.isAuthenticated) {
+      await _saveToFirestore();
+    } else {
+      await _saveToLocalStorage();
+    }
+  }
+
+  bool isAcadDriveBookmarked(String fileId) {
+    return _userSettings?.acadDriveBookmarks.contains(fileId) ?? false;
+  }
+
+  Set<String> get acadDriveBookmarks => _userSettings?.acadDriveBookmarks ?? const {};
+
   // Update scoring weights
   Future<void> updateScoringWeights(ScoringWeights weights) async {
     if (_userSettings == null) {
