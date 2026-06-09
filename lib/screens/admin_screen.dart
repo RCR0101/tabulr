@@ -55,6 +55,7 @@ class _AdminScreenState extends State<AdminScreen> {
   bool _uploadingTimetable = false;
   bool _uploadingExam = false;
   bool _rebuildingProfs = false;
+  bool _archiving = false;
 
   String? _timetableResult;
   String? _timetableProgress;
@@ -62,6 +63,11 @@ class _AdminScreenState extends State<AdminScreen> {
   String? _examProgress;
   String? _profsResult;
   String? _profsProgress;
+  String? _archiveResult;
+  String? _archiveProgress;
+
+  final _archiveYearController = TextEditingController();
+  int _archiveSemester = 1;
 
   @override
   void dispose() {
@@ -80,6 +86,7 @@ class _AdminScreenState extends State<AdminScreen> {
       c.dispose();
     }
     _examYearController.dispose();
+    _archiveYearController.dispose();
     super.dispose();
   }
 
@@ -215,6 +222,41 @@ class _AdminScreenState extends State<AdminScreen> {
       ToastService.showError('Rebuild failed');
     } finally {
       setState(() => _rebuildingProfs = false);
+    }
+  }
+
+  Future<void> _archiveTimetables() async {
+    final year = _archiveYearController.text.trim();
+    if (year.isEmpty || !RegExp(r'^\d{4}-\d{4}$').hasMatch(year)) {
+      ToastService.showError('Enter academic year in YYYY-YYYY format');
+      return;
+    }
+    setState(() {
+      _archiving = true;
+      _archiveResult = null;
+      _archiveProgress = 'Archiving timetables...';
+    });
+    try {
+      final result = await _adminService.archiveTimetables(
+        academicYear: year,
+        semester: _archiveSemester,
+      );
+      final processed = result['usersProcessed'] ?? 0;
+      final total = result['totalTimetablesArchived'] ?? 0;
+      final skipped = result['usersSkipped'] ?? 0;
+      setState(() {
+        _archiveResult = 'Archived $total timetables from $processed users ($skipped skipped)';
+        _archiveProgress = null;
+      });
+      ToastService.showSuccess('Archived $total timetables');
+    } catch (e) {
+      setState(() {
+        _archiveResult = 'Error: $e';
+        _archiveProgress = null;
+      });
+      ToastService.showError('Archive failed');
+    } finally {
+      setState(() => _archiving = false);
     }
   }
 
@@ -924,6 +966,51 @@ class _AdminScreenState extends State<AdminScreen> {
     );
   }
 
+  Widget _archiveSection() {
+    final scheme = Theme.of(context).colorScheme;
+    return _buildSection(
+      title: 'Archive Timetables',
+      icon: Icons.archive_rounded,
+      children: [
+        TextField(
+          controller: _archiveYearController,
+          decoration: InputDecoration(
+            labelText: 'Academic Year',
+            hintText: '2025-2026',
+            border: const OutlineInputBorder(),
+            isDense: true,
+            labelStyle: TextStyle(color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium)),
+          ),
+        ),
+        const SizedBox(height: AppDesign.spacingSm),
+        DropdownButtonFormField<int>(
+          initialValue: _archiveSemester,
+          decoration: const InputDecoration(
+            labelText: 'Semester',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+          items: const [
+            DropdownMenuItem(value: 1, child: Text('Semester 1')),
+            DropdownMenuItem(value: 2, child: Text('Semester 2')),
+          ],
+          onChanged: (v) => setState(() => _archiveSemester = v ?? 1),
+        ),
+        const SizedBox(height: AppDesign.spacingSm + 4),
+        AppButton(
+          label: 'Archive All Users',
+          icon: Icons.archive_rounded,
+          onTap: !_archiving ? _archiveTimetables : null,
+          isLoading: _archiving,
+          expand: true,
+        ),
+        if (_archiveProgress != null)
+          _buildProgressIndicator(_archiveProgress!),
+        if (_archiveResult != null) _buildResultBadge(_archiveResult!),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final padding = ResponsiveService.getAdaptivePadding(
@@ -952,6 +1039,7 @@ class _AdminScreenState extends State<AdminScreen> {
         _timetableUploadSection(),
         _examUploadSection(),
         _profsSection(),
+        _archiveSection(),
       ],
     );
   }
@@ -981,6 +1069,7 @@ class _AdminScreenState extends State<AdminScreen> {
                 children: [
                   _examUploadSection(),
                   _profsSection(),
+                  _archiveSection(),
                 ],
               ),
             ),

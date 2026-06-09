@@ -537,3 +537,4 @@ exports.acceptCorrection = onCall({ region: REGION, enforceAppCheck: false }, as
 const adminFunctions = require("./admin");
 exports.checkAdminStatus = adminFunctions.checkAdminStatus;
 exports.rebuildProfessorSchedules = adminFunctions.rebuildProfessorSchedules;
+exports.archiveTimetables = adminFunctions.archiveTimetables;

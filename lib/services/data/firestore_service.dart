@@ -374,4 +374,57 @@ class FirestoreService {
   Stream<DocumentSnapshot<Map<String, dynamic>>> watchDocument(String collection, String documentId) {
     return _firestore.collection(collection).doc(documentId).snapshots();
   }
+
+  Future<List<ArchivedSemester>> getArchivedSemesters() async {
+    try {
+      if (_userDocId == null) return [];
+
+      final snapshot = await _firestore
+          .collection(FirestoreCollections.users)
+          .doc(_userDocId!)
+          .collection(FirestoreCollections.archivedTimetables)
+          .orderBy('academicYear', descending: true)
+          .get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        final timetables = data['timetables'] as List<dynamic>?;
+        return ArchivedSemester(
+          id: doc.id,
+          academicYear: data['academicYear'] as String? ?? '',
+          semester: data['semester'] as int? ?? 1,
+          archivedAt: (data['archivedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          timetableCount: timetables?.length ?? 0,
+        );
+      }).toList();
+    } catch (e) {
+      SecureLogger.error('FIRESTORE', 'Failed to load archived semesters', e);
+      return [];
+    }
+  }
+
+  Future<List<Timetable>> getArchivedTimetables(String archiveId) async {
+    try {
+      if (_userDocId == null) return [];
+
+      final doc = await _firestore
+          .collection(FirestoreCollections.users)
+          .doc(_userDocId!)
+          .collection(FirestoreCollections.archivedTimetables)
+          .doc(archiveId)
+          .get();
+
+      if (!doc.exists) return [];
+
+      final timetables = doc.data()?['timetables'] as List<dynamic>?;
+      if (timetables == null) return [];
+
+      return timetables
+          .map((tt) => Timetable.fromJson(Map<String, dynamic>.from(tt as Map)))
+          .toList();
+    } catch (e) {
+      SecureLogger.error('FIRESTORE', 'Failed to load archived timetables', e);
+      return [];
+    }
+  }
 }

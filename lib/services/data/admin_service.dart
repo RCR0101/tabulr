@@ -123,4 +123,19 @@ class AdminService extends ChangeNotifier {
         .call(data);
     return Map<String, dynamic>.from(result.data as Map);
   }
+
+  Future<Map<String, dynamic>> archiveTimetables({
+    required String academicYear,
+    required int semester,
+  }) async {
+    final result = await _functions
+        .httpsCallable(
+          'archiveTimetables',
+          options: HttpsCallableOptions(
+            timeout: const Duration(minutes: 9),
+          ),
+        )
+        .call({'academicYear': academicYear, 'semester': semester});
+    return Map<String, dynamic>.from(result.data as Map);
+  }
 }

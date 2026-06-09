@@ -10,6 +10,7 @@ import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/empty_state.dart';
 import '../widgets/disclaimer_widget.dart';
 import '../services/core/timetable_service.dart';
+import '../services/data/firestore_service.dart';
 import '../services/data/auth_service.dart';
 import '../services/ui/toast_service.dart';
 import '../services/data/campus_service.dart';
@@ -37,6 +38,7 @@ import 'timetable_comparison_screen.dart';
 import 'humanities_electives_screen.dart';
 import 'discipline_electives_screen.dart';
 import 'prerequisites_screen.dart';
+import 'archived_timetables_screen.dart';
 
 class TimetablesScreen extends StatefulWidget {
   const TimetablesScreen({super.key});
@@ -52,6 +54,8 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   List<Timetable> _timetables = [];
   List<Timetable> _sortedTimetables = [];
   bool _isLoading = true;
+  List<ArchivedSemester> _archivedSemesters = [];
+  bool _archivesExpanded = false;
 
   @override
   void initState() {
@@ -70,6 +74,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     await Future.wait([
       _userSettingsService.initializeSettings(),
       _loadTimetables(),
+      _loadArchivedSemesters(),
     ]);
     if (mounted) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -141,6 +146,14 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
       });
       _showErrorDialog('Error loading timetables: $e');
     }
+  }
+
+  Future<void> _loadArchivedSemesters() async {
+    if (!_authService.isAuthenticated) return;
+    try {
+      final semesters = await FirestoreService().getArchivedSemesters();
+      if (mounted) setState(() => _archivedSemesters = semesters);
+    } catch (_) {}
   }
 
   Future<void> _createNewTimetable() async {
@@ -562,6 +575,70 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     }
   }
 
+  Widget _buildArchivedSection() {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppDesign.spacingMd),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Divider(height: 1),
+          InkWell(
+            onTap: () => setState(() => _archivesExpanded = !_archivesExpanded),
+            borderRadius: AppDesign.borderRadiusSm,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                children: [
+                  Icon(Icons.history, size: 18, color: scheme.onSurface.withValues(alpha: 0.6)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Past Semesters',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: scheme.onSurface.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    _archivesExpanded ? Icons.expand_less : Icons.expand_more,
+                    size: 20,
+                    color: scheme.onSurface.withValues(alpha: 0.4),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_archivesExpanded)
+            ..._archivedSemesters.map((archive) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Card(
+                elevation: 0,
+                color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                shape: RoundedRectangleBorder(borderRadius: AppDesign.borderRadiusMd),
+                child: ListTile(
+                  leading: Icon(Icons.folder_outlined, color: scheme.primary),
+                  title: Text(archive.label),
+                  subtitle: Text(
+                    '${archive.timetableCount} timetable${archive.timetableCount != 1 ? 's' : ''}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    FadeSlidePageRoute(
+                      page: ArchivedTimetablesScreen(semester: archive),
+                    ),
+                  ),
+                ),
+              ),
+            )),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1097,6 +1174,8 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                 ),
                               ),
                     ),
+                  if (_archivedSemesters.isNotEmpty)
+                    _buildArchivedSection(),
                   ],
                 ),
           ),

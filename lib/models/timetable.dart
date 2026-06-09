@@ -227,3 +227,21 @@ class TimetableSlot {
     required this.room,
   });
 }
+
+class ArchivedSemester {
+  final String id;
+  final String academicYear;
+  final int semester;
+  final DateTime archivedAt;
+  final int timetableCount;
+
+  const ArchivedSemester({
+    required this.id,
+    required this.academicYear,
+    required this.semester,
+    required this.archivedAt,
+    required this.timetableCount,
+  });
+
+  String get label => '$academicYear Sem $semester';
+}

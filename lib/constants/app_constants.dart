@@ -35,6 +35,7 @@ abstract final class FirestoreCollections {
   static const String acadDrivesSubmissions = 'acad_drives_submissions';
   static const String examSeatingPrefs = 'exam_seating_prefs';
   static const String cgpaSemesters = 'cgpa_semesters';
+  static const String archivedTimetables = 'archivedTimetables';
 }
 
 // ── SharedPreferences / local-storage keys ─────────────────────────────

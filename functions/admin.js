@@ -383,3 +383,86 @@ exports.rebuildProfessorSchedules = onCall(
     };
   }
 );
+
+// ─── Archive timetables for a semester ───
+
+exports.archiveTimetables = onCall(
+  { region: REGION, timeoutSeconds: 540, memory: "512MiB", enforceAppCheck: false },
+  async (request) => {
+    await requireAdmin(request);
+
+    const { academicYear, semester } = request.data;
+
+    if (!academicYear || !/^\d{4}-\d{4}$/.test(academicYear)) {
+      throw new HttpsError("invalid-argument", "academicYear must be in YYYY-YYYY format");
+    }
+    if (semester !== 1 && semester !== 2) {
+      throw new HttpsError("invalid-argument", "semester must be 1 or 2");
+    }
+
+    const archiveKey = `${academicYear}_sem${semester}`;
+    console.log(`[archiveTimetables] archiving ${archiveKey}`);
+
+    const userRefs = await db.collection("users").listDocuments();
+    console.log(`[archiveTimetables] found ${userRefs.length} user refs`);
+
+    let usersProcessed = 0;
+    let usersSkipped = 0;
+    let totalTimetablesArchived = 0;
+
+    const BATCH_SIZE = 20;
+    for (let i = 0; i < userRefs.length; i += BATCH_SIZE) {
+      const batch = userRefs.slice(i, i + BATCH_SIZE);
+
+      const results = await Promise.all(
+        batch.map(async (userRef) => {
+          const ttSnap = await userRef.collection("timetables").get();
+          if (ttSnap.empty) return { uid: userRef.id, skipped: true };
+
+          const timetables = ttSnap.docs
+            .map((doc) => doc.data().timetableData)
+            .filter(Boolean);
+
+          if (timetables.length === 0) return { uid: userRef.id, skipped: true };
+
+          return { uid: userRef.id, skipped: false, timetables };
+        })
+      );
+
+      for (const result of results) {
+        if (result.skipped) {
+          usersSkipped++;
+          continue;
+        }
+
+        await db
+          .collection("users")
+          .doc(result.uid)
+          .collection("archivedTimetables")
+          .doc(archiveKey)
+          .set({
+            academicYear,
+            semester,
+            archivedAt: FieldValue.serverTimestamp(),
+            timetables: result.timetables,
+          });
+
+        usersProcessed++;
+        totalTimetablesArchived += result.timetables.length;
+      }
+
+      if ((i + BATCH_SIZE) % 100 === 0) {
+        console.log(`[archiveTimetables] progress: ${i + BATCH_SIZE}/${userRefs.length}`);
+      }
+    }
+
+    console.log(`[archiveTimetables] done: ${usersProcessed} users, ${totalTimetablesArchived} timetables archived, ${usersSkipped} skipped`);
+
+    return {
+      success: true,
+      usersProcessed,
+      usersSkipped,
+      totalTimetablesArchived,
+    };
+  }
+);
