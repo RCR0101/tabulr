@@ -134,6 +134,20 @@ class TimetableService {
     }
   }
 
+  Future<void> _hydrateCourses(List<Timetable> timetables) async {
+    try {
+      final courses = await _courseDataService.fetchCourses();
+      if (courses.isEmpty) return;
+      for (final timetable in timetables) {
+        if (timetable.availableCourses.isEmpty) {
+          timetable.availableCourses.addAll(courses);
+        }
+      }
+    } catch (e) {
+      SecureLogger.error('TIMETABLE_SVC', 'Error hydrating courses: $e');
+    }
+  }
+
   Future<void> _loadCoursesFromFirestore(Timetable timetable) async {
     try {
       // Try to fetch courses directly without checking metadata first
@@ -346,7 +360,9 @@ class TimetableService {
 
       if (_authService.isAuthenticated) {
         timetables = await _firestoreService.getAllTimetables();
-        if (timetables.isEmpty) {
+        if (timetables.isNotEmpty) {
+          await _hydrateCourses(timetables);
+        } else {
           timetables = await _getAllTimetablesFromLocalStorage();
         }
       } else {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/timetable.dart';
 import '../models/course.dart';
+import '../models/calendar_event.dart';
 import '../services/data/auth_service.dart';
 import '../services/data/calendar_prefs_service.dart';
 import '../services/core/timetable_service.dart';
@@ -15,7 +16,6 @@ import '../widgets/share_timetable_dialog.dart';
 import '../widgets/command_palette.dart';
 import '../widgets/app_drawer.dart';
 import '../services/ui/tutorial_service.dart';
-import 'calendar_screen.dart';
 import '../utils/page_info_helper.dart';
 
 class FreeSlotFinderScreen extends StatefulWidget {

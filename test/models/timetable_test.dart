@@ -130,4 +130,45 @@ void main() {
       expect(updated.shareId, 'new-share');
     });
   });
+
+  group('toFirestoreJson', () {
+    test('excludes availableCourses', () {
+      final course = makeCourse(courseCode: 'CS F111');
+      final timetable = Timetable(
+        id: 'tt1',
+        name: 'Test',
+        createdAt: DateTime(2024),
+        updatedAt: DateTime(2024),
+        campus: Campus.hyderabad,
+        availableCourses: [course],
+        selectedSections: [],
+        clashWarnings: [],
+      );
+
+      final firestoreJson = timetable.toFirestoreJson();
+      final fullJson = timetable.toJson();
+
+      expect(firestoreJson.containsKey('availableCourses'), isFalse);
+      expect(fullJson.containsKey('availableCourses'), isTrue);
+      expect(firestoreJson['id'], 'tt1');
+      expect(firestoreJson['name'], 'Test');
+      expect(firestoreJson['selectedSections'], isA<List>());
+    });
+
+    test('fromJson handles missing availableCourses', () {
+      final json = {
+        'id': 'tt1',
+        'name': 'Test',
+        'createdAt': '2024-01-01T00:00:00.000',
+        'updatedAt': '2024-01-01T00:00:00.000',
+        'campus': 'hyderabad',
+        'selectedSections': [],
+        'clashWarnings': [],
+      };
+
+      final timetable = Timetable.fromJson(json);
+      expect(timetable.availableCourses, isEmpty);
+      expect(timetable.id, 'tt1');
+    });
+  });
 }

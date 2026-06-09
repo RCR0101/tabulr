@@ -33,7 +33,7 @@ class FirestoreService {
       final Map<String, dynamic> timetableData = {
         'userId': _userDocId,
         'userEmail': user.email,
-        'timetableData': timetable.toJson(),
+        'timetableData': timetable.toFirestoreJson(),
         'lastUpdated': FieldValue.serverTimestamp(),
         'createdAt': FieldValue.serverTimestamp(),
       };
@@ -323,7 +323,7 @@ class FirestoreService {
         final docRef = _firestore.collection(FirestoreCollections.users).doc(userId);
         final timetableData = {
           'userId': userId,
-          'timetableData': timetable.toJson(),
+          'timetableData': timetable.toFirestoreJson(),
           'lastUpdated': FieldValue.serverTimestamp(),
           'createdAt': FieldValue.serverTimestamp(),
         };

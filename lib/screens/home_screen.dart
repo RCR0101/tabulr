@@ -18,13 +18,21 @@ import '../mixins/timetable_editor_mixin.dart';
 import '../services/ui/tutorial_service.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final Timetable? timetable;
+  final Function(bool)? onUnsavedChangesChanged;
+
+  const HomeScreen({
+    super.key,
+    this.timetable,
+    this.onUnsavedChangesChanged,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class HomeScreenWithTimetable extends StatefulWidget {
+/// Kept for backward compatibility — redirects to [HomeScreen].
+class HomeScreenWithTimetable extends StatelessWidget {
   final Timetable timetable;
   final Function(bool)? onUnsavedChangesChanged;
 
@@ -35,11 +43,16 @@ class HomeScreenWithTimetable extends StatefulWidget {
   });
 
   @override
-  State<HomeScreenWithTimetable> createState() =>
-      _HomeScreenWithTimetableState();
+  Widget build(BuildContext context) {
+    return HomeScreen(
+      timetable: timetable,
+      onUnsavedChangesChanged: onUnsavedChangesChanged,
+    );
+  }
 }
 
-class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with TimetableEditorMixin<HomeScreen> {
   final TimetableService _timetableService = TimetableService();
   final AuthService _authService = AuthService();
   final PageLeaveWarningService _pageLeaveWarning = PageLeaveWarningService();
@@ -52,28 +65,56 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
   bool _isSaving = false;
   StreamSubscription<Campus>? _campusSubscription;
 
-  @override Timetable? get currentTimetable => _timetable;
-  @override bool get isSaving => _isSaving;
-  @override set isSaving(bool v) => _isSaving = v;
-  @override bool get hasUnsavedChanges => _hasUnsavedChanges;
-  @override set hasUnsavedChanges(bool v) => _hasUnsavedChanges = v;
-  @override GlobalKey get timetableKey => _timetableKey;
-  @override TimetableService get timetableService => _timetableService;
-  @override AuthService get authService => _authService;
-  @override PageLeaveWarningService get pageLeaveWarning => _pageLeaveWarning;
-  @override UserSettingsService get userSettingsService => _userSettingsService;
-  @override void onUnsavedChangesChanged(bool value) {}
-  @override List<Course> get filteredCourses => _filteredCourses;
-  @override set filteredCourses(List<Course> v) => _filteredCourses = v;
-  @override void setCurrentTimetable(Timetable tt) => _timetable = tt;
+  bool get _isStandalone => widget.timetable == null;
+
+  @override
+  Timetable? get currentTimetable => _timetable;
+  @override
+  bool get isSaving => _isSaving;
+  @override
+  set isSaving(bool v) => _isSaving = v;
+  @override
+  bool get hasUnsavedChanges => _hasUnsavedChanges;
+  @override
+  set hasUnsavedChanges(bool v) => _hasUnsavedChanges = v;
+  @override
+  GlobalKey get timetableKey => _timetableKey;
+  @override
+  TimetableService get timetableService => _timetableService;
+  @override
+  AuthService get authService => _authService;
+  @override
+  PageLeaveWarningService get pageLeaveWarning => _pageLeaveWarning;
+  @override
+  UserSettingsService get userSettingsService => _userSettingsService;
+  @override
+  void onUnsavedChangesChanged(bool value) =>
+      widget.onUnsavedChangesChanged?.call(value);
+  @override
+  List<Course> get filteredCourses => _filteredCourses;
+  @override
+  set filteredCourses(List<Course> v) => _filteredCourses = v;
+  @override
+  void setCurrentTimetable(Timetable tt) => _timetable = tt;
 
   @override
   void initState() {
     super.initState();
-    _loadTimetable();
-    initializeUserSettings();
-    _campusSubscription = CampusService.campusChangeStream.listen((_) {
+    if (_isStandalone) {
       _loadTimetable();
+      _campusSubscription = CampusService.campusChangeStream.listen((_) {
+        _loadTimetable();
+      });
+    } else {
+      _timetable = widget.timetable;
+      _filteredCourses = _timetable!.availableCourses;
+      _isLoading = false;
+    }
+    initializeUserSettings();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 400), () {
+        if (mounted) TutorialService().showEditorTutorial(context);
+      });
     });
   }
 
@@ -85,14 +126,43 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
   }
 
   @override
-  void onCampusChanged(Campus campus) {
+  void onCampusChanged(Campus campus) async {
     CourseDataService().clearCache();
     CoursesMasterService().clear();
     CoursesMasterService().loadForCampus();
-    _loadTimetable();
-    ToastService.showInfo(
-      'Switched to ${CampusService.getCampusDisplayName(campus)} campus',
-    );
+
+    if (_isStandalone) {
+      _loadTimetable();
+      ToastService.showInfo(
+        'Switched to ${CampusService.getCampusDisplayName(campus)} campus',
+      );
+    } else {
+      try {
+        final courseDataService = CourseDataService();
+        final newCourses = await courseDataService.fetchCourses();
+        setState(() {
+          _timetable = Timetable(
+            id: _timetable!.id,
+            name: _timetable!.name,
+            createdAt: _timetable!.createdAt,
+            updatedAt: DateTime.now(),
+            campus: campus,
+            availableCourses: newCourses,
+            selectedSections: [],
+            clashWarnings: [],
+          );
+          _filteredCourses = newCourses;
+          _hasUnsavedChanges = true;
+        });
+        widget.onUnsavedChangesChanged?.call(true);
+        _pageLeaveWarning.enableWarning(true);
+        ToastService.showInfo(
+          'Switched to ${CampusService.getCampusDisplayName(campus)} campus. Timetable cleared.',
+        );
+      } catch (e) {
+        ToastService.showError('Error switching campus: $e');
+      }
+    }
   }
 
   Future<void> _loadTimetable() async {
@@ -103,13 +173,6 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
         _filteredCourses = timetable.availableCourses;
         _isLoading = false;
       });
-      if (mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          Future.delayed(const Duration(milliseconds: 400), () {
-            if (mounted) TutorialService().showEditorTutorial(context);
-          });
-        });
-      }
     } catch (e) {
       setState(() => _isLoading = false);
       String errorMessage = 'Error loading timetable: $e';
@@ -164,117 +227,22 @@ class _HomeScreenState extends State<HomeScreen> with TimetableEditorMixin<HomeS
           onHorizontalDragUpdate: (_) {},
           child: wrapWithKeyboardShortcuts(Scaffold(
             appBar: AppBar(
-              title: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Image.asset('images/full_logo_bg.png', height: 32, fit: BoxFit.contain),
-                ],
-              ),
-              actions: buildCommonActions(),
-            ),
-            body: buildBodyLayout(isWideScreen),
-            floatingActionButton: buildFABs(isWideScreen),
-          )),
-        );
-      },
-    );
-  }
-}
-
-class _HomeScreenWithTimetableState extends State<HomeScreenWithTimetable> with TimetableEditorMixin<HomeScreenWithTimetable> {
-  final TimetableService _timetableService = TimetableService();
-  final AuthService _authService = AuthService();
-  final PageLeaveWarningService _pageLeaveWarning = PageLeaveWarningService();
-  final UserSettingsService _userSettingsService = UserSettingsService();
-  final GlobalKey _timetableKey = GlobalKey();
-  late Timetable _timetable;
-  List<Course> _filteredCourses = [];
-  bool _hasUnsavedChanges = false;
-  bool _isSaving = false;
-
-  @override Timetable? get currentTimetable => _timetable;
-  @override bool get isSaving => _isSaving;
-  @override set isSaving(bool v) => _isSaving = v;
-  @override bool get hasUnsavedChanges => _hasUnsavedChanges;
-  @override set hasUnsavedChanges(bool v) => _hasUnsavedChanges = v;
-  @override GlobalKey get timetableKey => _timetableKey;
-  @override TimetableService get timetableService => _timetableService;
-  @override AuthService get authService => _authService;
-  @override PageLeaveWarningService get pageLeaveWarning => _pageLeaveWarning;
-  @override UserSettingsService get userSettingsService => _userSettingsService;
-  @override void onUnsavedChangesChanged(bool value) => widget.onUnsavedChangesChanged?.call(value);
-  @override List<Course> get filteredCourses => _filteredCourses;
-  @override set filteredCourses(List<Course> v) => _filteredCourses = v;
-  @override void setCurrentTimetable(Timetable tt) => _timetable = tt;
-
-  @override
-  void initState() {
-    super.initState();
-    _timetable = widget.timetable;
-    _filteredCourses = _timetable.availableCourses;
-    initializeUserSettings();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 400), () {
-        if (mounted) TutorialService().showEditorTutorial(context);
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    disposeSavedIndicator();
-    super.dispose();
-  }
-
-  @override
-  void onCampusChanged(Campus campus) async {
-    CourseDataService().clearCache();
-    CoursesMasterService().clear();
-    CoursesMasterService().loadForCampus();
-    try {
-      final courseDataService = CourseDataService();
-      final newCourses = await courseDataService.fetchCourses();
-      setState(() {
-        _timetable = Timetable(
-          id: _timetable.id,
-          name: _timetable.name,
-          createdAt: _timetable.createdAt,
-          updatedAt: DateTime.now(),
-          campus: campus,
-          availableCourses: newCourses,
-          selectedSections: [],
-          clashWarnings: [],
-        );
-        _filteredCourses = newCourses;
-        _hasUnsavedChanges = true;
-      });
-      widget.onUnsavedChangesChanged?.call(true);
-      _pageLeaveWarning.enableWarning(true);
-      ToastService.showInfo(
-        'Switched to ${CampusService.getCampusDisplayName(campus)} campus. Timetable cleared.',
-      );
-    } catch (e) {
-      ToastService.showError('Error switching campus: $e');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: _userSettingsService,
-      builder: (context, child) {
-        final isWideScreen = ResponsiveService.isDesktop(context);
-
-        return GestureDetector(
-          onHorizontalDragUpdate: (_) {},
-          child: wrapWithKeyboardShortcuts(Scaffold(
-            appBar: AppBar(
-              title: Text(_timetable.name),
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => Navigator.of(context).pop(),
-                tooltip: 'Back',
-              ),
+              title: _isStandalone
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset('images/full_logo_bg.png',
+                            height: 32, fit: BoxFit.contain),
+                      ],
+                    )
+                  : Text(_timetable!.name),
+              leading: _isStandalone
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => Navigator.of(context).pop(),
+                      tooltip: 'Back',
+                    ),
               actions: buildCommonActions(),
             ),
             body: buildBodyLayout(isWideScreen),

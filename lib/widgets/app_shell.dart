@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/data/auth_service.dart';
+import '../services/data/cgpa_service.dart';
 import '../services/data/course_announcement_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
@@ -43,6 +44,11 @@ class _AppShellState extends State<AppShell> {
     super.initState();
     _currentScreen = widget.initialScreen;
     _visitedScreens.add(_currentScreen);
+    if (AuthService().isAuthenticated) {
+      Future.delayed(const Duration(seconds: 2), () {
+        CGPAService().prefetch();
+      });
+    }
   }
 
   void _onScreenSelected(DrawerScreen screen) {

@@ -2,12 +2,6 @@ import 'course.dart';
 import '../services/data/campus_service.dart';
 import '../utils/datetime_utils.dart';
 
-/// Legacy timetable model that embeds the full course catalog alongside the
-/// user's section selections. Persisted to Firestore and local storage.
-///
-/// See [NormalizedTimetable] for the newer, lighter representation that stores
-/// only [SectionReference]s. Bridge via `toLegacyTimetable` /
-/// `fromLegacyTimetable`.
 class Timetable {
   final String id;
   final String name;
@@ -48,6 +42,20 @@ class Timetable {
       'updatedAt': updatedAt.toIso8601String(),
       'campus': CampusService.getCampusCode(campus),
       'availableCourses': availableCourses.map((c) => c.toJson()).toList(),
+      'selectedSections': selectedSections.map((s) => s.toJson()).toList(),
+      'clashWarnings': clashWarnings.map((w) => w.toJson()).toList(),
+      if (shareId != null) 'shareId': shareId,
+      if (projectCount > 0) 'projectCount': projectCount,
+    };
+  }
+
+  Map<String, dynamic> toFirestoreJson() {
+    return {
+      'id': id,
+      'name': name,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+      'campus': CampusService.getCampusCode(campus),
       'selectedSections': selectedSections.map((s) => s.toJson()).toList(),
       'clashWarnings': clashWarnings.map((w) => w.toJson()).toList(),
       if (shareId != null) 'shareId': shareId,

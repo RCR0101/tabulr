@@ -64,6 +64,7 @@ class CGPAService {
     String semesterName,
     SemesterData semesterData,
   ) async {
+    invalidateCache();
     try {
       final user = _authService.currentUser;
       if (user == null || _authService.userDocId == null) {
@@ -99,6 +100,7 @@ class CGPAService {
   }
 
   Future<bool> saveAllSemesters(Map<String, SemesterData> semesters) async {
+    invalidateCache();
     try {
       final user = _authService.currentUser;
       if (user == null || _authService.userDocId == null) return false;
@@ -170,7 +172,17 @@ class CGPAService {
     }
   }
 
+  CGPAData? _cachedData;
+
+  void invalidateCache() => _cachedData = null;
+
+  Future<void> prefetch() async {
+    if (_cachedData != null) return;
+    _cachedData = await loadAllCGPAData();
+  }
+
   Future<CGPAData> loadAllCGPAData() async {
+    if (_cachedData != null) return _cachedData!;
     try {
       final user = _authService.currentUser;
       if (user == null || _authService.userDocId == null) {
@@ -235,7 +247,8 @@ class CGPAService {
         'totalDocuments': snapshot.docs.length,
       });
       
-      return CGPAData(semesters: semesters);
+      _cachedData = CGPAData(semesters: semesters);
+      return _cachedData!;
     } catch (e) {
       SecureLogger.error('CGPA', 'Failed to load all CGPA data', e);
       return CGPAData();
@@ -244,6 +257,7 @@ class CGPAService {
 
   // Delete semester data
   Future<bool> deleteSemesterData(String semesterName) async {
+    invalidateCache();
     try {
       final user = _authService.currentUser;
       if (user == null || _authService.userDocId == null) {

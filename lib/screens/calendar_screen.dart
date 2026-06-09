@@ -16,6 +16,7 @@ import '../services/data/config_service.dart';
 import '../services/data/campus_service.dart';
 import '../services/data/course_data_service.dart';
 import '../services/ui/toast_service.dart';
+import '../models/calendar_event.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
@@ -24,111 +25,6 @@ import '../services/ui/tutorial_service.dart';
 import '../widgets/command_palette.dart';
 import '../widgets/app_drawer.dart';
 
-
-int _timeToSlotHour(TimeOfDay t) => t.hour - 7;
-
-int _slotSpanFromTimes(TimeOfDay start, TimeOfDay end) {
-  final startSlot = _timeToSlotHour(start);
-  final endSlot = _timeToSlotHour(end);
-  return (endSlot - startSlot).clamp(1, 12);
-}
-
-String _dayFullName(DayOfWeek day) {
-  const names = {
-    DayOfWeek.M: 'Monday', DayOfWeek.T: 'Tuesday', DayOfWeek.W: 'Wednesday',
-    DayOfWeek.Th: 'Thursday', DayOfWeek.F: 'Friday', DayOfWeek.S: 'Saturday',
-  };
-  return names[day] ?? day.name;
-}
-
-class CalendarEvent {
-  final String id;
-  final String title;
-  final String? description;
-  final String type; // 'prof_meeting', 'custom'
-  final String? professorId;
-  final String? professorName;
-  final DayOfWeek day;
-  final int hour;
-  final int durationHours;
-  final TimeOfDay? startTime;
-  final TimeOfDay? endTime;
-
-  CalendarEvent({
-    required this.id,
-    required this.title,
-    this.description,
-    required this.type,
-    this.professorId,
-    this.professorName,
-    required this.day,
-    required this.hour,
-    this.durationHours = 1,
-    this.startTime,
-    this.endTime,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'description': description,
-        'type': type,
-        'professorId': professorId,
-        'professorName': professorName,
-        'day': day.toString(),
-        'hour': hour,
-        'durationHours': durationHours,
-        if (startTime != null) 'startTimeHour': startTime!.hour,
-        if (startTime != null) 'startTimeMinute': startTime!.minute,
-        if (endTime != null) 'endTimeHour': endTime!.hour,
-        if (endTime != null) 'endTimeMinute': endTime!.minute,
-      };
-
-  factory CalendarEvent.fromJson(Map<String, dynamic> json) {
-    TimeOfDay? start;
-    TimeOfDay? end;
-    if (json['startTimeHour'] != null) {
-      start = TimeOfDay(hour: json['startTimeHour'], minute: json['startTimeMinute'] ?? 0);
-    }
-    if (json['endTimeHour'] != null) {
-      end = TimeOfDay(hour: json['endTimeHour'], minute: json['endTimeMinute'] ?? 0);
-    }
-    return CalendarEvent(
-      id: json['id'] ?? '',
-      title: json['title'] ?? '',
-      description: json['description'],
-      type: json['type'] ?? 'custom',
-      professorId: json['professorId'],
-      professorName: json['professorName'],
-      day: DayOfWeek.values.firstWhere(
-        (e) => e.toString() == json['day'],
-        orElse: () => DayOfWeek.M,
-      ),
-      hour: json['hour'] ?? 1,
-      durationHours: json['durationHours'] ?? 1,
-      startTime: start,
-      endTime: end,
-    );
-  }
-
-  List<int> get occupiedHours =>
-      List.generate(durationHours, (i) => hour + i);
-
-  String get timeRangeLabel {
-    if (startTime != null && endTime != null) {
-      return '${_formatTime(startTime!)} – ${_formatTime(endTime!)}';
-    }
-    final slotStart = TimeSlotInfo.hourSlotNames[hour] ?? '';
-    return slotStart.isNotEmpty ? slotStart : 'Hour $hour';
-  }
-
-  static String _formatTime(TimeOfDay t) {
-    final h = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
-    final m = t.minute.toString().padLeft(2, '0');
-    final p = t.hour < 12 ? 'AM' : 'PM';
-    return '$h:$m $p';
-  }
-}
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -2130,8 +2026,8 @@ class _AddEventDialogState extends State<_AddEventDialog> {
   }
 
   String? _clashReason() {
-    final startSlot = _timeToSlotHour(_startTime);
-    final span = _slotSpanFromTimes(_startTime, _endTime);
+    final startSlot = timeToSlotHour(_startTime);
+    final span = slotSpanFromTimes(_startTime, _endTime);
     final hours = List.generate(span, (i) => startSlot + i);
 
     // Check against timetable
@@ -2400,8 +2296,8 @@ class _AddEventDialogState extends State<_AddEventDialog> {
                       _startTime.hour * 60 + _startTime.minute)
               ? null
               : () {
-                  final startSlot = _timeToSlotHour(_startTime);
-                  final span = _slotSpanFromTimes(_startTime, _endTime);
+                  final startSlot = timeToSlotHour(_startTime);
+                  final span = slotSpanFromTimes(_startTime, _endTime);
                   final event = CalendarEvent(
                     id: DateTime.now().millisecondsSinceEpoch.toString(),
                     title: _titleController.text.trim(),
@@ -2441,7 +2337,7 @@ class _AddEventDialogState extends State<_AddEventDialog> {
             Icon(Icons.check_circle, color: AppDesign.success(context), size: 18),
             const SizedBox(width: AppDesign.spacingSm),
             Text(
-              '${prof.name} has no classes on ${_dayFullName(_selectedDay)}',
+              '${prof.name} has no classes on ${dayFullName(_selectedDay)}',
               style: TextStyle(fontSize: 12, color: AppDesign.success(context)),
             ),
           ],
@@ -2459,7 +2355,7 @@ class _AddEventDialogState extends State<_AddEventDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${prof.name}\'s classes on ${_dayFullName(_selectedDay)}:',
+            '${prof.name}\'s classes on ${dayFullName(_selectedDay)}:',
             style: theme.textTheme.labelMedium
                 ?.copyWith(fontWeight: FontWeight.w600),
           ),
