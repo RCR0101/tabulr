@@ -37,6 +37,8 @@ class ExpandPageRoute<T> extends PageRouteBuilder<T> {
   final Color sourceColor;
   final BorderRadius sourceBorderRadius;
 
+  static const _expandDuration = Duration(milliseconds: 450);
+
   ExpandPageRoute({
     required this.page,
     required this.sourceRect,
@@ -44,8 +46,8 @@ class ExpandPageRoute<T> extends PageRouteBuilder<T> {
     this.sourceBorderRadius = const BorderRadius.all(Radius.circular(12)),
   }) : super(
           pageBuilder: (context, animation, secondaryAnimation) => page,
-          transitionDuration: AppDesign.motionStandard,
-          reverseTransitionDuration: AppDesign.motionStandard,
+          transitionDuration: _expandDuration,
+          reverseTransitionDuration: _expandDuration,
           opaque: false,
           barrierColor: Colors.transparent,
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -66,10 +68,11 @@ class ExpandPageRoute<T> extends PageRouteBuilder<T> {
 
             return AnimatedBuilder(
               animation: curved,
-              builder: (context, _) {
+              child: child,
+              builder: (context, cachedChild) {
                 final rect = rectTween.evaluate(curved)!;
                 final radius = borderTween.evaluate(curved)!;
-                final fadeIn = Curves.easeIn.transform(curved.value.clamp(0.3, 1.0).remap(0.3, 1.0));
+                final fadeIn = Curves.easeIn.transform(curved.value.clamp(0.15, 1.0).remap(0.15, 1.0));
 
                 return Stack(
                   children: [
@@ -77,11 +80,11 @@ class ExpandPageRoute<T> extends PageRouteBuilder<T> {
                       rect: rect,
                       child: ClipRRect(
                         borderRadius: radius,
-                        child: Container(
+                        child: ColoredBox(
                           color: sourceColor,
                           child: Opacity(
                             opacity: fadeIn,
-                            child: child,
+                            child: cachedChild,
                           ),
                         ),
                       ),

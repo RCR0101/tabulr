@@ -11,6 +11,8 @@ import 'widgets/app_shell.dart';
 import 'services/data/auth_service.dart';
 import 'services/ui/theme_service.dart' as theme_service;
 import 'services/data/campus_service.dart';
+import 'models/course.dart';
+import 'services/data/course_data_service.dart';
 import 'services/data/courses_master_service.dart';
 import 'services/data/preferences_service.dart';
 import 'services/data/user_settings_service.dart';
@@ -53,6 +55,10 @@ void main() async {
     }),
     PreferencesService().initialize().catchError((e) {
       SecureLogger.error('STARTUP', 'Failed to initialize preferences', e);
+    }),
+    CourseDataService().fetchCourses().catchError((e) {
+      SecureLogger.error('STARTUP', 'Failed to prefetch courses', e);
+      return <Course>[];
     }),
   ]));
 

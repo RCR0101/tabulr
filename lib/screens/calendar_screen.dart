@@ -59,7 +59,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   // Scrapped (dismissed) slots: keys are "day-hour" for timetable, event IDs for custom
   Set<String> _scrappedForWeek = {};
-  Timer? _timeIndicatorTimer;
+  // Time indicator timer removed — each _TimeIndicatorLine owns its own.
 
   DateTime _weekStart = _mondayOf(DateTime.now());
   int _mobileDayIndex = DateTime.now().weekday - 1; // 0=Mon, 5=Sat
@@ -78,9 +78,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void initState() {
     super.initState();
     _loadData();
-    _timeIndicatorTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (mounted) setState(() {});
-    });
     CommandPaletteActions.register(DrawerScreen.calendar, () => [
       CommandPaletteEntry(
         label: 'Add Event',
@@ -94,7 +91,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   void dispose() {
-    _timeIndicatorTimer?.cancel();
     _announcementSub?.cancel();
     CommandPaletteActions.unregister(DrawerScreen.calendar);
     super.dispose();
@@ -1433,12 +1429,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         final isToday = days[dayIdx].year == now.year &&
                             days[dayIdx].month == now.month &&
                             days[dayIdx].day == now.day;
-                        // Hour 1 = 8:00 AM, so offset = (nowHour - 8) + min/60
-                        final nowFractional =
-                            (now.hour - 8) + now.minute / 60.0;
-                        final nowInRange = nowFractional >= 0 &&
-                            nowFractional <=
-                                (endHour - startHour + 1).toDouble();
 
                         return SizedBox(
                           width: dayWidth,
@@ -1495,44 +1485,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   ),
                                 );
                               }),
-                              if (isToday && nowInRange)
-                                Positioned(
-                                  top: nowFractional * hourHeight - 1,
-                                  left: 0,
-                                  right: 0,
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 10,
-                                        height: 10,
-                                        decoration: BoxDecoration(
-                                          color: scheme.error,
-                                          shape: BoxShape.circle,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: scheme.error.withValues(alpha: 0.3),
-                                              blurRadius: 4,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Container(
-                                          height: 2,
-                                          decoration: BoxDecoration(
-                                            color: scheme.error,
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: scheme.error.withValues(alpha: 0.2),
-                                                blurRadius: 3,
-                                                offset: const Offset(0, 1),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                              if (isToday)
+                                _TimeIndicatorLine(
+                                  startHour: startHour,
+                                  endHour: endHour,
+                                  hourHeight: hourHeight,
                                 ),
                             ],
                           ),
@@ -2378,6 +2335,87 @@ class _AddEventDialogState extends State<_AddEventDialog> {
 enum _PeriodType { classes, midsem, endsem, beforeSemester, afterSemester }
 
 enum _ItemType { classSlot, exam, announcement, customEvent }
+
+class _TimeIndicatorLine extends StatefulWidget {
+  final int startHour;
+  final int endHour;
+  final double hourHeight;
+
+  const _TimeIndicatorLine({
+    required this.startHour,
+    required this.endHour,
+    required this.hourHeight,
+  });
+
+  @override
+  State<_TimeIndicatorLine> createState() => _TimeIndicatorLineState();
+}
+
+class _TimeIndicatorLineState extends State<_TimeIndicatorLine> {
+  late Timer _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final fractional = (now.hour - 8) + now.minute / 60.0;
+    final range = (widget.endHour - widget.startHour + 1).toDouble();
+    if (fractional < 0 || fractional > range) return const SizedBox.shrink();
+
+    final scheme = Theme.of(context).colorScheme;
+    return Positioned(
+      top: fractional * widget.hourHeight - 1,
+      left: 0,
+      right: 0,
+      child: Row(
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: scheme.error,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: scheme.error.withValues(alpha: 0.3),
+                  blurRadius: 4,
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Container(
+              height: 2,
+              decoration: BoxDecoration(
+                color: scheme.error,
+                boxShadow: [
+                  BoxShadow(
+                    color: scheme.error.withValues(alpha: 0.2),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _CalendarItem {
   final _ItemType type;

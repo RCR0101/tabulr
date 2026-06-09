@@ -22,8 +22,8 @@ class CourseDataService {
   List<Course>? _cachedCourses;
   DateTime? _lastFetchTime;
   Campus? _cachedCampus;
-  String? _cachedVersion; // Track the version of cached data
-  bool _isLoadingAllCourses = false;
+  String? _cachedVersion;
+  Completer<List<Course>>? _loadCompleter;
 
   /// Fetch courses with pagination support
   Future<List<Course>> fetchCoursesWithPagination({
@@ -75,16 +75,12 @@ class CourseDataService {
         return _cachedCourses!;
       }
       
-      if (_isLoadingAllCourses) {
-        // If already loading, wait for completion by checking cache periodically
-        while (_isLoadingAllCourses) {
-          await Future.delayed(const Duration(milliseconds: 100));
-        }
-        if (_cachedCourses != null) return _cachedCourses!;
+      if (_loadCompleter != null) {
+        return _loadCompleter!.future;
       }
-      
-      _isLoadingAllCourses = true;
-      
+
+      _loadCompleter = Completer<List<Course>>();
+
       try {
         final allCourses = <Course>[];
         DocumentSnapshot? lastDocument;
@@ -132,13 +128,20 @@ class CourseDataService {
         _lastFetchTime = DateTime.now();
         _cachedCampus = currentCampus;
         _cachedVersion = currentVersion;
-        
+
+        _loadCompleter!.complete(allCourses);
+        _loadCompleter = null;
         return allCourses;
-      } finally {
-        _isLoadingAllCourses = false;
+      } catch (e) {
+        _loadCompleter!.completeError(e);
+        _loadCompleter = null;
+        rethrow;
       }
     } catch (e) {
-      _isLoadingAllCourses = false;
+      if (_loadCompleter != null && !_loadCompleter!.isCompleted) {
+        _loadCompleter!.completeError(e);
+        _loadCompleter = null;
+      }
       
       // If it's a network/connection error, provide a clearer message
       if (e.toString().contains('PERMISSION_DENIED')) {

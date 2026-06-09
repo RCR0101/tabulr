@@ -71,11 +71,8 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   }
 
   Future<void> _initializeAndLoadData() async {
-    await Future.wait([
-      _userSettingsService.initializeSettings(),
-      _loadTimetables(),
-      _loadArchivedSemesters(),
-    ]);
+    await _loadTimetables();
+    _loadArchivedSemesters();
     if (mounted) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Future.delayed(const Duration(milliseconds: 400), () {
