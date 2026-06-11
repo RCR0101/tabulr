@@ -58,7 +58,7 @@ class PerformanceSheetParser {
   static const _validTags = GradeConstants.electiveTags;
 
   // Course code: 2-4 uppercase letters + 1-3 spaces + F/G + 3 digits
-  static final _courseCodePattern = RegExp(r'([A-Z]{2,4})\s{1,3}([FG]\d{3})');
+  static final _courseCodePattern = RegExp(r'([A-Z]{2,4})\s{1,3}([FGK]\d{3}(?:-\d)?)');
 
   static final _semHeaderPattern = RegExp(
     r'(FIRST|SECOND)\s+SEMESTER\s+(\d{4})\s*-\s*(\d{4})',
