@@ -308,6 +308,10 @@ class CGPACalculatorController extends ChangeNotifier {
         return '3 Grade Points';
       case 'E':
         return '2 Grade Points';
+      case 'SA':
+        return 'Satisfactory';
+      case 'US':
+        return 'Unsatisfactory';
       case 'GD':
         return 'Good';
       case 'PR':

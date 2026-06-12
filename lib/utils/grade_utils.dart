@@ -20,6 +20,10 @@ Color getGradeColor(String grade, {Brightness brightness = Brightness.light, Col
       case 'D-':
       case 'E':
         return scheme.error;
+      case 'SA':
+        return scheme.primary;
+      case 'US':
+        return scheme.error;
       case 'GD':
         return scheme.primary.withValues(alpha: 0.8);
       case 'PR':
