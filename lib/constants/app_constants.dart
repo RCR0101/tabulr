@@ -90,17 +90,17 @@ abstract final class CampusConstants {
 
 abstract final class GradeConstants {
   static const List<String> normal = [
-    'A', 'A-', 'B', 'B-', 'C', 'C-', 'D', 'D-', 'E',
+    'A', 'A-', 'B', 'B-', 'C', 'C-', 'D', 'D-', 'E', 'SA', 'US'
   ];
   static const List<double> points = [
     10.0, 9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0,
   ];
   static const List<String> normalWithNc = [
-    'A', 'A-', 'B', 'B-', 'C', 'C-', 'D', 'D-', 'E', 'NC',
+    'A', 'A-', 'B', 'B-', 'C', 'C-', 'D', 'D-', 'E', 'SA', 'US', 'NC',
   ];
   static const List<String> atc = ['GD', 'PR', 'NC'];
   static const Set<String> allValid = {
-    'A', 'A-', 'B', 'B-', 'C', 'C-', 'D', 'D-', 'E', 'NC', 'GD', 'PR',
+    'A', 'A-', 'B', 'B-', 'C', 'C-', 'D', 'D-', 'E', 'SA', 'US', 'NC', 'GD', 'PR',
   };
   static const Set<String> electiveTags = {'HEL', 'DEL', 'EL'};
 }
