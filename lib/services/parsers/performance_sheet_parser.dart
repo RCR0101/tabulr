@@ -304,7 +304,7 @@ class PerformanceSheetParser {
         // Single letter grade
         endTokens.insert(0, _TokenType(tok, isGrade: true));
         idx--;
-      } else if (RegExp(r'^\d+$').hasMatch(tok)) {
+      } else if (RegExp(r'^\d+(\.\d+)?$').hasMatch(tok)) {
         // Hit the units block — stop
         break;
       } else {
