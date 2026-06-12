@@ -400,7 +400,7 @@ class PerformanceSheetParser {
 
       for (final entry in semester.courses) {
         final lookup = courseMap[entry.courseCode.toUpperCase()];
-        final isATC = entry.grade == 'GD' || entry.grade == 'PR';
+        final isATC = entry.grade == 'GD' || entry.grade == 'PR' || entry.grade == 'SA' || entry.grade == 'US';
 
         courses.add(CourseEntry(
           courseCode: entry.courseCode,

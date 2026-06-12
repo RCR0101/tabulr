@@ -39,7 +39,7 @@ class CourseEntry {
       case 'E':
         return 2.0;
       case 'SA':
-        return 10.0;
+        return 0.0;
       case 'US':
         return 0.0;
       case 'NC':
