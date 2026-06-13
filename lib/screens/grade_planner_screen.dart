@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/cgpa_data.dart';
+import '../models/course_type.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
@@ -23,8 +24,8 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
   bool _isCalculating = false;
 
   // Grade system
-  static const grades = GradeConstants.normal;
-  static const gradePoints = GradeConstants.points;
+  static final grades = GradeConstants.normal;
+  static final gradePoints = GradeConstants.points;
 
   List<String> get _semestersWithCourses {
     return widget.cgpaData.semesters.entries
@@ -79,7 +80,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
         if (semesterData != null) {
           // Only include Normal courses (not ATC)
           _rankedCourses = semesterData.courses
-              .where((c) => c.courseType == 'Normal')
+              .where((c) => c.courseType == CourseType.normal)
               .map((c) => c.copyWith())
               .toList();
         }

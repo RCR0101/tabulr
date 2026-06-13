@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/cgpa_data.dart';
+import '../models/course_type.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
@@ -22,8 +23,8 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
   List<_BoostResult> _results = [];
   bool _isCalculating = false;
 
-  static const _grades = GradeConstants.normal;
-  static const _gradePoints = GradeConstants.points;
+  static final _grades = GradeConstants.normal;
+  static final _gradePoints = GradeConstants.points;
 
   double get _currentCGPA => widget.cgpaData.cgpa;
   double get _totalCredits => widget.cgpaData.effectiveTotalCredits;
@@ -48,7 +49,7 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
     final latest = <String, _CandidateInfo>{};
     for (final entry in widget.cgpaData.semesters.entries) {
       for (final course in entry.value.courses) {
-        if (course.courseType != 'Normal' ||
+        if (course.courseType != CourseType.normal ||
             course.grade == null ||
             course.grade!.isEmpty) {
           continue;
@@ -268,10 +269,7 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
     return null;
   }
 
-  double _gradeToPoints(String grade) {
-    final idx = _grades.indexOf(grade);
-    return idx >= 0 ? _gradePoints[idx] : 0.0;
-  }
+  double _gradeToPoints(String grade) => GradeConstants.pointsFor(grade);
 
   @override
   Widget build(BuildContext context) {
