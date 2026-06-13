@@ -13,7 +13,6 @@ import '../services/data/professor_service.dart';
 import '../services/data/auth_service.dart';
 import '../services/data/calendar_prefs_service.dart';
 import '../services/data/config_service.dart';
-import '../services/data/campus_service.dart';
 import '../services/data/course_data_service.dart';
 import '../services/ui/toast_service.dart';
 import '../models/calendar_event.dart';
@@ -609,7 +608,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
 
       // Map TimeSlot to grid hours using campus-specific times
-      final campusCode = CampusService.getCampusCode(_selectedTimetable!.campus);
+      final campusCode = _selectedTimetable!.campus.code;
       final examTimes = ExamSlotConstants.campusExamStartTimes[campusCode]
           ?? ExamSlotConstants.campusExamStartTimes['hyderabad']!;
       final examLabels = ExamSlotConstants.campusTimeSlotNames[campusCode]

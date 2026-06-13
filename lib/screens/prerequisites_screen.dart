@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/prerequisite.dart';
 import '../repositories/prerequisites_repository.dart';
+import '../services/data/courses_master_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/shimmer_loading.dart';
@@ -294,7 +295,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          course.displayName,
+                          CoursesMasterService().getTitle(course.courseCode),
                           style: theme.textTheme.bodyMedium,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -391,7 +392,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    course.displayName,
+                    CoursesMasterService().getTitle(course.courseCode),
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -504,7 +505,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
     Prerequisite prereq,
   ) {
     final prereqCode = prereq.courseCode;
-    final prereqTitle = prereq.displayName;
+    final prereqTitle = CoursesMasterService().getTitle(prereq.courseCode);
 
     final typeLower = prereq.type.toLowerCase();
     final isPrerequisite = typeLower == 'pre';

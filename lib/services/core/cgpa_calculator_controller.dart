@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../constants/app_constants.dart';
 import '../../models/cgpa_data.dart';
+import '../../models/course_type.dart';
 import '../../models/all_course.dart';
 import '../data/cgpa_service.dart';
 import '../data/course_guide_service.dart';
@@ -86,7 +87,7 @@ class CGPACalculatorController extends ChangeNotifier {
       courseCode: course.courseCode,
       courseTitle: course.courseTitle,
       credits: course.credits,
-      courseType: course.type,
+      courseType: CourseType.fromJson(course.type),
     );
 
     semester.courses.add(courseEntry);
@@ -288,40 +289,8 @@ class CGPACalculatorController extends ChangeNotifier {
     return importedCount;
   }
 
-  static String getGradeDescription(String grade) {
-    switch (grade) {
-      case 'A':
-        return '10 Grade Points';
-      case 'A-':
-        return '9 Grade Points';
-      case 'B':
-        return '8 Grade Points';
-      case 'B-':
-        return '7 Grade Points';
-      case 'C':
-        return '6 Grade Points';
-      case 'C-':
-        return '5 Grade Points';
-      case 'D':
-        return '4 Grade Points';
-      case 'D-':
-        return '3 Grade Points';
-      case 'E':
-        return '2 Grade Points';
-      case 'SA':
-        return 'Satisfactory';
-      case 'US':
-        return 'Unsatisfactory';
-      case 'GD':
-        return 'Good';
-      case 'PR':
-        return 'Poor';
-      case 'NC':
-        return 'Not Cleared';
-      default:
-        return '';
-    }
-  }
+  static String getGradeDescription(String grade) =>
+      GradeConstants.descriptionFor(grade);
 
   List<AllCourse> searchCourses(String pattern) {
     return _courses.searchCourses(_allCourses, pattern);

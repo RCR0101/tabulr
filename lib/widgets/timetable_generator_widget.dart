@@ -12,6 +12,11 @@ import '../utils/design_constants.dart';
 import 'common/app_dialog.dart';
 import 'common/app_button.dart';
 import 'generated_timetable_card.dart';
+import 'generator/time_avoidance_dialog.dart';
+import 'generator/lab_avoidance_dialog.dart';
+import 'generator/instructor_avoidance_dialog.dart';
+import 'generator/instructor_ranking_dialog.dart';
+import 'generator/weight_entry.dart';
 
 class TimetableGeneratorWidget extends StatefulWidget {
   final List<Course> availableCourses;
@@ -1546,7 +1551,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   Future<void> _addTimeAvoidance() async {
     final result = await showDialog<TimeAvoidance>(
       context: context,
-      builder: (context) => const _TimeAvoidanceDialog(),
+      builder: (context) => const TimeAvoidanceDialog(),
     );
 
     if (result != null && mounted) {
@@ -1559,7 +1564,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   Future<void> _addLabAvoidance() async {
     final result = await showDialog<LabAvoidance>(
       context: context,
-      builder: (context) => const _LabAvoidanceDialog(),
+      builder: (context) => const LabAvoidanceDialog(),
     );
 
     if (result != null && mounted) {
@@ -1644,7 +1649,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
 
     final result = await showDialog<List<String>>(
       context: context,
-      builder: (context) => _InstructorAvoidanceDialog(
+      builder: (context) => InstructorAvoidanceDialog(
         courseSectionInstructors: courseSectionInstructors,
         currentlyAvoided: _ctrl.avoidedInstructors,
       ),
@@ -1698,7 +1703,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
 
     final result = await showDialog<Map<String, InstructorRankings>>(
       context: context,
-      builder: (context) => _InstructorRankingDialog(
+      builder: (context) => InstructorRankingDialog(
         courseSectionInstructors: courseSectionInstructors,
         currentRankings: Map.from(_ctrl.instructorRankings),
       ),
@@ -1811,23 +1816,23 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                     color: AppDesign.danger(context),
                     icon: Icons.remove_circle_outline,
                     weights: [
-                      _WeightEntry('Max hours/day exceeded', _ctrl.scoringWeights.maxHoursPerDayPenalty, 15, 0, 25,
+                      WeightEntry('Max hours/day exceeded', _ctrl.scoringWeights.maxHoursPerDayPenalty, 15, 0, 25,
                         (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(maxHoursPerDayPenalty: v))),
-                      _WeightEntry('Avoid time conflicts', _ctrl.scoringWeights.avoidTimesPenalty, 15, 0, 25,
+                      WeightEntry('Avoid time conflicts', _ctrl.scoringWeights.avoidTimesPenalty, 15, 0, 25,
                         (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(avoidTimesPenalty: v))),
-                      _WeightEntry('Lab time conflicts', _ctrl.scoringWeights.avoidLabsPenalty, 10, 0, 20,
+                      WeightEntry('Lab time conflicts', _ctrl.scoringWeights.avoidLabsPenalty, 10, 0, 20,
                         (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(avoidLabsPenalty: v))),
-                      _WeightEntry('Avoided instructors', _ctrl.scoringWeights.avoidedInstructorsPenalty, 15, 0, 25,
+                      WeightEntry('Avoided instructors', _ctrl.scoringWeights.avoidedInstructorsPenalty, 15, 0, 25,
                         (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(avoidedInstructorsPenalty: v))),
-                      _WeightEntry('Back-to-back classes', _ctrl.scoringWeights.backToBackPenalty, 8, 0, 15,
+                      WeightEntry('Back-to-back classes', _ctrl.scoringWeights.backToBackPenalty, 8, 0, 15,
                         (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(backToBackPenalty: v))),
-                      _WeightEntry('Gaps between classes', _ctrl.scoringWeights.gapsPenalty, 8, 0, 15,
+                      WeightEntry('Gaps between classes', _ctrl.scoringWeights.gapsPenalty, 8, 0, 15,
                         (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(gapsPenalty: v))),
-                      _WeightEntry('Lunch break violation', _ctrl.scoringWeights.lunchBreakPenalty, 5, 0, 10,
+                      WeightEntry('Lunch break violation', _ctrl.scoringWeights.lunchBreakPenalty, 5, 0, 10,
                         (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(lunchBreakPenalty: v))),
-                      _WeightEntry('Time-of-day mismatch', _ctrl.scoringWeights.timeOfDayPenalty, 7, 0, 15,
+                      WeightEntry('Time-of-day mismatch', _ctrl.scoringWeights.timeOfDayPenalty, 7, 0, 15,
                         (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(timeOfDayPenalty: v))),
-                      _WeightEntry('Exam spread (close exams)', _ctrl.scoringWeights.examSpreadPenalty, 7, 0, 15,
+                      WeightEntry('Exam spread (close exams)', _ctrl.scoringWeights.examSpreadPenalty, 7, 0, 15,
                         (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(examSpreadPenalty: v))),
                     ],
                   ),
@@ -1838,15 +1843,15 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                     color: AppDesign.success(context),
                     icon: Icons.add_circle_outline,
                     weights: [
-                      _WeightEntry('Preferred instructors', _ctrl.scoringWeights.preferredInstructorsBonus, 2, 0, 5,
+                      WeightEntry('Preferred instructors', _ctrl.scoringWeights.preferredInstructorsBonus, 2, 0, 5,
                         (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(preferredInstructorsBonus: v))),
-                      _WeightEntry('Instructor rankings', _ctrl.scoringWeights.instructorRankingsBonus, 2, 0, 5,
+                      WeightEntry('Instructor rankings', _ctrl.scoringWeights.instructorRankingsBonus, 2, 0, 5,
                         (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(instructorRankingsBonus: v))),
-                      _WeightEntry('Free day / compact', _ctrl.scoringWeights.freeDayBonus, 3, 0, 8,
+                      WeightEntry('Free day / compact', _ctrl.scoringWeights.freeDayBonus, 3, 0, 8,
                         (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(freeDayBonus: v))),
-                      _WeightEntry('Exam slot preference', _ctrl.scoringWeights.examSlotBonus, 2, 0, 5,
+                      WeightEntry('Exam slot preference', _ctrl.scoringWeights.examSlotBonus, 2, 0, 5,
                         (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(examSlotBonus: v))),
-                      _WeightEntry('Optional courses fit', _ctrl.scoringWeights.optionalCoursesBonus, 3, 0, 8,
+                      WeightEntry('Optional courses fit', _ctrl.scoringWeights.optionalCoursesBonus, 3, 0, 8,
                         (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(optionalCoursesBonus: v))),
                     ],
                   ),
@@ -1863,7 +1868,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     required String subtitle,
     required Color color,
     required IconData icon,
-    required List<_WeightEntry> weights,
+    required List<WeightEntry> weights,
   }) {
     final scheme = Theme.of(context).colorScheme;
     return Column(
@@ -1884,7 +1889,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     );
   }
 
-  Widget _buildWeightRow(_WeightEntry entry, Color accentColor) {
+  Widget _buildWeightRow(WeightEntry entry, Color accentColor) {
     final scheme = Theme.of(context).colorScheme;
     final isDefault = entry.value == entry.defaultValue;
     return Padding(
@@ -2128,772 +2133,4 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       ],
     );
   }
-}
-
-class _TimeAvoidanceDialog extends StatefulWidget {
-  const _TimeAvoidanceDialog();
-
-  @override
-  State<_TimeAvoidanceDialog> createState() => _TimeAvoidanceDialogState();
-}
-
-class _TimeAvoidanceDialogState extends State<_TimeAvoidanceDialog> {
-  DayOfWeek? _selectedDay;
-  final List<int> _selectedHours = [];
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Add Time to Avoid'),
-      content: SizedBox(
-        width: 400,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            DropdownButtonFormField<DayOfWeek>(
-              decoration: const InputDecoration(labelText: 'Day'),
-              initialValue: _selectedDay,
-              items: DayOfWeek.values.map((day) => DropdownMenuItem(
-                value: day,
-                child: Text(day.name),
-              )).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedDay = value;
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-            const Text('Hours to avoid:'),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 200,
-              width: double.infinity,
-              child: GridView.builder(
-                shrinkWrap: true,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 5,
-                  childAspectRatio: 2,
-                  crossAxisSpacing: 4,
-                  mainAxisSpacing: 4,
-                ),
-                itemCount: 10,
-                itemBuilder: (context, index) {
-                  final hour = index + 1;
-                  final isSelected = _selectedHours.contains(hour);
-                  return FilterChip(
-                    label: Text(
-                      hour.toString(),
-                      style: TextStyle(fontSize: 10),
-                    ),
-                    tooltip: TimeSlotInfo.getHourSlotName(hour),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      setState(() {
-                        if (selected) {
-                          _selectedHours.add(hour);
-                        } else {
-                          _selectedHours.remove(hour);
-                        }
-                      });
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: _selectedDay != null && _selectedHours.isNotEmpty
-            ? () {
-                final avoidTime = TimeAvoidance(
-                  day: _selectedDay!,
-                  hours: [..._selectedHours],
-                );
-                Navigator.pop(context, avoidTime);
-              }
-            : null,
-          child: const Text('Add'),
-        ),
-      ],
-    );
-  }
-}
-
-class _LabAvoidanceDialog extends StatefulWidget {
-  const _LabAvoidanceDialog();
-
-  @override
-  State<_LabAvoidanceDialog> createState() => _LabAvoidanceDialogState();
-}
-
-class _LabAvoidanceDialogState extends State<_LabAvoidanceDialog> {
-  DayOfWeek? _selectedDay;
-  final List<int> _selectedHours = [];
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Add Lab Avoidance'),
-      content: SizedBox(
-        width: 400,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            DropdownButtonFormField<DayOfWeek>(
-              decoration: const InputDecoration(labelText: 'Day'),
-              initialValue: _selectedDay,
-              items: DayOfWeek.values.map((day) => DropdownMenuItem(
-                value: day,
-                child: Text(day.name),
-              )).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedDay = value;
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-            const Text('Hours to avoid labs:'),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 200,
-              width: double.infinity,
-              child: GridView.builder(
-                shrinkWrap: true,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 5,
-                  childAspectRatio: 2,
-                  crossAxisSpacing: 4,
-                  mainAxisSpacing: 4,
-                ),
-                itemCount: 10,
-                itemBuilder: (context, index) {
-                  final hour = index + 1;
-                  final isSelected = _selectedHours.contains(hour);
-                  return FilterChip(
-                    label: Text(
-                      hour.toString(),
-                      style: TextStyle(fontSize: 10),
-                    ),
-                    tooltip: TimeSlotInfo.getHourSlotName(hour),
-                    selected: isSelected,
-                    selectedColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
-                    checkmarkColor: Theme.of(context).colorScheme.error,
-                    onSelected: (selected) {
-                      setState(() {
-                        if (selected) {
-                          _selectedHours.add(hour);
-                        } else {
-                          _selectedHours.remove(hour);
-                        }
-                      });
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: _selectedDay != null && _selectedHours.isNotEmpty
-            ? () {
-                final avoidLab = LabAvoidance(
-                  day: _selectedDay!,
-                  hours: [..._selectedHours],
-                );
-                Navigator.pop(context, avoidLab);
-              }
-            : null,
-          child: const Text('Add'),
-        ),
-      ],
-    );
-  }
-}
-
-class _InstructorAvoidanceDialog extends StatefulWidget {
-  final Map<String, Map<String, List<String>>> courseSectionInstructors;
-  final List<String> currentlyAvoided;
-
-  const _InstructorAvoidanceDialog({
-    required this.courseSectionInstructors,
-    required this.currentlyAvoided,
-  });
-
-  @override
-  State<_InstructorAvoidanceDialog> createState() => _InstructorAvoidanceDialogState();
-}
-
-class _InstructorAvoidanceDialogState extends State<_InstructorAvoidanceDialog> {
-  final List<String> _selectedInstructors = [];
-  final Set<String> _expandedCourses = <String>{};
-
-  @override
-  void initState() {
-    super.initState();
-    // Expand all courses by default for better visibility
-    _expandedCourses.addAll(widget.courseSectionInstructors.keys);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Select Instructors to Avoid'),
-      content: SizedBox(
-        width: ResponsiveService.isMobile(context) ? double.infinity : 600,
-        height: MediaQuery.of(context).size.height * 0.5,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (widget.currentlyAvoided.isNotEmpty) ...[
-              Text(
-                'Currently avoiding: ${widget.currentlyAvoided.join(", ")}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context).colorScheme.error,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-            const Text('Select instructors by course:'),
-            const SizedBox(height: 8),
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Theme.of(context).colorScheme.outline),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: widget.courseSectionInstructors.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No instructors found in selected courses',
-                          style: TextStyle(fontStyle: FontStyle.italic),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(8),
-                        itemCount: widget.courseSectionInstructors.keys.length,
-                        itemBuilder: (context, index) {
-                          final courseCode = widget.courseSectionInstructors.keys.elementAt(index);
-                          final sectionInstructors = widget.courseSectionInstructors[courseCode]!;
-                          final isExpanded = _expandedCourses.contains(courseCode);
-
-                          // Count total instructors across all section types
-                          final totalInstructors = sectionInstructors.values
-                              .expand((instructors) => instructors)
-                              .toSet()
-                              .length;
-
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: Column(
-                              children: [
-                                ListTile(
-                                  title: Text(
-                                    courseCode,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    '$totalInstructors instructor${totalInstructors == 1 ? '' : 's'} across ${sectionInstructors.keys.length} section type${sectionInstructors.keys.length == 1 ? '' : 's'}',
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                  trailing: Icon(
-                                    isExpanded ? Icons.expand_less : Icons.expand_more,
-                                  ),
-                                  onTap: () {
-                                    setState(() {
-                                      if (isExpanded) {
-                                        _expandedCourses.remove(courseCode);
-                                      } else {
-                                        _expandedCourses.add(courseCode);
-                                      }
-                                    });
-                                  },
-                                ),
-                                if (isExpanded) ...[
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: sectionInstructors.entries.map((sectionEntry) {
-                                        final sectionType = sectionEntry.key;
-                                        final instructors = sectionEntry.value;
-
-                                        return Container(
-                                          margin: const EdgeInsets.only(bottom: 12),
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                '$sectionType (${instructors.length})',
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Theme.of(context).colorScheme.primary,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Wrap(
-                                                spacing: 6,
-                                                runSpacing: 4,
-                                                children: instructors.map((instructor) {
-                                                  // Create a unique key for section-specific selection
-                                                  final sectionSpecificKey = '$courseCode-$sectionType-$instructor';
-                                                  final isSelected = _selectedInstructors.contains(sectionSpecificKey);
-                                                  final isAlreadyAvoided = widget.currentlyAvoided.contains(instructor);
-
-                                                  return FilterChip(
-                                                    label: Text(
-                                                      instructor,
-                                                      style: TextStyle(
-                                                        fontSize: 10,
-                                                        color: isAlreadyAvoided
-                                                            ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)
-                                                            : null,
-                                                      ),
-                                                    ),
-                                                    selected: isSelected,
-                                                    selectedColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
-                                                    checkmarkColor: Theme.of(context).colorScheme.error,
-                                                    backgroundColor: isAlreadyAvoided
-                                                        ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.5)
-                                                        : null,
-                                                    onSelected: isAlreadyAvoided
-                                                        ? null
-                                                        : (selected) {
-                                                            setState(() {
-                                                              if (selected) {
-                                                                _selectedInstructors.add(sectionSpecificKey);
-                                                              } else {
-                                                                _selectedInstructors.remove(sectionSpecificKey);
-                                                              }
-                                                            });
-                                                          },
-                                                  );
-                                                }).toList(),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ),
-            if (_selectedInstructors.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Selected to avoid (${_selectedInstructors.length}):',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _selectedInstructors.map((key) {
-                        // Extract instructor name from section-specific key for display
-                        final parts = key.split('-');
-                        if (parts.length >= 3) {
-                          final instructor = parts.sublist(2).join('-');
-                          final courseCode = parts[0];
-                          final sectionType = parts[1];
-                          return '$instructor ($courseCode-$sectionType)';
-                        }
-                        return key;
-                      }).join(", "),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: _selectedInstructors.isNotEmpty
-              ? () => Navigator.pop(context, _selectedInstructors)
-              : null,
-          child: Text('Add ${_selectedInstructors.length} Instructor${_selectedInstructors.length == 1 ? '' : 's'}'),
-        ),
-      ],
-    );
-  }
-}
-
-class _InstructorRankingDialog extends StatefulWidget {
-  final Map<String, Map<String, List<String>>> courseSectionInstructors;
-  final Map<String, InstructorRankings> currentRankings;
-
-  const _InstructorRankingDialog({
-    required this.courseSectionInstructors,
-    required this.currentRankings,
-  });
-
-  @override
-  State<_InstructorRankingDialog> createState() => _InstructorRankingDialogState();
-}
-
-class _InstructorRankingDialogState extends State<_InstructorRankingDialog>
-    with TickerProviderStateMixin {
-  late Map<String, InstructorRankings> _rankings;
-  late TabController _tabController;
-  late List<String> _courseList;
-
-  @override
-  void initState() {
-    super.initState();
-    _rankings = Map.from(widget.currentRankings);
-    _courseList = widget.courseSectionInstructors.keys.toList()..sort();
-    _tabController = TabController(length: _courseList.length, vsync: this);
-    
-    // Initialize empty rankings for courses that don't have any yet
-    for (final courseCode in widget.courseSectionInstructors.keys) {
-      if (!_rankings.containsKey(courseCode)) {
-        _rankings[courseCode] = InstructorRankings();
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Rank Instructors by Preference'),
-      content: SizedBox(
-        width: ResponsiveService.isMobile(context) ? double.infinity : 650,
-        height: MediaQuery.of(context).size.height * 0.5,
-        child: Column(
-          children: [
-            Text(
-              'Drag to reorder instructors from most preferred (top) to least preferred (bottom)',
-              style: TextStyle(
-                fontSize: 14,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            // Tab bar for courses
-            Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
-              ),
-              child: TabBar(
-                controller: _tabController,
-                isScrollable: true,
-                tabAlignment: TabAlignment.start,
-                labelColor: Theme.of(context).colorScheme.primary,
-                unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                indicatorColor: Theme.of(context).colorScheme.primary,
-                indicatorWeight: 2,
-                tabs: _courseList.map((courseCode) {
-                  return Tab(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: Text(
-                        courseCode,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Tab view content
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: _courseList.map((courseCode) {
-                  final instructorsByType = widget.courseSectionInstructors[courseCode]!;
-
-                  return SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            courseCode,
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          if (instructorsByType['L']!.isNotEmpty)
-                            _buildSectionTypeRanking(courseCode, 'Lecture', 'L', instructorsByType['L']!),
-                          if (instructorsByType['P']!.isNotEmpty)
-                            _buildSectionTypeRanking(courseCode, 'Practical', 'P', instructorsByType['P']!),
-                          if (instructorsByType['T']!.isNotEmpty)
-                            _buildSectionTypeRanking(courseCode, 'Tutorial', 'T', instructorsByType['T']!),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, _rankings),
-          child: const Text('Save Rankings'),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSectionTypeRanking(String courseCode, String typeName, String typeKey, List<String> availableInstructors) {
-    final currentRankings = _rankings[courseCode]!;
-    List<String> rankedInstructors;
-
-    switch (typeKey) {
-      case 'L':
-        rankedInstructors = List.from(currentRankings.lectureInstructors);
-        break;
-      case 'P':
-        rankedInstructors = List.from(currentRankings.practicalInstructors);
-        break;
-      case 'T':
-        rankedInstructors = List.from(currentRankings.tutorialInstructors);
-        break;
-      default:
-        rankedInstructors = [];
-    }
-
-    // Add any new instructors that aren't ranked yet
-    for (final instructor in availableInstructors) {
-      if (!rankedInstructors.contains(instructor)) {
-        rankedInstructors.add(instructor);
-      }
-    }
-
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    typeKey,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  '$typeName Instructors',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '${rankedInstructors.length} instructor${rankedInstructors.length == 1 ? '' : 's'}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
-              ),
-              child: ReorderableListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: rankedInstructors.length,
-                onReorderItem: (oldIndex, newIndex) {
-                  setState(() {
-                    final instructor = rankedInstructors.removeAt(oldIndex);
-                    rankedInstructors.insert(newIndex, instructor);
-
-                    // Update the rankings
-                    switch (typeKey) {
-                      case 'L':
-                        _rankings[courseCode] = _rankings[courseCode]!.copyWith(
-                          lectureInstructors: rankedInstructors,
-                        );
-                        break;
-                      case 'P':
-                        _rankings[courseCode] = _rankings[courseCode]!.copyWith(
-                          practicalInstructors: rankedInstructors,
-                        );
-                        break;
-                      case 'T':
-                        _rankings[courseCode] = _rankings[courseCode]!.copyWith(
-                          tutorialInstructors: rankedInstructors,
-                        );
-                        break;
-                    }
-                  });
-                },
-                itemBuilder: (context, index) {
-                  final instructor = rankedInstructors[index];
-                  final position = index + 1;
-                  final isTopRank = position <= 3;
-
-                  return Container(
-                    key: ValueKey('$courseCode-$typeKey-$instructor'),
-                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: isTopRank
-                        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
-                        : Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(6),
-                      border: isTopRank
-                        ? Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3))
-                        : null,
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      leading: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: isTopRank
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.outline.withValues(alpha: 0.6),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            position.toString(),
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onPrimary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                      title: Text(
-                        instructor,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: isTopRank ? FontWeight.w600 : FontWeight.normal,
-                          color: isTopRank
-                            ? Theme.of(context).colorScheme.onSurface
-                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                        ),
-                      ),
-                      subtitle: isTopRank ? Text(
-                        position == 1 ? 'Most preferred' :
-                        position == 2 ? '2nd preference' :
-                        '3rd preference',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ) : null,
-                      trailing: Icon(
-                        Icons.drag_handle,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _WeightEntry {
-  final String label;
-  final double value;
-  final double defaultValue;
-  final double min;
-  final double max;
-  final ValueChanged<double> onChanged;
-
-  _WeightEntry(this.label, this.value, this.defaultValue, this.min, this.max, this.onChanged);
 }

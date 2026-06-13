@@ -1,5 +1,5 @@
+import 'campus.dart';
 import 'course.dart';
-import '../services/data/campus_service.dart';
 import '../utils/datetime_utils.dart';
 
 class Timetable {
@@ -40,7 +40,7 @@ class Timetable {
       'name': name,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
-      'campus': CampusService.getCampusCode(campus),
+      'campus': campus.code,
       'availableCourses': availableCourses.map((c) => c.toJson()).toList(),
       'selectedSections': selectedSections.map((s) => s.toJson()).toList(),
       'clashWarnings': clashWarnings.map((w) => w.toJson()).toList(),
@@ -55,7 +55,7 @@ class Timetable {
       'name': name,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
-      'campus': CampusService.getCampusCode(campus),
+      'campus': campus.code,
       'selectedSections': selectedSections.map((s) => s.toJson()).toList(),
       'clashWarnings': clashWarnings.map((w) => w.toJson()).toList(),
       if (shareId != null) 'shareId': shareId,
@@ -64,25 +64,14 @@ class Timetable {
   }
 
   factory Timetable.fromJson(Map<String, dynamic> json) {
-    // Parse campus, defaulting to hyderabad if not specified
-    Campus parsedCampus = Campus.hyderabad;
-    if (json['campus'] != null) {
-      final campusCode = json['campus'] as String;
-      if (campusCode == 'pilani') {
-        parsedCampus = Campus.pilani;
-      } else if (campusCode == 'hyderabad') {
-        parsedCampus = Campus.hyderabad;
-      } else if(campusCode == 'goa'){
-        parsedCampus = Campus.goa;
-      }
-    }
-    
     return Timetable(
       id: json['id'] ?? '',
       name: json['name'] ?? 'Untitled Timetable',
       createdAt: parseDateTime(json['createdAt']),
       updatedAt: parseDateTime(json['updatedAt']),
-      campus: parsedCampus,
+      campus: json['campus'] != null
+          ? Campus.fromCode(json['campus'] as String)
+          : Campus.hyderabad,
       availableCourses: (json['availableCourses'] as List?)
           ?.map((c) => Course.fromJson(c))
           .toList() ?? [],

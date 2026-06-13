@@ -89,20 +89,30 @@ abstract final class CampusConstants {
 // ── Grades & grade points ──────────────────────────────────────────────
 
 abstract final class GradeConstants {
-  static const List<String> normal = [
-    'A', 'A-', 'B', 'B-', 'C', 'C-', 'D', 'D-', 'E',
-  ];
-  static const List<double> points = [
-    10.0, 9.0, 8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0,
-  ];
-  static const List<String> normalWithNc = [
-    'A', 'A-', 'B', 'B-', 'C', 'C-', 'D', 'D-', 'E', 'NC',
-  ];
-  static const List<String> atc = ['GD', 'PR', 'SA', 'US', 'NC'];
-  static const Set<String> allValid = {
-    'A', 'A-', 'B', 'B-', 'C', 'C-', 'D', 'D-', 'E', 'SA', 'US', 'NC', 'GD', 'PR',
+  static const Map<String, double> gradePoints = {
+    'A': 10.0, 'A-': 9.0, 'B': 8.0, 'B-': 7.0,
+    'C': 6.0, 'C-': 5.0, 'D': 4.0, 'D-': 3.0, 'E': 2.0,
   };
+
+  static const Map<String, String> descriptions = {
+    'A': '10 Grade Points', 'A-': '9 Grade Points',
+    'B': '8 Grade Points', 'B-': '7 Grade Points',
+    'C': '6 Grade Points', 'C-': '5 Grade Points',
+    'D': '4 Grade Points', 'D-': '3 Grade Points',
+    'E': '2 Grade Points',
+    'GD': 'Good', 'PR': 'Poor', 'NC': 'Not Cleared',
+    'SA': 'Satisfactory', 'US': 'Unsatisfactory',
+  };
+
+  static final List<String> normal = gradePoints.keys.toList();
+  static final List<double> points = gradePoints.values.toList();
+  static final List<String> normalWithNc = [...normal, 'NC'];
+  static const List<String> atc = ['GD', 'PR', 'SA', 'US', 'NC'];
+  static final Set<String> allValid = {...gradePoints.keys, 'NC', 'GD', 'PR', 'SA', 'US'};
   static const Set<String> electiveTags = {'HEL', 'DEL', 'EL'};
+
+  static double pointsFor(String grade) => gradePoints[grade] ?? 0.0;
+  static String descriptionFor(String grade) => descriptions[grade] ?? '';
 }
 
 // ── Semester labels ────────────────────────────────────────────────────

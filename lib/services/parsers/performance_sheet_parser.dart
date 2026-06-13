@@ -1,7 +1,9 @@
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../../constants/app_constants.dart';
 import '../../models/cgpa_data.dart';
+import '../../models/course_type.dart';
 import '../../models/all_course.dart';
 
 class ParsedCourseEntry {
@@ -54,7 +56,7 @@ class ParsedPerformanceSheet {
 }
 
 class PerformanceSheetParser {
-  static const _validGrades = GradeConstants.allValid;
+  static final _validGrades = GradeConstants.allValid;
   static const _validTags = GradeConstants.electiveTags;
 
   // Course code: 2-4 uppercase letters + 1-3 spaces + F/G + 3 digits
@@ -208,7 +210,7 @@ class PerformanceSheetParser {
 
         final parsedChunks = <List<ParsedCourseEntry>>[];
         for (final chunk in chunks) {
-          final courses = _extractCoursesFromChunk(chunk);
+          final courses = extractCoursesFromChunk(chunk);
           if (courses.isNotEmpty) {
             parsedChunks.add(courses);
           }
@@ -217,7 +219,7 @@ class PerformanceSheetParser {
         // Assign chunks to semester headers
         for (int h = 0; h < semHeaders.length && h < parsedChunks.length; h++) {
           final header = semHeaders[h];
-          final normName = _normalizeSemesterName(
+          final normName = normalizeSemesterName(
             header, academicYears, summerCounter,
           );
           if (header.toUpperCase().contains('SUMMER')) summerCounter++;
@@ -263,7 +265,8 @@ class PerformanceSheetParser {
 
   /// Extract course code + grade pairs from a text chunk.
   /// The chunk structure is: [codes...] [titles...] [units...] [grades...] [tags...]
-  static List<ParsedCourseEntry> _extractCoursesFromChunk(String chunk) {
+  @visibleForTesting
+  static List<ParsedCourseEntry> extractCoursesFromChunk(String chunk) {
     final results = <ParsedCourseEntry>[];
 
     // Step 1: Find all course codes and their positions
@@ -353,7 +356,8 @@ class PerformanceSheetParser {
     return results;
   }
 
-  static String _normalizeSemesterName(
+  @visibleForTesting
+  static String normalizeSemesterName(
     String rawName,
     List<String> academicYears,
     int summerCount,
@@ -406,7 +410,7 @@ class PerformanceSheetParser {
           courseCode: entry.courseCode,
           courseTitle: lookup?.courseTitle ?? entry.courseCode,
           credits: lookup?.credits ?? 3.0,
-          courseType: isATC ? 'ATC' : 'Normal',
+          courseType: isATC ? CourseType.atc : CourseType.normal,
           grade: entry.grade,
         ));
       }

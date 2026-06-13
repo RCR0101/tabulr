@@ -17,38 +17,9 @@ class CampusService {
   
   static Stream<Campus> get campusChangeStream => _campusChangeController.stream;
   
-  static String get currentCampusCode {
-    switch (_currentCampus) {
-      case Campus.hyderabad:
-        return 'hyderabad';
-      case Campus.pilani:
-        return 'pilani';
-      case Campus.goa:
-        return 'goa';
-    }
-  }
-  
-  static String get currentCampusDisplayName {
-    switch (_currentCampus) {
-      case Campus.hyderabad:
-        return 'Hyderabad';
-      case Campus.pilani:
-        return 'Pilani';
-      case Campus.goa:
-        return 'Goa';
-    }
-  }
-  
-  static String get campusId {
-    switch (_currentCampus) {
-      case Campus.hyderabad:
-        return 'hyderabad';
-      case Campus.pilani:
-        return 'pilani';
-      case Campus.goa:
-        return 'goa';
-    }
-  }
+  static String get currentCampusCode => _currentCampus.code;
+  static String get currentCampusDisplayName => _currentCampus.displayName;
+  static String get campusId => _currentCampus.code;
 
   static CollectionReference<Map<String, dynamic>> coursesMasterRef(FirebaseFirestore firestore) {
     return firestore.collection(FirestoreCollections.campuses).doc(campusId).collection(FirestoreCollections.coursesMaster);
@@ -87,25 +58,6 @@ class CampusService {
   
   static List<Campus> get allCampuses => Campus.values;
   
-  static String getCampusDisplayName(Campus campus) {
-    switch (campus) {
-      case Campus.hyderabad:
-        return 'Hyderabad';
-      case Campus.pilani:
-        return 'Pilani';
-      case Campus.goa:
-        return 'Goa';
-    }
-  }
-  
-  static String getCampusCode(Campus campus) {
-    switch (campus) {
-      case Campus.hyderabad:
-        return 'hyderabad';
-      case Campus.pilani:
-        return 'pilani';
-      case Campus.goa:
-        return 'goa';
-    }
-  }
+  static String getCampusDisplayName(Campus campus) => campus.displayName;
+  static String getCampusCode(Campus campus) => campus.code;
 }

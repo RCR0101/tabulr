@@ -1,11 +1,12 @@
-// Model representing a single course entry in a semester
+import '../constants/app_constants.dart';
+import 'course_type.dart';
+
 class CourseEntry {
   final String courseCode;
   final String courseTitle;
-  final double credits; // The 'u' field from all_courses
-  final String courseType; // 'Normal' or 'ATC'
-  String?
-  grade; // For Normal: A, A-, B, B-, C, C-, D, D-, E, NC; For ATC: GD, PR, NC
+  final double credits;
+  final CourseType courseType;
+  String? grade;
 
   CourseEntry({
     required this.courseCode,
@@ -15,41 +16,11 @@ class CourseEntry {
     this.grade,
   });
 
-  // Get grade points based on grade and course type
   double get gradePoints {
-    if (courseType == 'ATC') return 0.0; // ATC courses don't carry grade points
-
-    switch (grade) {
-      case 'A':
-        return 10.0;
-      case 'A-':
-        return 9.0;
-      case 'B':
-        return 8.0;
-      case 'B-':
-        return 7.0;
-      case 'C':
-        return 6.0;
-      case 'C-':
-        return 5.0;
-      case 'D':
-        return 4.0;
-      case 'D-':
-        return 3.0;
-      case 'E':
-        return 2.0;
-      case 'SA':
-        return 0.0;
-      case 'US':
-        return 0.0;
-      case 'NC':
-        return 0.0;
-      default:
-        return 0.0;
-    }
+    if (courseType == CourseType.atc) return 0.0;
+    return GradeConstants.pointsFor(grade ?? '');
   }
 
-  // Get total grade points (credits * grade points)
   double get totalGradePoints => credits * gradePoints;
 
   Map<String, dynamic> toJson() {
@@ -57,7 +28,7 @@ class CourseEntry {
       'courseCode': courseCode,
       'courseTitle': courseTitle,
       'credits': credits,
-      'courseType': courseType,
+      'courseType': courseType.toJson(),
       'grade': grade,
     };
   }
@@ -67,7 +38,7 @@ class CourseEntry {
       courseCode: json['courseCode'] as String,
       courseTitle: json['courseTitle'] as String,
       credits: (json['credits'] as num).toDouble(),
-      courseType: json['courseType'] as String,
+      courseType: CourseType.fromJson(json['courseType'] as String),
       grade: json['grade'] as String?,
     );
   }
@@ -76,7 +47,7 @@ class CourseEntry {
     String? courseCode,
     String? courseTitle,
     double? credits,
-    String? courseType,
+    CourseType? courseType,
     String? grade,
   }) {
     return CourseEntry(
@@ -106,7 +77,7 @@ class SemesterData {
         courses
             .where(
               (c) =>
-                  c.courseType == 'Normal' &&
+                  c.courseType == CourseType.normal &&
                   c.grade != null &&
                   c.grade!.isNotEmpty,
             )
@@ -132,7 +103,7 @@ class SemesterData {
     return courses
         .where(
           (c) =>
-              c.courseType == 'Normal' &&
+              c.courseType == CourseType.normal &&
               c.grade != null &&
               c.grade!.isNotEmpty,
         )
@@ -144,7 +115,7 @@ class SemesterData {
     return courses
         .where(
           (c) =>
-              c.courseType == 'Normal' &&
+              c.courseType == CourseType.normal &&
               c.grade != null &&
               c.grade!.isNotEmpty,
         )
@@ -204,7 +175,7 @@ class CGPAData {
     final latest = <String, CourseEntry>{};
     for (final semester in semesters.values) {
       for (final course in semester.courses) {
-        if (course.courseType != 'Normal' ||
+        if (course.courseType != CourseType.normal ||
             course.grade == null ||
             course.grade!.isEmpty) {
           continue;
