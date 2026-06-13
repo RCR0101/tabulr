@@ -1,5 +1,3 @@
-import '../services/data/courses_master_service.dart';
-
 class Prerequisite {
   final String courseCode;
   final String type;
@@ -8,8 +6,6 @@ class Prerequisite {
     required this.courseCode,
     required this.type,
   });
-
-  String get displayName => CoursesMasterService().getTitle(courseCode);
 
   factory Prerequisite.fromMap(Map<String, dynamic> map) {
     return Prerequisite(
@@ -38,8 +34,6 @@ class CoursePrerequisites {
     required this.hasPrerequisites,
     this.allOne,
   });
-
-  String get displayName => CoursesMasterService().getTitle(courseCode);
 
   factory CoursePrerequisites.fromMap(Map<String, dynamic> map) {
     List<Prerequisite> prereqsList = [];
