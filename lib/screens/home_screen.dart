@@ -129,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen>
   void onCampusChanged(Campus campus) async {
     CourseDataService().clearCache();
     CoursesMasterService().clear();
-    CoursesMasterService().loadForCampus();
+    CoursesMasterService().loadForCampus(forceRefresh: true);
 
     if (_isStandalone) {
       _loadTimetable();

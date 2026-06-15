@@ -3,6 +3,7 @@ import '../../constants/app_constants.dart';
 import 'campus_service.dart';
 import 'auth_service.dart';
 import 'courses_master_service.dart';
+import 'local_cache_service.dart';
 import '../ui/secure_logger.dart';
 
 /// Represents a room with its ID range for exam seating
@@ -123,18 +124,81 @@ class ExamSeatingService {
   ExamSeatingService._internal();
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final LocalCacheService _localCache = LocalCacheService();
   List<ExamSeating>? _cachedExams;
 
-  void invalidateCache() => _cachedExams = null;
+  String get _cacheKey => 'exam_seating_${CampusService.campusId}';
+
+  void invalidateCache() {
+    _cachedExams = null;
+    _localCache.invalidate(_cacheKey);
+  }
 
   CollectionReference<Map<String, dynamic>> get _collectionRef =>
       CampusService.examSeatingRef(_firestore);
+
+  List<ExamSeating> _parseRawDocs(List<Map<String, dynamic>> rawDocs) {
+    return rawDocs
+        .map((raw) {
+          final code = (raw['_docId'] as String? ?? '').replaceAll('_', ' ');
+          final roomsList = (raw['rooms'] as List<dynamic>?)
+                  ?.map((r) => ExamRoom.fromMap(Map<String, dynamic>.from(r as Map)))
+                  .toList() ??
+              [];
+          final examDate = raw['exam_date'];
+          String examDateStr = '';
+          if (examDate is String) examDateStr = examDate;
+          return ExamSeating(
+            courseCode: code,
+            courseTitle: CoursesMasterService().getTitle(code),
+            examDate: examDateStr,
+            rooms: roomsList,
+          );
+        })
+        .where((exam) => exam.rooms.isNotEmpty)
+        .toList();
+  }
+
+  Future<bool> _isLocalCacheStale() async {
+    final cachedAt = await _localCache.readCachedAt(_cacheKey);
+    if (cachedAt == null) return true;
+    try {
+      final metaSnap = await _firestore.doc('admin_metadata/exam_seating').get();
+      if (!metaSnap.exists) return false;
+      final lastUpdated = metaSnap.data()?['lastUpdated'];
+      if (lastUpdated == null) return false;
+      final remoteTime = lastUpdated is Timestamp
+          ? lastUpdated.toDate()
+          : DateTime.tryParse(lastUpdated.toString());
+      if (remoteTime == null) return false;
+      return remoteTime.isAfter(cachedAt);
+    } catch (_) {
+      return false;
+    }
+  }
 
   Future<List<ExamSeating>> fetchAllExamSeating() async {
     if (_cachedExams != null) return _cachedExams!;
 
     try {
+      final localData = await _localCache.read(_cacheKey);
+      if (localData != null) {
+        final stale = await _isLocalCacheStale();
+        if (!stale) {
+          _cachedExams = _parseRawDocs(localData);
+          return _cachedExams!;
+        }
+      }
+
       final querySnapshot = await _collectionRef.get();
+
+      final rawDocs = querySnapshot.docs.map((doc) {
+        final data = Map<String, dynamic>.from(doc.data());
+        data['_docId'] = doc.id;
+        return data;
+      }).toList();
+
+      _localCache.write(_cacheKey, rawDocs);
 
       _cachedExams = querySnapshot.docs
           .map((doc) => ExamSeating.fromFirestore(doc))

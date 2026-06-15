@@ -278,12 +278,30 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     }).toList();
   }
 
+  List<Map<String, dynamic>> _parseCourseMaps(List<Map<String, dynamic>> rawMaps) {
+    final master = CoursesMasterService();
+    return rawMaps.map((data) {
+      final code = data['code'] ?? data['_docId'] ?? '';
+      final title = master.getTitle(code);
+      final driveLinks = data['driveLinks'];
+      return {
+        'code': code,
+        'name': title != code ? title : '',
+        'fileCount': data['fileCount'] ?? 0,
+        'driveCount': data['driveCount'] ?? 0,
+        'driveLinks': driveLinks is Map<String, dynamic>
+            ? driveLinks
+            : (driveLinks is Map ? Map<String, dynamic>.from(driveLinks) : <String, dynamic>{}),
+      };
+    }).toList();
+  }
+
   Future<void> _loadAllCoursesForSearch() async {
     setState(() => _isLoading = true);
     try {
-      final snapshot = await _drivesService.fetchAllCourses();
+      final data = await _drivesService.fetchAllCoursesData();
       setState(() {
-        _courses = _parseCourses(snapshot.docs);
+        _courses = _parseCourseMaps(data);
         _hasMoreCourses = false;
         _isLoading = false;
       });

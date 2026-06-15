@@ -4,6 +4,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart' show TimeOfDay;
 import '../../models/announcement_flag.dart';
 import '../../models/announcement_source.dart';
+import '../../models/announcement_user_state.dart';
 import '../../models/announcement_verification.dart';
 import '../../models/course_announcement.dart';
 import 'auth_service.dart';
@@ -145,6 +146,35 @@ class CourseAnnouncementService {
       'announcementId': announcementId,
       'voteValue': voteValue,
     });
+  }
+
+  Future<Map<String, AnnouncementUserState>> fetchUserStates(
+      List<String> announcementIds) async {
+    final uid = _authService.userDocId;
+    if (uid == null || announcementIds.isEmpty) return {};
+
+    final results = <String, AnnouncementUserState>{};
+    final annRef = _firestore.collection(FirestoreCollections.announcements);
+
+    final futures = announcementIds.map((id) async {
+      final voteSnap =
+          await annRef.doc(id).collection(FirestoreCollections.votes).doc(uid).get();
+      final flagSnap =
+          await annRef.doc(id).collection(FirestoreCollections.flags).doc(uid).get();
+      final verifSnap =
+          await annRef.doc(id).collection(FirestoreCollections.verifications).doc(uid).get();
+
+      results[id] = AnnouncementUserState(
+        vote: voteSnap.exists ? (voteSnap.data()?['vote'] as int?) : null,
+        flag: flagSnap.exists ? AnnouncementFlag.fromFirestore(flagSnap) : null,
+        verification: verifSnap.exists
+            ? AnnouncementVerification.fromFirestore(verifSnap)
+            : null,
+      );
+    });
+
+    await Future.wait(futures);
+    return results;
   }
 
   Stream<int?> watchUserVote(String announcementId) {

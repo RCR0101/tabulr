@@ -1,7 +1,9 @@
 import 'dart:async';
 import '../utils/web_utils.dart' as web_utils;
 import 'package:flutter/material.dart';
+import '../models/announcement_flag.dart';
 import '../models/announcement_source.dart';
+import '../models/announcement_user_state.dart';
 import '../models/announcement_verification.dart';
 import '../models/course_announcement.dart';
 import '../models/timetable.dart';
@@ -44,6 +46,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
   StreamSubscription? _repSub;
   UserReputation? _currentUserRep;
   final Map<String, TrustTier> _authorTiers = {};
+  final Map<String, AnnouncementUserState> _userStates = {};
 
   @override
   void initState() {
@@ -112,12 +115,22 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
           _isLoading = false;
         });
         _loadAuthorTiers();
+        _loadUserStates(announcements);
       },
       onError: (e) {
         setState(() => _isLoading = false);
         ToastService.showError('Failed to load announcements');
       },
     );
+  }
+
+  void _loadUserStates(List<CourseAnnouncement> announcements) {
+    final newIds =
+        announcements.map((a) => a.id).where((id) => !_userStates.containsKey(id)).toList();
+    if (newIds.isEmpty) return;
+    _announcementService.fetchUserStates(newIds).then((states) {
+      if (mounted) setState(() => _userStates.addAll(states));
+    });
   }
 
   void _loadAuthorTiers() {
@@ -220,6 +233,19 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
       builder: (ctx) => _FlagDialog(
         onSubmit: (reason, counterSourceUrl, confidence) async {
           Navigator.pop(ctx);
+          final prev = _userStates[announcement.id] ?? const AnnouncementUserState();
+          setState(() {
+            _userStates[announcement.id] = prev.copyWith(
+              flag: () => AnnouncementFlag(
+                uid: '',
+                reason: reason,
+                counterSourceUrl: counterSourceUrl,
+                confidence: confidence,
+                weight: 1,
+                timestamp: DateTime.now(),
+              ),
+            );
+          });
           try {
             await _announcementService.submitFlag(
               announcementId: announcement.id,
@@ -229,6 +255,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
             );
             ToastService.showSuccess('Flag submitted');
           } catch (e) {
+            setState(() => _userStates[announcement.id] = prev);
             ToastService.showError('Failed to submit flag');
           }
         },
@@ -1027,100 +1054,115 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
     final showModActions =
         !isAuthor && !announcement.isCorrectionAccepted;
 
+    final userState = _userStates[announcement.id] ?? const AnnouncementUserState();
+    final userVote = userState.vote;
+    final hasFlag = userState.flag != null;
+    final userVerif = userState.verification;
+    final isConfirmed = userVerif?.type == VerificationType.confirm;
+    final isDenied = userVerif?.type == VerificationType.deny;
+
     return Row(
       children: [
-        StreamBuilder<int?>(
-          stream: _announcementService.watchUserVote(announcement.id),
-          builder: (context, snapshot) {
-            final userVote = snapshot.data;
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _VoteButton(
-                  icon: Icons.arrow_upward_rounded,
-                  count: announcement.upvotes,
-                  isActive: userVote == 1,
-                  activeColor: AppDesign.success(context),
-                  onTap: () => _announcementService.toggleVote(
-                      announcement.id, 1),
-                ),
-                const SizedBox(width: 4),
-                _VoteButton(
-                  icon: Icons.arrow_downward_rounded,
-                  count: announcement.downvotes,
-                  isActive: userVote == -1,
-                  activeColor: AppDesign.danger(context),
-                  onTap: () => _announcementService.toggleVote(
-                      announcement.id, -1),
-                ),
-              ],
-            );
-          },
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _VoteButton(
+              icon: Icons.arrow_upward_rounded,
+              count: announcement.upvotes,
+              isActive: userVote == 1,
+              activeColor: AppDesign.success(context),
+              onTap: () {
+                setState(() {
+                  _userStates[announcement.id] = userState.copyWith(
+                    vote: () => userVote == 1 ? null : 1,
+                  );
+                });
+                _announcementService.toggleVote(announcement.id, 1);
+              },
+            ),
+            const SizedBox(width: 4),
+            _VoteButton(
+              icon: Icons.arrow_downward_rounded,
+              count: announcement.downvotes,
+              isActive: userVote == -1,
+              activeColor: AppDesign.danger(context),
+              onTap: () {
+                setState(() {
+                  _userStates[announcement.id] = userState.copyWith(
+                    vote: () => userVote == -1 ? null : -1,
+                  );
+                });
+                _announcementService.toggleVote(announcement.id, -1);
+              },
+            ),
+          ],
         ),
         if (showModActions) ...[
           const SizedBox(width: 8),
-          StreamBuilder<dynamic>(
-            stream: _announcementService.watchUserFlag(announcement.id),
-            builder: (context, snapshot) {
-              final hasFlag = snapshot.data != null;
-              return _ActionIconButton(
-                icon: Icons.flag_outlined,
-                activeIcon: Icons.flag,
-                isActive: hasFlag,
-                activeColor: AppDesign.warning(context),
-                tooltip:
-                    hasFlag ? 'Already flagged' : 'Flag as incorrect',
-                onTap:
-                    hasFlag ? null : () => _showFlagDialog(announcement),
-              );
-            },
+          _ActionIconButton(
+            icon: Icons.flag_outlined,
+            activeIcon: Icons.flag,
+            isActive: hasFlag,
+            activeColor: AppDesign.warning(context),
+            tooltip: hasFlag ? 'Already flagged' : 'Flag as incorrect',
+            onTap: hasFlag ? null : () => _showFlagDialog(announcement),
           ),
           const SizedBox(width: 2),
-          StreamBuilder<AnnouncementVerification?>(
-            stream: _announcementService
-                .watchUserVerification(announcement.id),
-            builder: (context, snapshot) {
-              final userVerif = snapshot.data;
-              final isConfirmed =
-                  userVerif?.type == VerificationType.confirm;
-              final isDenied =
-                  userVerif?.type == VerificationType.deny;
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _ActionIconButton(
-                    icon: Icons.check_circle_outline,
-                    activeIcon: Icons.check_circle,
-                    isActive: isConfirmed,
-                    activeColor: AppDesign.success(context),
-                    tooltip:
-                        isConfirmed ? 'Confirmed' : 'Confirm this',
-                    onTap: isConfirmed
-                        ? null
-                        : () =>
-                            _announcementService.submitVerification(
-                              announcementId: announcement.id,
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ActionIconButton(
+                icon: Icons.check_circle_outline,
+                activeIcon: Icons.check_circle,
+                isActive: isConfirmed,
+                activeColor: AppDesign.success(context),
+                tooltip: isConfirmed ? 'Confirmed' : 'Confirm this',
+                onTap: isConfirmed
+                    ? null
+                    : () {
+                        setState(() {
+                          _userStates[announcement.id] = userState.copyWith(
+                            verification: () => AnnouncementVerification(
+                              uid: '',
                               type: VerificationType.confirm,
+                              weight: 1,
+                              timestamp: DateTime.now(),
                             ),
-                  ),
-                  const SizedBox(width: 2),
-                  _ActionIconButton(
-                    icon: Icons.cancel_outlined,
-                    activeIcon: Icons.cancel,
-                    isActive: isDenied,
-                    activeColor: AppDesign.danger(context),
-                    tooltip: isDenied ? 'Denied' : 'Deny this',
-                    onTap: isDenied
-                        ? null
-                        : () =>
-                            _announcementService.submitVerification(
-                              announcementId: announcement.id,
+                          );
+                        });
+                        _announcementService.submitVerification(
+                          announcementId: announcement.id,
+                          type: VerificationType.confirm,
+                        );
+                      },
+              ),
+              const SizedBox(width: 2),
+              _ActionIconButton(
+                icon: Icons.cancel_outlined,
+                activeIcon: Icons.cancel,
+                isActive: isDenied,
+                activeColor: AppDesign.danger(context),
+                tooltip: isDenied ? 'Denied' : 'Deny this',
+                onTap: isDenied
+                    ? null
+                    : () {
+                        setState(() {
+                          _userStates[announcement.id] = userState.copyWith(
+                            verification: () => AnnouncementVerification(
+                              uid: '',
                               type: VerificationType.deny,
+                              weight: 1,
+                              timestamp: DateTime.now(),
                             ),
-                  ),
-                ],
-              );
-            },
+                          );
+                        });
+                        _announcementService.submitVerification(
+                          announcementId: announcement.id,
+                          type: VerificationType.deny,
+                        );
+                      },
+              ),
+            ],
           ),
         ],
         const Spacer(),

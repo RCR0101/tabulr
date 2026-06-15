@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../constants/app_constants.dart';
 import '../ui/secure_logger.dart';
 import 'campus_service.dart';
+import 'local_cache_service.dart';
 
 enum ProfessorSortType {
   nameAsc,
@@ -273,7 +274,8 @@ class ProfessorService extends ChangeNotifier {
   ProfessorService._internal();
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  
+  final LocalCacheService _localCache = LocalCacheService();
+
   List<Professor> _professors = [];
   List<Professor> _filteredProfessors = [];
   bool _isLoading = false;
@@ -287,7 +289,29 @@ class ProfessorService extends ChangeNotifier {
   String get searchQuery => _searchQuery;
   ProfessorSortType get sortType => _sortType;
 
-  /// Load all professors from Firestore
+  String get _cacheKey => 'professors_${CampusService.campusId}';
+
+  Future<bool> _isLocalCacheStale() async {
+    final cachedAt = await _localCache.readCachedAt(_cacheKey);
+    if (cachedAt == null) return true;
+    try {
+      final campusId = CampusService.campusId;
+      final metaSnap = await _firestore
+          .doc('admin_metadata/professors_$campusId')
+          .get();
+      if (!metaSnap.exists) return false;
+      final lastUpdated = metaSnap.data()?['lastUpdated'];
+      if (lastUpdated == null) return false;
+      final remoteTime = lastUpdated is Timestamp
+          ? lastUpdated.toDate()
+          : DateTime.tryParse(lastUpdated.toString());
+      if (remoteTime == null) return false;
+      return remoteTime.isAfter(cachedAt);
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> loadProfessors({bool forceRefresh = false}) async {
     if (_professors.isNotEmpty && !forceRefresh) {
       return;
@@ -298,18 +322,33 @@ class ProfessorService extends ChangeNotifier {
     notifyListeners();
 
     try {
+      if (!forceRefresh) {
+        final cached = await _localCache.read(_cacheKey);
+        if (cached != null) {
+          final stale = await _isLocalCacheStale();
+          if (!stale) {
+            _professors = cached.map((m) => Professor.fromJson(m)).toList();
+            _applyFilters();
+            SecureLogger.info('ProfessorService', 'Loaded ${_professors.length} professors from cache');
+            _isLoading = false;
+            notifyListeners();
+            return;
+          }
+        }
+      }
+
       final campusId = CampusService.campusId;
       final snapshot = await _firestore
           .collection(FirestoreCollections.reference).doc(FirestoreCollections.professors).collection('$campusId-entries')
           .orderBy('name')
           .get();
 
-      _professors = snapshot.docs
-          .map((doc) => Professor.fromJson(doc.data()))
-          .toList();
+      final rawDocs = snapshot.docs.map((doc) => doc.data()).toList();
+      _professors = rawDocs.map((m) => Professor.fromJson(m)).toList();
 
+      _localCache.write(_cacheKey, rawDocs);
       _applyFilters();
-      
+
       SecureLogger.info('ProfessorService', 'Loaded ${_professors.length} professors');
     } catch (e) {
       _error = 'Failed to load professors: ${e.toString()}';
