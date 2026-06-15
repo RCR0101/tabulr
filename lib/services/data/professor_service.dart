@@ -283,6 +283,8 @@ class ProfessorService extends ChangeNotifier {
   String _searchQuery = '';
   ProfessorSortType _sortType = ProfessorSortType.nameAsc;
 
+  String? _loadedCampusId;
+
   List<Professor> get professors => _filteredProfessors;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -291,29 +293,12 @@ class ProfessorService extends ChangeNotifier {
 
   String get _cacheKey => 'professors_${CampusService.campusId}';
 
-  Future<bool> _isLocalCacheStale() async {
-    final cachedAt = await _localCache.readCachedAt(_cacheKey);
-    if (cachedAt == null) return true;
-    try {
-      final campusId = CampusService.campusId;
-      final metaSnap = await _firestore
-          .doc('admin_metadata/professors_$campusId')
-          .get();
-      if (!metaSnap.exists) return false;
-      final lastUpdated = metaSnap.data()?['lastUpdated'];
-      if (lastUpdated == null) return false;
-      final remoteTime = lastUpdated is Timestamp
-          ? lastUpdated.toDate()
-          : DateTime.tryParse(lastUpdated.toString());
-      if (remoteTime == null) return false;
-      return remoteTime.isAfter(cachedAt);
-    } catch (_) {
-      return false;
-    }
-  }
+  DocumentReference<Map<String, dynamic>> get _metadataRef =>
+      _firestore.doc('admin_metadata/professors_${CampusService.campusId}');
 
   Future<void> loadProfessors({bool forceRefresh = false}) async {
-    if (_professors.isNotEmpty && !forceRefresh) {
+    final campusId = CampusService.campusId;
+    if (_professors.isNotEmpty && !forceRefresh && _loadedCampusId == campusId) {
       return;
     }
 
@@ -323,21 +308,21 @@ class ProfessorService extends ChangeNotifier {
 
     try {
       if (!forceRefresh) {
-        final cached = await _localCache.read(_cacheKey);
+        final cached = await _localCache.readIfFresh(
+          _cacheKey,
+          metadataRef: _metadataRef,
+        );
         if (cached != null) {
-          final stale = await _isLocalCacheStale();
-          if (!stale) {
-            _professors = cached.map((m) => Professor.fromJson(m)).toList();
-            _applyFilters();
-            SecureLogger.info('ProfessorService', 'Loaded ${_professors.length} professors from cache');
-            _isLoading = false;
-            notifyListeners();
-            return;
-          }
+          _professors = cached.map((m) => Professor.fromJson(m)).toList();
+          _loadedCampusId = campusId;
+          _applyFilters();
+          SecureLogger.info('ProfessorService', 'Loaded ${_professors.length} professors from cache');
+          _isLoading = false;
+          notifyListeners();
+          return;
         }
       }
 
-      final campusId = CampusService.campusId;
       final snapshot = await _firestore
           .collection(FirestoreCollections.reference).doc(FirestoreCollections.professors).collection('$campusId-entries')
           .orderBy('name')
@@ -345,8 +330,9 @@ class ProfessorService extends ChangeNotifier {
 
       final rawDocs = snapshot.docs.map((doc) => doc.data()).toList();
       _professors = rawDocs.map((m) => Professor.fromJson(m)).toList();
+      _loadedCampusId = campusId;
 
-      _localCache.write(_cacheKey, rawDocs);
+      await _localCache.write(_cacheKey, rawDocs);
       _applyFilters();
 
       SecureLogger.info('ProfessorService', 'Loaded ${_professors.length} professors');

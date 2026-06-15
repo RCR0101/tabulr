@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/branch_constants.dart' as constants;
 import '../../constants/app_constants.dart';
+import 'local_cache_service.dart';
 
 class BranchStructure {
   final String branchCode;
@@ -16,7 +17,7 @@ class BranchStructure {
     required this.huels,
   });
 
-  factory BranchStructure.fromFirestore(Map<String, dynamic> data) {
+  factory BranchStructure.fromMap(Map<String, dynamic> data) {
     final rawCdcs = data['cdcs'] as Map<String, dynamic>? ?? {};
     final cdcs = <String, List<String>>{};
     for (final entry in rawCdcs.entries) {
@@ -40,46 +41,74 @@ class BranchStructureService {
   BranchStructureService._();
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final LocalCacheService _localCache = LocalCacheService();
   final Map<String, BranchStructure> _cache = {};
   List<String>? _availableBranches;
+  bool _loaded = false;
+
+  static const _cacheKey = 'branch_structures';
 
   CollectionReference<Map<String, dynamic>> get _branchesRef =>
       _firestore.collection(FirestoreCollections.reference).doc(FirestoreCollections.branches).collection(FirestoreCollections.data);
 
-  Future<List<String>> getAvailableBranches() async {
-    if (_availableBranches != null) return _availableBranches!;
+  DocumentReference<Map<String, dynamic>> get _metadataRef =>
+      _branchesRef.doc('_metadata');
 
-    try {
-      final metaDoc = await _branchesRef.doc('_metadata').get();
-      if (metaDoc.exists) {
-        final data = metaDoc.data()!;
-        _availableBranches = List<String>.from(data['branches'] as List? ?? []);
-        return _availableBranches!;
+  Future<void> _ensureLoaded() async {
+    if (_loaded) return;
+
+    final cached = await _localCache.readIfFresh(
+      _cacheKey,
+      metadataRef: _metadataRef,
+    );
+    if (cached != null) {
+      _populateFromRawDocs(cached);
+      return;
+    }
+
+    final snapshot = await _branchesRef.get();
+    final rawDocs = <Map<String, dynamic>>[];
+    for (final doc in snapshot.docs) {
+      final data = Map<String, dynamic>.from(doc.data());
+      data['_docId'] = doc.id;
+      rawDocs.add(data);
+    }
+    await _localCache.write(_cacheKey, rawDocs);
+    _populateFromRawDocs(rawDocs);
+  }
+
+  void _populateFromRawDocs(List<Map<String, dynamic>> rawDocs) {
+    _cache.clear();
+    final branches = <String>[];
+    for (final raw in rawDocs) {
+      final docId = raw['_docId'] as String? ?? '';
+      if (docId == '_metadata') {
+        _availableBranches = List<String>.from(raw['branches'] as List? ?? []);
+        continue;
       }
-    } catch (_) {}
+      final structure = BranchStructure.fromMap(raw);
+      _cache[docId] = structure;
+      if (docId.isNotEmpty) branches.add(docId);
+    }
+    _availableBranches ??= branches..sort();
+    _loaded = true;
+  }
 
+  Future<List<String>> getAvailableBranches() async {
+    await _ensureLoaded();
+    if (_availableBranches != null) return _availableBranches!;
     _availableBranches = constants.branchCodeToName.keys.toList()..sort();
     return _availableBranches!;
   }
 
   Future<BranchStructure> getBranchData(String branchCode) async {
-    if (_cache.containsKey(branchCode)) return _cache[branchCode]!;
-
-    final doc = await _branchesRef.doc(branchCode).get();
-    if (!doc.exists) {
-      final empty = BranchStructure(
-        branchCode: branchCode,
-        cdcs: {},
-        dels: [],
-        huels: [],
-      );
-      _cache[branchCode] = empty;
-      return empty;
-    }
-
-    final structure = BranchStructure.fromFirestore(doc.data()!);
-    _cache[branchCode] = structure;
-    return structure;
+    await _ensureLoaded();
+    return _cache[branchCode] ?? BranchStructure(
+      branchCode: branchCode,
+      cdcs: {},
+      dels: [],
+      huels: [],
+    );
   }
 
   Future<List<String>> getCDCs(String branchCode, String? semester) async {
@@ -98,10 +127,6 @@ class BranchStructureService {
     return data.huels;
   }
 
-  /// Returns CDC map for an MSc+BE dual degree combination.
-  /// First checks for an override doc ({msc}_{be}). If it exists, uses that
-  /// directly. Otherwise falls back to merging with semester shifting:
-  /// BE 2-1 → 3-1, BE 2-2 → 3-2, BE 3-1 → 4-1, BE 3-2 → 4-2
   Future<Map<String, List<String>>> getMergedCDCs(
     String mscBranch,
     String beBranch,
@@ -138,7 +163,6 @@ class BranchStructureService {
     return merged;
   }
 
-  /// Get core course codes for clash detection, supporting MSc+BE merge.
   Future<Set<String>> getCoreCourseCodes(
     String primarySemester,
     String primaryBranch,
@@ -172,5 +196,7 @@ class BranchStructureService {
   void clearCache() {
     _cache.clear();
     _availableBranches = null;
+    _loaded = false;
+    _localCache.invalidate(_cacheKey);
   }
 }

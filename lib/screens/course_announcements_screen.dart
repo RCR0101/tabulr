@@ -1071,13 +1071,18 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
               count: announcement.upvotes,
               isActive: userVote == 1,
               activeColor: AppDesign.success(context),
-              onTap: () {
+              onTap: () async {
+                final prev = userState;
                 setState(() {
                   _userStates[announcement.id] = userState.copyWith(
                     vote: () => userVote == 1 ? null : 1,
                   );
                 });
-                _announcementService.toggleVote(announcement.id, 1);
+                try {
+                  await _announcementService.toggleVote(announcement.id, 1);
+                } catch (_) {
+                  if (mounted) setState(() => _userStates[announcement.id] = prev);
+                }
               },
             ),
             const SizedBox(width: 4),
@@ -1086,13 +1091,18 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
               count: announcement.downvotes,
               isActive: userVote == -1,
               activeColor: AppDesign.danger(context),
-              onTap: () {
+              onTap: () async {
+                final prev = userState;
                 setState(() {
                   _userStates[announcement.id] = userState.copyWith(
                     vote: () => userVote == -1 ? null : -1,
                   );
                 });
-                _announcementService.toggleVote(announcement.id, -1);
+                try {
+                  await _announcementService.toggleVote(announcement.id, -1);
+                } catch (_) {
+                  if (mounted) setState(() => _userStates[announcement.id] = prev);
+                }
               },
             ),
           ],
@@ -1119,7 +1129,8 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
                 tooltip: isConfirmed ? 'Confirmed' : 'Confirm this',
                 onTap: isConfirmed
                     ? null
-                    : () {
+                    : () async {
+                        final prev = userState;
                         setState(() {
                           _userStates[announcement.id] = userState.copyWith(
                             verification: () => AnnouncementVerification(
@@ -1130,10 +1141,14 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
                             ),
                           );
                         });
-                        _announcementService.submitVerification(
-                          announcementId: announcement.id,
-                          type: VerificationType.confirm,
-                        );
+                        try {
+                          await _announcementService.submitVerification(
+                            announcementId: announcement.id,
+                            type: VerificationType.confirm,
+                          );
+                        } catch (_) {
+                          if (mounted) setState(() => _userStates[announcement.id] = prev);
+                        }
                       },
               ),
               const SizedBox(width: 2),
@@ -1145,7 +1160,8 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
                 tooltip: isDenied ? 'Denied' : 'Deny this',
                 onTap: isDenied
                     ? null
-                    : () {
+                    : () async {
+                        final prev = userState;
                         setState(() {
                           _userStates[announcement.id] = userState.copyWith(
                             verification: () => AnnouncementVerification(
@@ -1156,10 +1172,14 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
                             ),
                           );
                         });
-                        _announcementService.submitVerification(
-                          announcementId: announcement.id,
-                          type: VerificationType.deny,
-                        );
+                        try {
+                          await _announcementService.submitVerification(
+                            announcementId: announcement.id,
+                            type: VerificationType.deny,
+                          );
+                        } catch (_) {
+                          if (mounted) setState(() => _userStates[announcement.id] = prev);
+                        }
                       },
               ),
             ],

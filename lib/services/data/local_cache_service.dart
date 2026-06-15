@@ -21,7 +21,7 @@ class LocalCacheService {
     return _cacheDir!;
   }
 
-  String _fileName(String key) => key.replaceAll('/', '_');
+  String _fileName(String key) => key.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
 
   static dynamic _sanitize(dynamic value) {
     if (value is Timestamp) return value.toDate().toIso8601String();
@@ -33,19 +33,8 @@ class LocalCacheService {
     return value;
   }
 
-  Future<DateTime?> readCachedAt(String cacheKey) async {
-    if (kIsWeb) return null;
-    try {
-      final file = File('${await _dir}/${_fileName(cacheKey)}.json');
-      if (!file.existsSync()) return null;
-      final content = await file.readAsString();
-      final envelope = jsonDecode(content) as Map<String, dynamic>;
-      return DateTime.parse(envelope['cachedAt'] as String);
-    } catch (_) {
-      return null;
-    }
-  }
-
+  /// Reads cached data using TTL only (no metadata check).
+  /// Use for data without a Firestore metadata doc (e.g. R2-sourced data).
   Future<List<Map<String, dynamic>>?> read(String cacheKey) async {
     if (kIsWeb) return null;
     try {
@@ -68,15 +57,64 @@ class LocalCacheService {
     }
   }
 
+  /// Reads cached data if it exists, is within TTL, and is not stale
+  /// relative to [metadataRef]. Returns null if cache should be bypassed.
+  ///
+  /// The staleness check costs 1 Firestore read. On any error (network
+  /// failure, missing doc, bad field) the cache is treated as **stale** so
+  /// the caller falls through to a full fetch — correctness over speed.
+  Future<List<Map<String, dynamic>>?> readIfFresh(
+    String cacheKey, {
+    required DocumentReference<Map<String, dynamic>> metadataRef,
+    String metadataField = 'lastUpdated',
+  }) async {
+    if (kIsWeb) return null;
+    try {
+      final file = File('${await _dir}/${_fileName(cacheKey)}.json');
+      if (!file.existsSync()) return null;
+
+      final content = await file.readAsString();
+      final envelope = jsonDecode(content) as Map<String, dynamic>;
+      final cachedAt = DateTime.parse(envelope['cachedAt'] as String);
+
+      if (DateTime.now().difference(cachedAt).inHours >= _maxAgeHours) {
+        return null;
+      }
+
+      final metaSnap = await metadataRef.get();
+      if (metaSnap.exists) {
+        final lastUpdated = metaSnap.data()?[metadataField];
+        if (lastUpdated != null) {
+          final remoteTime = lastUpdated is Timestamp
+              ? lastUpdated.toDate()
+              : DateTime.tryParse(lastUpdated.toString());
+          if (remoteTime != null && remoteTime.isAfter(cachedAt)) {
+            return null;
+          }
+        }
+      }
+
+      return (envelope['data'] as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+    } catch (_) {
+      // Parse error, network error, corrupt file — treat as stale.
+      return null;
+    }
+  }
+
   Future<void> write(String cacheKey, List<Map<String, dynamic>> data) async {
     if (kIsWeb) return;
     try {
-      final file = File('${await _dir}/${_fileName(cacheKey)}.json');
+      final dir = await _dir;
+      final tmpFile = File('$dir/${_fileName(cacheKey)}.tmp');
+      final finalFile = File('$dir/${_fileName(cacheKey)}.json');
       final envelope = {
         'cachedAt': DateTime.now().toIso8601String(),
         'data': _sanitize(data),
       };
-      await file.writeAsString(jsonEncode(envelope));
+      await tmpFile.writeAsString(jsonEncode(envelope));
+      await tmpFile.rename(finalFile.path);
     } catch (_) {}
   }
 

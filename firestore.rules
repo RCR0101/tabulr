@@ -53,7 +53,16 @@ service cloud.firestore {
     match /announcements/{announcementId} {
       allow read: if isBitsEmail();
       allow create: if isBitsEmail()
-        && request.resource.data.authorUid == userDocId();
+        && request.resource.data.authorUid == userDocId()
+        && request.resource.data.upvotes == 0
+        && request.resource.data.downvotes == 0
+        && request.resource.data.disputeState == 'undisputed'
+        && request.resource.data.totalFlagWeight == 0
+        && request.resource.data.verificationState == 'unverified'
+        && request.resource.data.confirmWeight == 0
+        && request.resource.data.denyWeight == 0
+        && request.resource.data.confirmCount == 0
+        && request.resource.data.denyCount == 0;
       allow delete: if isBitsEmail()
         && resource.data.authorUid == userDocId();
       allow update: if false;

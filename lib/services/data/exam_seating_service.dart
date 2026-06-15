@@ -74,19 +74,14 @@ class ExamSeating {
   });
 
   factory ExamSeating.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>?;
-    final code = doc.id.replaceAll('_', ' ');
-    if (data == null) {
-      return ExamSeating(
-        courseCode: code,
-        courseTitle: CoursesMasterService().getTitle(code),
-        examDate: '',
-        rooms: [],
-      );
-    }
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    return ExamSeating.fromMap(doc.id, data);
+  }
 
+  factory ExamSeating.fromMap(String docId, Map<String, dynamic> data) {
+    final code = docId.replaceAll('_', ' ');
     final roomsList = (data['rooms'] as List<dynamic>?)
-            ?.map((r) => ExamRoom.fromMap(r as Map<String, dynamic>))
+            ?.map((r) => ExamRoom.fromMap(Map<String, dynamic>.from(r as Map)))
             .toList() ??
         [];
 
@@ -94,7 +89,7 @@ class ExamSeating {
     String examDateStr = '';
     if (examDate is String) {
       examDateStr = examDate;
-    } else if (examDate != null && examDate.toDate != null) {
+    } else if (examDate is Timestamp) {
       examDateStr = examDate.toDate().toIso8601String();
     }
 
@@ -126,68 +121,44 @@ class ExamSeatingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final LocalCacheService _localCache = LocalCacheService();
   List<ExamSeating>? _cachedExams;
+  String? _cachedCampusId;
 
   String get _cacheKey => 'exam_seating_${CampusService.campusId}';
 
+  DocumentReference<Map<String, dynamic>> get _metadataRef =>
+      _firestore.doc('admin_metadata/exam_seating');
+
   void invalidateCache() {
     _cachedExams = null;
+    _cachedCampusId = null;
     _localCache.invalidate(_cacheKey);
   }
 
   CollectionReference<Map<String, dynamic>> get _collectionRef =>
       CampusService.examSeatingRef(_firestore);
 
-  List<ExamSeating> _parseRawDocs(List<Map<String, dynamic>> rawDocs) {
+  static List<ExamSeating> _parseRawDocs(List<Map<String, dynamic>> rawDocs) {
     return rawDocs
-        .map((raw) {
-          final code = (raw['_docId'] as String? ?? '').replaceAll('_', ' ');
-          final roomsList = (raw['rooms'] as List<dynamic>?)
-                  ?.map((r) => ExamRoom.fromMap(Map<String, dynamic>.from(r as Map)))
-                  .toList() ??
-              [];
-          final examDate = raw['exam_date'];
-          String examDateStr = '';
-          if (examDate is String) examDateStr = examDate;
-          return ExamSeating(
-            courseCode: code,
-            courseTitle: CoursesMasterService().getTitle(code),
-            examDate: examDateStr,
-            rooms: roomsList,
-          );
-        })
+        .map((raw) => ExamSeating.fromMap(raw['_docId'] as String? ?? '', raw))
         .where((exam) => exam.rooms.isNotEmpty)
         .toList();
   }
 
-  Future<bool> _isLocalCacheStale() async {
-    final cachedAt = await _localCache.readCachedAt(_cacheKey);
-    if (cachedAt == null) return true;
-    try {
-      final metaSnap = await _firestore.doc('admin_metadata/exam_seating').get();
-      if (!metaSnap.exists) return false;
-      final lastUpdated = metaSnap.data()?['lastUpdated'];
-      if (lastUpdated == null) return false;
-      final remoteTime = lastUpdated is Timestamp
-          ? lastUpdated.toDate()
-          : DateTime.tryParse(lastUpdated.toString());
-      if (remoteTime == null) return false;
-      return remoteTime.isAfter(cachedAt);
-    } catch (_) {
-      return false;
-    }
-  }
-
   Future<List<ExamSeating>> fetchAllExamSeating() async {
-    if (_cachedExams != null) return _cachedExams!;
+    final campusId = CampusService.campusId;
+    if (_cachedExams != null && _cachedCampusId == campusId) {
+      return _cachedExams!;
+    }
 
     try {
-      final localData = await _localCache.read(_cacheKey);
+      final localData = await _localCache.readIfFresh(
+        _cacheKey,
+        metadataRef: _metadataRef,
+      );
       if (localData != null) {
-        final stale = await _isLocalCacheStale();
-        if (!stale) {
-          _cachedExams = _parseRawDocs(localData);
-          return _cachedExams!;
-        }
+        _cachedExams = _parseRawDocs(localData);
+        _cachedCampusId = campusId;
+        return _cachedExams!;
       }
 
       final querySnapshot = await _collectionRef.get();
@@ -198,12 +169,10 @@ class ExamSeatingService {
         return data;
       }).toList();
 
-      _localCache.write(_cacheKey, rawDocs);
+      await _localCache.write(_cacheKey, rawDocs);
 
-      _cachedExams = querySnapshot.docs
-          .map((doc) => ExamSeating.fromFirestore(doc))
-          .where((exam) => exam.rooms.isNotEmpty)
-          .toList();
+      _cachedExams = _parseRawDocs(rawDocs);
+      _cachedCampusId = campusId;
       return _cachedExams!;
     } catch (e) {
       SecureLogger.error('EXAM_SEATING', 'Error fetching exam seating', e);

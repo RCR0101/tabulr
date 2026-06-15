@@ -67,7 +67,7 @@ class AcadDrivesService {
             .map((e) => Map<String, dynamic>.from(e as Map))
             .toList();
         _allCoursesCache = courses;
-        _localCache.write(_cacheKey, courses);
+        await _localCache.write(_cacheKey, courses);
         return courses;
       }
     } catch (_) {}
@@ -81,7 +81,7 @@ class AcadDrivesService {
     }).toList();
 
     _allCoursesCache = data;
-    _localCache.write(_cacheKey, data);
+    await _localCache.write(_cacheKey, data);
     return data;
   }
 

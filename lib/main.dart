@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'utils/web_utils.dart' as web_utils;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'screens/auth_screen.dart';
@@ -31,6 +32,11 @@ void main() async {
   await SecureLogger.measureAsync('firebase_init', () => Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   ));
+
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: true,
+    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+  );
 
 
   await SecureLogger.measureAsync('campus_init', () => CampusService.initializeCampus());

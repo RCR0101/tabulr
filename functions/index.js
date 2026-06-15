@@ -142,6 +142,8 @@ function computeVerificationState(cw, dw) {
 
 // ─── Reputation functions ───
 
+const CLIENT_ALLOWED_EVENTS = new Set(["source_attached", "post_removed_inaccuracy"]);
+
 exports.addReputationEvent = onCall({ region: REGION, enforceAppCheck: false }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Must be signed in");
@@ -155,6 +157,12 @@ exports.addReputationEvent = onCall({ region: REGION, enforceAppCheck: false }, 
     request.data;
   if (!targetUid || !type || points == null || !description) {
     throw new HttpsError("invalid-argument", "Missing required fields");
+  }
+  if (!CLIENT_ALLOWED_EVENTS.has(type)) {
+    throw new HttpsError("permission-denied", "Event type not allowed from client");
+  }
+  if (targetUid !== callerDocId) {
+    throw new HttpsError("permission-denied", "Can only modify own reputation");
   }
   if (!isValidEvent(type, points)) {
     throw new HttpsError(
@@ -179,6 +187,9 @@ exports.touchReputationActivity = onCall({ region: REGION, enforceAppCheck: fals
   const { targetUid } = request.data;
   if (!targetUid) {
     throw new HttpsError("invalid-argument", "Missing targetUid");
+  }
+  if (targetUid !== callerDocId) {
+    throw new HttpsError("permission-denied", "Can only touch own activity");
   }
 
   await db

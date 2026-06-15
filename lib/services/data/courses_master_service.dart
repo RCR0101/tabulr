@@ -46,24 +46,6 @@ class CoursesMasterService {
 
   String get _cacheKey => 'courses_master_${CampusService.campusId}';
 
-  Future<bool> _isLocalCacheStale() async {
-    final cachedAt = await _localCache.readCachedAt(_cacheKey);
-    if (cachedAt == null) return true;
-    try {
-      final metaSnap = await CampusService.metadataDocRef(_firestore).get();
-      if (!metaSnap.exists) return false;
-      final lastUpdated = metaSnap.data()?['lastUpdated'];
-      if (lastUpdated == null) return false;
-      final remoteTime = lastUpdated is Timestamp
-          ? lastUpdated.toDate()
-          : DateTime.tryParse(lastUpdated.toString());
-      if (remoteTime == null) return false;
-      return remoteTime.isAfter(cachedAt);
-    } catch (_) {
-      return false;
-    }
-  }
-
   Future<void> loadForCampus({bool forceRefresh = false}) async {
     if (_loading) return;
     if (_loaded && !forceRefresh) return;
@@ -73,19 +55,19 @@ class CoursesMasterService {
     final campusId = CampusService.campusId;
 
     if (!forceRefresh) {
-      final cached = await _localCache.read(_cacheKey);
+      final cached = await _localCache.readIfFresh(
+        _cacheKey,
+        metadataRef: CampusService.metadataDocRef(_firestore),
+      );
       if (cached != null) {
-        final stale = await _isLocalCacheStale();
-        if (!stale) {
-          _cache = {
-            for (final map in cached)
-              map['course_code'] as String: CourseMasterEntry.fromMap(map)
-          };
-          _loaded = true;
-          _loading = false;
-          _loadStateController.add(true);
-          return;
-        }
+        _cache = {
+          for (final map in cached)
+            map['course_code'] as String: CourseMasterEntry.fromMap(map)
+        };
+        _loaded = true;
+        _loading = false;
+        _loadStateController.add(true);
+        return;
       }
     }
 
@@ -101,7 +83,7 @@ class CoursesMasterService {
         map['course_code'] as String: CourseMasterEntry.fromMap(map)
     };
 
-    _localCache.write(_cacheKey, docs);
+    await _localCache.write(_cacheKey, docs);
     _loaded = true;
     _loading = false;
     _loadStateController.add(true);

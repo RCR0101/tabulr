@@ -2,26 +2,48 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../constants/app_constants.dart';
 import '../models/prerequisite.dart';
 import '../services/data/courses_master_service.dart';
+import '../services/data/local_cache_service.dart';
 
 class PrerequisitesRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final LocalCacheService _localCache = LocalCacheService();
+
+  static const _cacheKey = 'prerequisites';
 
   CollectionReference<Map<String, dynamic>> get _prereqsRef =>
       _firestore.collection(FirestoreCollections.reference).doc(FirestoreCollections.prerequisites).collection(FirestoreCollections.courses);
+
+  DocumentReference<Map<String, dynamic>> get _metadataRef =>
+      _firestore.collection('metadata').doc('prerequisites');
 
   List<CoursePrerequisites>? _cache;
 
   Future<List<CoursePrerequisites>> _loadAll() async {
     if (_cache != null) return _cache!;
+
+    final cached = await _localCache.readIfFresh(
+      _cacheKey,
+      metadataRef: _metadataRef,
+    );
+    if (cached != null) {
+      _cache = cached
+          .map((m) => CoursePrerequisites.fromMap(m))
+          .toList();
+      return _cache!;
+    }
+
     final snapshot = await _prereqsRef.get();
-    _cache = snapshot.docs
-        .map((doc) => CoursePrerequisites.fromMap(doc.data()))
+    final rawDocs = snapshot.docs.map((doc) => doc.data()).toList();
+    _cache = rawDocs
+        .map((m) => CoursePrerequisites.fromMap(m))
         .toList();
+    await _localCache.write(_cacheKey, rawDocs);
     return _cache!;
   }
 
   void clearCache() {
     _cache = null;
+    _localCache.invalidate(_cacheKey);
   }
 
   Future<List<CoursePrerequisites>> searchCourses(String query) async {
