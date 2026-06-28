@@ -8,6 +8,7 @@ import '../../services/ui/toast_service.dart';
 import '../../utils/branch_constants.dart' as constants;
 import '../../utils/design_constants.dart';
 import '../../widgets/common/app_button.dart';
+import 'branch_group_management_screen.dart';
 
 class CourseGuideManagementScreen extends StatefulWidget {
   const CourseGuideManagementScreen({super.key});
@@ -24,6 +25,8 @@ class _CourseGuideManagementScreenState
 
   String? _selectedBranch;
   Map<String, List<String>> _cdcs = {};
+  List<String> _dels = [];
+  List<String> _huels = [];
   bool _loading = false;
   bool _saving = false;
   bool _dirty = false;
@@ -55,7 +58,7 @@ class _CourseGuideManagementScreenState
       final snap = await _branchesRef.get();
       _dualDegreeOverrides = snap.docs
           .map((d) => d.id)
-          .where((id) => id.contains('_') && id != '_metadata')
+          .where((id) => id.contains('_') && !id.startsWith('_'))
           .toList()
         ..sort();
     } catch (_) {}
@@ -75,8 +78,12 @@ class _CourseGuideManagementScreenState
       final rawCdcs = data['cdcs'] as Map<String, dynamic>? ?? {};
       _cdcs = rawCdcs.map(
           (k, v) => MapEntry(k, List<String>.from(v as List? ?? [])));
+      _dels = List<String>.from(data['dels'] as List? ?? []);
+      _huels = List<String>.from(data['huels'] as List? ?? []);
     } catch (e) {
       _cdcs = {};
+      _dels = [];
+      _huels = [];
       ToastService.showError('Failed to load branch data');
     }
     if (mounted) setState(() => _loading = false);
@@ -89,6 +96,8 @@ class _CourseGuideManagementScreenState
       await _branchesRef.doc(_selectedBranch!).set({
         'branch_code': _selectedBranch,
         'cdcs': _cdcs,
+        'dels': _dels,
+        'huels': _huels,
       }, SetOptions(merge: true));
       setState(() => _dirty = false);
       ToastService.showSuccess('Saved ${constants.branchCodeToName[_selectedBranch] ?? _selectedBranch}');
@@ -98,8 +107,16 @@ class _CourseGuideManagementScreenState
     if (mounted) setState(() => _saving = false);
   }
 
-  void _addCourse(String semester) {
-    _showCourseCodePicker(semester);
+  Future<void> _addCourse(String semester) async {
+    final code = await _pickCourseCode('Add Course to $semester');
+    if (code == null || code.isEmpty) return;
+    setState(() {
+      _cdcs.putIfAbsent(semester, () => []);
+      if (!_cdcs[semester]!.contains(code)) {
+        _cdcs[semester]!.add(code);
+        _dirty = true;
+      }
+    });
   }
 
   void _removeCourse(String semester, int index) {
@@ -109,7 +126,26 @@ class _CourseGuideManagementScreenState
     });
   }
 
-  Future<void> _showCourseCodePicker(String semester) async {
+  /// Add a course to a flat elective list (DELs or HUELs).
+  Future<void> _addElective(List<String> list, String label) async {
+    final code = await _pickCourseCode('Add $label');
+    if (code == null || code.isEmpty) return;
+    setState(() {
+      if (!list.contains(code)) {
+        list.add(code);
+        _dirty = true;
+      }
+    });
+  }
+
+  void _removeElective(List<String> list, int index) {
+    setState(() {
+      list.removeAt(index);
+      _dirty = true;
+    });
+  }
+
+  Future<String?> _pickCourseCode(String title) async {
     final codeCtrl = TextEditingController();
     String? selectedName;
 
@@ -129,7 +165,7 @@ class _CourseGuideManagementScreenState
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Add Course to $semester',
+                    Text(title,
                         style: Theme.of(ctx)
                             .textTheme
                             .titleMedium
@@ -244,16 +280,7 @@ class _CourseGuideManagementScreenState
     );
 
     codeCtrl.dispose();
-
-    if (result != null && result.isNotEmpty) {
-      setState(() {
-        _cdcs.putIfAbsent(semester, () => []);
-        if (!_cdcs[semester]!.contains(result)) {
-          _cdcs[semester]!.add(result);
-          _dirty = true;
-        }
-      });
-    }
+    return result;
   }
 
   Future<void> _showCreateDualDegreeDialog() async {
@@ -445,6 +472,10 @@ class _CourseGuideManagementScreenState
                   for (final sem in _semesters) ...[
                     _semesterSection(sem, scheme),
                   ],
+                  _electiveSection(
+                      'Discipline Electives (DELs)', _dels, 'DEL', scheme),
+                  _electiveSection(
+                      'Humanities Electives (HUELs)', _huels, 'HUEL', scheme),
                   const SizedBox(height: 80),
                 ],
               ),
@@ -454,8 +485,14 @@ class _CourseGuideManagementScreenState
     );
   }
 
+  /// First-year CDCs (1-1, 1-2) are owned by the Branch Groups tool, not
+  /// edited per-branch here.
+  static bool _isFirstYear(String semester) =>
+      semester == '1-1' || semester == '1-2';
+
   Widget _semesterSection(String semester, ColorScheme scheme) {
     final courses = _cdcs[semester] ?? [];
+    final locked = _isFirstYear(semester);
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppDesign.spacingSm),
@@ -494,9 +531,125 @@ class _CourseGuideManagementScreenState
                     style: TextStyle(
                         fontSize: 12, color: AppDesign.muted(context))),
                 const Spacer(),
+                if (locked)
+                  InkWell(
+                    borderRadius: BorderRadius.circular(4),
+                    onTap: _openBranchGroups,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.lock_outline_rounded,
+                              size: 14, color: AppDesign.muted(context)),
+                          const SizedBox(width: 4),
+                          Text('Branch Groups',
+                              style: TextStyle(
+                                  fontSize: 12, color: scheme.primary)),
+                          Icon(Icons.chevron_right_rounded,
+                              size: 16, color: scheme.primary),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  InkWell(
+                    borderRadius: BorderRadius.circular(4),
+                    onTap: () => _addCourse(semester),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add_rounded,
+                              size: 16, color: scheme.primary),
+                          const SizedBox(width: 2),
+                          Text('Add',
+                              style: TextStyle(
+                                  fontSize: 12, color: scheme.primary)),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (locked)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+              child: Text(
+                'First-year CDCs are managed by group in Branch Groups.',
+                style: TextStyle(
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                    color: AppDesign.muted(context)),
+              ),
+            ),
+          if (courses.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text('No courses',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                      color: AppDesign.muted(context))),
+            )
+          else
+            for (var i = 0; i < courses.length; i++)
+              _courseRow(semester, i, courses[i], scheme, locked: locked),
+        ],
+      ),
+    );
+  }
+
+  void _openBranchGroups() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const BranchGroupManagementScreen()),
+    );
+  }
+
+  /// A flat (not per-semester) list of elective courses — DELs or HUELs.
+  Widget _electiveSection(
+      String title, List<String> list, String shortLabel, ColorScheme scheme) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppDesign.spacingSm),
+      decoration: AppDesign.cardDecoration(context),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                    color: scheme.outline
+                        .withValues(alpha: AppDesign.opacityDivider)),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: scheme.tertiary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(title,
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.tertiary)),
+                ),
+                const SizedBox(width: 8),
+                Text('${list.length} courses',
+                    style: TextStyle(
+                        fontSize: 12, color: AppDesign.muted(context))),
+                const Spacer(),
                 InkWell(
                   borderRadius: BorderRadius.circular(4),
-                  onTap: () => _addCourse(semester),
+                  onTap: () => _addElective(list, shortLabel),
                   child: Padding(
                     padding: const EdgeInsets.all(4),
                     child: Row(
@@ -515,7 +668,7 @@ class _CourseGuideManagementScreenState
               ],
             ),
           ),
-          if (courses.isEmpty)
+          if (list.isEmpty)
             Padding(
               padding: const EdgeInsets.all(12),
               child: Text('No courses',
@@ -525,15 +678,60 @@ class _CourseGuideManagementScreenState
                       color: AppDesign.muted(context))),
             )
           else
-            for (var i = 0; i < courses.length; i++)
-              _courseRow(semester, i, courses[i], scheme),
+            for (var i = 0; i < list.length; i++)
+              _electiveRow(list, i, list[i], scheme),
+        ],
+      ),
+    );
+  }
+
+  Widget _electiveRow(
+      List<String> list, int index, String code, ColorScheme scheme) {
+    final title = _masterService.get(code)?.title ?? '';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+              color: scheme.outline.withValues(alpha: AppDesign.opacityDivider)),
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(code,
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurface)),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(title,
+                style: TextStyle(
+                    fontSize: 12,
+                    color: scheme.onSurface
+                        .withValues(alpha: AppDesign.opacityMedium)),
+                overflow: TextOverflow.ellipsis),
+          ),
+          InkWell(
+            borderRadius: BorderRadius.circular(4),
+            onTap: () => _removeElective(list, index),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(Icons.close_rounded,
+                  size: 16, color: scheme.error.withValues(alpha: 0.7)),
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _courseRow(
-      String semester, int index, String code, ColorScheme scheme) {
+      String semester, int index, String code, ColorScheme scheme,
+      {bool locked = false}) {
     final master = _masterService.get(code);
     final title = master?.title ?? '';
 
@@ -573,15 +771,16 @@ class _CourseGuideManagementScreenState
                       color: scheme.onSurface
                           .withValues(alpha: AppDesign.opacityLow))),
             ),
-          InkWell(
-            borderRadius: BorderRadius.circular(4),
-            onTap: () => _removeCourse(semester, index),
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Icon(Icons.close_rounded,
-                  size: 16, color: scheme.error.withValues(alpha: 0.7)),
+          if (!locked)
+            InkWell(
+              borderRadius: BorderRadius.circular(4),
+              onTap: () => _removeCourse(semester, index),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(Icons.close_rounded,
+                    size: 16, color: scheme.error.withValues(alpha: 0.7)),
+              ),
             ),
-          ),
         ],
       ),
     );

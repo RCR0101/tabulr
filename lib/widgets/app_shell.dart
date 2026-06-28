@@ -14,6 +14,7 @@ import '../screens/professors_screen.dart';
 import '../screens/course_announcements_screen.dart';
 import '../screens/admin_screen.dart';
 import '../screens/free_slot_finder_screen.dart';
+import '../screens/credits_screen.dart';
 import '../services/data/admin_service.dart';
 import 'app_drawer.dart';
 import 'app_sidebar.dart';
@@ -218,6 +219,18 @@ class _MobileShell extends StatelessWidget {
                     onScreenSelected(screen);
                   },
                 )),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text('Credits'),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CreditsScreen()),
+                );
+              },
+            ),
             const SizedBox(height: 8),
           ],
         ),

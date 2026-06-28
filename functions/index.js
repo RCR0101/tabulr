@@ -547,5 +547,6 @@ exports.acceptCorrection = onCall({ region: REGION, enforceAppCheck: false }, as
 // uploadTimetable and uploadExamSeating are in functions-python/
 const adminFunctions = require("./admin");
 exports.checkAdminStatus = adminFunctions.checkAdminStatus;
+exports.getAdmins = adminFunctions.getAdmins;
 exports.rebuildProfessorSchedules = adminFunctions.rebuildProfessorSchedules;
 exports.archiveTimetables = adminFunctions.archiveTimetables;

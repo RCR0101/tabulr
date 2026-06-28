@@ -35,7 +35,13 @@ class LocalCacheService {
 
   /// Reads cached data using TTL only (no metadata check).
   /// Use for data without a Firestore metadata doc (e.g. R2-sourced data).
-  Future<List<Map<String, dynamic>>?> read(String cacheKey) async {
+  ///
+  /// [maxAgeHours] overrides the default 72h TTL for rarely-changing data
+  /// (e.g. the credits screen), where a longer-lived cache is desirable.
+  Future<List<Map<String, dynamic>>?> read(
+    String cacheKey, {
+    int? maxAgeHours,
+  }) async {
     if (kIsWeb) return null;
     try {
       final file = File('${await _dir}/${_fileName(cacheKey)}.json');
@@ -45,7 +51,8 @@ class LocalCacheService {
       final envelope = jsonDecode(content) as Map<String, dynamic>;
       final cachedAt = DateTime.parse(envelope['cachedAt'] as String);
 
-      if (DateTime.now().difference(cachedAt).inHours >= _maxAgeHours) {
+      if (DateTime.now().difference(cachedAt).inHours >=
+          (maxAgeHours ?? _maxAgeHours)) {
         return null;
       }
 

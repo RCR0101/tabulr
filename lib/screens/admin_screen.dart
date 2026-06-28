@@ -1,12 +1,20 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../services/data/admin_service.dart';
+import '../services/data/config_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
+import '../utils/web_utils.dart' as web_utils;
 import '../constants/app_constants.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_button.dart';
+import 'admin/branch_group_management_screen.dart';
 import 'admin/course_guide_management_screen.dart';
+import 'admin/prerequisites_management_screen.dart';
+import 'admin/duplicate_courses_management_screen.dart';
 import 'admin/course_management_screen.dart';
 import 'admin/exam_seating_management_screen.dart';
 import 'admin/professor_management_screen.dart';
@@ -68,6 +76,12 @@ class _AdminScreenState extends State<AdminScreen> {
 
   final _archiveYearController = TextEditingController();
   int _archiveSemester = 1;
+
+  late final Map<String, DateTime> _semesterDates = {
+    ...ConfigService().semesterDates,
+  };
+  bool _savingDates = false;
+  String? _datesResult;
 
   @override
   void dispose() {
@@ -197,6 +211,42 @@ class _AdminScreenState extends State<AdminScreen> {
     }
   }
 
+  static const String _profsTemplateJson = '''{
+  "profs": [
+    {
+      "name": "JOHN DOE",
+      "chamber": "A-123"
+    },
+    {
+      "name": "JANE SMITH",
+      "chamber": "D-204"
+    }
+  ]
+}
+''';
+
+  Future<void> _downloadProfsTemplate() async {
+    final bytes = Uint8List.fromList(utf8.encode(_profsTemplateJson));
+    const fileName = 'profs_template.json';
+    try {
+      if (kIsWeb) {
+        web_utils.downloadBlob(bytes, fileName);
+        ToastService.showSuccess('Template downloaded');
+        return;
+      }
+      final path = await FilePicker.platform.saveFile(
+        dialogTitle: 'Save profs template',
+        fileName: fileName,
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+        bytes: bytes,
+      );
+      if (path != null) ToastService.showSuccess('Template saved');
+    } catch (e) {
+      ToastService.showError('Could not save template');
+    }
+  }
+
   Future<void> _rebuildProfessors() async {
     setState(() {
       _rebuildingProfs = true;
@@ -257,6 +307,48 @@ class _AdminScreenState extends State<AdminScreen> {
       ToastService.showError('Archive failed');
     } finally {
       setState(() => _archiving = false);
+    }
+  }
+
+  Future<void> _saveSemesterDates() async {
+    // Sanity: each start must not be after its matching end.
+    bool ordered(String a, String b) =>
+        !_semesterDates[a]!.isAfter(_semesterDates[b]!);
+    if (!ordered('semesterStart', 'semesterEnd') ||
+        !ordered('midsemStart', 'midsemEnd') ||
+        !ordered('endsemStart', 'endsemEnd')) {
+      ToastService.showError('Each start date must be on or before its end date');
+      return;
+    }
+    setState(() {
+      _savingDates = true;
+      _datesResult = null;
+    });
+    try {
+      await ConfigService().saveSemesterDates(_semesterDates);
+      setState(() => _datesResult = 'Semester dates saved');
+      ToastService.showSuccess('Semester dates saved');
+    } catch (e) {
+      setState(() => _datesResult = 'Error: $e');
+      ToastService.showError('Save failed');
+    } finally {
+      setState(() => _savingDates = false);
+    }
+  }
+
+  Future<void> _pickSemesterDate(String key) async {
+    final current = _semesterDates[key]!;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: current,
+      firstDate: DateTime(current.year - 2),
+      lastDate: DateTime(current.year + 3),
+    );
+    if (picked != null) {
+      setState(() {
+        _semesterDates[key] = picked;
+        _datesResult = null;
+      });
     }
   }
 
@@ -791,12 +883,16 @@ class _AdminScreenState extends State<AdminScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: scheme.onSurface)),
                     const SizedBox(height: 2),
                     Text(subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                             fontSize: 12,
                             color: scheme.onSurface
@@ -823,7 +919,7 @@ class _AdminScreenState extends State<AdminScreen> {
         key: TutorialKeys.adminManagement,
         icon: Icons.menu_book_rounded,
         title: 'Course Management',
-        subtitle: 'Edit courses, sections, and exam schedules',
+        subtitle: 'Courses, sections & exams',
         color: accent,
         onTap: () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => const CourseManagementScreen())),
@@ -831,7 +927,7 @@ class _AdminScreenState extends State<AdminScreen> {
       _managementCard(
         icon: Icons.event_seat_rounded,
         title: 'Exam Seating',
-        subtitle: 'Edit room assignments and student allocations',
+        subtitle: 'Rooms & allocations',
         color: secondary,
         onTap: () => Navigator.push(
             context,
@@ -841,7 +937,7 @@ class _AdminScreenState extends State<AdminScreen> {
       _managementCard(
         icon: Icons.person_rounded,
         title: 'Professor Chambers',
-        subtitle: 'Edit professor details and chamber info',
+        subtitle: 'Chamber & contact info',
         color: tertiary,
         onTap: () => Navigator.push(
             context,
@@ -851,12 +947,42 @@ class _AdminScreenState extends State<AdminScreen> {
       _managementCard(
         icon: Icons.auto_stories_rounded,
         title: 'Course Guide',
-        subtitle: 'Edit CDC structure per branch and semester',
+        subtitle: 'CDC structure per branch',
         color: accent,
         onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
                 builder: (_) => const CourseGuideManagementScreen())),
+      ),
+      _managementCard(
+        icon: Icons.workspaces_rounded,
+        title: 'Branch Groups',
+        subtitle: 'First-year course groups',
+        color: secondary,
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => const BranchGroupManagementScreen())),
+      ),
+      _managementCard(
+        icon: Icons.account_tree_rounded,
+        title: 'Prerequisites',
+        subtitle: 'Prereqs & co-requisites',
+        color: tertiary,
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => const PrerequisitesManagementScreen())),
+      ),
+      _managementCard(
+        icon: Icons.content_copy_rounded,
+        title: 'Duplicate Courses',
+        subtitle: 'Equivalence groups',
+        color: secondary,
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => const DuplicateCoursesManagementScreen())),
       ),
     ];
   }
@@ -951,6 +1077,16 @@ class _AdminScreenState extends State<AdminScreen> {
                 .withValues(alpha: AppDesign.opacityLow),
           ),
         ),
+        const SizedBox(height: AppDesign.spacingSm),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: AppButton(
+            label: 'Download template',
+            icon: Icons.download_rounded,
+            variant: AppButtonVariant.ghost,
+            onTap: _downloadProfsTemplate,
+          ),
+        ),
         const SizedBox(height: AppDesign.spacingSm + 4),
         AppButton(
           label: 'Rebuild Schedules',
@@ -1011,6 +1147,76 @@ class _AdminScreenState extends State<AdminScreen> {
     );
   }
 
+  Widget _semesterDatesSection() {
+    final scheme = Theme.of(context).colorScheme;
+    String fmt(DateTime d) =>
+        '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
+    return _buildSection(
+      title: 'Semester Dates',
+      icon: Icons.date_range_rounded,
+      children: [
+        Text(
+          'Drives the Calendar and exports. Applies to all users on next open.',
+          style: TextStyle(
+            fontSize: 12,
+            color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow),
+          ),
+        ),
+        const SizedBox(height: AppDesign.spacingSm),
+        for (final key in ConfigService.dateKeys)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppDesign.spacingXs + 2),
+            child: InkWell(
+              borderRadius: AppDesign.borderRadiusSm,
+              onTap: _savingDates ? null : () => _pickSemesterDate(key),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: AppDesign.spacingSm + 4,
+                    vertical: AppDesign.spacingSm + 2),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                  borderRadius: AppDesign.borderRadiusSm,
+                  border:
+                      Border.all(color: scheme.outline.withValues(alpha: 0.15)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        ConfigService.dateLabels[key] ?? key,
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: scheme.onSurface
+                                .withValues(alpha: AppDesign.opacityHigh)),
+                      ),
+                    ),
+                    Text(fmt(_semesterDates[key]!),
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: scheme.primary)),
+                    const SizedBox(width: AppDesign.spacingSm),
+                    Icon(Icons.edit_calendar_rounded,
+                        size: 16, color: AppDesign.muted(context)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        const SizedBox(height: AppDesign.spacingSm),
+        AppButton(
+          label: 'Save Dates',
+          icon: Icons.check_rounded,
+          onTap: !_savingDates ? _saveSemesterDates : null,
+          isLoading: _savingDates,
+          expand: true,
+        ),
+        if (_datesResult != null) _buildResultBadge(_datesResult!),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final padding = ResponsiveService.getAdaptivePadding(
@@ -1037,31 +1243,54 @@ class _AdminScreenState extends State<AdminScreen> {
             )),
         const SizedBox(height: AppDesign.spacingSm),
         _timetableUploadSection(),
+        _archiveSection(),
         _examUploadSection(),
         _profsSection(),
-        _archiveSection(),
+        _semesterDatesSection(),
       ],
     );
   }
 
-  Widget _wideLayout() {
+  /// Lays out the management cards as centered rows of up to 4, with every
+  /// card a uniform width so partial rows stay symmetric.
+  Widget _managementGrid() {
+    const perRow = 4;
+    const gap = AppDesign.spacingMd;
     final cards = _managementCards();
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth =
+            (constraints.maxWidth - gap * (perRow - 1)) / perRow;
+        return Wrap(
+          alignment: WrapAlignment.center,
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final card in cards)
+              SizedBox(width: cardWidth, child: card),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _wideLayout() {
     return Column(
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (var i = 0; i < cards.length; i++) ...[
-              if (i > 0) const SizedBox(width: AppDesign.spacingMd),
-              Expanded(child: cards[i]),
-            ],
-          ],
-        ),
+        _managementGrid(),
         const SizedBox(height: AppDesign.spacingMd),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(flex: 3, child: _timetableUploadSection()),
+            Expanded(
+              flex: 3,
+              child: Column(
+                children: [
+                  _timetableUploadSection(),
+                  _archiveSection(),
+                ],
+              ),
+            ),
             const SizedBox(width: AppDesign.spacingMd),
             Expanded(
               flex: 2,
@@ -1069,7 +1298,7 @@ class _AdminScreenState extends State<AdminScreen> {
                 children: [
                   _examUploadSection(),
                   _profsSection(),
-                  _archiveSection(),
+                  _semesterDatesSection(),
                 ],
               ),
             ),

@@ -10,7 +10,7 @@ const Map<String, String> branchCodeToName = {
   'AB': 'Manufacturing',
   'AC': 'Electronics and Computer',
   'AD': 'Math and Computing',
-  'AJ': 'Biotechnology',
+  'AJ': 'Environmental and Sustainability Engineering',
   'B1': 'MSc Biology',
   'B2': 'MSc Chemistry',
   'B3': 'MSc Economics',

@@ -46,6 +46,33 @@ class PrerequisitesRepository {
     _localCache.invalidate(_cacheKey);
   }
 
+  static String _docId(String courseCode) => courseCode.replaceAll(' ', '_');
+
+  /// Create or replace a course's prerequisites (admin). Bumps the freshness
+  /// marker so other devices refresh, and clears the local cache.
+  Future<void> saveCoursePrerequisites(CoursePrerequisites course) async {
+    await _prereqsRef.doc(_docId(course.courseCode)).set(course.toMap());
+    await _bumpMetadata();
+    clearCache();
+  }
+
+  Future<void> deleteCoursePrerequisites(String courseCode) async {
+    await _prereqsRef.doc(_docId(courseCode)).delete();
+    await _bumpMetadata();
+    clearCache();
+  }
+
+  /// Best-effort freshness bump; the prereq doc write is the source of truth,
+  /// so a denied metadata write must not fail the save.
+  Future<void> _bumpMetadata() async {
+    try {
+      await _metadataRef.set(
+        {'lastUpdated': DateTime.now().toIso8601String()},
+        SetOptions(merge: true),
+      );
+    } catch (_) {}
+  }
+
   Future<List<CoursePrerequisites>> searchCourses(String query) async {
     if (query.isEmpty) return [];
 

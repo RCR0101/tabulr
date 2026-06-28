@@ -35,6 +35,38 @@ exports.checkAdminStatus = onCall({ region: REGION, enforceAppCheck: false }, as
   return { isAdmin: adminDoc.exists };
 });
 
+// ─── List admins (for the public Credits screen) ───
+//
+// admin_users is keyed by uid and is not client-readable, so this callable
+// resolves each admin's display name via Firebase Auth using the Admin SDK.
+// Only names/photos are returned (no emails/uids) since the Credits screen is
+// visible to everyone.
+
+exports.getAdmins = onCall({ region: REGION, enforceAppCheck: false }, async () => {
+  const snap = await db.collection("admin_users").get();
+
+  const admins = [];
+  for (const doc of snap.docs) {
+    let name = null;
+    let photoUrl = null;
+    try {
+      const user = await admin.auth().getUser(doc.id);
+      name = user.displayName ||
+        (user.email ? user.email.split("@")[0] : null);
+      photoUrl = user.photoURL || null;
+    } catch (e) {
+      // uid no longer resolves in Auth — fall back to any stored fields.
+      const data = doc.data() || {};
+      name = data.name ||
+        (data.email ? String(data.email).split("@")[0] : null);
+    }
+    if (name) admins.push({ name, photoUrl });
+  }
+
+  admins.sort((a, b) => a.name.localeCompare(b.name));
+  return { admins };
+});
+
 // ─── Professor fuzzy matching (ported from build_professor_schedules.js) ───
 
 function levenshteinDistance(a, b) {

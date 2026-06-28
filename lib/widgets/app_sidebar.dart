@@ -4,6 +4,7 @@ import '../services/data/auth_service.dart';
 import '../services/data/course_announcement_service.dart';
 import '../services/ui/tutorial_service.dart';
 import '../utils/design_constants.dart';
+import '../screens/credits_screen.dart';
 import 'app_drawer.dart';
 
 class AppSidebar extends StatefulWidget {
@@ -303,27 +304,45 @@ class _AppSidebarState extends State<AppSidebar> {
               : const SizedBox.shrink())
           : Row(
               children: [
-                const SizedBox(width: AppDesign.spacingSm),
-                Icon(
-                  Icons.info_outline,
-                  size: 14,
-                  color: scheme.onSurface.withValues(alpha: 0.4),
-                ),
-                const SizedBox(width: AppDesign.spacingSm),
                 Expanded(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Made with ',
-                        style: TextStyle(fontSize: 11, color: scheme.onSurface.withValues(alpha: 0.4)),
+                  child: InkWell(
+                    borderRadius: AppDesign.borderRadiusSm,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const CreditsScreen()),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: AppDesign.spacingSm,
+                          vertical: AppDesign.spacingXs + 2),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 14,
+                            color: scheme.onSurface.withValues(alpha: 0.4),
+                          ),
+                          const SizedBox(width: AppDesign.spacingSm),
+                          Flexible(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Made with ',
+                                  style: TextStyle(fontSize: 11, color: scheme.onSurface.withValues(alpha: 0.4)),
+                                ),
+                                Icon(Icons.favorite, size: 11, color: Colors.red.withValues(alpha: 0.6)),
+                                Text(
+                                  ' for students',
+                                  style: TextStyle(fontSize: 11, color: scheme.onSurface.withValues(alpha: 0.4)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      Icon(Icons.favorite, size: 11, color: Colors.red.withValues(alpha: 0.6)),
-                      Text(
-                        ' for students',
-                        style: TextStyle(fontSize: 11, color: scheme.onSurface.withValues(alpha: 0.4)),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
                 IconButton(

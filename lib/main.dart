@@ -16,6 +16,7 @@ import 'models/course.dart';
 import 'services/data/course_data_service.dart';
 import 'services/data/courses_master_service.dart';
 import 'services/data/preferences_service.dart';
+import 'services/data/config_service.dart';
 import 'services/data/user_settings_service.dart';
 import 'models/user_settings.dart' as user_settings;
 import 'services/data/admin_service.dart';
@@ -65,6 +66,9 @@ void main() async {
     CourseDataService().fetchCourses().catchError((e) {
       SecureLogger.error('STARTUP', 'Failed to prefetch courses', e);
       return <Course>[];
+    }),
+    ConfigService().loadSemesterDates().catchError((e) {
+      SecureLogger.error('STARTUP', 'Failed to load semester dates', e);
     }),
   ]));
 
