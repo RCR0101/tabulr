@@ -250,6 +250,7 @@ abstract final class AppLimits {
   static const int acadDriveFilePageSize = 200;
   static const int acadDriveFileMaxSize = 5000;
   static const int perfFlushThreshold = 50;
+  static const int logFlushThreshold = 50;
   static const int maxPdfSize = 10 * 1024 * 1024; // 10 MB
 }
 
@@ -259,6 +260,7 @@ abstract final class AppDurations {
   static const Duration cacheTimeout = Duration(hours: 24);
   static const Duration versionCheckInterval = Duration(minutes: 5);
   static const Duration perfFlushInterval = Duration(seconds: 30);
+  static const Duration logFlushInterval = Duration(seconds: 30);
   static const Duration uploadTimetableTimeout = Duration(minutes: 8);
   static const Duration uploadExamSeatingTimeout = Duration(minutes: 5);
   static const Duration networkTimeout = Duration(seconds: 20);

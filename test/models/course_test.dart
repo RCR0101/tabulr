@@ -89,6 +89,23 @@ void main() {
       expect(restored.schedule.length, section.schedule.length);
     });
 
+    test('fromJson tolerates missing schedule field', () {
+      final json = makeSection().toJson()..remove('schedule');
+
+      final restored = Section.fromJson(json);
+
+      expect(restored.schedule, isEmpty);
+    });
+
+    test('fromJson tolerates null schedule field', () {
+      final json = makeSection().toJson();
+      json['schedule'] = null;
+
+      final restored = Section.fromJson(json);
+
+      expect(restored.schedule, isEmpty);
+    });
+
     test('days getter aggregates across schedule entries', () {
       final section = Section(
         sectionId: 'L1',

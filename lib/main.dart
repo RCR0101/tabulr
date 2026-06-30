@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'utils/web_utils.dart' as web_utils;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/tabulr_down_screen.dart';
 import 'widgets/common/shimmer_loading.dart';
 import 'widgets/app_shell.dart';
 import 'services/data/auth_service.dart';
@@ -22,6 +23,7 @@ import 'models/user_settings.dart' as user_settings;
 import 'services/data/admin_service.dart';
 import 'services/ui/secure_logger.dart';
 import 'services/ui/performance_monitor.dart';
+import 'services/ui/remote_log_sink.dart';
 import 'widgets/theme_transition_overlay.dart';
 
 void main() async {
@@ -29,6 +31,10 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   PerformanceMonitor().initialize();
+  // Ship app logs + admin audit trail to the logger worker -> R2 logs bucket.
+  // Release-only (debug builds already log to the console) and warning+ to keep
+  // worker invocations / R2 writes minimal in healthy operation.
+  RemoteLogSink().initialize(enabled: !kDebugMode, minLevelIndex: 2);
 
   await SecureLogger.measureAsync('firebase_init', () => Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -166,10 +172,40 @@ class _TimetableMakerAppState extends State<TimetableMakerApp> {
             screenshotKey: _screenshotKey,
             child: RepaintBoundary(
               key: _screenshotKey,
-              child: const AuthWrapper(),
+              child: const MaintenanceGate(child: AuthWrapper()),
             ),
           ),
         );
+      },
+    );
+  }
+}
+
+/// Root kill-switch gate. If `reference/app_config.maintenance` is true (read
+/// at startup by [ConfigService] at no extra read cost), shows the
+/// [TabulrDownScreen] instead of the app. The "Try again" action re-fetches the
+/// config so users can recover without a manual reload. Server-side enforcement
+/// is handled independently by firestore.rules.
+class MaintenanceGate extends StatefulWidget {
+  final Widget child;
+  const MaintenanceGate({super.key, required this.child});
+
+  @override
+  State<MaintenanceGate> createState() => _MaintenanceGateState();
+}
+
+class _MaintenanceGateState extends State<MaintenanceGate> {
+  @override
+  Widget build(BuildContext context) {
+    final config = ConfigService();
+    if (!config.isMaintenance) return widget.child;
+
+    return TabulrDownScreen(
+      message: config.maintenanceMessage,
+      onRetry: () async {
+        await config.reloadAppConfig();
+        if (mounted) setState(() {});
+        return !config.isMaintenance;
       },
     );
   }

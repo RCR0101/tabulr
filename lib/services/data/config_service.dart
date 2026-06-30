@@ -16,7 +16,7 @@ class ConfigService {
   // App Configuration
   String get appName => 'Tabulr';
   // Keep in sync with pubspec.yaml `version:` field.
-  String get appVersion => '2.5.0';
+  String get appVersion => '2.5.1';
 
   // Debug Settings
   bool get debugMode => false;
@@ -60,6 +60,19 @@ class ConfigService {
   final Map<String, DateTime> _overrides = {};
   bool _loaded = false;
 
+  // ── Kill switch ─────────────────────────────────────────────────────────
+  // Driven by `maintenance` / `maintenance_message` on the same
+  // `reference/app_config` doc this service already reads at startup, so the
+  // check costs zero extra Firestore reads. Server-side enforcement lives in
+  // firestore.rules (see appAvailable()).
+  bool _maintenance = false;
+  String _maintenanceMessage = '';
+
+  bool get isMaintenance => _maintenance;
+  String get maintenanceMessage => _maintenanceMessage.isNotEmpty
+      ? _maintenanceMessage
+      : 'Tabulr is temporarily down for maintenance. Please check back soon.';
+
   DocumentReference<Map<String, dynamic>> get _configRef => FirebaseFirestore
       .instance
       .collection(FirestoreCollections.reference)
@@ -91,20 +104,35 @@ class ConfigService {
     if (_loaded && !force) return;
     try {
       final snap = await _configRef.get();
-      final data = snap.data()?['semester_dates'] as Map<String, dynamic>?;
-      if (data != null) {
-        _applyMap(data);
+      final doc = snap.data();
+      if (doc != null) {
+        _maintenance = doc['maintenance'] == true;
+        final msg = doc['maintenance_message'];
+        _maintenanceMessage = msg is String ? msg : '';
+        final dates = doc['semester_dates'] as Map<String, dynamic>?;
+        if (dates != null) _applyMap(dates);
         await _localCache.write(_cacheKey, [_serialize()]);
         _loaded = true;
         return;
       }
     } catch (e) {
-      SecureLogger.error('CONFIG', 'Failed to load semester dates', e);
+      SecureLogger.error('CONFIG', 'Failed to load app config', e);
     }
+    // Offline / error fallback: use cached values (incl. last-known maintenance).
     final cached = await _localCache.read(_cacheKey);
-    if (cached != null && cached.isNotEmpty) _applyMap(cached.first);
+    if (cached != null && cached.isNotEmpty) {
+      final c = cached.first;
+      _applyMap(c);
+      _maintenance = c['_maintenance'] == true;
+      final msg = c['_maintenance_message'];
+      if (msg is String) _maintenanceMessage = msg;
+    }
     _loaded = true;
   }
+
+  /// Force a re-fetch of the app config (used by the maintenance "Retry"
+  /// action). Cheap: a single read of `reference/app_config`.
+  Future<void> reloadAppConfig() => loadSemesterDates(force: true);
 
   /// Persist admin-set semester dates and apply them in-memory immediately.
   Future<void> saveSemesterDates(Map<String, DateTime> dates) async {
@@ -128,8 +156,11 @@ class ConfigService {
     }
   }
 
-  Map<String, dynamic> _serialize() =>
-      {for (final k in dateKeys) k: _date(k).toIso8601String()};
+  Map<String, dynamic> _serialize() => {
+        for (final k in dateKeys) k: _date(k).toIso8601String(),
+        '_maintenance': _maintenance,
+        '_maintenance_message': _maintenanceMessage,
+      };
 
   void printConfiguration() {
     if (debugMode) {

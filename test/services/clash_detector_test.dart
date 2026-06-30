@@ -214,6 +214,88 @@ void main() {
     });
   });
 
+  group('missing course/section resilience', () {
+    // Regression: selected sections can reference courses/sections that are no
+    // longer in the catalog (e.g. stale local data after an admin removal).
+    // These paths must skip gracefully instead of throwing.
+
+    test('detectClashes ignores a section whose course is not in the list', () {
+      final sections = [
+        makeSelectedSection(courseCode: 'CS F111', section: makeSection(days: [DayOfWeek.M], hours: [1])),
+        makeSelectedSection(courseCode: 'GHOST F999', section: makeSection(days: [DayOfWeek.M], hours: [1])),
+      ];
+
+      // Only CS F111 exists in the catalog.
+      final clashes = ClashDetector.detectClashes(sections, [
+        makeCourse(courseCode: 'CS F111'),
+      ]);
+
+      _record('detectClashes skips unknown course', true, 0);
+      // The unknown course is dropped from exam analysis; class clashes still
+      // run off the section schedules, but there is no exam clash to report.
+      expect(clashes.where((c) => c.type == ClashType.midSemExam), isEmpty);
+    });
+
+    test('canAddSection returns true when the new course is unknown', () {
+      final newSection = makeSelectedSection(
+        courseCode: 'GHOST F999',
+        section: makeSection(days: [DayOfWeek.T], hours: [2]),
+      );
+
+      final canAdd = ClashDetector.canAddSection(newSection, [], [makeCourse(courseCode: 'CS F111')]);
+
+      _record('canAddSection unknown new course no throw', true, 0);
+      expect(canAdd, isTrue);
+    });
+
+    test('canAddSection skips an existing section whose course is unknown', () {
+      final existing = [
+        makeSelectedSection(courseCode: 'GHOST F999', section: makeSection(days: [DayOfWeek.S], hours: [8])),
+      ];
+      final newSection = makeSelectedSection(
+        courseCode: 'CS F111',
+        section: makeSection(days: [DayOfWeek.T], hours: [2]),
+      );
+
+      final canAdd = ClashDetector.canAddSection(newSection, existing, [makeCourse(courseCode: 'CS F111')]);
+
+      _record('canAddSection unknown existing course no throw', true, 0);
+      expect(canAdd, isTrue);
+    });
+
+    test('checkExamConflicts skips current sections with unknown courses', () {
+      final newCourse = makeCourse(
+        courseCode: 'CS F111',
+        midSemExam: makeExam(date: DateTime(2026, 3, 10), timeSlot: TimeSlot.MS1),
+      );
+      final current = [
+        makeSelectedSection(courseCode: 'GHOST F999'),
+      ];
+
+      final conflicts = ClashDetector.checkExamConflicts(newCourse, current, [newCourse]);
+
+      _record('checkExamConflicts skips unknown course', true, 0);
+      expect(conflicts, isEmpty);
+    });
+
+    test('isCombinationSafe returns false for a missing section id', () {
+      final course = makeCourse(
+        courseCode: 'CS F111',
+        sections: [makeSection(sectionId: 'L1', days: [DayOfWeek.M], hours: [1])],
+      );
+
+      final safe = ClashDetector.isCombinationSafe(
+        course,
+        {SectionType.L: 'L_DOES_NOT_EXIST'},
+        [],
+        [course],
+      );
+
+      _record('isCombinationSafe missing section returns false', true, 0);
+      expect(safe, isFalse);
+    });
+  });
+
   group('findSafeCombination', () {
     test('returns a valid combination when one exists', () {
       final sw = Stopwatch()..start();

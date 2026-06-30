@@ -32,13 +32,27 @@ service cloud.firestore {
       return username + suffix;
     }
 
+    // ── Kill switch ────────────────────────────────────────────────────────
+    // Flip `maintenance` to true on reference/app_config (Firestore console) to
+    // freeze all access below except admins and the reference docs themselves
+    // (so clients can still read the "down" message). Fail-open: if the config
+    // doc is missing, the app stays available.
+    function maintenanceOn() {
+      return exists(/databases/$(database)/documents/reference/app_config)
+        && get(/databases/$(database)/documents/reference/app_config).data.get('maintenance', false) == true;
+    }
+    function appAvailable() {
+      return !maintenanceOn() || isAdmin();
+    }
+
     // Campus data (courses_master, timetable, exam_seating, metadata)
     match /campuses/{campusId}/{sub=**} {
-      allow read: if true;
+      allow read: if appAvailable();
       allow write: if isAdmin();
     }
 
-    // Reference data (professors, etc.)
+    // Reference data (professors, app_config, etc.)
+    // Reads stay open so clients can fetch the kill-switch message while down.
     match /reference/{category}/{sub=**} {
       allow read: if true;
       allow write: if isAdmin();
@@ -46,13 +60,13 @@ service cloud.firestore {
 
     // User data — owner only
     match /users/{userId}/{sub=**} {
-      allow read, write: if isOwner(userId);
+      allow read, write: if isOwner(userId) && appAvailable();
     }
 
     // Announcements — reads by BITS users; create/delete by author; updates only via Cloud Functions
     match /announcements/{announcementId} {
-      allow read: if isBitsEmail();
-      allow create: if isBitsEmail()
+      allow read: if isBitsEmail() && appAvailable();
+      allow create: if isBitsEmail() && appAvailable()
         && request.resource.data.authorUid == userDocId()
         && request.resource.data.upvotes == 0
         && request.resource.data.downvotes == 0
@@ -63,69 +77,69 @@ service cloud.firestore {
         && request.resource.data.denyWeight == 0
         && request.resource.data.confirmCount == 0
         && request.resource.data.denyCount == 0;
-      allow delete: if isBitsEmail()
+      allow delete: if isBitsEmail() && appAvailable()
         && resource.data.authorUid == userDocId();
       allow update: if false;
 
       match /votes/{visitorUid} {
-        allow read: if isBitsEmail();
+        allow read: if isBitsEmail() && appAvailable();
         allow write: if false;
       }
       match /flags/{flagUid} {
-        allow read: if isBitsEmail();
+        allow read: if isBitsEmail() && appAvailable();
         allow write: if false;
       }
       match /verifications/{verifUid} {
-        allow read: if isBitsEmail();
+        allow read: if isBitsEmail() && appAvailable();
         allow write: if false;
       }
     }
 
     // Reputation — reads by BITS users; writes only via Cloud Functions (Admin SDK)
     match /reputation/{uid} {
-      allow read: if isBitsEmail();
+      allow read: if isBitsEmail() && appAvailable();
       allow write: if false;
     }
 
     // Academic drives — three top-level collections
     match /acad_drives_files/{docId} {
-      allow read: if true;
+      allow read: if appAvailable();
       allow write: if false;
     }
     match /acad_drives_submissions/{docId} {
-      allow create: if isBitsEmail()
+      allow create: if isBitsEmail() && appAvailable()
         && request.resource.data.keys().hasAll(['url', 'course_codes', 'submittedBy'])
         && request.resource.data.submittedBy == request.auth.token.email
         && request.resource.data.url is string
         && request.resource.data.url.size() > 0
         && request.resource.data.url.size() < 2048;
-      allow read: if true;
+      allow read: if appAvailable();
       allow update, delete: if false;
     }
     match /acad_drives_tags/{docId} {
-      allow read: if true;
+      allow read: if appAvailable();
       allow write: if false;
     }
     match /acad_drives_index/{docId} {
-      allow read: if true;
+      allow read: if appAvailable();
       allow write: if false;
     }
 
     // Shared timetables
     match /shared_timetables/{docId} {
-      allow read: if isBitsEmail();
-      allow create: if isBitsEmail()
+      allow read: if isBitsEmail() && appAvailable();
+      allow create: if isBitsEmail() && appAvailable()
         && request.resource.data.ownerId == userDocId();
-      allow update: if isBitsEmail()
+      allow update: if isBitsEmail() && appAvailable()
         && resource.data.ownerId == userDocId()
         && request.resource.data.ownerId == userDocId();
-      allow delete: if isBitsEmail()
+      allow delete: if isBitsEmail() && appAvailable()
         && resource.data.ownerId == userDocId();
     }
 
     // Admin metadata
     match /admin_metadata/{docId} {
-      allow read: if true;
+      allow read: if appAvailable();
       allow write: if false;
     }
 

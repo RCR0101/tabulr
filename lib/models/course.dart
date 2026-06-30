@@ -108,7 +108,7 @@ class Section {
       ),
       instructor: json['instructor'],
       room: json['room'],
-      schedule: (json['schedule'] as List)
+      schedule: (json['schedule'] as List? ?? const [])
           .map((entry) => ScheduleEntry.fromJson(entry))
           .toList(),
     );

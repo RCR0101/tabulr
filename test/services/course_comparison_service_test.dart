@@ -131,6 +131,21 @@ void main() {
       final results = CourseComparisonService.findSimilarCourses(ref, courses, limit: 3);
       expect(results.length, 3);
     });
+
+    test('returns empty list when there are no other courses', () {
+      final ref = makeCourse(courseCode: 'REF');
+      expect(CourseComparisonService.findSimilarCourses(ref, []), isEmpty);
+      expect(CourseComparisonService.findSimilarCourses(ref, [ref]), isEmpty);
+    });
+
+    test('does not throw when reference or candidate has no sections', () {
+      final ref = makeCourse(courseCode: 'REF', sections: []);
+      final other = makeCourse(courseCode: 'OTHER', sections: []);
+
+      final results = CourseComparisonService.findSimilarCourses(ref, [other]);
+      expect(results, hasLength(1));
+      expect(results.first.similarityScore, inInclusiveRange(0.0, 1.0));
+    });
   });
 
   group('hasOnlyLectureSections', () {

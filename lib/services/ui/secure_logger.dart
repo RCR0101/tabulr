@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import '../../constants/app_constants.dart';
 import 'performance_monitor.dart';
+import 'remote_log_sink.dart';
 
 /// Log levels with priority ordering
 enum LogLevel { debug, info, warning, error, critical }
@@ -39,10 +40,7 @@ class SecureLogger {
   
   /// Check if running in debug mode
   static bool get _isDebugMode => kDebugMode;
-  
-  /// Check if running in production
-  static bool get _isProduction => kReleaseMode;
-  
+
   /// Check if a log level should be processed
   static bool _shouldLog(LogLevel level) {
     return level.index >= LogConfig.minLevel.index;
@@ -178,16 +176,33 @@ class SecureLogger {
     
     try {
       final formatted = _formatMessage(level, category, message, context);
-      
-      // Always use debugPrint for Flutter compatibility
-      debugPrint(formatted);
-      
-      if (_isProduction && (level == LogLevel.error || level == LogLevel.critical)) {
-        // Crashlytics/analytics hook point for production error reporting
+
+      // Console output only in local dev — never in profile/release, so the
+      // deployed web app and on-device release builds stay quiet. The remote
+      // sink below is the durable destination for non-debug builds.
+      if (kDebugMode) {
+        debugPrint(formatted);
+      }
+
+      // Ship a sanitized, structured copy to the remote logger worker (R2).
+      // Wrapped defensively so a sink fault can never break logging.
+      try {
+        RemoteLogSink().enqueue({
+          'source': 'log',
+          'level': level.name,
+          'category': category,
+          'message': _safeToString(_sanitizePII(message)),
+          'context': _sanitizeContext(context),
+          'timestamp': DateTime.now().toUtc().toIso8601String(),
+        }, levelIndex: level.index);
+      } catch (_) {
+        // Sink unavailable or not initialized — local debugPrint already ran.
       }
     } catch (e) {
-      // Last resort logging
-      debugPrint('[${DateTime.now()}] [LOGGER_ERROR] Failed to log message: $e');
+      // Last resort logging (local dev only).
+      if (kDebugMode) {
+        debugPrint('[${DateTime.now()}] [LOGGER_ERROR] Failed to log message: $e');
+      }
     }
   }
   

@@ -78,6 +78,23 @@ class ClashDetector {
     return warnings;
   }
 
+  /// Looks up a course by code, returning null instead of throwing when the
+  /// code is not in [courses] (e.g. stale local data after an admin removal).
+  static Course? _findCourse(List<Course> courses, String courseCode) {
+    for (final c in courses) {
+      if (c.courseCode == courseCode) return c;
+    }
+    return null;
+  }
+
+  /// Looks up a section by id within [course], returning null when not found.
+  static Section? _findSection(Course course, String sectionId) {
+    for (final s in course.sections) {
+      if (s.sectionId == sectionId) return s;
+    }
+    return null;
+  }
+
   static List<ClashWarning> _detectExamClashes(List<SelectedSection> selectedSections, List<Course> courses) {
     List<ClashWarning> warnings = [];
 
@@ -85,10 +102,8 @@ class ClashDetector {
     Map<String, Set<String>> endSemClashes = {};
 
     for (var selectedSection in selectedSections) {
-      var course = courses.firstWhere(
-        (c) => c.courseCode == selectedSection.courseCode,
-        orElse: () => throw Exception('Course not found'),
-      );
+      final course = _findCourse(courses, selectedSection.courseCode);
+      if (course == null) continue; // Skip unknown course instead of throwing
 
       if (course.midSemExam != null) {
         String midSemKey = '${course.midSemExam!.date.toIso8601String()}_${course.midSemExam!.timeSlot}';
@@ -150,21 +165,16 @@ class ClashDetector {
     }
 
     // Check for exam conflicts (only with different courses)
-    final newCourse = courses.firstWhere(
-      (c) => c.courseCode == newSection.courseCode,
-      orElse: () => throw Exception('Course not found'),
-    );
+    final newCourse = _findCourse(courses, newSection.courseCode);
 
     for (var existingSection in currentSections) {
       // Skip exam conflict check if it's the same course
-      if (existingSection.courseCode == newSection.courseCode) {
+      if (newCourse == null || existingSection.courseCode == newSection.courseCode) {
         continue;
       }
 
-      final existingCourse = courses.firstWhere(
-        (c) => c.courseCode == existingSection.courseCode,
-        orElse: () => throw Exception('Course not found'),
-      );
+      final existingCourse = _findCourse(courses, existingSection.courseCode);
+      if (existingCourse == null) continue; // Skip unknown course
 
       // Check MidSem exam clash
       if (newCourse.midSemExam != null && existingCourse.midSemExam != null) {
@@ -237,9 +247,8 @@ class ClashDetector {
     // Check for mid-semester exam conflicts
     if (newCourse.midSemExam != null) {
       for (final currentSelected in currentTimetableSections) {
-        final currentCourse = availableCourses.firstWhere(
-          (c) => c.courseCode == currentSelected.courseCode,
-        );
+        final currentCourse = _findCourse(availableCourses, currentSelected.courseCode);
+        if (currentCourse == null) continue;
 
         if (currentCourse.midSemExam != null) {
           if (examDatesConflict(newCourse.midSemExam!, currentCourse.midSemExam!)) {
@@ -257,9 +266,8 @@ class ClashDetector {
     // Check for comprehensive exam conflicts
     if (newCourse.endSemExam != null) {
       for (final currentSelected in currentTimetableSections) {
-        final currentCourse = availableCourses.firstWhere(
-          (c) => c.courseCode == currentSelected.courseCode,
-        );
+        final currentCourse = _findCourse(availableCourses, currentSelected.courseCode);
+        if (currentCourse == null) continue;
 
         if (currentCourse.endSemExam != null) {
           if (examDatesConflict(newCourse.endSemExam!, currentCourse.endSemExam!)) {
@@ -363,7 +371,8 @@ class ClashDetector {
         .toSet();
 
     for (final otherCourseCode in otherCourseCodes) {
-      final otherCourse = availableCourses.firstWhere((c) => c.courseCode == otherCourseCode);
+      final otherCourse = _findCourse(availableCourses, otherCourseCode);
+      if (otherCourse == null) continue;
 
       if (currentCourse.midSemExam != null && otherCourse.midSemExam != null) {
         if (examDatesConflict(currentCourse.midSemExam!, otherCourse.midSemExam!)) {
@@ -450,8 +459,8 @@ class ClashDetector {
   ) {
     // Check for conflicts with existing selected sections
     for (final entry in combination.entries) {
-      final sectionId = entry.value;
-      final section = course.sections.firstWhere((s) => s.sectionId == sectionId);
+      final section = _findSection(course, entry.value);
+      if (section == null) return false; // Invalid combination references a missing section
 
       final classConflicts = checkScheduleConflicts(section, currentTimetableSections);
       if (classConflicts.isNotEmpty) return false;
@@ -462,10 +471,10 @@ class ClashDetector {
     if (examConflicts.isNotEmpty) return false;
 
     // Check for internal conflicts within the combination
-    final sectionsInCombination = combination.entries.map((entry) {
-      final sectionId = entry.value;
-      return course.sections.firstWhere((s) => s.sectionId == sectionId);
-    }).toList();
+    final sectionsInCombination = combination.entries
+        .map((entry) => _findSection(course, entry.value))
+        .whereType<Section>()
+        .toList();
 
     for (int i = 0; i < sectionsInCombination.length; i++) {
       for (int j = i + 1; j < sectionsInCombination.length; j++) {
