@@ -9,6 +9,7 @@ import '../services/ui/responsive_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
+import '../widgets/common/app_search_field.dart';
 import '../utils/page_info_helper.dart';
 import '../services/ui/tutorial_service.dart';
 
@@ -60,8 +61,9 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Prof Chambers'),
+      appBar: AppDesign.appBar(
+        context,
+        title: 'Prof Chambers',
         actions: [
           PageInfoHelper.infoButton(context, PageInfoHelper.profChambers, key: TutorialKeys.infoProfChambers),
           if (kIsWeb)
@@ -119,25 +121,14 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                   child: Semantics(
                     label: 'Search Professors',
                     textField: true,
-                    child: TextField(
-                    controller: _searchController,
-                    focusNode: _searchFocusNode,
-                    decoration: InputDecoration(
-                      hintText: 'Search by professor name or chamber (e.g., "John" or "A101")',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              onPressed: _clearSearch,
-                              icon: const Icon(Icons.clear),
-                              tooltip: 'Clear search',
-                            )
-                          : null,
-                      border: const OutlineInputBorder(),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: AppSearchField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      hint: 'Search by professor name or chamber (e.g., "John" or "A101")',
+                      onChanged: (value) => setState(() {}),
+                      onSubmitted: (value) => _searchFocusNode.unfocus(),
+                      onClear: _clearSearch,
                     ),
-                    onChanged: (value) => setState(() {}),
-                    onSubmitted: (value) => _searchFocusNode.unfocus(),
-                  ),
                   ),
                 ),
                 const SizedBox(width: 12),

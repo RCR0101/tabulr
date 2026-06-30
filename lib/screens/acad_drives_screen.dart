@@ -1026,8 +1026,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_showingBookmarks ? 'Bookmarks' : (_selectedCourse ?? 'Academic Drives')),
+      appBar: AppDesign.appBar(
+        context,
+        titleWidget: Text(_showingBookmarks ? 'Bookmarks' : (_selectedCourse ?? 'Academic Drives')),
         leading: (_selectedCourse != null || _showingBookmarks)
             ? IconButton(
                 onPressed: _goBackToCourses,

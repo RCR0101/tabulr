@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
+import '../utils/design_constants.dart';
 import '../services/data/humanities_electives_service.dart';
 import '../services/data/course_data_service.dart';
 import '../services/data/campus_service.dart';
@@ -407,9 +408,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Humanities Electives'),
-      ),
+      appBar: AppDesign.appBar(context, title: 'Humanities Electives'),
       body: _isLoading
           ? const CourseListSkeleton()
           : SingleChildScrollView(

@@ -32,9 +32,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(called, 1);
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
     });
 
-    testWidgets('shows a snackbar when retry reports still-down', (tester) async {
+    testWidgets('shows a toast when retry reports still-down', (tester) async {
       await tester.pumpWidget(wrap(TabulrDownScreen(
         message: 'x',
         onRetry: () async => false,
@@ -45,6 +47,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Still down'), findsOneWidget);
+
+      // Flush the toast's auto-dismiss timer/animation so no timers leak.
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
     });
   });
 }

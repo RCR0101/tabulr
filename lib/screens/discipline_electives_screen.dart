@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
+import '../utils/design_constants.dart';
 import '../services/data/discipline_electives_service.dart';
 import '../services/data/course_data_service.dart';
 import '../services/data/campus_service.dart';
@@ -581,9 +582,7 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Discipline Electives'),
-      ),
+      appBar: AppDesign.appBar(context, title: 'Discipline Electives'),
       body:
           _isLoading
               ? const CourseListSkeleton()

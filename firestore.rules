@@ -18,9 +18,13 @@ service cloud.firestore {
       );
     }
 
+    // Admins are identified by email via the `admin_emails` collection
+    // (doc id = lowercased email). exists() inside rules is a privileged read,
+    // so admin_emails can stay non-client-readable below.
     function isAdmin() {
       return request.auth != null &&
-             exists(/databases/$(database)/documents/admin_users/$(request.auth.uid));
+             request.auth.token.email != null &&
+             exists(/databases/$(database)/documents/admin_emails/$(request.auth.token.email.lower()));
     }
 
     function userDocId() {
@@ -107,12 +111,24 @@ service cloud.firestore {
       allow write: if false;
     }
     match /acad_drives_submissions/{docId} {
+      // Schema mirrors the client payload (acad_drives_screen.dart): driveLink,
+      // title, contributorName, submittedBy, status, submittedAt. driveLink must
+      // be an https:// URL; other fields are length-bounded.
       allow create: if isBitsEmail() && appAvailable()
-        && request.resource.data.keys().hasAll(['url', 'course_codes', 'submittedBy'])
+        && request.resource.data.keys().hasOnly(
+             ['driveLink', 'title', 'contributorName', 'submittedBy', 'status', 'submittedAt'])
+        && request.resource.data.keys().hasAll(
+             ['driveLink', 'title', 'contributorName', 'submittedBy', 'status'])
         && request.resource.data.submittedBy == request.auth.token.email
-        && request.resource.data.url is string
-        && request.resource.data.url.size() > 0
-        && request.resource.data.url.size() < 2048;
+        && request.resource.data.driveLink is string
+        && request.resource.data.driveLink.matches('https://.*')
+        && request.resource.data.driveLink.size() < 2048
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() < 200
+        && request.resource.data.contributorName is string
+        && request.resource.data.contributorName.size() < 100
+        && request.resource.data.status == 'pending';
       allow read: if appAvailable();
       allow update, delete: if false;
     }
@@ -143,7 +159,14 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Admin users — only readable by Admin SDK (Cloud Functions)
+    // Admin allowlist — source of truth for admin access (doc id = lowercased
+    // email). Managed via the Firestore console / Admin SDK only; never exposed
+    // to clients (isAdmin()'s exists() check bypasses these rules).
+    match /admin_emails/{email} {
+      allow read, write: if false;
+    }
+
+    // Legacy admin_users (no longer used; kept locked down).
     match /admin_users/{userId} {
       allow read: if false;
       allow write: if false;

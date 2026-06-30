@@ -577,59 +577,63 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
       geometry: ThemeGeometry(cardRadius: 4, buttonRadius: 4, dialogRadius: 8, inputRadius: 6, chipRadius: 12, cardElevation: 0, cardBorderWidth: 1),
     ),
     light: _ThemeColors(
-      brightness: Brightness.dark,
-      background: Color(0xFF000000),
-      surface: Color(0xFF141414),
-      primary: Color(0xFF6CB4EE),
-      secondary: Color(0xFF4ADE80),
-      tertiary: Color(0xFFFBBF24),
-      onTertiary: Color(0xFF000000),
-      error: Color(0xFFFF6B6B),
-      onPrimary: Color(0xFF000000),
-      onSecondary: Color(0xFF000000),
-      onSurface: Color(0xFFE8E8E8),
-      onError: Color(0xFF000000),
-      outline: Color(0xFF252525),
+      brightness: Brightness.light,
+      background: Color(0xFFFFFFFF),
+      surface: Color(0xFFFAFAFA),
+      primary: Color(0xFF2563EB),
+      secondary: Color(0xFF16A34A),
+      tertiary: Color(0xFFD97706),
+      onTertiary: Color(0xFFFFFFFF),
+      error: Color(0xFFDC2626),
+      onPrimary: Color(0xFFFFFFFF),
+      onSecondary: Color(0xFFFFFFFF),
+      onSurface: Color(0xFF171717),
+      onError: Color(0xFFFFFFFF),
+      outline: Color(0xFFE0E0E0),
       cardElevation: 0,
       buttonElevation: 0,
-      inputFill: Color(0xFF0A0A0A),
-      labelColor: Color(0xFF8A8A8A),
-      hintColor: Color(0xFF555555),
-      headingRowColor: Color(0xFF0D0D0D),
-      dataRowColor: Color(0xFF050505),
-      surfaceContainerHighest: Color(0xFF1F1F1F),
-      surfaceContainer: Color(0xFF141414),
-      surfaceContainerHigh: Color(0xFF1A1A1A),
-      surfaceContainerLow: Color(0xFF070707),
+      inputFill: Color(0xFFF5F5F5),
+      labelColor: Color(0xFF555555),
+      hintColor: Color(0xFF999999),
+      headingRowColor: Color(0xFFF0F0F0),
+      dataRowColor: Color(0xFFFAFAFA),
+      surfaceContainerHighest: Color(0xFFE0E0E0),
+      surfaceContainer: Color(0xFFF0F0F0),
+      surfaceContainerHigh: Color(0xFFE8E8E8),
+      surfaceContainerLow: Color(0xFFF8F8F8),
       timetableAccents: [
-        Color(0xFF6CB4EE), Color(0xFF4ADE80), Color(0xFFFBBF24),
-        Color(0xFFF472B6), Color(0xFFA78BFA), Color(0xFF22D3EE),
-        Color(0xFFFB923C), Color(0xFF38BDF8), Color(0xFFF87171),
-        Color(0xFF34D399),
+        Color(0xFF2563EB), Color(0xFF16A34A), Color(0xFFD97706),
+        Color(0xFFDB2777), Color(0xFF7C3AED), Color(0xFF0891B2),
+        Color(0xFFEA580C), Color(0xFF0284C7), Color(0xFFDC2626),
+        Color(0xFF059669),
       ],
       geometry: ThemeGeometry(cardRadius: 4, buttonRadius: 4, dialogRadius: 8, inputRadius: 6, chipRadius: 12, cardElevation: 0, cardBorderWidth: 1),
     ),
   ),
 };
 
-TextTheme _buildTextTheme(Color onSurface) {
+TextTheme _buildTextTheme(Color onSurface, ThemeGeometry g) {
   final base = GoogleFonts.interTextTheme();
+  final heading = g.headingWeight;
+  final body = g.bodyWeight;
+  // Labels sit halfway between body and heading weight.
+  final label = FontWeight.lerp(body, heading, 0.5) ?? FontWeight.w500;
   return base.copyWith(
-    displayLarge: base.displayLarge!.copyWith(fontSize: 57, fontWeight: FontWeight.w400, color: onSurface, letterSpacing: -1.5, height: 1.12),
-    displayMedium: base.displayMedium!.copyWith(fontSize: 45, fontWeight: FontWeight.w400, color: onSurface, letterSpacing: -0.5, height: 1.16),
-    displaySmall: base.displaySmall!.copyWith(fontSize: 36, fontWeight: FontWeight.w400, color: onSurface, letterSpacing: -0.25, height: 1.22),
-    headlineLarge: base.headlineLarge!.copyWith(fontSize: 32, fontWeight: FontWeight.w600, color: onSurface, letterSpacing: -0.25, height: 1.25),
-    headlineMedium: base.headlineMedium!.copyWith(fontSize: 28, fontWeight: FontWeight.w600, color: onSurface, letterSpacing: 0, height: 1.29),
-    headlineSmall: base.headlineSmall!.copyWith(fontSize: 24, fontWeight: FontWeight.w600, color: onSurface, letterSpacing: 0, height: 1.33),
-    titleLarge: base.titleLarge!.copyWith(fontSize: 20, fontWeight: FontWeight.w600, color: onSurface, letterSpacing: 0, height: 1.4),
-    titleMedium: base.titleMedium!.copyWith(fontSize: 16, fontWeight: FontWeight.w600, color: onSurface, letterSpacing: 0.1, height: 1.5),
-    titleSmall: base.titleSmall!.copyWith(fontSize: 14, fontWeight: FontWeight.w600, color: onSurface, letterSpacing: 0.1, height: 1.43),
-    bodyLarge: base.bodyLarge!.copyWith(fontSize: 16, fontWeight: FontWeight.w400, color: onSurface, letterSpacing: 0.15, height: 1.5),
-    bodyMedium: base.bodyMedium!.copyWith(fontSize: 14, fontWeight: FontWeight.w400, color: onSurface, letterSpacing: 0.25, height: 1.43),
-    bodySmall: base.bodySmall!.copyWith(fontSize: 12, fontWeight: FontWeight.w400, color: onSurface, letterSpacing: 0.4, height: 1.33),
-    labelLarge: base.labelLarge!.copyWith(fontSize: 14, fontWeight: FontWeight.w500, color: onSurface, letterSpacing: 0.1, height: 1.43),
-    labelMedium: base.labelMedium!.copyWith(fontSize: 12, fontWeight: FontWeight.w500, color: onSurface, letterSpacing: 0.5, height: 1.33),
-    labelSmall: base.labelSmall!.copyWith(fontSize: 11, fontWeight: FontWeight.w500, color: onSurface, letterSpacing: 0.5, height: 1.45),
+    displayLarge: base.displayLarge!.copyWith(fontSize: 57, fontWeight: body, color: onSurface, letterSpacing: -1.5, height: 1.12),
+    displayMedium: base.displayMedium!.copyWith(fontSize: 45, fontWeight: body, color: onSurface, letterSpacing: -0.5, height: 1.16),
+    displaySmall: base.displaySmall!.copyWith(fontSize: 36, fontWeight: body, color: onSurface, letterSpacing: -0.25, height: 1.22),
+    headlineLarge: base.headlineLarge!.copyWith(fontSize: 32, fontWeight: heading, color: onSurface, letterSpacing: -0.25, height: 1.25),
+    headlineMedium: base.headlineMedium!.copyWith(fontSize: 28, fontWeight: heading, color: onSurface, letterSpacing: 0, height: 1.29),
+    headlineSmall: base.headlineSmall!.copyWith(fontSize: 24, fontWeight: heading, color: onSurface, letterSpacing: 0, height: 1.33),
+    titleLarge: base.titleLarge!.copyWith(fontSize: 20, fontWeight: heading, color: onSurface, letterSpacing: 0, height: 1.4),
+    titleMedium: base.titleMedium!.copyWith(fontSize: 16, fontWeight: heading, color: onSurface, letterSpacing: 0.1, height: 1.5),
+    titleSmall: base.titleSmall!.copyWith(fontSize: 14, fontWeight: heading, color: onSurface, letterSpacing: 0.1, height: 1.43),
+    bodyLarge: base.bodyLarge!.copyWith(fontSize: 16, fontWeight: body, color: onSurface, letterSpacing: 0.15, height: 1.5),
+    bodyMedium: base.bodyMedium!.copyWith(fontSize: 14, fontWeight: body, color: onSurface, letterSpacing: 0.25, height: 1.43),
+    bodySmall: base.bodySmall!.copyWith(fontSize: 12, fontWeight: body, color: onSurface, letterSpacing: 0.4, height: 1.33),
+    labelLarge: base.labelLarge!.copyWith(fontSize: 14, fontWeight: label, color: onSurface, letterSpacing: 0.1, height: 1.43),
+    labelMedium: base.labelMedium!.copyWith(fontSize: 12, fontWeight: label, color: onSurface, letterSpacing: 0.5, height: 1.33),
+    labelSmall: base.labelSmall!.copyWith(fontSize: 11, fontWeight: label, color: onSurface, letterSpacing: 0.5, height: 1.45),
   );
 }
 
@@ -638,7 +642,7 @@ ThemeData _buildTheme(_ThemeColors c) {
   final base = isDark ? ThemeData.dark() : ThemeData.light();
   final effectiveBorderColor = c.borderColor ?? c.outline;
   final g = c.geometry;
-  final textTheme = _buildTextTheme(c.onSurface);
+  final textTheme = _buildTextTheme(c.onSurface, g);
 
   return base.copyWith(
     textTheme: textTheme,
@@ -757,6 +761,50 @@ ThemeData _buildTheme(_ThemeColors c) {
             collapsedIconColor: c.collapsedIconColor ?? c.labelColor,
           )
         : null,
+    progressIndicatorTheme: ProgressIndicatorThemeData(
+      color: c.primary,
+    ),
+    dividerTheme: DividerThemeData(
+      color: c.outline.withValues(alpha: 0.4),
+    ),
+    listTileTheme: ListTileThemeData(
+      iconColor: c.labelColor,
+      selectedColor: c.primary,
+      selectedTileColor: c.primary.withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(g.cardRadius)),
+    ),
+    popupMenuTheme: PopupMenuThemeData(
+      color: c.surface,
+      elevation: c.cardElevation > 0 ? c.cardElevation + 2 : 0,
+      textStyle: TextStyle(color: c.onSurface),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(g.cardRadius),
+        side: g.cardBorderWidth > 0
+            ? BorderSide(color: c.outline.withValues(alpha: 0.3), width: g.cardBorderWidth)
+            : BorderSide.none,
+      ),
+    ),
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: c.surface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(g.dialogRadius)),
+      ),
+    ),
+    tooltipTheme: TooltipThemeData(
+      decoration: BoxDecoration(
+        color: c.surfaceContainerHighest ?? c.surface,
+        borderRadius: BorderRadius.circular(g.chipRadius),
+      ),
+      textStyle: TextStyle(color: c.onSurface, fontSize: 12),
+    ),
+    checkboxTheme: CheckboxThemeData(
+      fillColor: WidgetStateProperty.resolveWith((states) =>
+          states.contains(WidgetState.selected) ? c.primary : Colors.transparent),
+      checkColor: WidgetStateProperty.all(c.onPrimary),
+      side: BorderSide(color: effectiveBorderColor, width: 1.5),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+    ),
     visualDensity: VisualDensity.adaptivePlatformDensity,
     extensions: [
       g,

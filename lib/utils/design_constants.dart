@@ -8,13 +8,31 @@ class AppDesign {
   AppDesign._();
 
   // Border radii
+  static const double radiusXxs = 2.0;
+  static const double radiusXs = 4.0;
   static const double radiusSm = 8.0;
   static const double radiusMd = 12.0;
   static const double radiusLg = 16.0;
+  static const double radiusXl = 20.0;
+  static const double radiusXxl = 24.0;
 
+  static final BorderRadius borderRadiusXxs = BorderRadius.circular(radiusXxs);
+  static final BorderRadius borderRadiusXs = BorderRadius.circular(radiusXs);
   static final BorderRadius borderRadiusSm = BorderRadius.circular(radiusSm);
   static final BorderRadius borderRadiusMd = BorderRadius.circular(radiusMd);
   static final BorderRadius borderRadiusLg = BorderRadius.circular(radiusLg);
+  static final BorderRadius borderRadiusXl = BorderRadius.circular(radiusXl);
+  static final BorderRadius borderRadiusXxl = BorderRadius.circular(radiusXxl);
+
+  // Icon sizes
+  static const double iconSizeSm = 18.0;
+  static const double iconSizeMd = 20.0;
+  static const double iconSizeLg = 24.0;
+
+  // Component dimensions
+  static const double maxDialogWidth = 460.0;
+  static const double buttonHeight = 48.0;
+  static const double navBarHeight = 64.0;
 
   // Padding scale
   static const double spacingXxs = 2.0;
@@ -61,37 +79,42 @@ class AppDesign {
       Theme.of(context).colorScheme.outline.withValues(alpha: opacityDivider);
 
   // ── Standardized input decoration ──────────────────────────────────
+  /// Standard field decoration. Pass [dense] for a compact (smaller radius,
+  /// tighter padding) variant used in toolbars/inline forms.
   static InputDecoration inputDecoration(
     BuildContext context, {
-    required String label,
+    String? label,
     String? hint,
     Widget? prefixIcon,
     Widget? suffixIcon,
+    bool dense = false,
   }) {
+    final scheme = Theme.of(context).colorScheme;
+    final radius = dense ? borderRadiusSm : borderRadiusMd;
+    final borderAlpha = dense ? 0.15 : 0.3;
     return InputDecoration(
       labelText: label,
       hintText: hint,
+      hintStyle: dense
+          ? TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: opacityLow))
+          : null,
       prefixIcon: prefixIcon,
       suffixIcon: suffixIcon,
+      isDense: dense,
       filled: true,
-      fillColor:
-          Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-      border: OutlineInputBorder(borderRadius: borderRadiusMd),
+      fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
+      border: OutlineInputBorder(borderRadius: radius),
       enabledBorder: OutlineInputBorder(
-        borderRadius: borderRadiusMd,
-        borderSide: BorderSide(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
-        ),
+        borderRadius: radius,
+        borderSide: BorderSide(color: scheme.outline.withValues(alpha: borderAlpha)),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: borderRadiusMd,
-        borderSide: BorderSide(
-          color: Theme.of(context).colorScheme.primary,
-          width: 1.5,
-        ),
+        borderRadius: radius,
+        borderSide: BorderSide(color: scheme.primary, width: 1.5),
       ),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: spacingMd, vertical: spacingSm + 4),
+      contentPadding: dense
+          ? const EdgeInsets.symmetric(horizontal: spacingSm + 4, vertical: spacingSm + 2)
+          : const EdgeInsets.symmetric(horizontal: spacingMd, vertical: spacingSm + 4),
     );
   }
 
@@ -123,22 +146,78 @@ class AppDesign {
   }
 
   // ── Standardized AppBar ────────────────────────────────────────────
+  /// Builds the app's standard [AppBar]. Pass [title] for a plain text title,
+  /// or [titleWidget] for a custom title (e.g. [appLogo] or [iconTitle]).
+  /// Both may be omitted for a title-less app bar.
   static AppBar appBar(
     BuildContext context, {
-    required String title,
+    String? title,
+    Widget? titleWidget,
     List<Widget>? actions,
     Widget? leading,
     bool centerTitle = true,
     PreferredSizeWidget? bottom,
   }) {
     return AppBar(
-      title: Text(title),
+      title: titleWidget ?? (title != null ? Text(title) : null),
       centerTitle: centerTitle,
       elevation: elevationNone,
       scrolledUnderElevation: elevationLow,
       leading: leading,
       actions: actions,
       bottom: bottom,
+    );
+  }
+
+  /// Standardized app-logo title (used by the home/timetable list app bars).
+  static Widget appLogo(BuildContext context, {double height = 50}) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: ClipRRect(
+        borderRadius: borderRadiusSm,
+        child: Image.asset(
+          'images/full_logo_bg.png',
+          height: height,
+          fit: BoxFit.contain,
+        ),
+      ),
+    );
+  }
+
+  /// Standardized icon + title (+ optional subtitle) app-bar title, with a
+  /// tinted icon chip on the leading edge.
+  static Widget iconTitle(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    String? subtitle,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(spacingSm),
+          decoration: BoxDecoration(
+            color: scheme.primary.withValues(alpha: 0.1),
+            borderRadius: borderRadiusSm,
+          ),
+          child: Icon(icon, color: scheme.primary, size: 24),
+        ),
+        const SizedBox(width: spacingSm + 4),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(title, style: text.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            if (subtitle != null)
+              Text(subtitle,
+                  style: text.bodySmall?.copyWith(
+                      color: scheme.onSurface.withValues(alpha: 0.7))),
+          ],
+        ),
+      ],
     );
   }
 

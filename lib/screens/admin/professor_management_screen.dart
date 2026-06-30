@@ -8,6 +8,7 @@ import '../../constants/app_constants.dart';
 import '../../utils/design_constants.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_dialog.dart';
+import '../../widgets/common/app_search_field.dart';
 
 class ProfessorManagementScreen extends StatefulWidget {
   const ProfessorManagementScreen({super.key});
@@ -326,15 +327,10 @@ class _ProfessorManagementScreenState
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextField(
+                  child: AppSearchField(
                     controller: _searchController,
                     onChanged: _onSearchChanged,
-                    style: const TextStyle(fontSize: 14),
-                    decoration: AppDesign.inputDecoration(context,
-                        label: 'Search',
-                        hint: 'Search by name or chamber...',
-                        prefixIcon:
-                            const Icon(Icons.search_rounded, size: 20)),
+                    hint: 'Search by name or chamber...',
                   ),
                 ),
               ],

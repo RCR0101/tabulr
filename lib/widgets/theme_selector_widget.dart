@@ -125,7 +125,11 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
                   final isSelected = _themeService.currentTheme == theme;
 
                   final cs = themeData.colorScheme;
-                  return InkWell(
+                  return Semantics(
+                    button: true,
+                    selected: isSelected,
+                    label: '${_themeService.getThemeName(theme)} theme',
+                    child: InkWell(
                     onTapDown: (details) async {
                       if (isSelected) return;
                       final origin = details.globalPosition;
@@ -195,6 +199,7 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
                         ],
                       ),
                     ),
+                  ),
                   );
                 },
               ),

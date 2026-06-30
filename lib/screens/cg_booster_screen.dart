@@ -277,7 +277,7 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('CG Booster')),
+      appBar: AppDesign.appBar(context, title: 'CG Booster'),
       body: _candidates.isEmpty
           ? _buildEmptyState(scheme)
           : SingleChildScrollView(

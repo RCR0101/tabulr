@@ -28,6 +28,7 @@ import '../utils/page_info_helper.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
+import '../widgets/common/app_loading_overlay.dart';
 import '../widgets/share_timetable_dialog.dart';
 import '../widgets/command_palette.dart';
 import '../widgets/app_drawer.dart';
@@ -345,12 +346,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     try {
       // Show loading indicator
       if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder:
-              (context) => const Center(child: CircularProgressIndicator()),
-        );
+        AppLoadingOverlay.show(context);
       }
 
       // Delete all timetables
@@ -644,26 +640,11 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title:
-            ResponsiveService.isMobile(context)
-                ? null
-                : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: ClipRRect(
-                        borderRadius: AppDesign.borderRadiusSm,
-                        child: Image.asset(
-                          'images/full_logo_bg.png',
-                          height: 50,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+      appBar: AppDesign.appBar(
+        context,
+        titleWidget: ResponsiveService.isMobile(context)
+            ? null
+            : AppDesign.appLogo(context),
         actions: [
           PageInfoHelper.infoButton(context, PageInfoHelper.timetableList, key: TutorialKeys.infoTimetableList),
           if (!ResponsiveService.isMobile(context))

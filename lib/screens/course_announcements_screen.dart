@@ -349,8 +349,9 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Announcements'),
+      appBar: AppDesign.appBar(
+        context,
+        title: 'Announcements',
         actions: [
           PageInfoHelper.infoButton(context, PageInfoHelper.announcements, key: TutorialKeys.infoAnnouncements),
           if (_currentUserRep != null) _buildRepChip(theme),

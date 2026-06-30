@@ -978,8 +978,9 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Compare Timetables'),
+      appBar: AppDesign.appBar(
+        context,
+        title: 'Compare Timetables',
         actions: [
           // Hide grid/list toggle on mobile, show only on tablet/desktop
           if (!ResponsiveService.isMobile(context))

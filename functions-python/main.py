@@ -91,11 +91,15 @@ CAMPUS_NAMES = {"pilani": "Pilani", "hyderabad": "Hyderabad", "hyd": "Hyderabad"
 def require_admin(req: https_fn.CallableRequest):
     if req.auth is None:
         raise https_fn.HttpsError(https_fn.FunctionalErrorCode.UNAUTHENTICATED, "Must be signed in")
-    uid = req.auth.uid
-    doc = get_db().collection("admin_users").document(uid).get()
+    # Email-based admins: source of truth is the `admin_emails` collection
+    # (keyed by lowercased email). Matches the Node functions / Firestore rules.
+    email = (req.auth.token or {}).get("email")
+    if not email:
+        raise https_fn.HttpsError(https_fn.FunctionalErrorCode.PERMISSION_DENIED, "Not an admin")
+    doc = get_db().collection("admin_emails").document(email.lower()).get()
     if not doc.exists:
         raise https_fn.HttpsError(https_fn.FunctionalErrorCode.PERMISSION_DENIED, "Not an admin")
-    return uid
+    return req.auth.uid
 
 
 def sanitize(s):

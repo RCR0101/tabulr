@@ -234,16 +234,15 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Exam Seating'),
-        ),
+        appBar: AppDesign.appBar(context, title: 'Exam Seating'),
         body: const CourseListSkeleton(),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Exam Seating'),
+      appBar: AppDesign.appBar(
+        context,
+        title: 'Exam Seating',
         actions: [
           PageInfoHelper.infoButton(context, PageInfoHelper.examSeating, key: TutorialKeys.infoExamSeating),
           IconButton(
@@ -288,7 +287,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
         color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),

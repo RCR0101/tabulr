@@ -6,6 +6,7 @@ import '../../services/ui/toast_service.dart';
 import '../../utils/branch_constants.dart' as constants;
 import '../../utils/design_constants.dart';
 import '../../widgets/common/app_button.dart';
+import '../../widgets/common/app_dialog.dart';
 
 /// Admin tool to manage first-year CDC groups.
 ///
@@ -90,27 +91,16 @@ class _BranchGroupManagementScreenState
   }
 
   Future<void> _deleteGroup(BranchGroup group) async {
-    final ok = await showDialog<bool>(
+    final ok = await AppDialog.confirm(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete group?'),
-        content: Text(
-            '"${group.name}" will be removed. Its ${group.branches.length} '
-            'branch(es) become ungrouped. Branch CDCs already saved are not '
-            'cleared.'),
-        actions: [
-          AppButton(
-              label: 'Cancel',
-              variant: AppButtonVariant.ghost,
-              onTap: () => Navigator.pop(ctx, false)),
-          AppButton(
-              label: 'Delete',
-              variant: AppButtonVariant.danger,
-              onTap: () => Navigator.pop(ctx, true)),
-        ],
-      ),
+      title: 'Delete group?',
+      message: '"${group.name}" will be removed. Its ${group.branches.length} '
+          'branch(es) become ungrouped. Branch CDCs already saved are not '
+          'cleared.',
+      confirmLabel: 'Delete',
+      isDangerous: true,
     );
-    if (ok == true) {
+    if (ok) {
       setState(() {
         _groups.remove(group);
         _dirty = true;
@@ -119,29 +109,13 @@ class _BranchGroupManagementScreenState
   }
 
   Future<String?> _promptName(String title, String initial) async {
-    final ctrl = TextEditingController(text: initial);
-    final result = await showDialog<String>(
+    final result = await AppDialog.input(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          decoration: AppDesign.inputDecoration(ctx, label: 'Group name'),
-          onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
-        ),
-        actions: [
-          AppButton(
-              label: 'Cancel',
-              variant: AppButtonVariant.ghost,
-              onTap: () => Navigator.pop(ctx)),
-          AppButton(
-              label: 'OK', onTap: () => Navigator.pop(ctx, ctrl.text.trim())),
-        ],
-      ),
+      title: title,
+      initialValue: initial,
+      hint: 'Group name',
     );
-    ctrl.dispose();
-    return result;
+    return result?.trim();
   }
 
   // ── CDC editing ───────────────────────────────────────────────────────────

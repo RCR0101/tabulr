@@ -152,10 +152,7 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
   }
 
   Color _sourceColor(int index) {
-    const palette = [
-      Color(0xFF58A6FF), Color(0xFF3FB950), Color(0xFFF778BA), Color(0xFFD29922),
-      Color(0xFFBC8CFF), Color(0xFF39D2C0), Color(0xFFFF7B72), Color(0xFF79C0FF),
-    ];
+    final palette = AppDesign.timetableColors(context);
     return palette[index % palette.length];
   }
 
@@ -388,8 +385,9 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
     final isMobile = ResponsiveService.isMobile(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Free Time Finder'),
+      appBar: AppDesign.appBar(
+        context,
+        title: 'Free Time Finder',
         actions: [PageInfoHelper.infoButton(context, PageInfoHelper.freeSlotFinder, key: TutorialKeys.infoFreeSlot)],
       ),
       body: _isLoading

@@ -5,6 +5,7 @@ import '../../services/data/duplicate_courses_service.dart';
 import '../../services/ui/toast_service.dart';
 import '../../utils/design_constants.dart';
 import '../../widgets/common/app_button.dart';
+import '../../widgets/common/app_search_field.dart';
 
 /// Admin editor for course-equivalence (duplicate) mappings.
 ///
@@ -239,22 +240,14 @@ class _DuplicateCoursesManagementScreenState
                 Padding(
                   padding: const EdgeInsets.fromLTRB(AppDesign.spacingMd,
                       AppDesign.spacingMd, AppDesign.spacingMd, AppDesign.spacingSm),
-                  child: TextField(
+                  child: AppSearchField(
                     controller: _searchCtrl,
-                    decoration: AppDesign.inputDecoration(context,
-                        label: 'Search a course in the mappings',
-                        hint: 'e.g. CS F211',
-                        prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                        suffixIcon: _search.isEmpty
-                            ? null
-                            : IconButton(
-                                icon: const Icon(Icons.close_rounded, size: 18),
-                                onPressed: () {
-                                  _searchCtrl.clear();
-                                  setState(() => _search = '');
-                                },
-                              )),
+                    hint: 'Search a course in the mappings',
                     onChanged: (v) => setState(() => _search = v.trim()),
+                    onClear: () {
+                      _searchCtrl.clear();
+                      setState(() => _search = '');
+                    },
                   ),
                 ),
                 Expanded(child: _groupList(scheme)),

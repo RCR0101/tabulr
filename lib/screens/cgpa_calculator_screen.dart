@@ -12,6 +12,7 @@ import '../services/ui/toast_service.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
+import '../widgets/common/app_loading_overlay.dart';
 import '../services/parsers/performance_sheet_parser.dart';
 import '../models/cgpa_data.dart';
 import '../models/course_type.dart';
@@ -201,25 +202,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       }
 
       if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const Center(
-            child: Card(
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
-                    Text('Parsing Performance Sheet...'),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
+        AppLoadingOverlay.show(context, message: 'Parsing Performance Sheet...');
       }
 
       final parsed = await PerformanceSheetParser.parse(file.bytes!);
@@ -856,7 +839,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
   Widget build(BuildContext context) {
     if (!_authService.isAuthenticated) {
       return Scaffold(
-        appBar: AppBar(title: const Text('CGPA Calculator')),
+        appBar: AppDesign.appBar(context, title: 'CGPA Calculator'),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(32.0),
@@ -884,14 +867,15 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
 
     if (_controller.isLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('CGPA Calculator')),
+        appBar: AppDesign.appBar(context, title: 'CGPA Calculator'),
         body: const CourseListSkeleton(),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('CGPA Calculator'),
+      appBar: AppDesign.appBar(
+        context,
+        title: 'CGPA Calculator',
         bottom: PreferredSize(
           key: TutorialKeys.semesterTabs,
           preferredSize: const Size.fromHeight(52),

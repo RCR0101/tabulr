@@ -764,8 +764,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Calendar'),
+      appBar: AppDesign.appBar(
+        context,
+        title: 'Calendar',
         actions: [
           PageInfoHelper.infoButton(context, PageInfoHelper.calendar, key: TutorialKeys.infoCalendar),
           PopupMenuButton<String>(

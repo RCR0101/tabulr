@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/ui/toast_service.dart';
 
 /// Full-screen "Tabulr is down" state shown by the maintenance kill switch.
 ///
@@ -24,15 +25,22 @@ class TabulrDownScreen extends StatefulWidget {
 class _TabulrDownScreenState extends State<TabulrDownScreen> {
   bool _checking = false;
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // The maintenance gate renders this screen *instead of* the app shell,
+    // which is where ToastService is normally initialized. Wire it to this
+    // screen's overlay so retry feedback can surface here too.
+    ToastService.init(context);
+  }
+
   Future<void> _retry() async {
     if (_checking) return;
     setState(() => _checking = true);
     try {
       final available = await widget.onRetry();
       if (!available && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Still down — please check back later.')),
-        );
+        ToastService.showWarning('Still down — please check back later.');
       }
     } finally {
       if (mounted) setState(() => _checking = false);

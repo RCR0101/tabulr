@@ -80,6 +80,11 @@ class AdminService extends ChangeNotifier {
       final result =
           await _functions.httpsCallable('checkAdminStatus').call({});
       _isAdmin = result.data['isAdmin'] == true;
+      // The function may have just (un)set the `admin` custom claim. Force a
+      // token refresh so Storage rules (PDF uploads) see it this session.
+      if (result.data['claimRefreshed'] == true) {
+        await _authService.currentUser?.getIdToken(true);
+      }
     } catch (e) {
       _isAdmin = false;
     }

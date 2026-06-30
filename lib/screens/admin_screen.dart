@@ -11,6 +11,7 @@ import '../utils/web_utils.dart' as web_utils;
 import '../constants/app_constants.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_button.dart';
+import '../widgets/common/section_header.dart';
 import 'admin/branch_group_management_screen.dart';
 import 'admin/course_guide_management_screen.dart';
 import 'admin/prerequisites_management_screen.dart';
@@ -548,49 +549,13 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Widget _buildCampusSubheading(String campus) {
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(
-          top: AppDesign.spacingSm, bottom: AppDesign.spacingXs),
-      child: Text(
-        _campusLabels[campus]!,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
-          color: scheme.primary,
-        ),
-      ),
-    );
+    return SectionHeader(title: _campusLabels[campus]!);
   }
 
   Widget _buildPageRange(String campus) {
     final scheme = Theme.of(context).colorScheme;
-    InputDecoration inputDeco(String hint) => InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(
-            fontSize: 12,
-            color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow),
-          ),
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: AppDesign.spacingSm + 4,
-            vertical: AppDesign.spacingSm + 2,
-          ),
-          filled: true,
-          fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
-          border: OutlineInputBorder(
-            borderRadius: AppDesign.borderRadiusSm,
-            borderSide: BorderSide(color: scheme.outline.withValues(alpha: 0.15)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: AppDesign.borderRadiusSm,
-            borderSide: BorderSide(color: scheme.outline.withValues(alpha: 0.15)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: AppDesign.borderRadiusSm,
-            borderSide: BorderSide(color: scheme.primary, width: 1.5),
-          ),
-        );
+    InputDecoration inputDeco(String hint) =>
+        AppDesign.inputDecoration(context, hint: hint, dense: true);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppDesign.spacingSm),

@@ -369,9 +369,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
     final isMobile = ResponsiveService.isMobile(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Grade Planner'),
-      ),
+      appBar: AppDesign.appBar(context, title: 'Grade Planner'),
       body: _semestersWithCourses.isEmpty
           ? _buildEmptyState()
           : SingleChildScrollView(

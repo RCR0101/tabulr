@@ -6,6 +6,7 @@ import '../../services/data/courses_master_service.dart';
 import '../../services/ui/toast_service.dart';
 import '../../utils/design_constants.dart';
 import '../../widgets/common/app_button.dart';
+import '../../widgets/common/app_dialog.dart';
 
 /// Admin CRUD for course prerequisites (`reference/prerequisites/courses`).
 class PrerequisitesManagementScreen extends StatefulWidget {
@@ -87,24 +88,14 @@ class _PrerequisitesManagementScreenState
   }
 
   Future<void> _delete(CoursePrerequisites course) async {
-    final ok = await showDialog<bool>(
+    final ok = await AppDialog.confirm(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete prerequisites?'),
-        content: Text('Remove prerequisites for ${course.courseCode}?'),
-        actions: [
-          AppButton(
-              label: 'Cancel',
-              variant: AppButtonVariant.ghost,
-              onTap: () => Navigator.pop(ctx, false)),
-          AppButton(
-              label: 'Delete',
-              variant: AppButtonVariant.danger,
-              onTap: () => Navigator.pop(ctx, true)),
-        ],
-      ),
+      title: 'Delete prerequisites?',
+      message: 'Remove prerequisites for ${course.courseCode}?',
+      confirmLabel: 'Delete',
+      isDangerous: true,
     );
-    if (ok == true) {
+    if (ok) {
       try {
         await _repo.deleteCoursePrerequisites(course.courseCode);
         ToastService.showSuccess('Deleted ${course.courseCode}');

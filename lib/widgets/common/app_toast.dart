@@ -140,8 +140,8 @@ class _ToastOverlayState extends State<_ToastOverlay>
     final scheme = Theme.of(context).colorScheme;
     final (Color bg, Color fg, IconData icon) = switch (widget.type) {
       ToastType.success => (
-        const Color(0xFF065F46),
-        Colors.white,
+        scheme.secondary,
+        scheme.onSecondary,
         Icons.check_circle_outline,
       ),
       ToastType.error => (
@@ -150,8 +150,8 @@ class _ToastOverlayState extends State<_ToastOverlay>
         Icons.error_outline,
       ),
       ToastType.warning => (
-        const Color(0xFF92400E),
-        Colors.white,
+        scheme.tertiary,
+        scheme.onTertiary,
         Icons.warning_amber_rounded,
       ),
       ToastType.info => (

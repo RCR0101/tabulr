@@ -309,12 +309,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     final isMobile = ResponsiveService.isMobile(context);
     
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Add/Swap Courses'),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        foregroundColor: Theme.of(context).colorScheme.onSurface,
-        elevation: 0,
-      ),
+      appBar: AppDesign.appBar(context, title: 'Add/Swap Courses'),
       body: _isLoading
           ? const CourseListSkeleton()
           : isMobile

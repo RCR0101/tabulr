@@ -6,59 +6,68 @@ const FieldValue = admin.firestore.FieldValue;
 
 const REGION = "asia-south1";
 
-// ─── Admin verification ───
+// ─── Admin verification (email-based) ───
+//
+// Source of truth: the `admin_emails` collection, keyed by lowercased email.
+// Add an admin by creating `admin_emails/<their-email>` in the console.
+// A custom `admin` claim is mirrored from it (see checkAdminStatus) so Storage
+// rules — which cannot read Firestore — can gate the PDF upload path.
+
+async function isAdminEmail(email) {
+  if (!email) return false;
+  const doc = await db.collection("admin_emails").doc(email.toLowerCase()).get();
+  return doc.exists;
+}
 
 async function requireAdmin(request) {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Must be signed in");
   }
-  const uid = request.auth.uid;
-  const adminDoc = await db.collection("admin_users").doc(uid).get();
-  if (!adminDoc.exists) {
+  if (!(await isAdminEmail(request.auth.token.email))) {
     throw new HttpsError("permission-denied", "Not an admin");
   }
-  return uid;
+  return request.auth.uid;
 }
 
-// ─── Check admin status ───
+// ─── Check admin status (and sync the custom claim) ───
 
 exports.checkAdminStatus = onCall({ region: REGION, enforceAppCheck: false }, async (request) => {
   if (!request.auth) {
-    return { isAdmin: false };
+    return { isAdmin: false, claimRefreshed: false };
   }
-  console.log("[checkAdminStatus] uid:", request.auth.uid, "email:", request.auth.token.email);
-  const adminDoc = await db
-    .collection("admin_users")
-    .doc(request.auth.uid)
-    .get();
-  console.log("[checkAdminStatus] doc exists:", adminDoc.exists);
-  return { isAdmin: adminDoc.exists };
+  const { uid, token } = request.auth;
+  const isAdmin = await isAdminEmail(token.email);
+  const hadClaim = token.admin === true;
+  // Mirror membership into a custom claim so Storage rules can see it. The
+  // client force-refreshes its ID token when this changes.
+  if (hadClaim !== isAdmin) {
+    await admin.auth().setCustomUserClaims(uid, { admin: isAdmin });
+  }
+  return { isAdmin, claimRefreshed: hadClaim !== isAdmin };
 });
 
 // ─── List admins (for the public Credits screen) ───
 //
-// admin_users is keyed by uid and is not client-readable, so this callable
-// resolves each admin's display name via Firebase Auth using the Admin SDK.
-// Only names/photos are returned (no emails/uids) since the Credits screen is
-// visible to everyone.
+// Reads the email-keyed `admin_emails` collection and resolves each admin's
+// display name/photo via Firebase Auth. Only names/photos are returned (no
+// emails) since the Credits screen is visible to everyone.
 
 exports.getAdmins = onCall({ region: REGION, enforceAppCheck: false }, async () => {
-  const snap = await db.collection("admin_users").get();
+  const snap = await db.collection("admin_emails").get();
 
   const admins = [];
   for (const doc of snap.docs) {
-    let name = null;
+    const email = doc.id;
+    const data = doc.data() || {};
+    let name = data.name || null;
     let photoUrl = null;
     try {
-      const user = await admin.auth().getUser(doc.id);
-      name = user.displayName ||
-        (user.email ? user.email.split("@")[0] : null);
+      const user = await admin.auth().getUserByEmail(email);
+      name = user.displayName || data.name || email.split("@")[0];
       photoUrl = user.photoURL || null;
     } catch (e) {
-      // uid no longer resolves in Auth — fall back to any stored fields.
-      const data = doc.data() || {};
-      name = data.name ||
-        (data.email ? String(data.email).split("@")[0] : null);
+      // No Auth user yet for this email — fall back to stored name / local-part.
+      name = data.name || email.split("@")[0];
     }
     if (name) admins.push({ name, photoUrl });
   }

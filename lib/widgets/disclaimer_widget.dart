@@ -241,8 +241,8 @@ class _BottomDisclaimerWidgetState extends State<BottomDisclaimerWidget> {
                 },
                 style: TextButton.styleFrom(
                   minimumSize: Size(
-                    ResponsiveService.getValue(context, mobile: 40.0, tablet: 50.0, desktop: 50.0),
-                    ResponsiveService.getValue(context, mobile: 28.0, tablet: 32.0, desktop: 32.0),
+                    48.0,
+                    48.0, // ≥48px tap target (a11y)
                   ),
                   padding: ResponsiveService.getAdaptivePadding(
                     context,
@@ -274,7 +274,7 @@ class _BottomDisclaimerWidgetState extends State<BottomDisclaimerWidget> {
                 style: TextButton.styleFrom(
                   minimumSize: Size(
                     ResponsiveService.getValue(context, mobile: 80.0, tablet: 100.0, desktop: 100.0),
-                    ResponsiveService.getValue(context, mobile: 28.0, tablet: 32.0, desktop: 32.0),
+                    48.0, // ≥48px tap target (a11y)
                   ),
                   padding: ResponsiveService.getAdaptivePadding(
                     context,
@@ -423,8 +423,8 @@ class _TopAnnouncementWidgetState extends State<TopAnnouncementWidget> {
                 },
                 style: TextButton.styleFrom(
                   minimumSize: Size(
-                    ResponsiveService.getValue(context, mobile: 40.0, tablet: 50.0, desktop: 50.0),
-                    ResponsiveService.getValue(context, mobile: 28.0, tablet: 32.0, desktop: 32.0),
+                    48.0,
+                    48.0, // ≥48px tap target (a11y)
                   ),
                   padding: ResponsiveService.getAdaptivePadding(
                     context,
@@ -459,7 +459,7 @@ class _TopAnnouncementWidgetState extends State<TopAnnouncementWidget> {
                 style: TextButton.styleFrom(
                   minimumSize: Size(
                     ResponsiveService.getValue(context, mobile: 80.0, tablet: 100.0, desktop: 100.0),
-                    ResponsiveService.getValue(context, mobile: 28.0, tablet: 32.0, desktop: 32.0),
+                    48.0, // ≥48px tap target (a11y)
                   ),
                   padding: ResponsiveService.getAdaptivePadding(
                     context,

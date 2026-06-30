@@ -195,23 +195,9 @@ class _HomeScreenState extends State<HomeScreen>
 
         if (_timetable == null) {
           return Scaffold(
-            appBar: AppBar(
-              title: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: ClipRRect(
-                      borderRadius: AppDesign.borderRadiusSm,
-                      child: Image.asset(
-                        'images/full_logo_bg.png',
-                        height: 50,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            appBar: AppDesign.appBar(
+              context,
+              titleWidget: AppDesign.appLogo(context),
             ),
             body: const EmptyStateWidget(
               icon: Icons.error_outline,
@@ -226,15 +212,10 @@ class _HomeScreenState extends State<HomeScreen>
         return GestureDetector(
           onHorizontalDragUpdate: (_) {},
           child: wrapWithKeyboardShortcuts(Scaffold(
-            appBar: AppBar(
-              title: _isStandalone
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Image.asset('images/full_logo_bg.png',
-                            height: 32, fit: BoxFit.contain),
-                      ],
-                    )
+            appBar: AppDesign.appBar(
+              context,
+              titleWidget: _isStandalone
+                  ? AppDesign.appLogo(context, height: 32)
                   : Text(_timetable!.name),
               leading: _isStandalone
                   ? null

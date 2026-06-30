@@ -253,8 +253,11 @@ class ResponsiveService {
   }
   
   /// Get text scale factor
+  ///
+  /// Returns the user's full system text scale, unclamped, so the app honours
+  /// accessibility font-size preferences.
   static double getTextScaleFactor(BuildContext context) {
-    return MediaQuery.textScalerOf(context).scale(1.0).clamp(0.8, 1.3);
+    return MediaQuery.textScalerOf(context).scale(1.0);
   }
   
   /// Responsive value helper - returns different values for different screen sizes
@@ -567,7 +570,7 @@ class ResponsiveService {
     final scaledFontSize = textScaler.scale(fontSize);
     
     return TextStyle(
-      fontSize: scaledFontSize.clamp(12.0, 28.0), // Limit font size range
+      fontSize: scaledFontSize, // honour the user's full text-scale preference
       fontWeight: fontWeight,
       color: color,
       height: isLargeTextScale(context) ? 1.4 : 1.2, // Better line height for large text

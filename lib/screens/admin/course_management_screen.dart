@@ -10,6 +10,7 @@ import '../../constants/app_constants.dart';
 import '../../utils/design_constants.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_dialog.dart';
+import '../../widgets/common/app_search_field.dart';
 
 class CourseManagementScreen extends StatefulWidget {
   const CourseManagementScreen({super.key});
@@ -844,14 +845,10 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextField(
+                  child: AppSearchField(
                     controller: _searchController,
+                    hint: 'Search courses...',
                     onChanged: _onSearchChanged,
-                    style: const TextStyle(fontSize: 14),
-                    decoration: AppDesign.inputDecoration(context,
-                        label: 'Search',
-                        hint: 'Search courses...',
-                        prefixIcon: const Icon(Icons.search_rounded, size: 20)),
                   ),
                 ),
               ],

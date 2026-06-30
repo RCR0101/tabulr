@@ -392,8 +392,9 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Quick Replace'),
+      appBar: AppDesign.appBar(
+        context,
+        title: 'Quick Replace',
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
@@ -1592,7 +1593,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
               child: FilledButton.icon(
                 onPressed: _closedSectionIds.isEmpty || _isShuffling ? null : _runShuffle,
                 icon: _isShuffling
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: scheme.onPrimary))
                     : const Icon(Icons.shuffle, size: 18),
                 label: Text(_isShuffling ? 'Searching...' : 'Find Alternatives'),
               ),

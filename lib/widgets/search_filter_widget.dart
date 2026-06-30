@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'common/app_search_field.dart';
 import '../models/course.dart';
 import '../services/ui/responsive_service.dart';
 import '../utils/design_constants.dart';
@@ -97,28 +98,15 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                   Semantics(
                     label: 'Search Courses',
                     textField: true,
-                    child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      labelText: 'Search courses, instructors...',
-                      hintText: 'e.g., CS F211, Data Structures',
-                      prefixIcon: const Icon(Icons.search),
-                      border: const OutlineInputBorder(),
-                      suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            tooltip: 'Clear search',
-                            onPressed: () {
-                              setState(() {
-                                _searchController.clear();
-                              });
-                              _updateSearch();
-                            },
-                          )
-                        : null,
+                    child: AppSearchField(
+                      controller: _searchController,
+                      hint: 'Search courses, instructors...',
+                      onChanged: (_) => _updateSearchDebounced(),
+                      onClear: () {
+                        _searchController.clear();
+                        _updateSearch();
+                      },
                     ),
-                    onChanged: (_) => _updateSearchDebounced(),
-                  ),
                   ),
                   SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
                   // Action buttons row for mobile
@@ -163,27 +151,14 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                   child: Semantics(
                     label: 'Search Courses',
                     textField: true,
-                    child: TextField(
+                    child: AppSearchField(
                       controller: _searchController,
-                      decoration: InputDecoration(
-                        labelText: 'Search courses, instructors...',
-                        hintText: 'e.g., CS F211, Data Structures',
-                        prefixIcon: const Icon(Icons.search),
-                        border: const OutlineInputBorder(),
-                        suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              tooltip: 'Clear search',
-                              onPressed: () {
-                                setState(() {
-                                  _searchController.clear();
-                                });
-                                _updateSearch();
-                              },
-                            )
-                          : null,
-                      ),
+                      hint: 'Search courses, instructors...',
                       onChanged: (_) => _updateSearchDebounced(),
+                      onClear: () {
+                        _searchController.clear();
+                        _updateSearch();
+                      },
                     ),
                   ),
                 ),

@@ -61,6 +61,10 @@ function requireHydAuth(request) {
   return docId;
 }
 
+// Event types that may be awarded at most once per announcement (per user).
+// Prevents self-farming of repeatable client events like source_attached.
+const DEDUP_EVENTS = new Set(["source_attached"]);
+
 async function addRepEvent({ uid, type, points, description, announcementId }) {
   if (!isValidEvent(type, points)) return;
 
@@ -68,6 +72,16 @@ async function addRepEvent({ uid, type, points, description, announcementId }) {
   await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     const data = snap.exists ? snap.data() : {};
+
+    // Idempotency: dedupable events are awarded once per announcement. The
+    // `awarded` map is never trimmed (unlike `events`), so this can't be
+    // bypassed by flooding the events list.
+    const awarded = data.awarded || {};
+    const dedupKey =
+      DEDUP_EVENTS.has(type) && announcementId
+        ? `${type}_${announcementId}`
+        : null;
+    if (dedupKey && awarded[dedupKey]) return; // already awarded — no-op
 
     const suspendedUntil = data.suspendedUntil
       ? data.suspendedUntil.toDate()
@@ -100,6 +114,8 @@ async function addRepEvent({ uid, type, points, description, announcementId }) {
         ? Timestamp.fromDate(newSuspendedUntil)
         : null,
       events,
+      // Preserve prior awards and record this one when dedupable.
+      awarded: dedupKey ? { ...awarded, [dedupKey]: true } : awarded,
     });
   });
 }
@@ -169,6 +185,22 @@ exports.addReputationEvent = onCall({ region: REGION, enforceAppCheck: false }, 
       "invalid-argument",
       `Invalid event type/points: ${type}/${points}`
     );
+  }
+
+  // source_attached is a positive, repeatable client event — gate it so a user
+  // can only earn it once, for an announcement they actually authored. Combined
+  // with the per-announcement dedup in addRepEvent, this blocks self-farming.
+  if (type === "source_attached") {
+    if (!announcementId) {
+      throw new HttpsError("invalid-argument", "announcementId required");
+    }
+    const annSnap = await db.collection(ANN_COLLECTION).doc(announcementId).get();
+    if (!annSnap.exists || annSnap.data().authorUid !== callerDocId) {
+      throw new HttpsError(
+        "permission-denied",
+        "Announcement not found or not authored by caller"
+      );
+    }
   }
 
   await addRepEvent({ uid: targetUid, type, points, description, announcementId });

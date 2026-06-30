@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/common/app_search_field.dart';
 import '../models/prerequisite.dart';
 import '../repositories/prerequisites_repository.dart';
 import '../services/data/courses_master_service.dart';
@@ -113,9 +114,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Course Prerequisites'),
-      ),
+      appBar: AppDesign.appBar(context, title: 'Course Prerequisites'),
       body: Column(
         children: [
           _buildSearchBar(theme, colorScheme),
@@ -134,7 +133,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
         color: colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: colorScheme.shadow.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -150,29 +149,20 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          TextField(
+          AppSearchField(
             controller: _searchController,
             focusNode: _searchFocusNode,
-            decoration: InputDecoration(
-              hintText: 'Search by course code, name, or department (e.g., CS F111, CS, Biology)',
-              prefixIcon: const Icon(Icons.search),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: _clearSearch,
-                    )
-                  : null,
-            ),
+            hint: 'Search by course code, name, or department (e.g., CS F111, CS, Biology)',
             onChanged: (value) {
-              setState(() {}); // To update suffix icon
-              // Start searching after 1 character for better UX
+              setState(() {}); // To update results
               if (value.isNotEmpty) {
                 _performSearch(value);
-              } else if (value.isEmpty) {
+              } else {
                 _clearSearch();
               }
             },
             onSubmitted: _performSearch,
+            onClear: _clearSearch,
           ),
           if (_isSearching)
             Padding(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/design_constants.dart';
 import '../widgets/course_guide_widget.dart';
 import '../widgets/common/app_dialog.dart';
 import '../services/data/auth_service.dart';
@@ -37,8 +38,9 @@ class _CourseGuideScreenState extends State<CourseGuideScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Course Guide'),
+      appBar: AppDesign.appBar(
+        context,
+        title: 'Course Guide',
         actions: [
           const ThemeToggleButton(),
           // User info and logout
