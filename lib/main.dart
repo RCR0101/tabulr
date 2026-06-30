@@ -30,11 +30,20 @@ void main() async {
   final totalStopwatch = Stopwatch()..start();
   WidgetsFlutterBinding.ensureInitialized();
 
-  PerformanceMonitor().initialize();
+  // Logger worker requires Authorization: Bearer <API_KEY> on POSTs. Supplied at
+  // build time via --dart-define=LOGGER_API_KEY=... so it stays out of source.
+  const loggerApiKey = String.fromEnvironment('LOGGER_API_KEY');
+  final loggerKey = loggerApiKey.isEmpty ? null : loggerApiKey;
+
+  PerformanceMonitor().initialize(apiKey: loggerKey);
   // Ship app logs + admin audit trail to the logger worker -> R2 logs bucket.
   // Release-only (debug builds already log to the console) and warning+ to keep
   // worker invocations / R2 writes minimal in healthy operation.
-  RemoteLogSink().initialize(enabled: !kDebugMode, minLevelIndex: 2);
+  RemoteLogSink().initialize(
+    enabled: !kDebugMode,
+    minLevelIndex: 2,
+    apiKey: loggerKey,
+  );
 
   await SecureLogger.measureAsync('firebase_init', () => Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,

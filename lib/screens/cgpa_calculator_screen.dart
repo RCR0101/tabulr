@@ -138,9 +138,15 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
   }
 
   Future<void> _saveSemester(String semesterName) async {
-    final success = await _controller.saveSemester(semesterName);
-    if (mounted && !success) {
-      ToastService.showError('Failed to save semester');
+    final result = await _controller.saveSemester(semesterName);
+    if (!mounted) return;
+    switch (result) {
+      case SemesterSaveResult.saved:
+        ToastService.showSuccess('Semester saved');
+      case SemesterSaveResult.nothingToSave:
+        ToastService.showInfo('Nothing to save');
+      case SemesterSaveResult.failed:
+        ToastService.showError('Failed to save semester');
     }
   }
 

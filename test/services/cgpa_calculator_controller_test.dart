@@ -1,6 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:timetable_maker/services/core/cgpa_calculator_controller.dart';
+import 'package:timetable_maker/services/data/cgpa_service.dart';
 import 'package:timetable_maker/models/all_course.dart';
+import 'package:timetable_maker/models/cgpa_data.dart';
+
+class MockCGPAService extends Mock implements CGPAService {}
 
 void main() {
   group('CGPACalculatorController', () {
@@ -198,6 +203,50 @@ void main() {
         controller.addListener(() => callCount++);
         controller.updateGrade('1-1', 0, 'A');
         expect(callCount, 1);
+      });
+    });
+
+    group('saveSemester', () {
+      setUpAll(() {
+        registerFallbackValue(SemesterData(semesterName: 'fallback'));
+      });
+
+      AllCourse sampleCourse() => AllCourse(
+            courseCode: 'CS F111',
+            courseTitle: 'Computer Programming',
+            creditValue: 4,
+            type: 'Normal',
+          );
+
+      test('returns nothingToSave for an unknown semester', () async {
+        final c = CGPACalculatorController();
+        expect(await c.saveSemester('does-not-exist'),
+            SemesterSaveResult.nothingToSave);
+        c.dispose();
+      });
+
+      test('returns saved when the service write succeeds', () async {
+        final mock = MockCGPAService();
+        when(() => mock.saveSemesterData(any(), any()))
+            .thenAnswer((_) async => true);
+        final c = CGPACalculatorController(cgpaService: mock);
+        c.addSemester('1-1');
+        c.addCourseToSemester('1-1', sampleCourse());
+
+        expect(await c.saveSemester('1-1'), SemesterSaveResult.saved);
+        c.dispose();
+      });
+
+      test('returns failed when the service write fails', () async {
+        final mock = MockCGPAService();
+        when(() => mock.saveSemesterData(any(), any()))
+            .thenAnswer((_) async => false);
+        final c = CGPACalculatorController(cgpaService: mock);
+        c.addSemester('1-1');
+        c.addCourseToSemester('1-1', sampleCourse());
+
+        expect(await c.saveSemester('1-1'), SemesterSaveResult.failed);
+        c.dispose();
       });
     });
   });

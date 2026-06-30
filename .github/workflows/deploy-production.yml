@@ -27,7 +27,7 @@ jobs:
 
       - run: flutter analyze
       - run: flutter test
-      - run: flutter build web --release --pwa-strategy=none
+      - run: flutter build web --release --pwa-strategy=none --dart-define=LOGGER_API_KEY=${{ secrets.LOGGER_API_KEY }}
       - run: rm -f build/web/flutter_service_worker.js
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
@@ -36,4 +36,7 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           projectId: timetable-maker-3c8e0
           channelId: live
+          # Newer firebase-tools handles the "premature close" release retry
+          # gracefully (avoids the false FAILED_PRECONDITION on re-POST).
+          firebaseToolsVersion: latest
 

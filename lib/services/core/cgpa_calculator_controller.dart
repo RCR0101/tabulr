@@ -9,6 +9,10 @@ import '../data/courses_master_service.dart';
 import '../parsers/performance_sheet_parser.dart';
 import 'course_catalog_service.dart';
 
+/// Outcome of [CGPACalculatorController.saveSemester]: distinguishes a real
+/// save from "there was nothing to persist" so the UI can give honest feedback.
+enum SemesterSaveResult { saved, nothingToSave, failed }
+
 class CGPACalculatorController extends ChangeNotifier {
   final CGPAService? _cgpaService;
   final CourseCatalogService? _coursesService;
@@ -58,21 +62,20 @@ class CGPACalculatorController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> saveSemester(String semesterName) async {
-    if (_isSaving) return false;
+  Future<SemesterSaveResult> saveSemester(String semesterName) async {
+    if (_isSaving) return SemesterSaveResult.failed;
+
+    final semesterData = _cgpaData.semesters[semesterName];
+    if (semesterData == null) return SemesterSaveResult.nothingToSave;
 
     _isSaving = true;
     notifyListeners();
 
-    final semesterData = _cgpaData.semesters[semesterName];
-    bool success = true;
-    if (semesterData != null) {
-      success = await _cgpa.saveSemesterData(semesterName, semesterData);
-    }
+    final success = await _cgpa.saveSemesterData(semesterName, semesterData);
 
     _isSaving = false;
     notifyListeners();
-    return success;
+    return success ? SemesterSaveResult.saved : SemesterSaveResult.failed;
   }
 
   bool addCourseToSemester(String semesterName, AllCourse course) {
