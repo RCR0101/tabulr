@@ -106,6 +106,16 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
         category: CommandCategory.context,
         onSelect: () => Navigator.push(context, FadeSlidePageRoute(page: const TimetableComparisonScreen())),
       ),
+      // Jump straight into any saved timetable — the list is already in memory,
+      // so this turns the palette into a launcher with no extra reads.
+      for (final tt in _timetables)
+        CommandPaletteEntry(
+          label: 'Open ${tt.name}',
+          subtitle: 'Open this timetable',
+          icon: Icons.schedule,
+          category: CommandCategory.context,
+          onSelect: () => _openTimetable(tt),
+        ),
     ]);
   }
 

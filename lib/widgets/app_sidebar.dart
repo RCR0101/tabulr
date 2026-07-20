@@ -12,6 +12,7 @@ class AppSidebar extends StatefulWidget {
   final ValueChanged<DrawerScreen> onScreenSelected;
   final bool collapsed;
   final VoidCallback? onToggleCollapse;
+  final VoidCallback? onShowCommandPalette;
 
   const AppSidebar({
     super.key,
@@ -19,6 +20,7 @@ class AppSidebar extends StatefulWidget {
     required this.onScreenSelected,
     required this.collapsed,
     required this.onToggleCollapse,
+    this.onShowCommandPalette,
   });
 
   @override
@@ -143,6 +145,8 @@ class _AppSidebarState extends State<AppSidebar> {
           child: Column(
             children: [
               _buildHeader(context, scheme, collapsed),
+              if (widget.onShowCommandPalette != null)
+                _buildSearchButton(context, scheme, collapsed),
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(
@@ -199,6 +203,82 @@ class _AppSidebarState extends State<AppSidebar> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildSearchButton(
+      BuildContext context, ColorScheme scheme, bool collapsed) {
+    final isMac = Theme.of(context).platform == TargetPlatform.macOS;
+    final shortcut = isMac ? '⌘K' : 'Ctrl K';
+
+    final button = InkWell(
+      onTap: widget.onShowCommandPalette,
+      borderRadius: AppDesign.borderRadiusSm,
+      child: AnimatedContainer(
+        duration: AppDesign.animDurationFast,
+        curve: AppDesign.animCurve,
+        padding: EdgeInsets.symmetric(
+          horizontal: collapsed ? AppDesign.spacingSm : AppDesign.spacingSm + 4,
+          vertical: AppDesign.spacingSm + 2,
+        ),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+          borderRadius: AppDesign.borderRadiusSm,
+          border: Border.all(color: scheme.outline.withValues(alpha: 0.12)),
+        ),
+        child: collapsed
+            ? Center(
+                child: Icon(Icons.search,
+                    size: 20, color: scheme.onSurface.withValues(alpha: 0.6)),
+              )
+            : Row(
+                children: [
+                  Icon(Icons.search,
+                      size: 18, color: scheme.onSurface.withValues(alpha: 0.6)),
+                  const SizedBox(width: AppDesign.spacingSm + 4),
+                  Expanded(
+                    child: Text(
+                      'Search…',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: scheme.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: scheme.surface,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: scheme.outline.withValues(alpha: 0.15)),
+                    ),
+                    child: Text(
+                      shortcut,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurface.withValues(alpha: 0.45),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        collapsed ? AppDesign.spacingSm : AppDesign.spacingSm + 4,
+        0,
+        collapsed ? AppDesign.spacingSm : AppDesign.spacingSm + 4,
+        AppDesign.spacingSm,
+      ),
+      child: Tooltip(
+        message: collapsed ? 'Search  ·  $shortcut' : '',
+        preferBelow: false,
+        waitDuration: const Duration(milliseconds: 400),
+        child: button,
       ),
     );
   }

@@ -122,6 +122,9 @@ class _HomeScreenState extends State<HomeScreen>
   void dispose() {
     disposeSavedIndicator();
     _campusSubscription?.cancel();
+    // Leaving the editor (incl. discarding unsaved changes) must drop the web
+    // beforeunload prompt so it doesn't linger on other screens.
+    _pageLeaveWarning.clear('timetable');
     super.dispose();
   }
 

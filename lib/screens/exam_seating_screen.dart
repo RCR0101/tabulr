@@ -7,6 +7,7 @@ import '../widgets/common/shimmer_loading.dart';
 import '../services/core/timetable_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
+import '../services/ui/page_leave_warning_service.dart';
 import '../models/timetable.dart';
 import '../utils/design_constants.dart';
 import '../widgets/command_palette.dart';
@@ -60,10 +61,19 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
   @override
   void dispose() {
     CommandPaletteActions.unregister(DrawerScreen.examSeating);
+    PageLeaveWarningService().clear('examSeating');
     _searchController.dispose();
     _idController.dispose();
     super.dispose();
   }
+
+  /// Selected courses and the ID are only persisted via the Save button, so
+  /// flag them for the web unload prompt as soon as they diverge from what was
+  /// last loaded/saved.
+  void _markDirty() =>
+      PageLeaveWarningService().setUnsaved('examSeating', true);
+
+  void _onIdChanged() => _markDirty();
 
   Future<void> _loadExamData() async {
     setState(() => _isLoading = true);
@@ -99,6 +109,11 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
         }
       }
     });
+
+    // Attach only after restoring saved state so the initial fill doesn't
+    // register as an unsaved edit.
+    if (!mounted) return;
+    _idController.addListener(_onIdChanged);
   }
 
   Future<void> _importCoursesFromTimetable() async {
@@ -156,6 +171,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       setState(() {
         _selectedCourses.addAll(coursesToAdd);
       });
+      _markDirty();
 
       ToastService.showSuccess(
         'Added ${coursesToAdd.length} course${coursesToAdd.length != 1 ? 's' : ''}!',
@@ -175,6 +191,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       _selectedCourses.add(exam);
       _searchController.clear();
     });
+    _markDirty();
   }
 
   void _removeCourse(ExamSeating exam) {
@@ -182,6 +199,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       _selectedCourses.removeWhere((c) => c.courseCode == exam.courseCode);
       _searchResults.remove(exam.courseCode);
     });
+    _markDirty();
   }
 
   void _searchForRoom() {
@@ -225,6 +243,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
     setState(() => _isSaving = false);
 
     if (success) {
+      PageLeaveWarningService().clear('examSeating');
       ToastService.showSuccess('Saved successfully!');
     } else {
       ToastService.showError('Please sign in to save your data');

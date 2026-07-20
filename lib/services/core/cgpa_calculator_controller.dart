@@ -30,11 +30,19 @@ class CGPACalculatorController extends ChangeNotifier {
   bool _isLoading = true;
   bool _isSaving = false;
 
+  /// Semesters with in-memory edits that haven't been persisted yet. Tracked
+  /// per semester because saving is per-semester — saving one must not clear
+  /// the unsaved flag for others.
+  final Set<String> _dirtySemesters = {};
+
   List<String> get semesters => _semesters;
   CGPAData get cgpaData => _cgpaData;
   List<AllCourse> get allCourses => _allCourses;
   bool get isLoading => _isLoading;
   bool get isSaving => _isSaving;
+
+  /// Whether any semester has unsaved edits.
+  bool get hasUnsavedChanges => _dirtySemesters.isNotEmpty;
 
   Future<void> loadData() async {
     _isLoading = true;
@@ -58,6 +66,7 @@ class CGPACalculatorController extends ChangeNotifier {
       _semesters = List.from(CGPAService.defaultSemesters);
     }
 
+    _dirtySemesters.clear();
     _isLoading = false;
     notifyListeners();
   }
@@ -73,6 +82,7 @@ class CGPACalculatorController extends ChangeNotifier {
 
     final success = await _cgpa.saveSemesterData(semesterName, semesterData);
 
+    if (success) _dirtySemesters.remove(semesterName);
     _isSaving = false;
     notifyListeners();
     return success ? SemesterSaveResult.saved : SemesterSaveResult.failed;
@@ -95,6 +105,7 @@ class CGPACalculatorController extends ChangeNotifier {
 
     semester.courses.add(courseEntry);
     _cgpaData.semesters[semesterName] = semester;
+    _dirtySemesters.add(semesterName);
     notifyListeners();
     return true;
   }
@@ -104,6 +115,7 @@ class CGPACalculatorController extends ChangeNotifier {
     if (semester != null) {
       semester.courses.removeAt(index);
       _cgpaData.semesters[semesterName] = semester;
+      _dirtySemesters.add(semesterName);
       notifyListeners();
     }
   }
@@ -114,12 +126,14 @@ class CGPACalculatorController extends ChangeNotifier {
       semester.courses[courseIndex] =
           semester.courses[courseIndex].copyWith(grade: grade);
       _cgpaData.semesters[semesterName] = semester;
+      _dirtySemesters.add(semesterName);
       notifyListeners();
     }
   }
 
   Future<void> removeSemester(String semesterName) async {
     _semesters.remove(semesterName);
+    _dirtySemesters.remove(semesterName);
     final updatedSemesters =
         Map<String, SemesterData>.from(_cgpaData.semesters);
     updatedSemesters.remove(semesterName);
@@ -248,6 +262,8 @@ class CGPACalculatorController extends ChangeNotifier {
       if (data != null) semestersToSave[semName] = data;
     }
     final success = await _cgpa.saveAllSemesters(semestersToSave);
+    // These were just persisted; drop any prior dirty flags for them.
+    if (success) _dirtySemesters.removeAll(semestersToSave.keys);
 
     return (importedCount: parsed.totalCourses, saveSuccess: success);
   }

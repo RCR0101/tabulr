@@ -42,6 +42,7 @@ import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
 import '../screens/generator_screen.dart';
 import '../screens/add_swap_screen.dart';
+import '../screens/quick_replace_screen.dart';
 import '../widgets/exam_timeline_widget.dart';
 import '../screens/course_guide_screen.dart';
 import '../screens/discipline_electives_screen.dart';
@@ -123,6 +124,29 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
           category: CommandCategory.context,
           onSelect: openAddSwap,
         ),
+        CommandPaletteEntry(
+          label: 'Auto-load CDCs',
+          subtitle: 'Add your compulsory disciplinary courses',
+          icon: Icons.school,
+          category: CommandCategory.context,
+          onSelect: autoLoadCDCs,
+        ),
+        if ((currentTimetable?.selectedSections.isNotEmpty ?? false)) ...[
+          CommandPaletteEntry(
+            label: 'Quick Replace',
+            subtitle: 'Swap a course for a similar one',
+            icon: Icons.find_replace,
+            category: CommandCategory.context,
+            onSelect: openQuickReplace,
+          ),
+          CommandPaletteEntry(
+            label: 'Clear Timetable',
+            subtitle: 'Remove all courses from this timetable',
+            icon: Icons.delete_sweep,
+            category: CommandCategory.context,
+            onSelect: clearTimetable,
+          ),
+        ],
         if (hasUnsavedChanges && !isSaving)
           CommandPaletteEntry(
             label: 'Save Timetable',
@@ -754,6 +778,25 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     }
   }
 
+  /// Opens the Quick Replace flow for the current timetable. Mirrors the
+  /// in-grid Quick Replace button so the action is also reachable from the
+  /// command palette.
+  void openQuickReplace() {
+    final tt = currentTimetable;
+    if (tt == null || tt.selectedSections.isEmpty) return;
+    Navigator.push(
+      context,
+      FadeSlidePageRoute(
+        page: QuickReplaceScreen(
+          availableCourses: tt.availableCourses,
+          selectedSections: tt.selectedSections,
+          onReplace: quickReplaceCourse,
+          onSectionShuffle: sectionShuffle,
+        ),
+      ),
+    );
+  }
+
   Future<void> openGenerator() async {
     final tt = currentTimetable;
     final result =
@@ -1075,6 +1118,11 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   List<Widget> buildCommonActions() {
     final isMobileLayout = ResponsiveService.isMobile(context);
     return [
+      IconButton(
+        icon: const Icon(Icons.search),
+        onPressed: _showCommandPalette,
+        tooltip: isMobileLayout ? 'Search actions' : 'Search actions  ·  ⌘K',
+      ),
       if (!isMobileLayout) ...[
         PageInfoHelper.infoButton(context, PageInfoHelper.timetableCreator),
         if (_showSavedIndicator)

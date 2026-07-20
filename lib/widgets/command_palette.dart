@@ -9,6 +9,8 @@ import '../screens/prerequisites_screen.dart';
 import '../screens/discipline_electives_screen.dart';
 import '../screens/humanities_electives_screen.dart';
 import '../screens/timetable_comparison_screen.dart';
+import '../screens/credits_screen.dart';
+import '../services/ui/theme_service.dart';
 import '../utils/design_constants.dart';
 import '../utils/page_transitions.dart';
 import 'app_drawer.dart';
@@ -269,18 +271,61 @@ class _CommandPaletteState extends State<CommandPalette> {
         category: CommandCategory.navigation,
         onSelect: () => nav.push(FadeSlidePageRoute(page: const TimetableComparisonScreen())),
       ),
+      CommandPaletteEntry(
+        label: 'Credits',
+        subtitle: 'About Tabulr and the people behind it',
+        icon: Icons.info_outline,
+        category: CommandCategory.navigation,
+        onSelect: () => nav.push(FadeSlidePageRoute(page: const CreditsScreen())),
+      ),
     ]);
 
     // Global actions
     if (widget.onToggleTheme != null) {
       nonRecentEntries.add(CommandPaletteEntry(
         label: 'Change Theme',
-        subtitle: 'Switch theme or mode',
+        subtitle: 'Open the theme picker',
         icon: Icons.brightness_6,
         category: CommandCategory.action,
         onSelect: widget.onToggleTheme!,
       ));
     }
+
+    // Direct theme + mode switches — type "drac", "light", etc. to apply
+    // instantly without opening the picker dialog.
+    final themeService = ThemeService();
+    for (final theme in AppTheme.values) {
+      nonRecentEntries.add(CommandPaletteEntry(
+        label: 'Theme: ${theme.displayName}',
+        subtitle: theme == themeService.currentTheme ? 'Current theme' : 'Apply this theme',
+        icon: theme.icon,
+        category: CommandCategory.action,
+        onSelect: () => themeService.setTheme(theme),
+      ));
+    }
+    nonRecentEntries.addAll([
+      CommandPaletteEntry(
+        label: 'Dark Mode',
+        subtitle: 'Always use the dark palette',
+        icon: Icons.dark_mode,
+        category: CommandCategory.action,
+        onSelect: () => themeService.setThemeMode(ThemeMode.dark),
+      ),
+      CommandPaletteEntry(
+        label: 'Light Mode',
+        subtitle: 'Always use the light palette',
+        icon: Icons.light_mode,
+        category: CommandCategory.action,
+        onSelect: () => themeService.setThemeMode(ThemeMode.light),
+      ),
+      CommandPaletteEntry(
+        label: 'System Theme Mode',
+        subtitle: 'Match your device setting',
+        icon: Icons.brightness_auto,
+        category: CommandCategory.action,
+        onSelect: () => themeService.setThemeMode(ThemeMode.system),
+      ),
+    ]);
 
     if (widget.onSignOut != null && auth.isAuthenticated) {
       nonRecentEntries.add(CommandPaletteEntry(

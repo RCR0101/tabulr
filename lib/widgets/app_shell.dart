@@ -121,6 +121,7 @@ class _AppShellState extends State<AppShell> {
             onToggleCollapse: isTablet
                 ? null
                 : () => setState(() => _sidebarCollapsed = !_sidebarCollapsed),
+            onShowCommandPalette: _showCommandPalette,
           ),
           Expanded(child: _buildIndexedStack()),
         ],
@@ -129,6 +130,7 @@ class _AppShellState extends State<AppShell> {
       body = _MobileShell(
         currentScreen: _currentScreen,
         onScreenSelected: _onScreenSelected,
+        onShowCommandPalette: _showCommandPalette,
         child: _buildIndexedStack(),
       );
     }
@@ -149,11 +151,13 @@ class _AppShellState extends State<AppShell> {
 class _MobileShell extends StatelessWidget {
   final DrawerScreen currentScreen;
   final ValueChanged<DrawerScreen> onScreenSelected;
+  final VoidCallback onShowCommandPalette;
   final Widget child;
 
   const _MobileShell({
     required this.currentScreen,
     required this.onScreenSelected,
+    required this.onShowCommandPalette,
     required this.child,
   });
 
@@ -162,6 +166,10 @@ class _MobileShell extends StatelessWidget {
     DrawerScreen.calendar,
     DrawerScreen.examSeating,
   ];
+
+  // Bottom-nav indices for the two non-screen actions that follow the tabs.
+  static const _searchIndex = 3;
+  static const _moreIndex = 4;
 
   List<DrawerScreen> _overflowItems() {
     final auth = AuthService();
@@ -181,12 +189,17 @@ class _MobileShell extends StatelessWidget {
 
   int _currentIndex() {
     final idx = _primaryTabs.indexOf(currentScreen);
-    return idx >= 0 ? idx : 3;
+    // Screens reached via the "More" sheet keep that tab highlighted.
+    return idx >= 0 ? idx : _moreIndex;
   }
 
   void _onTap(BuildContext context, int index) {
     if (index < _primaryTabs.length) {
       onScreenSelected(_primaryTabs[index]);
+    } else if (index == _searchIndex) {
+      // Search opens the palette as an overlay; it isn't a screen, so the
+      // selected tab stays on whatever's currently showing.
+      onShowCommandPalette();
     } else {
       _showMoreSheet(context);
     }
@@ -291,6 +304,11 @@ class _MobileShell extends StatelessWidget {
             icon: Icon(Icons.event_seat, color: scheme.onSurface.withValues(alpha: 0.6)),
             selectedIcon: Icon(Icons.event_seat, color: scheme.primary),
             label: 'Exams',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.search, color: scheme.onSurface.withValues(alpha: 0.6)),
+            selectedIcon: Icon(Icons.search, color: scheme.primary),
+            label: 'Search',
           ),
           NavigationDestination(
             icon: Icon(Icons.more_horiz, color: scheme.onSurface.withValues(alpha: 0.6)),

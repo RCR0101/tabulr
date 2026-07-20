@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+#
+# Pre-commit: bump patch + build version and stage the changed files so the
+# bump is part of this commit. See .githooks/bump-version.sh for details.
+#
+# Enable once per clone with:
+#   git config core.hooksPath .githooks
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+exec "$REPO_ROOT/.githooks/bump-version.sh" --stage

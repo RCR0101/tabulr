@@ -9,6 +9,7 @@ import '../services/data/auth_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../widgets/auto_load_cdc_dialog.dart';
 import '../services/ui/toast_service.dart';
+import '../services/ui/page_leave_warning_service.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
@@ -70,6 +71,8 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
   }
 
   void _onControllerChanged() {
+    // Keep the web "unsaved changes" prompt in sync with pending semester edits.
+    PageLeaveWarningService().setUnsaved('cgpa', _controller.hasUnsavedChanges);
     if (mounted) setState(() {});
   }
 
@@ -120,6 +123,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     _tabController.dispose();
     _controller.removeListener(_onControllerChanged);
     _controller.dispose();
+    PageLeaveWarningService().clear('cgpa');
     CommandPaletteActions.unregister(DrawerScreen.cgpaCalculator);
     super.dispose();
   }
