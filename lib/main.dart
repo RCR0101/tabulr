@@ -25,6 +25,7 @@ import 'services/ui/secure_logger.dart';
 import 'services/ui/performance_monitor.dart';
 import 'services/ui/remote_log_sink.dart';
 import 'widgets/theme_transition_overlay.dart';
+import 'utils/app_scroll_behavior.dart';
 
 void main() async {
   final totalStopwatch = Stopwatch()..start();
@@ -175,6 +176,7 @@ class _TimetableMakerAppState extends State<TimetableMakerApp> {
           theme: themeService.getLightThemeData(themeService.currentTheme),
           darkTheme: themeService.getDarkThemeData(themeService.currentTheme),
           themeMode: themeService.currentThemeMode,
+          scrollBehavior: const AppScrollBehavior(),
           debugShowCheckedModeBanner: false,
           home: ThemeTransitionOverlay(
             controller: _themeTransition,

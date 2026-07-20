@@ -302,8 +302,15 @@ extension AppMotion on Widget {
   }
 
   /// Staggered list item — use with index for cascading entries.
-  Widget motionListItem(int index, {Duration? stagger}) {
-    final delay = (stagger ?? const Duration(milliseconds: 50)) * index;
+  ///
+  /// The cascade delay is capped at [maxStaggerItems] so that later items in a
+  /// long list don't wait seconds (or minutes) before appearing. Only use this
+  /// on short, non-lazy lists: in a lazy `ListView.builder`/`SliverList` items
+  /// re-run this entrance animation every time they scroll back into view,
+  /// which flashes during scrolling — prefer plain items there.
+  Widget motionListItem(int index, {Duration? stagger, int maxStaggerItems = 6}) {
+    final steps = index.clamp(0, maxStaggerItems);
+    final delay = (stagger ?? const Duration(milliseconds: 50)) * steps;
     return motionEntry(delay: delay, duration: AppDesign.motionStandard);
   }
 }

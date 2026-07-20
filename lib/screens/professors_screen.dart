@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/data/professor_service.dart';
@@ -285,6 +286,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
             child: RefreshIndicator(
               onRefresh: _loadProfessors,
               child: ListView.separated(
+                scrollCacheExtent: ScrollCacheExtent.pixels(800),
                 padding: const EdgeInsets.all(16),
                 itemCount: professors.length,
                 separatorBuilder: (context, index) => const SizedBox(height: 8),

@@ -444,16 +444,18 @@ class ResponsiveService {
     return child;
   }
   
-  /// Get appropriate scroll physics for the platform
+  /// Get appropriate scroll physics for the platform.
+  ///
+  /// Defaults to momentum-based [BouncingScrollPhysics] on every platform to
+  /// match the app-wide `AppScrollBehavior`, so lists feel fluid instead of
+  /// hard-clamping on desktop/web. Pass `bouncing: false` for the rare case
+  /// where a clamped scroll is desired.
   static ScrollPhysics getScrollPhysics(BuildContext context, {
     bool bouncing = true,
   }) {
-    if (isMobile(context)) {
-      return bouncing 
-        ? const BouncingScrollPhysics()
-        : const ClampingScrollPhysics();
-    }
-    return const ClampingScrollPhysics();
+    return bouncing
+      ? const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics())
+      : const ClampingScrollPhysics();
   }
   
   /// Build an optimized ListView for mobile performance

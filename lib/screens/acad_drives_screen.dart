@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../utils/web_utils.dart' as web_utils;
@@ -1270,6 +1271,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
               onRefresh: _loadCourses,
               child: CustomScrollView(
                 controller: _coursesScrollController,
+                scrollCacheExtent: ScrollCacheExtent.pixels(800),
                 slivers: [
                   if (hasStarred) ...[
                     SliverToBoxAdapter(
@@ -1298,7 +1300,10 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         if (index >= restCourses.length) return _buildLoadingFooter();
-                        return courseCardWithStar(restCourses[index]).motionListItem(index);
+                        // No per-item entrance animation: this list is lazy and
+                        // paginated, so animating on build re-fades cards every
+                        // time they scroll back into view.
+                        return courseCardWithStar(restCourses[index]);
                       },
                       childCount: restCourses.length + (_hasMoreCourses && _searchQuery.isEmpty ? 1 : 0),
                     ),

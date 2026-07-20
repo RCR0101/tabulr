@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import '../models/course.dart';
 import '../models/timetable.dart';
 import '../services/core/course_utils.dart';
@@ -184,6 +185,9 @@ class CourseListWidget extends StatelessWidget {
     }
 
     return ListView.builder(
+      // Pre-build extra rows off-screen so fast wheel/trackpad scrolling
+      // doesn't reveal blank gaps before items paint.
+      scrollCacheExtent: ScrollCacheExtent.pixels(800),
       padding: ResponsiveService.getAdaptivePadding(
         context,
         EdgeInsets.fromLTRB(

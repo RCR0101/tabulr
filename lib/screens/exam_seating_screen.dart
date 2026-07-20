@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import '../services/data/exam_seating_service.dart';
 import '../widgets/common/empty_state.dart';
@@ -518,6 +519,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
     return RefreshIndicator(
       onRefresh: _loadExamData,
       child: ListView.builder(
+      scrollCacheExtent: ScrollCacheExtent.pixels(800),
       padding: ResponsiveService.getAdaptivePadding(
         context,
         const EdgeInsets.all(16),
@@ -679,7 +681,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
               ],
             ),
           ),
-        ).motionListItem(index);
+        );
       },
     ),
     );
