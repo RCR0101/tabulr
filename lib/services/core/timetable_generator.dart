@@ -45,11 +45,22 @@ import 'clash_detector.dart';
 ///   [_generateAllCombinations].
 class TimetableGenerator {
   /// Entry point. Returns up to [maxTimetables] clash-free, scored timetables.
-  static List<GeneratedTimetable> generateTimetables(
+  /// How many scored candidates to evaluate before handing a frame back to the
+  /// event loop. Chosen so a batch stays well under one 60fps frame (~16ms) on
+  /// a mid-range phone while keeping the yield overhead negligible.
+  static const int _yieldEvery = 128;
+
+  /// Async so the UI can paint between batches. There is no isolate here on
+  /// purpose: web has none, and shipping [Course]/[TimetableConstraints] across
+  /// an isolate boundary would cost a full copy each way. Cooperative yielding
+  /// with `Future.delayed(Duration.zero)` unblocks the UI on web and native
+  /// alike — the old fully-synchronous loop froze it for seconds on large
+  /// optional sets (up to the 10,000-combination cap × scoring).
+  static Future<List<GeneratedTimetable>> generateTimetables(
     List<Course> availableCourses,
     TimetableConstraints constraints, {
     int maxTimetables = 30,
-  }) {
+  }) async {
     final mandatoryCourses = availableCourses
         .where((c) => constraints.mandatoryCourses.contains(c.courseCode))
         .toList();
@@ -75,12 +86,21 @@ class TimetableGenerator {
 
     final seen = <String>{};
     final validTimetables = <GeneratedTimetable>[];
+    var sinceYield = 0;
 
     for (int i = 0; i < mandatoryCombos.length; i++) {
       final base = mandatoryCombos[i];
       if (!_isValidCombination(base, allCourses)) continue;
 
       for (final ordering in optionalOrderings) {
+        // Hand a frame back periodically. Counting scored candidates (rather
+        // than outer combos) keeps batches even when one combo has many
+        // orderings.
+        if (++sinceYield >= _yieldEvery) {
+          sinceYield = 0;
+          await Future<void>.delayed(Duration.zero);
+        }
+
         final result = _addOptionalCourses(
           base, ordering, allCourses, constraints, mandatoryCredits,
         );

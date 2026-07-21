@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/ui/secure_logger.dart';
 import '../constants/app_constants.dart';
 import '../models/prerequisite.dart';
 import '../services/data/courses_master_service.dart';
@@ -70,7 +71,9 @@ class PrerequisitesRepository {
         {'lastUpdated': DateTime.now().toIso8601String()},
         SetOptions(merge: true),
       );
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.warning('PREREQ_REPO', 'Metadata freshness bump failed (non-fatal)', {'error': e.toString()});
+    }
   }
 
   Future<List<CoursePrerequisites>> searchCourses(String query) async {

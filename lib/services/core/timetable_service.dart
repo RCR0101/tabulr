@@ -202,12 +202,12 @@ class TimetableService {
 
       applyCurrentTerm(timetable);
 
-      // Hydrating availableCourses only touches derived, in-memory state:
-      // toFirestoreJson() deliberately omits the catalog, so writing back for a
-      // signed-in user persists nothing new. It did, however, cost a full
-      // document write on *every* timetable open and bumped updatedAt, making
-      // untouched timetables look edited. Guests still need the local save
-      // because their storage format (toJson) does persist the catalog.
+      // Hydrating availableCourses only touches derived, in-memory state, and
+      // neither storage form embeds the catalog now, so a signed-in write-back
+      // would persist nothing new while costing a document write on every open
+      // and bumping updatedAt. The guest save is kept because it is cheap (slim
+      // JSON) and rewrites any timetable still stored in the old catalog-embedded
+      // format down to the slim one on first open.
       if (!_authService.isAuthenticated) {
         await saveTimetableToStorage(timetable);
       }
@@ -467,14 +467,18 @@ class TimetableService {
 
       if (_authService.isAuthenticated) {
         timetables = await _firestoreService.getAllTimetables();
-        if (timetables.isNotEmpty) {
-          await _hydrateCourses(timetables);
-        } else {
+        if (timetables.isEmpty) {
           timetables = await _getAllTimetablesFromLocalStorage();
         }
       } else {
         timetables = await _getAllTimetablesFromLocalStorage();
       }
+
+      // Always hydrate: neither the Firestore form (toFirestoreJson) nor the
+      // local form (toJson) embeds the catalog any more, so list entries load
+      // with an empty availableCourses and need it filled from CourseDataService
+      // before clash counts or the course panel can render.
+      await _hydrateCourses(timetables);
 
       // If no timetables exist, try to migrate from old format or create a default one
       if (timetables.isEmpty) {
@@ -699,9 +703,11 @@ class TimetableService {
       createdAt: now,
       updatedAt: now,
       campus: sourceTimetable.campus,
-      availableCourses: sourceTimetable.availableCourses
-          .map((course) => Course.fromJson(course.toJson()))
-          .toList(),
+      // A fresh list (so _loadCoursesFromFirestore clearing one timetable's
+      // catalog can't clear the source's) but sharing the immutable Course
+      // objects. The old JSON round-trip rebuilt all ~2,800 courses only to
+      // throw them away on the next load, since the catalog isn't persisted.
+      availableCourses: List<Course>.from(sourceTimetable.availableCourses),
       selectedSections: sourceTimetable.selectedSections
           .map((section) => SelectedSection.fromJson(section.toJson()))
           .toList(),

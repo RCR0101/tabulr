@@ -364,7 +364,7 @@ class ThemeSelectorDialog extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         width: 500,
-        height: MediaQuery.of(context).size.height * 0.7,
+        height: MediaQuery.sizeOf(context).height * 0.7,
         padding: const EdgeInsets.only(top: 8),
         child: content,
       ),

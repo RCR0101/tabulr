@@ -74,6 +74,26 @@
   </div>
 
   <script>
+    // Warm the engine download in parallel with the version check below. The
+    // check gates the real bootstrap injection (to avoid a flash-then-reload
+    // right after a deploy), which otherwise costs one round trip before the
+    // engine starts downloading. This preload uses the last known version — the
+    // same URL the common, version-unchanged path injects — so the browser
+    // reuses these bytes instead of fetching twice, hiding the RTT. On a first
+    // visit or a version change it simply does nothing useful and is discarded.
+    (function() {
+      var prev = localStorage.getItem('app_version');
+      if (prev) {
+        var l = document.createElement('link');
+        l.rel = 'preload';
+        l.as = 'script';
+        l.href = 'flutter_bootstrap.js?v=' + encodeURIComponent(prev);
+        document.head.appendChild(l);
+      }
+    })();
+  </script>
+
+  <script>
     (async function() {
       var version = '';
       try {

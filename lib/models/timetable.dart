@@ -45,6 +45,14 @@ class Timetable {
     this.term,
   });
 
+  /// Local/guest storage form. The catalog is deliberately NOT embedded: it is
+  /// the same ~2,800-course list for every timetable, so storing it per
+  /// timetable bloated each guest save into the megabytes, blew the localStorage
+  /// quota after a couple of timetables, and was discarded on load anyway
+  /// (every load path re-hydrates availableCourses from CourseDataService).
+  /// This now matches [toFirestoreJson]; [fromJson] still *reads* an embedded
+  /// catalog so timetables saved by older builds keep working until their next
+  /// save rewrites them slim.
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -52,7 +60,6 @@ class Timetable {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'campus': campus.code,
-      'availableCourses': availableCourses.map((c) => c.toJson()).toList(),
       'selectedSections': selectedSections.map((s) => s.toJson()).toList(),
       'clashWarnings': clashWarnings.map((w) => w.toJson()).toList(),
       if (shareId != null) 'shareId': shareId,

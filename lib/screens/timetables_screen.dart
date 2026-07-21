@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import '../services/ui/secure_logger.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -62,12 +64,16 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   bool _isLoading = true;
   List<ArchivedSemester> _archivedSemesters = [];
   bool _archivesExpanded = false;
+  StreamSubscription<dynamic>? _authSub;
 
   @override
   void initState() {
     super.initState();
     _userSettingsService.addListener(_onSettingsChanged);
-    _authService.authStateChanges.listen((_) {
+    // Captured so it is cancelled in dispose — an uncancelled subscription
+    // keeps calling setState on a dead State (and leaks) each time this screen
+    // is torn down and rebuilt.
+    _authSub = _authService.authStateChanges.listen((_) {
       if (mounted) {
         setState(() {}); // Rebuild to update drawer visibility
       }
@@ -129,6 +135,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
 
   @override
   void dispose() {
+    _authSub?.cancel();
     _userSettingsService.removeListener(_onSettingsChanged);
     CommandPaletteActions.unregister(DrawerScreen.timetables);
     super.dispose();
@@ -177,7 +184,9 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     try {
       final semesters = await FirestoreService().getArchivedSemesters();
       if (mounted) setState(() => _archivedSemesters = semesters);
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.warning('TIMETABLES', 'Failed to load archived semesters', {'error': e.toString()});
+    }
   }
 
   Future<void> _createNewTimetable() async {
@@ -987,7 +996,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                             final box = cardContext.findRenderObject() as RenderBox?;
                             final rect = box != null
                                 ? box.localToGlobal(Offset.zero) & box.size
-                                : Rect.fromLTWH(0, 0, MediaQuery.of(context).size.width, MediaQuery.of(context).size.height);
+                                : Rect.fromLTWH(0, 0, MediaQuery.sizeOf(context).width, MediaQuery.sizeOf(context).height);
                             await Navigator.push<bool>(
                               context,
                               ExpandPageRoute(
@@ -1336,7 +1345,9 @@ class _TimetableEditorScreenState extends State<TimetableEditorScreen> {
       if (fresh != null && mounted) {
         setState(() => _timetable = fresh);
       }
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.warning('TIMETABLES', 'Background course refresh failed', {'error': e.toString()});
+    }
   }
 
   Future<void> _loadTimetable() async {

@@ -48,7 +48,7 @@ class _InstructorRankingDialogState extends State<InstructorRankingDialog>
       title: const Text('Rank Instructors by Preference'),
       content: SizedBox(
         width: ResponsiveService.isMobile(context) ? double.infinity : 650,
-        height: MediaQuery.of(context).size.height * 0.5,
+        height: MediaQuery.sizeOf(context).height * 0.5,
         child: Column(
           children: [
             Text(

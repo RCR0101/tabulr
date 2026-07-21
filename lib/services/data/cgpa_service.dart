@@ -111,11 +111,19 @@ class CGPAService {
           .doc(_authService.userDocId!)
           .collection(FirestoreCollections.cgpaSemesters);
 
-      for (final entry in semesters.entries) {
-        final jsonData = jsonEncode(entry.value.toJson());
-        final encryptedData = await _encryptData(jsonData);
-        batch.set(colRef.doc(entry.key), {
-          'encryptedData': encryptedData,
+      // Encrypt every semester in parallel rather than awaiting each in turn —
+      // the batch write is one round trip regardless, so the sequential awaits
+      // were pure added latency (up to 8 encryptions back to back).
+      final encrypted = await Future.wait(
+        semesters.entries.map((entry) async {
+          final jsonData = jsonEncode(entry.value.toJson());
+          return (key: entry.key, data: await _encryptData(jsonData));
+        }),
+      );
+
+      for (final item in encrypted) {
+        batch.set(colRef.doc(item.key), {
+          'encryptedData': item.data,
           'encryptionVersion': 2,
           'lastUpdated': FieldValue.serverTimestamp(),
         });

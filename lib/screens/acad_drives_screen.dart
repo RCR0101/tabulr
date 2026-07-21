@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import '../services/ui/secure_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:url_launcher/url_launcher.dart';
@@ -6,7 +7,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import '../utils/web_utils.dart' as web_utils;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
-import 'package:archive/archive.dart';
+import 'package:archive/archive.dart' deferred as arch;
 import '../services/data/acad_drives_service.dart';
 import '../services/data/user_settings_service.dart';
 import '../services/core/timetable_service.dart';
@@ -184,7 +185,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           _enrolledCourseEntries = entries;
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.warning('ACAD_DRIVES', 'Failed to load enrolled course codes', {'error': e.toString()});
+    }
   }
 
   void _onCoursesScroll() {
@@ -619,7 +622,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     );
 
     try {
-      final archive = Archive();
+      await arch.loadLibrary();
+      final archive = arch.Archive();
       int fetched = 0;
       int failed = 0;
 
@@ -631,7 +635,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           final response = await http.get(uri);
           if (_downloadCancelled) break;
           if (response.statusCode == 200) {
-            archive.addFile(ArchiveFile(
+            archive.addFile(arch.ArchiveFile(
               entry.path,
               response.bodyBytes.length,
               response.bodyBytes,
@@ -665,7 +669,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
       await Future.delayed(const Duration(milliseconds: 50));
 
-      final zipBytes = ZipEncoder().encode(archive);
+      final zipBytes = arch.ZipEncoder().encode(archive);
       if (mounted) Navigator.of(context).pop();
 
       if (zipBytes == null) {

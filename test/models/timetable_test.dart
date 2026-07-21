@@ -132,7 +132,10 @@ void main() {
   });
 
   group('toFirestoreJson', () {
-    test('excludes availableCourses', () {
+    test('neither serialized form embeds the catalog', () {
+      // The catalog is identical for every timetable and re-hydrated on load,
+      // so embedding it per timetable only bloats storage. Both forms now omit
+      // it (the local form used to embed it and blew the localStorage quota).
       final course = makeCourse(courseCode: 'CS F111');
       final timetable = Timetable(
         id: 'tt1',
@@ -145,14 +148,10 @@ void main() {
         clashWarnings: [],
       );
 
-      final firestoreJson = timetable.toFirestoreJson();
-      final fullJson = timetable.toJson();
-
-      expect(firestoreJson.containsKey('availableCourses'), isFalse);
-      expect(fullJson.containsKey('availableCourses'), isTrue);
-      expect(firestoreJson['id'], 'tt1');
-      expect(firestoreJson['name'], 'Test');
-      expect(firestoreJson['selectedSections'], isA<List>());
+      expect(timetable.toFirestoreJson().containsKey('availableCourses'), isFalse);
+      expect(timetable.toJson().containsKey('availableCourses'), isFalse);
+      expect(timetable.toJson()['id'], 'tt1');
+      expect(timetable.toJson()['selectedSections'], isA<List>());
     });
 
     test('fromJson handles missing availableCourses', () {
@@ -169,6 +168,25 @@ void main() {
       final timetable = Timetable.fromJson(json);
       expect(timetable.availableCourses, isEmpty);
       expect(timetable.id, 'tt1');
+    });
+
+    test('fromJson still reads an embedded catalog from older saves', () {
+      // Backward compatibility: timetables written by builds that embedded the
+      // catalog must keep loading until their next save rewrites them slim.
+      final legacy = {
+        'id': 'tt1',
+        'name': 'Test',
+        'createdAt': '2024-01-01T00:00:00.000',
+        'updatedAt': '2024-01-01T00:00:00.000',
+        'campus': 'hyderabad',
+        'availableCourses': [makeCourse(courseCode: 'CS F111').toJson()],
+        'selectedSections': [],
+        'clashWarnings': [],
+      };
+
+      final timetable = Timetable.fromJson(legacy);
+      expect(timetable.availableCourses, hasLength(1));
+      expect(timetable.availableCourses.first.courseCode, 'CS F111');
     });
   });
 }

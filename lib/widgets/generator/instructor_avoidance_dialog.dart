@@ -31,7 +31,7 @@ class _InstructorAvoidanceDialogState extends State<InstructorAvoidanceDialog> {
       title: const Text('Select Instructors to Avoid'),
       content: SizedBox(
         width: ResponsiveService.isMobile(context) ? double.infinity : 600,
-        height: MediaQuery.of(context).size.height * 0.5,
+        height: MediaQuery.sizeOf(context).height * 0.5,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

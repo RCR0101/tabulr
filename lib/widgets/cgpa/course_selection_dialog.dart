@@ -33,7 +33,7 @@ class _CourseSelectionDialogState extends State<CourseSelectionDialog> {
       ),
       child: Container(
         width: isMobile ? double.infinity : 600,
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.7),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

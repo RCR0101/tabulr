@@ -24,7 +24,7 @@ class ResponsiveService {
 
   /// Get current screen size category
   static ScreenSize getScreenSize(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
+    final width = MediaQuery.sizeOf(context).width;
     
     if (width <= mobileBreakpoint) {
       return ScreenSize.mobile;
@@ -37,12 +37,12 @@ class ResponsiveService {
   
   /// Get screen width
   static double getScreenWidth(BuildContext context) {
-    return MediaQuery.of(context).size.width;
+    return MediaQuery.sizeOf(context).width;
   }
   
   /// Get screen height
   static double getScreenHeight(BuildContext context) {
-    return MediaQuery.of(context).size.height;
+    return MediaQuery.sizeOf(context).height;
   }
   
   /// Check if current screen is mobile size
@@ -234,22 +234,22 @@ class ResponsiveService {
   
   /// Check if keyboard is visible
   static bool isKeyboardVisible(BuildContext context) {
-    return MediaQuery.of(context).viewInsets.bottom > 0;
+    return MediaQuery.viewInsetsOf(context).bottom > 0;
   }
   
   /// Get safe area padding
   static EdgeInsets getSafeAreaPadding(BuildContext context) {
-    return MediaQuery.of(context).padding;
+    return MediaQuery.paddingOf(context);
   }
   
   /// Get view insets (keyboard, etc.)
   static EdgeInsets getViewInsets(BuildContext context) {
-    return MediaQuery.of(context).viewInsets;
+    return MediaQuery.viewInsetsOf(context);
   }
   
   /// Get device pixel ratio
   static double getDevicePixelRatio(BuildContext context) {
-    return MediaQuery.of(context).devicePixelRatio;
+    return MediaQuery.devicePixelRatioOf(context);
   }
   
   /// Get text scale factor

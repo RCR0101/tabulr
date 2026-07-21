@@ -495,8 +495,8 @@ class _CommandPaletteState extends State<CommandPalette> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final mq = MediaQuery.of(context);
-    final maxHeight = math.min(mq.size.height * 0.6, 480.0);
+    final screenSize = MediaQuery.sizeOf(context);
+    final maxHeight = math.min(screenSize.height * 0.6, 480.0);
 
     return Focus(
       autofocus: true,
@@ -522,7 +522,7 @@ class _CommandPaletteState extends State<CommandPalette> {
         child: Material(
           color: Colors.transparent,
           child: Container(
-            width: math.min(560.0, mq.size.width - 48),
+            width: math.min(560.0, screenSize.width - 48),
             constraints: BoxConstraints(maxHeight: maxHeight),
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(

@@ -311,35 +311,6 @@ class FirestoreService {
     }
   }
 
-  // Batch save multiple timetables (for admin use)
-  Future<bool> batchSaveTimetables(Map<String, Timetable> userTimetables) async {
-    try {
-      final batch = _firestore.batch();
-
-      for (final entry in userTimetables.entries) {
-        final userId = entry.key;
-        final timetable = entry.value;
-
-        final docRef = _firestore.collection(FirestoreCollections.users).doc(userId);
-        final timetableData = {
-          'userId': userId,
-          'timetableData': timetable.toFirestoreJson(),
-          'lastUpdated': FieldValue.serverTimestamp(),
-          'createdAt': FieldValue.serverTimestamp(),
-        };
-
-        batch.set(docRef, timetableData, SetOptions(merge: true));
-      }
-
-      await batch.commit();
-      SecureLogger.dataOperation('batch_save', 'timetables', true, {'count': userTimetables.length});
-      return true;
-    } catch (e) {
-      SecureLogger.error('FIRESTORE', 'Failed to batch save timetables', e);
-      return false;
-    }
-  }
-
   // Generic document operations for user settings
   Future<DocumentSnapshot<Map<String, dynamic>>?> getDocument(String collection, String documentId) async {
     try {
@@ -348,26 +319,6 @@ class FirestoreService {
     } catch (e) {
       SecureLogger.error('FIRESTORE', 'Failed to get document', e, null, {'collection': collection, 'documentId': documentId});
       return null;
-    }
-  }
-
-  Future<bool> saveDocument(String collection, String documentId, Map<String, dynamic> data) async {
-    try {
-      await _firestore.collection(collection).doc(documentId).set(data, SetOptions(merge: true));
-      return true;
-    } catch (e) {
-      SecureLogger.error('FIRESTORE', 'Failed to save document', e, null, {'collection': collection, 'documentId': documentId});
-      return false;
-    }
-  }
-
-  Future<bool> deleteDocument(String collection, String documentId) async {
-    try {
-      await _firestore.collection(collection).doc(documentId).delete();
-      return true;
-    } catch (e) {
-      SecureLogger.error('FIRESTORE', 'Failed to delete document', e, null, {'collection': collection, 'documentId': documentId});
-      return false;
     }
   }
 

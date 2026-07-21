@@ -727,7 +727,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         try {
           return DateTime(
               int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
-        } catch (_) {}
+        } catch (_) {
+        }
       }
       return null;
     }

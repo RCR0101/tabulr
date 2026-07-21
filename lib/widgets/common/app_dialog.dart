@@ -126,7 +126,7 @@ class AppDialog {
         shape: AppDesign.dialogShape,
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxWidth: isMobile ? MediaQuery.of(context).size.width * 0.92 : AppDesign.maxDialogWidth,
+            maxWidth: isMobile ? MediaQuery.sizeOf(context).width * 0.92 : AppDesign.maxDialogWidth,
           ),
           child: Padding(
             padding: AppDesign.dialogPadding,

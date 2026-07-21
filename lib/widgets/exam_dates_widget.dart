@@ -110,7 +110,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
                       ],
                     ),
                     // Small screen sorting buttons row
-                    if (MediaQuery.of(context).size.width < 768)
+                    if (MediaQuery.sizeOf(context).width < 768)
                       TableRow(
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -297,7 +297,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
   Widget _buildSortableHeader(String title, SortColumn column) {
     final isCurrentColumn = _sortColumn == column;
     final isAscending = _sortDirection == SortDirection.ascending;
-    final isSmallScreen = MediaQuery.of(context).size.width < 768;
+    final isSmallScreen = MediaQuery.sizeOf(context).width < 768;
 
     // On small screens, headers are not clickable (sorting buttons are in separate row)
     if (isSmallScreen) {

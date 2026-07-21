@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../services/ui/secure_logger.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
@@ -61,7 +62,9 @@ class _CourseGuideManagementScreenState
           .where((id) => id.contains('_') && !id.startsWith('_'))
           .toList()
         ..sort();
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.warning('COURSE_GUIDE_ADMIN', 'Failed to load dual-degree overrides', {'error': e.toString()});
+    }
   }
 
   CollectionReference<Map<String, dynamic>> get _branchesRef =>

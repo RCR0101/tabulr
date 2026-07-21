@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/app_constants.dart';
 import '../../models/app_theme.dart';
@@ -613,7 +612,10 @@ const _themeColors = <AppTheme, ({_ThemeColors dark, _ThemeColors light})>{
 };
 
 TextTheme _buildTextTheme(Color onSurface, ThemeGeometry g) {
-  final base = GoogleFonts.interTextTheme();
+  // Bundled Inter, applied to a complete M3 text theme so every style is
+  // non-null before the per-role copyWith below. Colour and size here are
+  // placeholders — each style overrides them.
+  final base = ThemeData.light().textTheme.apply(fontFamily: 'Inter');
   final heading = g.headingWeight;
   final body = g.bodyWeight;
   // Labels sit halfway between body and heading weight.
@@ -677,7 +679,8 @@ ThemeData _buildTheme(_ThemeColors c) {
     ),
     dialogTheme: DialogThemeData(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(g.dialogRadius)),
-      titleTextStyle: GoogleFonts.inter(
+      titleTextStyle: TextStyle(
+        fontFamily: 'Inter',
         fontSize: 18,
         fontWeight: g.headingWeight,
         color: c.onSurface,
@@ -879,6 +882,11 @@ class ThemeService extends ChangeNotifier {
   }
 
   Future<void> setTheme(AppTheme theme) async {
+    // The in-memory value and the persisted value are always kept in sync, so
+    // re-setting the current theme would only cost a redundant disk write and
+    // a needless rebuild. Startup did exactly that: initialize() loaded the
+    // theme, then main() re-applied the same value from user settings.
+    if (theme == _currentTheme) return;
     _currentTheme = theme;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(StorageKeys.selectedThemeName, theme.name);
@@ -886,6 +894,7 @@ class ThemeService extends ChangeNotifier {
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
+    if (mode == _currentThemeMode) return;
     _currentThemeMode = mode;
     final prefs = await SharedPreferences.getInstance();
 

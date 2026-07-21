@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../ui/secure_logger.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import '../../constants/app_constants.dart';
@@ -70,7 +71,9 @@ class AcadDrivesService {
         await _localCache.write(_cacheKey, courses);
         return courses;
       }
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.warning('ACAD_DRIVES_SVC', 'Index fetch failed; falling back to Firestore', {'error': e.toString()});
+    }
 
     // Fallback to Firestore
     final snapshot = await _indexRef.get();

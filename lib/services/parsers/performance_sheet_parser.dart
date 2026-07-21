@@ -1,6 +1,10 @@
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show visibleForTesting;
-import 'package:syncfusion_flutter_pdf/pdf.dart';
+// Deferred: syncfusion_flutter_pdf is ~1 MB and only runs when a student
+// imports a performance sheet, which most sessions never do. On web this keeps
+// it out of the startup bundle until the first parse; on native the annotation
+// is a harmless no-op.
+import 'package:syncfusion_flutter_pdf/pdf.dart' deferred as sf;
 import '../../constants/app_constants.dart';
 import '../../models/cgpa_data.dart';
 import '../../models/course_type.dart';
@@ -106,8 +110,9 @@ class PerformanceSheetParser {
     }
 
     try {
-      final document = PdfDocument(inputBytes: pdfBytes);
-      final textExtractor = PdfTextExtractor(document);
+      await sf.loadLibrary();
+      final document = sf.PdfDocument(inputBytes: pdfBytes);
+      final textExtractor = sf.PdfTextExtractor(document);
       final fullText = textExtractor.extractText();
       document.dispose();
 

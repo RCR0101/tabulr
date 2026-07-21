@@ -47,13 +47,13 @@ class TimetableGeneratorController extends ChangeNotifier {
     );
   }
 
-  List<GeneratedTimetable> generate(List<Course> availableCourses) {
+  Future<List<GeneratedTimetable>> generate(List<Course> availableCourses) async {
     isGenerating = true;
     notifyListeners();
 
     try {
       final constraints = buildConstraints();
-      final timetables = SecureLogger.measure(
+      final timetables = await SecureLogger.measureAsync(
         'timetable_generation',
         () => TimetableGenerator.generateTimetables(
           availableCourses,

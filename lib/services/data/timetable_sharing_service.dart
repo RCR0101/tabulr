@@ -1,4 +1,5 @@
 import 'dart:math';
+import '../ui/secure_logger.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/timetable.dart';
 import 'auth_service.dart';
@@ -63,7 +64,9 @@ class TimetableSharingService {
     if (timetable.shareId != null) {
       try {
         await _firestore.collection(FirestoreCollections.sharedTimetables).doc(timetable.shareId).delete();
-      } catch (_) {}
+      } catch (e) {
+        SecureLogger.warning('SHARING', 'Failed to delete old share before reshare (non-fatal)', {'error': e.toString()});
+      }
     }
 
     final newCode = _generateUuid();

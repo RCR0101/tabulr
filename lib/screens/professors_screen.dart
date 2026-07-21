@@ -1,5 +1,5 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import '../utils/debouncer.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:url_launcher/url_launcher.dart';
@@ -26,7 +26,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
   final ProfessorService _professorService = ProfessorService();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  Timer? _searchDebounce;
+  final _searchDebounce = Debouncer(duration: const Duration(milliseconds: 250));
 
   @override
   void initState() {
@@ -34,8 +34,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
     _loadProfessors();
 
     _searchController.addListener(() {
-      _searchDebounce?.cancel();
-      _searchDebounce = Timer(const Duration(milliseconds: 250), () {
+      _searchDebounce.run(() {
         _professorService.searchProfessors(_searchController.text);
       });
     });
@@ -43,7 +42,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
 
   @override
   void dispose() {
-    _searchDebounce?.cancel();
+    _searchDebounce.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -406,7 +405,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
       title: 'Sort Professors',
       icon: Icons.sort,
       content: SizedBox(
-        width: ResponsiveService.getValue(context, mobile: MediaQuery.of(context).size.width * 0.9, tablet: 400, desktop: 480),
+        width: ResponsiveService.getValue(context, mobile: MediaQuery.sizeOf(context).width * 0.9, tablet: 400, desktop: 480),
         child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -417,7 +416,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                 children: ProfessorSortType.values.map((sortType) {
                   final isSelected = currentSort == sortType;
                   return SizedBox(
-                    width: ResponsiveService.getValue(context, mobile: (MediaQuery.of(context).size.width * 0.9 - 24) / 2, tablet: 180, desktop: 220),
+                    width: ResponsiveService.getValue(context, mobile: (MediaQuery.sizeOf(context).width * 0.9 - 24) / 2, tablet: 180, desktop: 220),
                     child: Material(
                       color: isSelected
                           ? Theme.of(context).colorScheme.primaryContainer
@@ -543,7 +542,7 @@ class _ProfessorDetailDialog extends StatelessWidget {
       length: hasContact ? 2 : 1,
       child: AlertDialog(
         insetPadding: EdgeInsets.symmetric(
-          horizontal: ResponsiveService.isMobile(context) ? 16 : (MediaQuery.of(context).size.width - 480) / 2,
+          horizontal: ResponsiveService.isMobile(context) ? 16 : (MediaQuery.sizeOf(context).width - 480) / 2,
           vertical: 24,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -615,7 +614,7 @@ class _ProfessorDetailDialog extends StatelessWidget {
           ],
         ),
         content: SizedBox(
-          width: ResponsiveService.isMobile(context) ? MediaQuery.of(context).size.width * 0.85 : 440,
+          width: ResponsiveService.isMobile(context) ? MediaQuery.sizeOf(context).width * 0.85 : 440,
           height: 300,
           child: hasContact
               ? TabBarView(

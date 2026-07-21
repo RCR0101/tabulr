@@ -22,7 +22,7 @@ void main() {
   });
 
   group('generateTimetables', () {
-    test('generates valid timetables for one mandatory course', () {
+    test('generates valid timetables for one mandatory course', () async {
       final sw = Stopwatch()..start();
       final courses = [
         makeCourse(
@@ -38,7 +38,7 @@ void main() {
         mandatoryCourses: ['CS F111'],
       );
 
-      final results = TimetableGenerator.generateTimetables(courses, constraints);
+      final results = await TimetableGenerator.generateTimetables(courses, constraints);
       sw.stop();
       _record('one mandatory course', true, sw.elapsedMilliseconds);
 
@@ -49,7 +49,7 @@ void main() {
       }
     });
 
-    test('finds the only valid combo for two clashing courses', () {
+    test('finds the only valid combo for two clashing courses', () async {
       final sw = Stopwatch()..start();
       final courses = [
         makeCourse(
@@ -73,7 +73,7 @@ void main() {
         mandatoryCourses: ['CS F111', 'MATH F112'],
       );
 
-      final results = TimetableGenerator.generateTimetables(courses, constraints);
+      final results = await TimetableGenerator.generateTimetables(courses, constraints);
       sw.stop();
       _record('two courses valid combo', true, sw.elapsedMilliseconds);
 
@@ -85,7 +85,7 @@ void main() {
       }
     });
 
-    test('throws when mandatory course missing from available', () {
+    test('throws when mandatory course missing from available', () async {
       final sw = Stopwatch()..start();
       final courses = [makeCourse(courseCode: 'CS F111')];
       final constraints = TimetableConstraints(
@@ -94,7 +94,7 @@ void main() {
 
       bool threw = false;
       try {
-        TimetableGenerator.generateTimetables(courses, constraints);
+        await TimetableGenerator.generateTimetables(courses, constraints);
       } on Exception {
         threw = true;
       }
@@ -104,14 +104,14 @@ void main() {
       expect(threw, isTrue);
     });
 
-    test('respects maxTimetables cap', () {
+    test('respects maxTimetables cap', () async {
       final sw = Stopwatch()..start();
       final courses = fiveCourseRealistic();
       final constraints = TimetableConstraints(
         mandatoryCourses: courses.map((c) => c.courseCode).toList(),
       );
 
-      final results = TimetableGenerator.generateTimetables(
+      final results = await TimetableGenerator.generateTimetables(
         courses, constraints,
         maxTimetables: 5,
       );
@@ -121,14 +121,14 @@ void main() {
       expect(results.length, lessThanOrEqualTo(5));
     });
 
-    test('results are sorted by score descending', () {
+    test('results are sorted by score descending', () async {
       final sw = Stopwatch()..start();
       final courses = fiveCourseRealistic();
       final constraints = TimetableConstraints(
         mandatoryCourses: courses.map((c) => c.courseCode).toList(),
       );
 
-      final results = TimetableGenerator.generateTimetables(courses, constraints);
+      final results = await TimetableGenerator.generateTimetables(courses, constraints);
       sw.stop();
       _record('sorted by score descending', true, sw.elapsedMilliseconds);
 
@@ -137,7 +137,7 @@ void main() {
       }
     });
 
-    test('includes optional courses when credits allow', () {
+    test('includes optional courses when credits allow', () async {
       final sw = Stopwatch()..start();
       final courses = [
         makeCourse(
@@ -161,7 +161,7 @@ void main() {
         maxCredits: 25,
       );
 
-      final results = TimetableGenerator.generateTimetables(courses, constraints);
+      final results = await TimetableGenerator.generateTimetables(courses, constraints);
       sw.stop();
 
       final anyHasOptional = results.any((tt) => tt.optionalCourseCodes.contains('OPT F100'));
@@ -170,7 +170,7 @@ void main() {
       expect(anyHasOptional, isTrue);
     });
 
-    test('deduplicates identical section combos', () {
+    test('deduplicates identical section combos', () async {
       final sw = Stopwatch()..start();
       final courses = [
         makeCourse(
@@ -185,7 +185,7 @@ void main() {
         mandatoryCourses: ['CS F111'],
       );
 
-      final results = TimetableGenerator.generateTimetables(courses, constraints);
+      final results = await TimetableGenerator.generateTimetables(courses, constraints);
       sw.stop();
 
       final keys = results.map((tt) =>
@@ -198,14 +198,14 @@ void main() {
   });
 
   group('performance', () {
-    test('generates for 5 courses within 2 seconds', () {
+    test('generates for 5 courses within 2 seconds', () async {
       final sw = Stopwatch()..start();
       final courses = fiveCourseRealistic();
       final constraints = TimetableConstraints(
         mandatoryCourses: courses.map((c) => c.courseCode).toList(),
       );
 
-      TimetableGenerator.generateTimetables(courses, constraints);
+      await TimetableGenerator.generateTimetables(courses, constraints);
       sw.stop();
 
       final ms = sw.elapsedMilliseconds;
@@ -214,7 +214,7 @@ void main() {
       expect(ms, lessThan(2000));
     });
 
-    test('handles pathological input without hanging', () {
+    test('handles pathological input without hanging', () async {
       final sw = Stopwatch()..start();
       // 6 courses with 4 sections each = 4^6 = 4096 combos (within 10k cap)
       final courses = List.generate(6, (i) => makeCourse(
@@ -231,7 +231,7 @@ void main() {
         mandatoryCourses: courses.map((c) => c.courseCode).toList(),
       );
 
-      TimetableGenerator.generateTimetables(courses, constraints, maxTimetables: 10);
+      await TimetableGenerator.generateTimetables(courses, constraints, maxTimetables: 10);
       sw.stop();
 
       final ms = sw.elapsedMilliseconds;

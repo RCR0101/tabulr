@@ -1,5 +1,5 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import '../utils/debouncer.dart';
 import 'common/app_search_field.dart';
 import '../models/course.dart';
 import '../services/ui/responsive_service.dart';
@@ -28,11 +28,10 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
   final List<DayOfWeek> _selectedDays = [];
   final List<int> _selectedHours = [];
   bool _showAdvancedFilters = false;
-  Timer? _debounce;
+  final _debounce = Debouncer(duration: const Duration(milliseconds: 250));
 
   void _updateSearchDebounced() {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 250), _updateSearch);
+    _debounce.run(_updateSearch);
   }
 
   void _updateSearch() {
@@ -70,7 +69,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
     final isMobile = ResponsiveService.isMobile(context);
     return ConstrainedBox(
       constraints: BoxConstraints(
-        maxHeight: isMobile && _showAdvancedFilters ? MediaQuery.of(context).size.height * 0.4 : double.infinity,
+        maxHeight: isMobile && _showAdvancedFilters ? MediaQuery.sizeOf(context).height * 0.4 : double.infinity,
       ),
       child: SingleChildScrollView(
       child: Container(
@@ -488,7 +487,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
 
   @override
   void dispose() {
-    _debounce?.cancel();
+    _debounce.dispose();
     _searchController.dispose();
     _instructorController.dispose();
     _courseCodeController.dispose();

@@ -243,9 +243,19 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
 
     try {
       final List<SafeCourseResult> safeCourses = [];
-      
+      final courseIndex = {
+        for (final c in _availableCourses) c.courseCode: c,
+      };
+
+      var sinceYield = 0;
       for (final course in _availableCourses) {
-        final safeCombination = ClashDetector.findSafeCombination(course, _currentTimetableSections, _availableCourses);
+        if (++sinceYield >= 64) {
+          sinceYield = 0;
+          await Future<void>.delayed(Duration.zero);
+          if (!mounted) return;
+        }
+        final safeCombination = ClashDetector.findSafeCombination(
+            course, _currentTimetableSections, _availableCourses, courseIndex);
         if (safeCombination != null) {
           // Get additional info for display
           final List<String> instructors = [];

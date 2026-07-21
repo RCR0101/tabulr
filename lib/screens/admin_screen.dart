@@ -1207,7 +1207,7 @@ class _AdminScreenState extends State<AdminScreen> {
       context,
       const EdgeInsets.all(AppDesign.spacingMd),
     );
-    final wide = MediaQuery.of(context).size.width >= 800;
+    final wide = MediaQuery.sizeOf(context).width >= 800;
 
     return Scaffold(
       appBar: AppDesign.appBar(context, title: 'Admin Dashboard'),

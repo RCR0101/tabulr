@@ -27,7 +27,7 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
   Widget build(BuildContext context) {
     final isMobile = ResponsiveService.isMobile(context);
     final dialogWidth = ResponsiveService.getValue(context, 
-      mobile: MediaQuery.of(context).size.width - 32,
+      mobile: MediaQuery.sizeOf(context).width - 32,
       tablet: 500.0, 
       desktop: 400.0
     );

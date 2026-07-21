@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../ui/secure_logger.dart';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
@@ -155,13 +156,17 @@ class LocalCacheService {
           'data': _sanitize(data),
         }),
       );
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.warning('LOCAL_CACHE', 'Cache write failed', {'cacheKey': cacheKey, 'error': e.toString()});
+    }
   }
 
   Future<void> invalidate(String cacheKey) async {
     try {
       await _deleteRaw(cacheKey);
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.warning('LOCAL_CACHE', 'Cache invalidate failed', {'cacheKey': cacheKey, 'error': e.toString()});
+    }
   }
 
   Future<void> invalidateAll() async {
@@ -179,6 +184,8 @@ class LocalCacheService {
           if (entity is File) await entity.delete();
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.warning('LOCAL_CACHE', 'Cache clear-all failed', {'error': e.toString()});
+    }
   }
 }

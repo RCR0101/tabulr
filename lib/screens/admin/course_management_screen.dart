@@ -1,5 +1,6 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../services/ui/secure_logger.dart';
+import '../../utils/debouncer.dart';
 import '../../models/course.dart';
 import '../../services/data/admin_crud_service.dart';
 import '../../services/data/admin_service.dart';
@@ -38,7 +39,7 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
 
   final _crud = AdminCrudService();
   final _searchController = TextEditingController();
-  Timer? _debounce;
+  final _debounce = Debouncer(duration: const Duration(milliseconds: 400));
   List<Map<String, dynamic>> _courses = [];
   bool _loading = true;
   List<String> _professorNames = [];
@@ -56,7 +57,7 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
   @override
   void dispose() {
     _searchController.dispose();
-    _debounce?.cancel();
+    _debounce.dispose();
     super.dispose();
   }
 
@@ -84,12 +85,13 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
       await profService.loadProfessors();
       _professorNames =
           profService.professors.map((p) => p.name).toSet().toList()..sort();
-    } catch (_) {}
+    } catch (e) {
+      SecureLogger.warning('COURSE_ADMIN', 'Failed to load professor names', {'error': e.toString()});
+    }
   }
 
   void _onSearchChanged(String _) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), _loadCourses);
+    _debounce.run(_loadCourses);
   }
 
   String _docId(String courseCode) =>
@@ -298,13 +300,17 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
       try {
         midSem = ExamSchedule.fromJson(
             Map<String, dynamic>.from(existing!['mid_sem_exam'] as Map));
-      } catch (_) {}
+      } catch (e) {
+        SecureLogger.warning('COURSE_ADMIN', 'Failed to parse stored mid-sem exam', {'error': e.toString()});
+      }
     }
     if (existing?['end_sem_exam'] != null) {
       try {
         endSem = ExamSchedule.fromJson(
             Map<String, dynamic>.from(existing!['end_sem_exam'] as Map));
-      } catch (_) {}
+      } catch (e) {
+        SecureLogger.warning('COURSE_ADMIN', 'Failed to parse stored end-sem exam', {'error': e.toString()});
+      }
     }
 
     bool saving = false;

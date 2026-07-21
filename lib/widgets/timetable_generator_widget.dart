@@ -2030,7 +2030,8 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     }
 
     try {
-      final timetables = _ctrl.generate(widget.availableCourses);
+      final timetables = await _ctrl.generate(widget.availableCourses);
+      if (!mounted) return;
       if (timetables.isEmpty) {
         _showNoTimetablesDialog();
       }

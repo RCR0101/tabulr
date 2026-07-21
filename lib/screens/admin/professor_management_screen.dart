@@ -1,5 +1,5 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../utils/debouncer.dart';
 import '../../services/data/admin_crud_service.dart';
 import '../../services/data/admin_service.dart';
 import '../../services/data/campus_service.dart';
@@ -38,7 +38,7 @@ class _ProfessorManagementScreenState
 
   final _crud = AdminCrudService();
   final _searchController = TextEditingController();
-  Timer? _debounce;
+  final _debounce = Debouncer(duration: const Duration(milliseconds: 400));
   List<Map<String, dynamic>> _profs = [];
   bool _loading = true;
   String _campusId = CampusService.campusId;
@@ -54,7 +54,7 @@ class _ProfessorManagementScreenState
   @override
   void dispose() {
     _searchController.dispose();
-    _debounce?.cancel();
+    _debounce.dispose();
     super.dispose();
   }
 
@@ -77,8 +77,7 @@ class _ProfessorManagementScreenState
   }
 
   void _onSearchChanged(String _) {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), _load);
+    _debounce.run(_load);
   }
 
   Future<void> _showDialog({Map<String, dynamic>? existing}) async {

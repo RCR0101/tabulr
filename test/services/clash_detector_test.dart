@@ -461,5 +461,39 @@ void main() {
 
       expect(result, isNotNull);
     });
+
+    test('the optional course index matches the linear scan', () {
+      // The "check all" flow passes a prebuilt index for speed; it must not
+      // change the answer versus the default linear _findCourse.
+      final examDate = DateTime(2026, 3, 10);
+      final newCourse = makeCourse(
+        courseCode: 'CS F111',
+        sections: [makeSection(sectionId: 'L1', days: [DayOfWeek.M], hours: [1])],
+        midSemExam: makeExam(date: examDate, timeSlot: TimeSlot.MS1),
+      );
+      final existing = makeCourse(
+        courseCode: 'MATH F111',
+        sections: [makeSection(sectionId: 'L1', days: [DayOfWeek.T], hours: [2])],
+        // same slot → exam clash
+        midSemExam: makeExam(date: examDate, timeSlot: TimeSlot.MS1),
+      );
+      final current = [
+        makeSelectedSection(
+          courseCode: 'MATH F111',
+          sectionId: 'L1',
+          section: existing.sections.first,
+        ),
+      ];
+      final catalog = [newCourse, existing];
+      final index = {for (final c in catalog) c.courseCode: c};
+
+      final linear = ClashDetector.findSafeCombination(newCourse, current, catalog);
+      final indexed =
+          ClashDetector.findSafeCombination(newCourse, current, catalog, index);
+
+      // Both must see the exam clash and report no safe combination.
+      expect(linear, isNull);
+      expect(indexed, linear);
+    });
   });
 }

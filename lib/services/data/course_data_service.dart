@@ -44,6 +44,25 @@ class CourseDataService {
     );
   }
 
+  /// Builds Course objects in batches, handing a frame back between them so a
+  /// ~2,800-entry catalog parse doesn't block the UI thread in one 100-400ms
+  /// burst on first load. No isolate: [_courseFromCached] reads the
+  /// [CoursesMasterService] singleton, which an isolate cannot see, and web has
+  /// no isolates regardless — cooperative yielding is what works on both.
+  Future<List<Course>> _coursesFromCachedChunked(
+    List<Map<String, dynamic>> maps,
+  ) async {
+    const chunkSize = 200;
+    final courses = <Course>[];
+    for (var i = 0; i < maps.length; i++) {
+      courses.add(_courseFromCached(maps[i]));
+      if ((i + 1) % chunkSize == 0 && i + 1 < maps.length) {
+        await Future<void>.delayed(Duration.zero);
+      }
+    }
+    return courses;
+  }
+
   /// Fetch courses with pagination support
   Future<List<Course>> fetchCoursesWithPagination({
     DocumentSnapshot? startAfter,
@@ -109,7 +128,7 @@ class CourseDataService {
           metadataRef: CampusService.metadataDocRef(_firestore),
         );
         if (cachedMaps != null && cachedMaps.isNotEmpty) {
-          final cachedCourses = cachedMaps.map(_courseFromCached).toList();
+          final cachedCourses = await _coursesFromCachedChunked(cachedMaps);
           _cachedCourses = cachedCourses;
           _lastFetchTime = DateTime.now();
           _cachedCampus = currentCampus;

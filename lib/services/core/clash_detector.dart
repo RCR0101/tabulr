@@ -80,7 +80,13 @@ class ClashDetector {
 
   /// Looks up a course by code, returning null instead of throwing when the
   /// code is not in [courses] (e.g. stale local data after an admin removal).
-  static Course? _findCourse(List<Course> courses, String courseCode) {
+  /// Optional [index] (courseCode -> Course) turns the lookup O(1). Callers
+  /// that check many courses against the same catalog — the "check all" flow
+  /// scans ~2,800 — should build it once and thread it through; everyone else
+  /// passes nothing and keeps the linear scan.
+  static Course? _findCourse(List<Course> courses, String courseCode,
+      [Map<String, Course>? index]) {
+    if (index != null) return index[courseCode];
     for (final c in courses) {
       if (c.courseCode == courseCode) return c;
     }
@@ -305,14 +311,15 @@ class ClashDetector {
   static List<ConflictInfo> checkExamConflicts(
     Course newCourse,
     List<SelectedSection> currentTimetableSections,
-    List<Course> availableCourses,
-  ) {
+    List<Course> availableCourses, [
+    Map<String, Course>? courseIndex,
+  ]) {
     final conflicts = <ConflictInfo>[];
 
     // Check for mid-semester exam conflicts
     if (newCourse.midSemExam != null) {
       for (final currentSelected in currentTimetableSections) {
-        final currentCourse = _findCourse(availableCourses, currentSelected.courseCode);
+        final currentCourse = _findCourse(availableCourses, currentSelected.courseCode, courseIndex);
         if (currentCourse == null) continue;
 
         if (currentCourse.midSemExam != null) {
@@ -331,7 +338,7 @@ class ClashDetector {
     // Check for comprehensive exam conflicts
     if (newCourse.endSemExam != null) {
       for (final currentSelected in currentTimetableSections) {
-        final currentCourse = _findCourse(availableCourses, currentSelected.courseCode);
+        final currentCourse = _findCourse(availableCourses, currentSelected.courseCode, courseIndex);
         if (currentCourse == null) continue;
 
         if (currentCourse.endSemExam != null) {
@@ -469,8 +476,9 @@ class ClashDetector {
   static Map<SectionType, String>? findSafeCombination(
     Course course,
     List<SelectedSection> currentTimetableSections,
-    List<Course> availableCourses,
-  ) {
+    List<Course> availableCourses, [
+    Map<String, Course>? courseIndex,
+  ]) {
     // Group sections by type
     final Map<SectionType, List<Section>> sectionsByType = {};
     for (final section in course.sections) {
@@ -482,7 +490,7 @@ class ClashDetector {
     final combinations = generateCombinations(sectionsByType, requiredTypes.toList());
 
     for (final combination in combinations) {
-      if (isCombinationSafe(course, combination, currentTimetableSections, availableCourses)) {
+      if (isCombinationSafe(course, combination, currentTimetableSections, availableCourses, courseIndex)) {
         return combination;
       }
     }
@@ -520,8 +528,9 @@ class ClashDetector {
     Course course,
     Map<SectionType, String> combination,
     List<SelectedSection> currentTimetableSections,
-    List<Course> availableCourses,
-  ) {
+    List<Course> availableCourses, [
+    Map<String, Course>? courseIndex,
+  ]) {
     // Check for conflicts with existing selected sections
     for (final entry in combination.entries) {
       final section = _findSection(course, entry.value);
@@ -532,7 +541,7 @@ class ClashDetector {
     }
 
     // Check exam conflicts with current timetable
-    final examConflicts = checkExamConflicts(course, currentTimetableSections, availableCourses);
+    final examConflicts = checkExamConflicts(course, currentTimetableSections, availableCourses, courseIndex);
     if (examConflicts.isNotEmpty) return false;
 
     // Check for internal conflicts within the combination

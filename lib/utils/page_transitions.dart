@@ -57,7 +57,7 @@ class ExpandPageRoute<T> extends PageRouteBuilder<T> {
               reverseCurve: AppDesign.curveStandard,
             );
 
-            final screenSize = MediaQuery.of(context).size;
+            final screenSize = MediaQuery.sizeOf(context);
             final fullRect = Rect.fromLTWH(0, 0, screenSize.width, screenSize.height);
 
             final rectTween = RectTween(begin: sourceRect, end: fullRect);

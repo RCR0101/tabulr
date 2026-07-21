@@ -1460,7 +1460,7 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: EdgeInsets.symmetric(
-        horizontal: ResponsiveService.isMobile(context) ? 16 : (MediaQuery.of(context).size.width - 480) / 2,
+        horizontal: ResponsiveService.isMobile(context) ? 16 : (MediaQuery.sizeOf(context).width - 480) / 2,
         vertical: 24,
       ),
       child: SingleChildScrollView(
@@ -1726,7 +1726,7 @@ class _FlagDialogState extends State<_FlagDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: EdgeInsets.symmetric(
-        horizontal: ResponsiveService.isMobile(context) ? 16 : (MediaQuery.of(context).size.width - 480) / 2,
+        horizontal: ResponsiveService.isMobile(context) ? 16 : (MediaQuery.sizeOf(context).width - 480) / 2,
         vertical: 24,
       ),
       child: SingleChildScrollView(
@@ -1862,7 +1862,7 @@ class _AcceptCorrectionDialogState extends State<_AcceptCorrectionDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: EdgeInsets.symmetric(
-        horizontal: ResponsiveService.isMobile(context) ? 16 : (MediaQuery.of(context).size.width - 480) / 2,
+        horizontal: ResponsiveService.isMobile(context) ? 16 : (MediaQuery.sizeOf(context).width - 480) / 2,
         vertical: 24,
       ),
       child: SingleChildScrollView(

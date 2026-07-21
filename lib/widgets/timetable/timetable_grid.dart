@@ -118,7 +118,7 @@ class _TimetableGridState extends State<TimetableGrid> {
 
   bool get _isTouch =>
       !widget.isForExport && MediaQuery.maybeOf(context) != null &&
-      MediaQuery.of(context).size.width <= ResponsiveConstants.tabletBreakpoint;
+      MediaQuery.sizeOf(context).width <= ResponsiveConstants.tabletBreakpoint;
 
   @override
   Widget build(BuildContext context) {

@@ -30,6 +30,19 @@ class CourseListWidget extends StatelessWidget {
     for (final s in selectedSections) '${s.courseCode}|${s.section.type}',
   };
 
+  // Built once per widget instance rather than per tile. _getCourseClashes runs
+  // for every visible row, and it used to resolve each selected section's course
+  // with a firstWhere over the ~2,800-course list — O(rows x selected x catalog)
+  // on every scroll. The index makes the lookup O(1); _selectedCourses caches
+  // the resolved set the exam checks iterate.
+  late final Map<String, Course> _courseIndex = {
+    for (final c in courses) c.courseCode: c,
+  };
+
+  late final List<Course> _selectedCourses = {
+    for (final s in selectedSections) s.courseCode,
+  }.map((code) => _courseIndex[code]).whereType<Course>().toList();
+
   bool _isSectionSelected(String courseCode, String sectionId) {
     return _selectedKeys.contains('$courseCode|$sectionId');
   }
@@ -85,11 +98,7 @@ class CourseListWidget extends StatelessWidget {
 
     // Check mid-sem exam clashes
     if (course.midSemExam != null) {
-      for (final selected in selectedSections) {
-        final selectedCourse = courses.firstWhere(
-          (c) => c.courseCode == selected.courseCode,
-          orElse: () => course,
-        );
+      for (final selectedCourse in _selectedCourses) {
         if (selectedCourse.courseCode == course.courseCode) continue;
         if (selectedCourse.midSemExam != null &&
             ClashDetector.examDatesConflict(course.midSemExam!, selectedCourse.midSemExam!)) {
@@ -101,11 +110,7 @@ class CourseListWidget extends StatelessWidget {
 
     // Check end-sem/comprehensive exam clashes
     if (course.endSemExam != null) {
-      for (final selected in selectedSections) {
-        final selectedCourse = courses.firstWhere(
-          (c) => c.courseCode == selected.courseCode,
-          orElse: () => course,
-        );
+      for (final selectedCourse in _selectedCourses) {
         if (selectedCourse.courseCode == course.courseCode) continue;
         if (selectedCourse.endSemExam != null &&
             ClashDetector.examDatesConflict(course.endSemExam!, selectedCourse.endSemExam!)) {

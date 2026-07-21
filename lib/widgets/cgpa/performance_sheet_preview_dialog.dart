@@ -44,7 +44,7 @@ class PerformanceSheetPreviewDialog extends StatelessWidget {
         ],
       ),
       content: SizedBox(
-        width: ResponsiveService.isMobile(context) ? MediaQuery.of(context).size.width * 0.85 : 400,
+        width: ResponsiveService.isMobile(context) ? MediaQuery.sizeOf(context).width * 0.85 : 400,
         height: 400,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -101,7 +101,7 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
       content: SizedBox(
         width: ResponsiveService.getValue(
           context,
-          mobile: MediaQuery.of(context).size.width - 32,
+          mobile: MediaQuery.sizeOf(context).width - 32,
           tablet: 400,
           desktop: 350,
         ),

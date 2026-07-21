@@ -35,6 +35,19 @@ function isValidEvent(type, points) {
   return rule.points === points;
 }
 
+// Award values come from VALID_EVENTS so a call site cannot silently disagree
+// with the table isValidEvent checks against — a mismatch used to make
+// addRepEvent drop the event with no error. `scalarPoints` is for the fixed
+// awards; the two variable ones (correction_accepted, correct_flag) pick from
+// their table array by index.
+function scalarPoints(type) {
+  const rule = VALID_EVENTS[type];
+  if (!rule || Array.isArray(rule.points)) {
+    throw new Error(`scalarPoints called for non-scalar event: ${type}`);
+  }
+  return rule.points;
+}
+
 function deriveUserDocId(email) {
   if (!email || !email.includes("@")) return null;
   const [username, domain] = email.split("@");
@@ -374,7 +387,7 @@ exports.submitFlag = onCall({ region: REGION, enforceAppCheck: false }, async (r
       await addRepEvent({
         uid: authorUid,
         type: "post_disputed",
-        points: -4,
+        points: scalarPoints("post_disputed"),
         description: "Post flagged as incorrect by community",
         announcementId,
       });
@@ -474,7 +487,7 @@ exports.submitVerification = onCall({ region: REGION, enforceAppCheck: false }, 
         await addRepEvent({
           uid: authorUid,
           type: "post_community_verified",
-          points: 10,
+          points: scalarPoints("post_community_verified"),
           description: "Post reached community verified status",
           announcementId,
         });
@@ -484,7 +497,7 @@ exports.submitVerification = onCall({ region: REGION, enforceAppCheck: false }, 
             await addRepEvent({
               uid: v.id,
               type: "confirmed_verified_post",
-              points: 1,
+              points: scalarPoints("confirmed_verified_post"),
               description: "Confirmed a post that reached community verified",
               announcementId,
             });
@@ -501,7 +514,7 @@ exports.submitVerification = onCall({ region: REGION, enforceAppCheck: false }, 
             await addRepEvent({
               uid: v.id,
               type: "denied_incorrect_post",
-              points: 2,
+              points: scalarPoints("denied_incorrect_post"),
               description: "Denied a post later found likely incorrect",
               announcementId,
             });
@@ -509,7 +522,7 @@ exports.submitVerification = onCall({ region: REGION, enforceAppCheck: false }, 
             await addRepEvent({
               uid: v.id,
               type: "confirmed_incorrect_post",
-              points: -3,
+              points: scalarPoints("confirmed_incorrect_post"),
               description: "Confirmed a post later found likely incorrect",
               announcementId,
             });
@@ -563,7 +576,8 @@ exports.acceptCorrection = onCall({ region: REGION, enforceAppCheck: false }, as
   }
 
   const conf = annData.confidence || "fairly_sure";
-  const penalty = conf === "certain" ? -12 : -8;
+  // [certain, fairly_sure]
+  const penalty = VALID_EVENTS.correction_accepted.points[conf === "certain" ? 0 : 1];
 
   await annRef.update({
     disputeState: "correction_accepted",
@@ -595,7 +609,8 @@ exports.acceptCorrection = onCall({ region: REGION, enforceAppCheck: false }, as
     await addRepEvent({
       uid: flaggerUid,
       type: "correct_flag",
-      points: hasCounterSource ? 14 : 8,
+      // [withCounterSource, without]
+      points: VALID_EVENTS.correct_flag.points[hasCounterSource ? 0 : 1],
       description: hasCounterSource
         ? "First correct flag with counter-source"
         : "First correct flag on incorrect post",
