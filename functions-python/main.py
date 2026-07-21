@@ -1,6 +1,8 @@
+import json
 import os
 import re
 import tempfile
+from datetime import datetime
 from firebase_admin import initialize_app, firestore, storage
 from firebase_functions import https_fn, options
 
@@ -983,6 +985,131 @@ def upload_courses_to_firestore(courses, campus_code, clear_first=True):
                 "practical_credits": course.get("practicalCredits", 0),
             })
         batch.commit()
+
+    sync_courses_master(courses, campus_id)
+
+
+# courses_master is the only source of course titles in the app: timetable
+# documents store no title, and the client resolves every one of them through
+# CoursesMasterService. It holds far more courses than any single semester
+# offers (~2,800 vs ~420), and its entries are curated — so this only ever
+# INSERTS codes that are absent, and never edits or deletes an existing row.
+MASTER_BUNDLE_MAX_BYTES = 900 * 1024  # Firestore caps a document at 1 MiB.
+
+
+def sync_courses_master(courses, campus_id):
+    """Adds any newly-offered course to courses_master and refreshes the bundle.
+
+    Without this a course that appears in the timetable PDF but not in
+    courses_master renders as its bare code (e.g. "MATH U101") everywhere in the
+    app, because the title parsed here would otherwise be discarded.
+    """
+    db = get_db()
+    master_ref = db.collection(f"campuses/{campus_id}/courses_master")
+
+    existing = {}
+    for doc in master_ref.get():
+        data = doc.to_dict() or {}
+        existing[doc.id] = {
+            "course_code": data.get("course_code") or doc.id.replace("_", " "),
+            "title": data.get("title", ""),
+            "credits": data.get("credits", 0),
+            "type": data.get("type", "Normal"),
+        }
+
+    now_iso = datetime.utcnow().isoformat() + "Z"
+    added = []
+    for course in courses:
+        code = course.get("courseCode", "")
+        doc_id = course_code_to_doc_id(code)
+        if not doc_id or doc_id in existing:
+            continue
+
+        title = sanitize(str(course.get("courseTitle", "")).strip())
+        # A code with no usable title is worse than no row at all: it would
+        # mask the gap while still displaying the bare code.
+        if not title or title.upper() in ("UNKNOWN", "#N/A", code.upper()):
+            print(f"[courses_master] skipping {code}: no usable title")
+            continue
+
+        entry = {
+            # Derived from the doc id, not the raw code: the client looks titles
+            # up by the timetable doc id with underscores turned back into
+            # spaces, and course_code_to_doc_id drops any "/ALIAS" suffix. Using
+            # the raw code here would store a key nothing ever queries.
+            "course_code": doc_id.replace("_", " "),
+            "title": title,
+            "credits": course.get("lectureCredits", 0) + course.get("practicalCredits", 0),
+            # The PDF carries no course type; curated rows (e.g. ATC) keep
+            # theirs because existing documents are never touched.
+            "type": "Normal",
+        }
+        existing[doc_id] = entry
+        added.append((doc_id, entry))
+
+    if added:
+        for i in range(0, len(added), BATCH_SIZE):
+            batch = db.batch()
+            for doc_id, entry in added[i : i + BATCH_SIZE]:
+                batch.set(master_ref.document(doc_id), {**entry, "updated_at": now_iso})
+            batch.commit()
+        print(f"[courses_master] added {len(added)}: {', '.join(c for c, _ in added)}")
+    else:
+        print("[courses_master] no new courses")
+
+    _write_catalog_bundle(db, campus_id, existing, force=bool(added))
+
+
+def _write_catalog_bundle(db, campus_id, entries_by_id, force):
+    """Rewrites the single-document catalogue bundle clients read on cold load.
+
+    The client reads this bundle first and only falls back to scanning the
+    collection when it is missing or unparseable, so a collection write that
+    skips this step stays invisible.
+    """
+    entries = sorted(
+        (
+            {
+                "course_code": e["course_code"],
+                "title": e.get("title", ""),
+                "credits": e.get("credits", 0) or 0,
+                "type": e.get("type") or "Normal",
+            }
+            for e in entries_by_id.values()
+        ),
+        key=lambda e: e["course_code"],
+    )
+    if not entries:
+        print("[courses_master] refusing to write an empty bundle")
+        return
+
+    entries_json = json.dumps(entries, separators=(",", ":"))
+    size = len(entries_json.encode("utf-8"))
+    if size > MASTER_BUNDLE_MAX_BYTES:
+        print(f"[courses_master] bundle too large ({size} bytes) — leaving previous bundle in place")
+        return
+
+    bundle_ref = db.document(f"campuses/{campus_id}/catalog/courses_master")
+    if not force:
+        snap = bundle_ref.get()
+        # Rewriting an identical bundle would bump metadata and force every
+        # client to refetch the catalogue for no reason.
+        if snap.exists and (snap.to_dict() or {}).get("entriesJson") == entries_json:
+            print("[courses_master] bundle unchanged")
+            return
+
+    stamp = datetime.utcnow()
+    bundle_ref.set({
+        "version": stamp.isoformat() + "Z",
+        "count": len(entries),
+        "entriesJson": entries_json,
+    })
+    # Clients only re-read the bundle when campus metadata says it is newer.
+    db.document(f"campuses/{campus_id}/metadata/current").set(
+        {"lastUpdated": stamp.isoformat() + "Z", "version": str(int(stamp.timestamp() * 1000))},
+        merge=True,
+    )
+    print(f"[courses_master] bundle written: {len(entries)} entries, {size / 1024:.1f} KB")
 
 
 # ─── Cloud Functions ───

@@ -779,11 +779,12 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
           left: -10000,
           top: -10000,
           child: Material(
-            // Width is fixed for a consistent export size; height is left
-            // unbounded so the grid + full exam schedule size to content and
-            // nothing is clipped (e.g. timetables with many exams).
-            child: SizedBox(
-              width: 2000,
+            // Both axes are left unbounded so the grid, and the exam schedule
+            // under it, size to content. A fixed capture width used to be
+            // needed because the old grid's columns were a fixed size; now that
+            // columns divide the available width, pinning it to 2000 px would
+            // stretch a three-day timetable into three 600 px columns.
+            child: UnconstrainedBox(
               child: TimetableWidget(
                 timetableSlots: timetableService.generateTimetableSlots(
                   tt.selectedSections,

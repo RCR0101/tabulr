@@ -43,25 +43,9 @@ class PreferencesService extends ChangeNotifier {
     notifyListeners();
   }
 
-  String getTimetableSizeName(TimetableSize size) {
-    switch (size) {
-      case TimetableSize.compact:
-        return 'Compact';
-      case TimetableSize.medium:
-        return 'Medium';
-      case TimetableSize.large:
-        return 'Large';
-      case TimetableSize.extraLarge:
-        return 'Extra Large';
-    }
-  }
+  // Display names live on the enums themselves so a new value cannot be added
+  // without every label site picking it up.
+  String getTimetableSizeName(TimetableSize size) => size.label;
 
-  String getTimetableLayoutName(TimetableLayout layout) {
-    switch (layout) {
-      case TimetableLayout.horizontal:
-        return 'Horizontal';
-      case TimetableLayout.vertical:
-        return 'Vertical';
-    }
-  }
+  String getTimetableLayoutName(TimetableLayout layout) => layout.label;
 }

@@ -1,15 +1,17 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 import '../models/export_options.dart';
 import '../models/timetable_display.dart';
 import '../services/ui/responsive_service.dart';
+import 'common/first_that_fits.dart';
 import '../screens/quick_replace_screen.dart';
 import '../utils/datetime_utils.dart';
-import '../utils/design_constants.dart';
 import '../utils/page_transitions.dart';
+import 'timetable/course_palette.dart';
+import 'timetable/timetable_agenda.dart';
+import 'timetable/timetable_blocks.dart';
+import 'timetable/timetable_grid.dart';
 
 export '../models/timetable_display.dart';
 
@@ -72,134 +74,69 @@ class TimetableWidget extends StatefulWidget {
 }
 
 class _TimetableWidgetState extends State<TimetableWidget> {
-  final ValueNotifier<String?> _hoveredCourseNotifier = ValueNotifier<String?>(null);
-  double _zoomLevel = 1.0;
-  bool _initialZoomApplied = false;
-  final TransformationController _transformationController = TransformationController();
+  /// The grid crops to the hours and days that actually hold classes; this
+  /// restores the full Monday–Saturday, 8 AM–7:50 PM week.
+  bool _showAllHours = false;
+
+  /// Remembered so the Fit button can toggle back to whatever density the user
+  /// had chosen rather than to a hardcoded default.
+  TimetableSize _lastFixedSize = TimetableSize.medium;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.size != TimetableSize.fit) _lastFixedSize = widget.size;
+  }
+
+  @override
+  void didUpdateWidget(TimetableWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.size != TimetableSize.fit) _lastFixedSize = widget.size;
+  }
 
   bool get _isMobile {
     if (widget.isForExport) return false;
     return ResponsiveService.isMobile(context) || ResponsiveService.isTablet(context);
   }
 
-  TextScaler get _textScaler => widget.isForExport
-      ? TextScaler.noScaling
-      : MediaQuery.textScalerOf(context);
-
-  double _scaleFont(double size) => _textScaler.scale(size);
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_initialZoomApplied && _isMobile) {
-      _initialZoomApplied = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final screenWidth = MediaQuery.of(context).size.width;
-        final gridWidth = _estimateGridWidth();
-        if (gridWidth > screenWidth) {
-          final fitZoom = (screenWidth / gridWidth).clamp(0.5, 1.0);
-          _handleZoomChange(fitZoom);
-        }
-      });
-    }
-  }
-
-  double _estimateGridWidth() {
-    final timeCol = _getTimeColumnWidth(widget.size);
-    final dayCol = _getDayColumnWidth(widget.size);
-    final spacing = _getColumnSpacing(widget.size);
-    final margin = _getHorizontalMargin(widget.size);
-    if (widget.layout == TimetableLayout.vertical) {
-      return timeCol + (dayCol * 6) + (spacing * 7) + (margin * 2);
-    }
-    return timeCol + (dayCol * 12) + (spacing * 13) + (margin * 2);
-  }
-
-  @override
-  @override
-  void initState() {
-    super.initState();
-    _transformationController.addListener(_onTransformChanged);
-  }
-
-  void _onTransformChanged() {
-    final scale = _transformationController.value.getMaxScaleOnAxis();
-    if ((scale - _zoomLevel).abs() > 0.01) {
-      setState(() => _zoomLevel = scale);
-    }
-  }
-
-  @override
-  void dispose() {
-    _transformationController.removeListener(_onTransformChanged);
-    _transformationController.dispose();
-    _hoveredCourseNotifier.dispose();
-    super.dispose();
-  }
-
   bool get _canShowQuickReplace {
     return !widget.isForExport &&
-           widget.onQuickReplace != null &&
-           widget.availableCourses != null &&
-           widget.selectedSections != null &&
-           widget.selectedSections!.isNotEmpty;
+        widget.onQuickReplace != null &&
+        widget.availableCourses != null &&
+        widget.selectedSections != null &&
+        widget.selectedSections!.isNotEmpty;
   }
 
-  void _handleZoomChange(double newZoom) {
-    setState(() {
-      _zoomLevel = newZoom;
-      // Apply the zoom transformation using non-deprecated method
-      final matrix = Matrix4.identity();
-      matrix.setEntry(0, 0, _zoomLevel); // Scale X
-      matrix.setEntry(1, 1, _zoomLevel); // Scale Y
-      matrix.setEntry(2, 2, _zoomLevel); // Scale Z
-      _transformationController.value = matrix;
-    });
+  /// Agenda has no rows or columns to size, so the density and hour controls
+  /// are hidden rather than left inert.
+  bool get _isAgenda =>
+      widget.layout == TimetableLayout.agenda && !widget.isForExport;
+
+  /// Export renders every field unless the export dialog says otherwise.
+  Set<TimetableField> get _visibleFields {
+    final options = widget.exportOptions;
+    if (options == null) return TimetableField.values.toSet();
+    return {
+      if (options.showCourseCode) TimetableField.courseCode,
+      if (options.showCourseTitle) TimetableField.courseTitle,
+      if (options.showSectionId) TimetableField.sectionId,
+      if (options.showInstructor) TimetableField.instructor,
+      if (options.showRoom) TimetableField.room,
+    };
   }
 
-  void _fitToScreen(BuildContext context, Size tableSize) {
-    // Get the available viewport size
-    final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
-    if (renderBox == null) return;
-
-    // Calculate the zoom level needed to fit the entire timetable
-    final viewportWidth = renderBox.size.width;
-    final viewportHeight = renderBox.size.height;
-
-    // Account for padding and margins
-    final availableWidth = viewportWidth - 40;
-    final availableHeight = viewportHeight - 120; // Reserve space for controls
-
-    final scaleX = availableWidth / tableSize.width;
-    final scaleY = availableHeight / tableSize.height;
-
-    // Use the smaller scale to ensure the entire table fits
-    final optimalZoom = (scaleX < scaleY ? scaleX : scaleY).clamp(0.5, 3.0);
-
-    setState(() {
-      _zoomLevel = optimalZoom;
-
-      // Center the timetable using non-deprecated methods
-      final scaledWidth = tableSize.width * optimalZoom;
-      final scaledHeight = tableSize.height * optimalZoom;
-
-      final offsetX = (viewportWidth - scaledWidth) / 2;
-      final offsetY = (viewportHeight - scaledHeight) / 2;
-
-      final matrix = Matrix4.identity();
-      matrix.setEntry(0, 3, offsetX > 0 ? offsetX : 0); // Translate X
-      matrix.setEntry(1, 3, offsetY > 0 ? offsetY : 0); // Translate Y
-      matrix.setEntry(0, 0, optimalZoom); // Scale X
-      matrix.setEntry(1, 1, optimalZoom); // Scale Y
-      matrix.setEntry(2, 2, optimalZoom); // Scale Z
-      _transformationController.value = matrix;
-    });
+  /// Course codes in selection order — the order [CoursePalette] assigns
+  /// accents in, so a course keeps its colour as others are added.
+  Iterable<String> get _courseCodesInOrder {
+    final seen = <String>[];
+    for (final slot in widget.timetableSlots) {
+      if (!seen.contains(slot.courseCode)) seen.add(slot.courseCode);
+    }
+    return seen;
   }
 
   void _showQuickReplaceDialog() {
     if (!_canShowQuickReplace) return;
-
     Navigator.push(
       context,
       FadeSlidePageRoute(
@@ -213,140 +150,205 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     );
   }
 
-  Widget _buildZoomControls() {
-    return Positioned(
-      left: 8,
-      bottom: 8,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.95),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
-            width: 1,
+  void _toggleFit() {
+    final onSizeChanged = widget.onSizeChanged;
+    if (onSizeChanged == null) return;
+    ResponsiveService.triggerSelectionFeedback(context);
+    onSizeChanged(
+      widget.size == TimetableSize.fit ? _lastFixedSize : TimetableSize.fit,
+    );
+  }
+
+  // ── Toolbar ───────────────────────────────────────────────────────────────
+
+  /// Density, plus the "show all hours" escape hatch. Fit is listed first
+  /// because seeing the whole week at once is the common request.
+  Widget _buildDensityMenu(BuildContext context, {required bool compact}) {
+    final scheme = Theme.of(context).colorScheme;
+    final sizes = _isMobile
+        ? const [TimetableSize.fit, TimetableSize.compact, TimetableSize.medium]
+        : TimetableSize.values;
+
+    return PopupMenuButton<String>(
+      enabled: widget.onSizeChanged != null,
+      tooltip: 'Row density',
+      onSelected: (value) {
+        if (value == '_all_hours') {
+          setState(() => _showAllHours = !_showAllHours);
+          return;
+        }
+        final size = TimetableSize.values.firstWhere((s) => s.name == value);
+        ResponsiveService.triggerSelectionFeedback(context);
+        widget.onSizeChanged?.call(size);
+      },
+      itemBuilder: (context) => [
+        for (final size in sizes)
+          PopupMenuItem(
+            value: size.name,
+            height: ResponsiveService.getTouchTargetSize(context),
+            child: Row(
+              children: [
+                Icon(
+                  _sizeIcon(size),
+                  size: 16,
+                  color: size == widget.size ? scheme.primary : null,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  size.label,
+                  style: TextStyle(
+                    color: size == widget.size ? scheme.primary : null,
+                    fontWeight: size == widget.size ? FontWeight.w600 : null,
+                  ),
+                ),
+              ],
+            ),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).shadowColor.withValues(alpha: 0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: '_all_hours',
+          height: ResponsiveService.getTouchTargetSize(context),
+          child: Row(
+            children: [
+              Icon(
+                _showAllHours ? Icons.check_box : Icons.check_box_outline_blank,
+                size: 16,
+              ),
+              const SizedBox(width: 10),
+              const Text('Show full week'),
+            ],
+          ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Fit to screen button
-            IconButton(
-              onPressed: () {
-                ResponsiveService.triggerSelectionFeedback(context);
-                _fitToScreen(context, _calculateTableSize());
-              },
-              icon: Icon(
-                Icons.fit_screen,
-                size: ResponsiveService.getAdaptiveIconSize(context, 20),
-              ),
-              tooltip: 'Fit to Screen',
-              style: IconButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.1),
-                foregroundColor: Theme.of(context).colorScheme.tertiary,
-                side: BorderSide(
-                  color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3),
+      ],
+      child: _toolbarChip(
+        context,
+        compact: compact,
+        icon: _sizeIcon(widget.size),
+        trailing: Icons.arrow_drop_down,
+      ),
+    );
+  }
+
+  Widget _buildLayoutMenu(BuildContext context, {required bool compact}) {
+    final scheme = Theme.of(context).colorScheme;
+    // Hours-as-columns needs twelve columns; on a phone that is unusable, so
+    // the agenda takes its place there.
+    final layouts = _isMobile
+        ? const [TimetableLayout.vertical, TimetableLayout.agenda]
+        : TimetableLayout.values;
+
+    return PopupMenuButton<TimetableLayout>(
+      enabled: widget.onLayoutChanged != null,
+      tooltip: 'Layout',
+      onSelected: (layout) {
+        ResponsiveService.triggerSelectionFeedback(context);
+        widget.onLayoutChanged?.call(layout);
+      },
+      itemBuilder: (context) => [
+        for (final layout in layouts)
+          PopupMenuItem(
+            value: layout,
+            height: ResponsiveService.getTouchTargetSize(context),
+            child: Row(
+              children: [
+                Icon(
+                  _layoutIcon(layout),
+                  size: 16,
+                  color: layout == widget.layout ? scheme.primary : null,
                 ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Zoom in button
-            IconButton(
-              onPressed: () {
-                ResponsiveService.triggerSelectionFeedback(context);
-                final newZoom = (_zoomLevel + 0.1).clamp(0.5, 3.0);
-                _handleZoomChange(newZoom);
-              },
-              icon: Icon(
-                Icons.add,
-                size: ResponsiveService.getAdaptiveIconSize(context, 20),
-              ),
-              tooltip: 'Zoom In',
-              style: IconButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
-              ),
-            ),
-            const SizedBox(height: 4),
-            // Zoom percentage display
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '${(_zoomLevel * 100).toStringAsFixed(0)}%',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.primary,
+                const SizedBox(width: 10),
+                Text(
+                  layout.label,
+                  style: TextStyle(
+                    color: layout == widget.layout ? scheme.primary : null,
+                    fontWeight: layout == widget.layout ? FontWeight.w600 : null,
+                  ),
                 ),
-              ),
+              ],
             ),
-            const SizedBox(height: 4),
-            // Zoom out button
-            IconButton(
-              onPressed: () {
-                ResponsiveService.triggerSelectionFeedback(context);
-                final newZoom = (_zoomLevel - 0.1).clamp(0.5, 3.0);
-                _handleZoomChange(newZoom);
-              },
-              icon: Icon(
-                Icons.remove,
-                size: ResponsiveService.getAdaptiveIconSize(context, 20),
-              ),
-              tooltip: 'Zoom Out',
-              style: IconButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Reset zoom button
-            IconButton(
-              onPressed: () {
-                ResponsiveService.triggerSelectionFeedback(context);
-                _handleZoomChange(1.0);
-              },
-              icon: Icon(
-                Icons.refresh,
-                size: ResponsiveService.getAdaptiveIconSize(context, 18),
-              ),
-              tooltip: 'Reset Zoom (100%)',
-              style: IconButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
-              ),
-            ),
+          ),
+      ],
+      child: _toolbarChip(
+        context,
+        compact: compact,
+        icon: _layoutIcon(widget.layout),
+        trailing: Icons.arrow_drop_down,
+      ),
+    );
+  }
+
+  Widget _toolbarChip(
+    BuildContext context, {
+    required bool compact,
+    required IconData icon,
+    IconData? trailing,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      constraints: BoxConstraints(
+        minHeight: ResponsiveService.getTouchTargetSize(context),
+        minWidth: ResponsiveService.getTouchTargetSize(context),
+      ),
+      padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12, vertical: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
+          if (trailing != null) ...[
+            const SizedBox(width: 2),
+            Icon(trailing, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
           ],
+        ],
+      ),
+    );
+  }
+
+  /// The direct replacement for the old floating zoom stack: one button that
+  /// puts the entire grid on screen and toggles back.
+  Widget _buildFitButton(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isFit = widget.size == TimetableSize.fit;
+    return IconButton(
+      onPressed: widget.onSizeChanged == null ? null : _toggleFit,
+      icon: Icon(
+        isFit ? Icons.close_fullscreen : Icons.fit_screen,
+        size: ResponsiveService.getAdaptiveIconSize(context, 18),
+      ),
+      tooltip: isFit ? 'Back to ${_lastFixedSize.label}' : 'Fit whole week on screen',
+      style: IconButton.styleFrom(
+        backgroundColor: isFit ? scheme.primary.withValues(alpha: 0.12) : null,
+        foregroundColor: isFit ? scheme.primary : null,
+        side: BorderSide(
+          color: isFit
+              ? scheme.primary.withValues(alpha: 0.4)
+              : scheme.outline.withValues(alpha: 0.3),
+        ),
+        minimumSize: Size(
+          ResponsiveService.getTouchTargetSize(context),
+          ResponsiveService.getTouchTargetSize(context),
         ),
       ),
     );
   }
 
-  Size _calculateTableSize() {
-    // Calculate the approximate size of the timetable based on current settings
-    if (widget.layout == TimetableLayout.horizontal) {
-      // Horizontal: 6 rows (days) + 13 columns (day label + 12 hours)
-      final width = _getTimeColumnWidth(widget.size) + (_getDayColumnWidth(widget.size) * 12) + (_getColumnSpacing(widget.size) * 13) + (_getHorizontalMargin(widget.size) * 2);
-      final height = (_getCellHeight(widget.size) * 6) + 60 + 40; // 6 rows + header + padding
-      return Size(width, height);
-    } else {
-      // Vertical: 12 rows (hours) + 7 columns (time + 6 days)
-      final width = _getTimeColumnWidth(widget.size) + (_getDayColumnWidth(widget.size) * 6) + (_getColumnSpacing(widget.size) * 7) + (_getHorizontalMargin(widget.size) * 2);
-      final height = (_getCellHeight(widget.size) * 12) + 60 + 40; // 12 rows + header + padding
-      return Size(width, height);
-    }
-  }
+  static IconData _sizeIcon(TimetableSize size) => switch (size) {
+    TimetableSize.compact => Icons.view_compact,
+    TimetableSize.medium => Icons.view_module,
+    TimetableSize.large => Icons.view_comfortable,
+    TimetableSize.extraLarge => Icons.view_agenda,
+    TimetableSize.fit => Icons.fit_screen,
+  };
 
-  /// Primary Save action, full-width beneath the toolbar. Secondary actions
-  /// (auto-load, replace, clear, stats) live in [_buildMobileSecondaryMenu] so
-  /// the grid isn't pushed down by a block of buttons.
+  static IconData _layoutIcon(TimetableLayout layout) => switch (layout) {
+    TimetableLayout.vertical => Icons.calendar_view_week,
+    TimetableLayout.horizontal => Icons.view_stream,
+    TimetableLayout.agenda => Icons.view_list,
+  };
+
   Widget _buildMobileSaveButton() {
     if (widget.isForExport || widget.onSave == null) {
       return const SizedBox.shrink();
@@ -355,36 +357,61 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       padding: const EdgeInsets.only(top: 6),
       child: SizedBox(
         width: double.infinity,
-        child: _buildMobileButton(
+        child: FilledButton.icon(
           onPressed: widget.hasUnsavedChanges && !widget.isSaving
-            ? () {
-                ResponsiveService.triggerMediumFeedback(context);
-                widget.onSave!();
-              }
-            : null,
+              ? () {
+                  ResponsiveService.triggerMediumFeedback(context);
+                  widget.onSave!();
+                }
+              : null,
           icon: widget.isSaving
-            ? null // Special case for loading spinner
-            : (widget.hasUnsavedChanges ? Icons.save : Icons.check),
-          label: widget.isSaving ? 'Saving...' :
-                 widget.hasUnsavedChanges ? 'Save' : 'Saved',
-          color: widget.hasUnsavedChanges
-            ? Theme.of(context).colorScheme.primary
-            : Theme.of(context).colorScheme.tertiary,
-          isLoading: widget.isSaving,
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(widget.hasUnsavedChanges ? Icons.save : Icons.check, size: 14),
+          label: Text(
+            widget.isSaving
+                ? 'Saving...'
+                : widget.hasUnsavedChanges
+                    ? 'Save'
+                    : 'Saved',
+            style: const TextStyle(fontSize: 12),
+          ),
+          style: FilledButton.styleFrom(
+            backgroundColor: (widget.hasUnsavedChanges
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.tertiary)
+                .withValues(alpha: 0.1),
+            foregroundColor: widget.hasUnsavedChanges
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.tertiary,
+            side: BorderSide(
+              color: (widget.hasUnsavedChanges
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.tertiary)
+                  .withValues(alpha: 0.3),
+            ),
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            minimumSize: const Size(0, 36),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
         ),
       ),
     );
   }
 
-  /// Overflow of secondary timetable actions on mobile. Renders nothing when
-  /// none apply, so the toolbar stays clean.
-  Widget _buildMobileSecondaryMenu() {
+  /// Actions that collapse into a single button when the toolbar runs out of
+  /// room. Used on mobile always, and on desktop whenever the timetable panel
+  /// is narrower than the full set of labelled buttons needs.
+  Widget _buildOverflowMenu() {
     if (widget.isForExport) return const SizedBox.shrink();
     final hasAutoLoad = widget.onAutoLoadCDCs != null;
     final hasReplace = _canShowQuickReplace;
     final hasClear = widget.timetableSlots.isNotEmpty && widget.onClear != null;
-    final hasStats =
-        widget.onShowStats != null && widget.timetableSlots.isNotEmpty;
+    final hasStats = widget.onShowStats != null && widget.timetableSlots.isNotEmpty;
     if (!hasAutoLoad && !hasReplace && !hasClear && !hasStats) {
       return const SizedBox.shrink();
     }
@@ -443,8 +470,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
             value: 'clear',
             child: ListTile(
               leading: Icon(Icons.clear_all, color: scheme.error),
-              title: Text('Clear Timetable',
-                  style: TextStyle(color: scheme.error)),
+              title: Text('Clear Timetable', style: TextStyle(color: scheme.error)),
               contentPadding: EdgeInsets.zero,
             ),
           ),
@@ -452,1058 +478,440 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     );
   }
 
-  Widget _buildMobileButton({
-    required VoidCallback? onPressed,
-    required IconData? icon,
-    required String label,
-    required Color color,
-    bool isLoading = false,
-  }) {
-    return FilledButton.icon(
-      onPressed: onPressed,
-      icon: isLoading
-        ? const SizedBox(
-            width: 14,
-            height: 14,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          )
-        : icon != null
-          ? Icon(icon, size: 14)
-          : const SizedBox.shrink(),
-      label: Text(label, style: const TextStyle(fontSize: 12)),
-      style: FilledButton.styleFrom(
-        backgroundColor: color.withValues(alpha: 0.1),
-        foregroundColor: color,
-        side: BorderSide(color: color.withValues(alpha: 0.3)),
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        minimumSize: const Size(0, 36),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
+  /// The toolbar collapses in stages as the panel narrows. Which stage is used
+  /// is decided by measuring the candidates rather than by hardcoded widths:
+  /// the timetable panel is two thirds of the body, so a 1440 px window leaves
+  /// it roughly 760 px, and the exact budget shifts with text scale, labels and
+  /// which callbacks the caller wired up.
+  Widget _buildAppBar() {
+    if (widget.isForExport) return const SizedBox.shrink();
+    return Padding(
+      padding: EdgeInsets.all(_isMobile ? 6 : 8),
+      child: _isMobile ? _buildMobileAppBar(context) : _buildDesktopAppBar(context),
     );
   }
 
-  Widget _buildAppBar() {
-    final isMobile = _isMobile;
+  Widget _buildMobileAppBar(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _candidates([
+          // Fit is the first thing to go: it is also the top entry of the
+          // density menu, so nothing becomes unreachable.
+          _mobileRow(showFit: true, showUndoRedo: true),
+          _mobileRow(showFit: false, showUndoRedo: true),
+          _mobileRow(showFit: false, showUndoRedo: false),
+        ]),
+        _buildMobileSaveButton(),
+      ],
+    );
+  }
 
-    return Padding(
-      padding: EdgeInsets.all(isMobile ? 6 : 8),
-      child: isMobile
-        ? Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  // Title dropped on mobile — the tab already says "Timetable".
-                  if (!widget.isForExport && widget.onUndo != null) ...[
-                    IconButton(
-                      onPressed: widget.canUndo ? widget.onUndo : null,
-                      icon: const Icon(Icons.undo, size: 20),
-                      tooltip: 'Undo',
-                      visualDensity: VisualDensity.compact,
-                      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                    ),
-                    IconButton(
-                      onPressed: widget.canRedo ? widget.onRedo : null,
-                      icon: const Icon(Icons.redo, size: 20),
-                      tooltip: 'Redo',
-                      visualDensity: VisualDensity.compact,
-                      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                    ),
-                  ],
-                  const Spacer(),
-                  // Layout toggle button
-                  IconButton(
-                    onPressed: widget.onLayoutChanged != null
-                      ? () {
-                          ResponsiveService.triggerSelectionFeedback(context);
-                          widget.onLayoutChanged!(
-                            widget.layout == TimetableLayout.vertical
-                              ? TimetableLayout.horizontal
-                              : TimetableLayout.vertical
-                          );
-                        }
-                      : null,
-                    icon: Icon(
-                      widget.layout == TimetableLayout.vertical
-                        ? Icons.view_column
-                        : Icons.view_stream,
-                      size: ResponsiveService.getAdaptiveIconSize(context, 18),
-                    ),
-                    tooltip: widget.layout == TimetableLayout.vertical
-                      ? 'Switch to horizontal layout'
-                      : 'Switch to vertical layout',
-                    style: IconButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
-                      side: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
-                      minimumSize: Size(
-                        ResponsiveService.getTouchTargetSize(context),
-                        ResponsiveService.getTouchTargetSize(context),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  PopupMenuButton<TimetableSize>(
-                    onSelected: widget.onSizeChanged,
-                    enabled: widget.onSizeChanged != null,
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: TimetableSize.compact,
-                        height: ResponsiveService.getTouchTargetSize(context),
-                        child: Row(
-                          children: [
-                            Icon(Icons.view_compact, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
-                            SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
-                            Text('Compact'),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: TimetableSize.medium,
-                        height: ResponsiveService.getTouchTargetSize(context),
-                        child: Row(
-                          children: [
-                            Icon(Icons.view_module, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
-                            SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
-                            Text('Medium'),
-                          ],
-                        ),
-                      ),
-                    ],
-                    child: Container(
-                      constraints: BoxConstraints(
-                        minHeight: ResponsiveService.getTouchTargetSize(context),
-                        minWidth: ResponsiveService.getTouchTargetSize(context),
-                      ),
-                      padding: ResponsiveService.getAdaptivePadding(
-                        context,
-                        EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(_getSizeIcon(widget.size), size: ResponsiveService.getAdaptiveIconSize(context, 14)),
-                          SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 4)),
-                          Icon(Icons.arrow_drop_down, size: ResponsiveService.getAdaptiveIconSize(context, 14)),
-                        ],
-                      ),
-                    ),
-                  ),
-                  _buildMobileSecondaryMenu(),
-                ],
+  /// Wraps each candidate in a keyed subtree. The key is what lets a test — or
+  /// the widget inspector — tell which variant is actually on screen, since
+  /// every candidate is built but only the chosen one is laid out.
+  Widget _candidates(List<Widget> variants) {
+    return FirstThatFits(
+      candidates: [
+        for (final (index, variant) in variants.indexed)
+          KeyedSubtree(
+            key: ValueKey('toolbar-variant-$index'),
+            child: index == variants.length - 1
+                // Last resort: scrolling beats an overflow stripe when even the
+                // narrowest variant cannot fit.
+                ? SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: variant,
+                  )
+                : variant,
+          ),
+      ],
+    );
+  }
+
+  Widget _mobileRow({required bool showFit, required bool showUndoRedo}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (widget.onUndo != null && showUndoRedo) ...[
+              IconButton(
+                onPressed: widget.canUndo ? widget.onUndo : null,
+                icon: const Icon(Icons.undo, size: 20),
+                tooltip: 'Undo',
+                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
               ),
-              _buildMobileSaveButton(),
+              IconButton(
+                onPressed: widget.canRedo ? widget.onRedo : null,
+                icon: const Icon(Icons.redo, size: 20),
+                tooltip: 'Redo',
+                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+              ),
             ],
-          )
-        : Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+          ],
+        ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!_isAgenda && showFit) ...[
+              _buildFitButton(context),
+              const SizedBox(width: 6),
+            ],
+            _buildLayoutMenu(context, compact: true),
+            if (!_isAgenda) ...[
+              const SizedBox(width: 6),
+              _buildDensityMenu(context, compact: true),
+            ],
+            _buildOverflowMenu(),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDesktopAppBar(BuildContext context) {
+    return _candidates([
+      _desktopRow(showTitle: true),
+      _desktopRow(showTitle: false),
+      _desktopRow(showTitle: false, expandActions: false),
+      _desktopRow(showTitle: false, expandActions: false, compactChips: true),
+      _desktopRow(
+        showTitle: false,
+        expandActions: false,
+        compactChips: true,
+        iconOnlySave: true,
+      ),
+      _desktopRow(
+        showTitle: false,
+        expandActions: false,
+        compactChips: true,
+        iconOnlySave: true,
+        showUndoRedo: false,
+      ),
+    ]);
+  }
+
+  Widget _desktopRow({
+    required bool showTitle,
+    bool expandActions = true,
+    bool compactChips = false,
+    bool iconOnlySave = false,
+    bool showUndoRedo = true,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Row(
+      // Two groups rather than a Spacer, so the row's intrinsic width is just
+      // the sum of its children and FirstThatFits can measure it.
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (showTitle) ...[
               const Text(
                 'Weekly Timetable',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
-              if (!widget.isForExport && widget.onUndo != null) ...[
-                const SizedBox(width: 12),
-                IconButton(
-                  onPressed: widget.canUndo ? widget.onUndo : null,
-                  icon: Icon(Icons.undo, size: ResponsiveService.getAdaptiveIconSize(context, 18)),
-                  tooltip: 'Undo',
-                  visualDensity: VisualDensity.compact,
-                  style: IconButton.styleFrom(
-                    minimumSize: const Size(32, 32),
-                  ),
-                ),
-                IconButton(
-                  onPressed: widget.canRedo ? widget.onRedo : null,
-                  icon: Icon(Icons.redo, size: ResponsiveService.getAdaptiveIconSize(context, 18)),
-                  tooltip: 'Redo',
-                  visualDensity: VisualDensity.compact,
-                  style: IconButton.styleFrom(
-                    minimumSize: const Size(32, 32),
-                  ),
-                ),
-              ],
-              const SizedBox(width: 16),
-              // Layout toggle button
+              const SizedBox(width: 12),
+            ],
+            if (widget.onUndo != null && showUndoRedo) ...[
               IconButton(
-                onPressed: widget.onLayoutChanged != null
-                  ? () {
-                      ResponsiveService.triggerSelectionFeedback(context);
-                      widget.onLayoutChanged!(
-                        widget.layout == TimetableLayout.vertical
-                          ? TimetableLayout.horizontal
-                          : TimetableLayout.vertical
-                      );
-                    }
-                  : null,
-                icon: Icon(
-                  widget.layout == TimetableLayout.vertical
-                    ? Icons.view_column
-                    : Icons.view_stream,
-                  size: ResponsiveService.getAdaptiveIconSize(context, 20),
-                ),
-                tooltip: widget.layout == TimetableLayout.vertical
-                  ? 'Switch to horizontal layout'
-                  : 'Switch to vertical layout',
-                style: IconButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
-                  side: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
-                  minimumSize: Size(
-                    ResponsiveService.getTouchTargetSize(context),
-                    ResponsiveService.getTouchTargetSize(context),
-                  ),
-                ),
+                onPressed: widget.canUndo ? widget.onUndo : null,
+                icon: Icon(Icons.undo, size: ResponsiveService.getAdaptiveIconSize(context, 18)),
+                tooltip: 'Undo',
+                visualDensity: VisualDensity.compact,
+                style: IconButton.styleFrom(minimumSize: const Size(32, 32)),
+              ),
+              IconButton(
+                onPressed: widget.canRedo ? widget.onRedo : null,
+                icon: Icon(Icons.redo, size: ResponsiveService.getAdaptiveIconSize(context, 18)),
+                tooltip: 'Redo',
+                visualDensity: VisualDensity.compact,
+                style: IconButton.styleFrom(minimumSize: const Size(32, 32)),
+              ),
+              const SizedBox(width: 12),
+            ],
+            if (!_isAgenda) ...[
+              _buildFitButton(context),
+              const SizedBox(width: 8),
+            ],
+            _buildLayoutMenu(context, compact: compactChips),
+            if (!_isAgenda) ...[
+              const SizedBox(width: 8),
+              _buildDensityMenu(context, compact: compactChips),
+            ],
+          ],
+        ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(width: 16),
+            if (expandActions && widget.onAutoLoadCDCs != null) ...[
+              _toolbarAction(
+                context,
+                icon: Icons.school,
+                label: 'Auto Load CDCs',
+                color: scheme.secondary,
+                onPressed: () {
+                  ResponsiveService.triggerLightFeedback(context);
+                  widget.onAutoLoadCDCs!();
+                },
               ),
               const SizedBox(width: 8),
-              PopupMenuButton<TimetableSize>(
-                onSelected: widget.onSizeChanged,
-                enabled: widget.onSizeChanged != null,
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: TimetableSize.compact,
-                    height: ResponsiveService.getTouchTargetSize(context),
-                    child: Row(
-                      children: [
-                        Icon(Icons.view_compact, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
-                        SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
-                        Text('Compact'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: TimetableSize.medium,
-                    height: ResponsiveService.getTouchTargetSize(context),
-                    child: Row(
-                      children: [
-                        Icon(Icons.view_module, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
-                        SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
-                        Text('Medium'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: TimetableSize.large,
-                    height: ResponsiveService.getTouchTargetSize(context),
-                    child: Row(
-                      children: [
-                        Icon(Icons.view_comfortable, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
-                        SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
-                        Text('Large'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: TimetableSize.extraLarge,
-                    height: ResponsiveService.getTouchTargetSize(context),
-                    child: Row(
-                      children: [
-                        Icon(Icons.view_agenda, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
-                        SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
-                        Text('Extra Large'),
-                      ],
-                    ),
-                  ),
-                ],
-                child: Container(
-                  constraints: BoxConstraints(
-                    minHeight: ResponsiveService.getTouchTargetSize(context),
-                    minWidth: ResponsiveService.getTouchTargetSize(context),
-                  ),
-                  padding: ResponsiveService.getAdaptivePadding(
-                    context,
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(_getSizeIcon(widget.size), size: ResponsiveService.getAdaptiveIconSize(context, 16)),
-                      SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 4)),
-                      Icon(Icons.arrow_drop_down, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              // Auto Load CDCs button (desktop)
-              if (!widget.isForExport && widget.onAutoLoadCDCs != null)
-                FilledButton.icon(
-                  onPressed: () {
-                    ResponsiveService.triggerLightFeedback(context);
-                    widget.onAutoLoadCDCs!();
-                  },
-                  icon: Icon(
-                    Icons.school,
-                    size: ResponsiveService.getAdaptiveIconSize(context, 16),
-                  ),
-                  label: const Text('Auto Load CDCs'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
-                    foregroundColor: Theme.of(context).colorScheme.secondary,
-                    side: BorderSide(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3)),
-                    elevation: 0,
-                    minimumSize: Size(
-                      0,
-                      ResponsiveService.getTouchTargetSize(context),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              if (!widget.isForExport && widget.onAutoLoadCDCs != null)
-                const SizedBox(width: 8),
-              // Save button
-              if (!widget.isForExport && widget.onSave != null)
-                FilledButton.icon(
-                  onPressed: widget.hasUnsavedChanges && !widget.isSaving
+            ],
+            // Save stays a button at every width: it is the only action whose
+            // state is worth seeing without opening a menu.
+            if (widget.onSave != null) ...[
+              _toolbarAction(
+                context,
+                icon: widget.hasUnsavedChanges ? Icons.save : Icons.check,
+                label: widget.isSaving
+                    ? 'Saving...'
+                    : widget.hasUnsavedChanges
+                        ? 'Save'
+                        : 'Saved',
+                iconOnly: iconOnlySave,
+                color: widget.hasUnsavedChanges ? scheme.primary : scheme.tertiary,
+                isLoading: widget.isSaving,
+                onPressed: widget.hasUnsavedChanges && !widget.isSaving
                     ? () {
                         ResponsiveService.triggerMediumFeedback(context);
                         widget.onSave!();
                       }
                     : null,
-                  icon: widget.isSaving
-                    ? SizedBox(
-                        width: ResponsiveService.getAdaptiveIconSize(context, 16),
-                        height: ResponsiveService.getAdaptiveIconSize(context, 16),
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(
-                        widget.hasUnsavedChanges ? Icons.save : Icons.check,
-                        size: ResponsiveService.getAdaptiveIconSize(context, 16),
-                      ),
-                  label: Text(
-                    widget.isSaving ? 'Saving...' :
-                    widget.hasUnsavedChanges ? 'Save' : 'Saved',
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: widget.hasUnsavedChanges
-                      ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
-                      : Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.1),
-                    foregroundColor: widget.hasUnsavedChanges
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.tertiary,
-                    side: BorderSide(
-                      color: widget.hasUnsavedChanges
-                        ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
-                        : Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3)
-                    ),
-                    elevation: 0,
-                    minimumSize: Size(
-                      0,
-                      ResponsiveService.getTouchTargetSize(context),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              if (!widget.isForExport && widget.onSave != null)
-                const SizedBox(width: 8),
-              // Quick Replace Button (desktop)
-              if (_canShowQuickReplace)
-                FilledButton.icon(
+              ),
+              const SizedBox(width: 8),
+            ],
+            if (expandActions) ...[
+              if (_canShowQuickReplace) ...[
+                _toolbarAction(
+                  context,
+                  icon: Icons.swap_horiz,
+                  label: 'Quick Replace',
+                  color: scheme.tertiary,
                   onPressed: _showQuickReplaceDialog,
-                  icon: Icon(
-                    Icons.swap_horiz,
-                    size: ResponsiveService.getAdaptiveIconSize(context, 16),
-                  ),
-                  label: const Text('Quick Replace'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.1),
-                    foregroundColor: Theme.of(context).colorScheme.tertiary,
-                    side: BorderSide(color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3)),
-                    elevation: 0,
-                    minimumSize: Size(
-                      0,
-                      ResponsiveService.getTouchTargetSize(context),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
                 ),
-              if (_canShowQuickReplace)
                 const SizedBox(width: 8),
-              // TT Stats button (desktop)
-              if (!widget.isForExport && widget.onShowStats != null && widget.timetableSlots.isNotEmpty)
-                FilledButton.icon(
+              ],
+              if (widget.onShowStats != null && widget.timetableSlots.isNotEmpty) ...[
+                _toolbarAction(
+                  context,
+                  icon: Icons.insights,
+                  label: 'TT Stats',
+                  color: scheme.primary,
                   onPressed: widget.onShowStats!,
-                  icon: Icon(
-                    Icons.insights,
-                    size: ResponsiveService.getAdaptiveIconSize(context, 16),
-                  ),
-                  label: const Text('TT Stats'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                    foregroundColor: Theme.of(context).colorScheme.primary,
-                    side: BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
-                    elevation: 0,
-                    minimumSize: Size(
-                      0,
-                      ResponsiveService.getTouchTargetSize(context),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
                 ),
-              if (!widget.isForExport && widget.onShowStats != null && widget.timetableSlots.isNotEmpty)
                 const SizedBox(width: 8),
+              ],
               if (widget.timetableSlots.isNotEmpty && widget.onClear != null)
                 TextButton.icon(
                   onPressed: () {
                     ResponsiveService.triggerHeavyFeedback(context);
                     widget.onClear!();
                   },
-                  icon: Icon(
-                    Icons.clear_all,
-                    size: ResponsiveService.getAdaptiveIconSize(context, 16),
-                  ),
+                  icon: Icon(Icons.clear_all, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
                   label: const Text('Clear'),
                   style: TextButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.error,
-                    minimumSize: Size(
-                      0,
-                      ResponsiveService.getTouchTargetSize(context),
-                    ),
+                    foregroundColor: scheme.error,
+                    minimumSize: Size(0, ResponsiveService.getTouchTargetSize(context)),
                   ),
                 ),
-            ],
-          ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isMobile = _isMobile;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Fixed app bar at the top (doesn't scroll)
-        _buildAppBar(),
-
-        // Timetable content area with gesture isolation.
-        // For export the content (grid + exam schedule) must size to its own
-        // height — wrapping it in Expanded would pin it to the off-screen
-        // capture box's fixed height and clip overflowing rows (e.g. a long
-        // exam list). See [_exportAwareExpanded].
-        _exportAwareExpanded(
-          ConstrainedBox(
-            constraints: BoxConstraints(
-              minWidth: isMobile ? 260 : ResponsiveService.getValue(context, mobile: 480, tablet: 768, desktop: 1000),
-              maxWidth: isMobile ? MediaQuery.of(context).size.width - 8 : double.infinity,
-            ),
-            child: widget.isForExport
-                ? Container(
-                    margin: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).scaffoldBackgroundColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Theme.of(context).colorScheme.outline,
-                        width: 1,
-                      ),
-                    ),
-                    child: RepaintBoundary(
-                      key: widget.tableKey,
-                      child: IntrinsicWidth(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            IntrinsicHeight(
-                              child: DataTable(
-                                columnSpacing: _getColumnSpacing(widget.size),
-                                horizontalMargin: _getHorizontalMargin(widget.size),
-                                dataRowMinHeight: _getDataRowHeight(widget.size),
-                                dataRowMaxHeight: _getDataRowHeight(widget.size),
-                                headingRowHeight: 60,
-                                dividerThickness: 0,
-                                border: TableBorder.all(color: Colors.transparent),
-                                columns: _buildColumns(context),
-                                rows: _buildRows(context),
-                              ),
-                            ),
-                            if (widget.exportOptions?.showExamDates == true)
-                              _buildExamDatesForExport(context),
-                          ],
-                        ),
-                      ),
-                    ),
-                  )
-                : Stack(
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).scaffoldBackgroundColor,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.outline,
-                            width: 1,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Theme.of(context).shadowColor.withValues(alpha: 0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: InteractiveViewer(
-                            transformationController: _transformationController,
-                            minScale: 0.4,
-                            maxScale: 2.5,
-                            constrained: false,
-                            boundaryMargin: const EdgeInsets.all(200),
-                            child: RepaintBoundary(
-                              key: widget.tableKey,
-                              child: DataTable(
-                                columnSpacing: _getColumnSpacing(widget.size),
-                                horizontalMargin: _getHorizontalMargin(widget.size),
-                                dataRowMinHeight: _getDataRowHeight(widget.size),
-                                dataRowMaxHeight: _getDataRowHeight(widget.size),
-                                headingRowHeight: 60,
-                                dividerThickness: 0,
-                                border: TableBorder.all(color: Colors.transparent, width: 0),
-                                columns: _buildColumns(context),
-                                rows: _buildRows(context),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      _buildZoomControls(),
-                    ],
-                  ),
-          ),
+            ] else
+              _buildOverflowMenu(),
+          ],
         ),
       ],
     );
   }
 
-  /// On screen the content fills the available height (Expanded); for export
-  /// it must size to content so nothing is clipped by the fixed capture box.
-  Widget _exportAwareExpanded(Widget child) =>
-      widget.isForExport ? child : Expanded(child: child);
+  Widget _toolbarAction(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback? onPressed,
+    bool isLoading = false,
+    bool iconOnly = false,
+  }) {
+    final glyph = isLoading
+        ? SizedBox(
+            width: ResponsiveService.getAdaptiveIconSize(context, 16),
+            height: ResponsiveService.getAdaptiveIconSize(context, 16),
+            child: const CircularProgressIndicator(strokeWidth: 2),
+          )
+        : Icon(icon, size: ResponsiveService.getAdaptiveIconSize(context, 16));
 
-  List<DataColumn> _buildColumns(BuildContext context) {
-    if (widget.layout == TimetableLayout.horizontal) {
-      // Horizontal layout: Days on Y-axis, Hours on X-axis
-      return [
-        DataColumn(
-          label: SizedBox(
-            width: _getTimeColumnWidth(widget.size),
-            child: Text(
-              'Day',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
+    if (iconOnly) {
+      return Tooltip(
+        message: label,
+        child: FilledButton(
+          onPressed: onPressed,
+          style: FilledButton.styleFrom(
+            backgroundColor: color.withValues(alpha: 0.1),
+            foregroundColor: color,
+            side: BorderSide(color: color.withValues(alpha: 0.3)),
+            elevation: 0,
+            padding: EdgeInsets.zero,
+            minimumSize: Size(
+              ResponsiveService.getTouchTargetSize(context),
+              ResponsiveService.getTouchTargetSize(context),
             ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
+          child: glyph,
         ),
-        ...List.generate(12, (hour) => DataColumn(
-          label: SizedBox(
-            width: _getDayColumnWidth(widget.size),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  _isMobile ? 'H${hour + 1}' : 'Hour ${hour + 1}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: _scaleFont(_isMobile ? 12 : 14),
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                  textScaler: TextScaler.noScaling,
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 2),
-                Text(
-                  TimeSlotInfo.getHourSlotName(hour + 1),
-                  style: TextStyle(
-                    fontSize: _scaleFont(_isMobile ? 9 : 11),
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                    fontWeight: FontWeight.w400,
-                  ),
-                  textScaler: TextScaler.noScaling,
-                  textAlign: TextAlign.center,
-                  maxLines: _isMobile ? 1 : 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        )),
-      ];
-    } else {
-      // Vertical layout: Hours on Y-axis, Days on X-axis (default)
-      return [
-        DataColumn(
-          label: SizedBox(
-            width: _getTimeColumnWidth(widget.size),
-            child: Text(
-              'Time',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: _scaleFont(16),
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-              textScaler: TextScaler.noScaling,
-            ),
-          ),
-        ),
-        for (final day in _isMobile
-            ? const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-            : const ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'])
-          DataColumn(
-            label: SizedBox(
-              width: _getDayColumnWidth(widget.size),
-              child: Text(
-                day,
-                textScaler: TextScaler.noScaling,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: _scaleFont(_isMobile ? 13 : 16),
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-            ),
-          ),
-      ];
-    }
-  }
-
-  List<DataRow> _buildRows(BuildContext context) {
-    if (widget.layout == TimetableLayout.horizontal) {
-      return _buildHorizontalRows(context);
-    } else {
-      return _buildVerticalRows(context);
-    }
-  }
-
-  List<DataRow> _buildVerticalRows(BuildContext context) {
-    List<DataRow> rows = [];
-    Map<int, Map<DayOfWeek, TimetableSlot?>> timeTable = {};
-
-    for (var slot in widget.timetableSlots) {
-      for (var hour in slot.hours) {
-        timeTable[hour] ??= {};
-        timeTable[hour]![slot.day] = slot;
-      }
+      );
     }
 
-    for (int hour = 1; hour <= 12; hour++) {
-      rows.add(DataRow(
-        cells: [
-          DataCell(
-            Container(
-              width: _getTimeColumnWidth(widget.size),
-              height: _getCellHeight(widget.size),
-              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    _isMobile ? 'H$hour' : 'Hour $hour',
-                    style: TextStyle(
-                      fontSize: _getHourLabelFontSize(widget.size),
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    textScaler: TextScaler.noScaling,
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: _isMobile ? 2 : 4),
-                  Text(
-                    TimeSlotInfo.getHourSlotName(hour),
-                    style: TextStyle(
-                      fontSize: _getHourTimeFontSize(widget.size),
-                      fontWeight: FontWeight.w400,
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
-                    ),
-                    textScaler: TextScaler.noScaling,
-                    textAlign: TextAlign.center,
-                    maxLines: _isMobile ? 1 : 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          ...DayOfWeek.values.map((day) {
-            final slot = timeTable[hour]?[day];
-            if (slot != null) {
-              return DataCell(
-                _buildTimetableCell(context, slot, hour, day),
-              );
-            }
-            return DataCell(
-              Container(
-                width: _getDayColumnWidth(widget.size),
-                height: _getCellHeight(widget.size),
-                margin: EdgeInsets.all(_getCellMargin(widget.size)),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
-                ),
-              ),
-            );
-          }),
-        ],
-      ));
-    }
-
-    return rows;
-  }
-
-  List<DataRow> _buildHorizontalRows(BuildContext context) {
-    List<DataRow> rows = [];
-    Map<DayOfWeek, Map<int, TimetableSlot?>> dayTable = {};
-
-    for (var slot in widget.timetableSlots) {
-      dayTable[slot.day] ??= {};
-      for (var hour in slot.hours) {
-        dayTable[slot.day]![hour] = slot;
-      }
-    }
-
-    for (var day in DayOfWeek.values) {
-      rows.add(DataRow(
-        cells: [
-          DataCell(
-            Container(
-              width: _getTimeColumnWidth(widget.size),
-              height: _getCellHeight(widget.size),
-              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
-              ),
-              child: Center(
-                child: Text(
-                  _getDayName(day),
-                  style: TextStyle(
-                    fontSize: _getHourLabelFontSize(widget.size),
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  textScaler: TextScaler.noScaling,
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-          ),
-          ...List.generate(12, (index) {
-            final hour = index + 1;
-            final slot = dayTable[day]?[hour];
-            if (slot != null) {
-              return DataCell(
-                _buildTimetableCell(context, slot, hour, day),
-              );
-            }
-            return DataCell(
-              Container(
-                width: _getDayColumnWidth(widget.size),
-                height: _getCellHeight(widget.size),
-                margin: EdgeInsets.all(_getCellMargin(widget.size)),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.15)),
-                ),
-              ),
-            );
-          }),
-        ],
-      ));
-    }
-
-    return rows;
-  }
-
-  String _getDayName(DayOfWeek day) => getDayName(day);
-
-  Widget _buildTimetableCell(BuildContext context, TimetableSlot slot, int hour, DayOfWeek day) {
-    final sameCourseSlots = widget.timetableSlots
-        .where((s) => s.courseCode == slot.courseCode && s.sectionId == slot.sectionId)
-        .toList();
-    final courseKey = '${slot.courseCode}-${slot.sectionId}';
-    final courseColor = _getCourseColor(slot.courseCode);
-
-    return RepaintBoundary(
-      child: Semantics(
-        label: '${slot.courseCode} ${slot.sectionId}, ${slot.instructor}, ${slot.room}',
-        child: MouseRegion(
-        onEnter: (_) => _hoveredCourseNotifier.value = courseKey,
-        onExit: (_) {
-          if (_hoveredCourseNotifier.value == courseKey) {
-            _hoveredCourseNotifier.value = null;
-          }
-        },
-        child: GestureDetector(
-        onTap: () => _showCellDetail(context, slot, sameCourseSlots),
-        child: ValueListenableBuilder<String?>(
-          valueListenable: _hoveredCourseNotifier,
-          builder: (context, hoveredCourse, _) {
-            final isHovered = hoveredCourse == courseKey;
-            return AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          width: _getDayColumnWidth(widget.size),
-          height: _getCellHeight(widget.size),
-          margin: EdgeInsets.all(_getCellMargin(widget.size)),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                courseColor.withValues(alpha: isHovered ? 0.28 : 0.20),
-                courseColor.withValues(alpha: isHovered ? 0.18 : 0.10),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(_getBorderRadius(widget.size)),
-            border: Border.all(
-              color: courseColor.withValues(alpha: isHovered ? 0.45 : 0.3),
-            ),
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                left: 0,
-                top: 0,
-                bottom: 0,
-                child: Container(
-                  width: 4,
-                  decoration: BoxDecoration(
-                    color: _getCourseColor(slot.courseCode),
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(_getBorderRadius(widget.size)),
-                      bottomLeft: Radius.circular(_getBorderRadius(widget.size)),
-                    ),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.all(_getCellPadding(widget.size)),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.max,
-                  children: [
-                    if (_shouldShowField('courseCode'))
-                      Flexible(
-                        flex: 3,
-                        child: Text(
-                          slot.courseCode,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: _getCourseCodeFontSize(widget.size),
-                            color: _getCourseColor(slot.courseCode),
-                            height: 1.1,
-                          ),
-                          textScaler: TextScaler.noScaling,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ),
-                    if (_shouldShowField('courseTitle'))
-                      Flexible(
-                        flex: widget.size == TimetableSize.compact ? 1 : 2,
-                        child: Text(
-                          slot.courseTitle,
-                          style: TextStyle(
-                            fontSize: _getCourseTitleFontSize(widget.size),
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontWeight: FontWeight.w400,
-                            height: _getLineHeight(widget.size),
-                            letterSpacing: widget.size == TimetableSize.compact ? 0.05 : 0.1,
-                          ),
-                          textScaler: TextScaler.noScaling,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: _getCourseTitleMaxLines(widget.size),
-                        ),
-                      ),
-                    if (_shouldShowField('sectionId'))
-                      Flexible(
-                        flex: 2,
-                        child: Text(
-                          slot.sectionId,
-                          style: TextStyle(
-                            fontSize: _getSectionIdFontSize(widget.size),
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontWeight: FontWeight.w500,
-                            height: 1.1,
-                          ),
-                          textScaler: TextScaler.noScaling,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ),
-                    if (_shouldShowField('instructor') && widget.size != TimetableSize.compact)
-                      Flexible(
-                        flex: 2,
-                        child: Text(
-                          slot.instructor,
-                          style: TextStyle(
-                            fontSize: _getInstructorFontSize(widget.size),
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.88),
-                            fontWeight: FontWeight.w400,
-                            height: _getLineHeight(widget.size),
-                            letterSpacing: widget.size == TimetableSize.compact ? 0.1 : 0.15,
-                          ),
-                          textScaler: TextScaler.noScaling,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ),
-                    if (_shouldShowField('room'))
-                      Flexible(
-                        flex: 2,
-                        child: Text(
-                          slot.room,
-                          style: TextStyle(
-                            fontSize: _getRoomFontSize(widget.size),
-                            color: Theme.of(context).colorScheme.onSurface,
-                            height: 1.1,
-                          ),
-                          textScaler: TextScaler.noScaling,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              // Warning icon for incomplete course selections
-              if (_hasIncompleteSelection(slot.courseCode))
-                Positioned(
-                  top: 2,
-                  left: 2,
-                  child: Tooltip(
-                    message: _getIncompleteSelectionWarning(slot.courseCode),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Theme.of(context).colorScheme.outline),
-                    ),
-                    textStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 12),
-                    child: Container(
-                      width: 22,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.9),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Theme.of(context).shadowColor.withValues(alpha: 0.3),
-                            blurRadius: 2,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.warning,
-                        size: 13,
-                        color: Theme.of(context).colorScheme.onSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-              if (widget.onRemoveSection != null &&
-                  hoveredCourse == '${slot.courseCode}-${slot.sectionId}')
-                Positioned(
-                  top: 2,
-                  right: 2,
-                  child: Semantics(
-                    label: 'Remove ${slot.courseCode} ${slot.sectionId}',
-                    button: true,
-                    child: GestureDetector(
-                    onTap: () {
-                      ResponsiveService.triggerHeavyFeedback(context);
-                      widget.onRemoveSection!(slot.courseCode, slot.sectionId);
-                    },
-                    child: Container(
-                      width: 22,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.error.withValues(alpha: 0.85),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Theme.of(context).shadowColor.withValues(alpha: 0.3),
-                            blurRadius: 2,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.close,
-                        size: 13,
-                        color: Theme.of(context).colorScheme.onError,
-                      ),
-                    ),
-                  ),
-                  ),
-                ),
-            ],
-          ),
-        );
-          },
-        ),
-        ),
-      ),
+    return FilledButton.icon(
+      onPressed: onPressed,
+      icon: glyph,
+      label: Text(label),
+      style: FilledButton.styleFrom(
+        backgroundColor: color.withValues(alpha: 0.1),
+        foregroundColor: color,
+        side: BorderSide(color: color.withValues(alpha: 0.3)),
+        elevation: 0,
+        minimumSize: Size(0, ResponsiveService.getTouchTargetSize(context)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
 
+  // ── Build ─────────────────────────────────────────────────────────────────
 
-  void _showCellDetail(BuildContext context, TimetableSlot slot, List<TimetableSlot> sameCourseSlots) {
+  @override
+  Widget build(BuildContext context) {
+    final palette = CoursePalette.forCourses(context, _courseCodesInOrder);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildAppBar(),
+        // On screen the grid fills the panel; for export it must size to its own
+        // content so a long exam schedule is not clipped by the capture box.
+        if (widget.isForExport)
+          _buildExportSurface(context, palette)
+        else
+          Expanded(child: _buildScreenSurface(context, palette)),
+      ],
+    );
+  }
+
+  Widget _buildScreenSurface(BuildContext context, CoursePalette palette) {
     final scheme = Theme.of(context).colorScheme;
-    final courseColor = _getCourseColor(slot.courseCode);
-    final timeSlots = <String>[];
-    for (var s in sameCourseSlots) {
-      for (var hour in s.hours) {
-        final ts = '${_getDayAbbreviation(s.day)} ${TimeSlotInfo.getHourSlotName(hour)}';
-        if (!timeSlots.contains(ts)) timeSlots.add(ts);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(4, 0, 4, 4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        // Deliberately faint: this sits inside the editor's Card, and a
+        // full-strength outline a few pixels in from the card edge reads as a
+        // mistake rather than as a frame.
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.2)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: _isAgenda
+          ? TimetableAgenda(
+              slots: widget.timetableSlots,
+              palette: palette,
+              incompleteSelectionWarnings: widget.incompleteSelectionWarnings,
+              onSlotTap: _showBlockDetail,
+              onRemoveSection: widget.onRemoveSection,
+            )
+          : RepaintBoundary(
+              key: widget.tableKey,
+              child: TimetableGrid(
+                slots: widget.timetableSlots,
+                layout: widget.layout,
+                size: widget.size,
+                palette: palette,
+                showAllHours: _showAllHours,
+                visibleFields: _visibleFields,
+                incompleteSelectionWarnings: widget.incompleteSelectionWarnings,
+                onSlotTap: _showBlockDetail,
+                onRemoveSection: widget.onRemoveSection,
+              ),
+            ),
+    );
+  }
+
+  Widget _buildExportSurface(BuildContext context, CoursePalette palette) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.outline),
+      ),
+      child: RepaintBoundary(
+        key: widget.tableKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: TimetableGrid(
+                slots: widget.timetableSlots,
+                // The agenda is a screen view; a captured PNG is always a grid.
+                layout: widget.layout == TimetableLayout.agenda
+                    ? TimetableLayout.vertical
+                    : widget.layout,
+                size: widget.size == TimetableSize.fit
+                    ? TimetableSize.extraLarge
+                    : widget.size,
+                palette: palette,
+                isForExport: true,
+                // The PNG crops the same way the grid on screen does, so what
+                // is shared matches what was designed. "Show full week" is a
+                // viewing preference and does not reach this instance, which
+                // the export builds fresh in an overlay.
+                showAllHours: false,
+                visibleFields: _visibleFields,
+                incompleteSelectionWarnings: widget.incompleteSelectionWarnings,
+              ),
+            ),
+            if (widget.exportOptions?.showExamDates == true)
+              _buildExamDatesForExport(context, palette),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Detail sheet ──────────────────────────────────────────────────────────
+
+  void _showBlockDetail(CourseBlock block) {
+    final scheme = Theme.of(context).colorScheme;
+    final palette = CoursePalette.forCourses(context, _courseCodesInOrder);
+    final courseColor = palette.colorFor(block.slot.courseCode);
+
+    // Every meeting of this section across the week, not just the one tapped.
+    final meetings = <String>[];
+    for (final slot in widget.timetableSlots) {
+      if (slot.courseCode != block.slot.courseCode ||
+          slot.sectionId != block.slot.sectionId) {
+        continue;
       }
+      final label =
+          '${getDayName(slot.day, abbreviated: true)} ${TimeSlotInfo.getHourRangeName([...slot.hours])}';
+      if (!meetings.contains(label)) meetings.add(label);
     }
 
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 340),
+          constraints: const BoxConstraints(maxWidth: 360),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -1526,15 +934,15 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            slot.courseCode,
+                            block.slot.courseCode,
                             style: TextStyle(
                               fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w700,
                               color: courseColor,
                             ),
                           ),
                           Text(
-                            slot.sectionId,
+                            block.slot.sectionId,
                             style: TextStyle(
                               fontSize: 13,
                               color: scheme.onSurface.withValues(alpha: 0.7),
@@ -1552,7 +960,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  slot.courseTitle,
+                  block.slot.courseTitle,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
@@ -1560,15 +968,11 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                _detailRow(Icons.person_outline, slot.instructor, scheme),
+                _detailRow(Icons.person_outline, block.slot.instructor, scheme),
                 const SizedBox(height: 6),
-                _detailRow(Icons.room_outlined, slot.room, scheme),
+                _detailRow(Icons.room_outlined, block.slot.room, scheme),
                 const SizedBox(height: 6),
-                _detailRow(
-                  Icons.schedule,
-                  timeSlots.join(', '),
-                  scheme,
-                ),
+                _detailRow(Icons.schedule, meetings.join(', '), scheme),
                 if (widget.onRemoveSection != null) ...[
                   const SizedBox(height: 16),
                   SizedBox(
@@ -1576,13 +980,14 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     child: TextButton.icon(
                       onPressed: () {
                         Navigator.pop(ctx);
-                        widget.onRemoveSection!(slot.courseCode, slot.sectionId);
+                        widget.onRemoveSection!(
+                          block.slot.courseCode,
+                          block.slot.sectionId,
+                        );
                       },
                       icon: const Icon(Icons.remove_circle_outline, size: 18),
                       label: const Text('Remove section'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: scheme.error,
-                      ),
+                      style: TextButton.styleFrom(foregroundColor: scheme.error),
                     ),
                   ),
                 ],
@@ -1595,6 +1000,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
   }
 
   Widget _detailRow(IconData icon, String text, ColorScheme scheme) {
+    if (text.isEmpty) return const SizedBox.shrink();
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1613,340 +1019,19 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     );
   }
 
-  String _getDayAbbreviation(DayOfWeek day) {
-    switch (day) {
-      case DayOfWeek.M: return 'Mon';
-      case DayOfWeek.T: return 'Tue';
-      case DayOfWeek.W: return 'Wed';
-      case DayOfWeek.Th: return 'Thu';
-      case DayOfWeek.F: return 'Fri';
-      case DayOfWeek.S: return 'Sat';
-    }
-  }
+  // ── Exam schedule (export only) ───────────────────────────────────────────
 
-  Color _getCourseColor(String courseCode) {
-    final hash = courseCode.hashCode;
-    final colors = AppDesign.timetableColors(context);
-    final color = colors[hash.abs() % colors.length];
-    final bg = Theme.of(context).colorScheme.surface;
-    final contrast = _contrastRatio(color, bg);
-    if (contrast >= 4.5) return color;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return isDark ? _lighten(color, 0.2) : _darken(color, 0.2);
-  }
-
-  static double _luminance(Color c) {
-    double r = c.r, g = c.g, b = c.b;
-    r = r <= 0.04045 ? r / 12.92 : pow((r + 0.055) / 1.055, 2.4).toDouble();
-    g = g <= 0.04045 ? g / 12.92 : pow((g + 0.055) / 1.055, 2.4).toDouble();
-    b = b <= 0.04045 ? b / 12.92 : pow((b + 0.055) / 1.055, 2.4).toDouble();
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  }
-
-  static double _contrastRatio(Color a, Color b) {
-    final la = _luminance(a) + 0.05;
-    final lb = _luminance(b) + 0.05;
-    return la > lb ? la / lb : lb / la;
-  }
-
-  static Color _lighten(Color c, double amount) {
-    final hsl = HSLColor.fromColor(c);
-    return hsl.withLightness((hsl.lightness + amount).clamp(0.0, 1.0)).toColor();
-  }
-
-  static Color _darken(Color c, double amount) {
-    final hsl = HSLColor.fromColor(c);
-    return hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0)).toColor();
-  }
-
-  bool _hasIncompleteSelection(String courseCode) {
-    return widget.incompleteSelectionWarnings.any((warning) => warning.startsWith(courseCode));
-  }
-
-  String _getIncompleteSelectionWarning(String courseCode) {
-    final warnings = widget.incompleteSelectionWarnings
-        .where((warning) => warning.startsWith(courseCode))
-        .toList();
-    
-    if (warnings.isEmpty) return '';
-    return warnings.join('\n');
-  }
-
-  // Size-specific dimension helpers
-  double _getDayColumnWidth(TimetableSize size) {
-    final baseWidth = switch (size) {
-      TimetableSize.compact => 145.0,    // Reduced from 160 for better proportions
-      TimetableSize.medium => 170.0,     // Reduced from 190
-      TimetableSize.large => 210.0,      // Reduced from 240
-      TimetableSize.extraLarge => 250.0, // Reduced from 290
-    };
-    
-    // Adjust width for horizontal layout with more columns
-    if (widget.layout == TimetableLayout.horizontal) {
-      final adjustedWidth = _isMobile ? baseWidth * 0.6 : baseWidth * 0.8;
-      return adjustedWidth.clamp(100.0, 180.0);
-    }
-    
-    // Make cells bigger on mobile for better readability
-    if (_isMobile) {
-      final screenWidth = MediaQuery.maybeOf(context)?.size.width ?? 400;
-      final availableWidth = screenWidth - 24;
-      final timeColumnWidth = _getTimeColumnWidth(size);
-      final remainingWidth = availableWidth - timeColumnWidth;
-      final columnWidth = remainingWidth / 6;
-      return columnWidth.clamp(65.0, baseWidth * 0.8);
-    }
-    
-    return baseWidth;
-  }
-
-  double _getTimeColumnWidth(TimetableSize size) {
-    if (_isMobile) {
-      return 65.0; // Increased from 50px for better readability
-    }
-    return _getDayColumnWidth(size) * 0.75;
-  }
-
-  double _getCellHeight(TimetableSize size) {
-    final baseHeight = switch (size) {
-      TimetableSize.compact => 90.0,     // Increased back to prevent text cutoff
-      TimetableSize.medium => 95.0,      // Keep current size
-      TimetableSize.large => 115.0,      // Keep current size
-      TimetableSize.extraLarge => 140.0, // Keep current size
-    };
-    
-    // Less aggressive reduction for mobile to maintain readability
-    return _isMobile ? baseHeight * 0.9 : baseHeight;
-  }
-
-  double _getCellMargin(TimetableSize size) {
-    final baseMargin = switch (size) {
-      TimetableSize.compact => 1.0,
-      TimetableSize.medium => 1.0,
-      TimetableSize.large => 2.0,
-      TimetableSize.extraLarge => 3.0,
-    };
-    
-    // Reduce margin for mobile
-    return _isMobile ? 0.5 : baseMargin;
-  }
-
-  double _getColumnSpacing(TimetableSize size) {
-    final baseSpacing = switch (size) {
-      TimetableSize.compact => 12.0,
-      TimetableSize.medium => 16.0,
-      TimetableSize.large => 20.0,
-      TimetableSize.extraLarge => 24.0,
-    };
-    
-    // Reduce spacing for horizontal layout to fit more columns
-    if (widget.layout == TimetableLayout.horizontal) {
-      return _isMobile ? 8.0 : baseSpacing * 0.7;
-    }
-    
-    // Better spacing for mobile readability
-    return _isMobile ? 12.0 : baseSpacing;
-  }
-
-  double _getHorizontalMargin(TimetableSize size) {
-    final baseMargin = switch (size) {
-      TimetableSize.compact => 10.0,
-      TimetableSize.medium => 12.0,
-      TimetableSize.large => 16.0,
-      TimetableSize.extraLarge => 20.0,
-    };
-    
-    // Minimal margin for mobile
-    return _isMobile ? 4.0 : baseMargin;
-  }
-
-  double _getDataRowHeight(TimetableSize size) {
-    final baseHeight = switch (size) {
-      TimetableSize.compact => 90.0,
-      TimetableSize.medium => 100.0,
-      TimetableSize.large => 120.0,
-      TimetableSize.extraLarge => 140.0,
-    };
-
-    final height = _isMobile ? baseHeight * 1.1 : baseHeight;
-    return _textScaler.scale(height);
-  }
-
-  IconData _getSizeIcon(TimetableSize size) {
-    switch (size) {
-      case TimetableSize.compact:
-        return Icons.view_compact;
-      case TimetableSize.medium:
-        return Icons.view_module;
-      case TimetableSize.large:
-        return Icons.view_comfortable;
-      case TimetableSize.extraLarge:
-        return Icons.view_agenda;
-    }
-  }
-
-  // Dynamic text sizing helpers
-  double _getCourseCodeFontSize(TimetableSize size) {
-    final baseSize = switch (size) {
-      TimetableSize.compact => 12.5,    // Balanced course code font
-      TimetableSize.medium => 14.0,     // Slightly reduced
-      TimetableSize.large => 16.0,      // Reduced from 17
-      TimetableSize.extraLarge => 18.0, // Reduced from 20
-    };
-    
-    return _scaleFont(_isMobile ? baseSize * 0.92 : baseSize);
-  }
-
-  double _getCourseTitleFontSize(TimetableSize size) {
-    final baseSize = switch (size) {
-      TimetableSize.compact => 10.0,
-      TimetableSize.medium => 11.5,
-      TimetableSize.large => 13.0,
-      TimetableSize.extraLarge => 14.5,
-    };
-
-    return _scaleFont(_isMobile ? baseSize * 0.92 : baseSize);
-  }
-
-  double _getSectionIdFontSize(TimetableSize size) {
-    final baseSize = switch (size) {
-      TimetableSize.compact => 11.5,
-      TimetableSize.medium => 13.0,
-      TimetableSize.large => 14.5,
-      TimetableSize.extraLarge => 16.5,
-    };
-
-    return _scaleFont(_isMobile ? baseSize * 0.92 : baseSize);
-  }
-
-  double _getRoomFontSize(TimetableSize size) {
-    final baseSize = switch (size) {
-      TimetableSize.compact => 10.5,
-      TimetableSize.medium => 12.0,
-      TimetableSize.large => 13.5,
-      TimetableSize.extraLarge => 15.0,
-    };
-
-    return _scaleFont(_isMobile ? baseSize * 0.92 : baseSize);
-  }
-
-  double _getInstructorFontSize(TimetableSize size) {
-    final baseSize = switch (size) {
-      TimetableSize.compact => 10.0,
-      TimetableSize.medium => 11.0,
-      TimetableSize.large => 12.5,
-      TimetableSize.extraLarge => 14.0,
-    };
-
-    return _scaleFont(_isMobile ? baseSize * 0.92 : baseSize);
-  }
-
-  double _getHourLabelFontSize(TimetableSize size) {
-    final baseSize = switch (size) {
-      TimetableSize.compact => 10.0,
-      TimetableSize.medium => 12.0,
-      TimetableSize.large => 14.0,
-      TimetableSize.extraLarge => 16.0,
-    };
-
-    return _scaleFont(_isMobile ? baseSize * 0.8 : baseSize);
-  }
-
-  double _getHourTimeFontSize(TimetableSize size) {
-    final baseSize = switch (size) {
-      TimetableSize.compact => 9.0,
-      TimetableSize.medium => 10.0,
-      TimetableSize.large => 11.0,
-      TimetableSize.extraLarge => 12.0,
-    };
-
-    return _scaleFont(_isMobile ? baseSize * 0.8 : baseSize);
-  }
-
-  double _getCellPadding(TimetableSize size) {
-    final basePadding = switch (size) {
-      TimetableSize.compact => 7.0,     // Balanced padding
-      TimetableSize.medium => 9.0,      // Reduced from 12
-      TimetableSize.large => 12.0,      // Reduced from 16
-      TimetableSize.extraLarge => 15.0, // Reduced from 20
-    };
-    
-    return _isMobile ? basePadding * 0.8 : basePadding;
-  }
-
-  bool _shouldShowField(String fieldName) {
-    // If no export options are provided (normal view), show everything
-    if (widget.exportOptions == null) return true;
-    
-    // For export, check the specific field options
-    final options = widget.exportOptions!;
-    switch (fieldName) {
-      case 'courseCode':
-        return options.showCourseCode;
-      case 'courseTitle':
-        return options.showCourseTitle;
-      case 'sectionId':
-        return options.showSectionId;
-      case 'instructor':
-        return options.showInstructor;
-      case 'room':
-        return options.showRoom;
-      default:
-        return true;
-    }
-  }
-
-
-  int _getCourseTitleMaxLines(TimetableSize size) {
-    switch (size) {
-      case TimetableSize.compact:
-        return 2; // Increased from 1 for better readability
-      case TimetableSize.medium:
-        return 3; // Increased from 2 
-      case TimetableSize.large:
-        return 4; // Increased from 3 
-      case TimetableSize.extraLarge:
-        return 4; // Increased from 3 with more space for longer titles
-    }
-  }
-
-  // Border radius that scales with cell size for better proportions
-  double _getBorderRadius(TimetableSize size) {
-    switch (size) {
-      case TimetableSize.compact:
-        return 10.0;
-      case TimetableSize.medium:
-        return 12.0;
-      case TimetableSize.large:
-        return 14.0;
-      case TimetableSize.extraLarge:
-        return 16.0;
-    }
-  }
-
-  // Dynamic line height for better text fitting
-  double _getLineHeight(TimetableSize size) {
-    switch (size) {
-      case TimetableSize.compact:
-        return 1.1;  // Tighter line height for compact mode
-      case TimetableSize.medium:
-        return 1.15;
-      case TimetableSize.large:
-        return 1.2;
-      case TimetableSize.extraLarge:
-        return 1.2;
-    }
-  }
-
-  Widget _buildExamDatesForExport(BuildContext context) {
+  Widget _buildExamDatesForExport(BuildContext context, CoursePalette palette) {
     final courses = widget.availableCourses ?? [];
     final sections = widget.selectedSections ?? [];
     if (courses.isEmpty || sections.isEmpty) return const SizedBox.shrink();
 
     final selectedCodes = sections.map((s) => s.courseCode).toSet();
-    final examCourses = courses.where((c) =>
-        selectedCodes.contains(c.courseCode) &&
-        (c.midSemExam != null || c.endSemExam != null)).toList()
+    final examCourses = courses
+        .where((c) =>
+            selectedCodes.contains(c.courseCode) &&
+            (c.midSemExam != null || c.endSemExam != null))
+        .toList()
       ..sort((a, b) => a.courseCode.compareTo(b.courseCode));
 
     if (examCourses.isEmpty) return const SizedBox.shrink();
@@ -1961,7 +1046,9 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       decoration: BoxDecoration(
         color: scheme.surface,
-        border: Border(top: BorderSide(color: scheme.outline.withValues(alpha: 0.3), width: 1.5)),
+        border: Border(
+          top: BorderSide(color: scheme.outline.withValues(alpha: 0.3), width: 1.5),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2014,38 +1101,40 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                     ),
                 ],
               ),
-              ...examCourses.map((c) => TableRow(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          c.courseCode,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: _getCourseColor(c.courseCode),
-                          ),
-                        ),
-                        if (c.courseTitle.isNotEmpty)
+              ...examCourses.map(
+                (c) => TableRow(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            c.courseTitle,
+                            c.courseCode,
                             style: TextStyle(
-                              fontSize: 11,
-                              color: scheme.onSurface.withValues(alpha: 0.6),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: palette.colorFor(c.courseCode),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                      ],
+                          if (c.courseTitle.isNotEmpty)
+                            Text(
+                              c.courseTitle,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: scheme.onSurface.withValues(alpha: 0.6),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                  _buildExamCell(context, c.midSemExam, fmtDate, fmtSlot, scheme.tertiary),
-                  _buildExamCell(context, c.endSemExam, fmtDate, fmtSlot, scheme.error),
-                ],
-              )),
+                    _buildExamCell(context, c.midSemExam, fmtDate, fmtSlot, scheme.tertiary),
+                    _buildExamCell(context, c.endSemExam, fmtDate, fmtSlot, scheme.error),
+                  ],
+                ),
+              ),
             ],
           ),
         ],
@@ -2064,7 +1153,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     if (exam == null) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Text('—', style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.3), fontSize: 14)),
+        child: Text(
+          '—',
+          style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.3), fontSize: 14),
+        ),
       );
     }
     return Padding(
