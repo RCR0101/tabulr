@@ -153,6 +153,33 @@ service cloud.firestore {
         && resource.data.ownerId == userDocId();
     }
 
+    // Bug reports — authors file and read their own; admins read all and can
+    // only advance the status. Nothing is deletable from the client.
+    match /bug_reports/{reportId} {
+      allow read: if appAvailable() && (
+        isAdmin() ||
+        (request.auth != null && resource.data.authorUid == userDocId())
+      );
+      allow create: if isBitsEmail() && appAvailable()
+        && request.resource.data.authorUid == userDocId()
+        && request.resource.data.authorEmail == request.auth.token.email
+        && request.resource.data.status == 'pending'
+        && request.resource.data.category is string
+        && request.resource.data.category.size() > 0
+        && request.resource.data.category.size() < 100
+        && request.resource.data.subCategory is string
+        && request.resource.data.subCategory.size() > 0
+        && request.resource.data.subCategory.size() < 100
+        && request.resource.data.description is string
+        && request.resource.data.description.size() > 0
+        && request.resource.data.description.size() < 5000;
+      allow update: if isAdmin() && appAvailable()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'updatedAt'])
+        && request.resource.data.status in ['pending', 'in_review', 'dev_in_progress', 'fixed'];
+      allow delete: if false;
+    }
+
     // Admin metadata
     match /admin_metadata/{docId} {
       allow read: if appAvailable();

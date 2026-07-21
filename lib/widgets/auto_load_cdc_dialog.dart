@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/ui/responsive_service.dart';
+import '../services/data/profile_service.dart';
 import '../utils/branch_constants.dart' as constants;
 
 class AutoLoadCDCResult {
@@ -23,6 +24,21 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
 
   String? _selectedBranch;
   String? _selectedSemester;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-select the user's saved defaults so CDC loading is one tap.
+    final profile = ProfileService().cached;
+    if (profile.primaryBranch != null &&
+        _branches.contains(profile.primaryBranch)) {
+      _selectedBranch = profile.primaryBranch;
+    }
+    if (profile.currentSemester != null &&
+        _semesters.contains(profile.currentSemester)) {
+      _selectedSemester = profile.currentSemester;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

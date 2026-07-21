@@ -113,7 +113,10 @@ class _HomeScreenState extends State<HomeScreen>
     initializeUserSettings();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(milliseconds: 400), () {
-        if (mounted) TutorialService().showEditorTutorial(context);
+        if (!mounted) return;
+        TutorialService().showEditorTutorial(context);
+        // Recovers the Tools menu for users who skipped the full tour.
+        TutorialService().showToolsSpotlight(context);
       });
     });
   }

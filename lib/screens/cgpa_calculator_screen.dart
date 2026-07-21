@@ -136,7 +136,9 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     if (mounted) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Future.delayed(const Duration(milliseconds: 400), () {
-          if (mounted) TutorialService().showCGPATutorial(context);
+          if (!mounted) return;
+          TutorialService().showCGPATutorial(context);
+          TutorialService().showCgpaToolsSpotlight(context);
         });
       });
     }

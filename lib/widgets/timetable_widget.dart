@@ -907,9 +907,13 @@ class _TimetableWidgetState extends State<TimetableWidget> {
         // Fixed app bar at the top (doesn't scroll)
         _buildAppBar(),
 
-        // Timetable content area with gesture isolation
-        Expanded(
-          child: ConstrainedBox(
+        // Timetable content area with gesture isolation.
+        // For export the content (grid + exam schedule) must size to its own
+        // height — wrapping it in Expanded would pin it to the off-screen
+        // capture box's fixed height and clip overflowing rows (e.g. a long
+        // exam list). See [_exportAwareExpanded].
+        _exportAwareExpanded(
+          ConstrainedBox(
             constraints: BoxConstraints(
               minWidth: isMobile ? 260 : ResponsiveService.getValue(context, mobile: 480, tablet: 768, desktop: 1000),
               maxWidth: isMobile ? MediaQuery.of(context).size.width - 8 : double.infinity,
@@ -1004,6 +1008,11 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       ],
     );
   }
+
+  /// On screen the content fills the available height (Expanded); for export
+  /// it must size to content so nothing is clipped by the fixed capture box.
+  Widget _exportAwareExpanded(Widget child) =>
+      widget.isForExport ? child : Expanded(child: child);
 
   List<DataColumn> _buildColumns(BuildContext context) {
     if (widget.layout == TimetableLayout.horizontal) {

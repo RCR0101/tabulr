@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/data/auth_service.dart';
 import '../services/data/cgpa_service.dart';
+import '../services/data/profile_service.dart';
 import '../services/data/course_announcement_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
+import '../services/ui/tutorial_service.dart';
 import '../screens/timetables_screen.dart';
 import '../screens/calendar_screen.dart';
 import '../screens/cgpa_calculator_screen.dart';
@@ -12,9 +14,11 @@ import '../screens/exam_seating_screen.dart';
 import '../screens/acad_drives_screen.dart';
 import '../screens/professors_screen.dart';
 import '../screens/course_announcements_screen.dart';
+import '../screens/bug_report_screen.dart';
 import '../screens/admin_screen.dart';
 import '../screens/free_slot_finder_screen.dart';
 import '../screens/credits_screen.dart';
+import '../screens/profile_screen.dart';
 import '../services/data/admin_service.dart';
 import 'app_drawer.dart';
 import 'app_sidebar.dart';
@@ -45,11 +49,38 @@ class _AppShellState extends State<AppShell> {
     super.initState();
     _currentScreen = widget.initialScreen;
     _visitedScreens.add(_currentScreen);
+    // Handle Cmd/Ctrl+K at the keyboard level so it works regardless of where
+    // focus currently sits — a focused CallbackShortcuts stops firing once focus
+    // drifts off its subtree (tab switches, closed dialogs).
+    HardwareKeyboard.instance.addHandler(_handleGlobalCommandPaletteKey);
     if (AuthService().isAuthenticated) {
       Future.delayed(const Duration(seconds: 2), () {
         CGPAService().prefetch();
       });
+      // Load saved defaults so consumers (exam seating, CDC loader, …) can
+      // read them synchronously.
+      ProfileService().load();
     }
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleGlobalCommandPaletteKey);
+    super.dispose();
+  }
+
+  bool _handleGlobalCommandPaletteKey(KeyEvent event) {
+    if (!mounted) return false;
+    if (event is! KeyDownEvent) return false;
+    if (event.logicalKey != LogicalKeyboardKey.keyK) return false;
+    final keyboard = HardwareKeyboard.instance;
+    if (!keyboard.isMetaPressed && !keyboard.isControlPressed) return false;
+    // Only act when the shell is the topmost route; a pushed editor/dialog has
+    // its own handler and should win.
+    final route = ModalRoute.of(context);
+    if (route == null || !route.isCurrent) return false;
+    _showCommandPalette();
+    return true;
   }
 
   void _onScreenSelected(DrawerScreen screen) {
@@ -66,6 +97,11 @@ class _AppShellState extends State<AppShell> {
       currentScreen: _currentScreen,
       onNavigate: (screen) => _onScreenSelected(screen),
       onToggleTheme: () => ThemeSelectorDialog.show(context),
+      onReplayTour: () {
+        if (!TutorialService().replayForScreen(context, _currentScreen)) {
+          ToastService.showInfo('No guided tour for this page');
+        }
+      },
       onSignOut: () async {
         await AuthService().signOut();
       },
@@ -90,6 +126,7 @@ class _AppShellState extends State<AppShell> {
       DrawerScreen.acadDrives => const AcadDrivesScreen(),
       DrawerScreen.profChambers => const ProfessorsScreen(),
       DrawerScreen.announcements => const CourseAnnouncementsScreen(),
+      DrawerScreen.bugReport => const BugReportScreen(),
       DrawerScreen.admin => const AdminScreen(),
     };
   }
@@ -135,15 +172,9 @@ class _AppShellState extends State<AppShell> {
       );
     }
 
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.keyK, control: true): _showCommandPalette,
-        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): _showCommandPalette,
-      },
-      child: Focus(
-        autofocus: true,
-        child: body,
-      ),
+    return Focus(
+      autofocus: true,
+      child: body,
     );
   }
 }
@@ -181,6 +212,7 @@ class _MobileShell extends StatelessWidget {
     if (auth.isAuthenticated && CourseAnnouncementService().isHyderabadUser()) {
       items.add(DrawerScreen.announcements);
     }
+    if (auth.isAuthenticated) items.add(DrawerScreen.bugReport);
     if (auth.isAuthenticated && AdminService().isAdmin) {
       items.add(DrawerScreen.admin);
     }
@@ -233,6 +265,18 @@ class _MobileShell extends StatelessWidget {
                   },
                 )),
             const Divider(height: 1),
+            if (AuthService().isAuthenticated)
+              ListTile(
+                leading: const Icon(Icons.badge_outlined),
+                title: const Text('Profile'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                  );
+                },
+              ),
             ListTile(
               leading: const Icon(Icons.info_outline),
               title: const Text('Credits'),
@@ -260,6 +304,7 @@ class _MobileShell extends StatelessWidget {
         DrawerScreen.acadDrives => Icons.folder_shared,
         DrawerScreen.profChambers => Icons.person,
         DrawerScreen.announcements => Icons.campaign,
+        DrawerScreen.bugReport => Icons.bug_report_outlined,
         DrawerScreen.admin => Icons.admin_panel_settings,
       };
 
@@ -272,6 +317,7 @@ class _MobileShell extends StatelessWidget {
         DrawerScreen.acadDrives => 'Acad Drives',
         DrawerScreen.profChambers => 'Prof Chambers',
         DrawerScreen.announcements => 'Announcements',
+        DrawerScreen.bugReport => 'Bug Report',
         DrawerScreen.admin => 'Admin',
       };
 

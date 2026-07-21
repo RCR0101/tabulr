@@ -8,6 +8,7 @@ import '../services/core/timetable_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../services/ui/page_leave_warning_service.dart';
+import '../services/data/profile_service.dart';
 import '../models/timetable.dart';
 import '../utils/design_constants.dart';
 import '../widgets/command_palette.dart';
@@ -79,8 +80,9 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
     setState(() => _isLoading = true);
     final exams = await _examSeatingService.fetchAllExamSeating();
 
-    // Load saved user data
+    // Load saved user data + profile defaults
     final savedData = await _examSeatingService.loadUserData();
+    final profile = await ProfileService().load();
 
     setState(() {
       _allExams = exams;
@@ -107,6 +109,11 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
             _selectedCourses.add(exam);
           }
         }
+      }
+
+      // Fall back to the profile's default ID when nothing was saved.
+      if (_idController.text.trim().isEmpty && profile.studentId.isNotEmpty) {
+        _idController.text = profile.studentId;
       }
     });
 

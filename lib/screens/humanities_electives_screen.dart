@@ -5,6 +5,7 @@ import '../utils/design_constants.dart';
 import '../services/data/humanities_electives_service.dart';
 import '../services/data/course_data_service.dart';
 import '../services/data/campus_service.dart';
+import '../services/data/profile_service.dart';
 import '../models/course.dart';
 import '../widgets/course_list_widget.dart';
 import '../services/ui/responsive_service.dart';
@@ -48,12 +49,34 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
   @override
   void initState() {
     super.initState();
+    _prefillFromProfile();
     _loadInitialData();
 
     // Listen for campus changes
     _campusSubscription = CampusService.campusChangeStream.listen((_) {
       _loadInitialData();
     });
+  }
+
+  /// Pre-selects the user's saved defaults where they're valid options, so the
+  /// form opens ready to search. Values stay fully editable.
+  void _prefillFromProfile() {
+    final profile = ProfileService().cached;
+    if (profile.primaryBranch != null &&
+        _branchOptions.contains(profile.primaryBranch)) {
+      _selectedPrimaryBranch = profile.primaryBranch;
+    }
+    // The secondary dropdown excludes the primary, so never pre-fill it to the
+    // same branch.
+    if (profile.secondaryBranch != null &&
+        profile.secondaryBranch != _selectedPrimaryBranch &&
+        _branchOptions.contains(profile.secondaryBranch)) {
+      _selectedSecondaryBranch = profile.secondaryBranch;
+    }
+    if (profile.currentSemester != null &&
+        _semesterOptions.contains(profile.currentSemester)) {
+      _selectedSemester = profile.currentSemester;
+    }
   }
 
   @override

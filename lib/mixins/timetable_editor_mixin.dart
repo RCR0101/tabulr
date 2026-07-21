@@ -105,6 +105,34 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     if (snapshot != null) _applySnapshot(snapshot);
   }
 
+  // Cmd/Ctrl+K is handled at the keyboard level rather than via a focused
+  // CallbackShortcuts, so it keeps working even after focus has drifted off the
+  // editor subtree (dialogs, tab switches). The route-is-current guard means
+  // only the topmost editor handles it — a pushed dialog or another route wins.
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_handleGlobalCommandPaletteKey);
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_handleGlobalCommandPaletteKey);
+    super.dispose();
+  }
+
+  bool _handleGlobalCommandPaletteKey(KeyEvent event) {
+    if (!mounted) return false;
+    if (event is! KeyDownEvent) return false;
+    if (event.logicalKey != LogicalKeyboardKey.keyK) return false;
+    final keyboard = HardwareKeyboard.instance;
+    if (!keyboard.isMetaPressed && !keyboard.isControlPressed) return false;
+    final route = ModalRoute.of(context);
+    if (route == null || !route.isCurrent) return false;
+    _showCommandPalette();
+    return true;
+  }
+
   void _showCommandPalette() {
     CommandPalette.show(
       context,
@@ -212,6 +240,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       ],
       onNavigate: (_) {},
       onToggleTheme: () => ThemeSelectorDialog.show(context),
+      onReplayTour: () => TutorialService().showEditorTutorial(context, force: true),
       onSignOut: () => authService.signOut(),
     );
   }
@@ -229,8 +258,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         const SingleActivator(LogicalKeyboardKey.keyS, meta: true): () {
           if (hasUnsavedChanges && !isSaving) saveTimetable();
         },
-        const SingleActivator(LogicalKeyboardKey.keyK, control: true): _showCommandPalette,
-        const SingleActivator(LogicalKeyboardKey.keyK, meta: true): _showCommandPalette,
+        // Cmd/Ctrl+K is handled globally in _handleGlobalCommandPaletteKey so it
+        // survives focus drifting off this subtree.
       },
       child: Focus(
         autofocus: true,
@@ -724,9 +753,11 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
           left: -10000,
           top: -10000,
           child: Material(
+            // Width is fixed for a consistent export size; height is left
+            // unbounded so the grid + full exam schedule size to content and
+            // nothing is clipped (e.g. timetables with many exams).
             child: SizedBox(
               width: 2000,
-              height: 2200,
               child: TimetableWidget(
                 timetableSlots: timetableService.generateTimetableSlots(
                   tt.selectedSections,
@@ -1119,6 +1150,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     final isMobileLayout = ResponsiveService.isMobile(context);
     return [
       IconButton(
+        key: TutorialKeys.commandPalette,
         icon: const Icon(Icons.search),
         onPressed: _showCommandPalette,
         tooltip: isMobileLayout ? 'Search actions' : 'Search actions  ·  ⌘K',

@@ -5,6 +5,7 @@ import '../utils/design_constants.dart';
 import '../services/data/discipline_electives_service.dart';
 import '../services/data/course_data_service.dart';
 import '../services/data/campus_service.dart';
+import '../services/data/profile_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../models/course.dart';
 import '../widgets/course_list_widget.dart';
@@ -83,12 +84,40 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
         _availableBranches = branches;
         _availableCourses = courses;
         _isLoading = false;
+        _prefillFromProfile(branches);
       });
     } catch (e) {
       setState(() {
         _errorMessage = 'Failed to load data: $e';
         _isLoading = false;
       });
+    }
+  }
+
+  /// Pre-selects the user's saved defaults once the branch list is available,
+  /// without overwriting a selection the user has already made (so a campus
+  /// change that re-loads branches won't stomp their choices).
+  void _prefillFromProfile(List<BranchInfo> branches) {
+    final profile = ProfileService().cached;
+    BranchInfo? byCode(String? code) {
+      if (code == null) return null;
+      for (final b in branches) {
+        if (b.code == code) return b;
+      }
+      return null;
+    }
+
+    _selectedPrimaryBranch ??= byCode(profile.primaryBranch);
+    final secondary = byCode(profile.secondaryBranch);
+    // The secondary dropdown excludes the primary, so never pre-fill it to the
+    // same branch.
+    if (_selectedSecondaryBranch == null && secondary != _selectedPrimaryBranch) {
+      _selectedSecondaryBranch = secondary;
+    }
+    if (_selectedSemester == null &&
+        profile.currentSemester != null &&
+        _semesterOptions.contains(profile.currentSemester)) {
+      _selectedSemester = profile.currentSemester;
     }
   }
 

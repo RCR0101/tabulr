@@ -5,6 +5,7 @@ import '../services/data/course_announcement_service.dart';
 import '../services/ui/tutorial_service.dart';
 import '../utils/design_constants.dart';
 import '../screens/credits_screen.dart';
+import '../screens/profile_screen.dart';
 import 'app_drawer.dart';
 
 class AppSidebar extends StatefulWidget {
@@ -103,6 +104,14 @@ class _AppSidebarState extends State<AppSidebar> {
         screen: DrawerScreen.announcements,
         icon: Icons.campaign,
         label: 'Announcements',
+      ));
+    }
+
+    if (_auth.isAuthenticated) {
+      items.add(_SidebarItem(
+        screen: DrawerScreen.bugReport,
+        icon: Icons.bug_report_outlined,
+        label: 'Bug Report',
       ));
     }
 
@@ -372,7 +381,12 @@ class _AppSidebarState extends State<AppSidebar> {
           ),
         ),
       ),
-      child: collapsed
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_auth.isAuthenticated)
+            _profileFooterButton(context, scheme, collapsed),
+          collapsed
           ? (widget.onToggleCollapse != null
               ? Center(
                   child: IconButton(
@@ -434,6 +448,51 @@ class _AppSidebarState extends State<AppSidebar> {
                 ),
               ],
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _profileFooterButton(
+      BuildContext context, ColorScheme scheme, bool collapsed) {
+    void open() => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ProfileScreen()),
+        );
+
+    if (collapsed) {
+      return Center(
+        child: IconButton(
+          onPressed: open,
+          icon: const Icon(Icons.badge_outlined, size: 20),
+          tooltip: 'Profile',
+          visualDensity: VisualDensity.compact,
+        ),
+      );
+    }
+
+    return InkWell(
+      borderRadius: AppDesign.borderRadiusSm,
+      onTap: open,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppDesign.spacingSm, vertical: AppDesign.spacingSm),
+        child: Row(
+          children: [
+            Icon(Icons.badge_outlined,
+                size: 18, color: scheme.onSurface.withValues(alpha: 0.7)),
+            const SizedBox(width: AppDesign.spacingSm + 4),
+            Text(
+              'Profile',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: scheme.onSurface.withValues(alpha: 0.8),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

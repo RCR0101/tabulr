@@ -7,5 +7,6 @@ enum DrawerScreen {
   acadDrives,
   profChambers,
   announcements,
+  bugReport,
   admin,
 }

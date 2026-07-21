@@ -19,6 +19,7 @@ import 'admin/duplicate_courses_management_screen.dart';
 import 'admin/course_management_screen.dart';
 import 'admin/exam_seating_management_screen.dart';
 import 'admin/professor_management_screen.dart';
+import 'admin/bug_tracker_screen.dart';
 import '../services/ui/tutorial_service.dart';
 
 class AdminScreen extends StatefulWidget {
@@ -948,6 +949,14 @@ class _AdminScreenState extends State<AdminScreen> {
             context,
             MaterialPageRoute(
                 builder: (_) => const DuplicateCoursesManagementScreen())),
+      ),
+      _managementCard(
+        icon: Icons.bug_report_rounded,
+        title: 'Bug Tracker',
+        subtitle: 'User reports & status',
+        color: accent,
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const BugTrackerScreen())),
       ),
     ];
   }

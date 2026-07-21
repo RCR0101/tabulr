@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import '../../constants/app_constants.dart';
+import '../../widgets/app_drawer.dart';
 import '../data/user_settings_service.dart';
 import '../data/auth_service.dart';
 
@@ -15,6 +16,7 @@ class TutorialKeys {
   static final timetableCard = GlobalKey(debugLabel: 'tutorial_tt_card');
 
   // Timetable Editor (HomeScreen)
+  static final commandPalette = GlobalKey(debugLabel: 'tutorial_command_palette');
   static final courseSearch = GlobalKey(debugLabel: 'tutorial_search');
   static final timetableGrid = GlobalKey(debugLabel: 'tutorial_grid');
   static final generatorFab = GlobalKey(debugLabel: 'tutorial_generator');
@@ -66,10 +68,24 @@ class TutorialService {
   TutorialCoachMark? _currentTutorial;
   String? _currentSection;
 
+  /// Spotlights are one-shot: dismissing (skip) marks them seen just like
+  /// finishing, whereas skipping a full tour only defers it (see [_skipTutorial]).
+  bool _currentIsSpotlight = false;
+
+  /// Sections dismissed via Skip in this app session. Combined with the
+  /// persisted `{section}_skipped` marker, this stops a skipped tour from
+  /// re-popping immediately while still allowing an explicit replay.
+  final Set<String> _dismissedThisSession = {};
+
+  static String _skippedFlag(String section) => '${section}_skipped';
+
   bool _shouldShow(String section) {
     final auth = AuthService();
     if (!auth.isAuthenticated) return false;
-    return !UserSettingsService().isTutorialCompleted(section);
+    if (_dismissedThisSession.contains(section)) return false;
+    final settings = UserSettingsService();
+    return !settings.isTutorialCompleted(section) &&
+        !settings.isTutorialCompleted(_skippedFlag(section));
   }
 
   static const _sectionTimetableList = TutorialSections.timetableList;
@@ -78,12 +94,23 @@ class TutorialService {
   static const _sectionAcadDrives = TutorialSections.acadDrives;
   static const _sectionAdmin = TutorialSections.admin;
 
-  void showTimetableListTutorial(BuildContext context) {
-    if (_isShowing || !_shouldShow(_sectionTimetableList)) return;
+  void showTimetableListTutorial(BuildContext context, {bool force = false}) {
+    if (_isShowing) return;
+    if (!force && !_shouldShow(_sectionTimetableList)) return;
     _isShowing = true;
     _currentSection = _sectionTimetableList;
+    _currentIsSpotlight = false;
 
     final targets = <TargetFocus>[];
+
+    _addTarget(
+      targets,
+      key: TutorialKeys.sidebarNav,
+      title: 'Everything lives here',
+      description: 'Your other tools — Free Slot Finder, CGPA, Acad Drives, Prof Chambers, Bug Report and more — are one tap away in this menu.',
+      shape: ShapeLightFocus.RRect,
+      align: ContentAlign.right,
+    );
 
     _addTarget(
       targets,
@@ -122,12 +149,23 @@ class TutorialService {
     _showTutorial(context, targets);
   }
 
-  void showEditorTutorial(BuildContext context) {
-    if (_isShowing || !_shouldShow(_sectionEditor)) return;
+  void showEditorTutorial(BuildContext context, {bool force = false}) {
+    if (_isShowing) return;
+    if (!force && !_shouldShow(_sectionEditor)) return;
     _isShowing = true;
     _currentSection = _sectionEditor;
+    _currentIsSpotlight = false;
 
     final targets = <TargetFocus>[];
+
+    _addTarget(
+      targets,
+      key: TutorialKeys.commandPalette,
+      title: 'Search anything (⌘K)',
+      description: 'Press this — or ⌘K / Ctrl+K — to jump to any feature, action, theme or saved timetable from one search box. The fastest way around Tabulr.',
+      shape: ShapeLightFocus.Circle,
+      align: ContentAlign.bottom,
+    );
 
     _addTarget(
       targets,
@@ -218,10 +256,12 @@ class TutorialService {
     );
   }
 
-  void showCGPATutorial(BuildContext context) {
-    if (_isShowing || !_shouldShow(_sectionCGPA)) return;
+  void showCGPATutorial(BuildContext context, {bool force = false}) {
+    if (_isShowing) return;
+    if (!force && !_shouldShow(_sectionCGPA)) return;
     _isShowing = true;
     _currentSection = _sectionCGPA;
+    _currentIsSpotlight = false;
 
     final targets = <TargetFocus>[];
 
@@ -262,10 +302,12 @@ class TutorialService {
     _showTutorial(context, targets);
   }
 
-  void showAcadDrivesTutorial(BuildContext context) {
-    if (_isShowing || !_shouldShow(_sectionAcadDrives)) return;
+  void showAcadDrivesTutorial(BuildContext context, {bool force = false}) {
+    if (_isShowing) return;
+    if (!force && !_shouldShow(_sectionAcadDrives)) return;
     _isShowing = true;
     _currentSection = _sectionAcadDrives;
+    _currentIsSpotlight = false;
 
     final targets = <TargetFocus>[];
 
@@ -306,10 +348,12 @@ class TutorialService {
     _showTutorial(context, targets);
   }
 
-  void showAdminTutorial(BuildContext context) {
-    if (_isShowing || !_shouldShow(_sectionAdmin)) return;
+  void showAdminTutorial(BuildContext context, {bool force = false}) {
+    if (_isShowing) return;
+    if (!force && !_shouldShow(_sectionAdmin)) return;
     _isShowing = true;
     _currentSection = _sectionAdmin;
+    _currentIsSpotlight = false;
 
     final targets = <TargetFocus>[];
 
@@ -350,6 +394,92 @@ class TutorialService {
     _showTutorial(context, targets);
   }
 
+  /// Replays the tour for the given [screen] regardless of prior state.
+  /// Returns false if the screen has no guided tour.
+  bool replayForScreen(BuildContext context, DrawerScreen screen) {
+    switch (screen) {
+      case DrawerScreen.timetables:
+        showTimetableListTutorial(context, force: true);
+        return true;
+      case DrawerScreen.cgpaCalculator:
+        showCGPATutorial(context, force: true);
+        return true;
+      case DrawerScreen.acadDrives:
+        showAcadDrivesTutorial(context, force: true);
+        return true;
+      case DrawerScreen.admin:
+        showAdminTutorial(context, force: true);
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  /// One-time spotlight on the editor Tools menu, shown to users who skipped
+  /// the full editor tour so its nested tools (Course Guide, Prerequisites,
+  /// electives, import/export) aren't lost.
+  void showToolsSpotlight(BuildContext context) {
+    _maybeShowSpotlight(
+      context,
+      flag: 'spotlight_tools',
+      afterSection: _sectionEditor,
+      key: TutorialKeys.toolsMenu,
+      title: 'More tools in here',
+      description:
+          'Course Guide, Prerequisites, Discipline & Humanities electives, and import/export all live in this menu.',
+      shape: ShapeLightFocus.Circle,
+    );
+  }
+
+  /// One-time spotlight on the CGPA quick actions (Grade Planner, CG Booster,
+  /// imports) for users who skipped the CGPA tour.
+  void showCgpaToolsSpotlight(BuildContext context) {
+    _maybeShowSpotlight(
+      context,
+      flag: 'spotlight_cgpa_tools',
+      afterSection: _sectionCGPA,
+      key: TutorialKeys.cgpaActions,
+      title: 'Plan ahead from here',
+      description:
+          'Grade Planner, CG Booster, performance-sheet import and auto-load CDCs are all tucked into these quick actions.',
+      shape: ShapeLightFocus.RRect,
+    );
+  }
+
+  void _maybeShowSpotlight(
+    BuildContext context, {
+    required String flag,
+    required String afterSection,
+    required GlobalKey key,
+    required String title,
+    required String description,
+    required ShapeLightFocus shape,
+  }) {
+    if (_isShowing) return;
+    if (!AuthService().isAuthenticated) return;
+    final settings = UserSettingsService();
+    if (settings.isTutorialCompleted(flag)) return; // already seen
+    // Only surface to users who skipped the full tour (finishers already saw
+    // it); and never in the same session as the skip.
+    if (settings.isTutorialCompleted(afterSection)) return;
+    if (!settings.isTutorialCompleted(_skippedFlag(afterSection))) return;
+    if (_dismissedThisSession.contains(afterSection)) return;
+
+    final targets = <TargetFocus>[];
+    _addTarget(targets,
+        key: key,
+        title: title,
+        description: description,
+        shape: shape,
+        align: ContentAlign.bottom);
+    if (targets.isEmpty) return;
+
+    _isShowing = true;
+    _currentSection = flag;
+    _currentIsSpotlight = true;
+    _showTutorial(context, targets);
+  }
+
   void _showTutorial(BuildContext context, List<TargetFocus> targets) {
     _currentTutorial = TutorialCoachMark(
       targets: targets,
@@ -361,7 +491,7 @@ class TutorialService {
       unFocusAnimationDuration: const Duration(milliseconds: 200),
       pulseEnable: false,
       onSkip: () {
-        _completeTutorial();
+        _skipTutorial();
         return true;
       },
       onFinish: _completeTutorial,
@@ -371,9 +501,29 @@ class TutorialService {
   void _completeTutorial() {
     _isShowing = false;
     _currentTutorial = null;
+    _currentIsSpotlight = false;
     if (_currentSection != null) {
       UserSettingsService().markTutorialCompleted(_currentSection!);
       _currentSection = null;
+    }
+  }
+
+  /// Skipping a full tour just defers it (session dismissal + a persisted
+  /// `_skipped` marker that stops auto-nagging but leaves it replayable and
+  /// keeps spotlights eligible). Skipping a spotlight marks it seen for good.
+  void _skipTutorial() {
+    _isShowing = false;
+    _currentTutorial = null;
+    final section = _currentSection;
+    final wasSpotlight = _currentIsSpotlight;
+    _currentSection = null;
+    _currentIsSpotlight = false;
+    if (section == null) return;
+    if (wasSpotlight) {
+      UserSettingsService().markTutorialCompleted(section);
+    } else {
+      _dismissedThisSession.add(section);
+      UserSettingsService().markTutorialCompleted(_skippedFlag(section));
     }
   }
 

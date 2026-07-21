@@ -31,6 +31,14 @@
         { "fieldPath": "fileCount", "order": "DESCENDING" },
         { "fieldPath": "code", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "bug_reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "authorUid", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

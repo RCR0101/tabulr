@@ -10,6 +10,7 @@ import '../screens/discipline_electives_screen.dart';
 import '../screens/humanities_electives_screen.dart';
 import '../screens/timetable_comparison_screen.dart';
 import '../screens/credits_screen.dart';
+import '../screens/profile_screen.dart';
 import '../services/ui/theme_service.dart';
 import '../utils/design_constants.dart';
 import '../utils/page_transitions.dart';
@@ -82,6 +83,7 @@ class CommandPalette extends StatefulWidget {
   final List<CommandPaletteEntry> contextEntries;
   final VoidCallback? onToggleTheme;
   final VoidCallback? onSignOut;
+  final VoidCallback? onReplayTour;
 
   const CommandPalette({
     super.key,
@@ -90,6 +92,7 @@ class CommandPalette extends StatefulWidget {
     this.contextEntries = const [],
     this.onToggleTheme,
     this.onSignOut,
+    this.onReplayTour,
   });
 
   static Future<void> show(
@@ -99,6 +102,7 @@ class CommandPalette extends StatefulWidget {
     List<CommandPaletteEntry> contextEntries = const [],
     VoidCallback? onToggleTheme,
     VoidCallback? onSignOut,
+    VoidCallback? onReplayTour,
   }) {
     return showDialog(
       context: context,
@@ -109,6 +113,7 @@ class CommandPalette extends StatefulWidget {
         contextEntries: contextEntries,
         onToggleTheme: onToggleTheme,
         onSignOut: onSignOut,
+        onReplayTour: onReplayTour,
       ),
     );
   }
@@ -211,6 +216,20 @@ class _CommandPaletteState extends State<CommandPalette> {
           category: CommandCategory.navigation,
           onSelect: () => widget.onNavigate(DrawerScreen.profChambers),
         ),
+        CommandPaletteEntry(
+          label: 'Report a Bug',
+          subtitle: 'File and track bug reports',
+          icon: Icons.bug_report_outlined,
+          category: CommandCategory.navigation,
+          onSelect: () => widget.onNavigate(DrawerScreen.bugReport),
+        ),
+        CommandPaletteEntry(
+          label: 'Profile',
+          subtitle: 'Your ID, branch & semester defaults',
+          icon: Icons.badge_outlined,
+          category: CommandCategory.navigation,
+          onSelect: () => nav.push(FadeSlidePageRoute(page: const ProfileScreen())),
+        ),
       ]);
 
       if (CourseAnnouncementService().isHyderabadUser()) {
@@ -281,6 +300,16 @@ class _CommandPaletteState extends State<CommandPalette> {
     ]);
 
     // Global actions
+    if (widget.onReplayTour != null) {
+      nonRecentEntries.add(CommandPaletteEntry(
+        label: 'Show me around',
+        subtitle: 'Replay the guided tour for this page',
+        icon: Icons.explore_outlined,
+        category: CommandCategory.action,
+        onSelect: widget.onReplayTour!,
+      ));
+    }
+
     if (widget.onToggleTheme != null) {
       nonRecentEntries.add(CommandPaletteEntry(
         label: 'Change Theme',
