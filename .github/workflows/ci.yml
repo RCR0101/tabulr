@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: .fvmrc
+          cache: true
+
+      - run: flutter pub get
+
+      # analyze/test only need the file to compile — the sample has the right
+      # shape and no real credentials, so forked PRs (which can't read secrets)
+      # still get full validation.
+      - run: cp lib/firebase_options.dart.sample lib/firebase_options.dart
+
+      - run: flutter analyze
+      - run: flutter test

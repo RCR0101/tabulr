@@ -56,6 +56,16 @@ lib/
 - **Firebase** — Auth, Firestore (timetables, settings, shared data), Hosting (PWA)
 - **Cloudflare R2** — academic drive file storage
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, conventions, and the PR
+process, and [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md) for Firebase config.
+Pull requests run `flutter analyze` and `flutter test` automatically via CI.
+
+## License
+
+Released under the [MIT License](LICENSE).
+
 ## Created by
 
 Aryan Dalmia

@@ -71,7 +71,7 @@ Screens may import services, models, widgets, and utils. Services may import mod
 
 **Themes**: Material 3 color roles, manual `ThemeData` construction (not `useMaterial3: true`). 9 named themes (GitHub Dark, Dracula, Nord, Tokyo Night, Gruvbox, Catppuccin, Solarized Dark, Arctic Frost, AMOLED Dark) with dark + light variants. Each theme carries a `ThemeGeometry` extension for per-theme shape radii (`cardRadius`, `buttonRadius`, `dialogRadius`, `inputRadius`, `chipRadius`).
 
-**Typography**: Inter via `google_fonts`. Always derive from `Theme.of(context).textTheme.*` — never use raw `TextStyle(fontSize: ...)`.
+**Typography**: Inter, bundled as `assets/fonts/Inter.ttf` and declared in `pubspec.yaml` (no `google_fonts` — the font ships with the app to avoid FOUT). Always derive from `Theme.of(context).textTheme.*` — never use raw `TextStyle(fontSize: ...)`.
 
 **Spacing**: Use tokens from `AppDesign` in `utils/design_constants.dart`: `spacingXxs=2`, `spacingXs=4`, `spacingSm=8`, `spacingMd=16`, `spacingLg=24`, `spacingXl=32`, `spacingXxl=48`.
 
@@ -81,9 +81,9 @@ Screens may import services, models, widgets, and utils. Services may import mod
 
 **Responsive**: Three breakpoints via `ResponsiveService` — use `context.isMobile` / `context.isDesktop` or `ResponsiveService.getValue(context, mobile: ..., tablet: ..., desktop: ...)`. Dialogs must use `AppDialog.adaptive()` — modal bottom sheet on mobile, standard dialog on desktop.
 
-**Components**: `AppButton` (variant enum: primary/secondary/ghost/danger), `AppDialog.adaptive` (static factory), `FrostedContainer` (blur overlay for sheets), `EmptyStateWidget` (Lottie + fallback icon). See `lib/widgets/common/` for the full set.
+**Components**: `AppButton` (variant enum: primary/secondary/ghost/danger), `AppDialog.adaptive` (static factory), `FrostedContainer` (blur overlay for sheets), `EmptyStateWidget` (icon + message). See `lib/widgets/common/` for the full set.
 
-**Icons**: Material Icons (`Icons.*`) throughout — no third-party icon package. Lottie JSON animations under `assets/` for empty states.
+**Icons**: Material Icons (`Icons.*`) throughout — no third-party icon package.
 
 ### Style
 
