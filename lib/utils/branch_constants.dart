@@ -24,3 +24,23 @@ bool isMscBranch(String branchCode) =>
 
 bool isBeBranch(String branchCode) =>
     branchCode.startsWith('A');
+
+/// The MSc and BE halves of a dual degree, or null when the pair is not one.
+///
+/// Order-independent: a student may nominate either half as their primary
+/// branch, and both orderings describe the same degree. Callers need the roles
+/// resolved because the CDC merge is asymmetric — BE courses shift two years
+/// later, so swapping the arguments would produce a different, wrong list.
+({String msc, String be})? dualDegreePair(
+  String primaryBranch,
+  String? secondaryBranch,
+) {
+  if (secondaryBranch == null || secondaryBranch == primaryBranch) return null;
+  if (isMscBranch(primaryBranch) && isBeBranch(secondaryBranch)) {
+    return (msc: primaryBranch, be: secondaryBranch);
+  }
+  if (isMscBranch(secondaryBranch) && isBeBranch(primaryBranch)) {
+    return (msc: secondaryBranch, be: primaryBranch);
+  }
+  return null;
+}

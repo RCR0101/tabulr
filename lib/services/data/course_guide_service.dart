@@ -1,3 +1,4 @@
+import '../../utils/branch_constants.dart' as constants;
 import 'branch_structure_service.dart';
 import 'courses_master_service.dart';
 
@@ -47,6 +48,24 @@ class CourseGuideService {
         : data.cdcs;
 
     return _buildEntries(semesters);
+  }
+
+  /// CDCs for a student's degree, dual or single.
+  ///
+  /// A dual degree is not the union of its two branches — the combination has
+  /// its own CDC list (an override doc keyed `{msc}_{be}`), falling back to a
+  /// year-shifted merge. Routing both cases through here keeps that rule in one
+  /// place. Anything that is not an MSc + BE pair is treated as a single degree.
+  Future<Map<String, List<CourseGuideEntry>>> getCDCsForDegree(
+    String primaryBranch,
+    String? secondaryBranch, {
+    String? semester,
+  }) async {
+    final pair = constants.dualDegreePair(primaryBranch, secondaryBranch);
+    if (pair != null) {
+      return getMergedCDCs(pair.msc, pair.be, semester: semester);
+    }
+    return getCDCsForBranch(primaryBranch, semester: semester);
   }
 
   Future<Map<String, List<CourseGuideEntry>>> getMergedCDCs(

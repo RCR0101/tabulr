@@ -561,10 +561,10 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       if (!mounted) return;
 
       if (result != null) {
-        final selectedSections =
-            await autoLoadService.loadCDCsForBranchAndSemester(
-          branch: result.branch,
-          semester: result.year,
+        final selectedSections = await autoLoadService.loadCDCsForDegree(
+          primaryBranch: result.primaryBranch,
+          secondaryBranch: result.secondaryBranch,
+          semester: result.semester,
           availableCourses: tt.availableCourses,
         );
 

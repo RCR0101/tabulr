@@ -145,13 +145,6 @@ class ClashWarningsWidget extends StatelessWidget {
                   subtitle: Text(
                     'Courses: ${warning.conflictingCourses.join(', ')}',
                   ),
-                  trailing: Chip(
-                    label: Text(
-                      warning.type.toString().split('.').last,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    backgroundColor: statusColor.withValues(alpha: 0.2),
-                  ),
                 ),
               );
             },

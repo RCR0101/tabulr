@@ -268,18 +268,22 @@ class CGPACalculatorController extends ChangeNotifier {
     return (importedCount: parsed.totalCourses, saveSuccess: success);
   }
 
+  /// Imports the CDCs of [primaryBranch] (plus [secondaryBranch] for a dual
+  /// degree) at [semester] into [targetSemester]. Returns how many were added.
   Future<int> loadCDCs({
-    required String branch,
-    required String year,
+    required String primaryBranch,
+    String? secondaryBranch,
+    required String semester,
     required String targetSemester,
   }) async {
     final courseGuideService = CourseGuideService();
-    final cdcData = await courseGuideService.getCDCsForBranch(
-      branch,
-      semester: year,
+    final cdcData = await courseGuideService.getCDCsForDegree(
+      primaryBranch,
+      secondaryBranch,
+      semester: semester,
     );
 
-    final cdcCourses = cdcData[year] ?? <CourseGuideEntry>[];
+    final cdcCourses = cdcData[semester] ?? <CourseGuideEntry>[];
     if (cdcCourses.isEmpty) return 0;
 
     int importedCount = 0;

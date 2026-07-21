@@ -169,10 +169,9 @@ class BranchStructureService {
     String? secondarySemester,
     String? secondaryBranch,
   ) async {
-    if (secondaryBranch != null &&
-        constants.isMscBranch(primaryBranch) &&
-        constants.isBeBranch(secondaryBranch)) {
-      final merged = await getMergedCDCs(primaryBranch, secondaryBranch);
+    final pair = constants.dualDegreePair(primaryBranch, secondaryBranch);
+    if (pair != null) {
+      final merged = await getMergedCDCs(pair.msc, pair.be);
       final codes = <String>{};
       codes.addAll(merged[primarySemester] ?? []);
       if (secondarySemester != null) {

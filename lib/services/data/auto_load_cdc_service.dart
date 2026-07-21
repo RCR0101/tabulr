@@ -9,13 +9,25 @@ class AutoLoadCDCService {
 
   final BranchStructureService _branchService = BranchStructureService();
 
-  Future<List<SelectedSection>> loadCDCsForBranchAndSemester({
-    required String branch,
+  /// Picks a non-conflicting lecture section for each CDC of the student's
+  /// degree at [semester].
+  ///
+  /// [secondaryBranch] makes this dual-degree aware: the combination's own CDC
+  /// list is used rather than the union of the two branches, which would be
+  /// wrong for both content and year (BE courses shift two years later).
+  Future<List<SelectedSection>> loadCDCsForDegree({
+    required String primaryBranch,
+    String? secondaryBranch,
     required String semester,
     required List<Course> availableCourses,
   }) async {
     try {
-      final cdcCodes = await _branchService.getCDCs(branch, semester);
+      final cdcCodes = await _branchService.getCoreCourseCodes(
+        semester,
+        primaryBranch,
+        null,
+        secondaryBranch,
+      );
 
       final selectedSections = <SelectedSection>[];
 

@@ -266,19 +266,20 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
 
       final semesterName = _controller.semesters[_tabController.index];
       final importedCount = await _controller.loadCDCs(
-        branch: result.branch,
-        year: result.year,
+        primaryBranch: result.primaryBranch,
+        secondaryBranch: result.secondaryBranch,
+        semester: result.semester,
         targetSemester: semesterName,
       );
 
       if (mounted) {
         if (importedCount > 0) {
           ToastService.showSuccess(
-            'Added $importedCount CDC course${importedCount != 1 ? 's' : ''} from ${result.year} to $semesterName!',
+            'Added $importedCount CDC course${importedCount != 1 ? 's' : ''} from ${result.semester} to $semesterName!',
           );
         } else {
           ToastService.showInfo(
-            'All CDC courses from ${result.year} already exist in $semesterName',
+            'All CDC courses from ${result.semester} already exist in $semesterName',
           );
         }
       }
