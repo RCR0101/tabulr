@@ -16,7 +16,7 @@ class ConfigService {
   // App Configuration
   String get appName => 'Tabulr';
   // Keep in sync with pubspec.yaml `version:` field.
-  String get appVersion => '2.5.6';
+  String get appVersion => '2.5.7';
 
   // Debug Settings
   bool get debugMode => false;
@@ -68,6 +68,32 @@ class ConfigService {
   bool _maintenance = false;
   String _maintenanceMessage = '';
 
+  // ── Current term ────────────────────────────────────────────────────────
+  // Set by the admin at semester rollover (see archiveTimetables), which writes
+  // `current_term` onto the same `reference/app_config` doc. Timetables are
+  // stamped with the term they were built in, so a stale one can be recognised
+  // rather than silently re-hydrated against next semester's catalog.
+  //
+  // Empty means term tracking has never been configured — in that state
+  // [isPastTerm] is always false and nothing changes behaviour.
+  String _currentTerm = '';
+
+  /// e.g. "2026-2027_sem1". Empty when never configured.
+  String get currentTerm => _currentTerm;
+
+  /// Whether [term] belongs to a term other than the current one. False for
+  /// unstamped timetables and whenever term tracking is unconfigured, so this
+  /// can never retroactively archive timetables that predate the feature.
+  bool isPastTerm(String? term) =>
+      isTermPast(currentTerm: _currentTerm, term: term);
+
+  /// Pure form of [isPastTerm], for callers that already hold both values.
+  static bool isTermPast({required String currentTerm, required String? term}) =>
+      currentTerm.isNotEmpty &&
+      term != null &&
+      term.isNotEmpty &&
+      term != currentTerm;
+
   bool get isMaintenance => _maintenance;
   String get maintenanceMessage => _maintenanceMessage.isNotEmpty
       ? _maintenanceMessage
@@ -109,6 +135,8 @@ class ConfigService {
         _maintenance = doc['maintenance'] == true;
         final msg = doc['maintenance_message'];
         _maintenanceMessage = msg is String ? msg : '';
+        final term = doc['current_term'];
+        _currentTerm = term is String ? term : '';
         final dates = doc['semester_dates'] as Map<String, dynamic>?;
         if (dates != null) _applyMap(dates);
         await _localCache.write(_cacheKey, [_serialize()]);
@@ -126,6 +154,8 @@ class ConfigService {
       _maintenance = c['_maintenance'] == true;
       final msg = c['_maintenance_message'];
       if (msg is String) _maintenanceMessage = msg;
+      final term = c['_current_term'];
+      if (term is String) _currentTerm = term;
     }
     _loaded = true;
   }
@@ -160,6 +190,7 @@ class ConfigService {
         for (final k in dateKeys) k: _date(k).toIso8601String(),
         '_maintenance': _maintenance,
         '_maintenance_message': _maintenanceMessage,
+        '_current_term': _currentTerm,
       };
 
   void printConfiguration() {

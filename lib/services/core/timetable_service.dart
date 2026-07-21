@@ -8,6 +8,7 @@ import '../data/auth_service.dart';
 import '../data/firestore_service.dart';
 import '../data/course_data_service.dart';
 import '../data/campus_service.dart';
+import '../data/config_service.dart';
 import 'course_catalog_service.dart';
 import '../ui/secure_logger.dart';
 
@@ -148,6 +149,44 @@ class TimetableService {
     }
   }
 
+  /// Reconciles [timetable] with the current academic term, and refreshes its
+  /// clash warnings when it still belongs to that term.
+  ///
+  /// A timetable from a past term is left exactly as saved. Its sections were
+  /// chosen from a catalog that no longer applies — the student is taking
+  /// different courses now — so recomputing clashes would mix this semester's
+  /// exam dates into last semester's grid and report conflicts that do not
+  /// exist. Such timetables are historical records; [ConfigService.isPastTerm]
+  /// keeps them out of the live list.
+  ///
+  /// Unstamped timetables adopt the current term, so introducing term tracking
+  /// never retroactively archives anything.
+  void applyCurrentTerm(Timetable timetable) {
+    final config = ConfigService();
+
+    if (config.isPastTerm(timetable.term)) {
+      SecureLogger.info('TIMETABLE_SVC', 'Timetable is from a past term', {
+        'timetableTerm': timetable.term,
+        'currentTerm': config.currentTerm,
+      });
+      return;
+    }
+
+    if (timetable.term == null && config.currentTerm.isNotEmpty) {
+      timetable.term = config.currentTerm;
+    }
+
+    // Recompute against the catalog just loaded rather than trusting the stored
+    // warnings: exam dates can move within a term, so a timetable that started
+    // clean may have become clashing while closed.
+    timetable.clashWarnings
+      ..clear()
+      ..addAll(ClashDetector.detectClashes(
+        timetable.selectedSections,
+        timetable.availableCourses,
+      ));
+  }
+
   Future<void> _loadCoursesFromFirestore(Timetable timetable) async {
     try {
       // Try to fetch courses directly without checking metadata first
@@ -160,6 +199,8 @@ class TimetableService {
       // Clear existing courses before adding new ones
       timetable.availableCourses.clear();
       timetable.availableCourses.addAll(courses);
+
+      applyCurrentTerm(timetable);
 
       // Hydrating availableCourses only touches derived, in-memory state:
       // toFirestoreJson() deliberately omits the catalog, so writing back for a
@@ -187,7 +228,14 @@ class TimetableService {
     }
   }
 
-  Future<bool> addSection(String courseCode, String sectionId, Timetable timetable) async {
+  /// Adds a section and persists the timetable. The returned [AddSectionCheck]
+  /// explains any refusal; pass [allowExamClash] to override an exam collision.
+  Future<AddSectionCheck> addSection(
+    String courseCode,
+    String sectionId,
+    Timetable timetable, {
+    bool allowExamClash = false,
+  }) async {
     try {
       final course = timetable.availableCourses.firstWhere(
         (c) => c.courseCode == courseCode,
@@ -205,20 +253,54 @@ class TimetableService {
         section: section,
       );
 
-      if (ClashDetector.canAddSection(newSelection, timetable.selectedSections, timetable.availableCourses)) {
+      final check = ClashDetector.evaluateAdd(
+        newSelection,
+        timetable.selectedSections,
+        timetable.availableCourses,
+        allowExamClash: allowExamClash,
+      );
+
+      if (check.isAllowed) {
         timetable.selectedSections.add(newSelection);
         timetable.clashWarnings.clear();
         timetable.clashWarnings.addAll(
           ClashDetector.detectClashes(timetable.selectedSections, timetable.availableCourses)
         );
         await saveTimetable(timetable);
-        return true;
+      } else {
+        _logRefusal('addSection', courseCode, sectionId, check, allowExamClash);
       }
-      return false;
+      return check;
     } catch (e) {
-      SecureLogger.error('TIMETABLE_SVC', 'Error in addSection: $e');
+      SecureLogger.error('TIMETABLE_SVC', 'Error in addSection: $e', e, null, {
+        'courseCode': courseCode,
+        'sectionId': sectionId,
+      });
       rethrow;
     }
+  }
+
+  /// Records why an add was refused, so a "why can't I add this?" report can be
+  /// answered from logs without reproducing the user's timetable.
+  void _logRefusal(
+    String origin,
+    String courseCode,
+    String sectionId,
+    AddSectionCheck check,
+    bool allowExamClash,
+  ) {
+    SecureLogger.info(
+      'TIMETABLE_SVC',
+      '$origin refused $courseCode-$sectionId (${check.blockedBy!.name}): ${check.message}',
+      {
+        'courseCode': courseCode,
+        'sectionId': sectionId,
+        'reason': check.blockedBy!.name,
+        'conflictingCourses': check.conflictingCourses,
+        'overridable': check.isOverridable,
+        'examClashAllowed': allowExamClash,
+      },
+    );
   }
 
   Future<void> removeSection(String courseCode, String sectionId, Timetable timetable) async {
@@ -233,7 +315,13 @@ class TimetableService {
   }
 
   // Non-saving versions for manual save functionality
-  bool addSectionWithoutSaving(String courseCode, String sectionId, Timetable timetable) {
+  /// In-memory counterpart of [addSection]; the caller persists separately.
+  AddSectionCheck addSectionWithoutSaving(
+    String courseCode,
+    String sectionId,
+    Timetable timetable, {
+    bool allowExamClash = false,
+  }) {
     try {
       final course = timetable.availableCourses.firstWhere(
         (c) => c.courseCode == courseCode,
@@ -251,17 +339,28 @@ class TimetableService {
         section: section,
       );
 
-      if (ClashDetector.canAddSection(newSelection, timetable.selectedSections, timetable.availableCourses)) {
+      final check = ClashDetector.evaluateAdd(
+        newSelection,
+        timetable.selectedSections,
+        timetable.availableCourses,
+        allowExamClash: allowExamClash,
+      );
+
+      if (check.isAllowed) {
         timetable.selectedSections.add(newSelection);
         timetable.clashWarnings.clear();
         timetable.clashWarnings.addAll(
           ClashDetector.detectClashes(timetable.selectedSections, timetable.availableCourses)
         );
-        return true;
+      } else {
+        _logRefusal('addSectionWithoutSaving', courseCode, sectionId, check, allowExamClash);
       }
-      return false;
+      return check;
     } catch (e) {
-      SecureLogger.error('TIMETABLE_SVC', 'Error in addSectionWithoutSaving: $e');
+      SecureLogger.error('TIMETABLE_SVC', 'Error in addSectionWithoutSaving: $e', e, null, {
+        'courseCode': courseCode,
+        'sectionId': sectionId,
+      });
       rethrow;
     }
   }
@@ -451,6 +550,9 @@ class TimetableService {
       availableCourses: courses,
       selectedSections: [],
       clashWarnings: [],
+      // Stamped at creation so a rollover can later tell this timetable apart
+      // from one built against the new catalog.
+      term: ConfigService().currentTerm.isEmpty ? null : ConfigService().currentTerm,
     );
     
     try {

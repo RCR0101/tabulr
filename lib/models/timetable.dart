@@ -21,6 +21,16 @@ class Timetable {
   final String? shareId;
   int projectCount;
 
+  /// Academic term this timetable was built in, e.g. "2026-2027_sem1".
+  ///
+  /// Course selections do not survive a semester rollover — the student takes a
+  /// different set of courses — so a timetable from a past term is a historical
+  /// record, not something to reconcile against the current catalog. Mutable so
+  /// unstamped timetables can adopt the current term on first load.
+  ///
+  /// Null on timetables created before term tracking existed.
+  String? term;
+
   Timetable({
     required this.id,
     required this.name,
@@ -32,6 +42,7 @@ class Timetable {
     required this.clashWarnings,
     this.shareId,
     this.projectCount = 0,
+    this.term,
   });
 
   Map<String, dynamic> toJson() {
@@ -46,6 +57,7 @@ class Timetable {
       'clashWarnings': clashWarnings.map((w) => w.toJson()).toList(),
       if (shareId != null) 'shareId': shareId,
       if (projectCount > 0) 'projectCount': projectCount,
+      if (term != null) 'term': term,
     };
   }
 
@@ -60,6 +72,7 @@ class Timetable {
       'clashWarnings': clashWarnings.map((w) => w.toJson()).toList(),
       if (shareId != null) 'shareId': shareId,
       if (projectCount > 0) 'projectCount': projectCount,
+      if (term != null) 'term': term,
     };
   }
 
@@ -83,6 +96,7 @@ class Timetable {
           .toList() ?? [],
       shareId: json['shareId'] as String?,
       projectCount: json['projectCount'] as int? ?? 0,
+      term: json['term'] as String?,
     );
   }
 
@@ -97,6 +111,7 @@ class Timetable {
     List<ClashWarning>? clashWarnings,
     String? Function()? shareId,
     int? projectCount,
+    String? term,
   }) {
     return Timetable(
       id: id ?? this.id,
@@ -109,6 +124,7 @@ class Timetable {
       clashWarnings: clashWarnings ?? this.clashWarnings,
       shareId: shareId != null ? shareId() : this.shareId,
       projectCount: projectCount ?? this.projectCount,
+      term: term ?? this.term,
     );
   }
 }
@@ -153,11 +169,16 @@ class ClashWarning {
   /// [ClashSeverity.error] blocks the combination; [ClashSeverity.warning] is informational.
   final ClashSeverity severity;
 
+  /// Date of the colliding paper, for exam clashes only — lets the UI state the
+  /// date without parsing it back out of [message]. Null for class clashes.
+  final DateTime? examDate;
+
   ClashWarning({
     required this.type,
     required this.message,
     required this.conflictingCourses,
     required this.severity,
+    this.examDate,
   });
 
   Map<String, dynamic> toJson() {
@@ -166,6 +187,7 @@ class ClashWarning {
       'message': message,
       'conflictingCourses': conflictingCourses,
       'severity': severity.toString(),
+      if (examDate != null) 'examDate': examDate!.toIso8601String(),
     };
   }
 
@@ -179,6 +201,9 @@ class ClashWarning {
       severity: ClashSeverity.values.firstWhere(
         (e) => e.toString() == json['severity'],
       ),
+      examDate: json['examDate'] == null
+          ? null
+          : DateTime.tryParse(json['examDate'] as String),
     );
   }
 }

@@ -19,8 +19,18 @@ class AppToast {
   static void show({
     required String message,
     required ToastType type,
-    Duration duration = const Duration(seconds: 3),
+    Duration? duration,
+    String? actionLabel,
+    VoidCallback? onAction,
   }) {
+    // Actionable toasts linger — 3s is not long enough to read a message and
+    // decide to act on it. Held in a final so the closures below keep the
+    // promoted non-nullable type.
+    final Duration effectiveDuration = duration ??
+        (actionLabel != null
+            ? const Duration(seconds: 8)
+            : const Duration(seconds: 3));
+
     _dismissTimer?.cancel();
     _dismissTimer = null;
 
@@ -29,23 +39,37 @@ class AppToast {
         _currentEntry?.remove();
         _currentEntry = null;
         _currentState = null;
-        _insert(message, type, duration);
+        _insert(message, type, effectiveDuration, actionLabel, onAction);
       });
     } else {
       _currentEntry?.remove();
       _currentEntry = null;
       _currentState = null;
-      _insert(message, type, duration);
+      _insert(message, type, effectiveDuration, actionLabel, onAction);
     }
   }
 
-  static void _insert(String message, ToastType type, Duration duration) {
+  static void _insert(
+    String message,
+    ToastType type,
+    Duration duration,
+    String? actionLabel,
+    VoidCallback? onAction,
+  ) {
     final entry = OverlayEntry(
       builder: (_) => _ToastOverlay(
         message: message,
         type: type,
         onDismiss: dismiss,
         onStateCreated: (state) => _currentState = state,
+        actionLabel: actionLabel,
+        // Dismiss first so the action never fires against a stale overlay.
+        onAction: onAction == null
+            ? null
+            : () {
+                dismiss();
+                onAction();
+              },
       ),
     );
 
@@ -75,12 +99,22 @@ class AppToast {
 
   static void showSuccess(String message) =>
       show(message: message, type: ToastType.success);
-  static void showError(String message) =>
-      show(message: message, type: ToastType.error);
+  static void showError(String message, {String? actionLabel, VoidCallback? onAction}) =>
+      show(
+        message: message,
+        type: ToastType.error,
+        actionLabel: actionLabel,
+        onAction: onAction,
+      );
   static void showInfo(String message) =>
       show(message: message, type: ToastType.info);
-  static void showWarning(String message) =>
-      show(message: message, type: ToastType.warning);
+  static void showWarning(String message, {String? actionLabel, VoidCallback? onAction}) =>
+      show(
+        message: message,
+        type: ToastType.warning,
+        actionLabel: actionLabel,
+        onAction: onAction,
+      );
 }
 
 class _ToastOverlay extends StatefulWidget {
@@ -88,12 +122,16 @@ class _ToastOverlay extends StatefulWidget {
   final ToastType type;
   final VoidCallback onDismiss;
   final ValueChanged<_ToastOverlayState> onStateCreated;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   const _ToastOverlay({
     required this.message,
     required this.type,
     required this.onDismiss,
     required this.onStateCreated,
+    this.actionLabel,
+    this.onAction,
   });
 
   @override
@@ -161,6 +199,9 @@ class _ToastOverlayState extends State<_ToastOverlay>
       ),
     };
 
+    final bool hasAction =
+        widget.actionLabel != null && widget.onAction != null;
+
     final String typeLabel = switch (widget.type) {
       ToastType.success => 'Success',
       ToastType.error => 'Error',
@@ -212,6 +253,33 @@ class _ToastOverlayState extends State<_ToastOverlay>
                           style: TextStyle(color: fg, fontSize: 14),
                         ),
                       ),
+                      if (hasAction) ...[
+                        const SizedBox(width: AppDesign.spacingSm),
+                        // Sits inside the dismiss-on-tap GestureDetector; the
+                        // inner hit target wins, so tapping here does not dismiss.
+                        TextButton(
+                          onPressed: widget.onAction,
+                          style: TextButton.styleFrom(
+                            foregroundColor: fg,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppDesign.spacingSm,
+                            ),
+                            minimumSize: const Size(0, 36),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            side: BorderSide(color: fg.withValues(alpha: 0.5)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: AppDesign.borderRadiusSm,
+                            ),
+                          ),
+                          child: Text(
+                            widget.actionLabel!,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

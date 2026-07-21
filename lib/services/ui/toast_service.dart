@@ -21,16 +21,18 @@ class ToastService {
     toast.AppToast.showSuccess(message);
   }
 
-  static void showError(String message) {
-    toast.AppToast.showError(message);
+  /// Pass [actionLabel] + [onAction] to attach a button (e.g. "Override").
+  /// Actionable toasts stay on screen longer so there is time to press it.
+  static void showError(String message, {String? actionLabel, VoidCallback? onAction}) {
+    toast.AppToast.showError(message, actionLabel: actionLabel, onAction: onAction);
   }
 
   static void showInfo(String message) {
     toast.AppToast.showInfo(message);
   }
 
-  static void showWarning(String message) {
-    toast.AppToast.showWarning(message);
+  static void showWarning(String message, {String? actionLabel, VoidCallback? onAction}) {
+    toast.AppToast.showWarning(message, actionLabel: actionLabel, onAction: onAction);
   }
 
   static void cancel() {

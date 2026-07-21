@@ -126,9 +126,10 @@ class ClashDetector {
 
         warnings.add(ClashWarning(
           type: ClashType.midSemExam,
-          message: 'MidSem exam clash on ${date.day}/${date.month} ${TimeSlotInfo.getTimeSlotName(timeSlot, campus: CampusService.currentCampusCode)}',
+          message: 'MidSem exam clash on ${formatExamDate(date)} ${TimeSlotInfo.getTimeSlotName(timeSlot, campus: CampusService.currentCampusCode)}',
           conflictingCourses: entry.value.toList(),
           severity: ClashSeverity.error,
+          examDate: date,
         ));
       }
     }
@@ -141,9 +142,10 @@ class ClashDetector {
 
         warnings.add(ClashWarning(
           type: ClashType.endSemExam,
-          message: 'EndSem exam clash on ${date.day}/${date.month} ${TimeSlotInfo.getTimeSlotName(timeSlot, campus: CampusService.currentCampusCode)}',
+          message: 'EndSem exam clash on ${formatExamDate(date)} ${TimeSlotInfo.getTimeSlotName(timeSlot, campus: CampusService.currentCampusCode)}',
           conflictingCourses: entry.value.toList(),
           severity: ClashSeverity.error,
+          examDate: date,
         ));
       }
     }
@@ -152,51 +154,114 @@ class ClashDetector {
   }
 
   /// Whether [newSection] can be added without creating any error-level clash.
-  /// Enforces one section per type per course, then checks exams, then trial-adds
-  /// and runs [detectClashes].
+  ///
+  /// Boolean form of [evaluateAdd] — prefer that when the caller wants to tell
+  /// the user *why* the add was refused.
   static bool canAddSection(SelectedSection newSection, List<SelectedSection> currentSections, List<Course> courses) {
-    // Check if user is trying to add multiple sections of same type for same course
-    final sameCourseTypeSections = currentSections.where(
+    return evaluateAdd(newSection, currentSections, courses).isAllowed;
+  }
+
+  /// Validates adding [newSection] and reports the reason when it is refused.
+  ///
+  /// Checks run in descending order of severity so the most actionable reason
+  /// wins: duplicate section type, then class-time clash, then exam clash. The
+  /// ordering matters — a section that clashes on both time *and* exams must be
+  /// reported as a class clash, because only exam clashes are overridable.
+  ///
+  /// Set [allowExamClash] to let the user knowingly keep two courses whose exams
+  /// collide (they may intend to drop one, or sit a makeup).
+  static AddSectionCheck evaluateAdd(
+    SelectedSection newSection,
+    List<SelectedSection> currentSections,
+    List<Course> courses, {
+    bool allowExamClash = false,
+  }) {
+    // One L, one P and one T per course.
+    final duplicates = currentSections.where(
       (s) => s.courseCode == newSection.courseCode && s.section.type == newSection.section.type
     );
-
-    if (sameCourseTypeSections.isNotEmpty) {
-      return false; // Can only have one L, one P, one T per course
+    if (duplicates.isNotEmpty) {
+      final typeName = getSectionTypeName(newSection.section.type).toLowerCase();
+      return AddSectionCheck.blocked(
+        AddBlockReason.duplicateSectionType,
+        '${newSection.courseCode} already has a $typeName section '
+        '(${duplicates.first.sectionId}). Remove it before adding ${newSection.sectionId}.',
+        conflictingCourses: [newSection.courseCode],
+      );
     }
 
-    // Check for exam conflicts (only with different courses)
-    final newCourse = _findCourse(courses, newSection.courseCode);
+    // Only conflicts the new section itself causes — a pre-existing clash
+    // elsewhere in the timetable must not block unrelated additions.
+    final classConflicts = checkScheduleConflicts(newSection.section, currentSections);
+    if (classConflicts.isNotEmpty) {
+      final first = classConflicts.first;
+      return AddSectionCheck.blocked(
+        AddBlockReason.classClash,
+        '${newSection.courseCode}-${newSection.sectionId} meets ${getDayName(first.day)} '
+        '${first.time}, when ${first.conflictingCourse}-${first.conflictingSectionId} already meets.',
+        conflictingCourses: classConflicts.map((c) => c.conflictingCourse).toSet().toList(),
+      );
+    }
 
-    for (var existingSection in currentSections) {
-      // Skip exam conflict check if it's the same course
-      if (newCourse == null || existingSection.courseCode == newSection.courseCode) {
-        continue;
-      }
+    if (!allowExamClash) {
+      final examClash = _firstExamClash(newSection, currentSections, courses);
+      if (examClash != null) return examClash;
+    }
+
+    return const AddSectionCheck.allowed();
+  }
+
+  /// First exam collision between [newSection]'s course and any selected course,
+  /// or null when there is none. Unknown courses are skipped rather than thrown.
+  static AddSectionCheck? _firstExamClash(
+    SelectedSection newSection,
+    List<SelectedSection> currentSections,
+    List<Course> courses,
+  ) {
+    final newCourse = _findCourse(courses, newSection.courseCode);
+    if (newCourse == null) return null;
+
+    for (final existingSection in currentSections) {
+      if (existingSection.courseCode == newSection.courseCode) continue;
 
       final existingCourse = _findCourse(courses, existingSection.courseCode);
-      if (existingCourse == null) continue; // Skip unknown course
+      if (existingCourse == null) continue;
 
-      // Check MidSem exam clash
-      if (newCourse.midSemExam != null && existingCourse.midSemExam != null) {
-        if (_examTimesConflict(newCourse.midSemExam!, existingCourse.midSemExam!)) {
-          return false;
-        }
+      final mid = newCourse.midSemExam;
+      final otherMid = existingCourse.midSemExam;
+      if (mid != null && otherMid != null && _examTimesConflict(mid, otherMid)) {
+        return AddSectionCheck.blocked(
+          AddBlockReason.examClash,
+          'Midsem clash: ${newCourse.courseCode} and ${existingCourse.courseCode} both sit on '
+          '${formatExamDate(mid.date)}, ${TimeSlotInfo.getTimeSlotName(mid.timeSlot, campus: CampusService.currentCampusCode)}.',
+          conflictingCourses: [existingCourse.courseCode],
+        );
       }
 
-      // Check EndSem exam clash
-      if (newCourse.endSemExam != null && existingCourse.endSemExam != null) {
-        if (_examTimesConflict(newCourse.endSemExam!, existingCourse.endSemExam!)) {
-          return false;
-        }
+      final end = newCourse.endSemExam;
+      final otherEnd = existingCourse.endSemExam;
+      if (end != null && otherEnd != null && _examTimesConflict(end, otherEnd)) {
+        return AddSectionCheck.blocked(
+          AddBlockReason.examClash,
+          'Compre clash: ${newCourse.courseCode} and ${existingCourse.courseCode} both sit on '
+          '${formatExamDate(end.date)}, ${TimeSlotInfo.getTimeSlotName(end.timeSlot, campus: CampusService.currentCampusCode)}.',
+          conflictingCourses: [existingCourse.courseCode],
+        );
       }
     }
 
-    // Check regular class time clashes
-    var tempSections = [...currentSections, newSection];
-    var clashes = detectClashes(tempSections, courses);
-
-    return !clashes.any((clash) => clash.severity == ClashSeverity.error);
+    return null;
   }
+
+  static const List<String> _monthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  /// Short exam date, e.g. "15 Dec". Shared with the UI so the toast, the
+  /// warning banner and the clash list all phrase dates the same way.
+  static String formatExamDate(DateTime date) =>
+      '${date.day} ${_monthNames[date.month - 1]}';
 
   static bool _examTimesConflict(ExamSchedule exam1, ExamSchedule exam2) {
     return exam1.date.day == exam2.date.day &&
@@ -516,6 +581,52 @@ class ClashDetector {
         return 'Tutorial';
     }
   }
+}
+
+// ── Add-validation result ───────────────────────────────────────────
+
+/// Why [ClashDetector.evaluateAdd] refused an add.
+enum AddBlockReason {
+  /// The course already has a section of this type selected.
+  duplicateSectionType,
+
+  /// The section meets in a grid cell that is already occupied.
+  classClash,
+
+  /// The course shares an exam date + slot with a selected course.
+  examClash,
+}
+
+/// Outcome of an add attempt, carrying the reason so the UI can explain the
+/// refusal rather than showing a generic "clashes with your timetable".
+class AddSectionCheck {
+  /// Null when the add is permitted.
+  final AddBlockReason? blockedBy;
+
+  /// User-facing explanation, naming the courses and the colliding slot.
+  /// Empty when [isAllowed].
+  final String message;
+
+  /// Course codes already in the timetable that caused the refusal.
+  final List<String> conflictingCourses;
+
+  const AddSectionCheck.allowed()
+      : blockedBy = null,
+        message = '',
+        conflictingCourses = const [];
+
+  const AddSectionCheck.blocked(
+    this.blockedBy,
+    this.message, {
+    this.conflictingCourses = const [],
+  });
+
+  bool get isAllowed => blockedBy == null;
+
+  /// Exam clashes are the only refusal a user may override: the courses still
+  /// fit in the weekly grid, and the collision is months away. A class clash is
+  /// never overridable — two sections cannot occupy one cell.
+  bool get isOverridable => blockedBy == AddBlockReason.examClash;
 }
 
 // ── Data classes used by add/swap conflict detection ────────────────

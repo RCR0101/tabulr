@@ -156,6 +156,154 @@ void main() {
     });
   });
 
+  group('evaluateAdd', () {
+    /// Two courses that never share a grid cell but sit the same midsem.
+    List<Course> examClashOnly() => [
+          makeCourse(
+            courseCode: 'CS F111',
+            sections: [makeSection(sectionId: 'L1', days: [DayOfWeek.M], hours: [1])],
+            midSemExam: makeExam(date: DateTime(2026, 3, 10), timeSlot: TimeSlot.MS1),
+          ),
+          makeCourse(
+            courseCode: 'MATH F112',
+            courseTitle: 'Mathematics I',
+            sections: [makeSection(sectionId: 'L1', days: [DayOfWeek.T], hours: [4])],
+            midSemExam: makeExam(date: DateTime(2026, 3, 10), timeSlot: TimeSlot.MS1),
+          ),
+        ];
+
+    List<SelectedSection> csF111Selected() => [
+          makeSelectedSection(
+            courseCode: 'CS F111',
+            section: makeSection(sectionId: 'L1', days: [DayOfWeek.M], hours: [1]),
+          ),
+        ];
+
+    SelectedSection mathAtFreeSlot() => makeSelectedSection(
+          courseCode: 'MATH F112',
+          section: makeSection(sectionId: 'L1', days: [DayOfWeek.T], hours: [4]),
+        );
+
+    test('reports an exam clash as overridable and names both courses', () {
+      final sw = Stopwatch()..start();
+      final result = ClashDetector.evaluateAdd(
+        mathAtFreeSlot(), csF111Selected(), examClashOnly(),
+      );
+      sw.stop();
+      _record('evaluateAdd exam clash is overridable', true, sw.elapsedMilliseconds);
+
+      expect(result.isAllowed, isFalse);
+      expect(result.blockedBy, AddBlockReason.examClash);
+      expect(result.isOverridable, isTrue);
+      expect(result.message, contains('MATH F112'));
+      expect(result.message, contains('CS F111'));
+      expect(result.conflictingCourses, ['CS F111']);
+    });
+
+    test('allowExamClash lets an exam-only clash through', () {
+      final sw = Stopwatch()..start();
+      final result = ClashDetector.evaluateAdd(
+        mathAtFreeSlot(), csF111Selected(), examClashOnly(),
+        allowExamClash: true,
+      );
+      sw.stop();
+      _record('evaluateAdd override admits exam clash', true, sw.elapsedMilliseconds);
+
+      expect(result.isAllowed, isTrue);
+      expect(result.blockedBy, isNull);
+    });
+
+    test('reports a class clash as not overridable', () {
+      final sw = Stopwatch()..start();
+      final sharedSlot = makeSection(days: [DayOfWeek.M], hours: [1]);
+      final result = ClashDetector.evaluateAdd(
+        makeSelectedSection(courseCode: 'CS F211', section: sharedSlot),
+        [makeSelectedSection(courseCode: 'CS F111', section: sharedSlot)],
+        twoCourseSameSlot(),
+      );
+      sw.stop();
+      _record('evaluateAdd class clash not overridable', true, sw.elapsedMilliseconds);
+
+      expect(result.blockedBy, AddBlockReason.classClash);
+      expect(result.isOverridable, isFalse);
+    });
+
+    test('prefers the class clash when a section clashes on both time and exams', () {
+      final sw = Stopwatch()..start();
+      // twoCourseSameSlot() shares both a grid cell and a midsem slot; the
+      // hard (non-overridable) reason must win so Override is never offered.
+      final sharedSlot = makeSection(days: [DayOfWeek.M], hours: [1]);
+      final result = ClashDetector.evaluateAdd(
+        makeSelectedSection(courseCode: 'CS F211', section: sharedSlot),
+        [makeSelectedSection(courseCode: 'CS F111', section: sharedSlot)],
+        twoCourseSameSlot(),
+      );
+      sw.stop();
+      _record('evaluateAdd prefers class clash over exam clash', true, sw.elapsedMilliseconds);
+
+      expect(result.blockedBy, AddBlockReason.classClash);
+      expect(result.isOverridable, isFalse);
+    });
+
+    test('allowExamClash does not bypass a class clash', () {
+      final sw = Stopwatch()..start();
+      final sharedSlot = makeSection(days: [DayOfWeek.M], hours: [1]);
+      final result = ClashDetector.evaluateAdd(
+        makeSelectedSection(courseCode: 'CS F211', section: sharedSlot),
+        [makeSelectedSection(courseCode: 'CS F111', section: sharedSlot)],
+        twoCourseSameSlot(),
+        allowExamClash: true,
+      );
+      sw.stop();
+      _record('evaluateAdd override cannot bypass class clash', true, sw.elapsedMilliseconds);
+
+      expect(result.isAllowed, isFalse);
+      expect(result.blockedBy, AddBlockReason.classClash);
+    });
+
+    test('reports a duplicate section type as not overridable', () {
+      final sw = Stopwatch()..start();
+      final result = ClashDetector.evaluateAdd(
+        makeSelectedSection(
+          courseCode: 'CS F111',
+          sectionId: 'L2',
+          section: makeSection(sectionId: 'L2', days: [DayOfWeek.T], hours: [7]),
+        ),
+        csF111Selected(),
+        examClashOnly(),
+        allowExamClash: true,
+      );
+      sw.stop();
+      _record('evaluateAdd duplicate section type', true, sw.elapsedMilliseconds);
+
+      expect(result.blockedBy, AddBlockReason.duplicateSectionType);
+      expect(result.isOverridable, isFalse);
+      expect(result.message, contains('L1'));
+    });
+
+    test('a pre-existing clash elsewhere does not block an unrelated add', () {
+      final sw = Stopwatch()..start();
+      // Two already-selected sections share Monday hour 1 (reachable via import).
+      final sharedSlot = makeSection(days: [DayOfWeek.M], hours: [1]);
+      final existing = [
+        makeSelectedSection(courseCode: 'CS F111', section: sharedSlot),
+        makeSelectedSection(courseCode: 'CS F211', section: sharedSlot),
+      ];
+      final result = ClashDetector.evaluateAdd(
+        makeSelectedSection(
+          courseCode: 'MATH F112',
+          section: makeSection(days: [DayOfWeek.S], hours: [9]),
+        ),
+        existing,
+        twoCourseSameSlot(),
+      );
+      sw.stop();
+      _record('evaluateAdd ignores unrelated pre-existing clash', true, sw.elapsedMilliseconds);
+
+      expect(result.isAllowed, isTrue);
+    });
+  });
+
   group('sectionsConflict', () {
     test('returns true for overlapping schedule', () {
       final sw = Stopwatch()..start();

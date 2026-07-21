@@ -31,9 +31,15 @@ class UndoRedoService extends ChangeNotifier {
         .toList();
   }
 
-  void pushState(Timetable timetable, String description) {
+  void pushState(Timetable timetable, String description) =>
+      pushSections(timetable.selectedSections, description);
+
+  /// Pushes an explicitly supplied section list. Use when the state to restore
+  /// was captured before a mutation that has already been applied — e.g. an add
+  /// that is only committed to the undo stack once it is known to have succeeded.
+  void pushSections(List<SelectedSection> sections, String description) {
     _undoStack.add(TimetableSnapshot(
-      sections: _copySelections(timetable.selectedSections),
+      sections: _copySelections(sections),
       description: description,
     ));
     if (_undoStack.length > AppLimits.maxUndoStackSize) {

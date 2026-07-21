@@ -14,6 +14,7 @@ import '../services/data/firestore_service.dart';
 import '../services/data/auth_service.dart';
 import '../services/ui/toast_service.dart';
 import '../services/data/campus_service.dart';
+import '../services/data/config_service.dart';
 import '../services/data/course_data_service.dart';
 import '../services/data/user_settings_service.dart';
 import '../services/ui/responsive_service.dart';
@@ -53,6 +54,10 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   final AuthService _authService = AuthService();
   final UserSettingsService _userSettingsService = UserSettingsService();
   List<Timetable> _timetables = [];
+
+  /// Timetables hidden because they belong to a past term; drives the pointer
+  /// to Archived Timetables so they never look deleted.
+  int _pastTermCount = 0;
   List<Timetable> _sortedTimetables = [];
   bool _isLoading = true;
   List<ArchivedSemester> _archivedSemesters = [];
@@ -146,8 +151,16 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   Future<void> _loadTimetables() async {
     try {
       final timetables = await _timetableService.getAllTimetables();
+      // Timetables from a past term are historical records — the student is
+      // taking different courses now, so they are not editable alongside the
+      // live ones. The server-side copies made at rollover surface them under
+      // Archived Timetables instead.
+      final config = ConfigService();
+      final live = timetables.where((t) => !config.isPastTerm(t.term)).toList();
+      final archivedCount = timetables.length - live.length;
       setState(() {
-        _timetables = timetables;
+        _timetables = live;
+        _pastTermCount = archivedCount;
         _isLoading = false;
       });
       _applySorting();
@@ -188,12 +201,21 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     if (result == null || !mounted) return;
     try {
       final newTimetable = await _timetableService.createNewTimetable(result.name);
+      // An import reproduces someone else's timetable rather than building a new
+      // one, so an exam clash they accepted must survive the round trip instead
+      // of being dropped without explanation. Class clashes still cannot be
+      // imported — two sections cannot share a cell in the grid.
+      final skipped = <String>[];
       for (final section in result.sections) {
-        _timetableService.addSectionWithoutSaving(
+        final check = _timetableService.addSectionWithoutSaving(
           section.courseCode,
           section.sectionId,
           newTimetable,
+          allowExamClash: true,
         );
+        if (!check.isAllowed) {
+          skipped.add('${section.courseCode}-${section.sectionId}');
+        }
       }
       await _timetableService.saveTimetable(newTimetable);
       setState(() {
@@ -201,7 +223,14 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
       });
       _applySorting();
       if (mounted) {
-        ToastService.showSuccess('Imported "${result.name}" from ${result.ownerName}');
+        if (skipped.isEmpty) {
+          ToastService.showSuccess('Imported "${result.name}" from ${result.ownerName}');
+        } else {
+          ToastService.showWarning(
+            'Imported "${result.name}" but skipped ${skipped.length} '
+            'clashing ${skipped.length == 1 ? 'section' : 'sections'}: ${skipped.join(', ')}',
+          );
+        }
       }
     } catch (e) {
       if (mounted) _showErrorDialog('Error importing timetable: $e');
@@ -589,6 +618,18 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Divider(height: 1),
+          // Timetables hidden by the term filter would otherwise look deleted.
+          if (_pastTermCount > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                '$_pastTermCount timetable${_pastTermCount == 1 ? '' : 's'} from a '
+                'previous semester ${_pastTermCount == 1 ? 'is' : 'are'} kept here.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
           InkWell(
             onTap: () => setState(() => _archivesExpanded = !_archivesExpanded),
             borderRadius: AppDesign.borderRadiusSm,
@@ -1183,7 +1224,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                 ),
                               ),
                     ),
-                  if (_archivedSemesters.isNotEmpty)
+                  if (_archivedSemesters.isNotEmpty || _pastTermCount > 0)
                     _buildArchivedSection(),
                   ],
                 ),

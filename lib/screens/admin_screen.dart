@@ -297,8 +297,13 @@ class _AdminScreenState extends State<AdminScreen> {
       final processed = result['usersProcessed'] ?? 0;
       final total = result['totalTimetablesArchived'] ?? 0;
       final skipped = result['usersSkipped'] ?? 0;
+      final newTerm = result['currentTerm'];
+      // Archiving also opens the next term, which hides every timetable built
+      // in the old one — surface it so the effect is never a surprise.
+      await ConfigService().reloadAppConfig();
       setState(() {
-        _archiveResult = 'Archived $total timetables from $processed users ($skipped skipped)';
+        _archiveResult = 'Archived $total timetables from $processed users ($skipped skipped)'
+            '${newTerm != null ? '\nCurrent term is now $newTerm — timetables from earlier terms are now read-only.' : ''}';
         _archiveProgress = null;
       });
       ToastService.showSuccess('Archived $total timetables');

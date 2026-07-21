@@ -356,7 +356,12 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     return credits;
   }
 
-  void addSection(String courseCode, String sectionId) {
+  /// Adds a section, explaining any refusal.
+  ///
+  /// When the only obstacle is an exam clash the toast offers an Override,
+  /// which re-runs the add with [allowExamClash] set. Class-time clashes and
+  /// duplicate section types are never overridable.
+  void addSection(String courseCode, String sectionId, {bool allowExamClash = false}) {
     final tt = currentTimetable;
     if (tt == null) return;
 
@@ -374,20 +379,41 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     }
 
     try {
-      _pushUndo('Add $courseCode $sectionId');
-      final success = timetableService.addSectionWithoutSaving(
+      // Snapshot before the attempt, commit to the undo stack only on success —
+      // a refused add must not leave a no-op entry for the user to undo.
+      final sectionsBefore = List<SelectedSection>.of(tt.selectedSections);
+      final result = timetableService.addSectionWithoutSaving(
         courseCode,
         sectionId,
         tt,
+        allowExamClash: allowExamClash,
       );
-      if (success) {
+
+      if (result.isAllowed) {
+        undoRedoService.pushSections(
+          sectionsBefore,
+          allowExamClash
+              ? 'Add $courseCode $sectionId (exam clash overridden)'
+              : 'Add $courseCode $sectionId',
+        );
         setState(() {
           hasUnsavedChanges = true;
         });
         onUnsavedChangesChanged(true);
         pageLeaveWarning.enableWarning(true);
+        if (allowExamClash) {
+          ToastService.showWarning(
+            'Added $courseCode-$sectionId with an exam clash — you cannot sit both exams.',
+          );
+        }
+      } else if (result.isOverridable) {
+        ToastService.showError(
+          result.message,
+          actionLabel: 'Override',
+          onAction: () => addSection(courseCode, sectionId, allowExamClash: true),
+        );
       } else {
-        ToastService.showError('Cannot add — section clashes with your timetable');
+        ToastService.showError(result.message);
       }
     } catch (e) {
       showErrorDialog('Error adding section: $e');

@@ -457,6 +457,16 @@ exports.rebuildProfessorSchedules = onCall(
 
 // ─── Archive timetables for a semester ───
 
+// The term that follows the one being archived. BITS runs two terms per academic
+// year, so sem 1 rolls into sem 2 of the same year and sem 2 into sem 1 of the
+// next. Written to reference/app_config as the new current term, which is what
+// lets a client tell a stale timetable from a live one.
+function nextTerm(academicYear, semester) {
+  if (semester === 1) return `${academicYear}_sem2`;
+  const [start, end] = academicYear.split("-").map(Number);
+  return `${start + 1}-${end + 1}_sem1`;
+}
+
 exports.archiveTimetables = onCall(
   { region: REGION, timeoutSeconds: 540, memory: "512MiB", enforceAppCheck: false },
   async (request) => {
@@ -527,13 +537,23 @@ exports.archiveTimetables = onCall(
       }
     }
 
-    console.log(`[archiveTimetables] done: ${usersProcessed} users, ${totalTimetablesArchived} timetables archived, ${usersSkipped} skipped`);
+    // Open the new term only after the archive copies are safely written — if
+    // this ran first and archiving then failed, every client would immediately
+    // hide timetables whose archived copy did not exist yet.
+    const newTerm = nextTerm(academicYear, semester);
+    await db.doc("reference/app_config").set(
+      { current_term: newTerm, current_term_set_at: FieldValue.serverTimestamp() },
+      { merge: true }
+    );
+
+    console.log(`[archiveTimetables] done: ${usersProcessed} users, ${totalTimetablesArchived} timetables archived, ${usersSkipped} skipped; current term is now ${newTerm}`);
 
     return {
       success: true,
       usersProcessed,
       usersSkipped,
       totalTimetablesArchived,
+      currentTerm: newTerm,
     };
   }
 );
