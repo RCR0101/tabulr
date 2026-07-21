@@ -111,14 +111,9 @@ class _HomeScreenState extends State<HomeScreen>
       _isLoading = false;
     }
     initializeUserSettings();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 400), () {
-        if (!mounted) return;
-        TutorialService().showEditorTutorial(context);
-        // Recovers the Tools menu for users who skipped the full tour.
-        TutorialService().showToolsSpotlight(context);
-      });
-    });
+    // Robust auto-start (survives the cold-start auth/layout race); recovers the
+    // Tools menu spotlight for users who skipped the full editor tour.
+    TutorialService().autoStartEditor(context, isMounted: () => mounted);
   }
 
   @override

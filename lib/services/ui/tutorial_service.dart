@@ -79,9 +79,18 @@ class TutorialService {
 
   static String _skippedFlag(String section) => '${section}_skipped';
 
+  /// Set once the user skips *any* tour — suppresses all further auto-tours and
+  /// spotlights so a new user isn't nagged screen after screen. Explicit replay
+  /// (force: true, e.g. "Show me around") bypasses it.
+  static const String _globalSkipFlag = 'onboarding_skipped';
+
+  bool get _onboardingSkipped =>
+      UserSettingsService().isTutorialCompleted(_globalSkipFlag);
+
   bool _shouldShow(String section) {
     final auth = AuthService();
     if (!auth.isAuthenticated) return false;
+    if (_onboardingSkipped) return false;
     if (_dismissedThisSession.contains(section)) return false;
     final settings = UserSettingsService();
     return !settings.isTutorialCompleted(section) &&
@@ -185,54 +194,20 @@ class TutorialService {
       align: ContentAlign.bottom,
     );
 
-    final isMobile = MediaQuery.of(context).size.width < ResponsiveConstants.mobileBreakpoint;
-    _addTarget(
-      targets,
-      key: TutorialKeys.timetableGrid,
-      title: 'Your Timetable',
-      description: 'Your weekly schedule builds here as you add sections. Clashes are detected automatically.',
-      shape: ShapeLightFocus.RRect,
-      align: ContentAlign.custom,
-      customPosition: CustomTargetContentPosition(
-        top: isMobile ? 40 : 60,
-        left: isMobile ? 16 : null,
-        right: isMobile ? 16 : null,
-      ),
-      maxContentWidth: isMobile ? null : 300,
-    );
-
     _addTarget(
       targets,
       key: TutorialKeys.generatorFab,
       title: 'Auto-Generate',
-      description: 'Pick your courses and let the generator find the best clash-free timetable for you.',
+      description: 'Pick your courses and let the generator find the best clash-free timetable for you — or add & swap sections from here too.',
       shape: ShapeLightFocus.RRect,
       align: ContentAlign.top,
-    );
-
-    _addTarget(
-      targets,
-      key: TutorialKeys.addSwapFab,
-      title: 'Add & Swap',
-      description: 'Add a new course or swap sections without rebuilding your entire timetable.',
-      shape: ShapeLightFocus.RRect,
-      align: ContentAlign.top,
-    );
-
-    _addTarget(
-      targets,
-      key: TutorialKeys.shareButton,
-      title: 'Share',
-      description: 'Share your timetable with friends via a short code they can import.',
-      shape: ShapeLightFocus.Circle,
-      align: ContentAlign.bottom,
     );
 
     _addTarget(
       targets,
       key: TutorialKeys.toolsMenu,
-      title: 'Tools',
-      description: 'Course guide, prerequisites, discipline & humanities electives, import/export, and more.',
+      title: 'Tools & more',
+      description: 'Course guide, prerequisites, discipline & humanities electives, share, and import/export all live here.',
       shape: ShapeLightFocus.Circle,
       align: ContentAlign.bottom,
     );
@@ -394,6 +369,113 @@ class TutorialService {
     _showTutorial(context, targets);
   }
 
+  /// Auto-starts a shell screen's tour as soon as it's eligible and its target
+  /// widgets are laid out. See [_autoStart] for why a fixed delay isn't enough.
+  void autoStart(
+    BuildContext context,
+    DrawerScreen screen, {
+    required bool Function() isMounted,
+  }) {
+    final section = _sectionForScreen(screen);
+    if (section == null) return;
+    _autoStart(
+      context,
+      section: section,
+      isMounted: isMounted,
+      start: (ctx) => _showForScreen(ctx, screen),
+      spotlight: _spotlightForScreen(screen),
+    );
+  }
+
+  /// Auto-starts the timetable editor tour (the editor isn't a shell screen, so
+  /// it has its own entry point). Falls back to the Tools spotlight for users
+  /// who previously skipped the full editor tour.
+  void autoStartEditor(BuildContext context, {required bool Function() isMounted}) {
+    _autoStart(
+      context,
+      section: _sectionEditor,
+      isMounted: isMounted,
+      start: showEditorTutorial,
+      spotlight: showToolsSpotlight,
+    );
+  }
+
+  /// Cold start races two things we can't predict — auth restoring and the
+  /// first layout pass — so a fixed delay either fires too early (auth not ready
+  /// → tour silently skipped) or misses entirely. This retries on a short
+  /// cadence until the tour shows, the section is permanently done, the widget
+  /// unmounts, or the window elapses. When the tour is already done (e.g. the
+  /// user skipped it in a past session), [spotlight] gets a chance instead.
+  void _autoStart(
+    BuildContext context, {
+    required String section,
+    required bool Function() isMounted,
+    required void Function(BuildContext) start,
+    void Function(BuildContext)? spotlight,
+  }) {
+    void attempt(int remaining) {
+      if (!isMounted()) return;
+      if (_isShowing) return; // something (maybe this) is already up
+      if (_permanentlyDone(section)) {
+        // Tour won't run — offer the skipper spotlight instead (it self-guards
+        // so finishers and same-session skippers still see nothing).
+        spotlight?.call(context);
+        return;
+      }
+      start(context);
+      if (_isShowing || remaining <= 1) return; // started, or gave up
+      // Not shown yet — auth still restoring or targets not laid out. Retry.
+      Future.delayed(const Duration(milliseconds: 200), () => attempt(remaining - 1));
+    }
+
+    // ~5s window: enough to outlast a slow auth restore without nagging forever.
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt(25));
+  }
+
+  /// True once the tour has been finished, skipped, or dismissed this session —
+  /// i.e. there's permanently nothing to auto-show. Distinct from a transient
+  /// "auth not ready yet", which [_autoStart] must keep retrying through.
+  bool _permanentlyDone(String section) {
+    if (_onboardingSkipped) return true;
+    if (_dismissedThisSession.contains(section)) return true;
+    final settings = UserSettingsService();
+    return settings.isTutorialCompleted(section) ||
+        settings.isTutorialCompleted(_skippedFlag(section));
+  }
+
+  String? _sectionForScreen(DrawerScreen screen) => switch (screen) {
+        DrawerScreen.timetables => _sectionTimetableList,
+        DrawerScreen.cgpaCalculator => _sectionCGPA,
+        DrawerScreen.acadDrives => _sectionAcadDrives,
+        DrawerScreen.admin => _sectionAdmin,
+        _ => null,
+      };
+
+  void Function(BuildContext)? _spotlightForScreen(DrawerScreen screen) =>
+      switch (screen) {
+        DrawerScreen.cgpaCalculator => showCgpaToolsSpotlight,
+        _ => null,
+      };
+
+  void _showForScreen(BuildContext context, DrawerScreen screen) {
+    switch (screen) {
+      case DrawerScreen.timetables:
+        showTimetableListTutorial(context);
+        break;
+      case DrawerScreen.cgpaCalculator:
+        showCGPATutorial(context);
+        break;
+      case DrawerScreen.acadDrives:
+        showAcadDrivesTutorial(context);
+        break;
+      case DrawerScreen.admin:
+        showAdminTutorial(context);
+        break;
+      default:
+        break;
+    }
+  }
+
   /// Replays the tour for the given [screen] regardless of prior state.
   /// Returns false if the screen has no guided tour.
   bool replayForScreen(BuildContext context, DrawerScreen screen) {
@@ -457,6 +539,7 @@ class TutorialService {
   }) {
     if (_isShowing) return;
     if (!AuthService().isAuthenticated) return;
+    if (_onboardingSkipped) return; // user opted out of onboarding entirely
     final settings = UserSettingsService();
     if (settings.isTutorialCompleted(flag)) return; // already seen
     // Only surface to users who skipped the full tour (finishers already saw
@@ -508,9 +591,10 @@ class TutorialService {
     }
   }
 
-  /// Skipping a full tour just defers it (session dismissal + a persisted
-  /// `_skipped` marker that stops auto-nagging but leaves it replayable and
-  /// keeps spotlights eligible). Skipping a spotlight marks it seen for good.
+  /// Skipping a full tour opts the user out of onboarding globally — the
+  /// `_globalSkipFlag` stops every other tour/spotlight from auto-firing so they
+  /// aren't nagged screen after screen. Individual tours stay replayable via
+  /// force (e.g. "Show me around"). Skipping a spotlight just marks it seen.
   void _skipTutorial() {
     _isShowing = false;
     _currentTutorial = null;
@@ -524,6 +608,8 @@ class TutorialService {
     } else {
       _dismissedThisSession.add(section);
       UserSettingsService().markTutorialCompleted(_skippedFlag(section));
+      // One skip = done with onboarding everywhere.
+      UserSettingsService().markTutorialCompleted(_globalSkipFlag);
     }
   }
 
@@ -531,6 +617,26 @@ class TutorialService {
     _currentTutorial?.skip();
     _currentTutorial = null;
     _isShowing = false;
+  }
+
+  /// Whether [key]'s widget is currently laid out and on-screen. Guards the
+  /// tour against targets that exist in the tree but aren't visible — offstage
+  /// tab pages (translated off to the side), closed drawers/menus, or anything
+  /// scrolled fully out of view.
+  bool _isTargetOnScreen(GlobalKey key) {
+    final context = key.currentContext;
+    if (context == null) return false;
+    final render = context.findRenderObject();
+    // `attached` must hold before localToGlobal (it walks the ancestor chain).
+    if (render is! RenderBox || !render.attached || !render.hasSize) return false;
+    final size = render.size;
+    if (size.shortestSide <= 0) return false;
+    final screenSize = MediaQuery.maybeOf(context)?.size;
+    if (screenSize == null) return false;
+    final topLeft = render.localToGlobal(Offset.zero);
+    // Require a real overlap with the screen — an offstage page sits at a large
+    // negative/positive x and won't intersect.
+    return (topLeft & size).overlaps(Offset.zero & screenSize);
   }
 
   void _addTarget(
@@ -543,7 +649,11 @@ class TutorialService {
     CustomTargetContentPosition? customPosition,
     double? maxContentWidth,
   }) {
-    if (key.currentContext == null) return;
+    // Skip anything that isn't actually visible on the current screen — a null
+    // context, or a widget that's built but off-screen (a closed drawer, an
+    // inactive tab, a collapsed menu). Spotlighting those produces a dark
+    // screen with the highlight in empty space and no way forward on mobile.
+    if (!_isTargetOnScreen(key)) return;
 
     targets.add(
       TargetFocus(

@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
 #
-# Pre-commit: bump patch + build version and stage the changed files so the
-# bump is part of this commit. See .githooks/bump-version.sh for details.
+# Pre-commit:
+#   1. Fail the commit if the Dart analyzer reports issues (check-dart.sh).
+#   2. Bump patch + build version and stage the changed files so the bump is
+#      part of this commit (bump-version.sh).
 #
 # Enable once per clone with:
 #   git config core.hooksPath .githooks
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# 1. Analyse first — no point bumping the version on a broken tree.
+"$REPO_ROOT/.githooks/check-dart.sh"
+
+# 2. Bump version (see .githooks/bump-version.sh for details).
 exec "$REPO_ROOT/.githooks/bump-version.sh" --stage

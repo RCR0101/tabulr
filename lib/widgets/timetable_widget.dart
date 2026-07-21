@@ -344,109 +344,110 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     }
   }
 
-  Widget _buildMobileButtonRow() {
-    final buttons = <Widget>[];
-    
-    // Auto Load CDCs button
-    if (!widget.isForExport && widget.onAutoLoadCDCs != null) {
-      buttons.add(_buildMobileButton(
-        onPressed: () {
-          ResponsiveService.triggerLightFeedback(context);
-          widget.onAutoLoadCDCs!();
-        },
-        icon: Icons.school,
-        label: 'Auto Load CDCs',
-        color: Theme.of(context).colorScheme.secondary,
-      ));
+  /// Primary Save action, full-width beneath the toolbar. Secondary actions
+  /// (auto-load, replace, clear, stats) live in [_buildMobileSecondaryMenu] so
+  /// the grid isn't pushed down by a block of buttons.
+  Widget _buildMobileSaveButton() {
+    if (widget.isForExport || widget.onSave == null) {
+      return const SizedBox.shrink();
     }
-    
-    // Save button
-    if (!widget.isForExport && widget.onSave != null) {
-      buttons.add(_buildMobileButton(
-        onPressed: widget.hasUnsavedChanges && !widget.isSaving 
-          ? () {
-              ResponsiveService.triggerMediumFeedback(context);
-              widget.onSave!();
-            }
-          : null,
-        icon: widget.isSaving 
-          ? null // Special case for loading spinner
-          : (widget.hasUnsavedChanges ? Icons.save : Icons.check),
-        label: widget.isSaving ? 'Saving...' : 
-               widget.hasUnsavedChanges ? 'Save' : 'Saved',
-        color: widget.hasUnsavedChanges 
-          ? Theme.of(context).colorScheme.primary 
-          : Theme.of(context).colorScheme.tertiary,
-        isLoading: widget.isSaving,
-      ));
-    }
-    
-    // Quick Replace button (only if conditions are met)
-    if (_canShowQuickReplace) {
-      buttons.add(_buildMobileButton(
-        onPressed: _showQuickReplaceDialog,
-        icon: Icons.swap_horiz,
-        label: 'Replace',
-        color: Theme.of(context).colorScheme.tertiary,
-      ));
-    }
-    
-    // Clear button
-    if (widget.timetableSlots.isNotEmpty && widget.onClear != null) {
-      buttons.add(_buildMobileButton(
-        onPressed: () {
-          ResponsiveService.triggerHeavyFeedback(context);
-          widget.onClear!();
-        },
-        icon: Icons.clear_all,
-        label: 'Clear',
-        color: Theme.of(context).colorScheme.error,
-      ));
-    }
-
-    // TT Stats button
-    if (!widget.isForExport && widget.onShowStats != null && widget.timetableSlots.isNotEmpty) {
-      buttons.add(_buildMobileButton(
-        onPressed: widget.onShowStats!,
-        icon: Icons.insights,
-        label: 'TT Stats',
-        color: Theme.of(context).colorScheme.primary,
-      ));
-    }
-    
-    if (buttons.isEmpty) return const SizedBox.shrink();
-
-    if (buttons.length <= 2) {
-      return Row(
-        children: [
-          for (int i = 0; i < buttons.length; i++) ...[
-            Expanded(child: buttons[i]),
-            if (i < buttons.length - 1) const SizedBox(width: 8),
-          ],
-        ],
-      );
-    }
-
-    final firstRow = buttons.sublist(0, 2);
-    final secondRow = buttons.sublist(2);
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(child: firstRow[0]),
-            const SizedBox(width: 8),
-            Expanded(child: firstRow[1]),
-          ],
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: SizedBox(
+        width: double.infinity,
+        child: _buildMobileButton(
+          onPressed: widget.hasUnsavedChanges && !widget.isSaving
+            ? () {
+                ResponsiveService.triggerMediumFeedback(context);
+                widget.onSave!();
+              }
+            : null,
+          icon: widget.isSaving
+            ? null // Special case for loading spinner
+            : (widget.hasUnsavedChanges ? Icons.save : Icons.check),
+          label: widget.isSaving ? 'Saving...' :
+                 widget.hasUnsavedChanges ? 'Save' : 'Saved',
+          color: widget.hasUnsavedChanges
+            ? Theme.of(context).colorScheme.primary
+            : Theme.of(context).colorScheme.tertiary,
+          isLoading: widget.isSaving,
         ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            for (int i = 0; i < secondRow.length; i++) ...[
-              Expanded(child: secondRow[i]),
-              if (i < secondRow.length - 1) const SizedBox(width: 8),
-            ],
-          ],
-        ),
+      ),
+    );
+  }
+
+  /// Overflow of secondary timetable actions on mobile. Renders nothing when
+  /// none apply, so the toolbar stays clean.
+  Widget _buildMobileSecondaryMenu() {
+    if (widget.isForExport) return const SizedBox.shrink();
+    final hasAutoLoad = widget.onAutoLoadCDCs != null;
+    final hasReplace = _canShowQuickReplace;
+    final hasClear = widget.timetableSlots.isNotEmpty && widget.onClear != null;
+    final hasStats =
+        widget.onShowStats != null && widget.timetableSlots.isNotEmpty;
+    if (!hasAutoLoad && !hasReplace && !hasClear && !hasStats) {
+      return const SizedBox.shrink();
+    }
+    final scheme = Theme.of(context).colorScheme;
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert),
+      tooltip: 'Timetable actions',
+      onSelected: (value) {
+        switch (value) {
+          case 'auto_load':
+            ResponsiveService.triggerLightFeedback(context);
+            widget.onAutoLoadCDCs?.call();
+            break;
+          case 'replace':
+            _showQuickReplaceDialog();
+            break;
+          case 'clear':
+            ResponsiveService.triggerHeavyFeedback(context);
+            widget.onClear?.call();
+            break;
+          case 'stats':
+            widget.onShowStats?.call();
+            break;
+        }
+      },
+      itemBuilder: (context) => [
+        if (hasAutoLoad)
+          const PopupMenuItem(
+            value: 'auto_load',
+            child: ListTile(
+              leading: Icon(Icons.school),
+              title: Text('Auto Load CDCs'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        if (hasReplace)
+          const PopupMenuItem(
+            value: 'replace',
+            child: ListTile(
+              leading: Icon(Icons.swap_horiz),
+              title: Text('Quick Replace'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        if (hasStats)
+          const PopupMenuItem(
+            value: 'stats',
+            child: ListTile(
+              leading: Icon(Icons.insights),
+              title: Text('TT Stats'),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
+        if (hasClear)
+          PopupMenuItem(
+            value: 'clear',
+            child: ListTile(
+              leading: Icon(Icons.clear_all, color: scheme.error),
+              title: Text('Clear Timetable',
+                  style: TextStyle(color: scheme.error)),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ),
       ],
     );
   }
@@ -495,30 +496,21 @@ class _TimetableWidgetState extends State<TimetableWidget> {
             children: [
               Row(
                 children: [
-                  const Text(
-                    'Weekly Timetable',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  // Title dropped on mobile — the tab already says "Timetable".
                   if (!widget.isForExport && widget.onUndo != null) ...[
-                    const SizedBox(width: 4),
                     IconButton(
                       onPressed: widget.canUndo ? widget.onUndo : null,
-                      icon: const Icon(Icons.undo, size: 16),
+                      icon: const Icon(Icons.undo, size: 20),
                       tooltip: 'Undo',
                       visualDensity: VisualDensity.compact,
-                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                     ),
                     IconButton(
                       onPressed: widget.canRedo ? widget.onRedo : null,
-                      icon: const Icon(Icons.redo, size: 16),
+                      icon: const Icon(Icons.redo, size: 20),
                       tooltip: 'Redo',
                       visualDensity: VisualDensity.compact,
-                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                     ),
                   ],
                   const Spacer(),
@@ -604,10 +596,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                       ),
                     ),
                   ),
+                  _buildMobileSecondaryMenu(),
                 ],
               ),
-              const SizedBox(height: 4),
-              _buildMobileButtonRow(),
+              _buildMobileSaveButton(),
             ],
           )
         : Row(

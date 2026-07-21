@@ -47,7 +47,9 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCourses();
+    // Force one fresh read per screen visit; the debounced search
+    // keystrokes afterwards are served from the cached rows.
+    _loadCourses(force: true);
     _loadProfessorNames();
   }
 
@@ -64,11 +66,12 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
     _loadCourses();
   }
 
-  Future<void> _loadCourses() async {
+  Future<void> _loadCourses({bool force = false}) async {
     setState(() => _loading = true);
     try {
       final q = _searchController.text.trim();
-      _courses = await _crud.fetchCourses(_campusId, query: q.isEmpty ? null : q);
+      _courses = await _crud.fetchCourses(_campusId,
+          query: q.isEmpty ? null : q, forceRefresh: force);
     } catch (e) {
       ToastService.showError('Failed to load courses');
     }

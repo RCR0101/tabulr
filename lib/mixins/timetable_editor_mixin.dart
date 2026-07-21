@@ -1187,7 +1187,10 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Icon(Icons.check_circle, color: AppDesign.success(context), size: 18),
         ),
-      PopupMenuButton<String>(
+      // On mobile the Tools items are merged into the More (⋮) menu below, so
+      // the app bar shows a single overflow instead of two.
+      if (!isMobileLayout)
+        PopupMenuButton<String>(
         key: TutorialKeys.toolsMenu,
         icon: const Icon(Icons.menu_book),
         tooltip: 'Tools',
@@ -1243,10 +1246,17 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         ],
       ),
       PopupMenuButton<String>(
+        // On mobile this doubles as the Tools menu (see above), so the tour's
+        // Tools spotlight targets it here.
+        key: isMobileLayout ? TutorialKeys.toolsMenu : null,
         icon: const Icon(Icons.more_vert),
         tooltip: 'More',
         onSelected: (value) {
           switch (value) {
+            case 'course_guide': Navigator.push(context, FadeSlidePageRoute(page: const CourseGuideScreen())); break;
+            case 'prerequisites': Navigator.push(context, FadeSlidePageRoute(page: const PrerequisitesScreen())); break;
+            case 'discipline_electives': Navigator.push(context, FadeSlidePageRoute(page: const DisciplineElectivesScreen())); break;
+            case 'humanities_electives': Navigator.push(context, FadeSlidePageRoute(page: const HumanitiesElectivesScreen())); break;
             case 'share': shareTimetable(); break;
             case 'page_info': PageInfoHelper.show(context, PageInfoHelper.timetableCreator); break;
             case 'import_tt': importFromTT(); break;
@@ -1257,6 +1267,41 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
           }
         },
         itemBuilder: (context) => [
+          if (isMobileLayout) ...[
+            const PopupMenuItem(
+              value: 'course_guide',
+              child: ListTile(
+                leading: Icon(Icons.menu_book),
+                title: Text('Course Guide'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'prerequisites',
+              child: ListTile(
+                leading: Icon(Icons.account_tree),
+                title: Text('Prerequisites'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'discipline_electives',
+              child: ListTile(
+                leading: Icon(Icons.school),
+                title: Text('Discipline Electives'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'humanities_electives',
+              child: ListTile(
+                leading: Icon(Icons.library_books),
+                title: Text('Humanities Electives'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuDivider(),
+          ],
           if (isMobileLayout) ...[
             const PopupMenuItem(
               value: 'share',
@@ -1464,29 +1509,61 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         ],
       );
     }
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        FloatingActionButton(
-          key: TutorialKeys.addSwapFab,
-          onPressed: openAddSwap,
-          backgroundColor: Theme.of(context).colorScheme.secondary,
-          foregroundColor: Theme.of(context).colorScheme.onSecondary,
-          tooltip: 'Add/Swap Courses',
-          heroTag: 'add_swap',
-          child: const Icon(Icons.swap_horiz),
+    // A single FAB that opens a chooser, so two stacked FABs no longer occlude
+    // the grid's bottom-right corner on small screens.
+    return FloatingActionButton(
+      key: TutorialKeys.generatorFab,
+      onPressed: () => _showMobileBuildActions(context),
+      backgroundColor: Theme.of(context).colorScheme.primary,
+      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+      tooltip: 'Build timetable',
+      heroTag: 'build_actions',
+      child: const Icon(Icons.add),
+    );
+  }
+
+  /// Mobile chooser for the two primary build actions, replacing the pair of
+  /// stacked FABs.
+  void _showMobileBuildActions(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 32,
+              height: 4,
+              decoration: BoxDecoration(
+                color: scheme.onSurface.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: Icon(Icons.auto_awesome_mosaic, color: scheme.primary),
+              title: const Text('TT Generator'),
+              subtitle: const Text('Auto-generate a clash-free timetable'),
+              onTap: () {
+                Navigator.pop(ctx);
+                openGenerator();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.swap_horiz, color: scheme.secondary),
+              title: const Text('Add / Swap Courses'),
+              subtitle: const Text('Add a course or swap sections'),
+              onTap: () {
+                Navigator.pop(ctx);
+                openAddSwap();
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
         ),
-        const SizedBox(height: 8),
-        FloatingActionButton(
-          key: TutorialKeys.generatorFab,
-          onPressed: openGenerator,
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          foregroundColor: Theme.of(context).colorScheme.onPrimary,
-          tooltip: 'TT Generator',
-          heroTag: 'generator',
-          child: const Icon(Icons.auto_awesome_mosaic),
-        ),
-      ],
+      ),
     );
   }
 

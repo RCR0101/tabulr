@@ -241,55 +241,74 @@ class _MobileShell extends StatelessWidget {
     final overflow = _overflowItems();
     showModalBottomSheet(
       context: context,
+      // Let the sheet grow to its content, capped below, so it can scroll
+      // instead of the default 9/16 clamp forcing an overflow on short phones.
+      isScrollControlled: true,
       builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            Container(
-              width: 32,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(2),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 32,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            ...overflow.map((screen) => ListTile(
-                  leading: Icon(_iconFor(screen)),
-                  title: Text(_labelFor(screen)),
-                  selected: currentScreen == screen,
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    onScreenSelected(screen);
-                  },
-                )),
-            const Divider(height: 1),
-            if (AuthService().isAuthenticated)
-              ListTile(
-                leading: const Icon(Icons.badge_outlined),
-                title: const Text('Profile'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                  );
-                },
+              const SizedBox(height: 16),
+              // Scrolls only when the items don't fit (small phones); otherwise
+              // Flexible shrinks to content and nothing scrolls. Handle stays pinned.
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ...overflow.map((screen) => ListTile(
+                            leading: Icon(_iconFor(screen)),
+                            title: Text(_labelFor(screen)),
+                            selected: currentScreen == screen,
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              onScreenSelected(screen);
+                            },
+                          )),
+                      const Divider(height: 1),
+                      if (AuthService().isAuthenticated)
+                        ListTile(
+                          leading: const Icon(Icons.badge_outlined),
+                          title: const Text('Profile'),
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                            );
+                          },
+                        ),
+                      ListTile(
+                        leading: const Icon(Icons.info_outline),
+                        title: const Text('Credits'),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const CreditsScreen()),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  ),
+                ),
               ),
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: const Text('Credits'),
-              onTap: () {
-                Navigator.pop(ctx);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const CreditsScreen()),
-                );
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
+            ],
+          ),
         ),
       ),
     );

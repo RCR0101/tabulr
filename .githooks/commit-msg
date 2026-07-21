@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+#
+# commit-msg: enforce the Conventional Commits format on the subject line.
+#   <type>[optional scope][!]: <description>
+# e.g. "feat: add exam export", "fix(cgpa): correct rounding on save".
+#
+# Merge/revert/fixup/squash subjects are allowed through unchanged.
+# Bypass (not recommended) with: git commit --no-verify
+#
+set -euo pipefail
+
+MSG_FILE="$1"
+
+# Subject = first non-empty, non-comment line of the message.
+SUBJECT="$(grep -vE '^[[:space:]]*#' "$MSG_FILE" | grep -vE '^[[:space:]]*$' | head -n1 || true)"
+
+# Let tooling-generated subjects pass (merges, reverts, autosquash markers).
+if printf '%s' "$SUBJECT" | grep -qE '^(Merge |Revert |fixup! |squash! )'; then
+  exit 0
+fi
+
+TYPES='feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert'
+# type, optional (scope), optional ! for breaking change, ": ", then a description.
+PATTERN="^(${TYPES})(\([a-zA-Z0-9._/-]+\))?!?: .+"
+
+if printf '%s' "$SUBJECT" | grep -qE "$PATTERN"; then
+  exit 0
+fi
+
+cat >&2 <<EOF
+Commit message does not follow Conventional Commits.
+
+  Subject: ${SUBJECT}
+
+  Expected: <type>[optional scope][!]: <description>
+  Types:    ${TYPES//|/, }
+
+  Examples:
+    feat: add exam export
+    fix(cgpa): correct rounding on save
+    refactor(editor)!: drop legacy shortcut path
+
+  Bypass (not recommended): git commit --no-verify
+EOF
+exit 1

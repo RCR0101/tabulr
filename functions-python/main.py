@@ -1029,12 +1029,14 @@ def upload_timetable(req: https_fn.CallableRequest):
     upload_courses_to_firestore(courses, campus_code, clear_first=True)
 
     campus_id = CAMPUS_IDS.get(campus_code.lower(), "hyderabad")
-    all_docs = db.collection(f"campuses/{campus_id}/timetable").get()
 
+    # upload_courses_to_firestore(clear_first=True) replaced the collection with
+    # exactly `courses`, so that's the total. Re-reading the whole collection
+    # just to count it doubled the read cost of every upload.
     from datetime import datetime
     db.collection("campuses").document(campus_id).collection("metadata").document("current").set({
         "lastUpdated": datetime.utcnow().isoformat() + "Z",
-        "totalCourses": len(all_docs),
+        "totalCourses": len(courses),
         "uploadedAt": datetime.utcnow().isoformat() + "Z",
         "version": str(int(datetime.utcnow().timestamp() * 1000)),
         "campus": CAMPUS_NAMES.get(campus_code.lower(), "Hyderabad"),

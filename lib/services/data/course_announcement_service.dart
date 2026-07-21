@@ -38,14 +38,30 @@ class CourseAnnouncementService {
 
   // --- Announcements CRUD ---
 
+  /// How far back the feed looks. Announcements are semester-scoped events
+  /// (quizzes, deadlines), so anything older is noise — and without a bound the
+  /// listener downloads every historical announcement for the user's courses on
+  /// every subscribe, forever.
+  static const Duration announcementRetention = Duration(days: 120);
+
+  /// Safety cap so one very busy course can't produce an unbounded snapshot.
+  /// Combined with the descending sort this keeps the newest entries.
+  static const int announcementFetchLimit = 200;
+
   Stream<List<CourseAnnouncement>> watchAnnouncements(
       List<String> courseCodes) {
     if (courseCodes.isEmpty) return Stream.value([]);
 
+    final cutoff = DateTime.now().subtract(announcementRetention);
+
+    // The range filter is on the same field as the orderBy, so this is served
+    // by the existing (courseCode ASC, eventDate DESC) composite index.
     return _firestore
         .collection(FirestoreCollections.announcements)
         .where('courseCode', whereIn: courseCodes)
+        .where('eventDate', isGreaterThanOrEqualTo: Timestamp.fromDate(cutoff))
         .orderBy('eventDate', descending: true)
+        .limit(announcementFetchLimit)
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => CourseAnnouncement.fromFirestore(doc))
@@ -148,33 +164,65 @@ class CourseAnnouncementService {
     });
   }
 
+  /// Fetches the caller's own vote/flag/verification for [announcementIds].
+  ///
+  /// Uses three collection-group queries scoped to this user rather than three
+  /// point reads *per announcement* — the old shape cost 3xN reads and scaled
+  /// with the number of announcements on screen. These queries return only the
+  /// documents this user actually created (usually a handful), so cost tracks
+  /// the user's own activity instead of the size of the feed.
   Future<Map<String, AnnouncementUserState>> fetchUserStates(
       List<String> announcementIds) async {
     final uid = _authService.userDocId;
     if (uid == null || announcementIds.isEmpty) return {};
 
-    final results = <String, AnnouncementUserState>{};
-    final annRef = _firestore.collection(FirestoreCollections.announcements);
+    final wanted = announcementIds.toSet();
 
-    final futures = announcementIds.map((id) async {
-      final voteSnap =
-          await annRef.doc(id).collection(FirestoreCollections.votes).doc(uid).get();
-      final flagSnap =
-          await annRef.doc(id).collection(FirestoreCollections.flags).doc(uid).get();
-      final verifSnap =
-          await annRef.doc(id).collection(FirestoreCollections.verifications).doc(uid).get();
+    // The announcement id is the parent of the {votes,flags,verifications} doc.
+    String? announcementIdOf(DocumentSnapshot<Map<String, dynamic>> doc) =>
+        doc.reference.parent.parent?.id;
 
-      results[id] = AnnouncementUserState(
-        vote: voteSnap.exists ? (voteSnap.data()?['vote'] as int?) : null,
-        flag: flagSnap.exists ? AnnouncementFlag.fromFirestore(flagSnap) : null,
-        verification: verifSnap.exists
-            ? AnnouncementVerification.fromFirestore(verifSnap)
-            : null,
-      );
-    });
+    Future<QuerySnapshot<Map<String, dynamic>>> mine(String group) =>
+        _firestore.collectionGroup(group).where('uid', isEqualTo: uid).get();
 
-    await Future.wait(futures);
-    return results;
+    final snaps = await Future.wait([
+      mine(FirestoreCollections.votes),
+      mine(FirestoreCollections.flags),
+      mine(FirestoreCollections.verifications),
+    ]);
+
+    final votes = <String, int?>{};
+    for (final doc in snaps[0].docs) {
+      final id = announcementIdOf(doc);
+      if (id != null && wanted.contains(id)) votes[id] = doc.data()['vote'] as int?;
+    }
+
+    final flags = <String, AnnouncementFlag>{};
+    for (final doc in snaps[1].docs) {
+      final id = announcementIdOf(doc);
+      if (id != null && wanted.contains(id)) {
+        flags[id] = AnnouncementFlag.fromFirestore(doc);
+      }
+    }
+
+    final verifications = <String, AnnouncementVerification>{};
+    for (final doc in snaps[2].docs) {
+      final id = announcementIdOf(doc);
+      if (id != null && wanted.contains(id)) {
+        verifications[id] = AnnouncementVerification.fromFirestore(doc);
+      }
+    }
+
+    // Every requested id gets an entry so callers can cache "no state" and
+    // avoid re-querying (the screen keys its cache on presence).
+    return {
+      for (final id in wanted)
+        id: AnnouncementUserState(
+          vote: votes[id],
+          flag: flags[id],
+          verification: verifications[id],
+        ),
+    };
   }
 
   Stream<int?> watchUserVote(String announcementId) {

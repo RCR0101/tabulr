@@ -46,7 +46,9 @@ class _ExamSeatingManagementScreenState
   @override
   void initState() {
     super.initState();
-    _load();
+    // Force one fresh read per screen visit; the debounced search
+    // keystrokes afterwards are served from the cached rows.
+    _load(force: true);
   }
 
   @override
@@ -62,11 +64,12 @@ class _ExamSeatingManagementScreenState
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool force = false}) async {
     setState(() => _loading = true);
     try {
       final q = _searchController.text.trim();
-      _entries = await _crud.fetchExamSeating(_campusId, query: q.isEmpty ? null : q);
+      _entries = await _crud.fetchExamSeating(_campusId,
+          query: q.isEmpty ? null : q, forceRefresh: force);
     } catch (e) {
       ToastService.showError('Failed to load exam seating');
     }

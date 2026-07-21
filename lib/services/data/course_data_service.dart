@@ -4,6 +4,7 @@ import '../../constants/app_constants.dart';
 import '../../models/course.dart';
 import 'campus_service.dart';
 import 'courses_master_service.dart';
+import 'local_cache_service.dart';
 import '../ui/secure_logger.dart';
 
 class CourseDataService {
@@ -17,13 +18,31 @@ class CourseDataService {
   }
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  
+  final LocalCacheService _localCache = LocalCacheService();
+
   // Campus-aware cache for courses
   List<Course>? _cachedCourses;
   DateTime? _lastFetchTime;
   Campus? _cachedCampus;
   String? _cachedVersion;
   Completer<List<Course>>? _loadCompleter;
+
+  /// Persistent cache key. The in-memory cache above only survives one session;
+  /// this one survives page reloads, which is what actually drives read cost.
+  String get _cacheKey => 'courses_${CampusService.campusId}';
+
+  /// Key used to stash the doc id inside the cached payload so [Course.fromJson]
+  /// can be given the same courseCode it would get from the live doc.
+  static const _codeKey = '__code';
+
+  Course _courseFromCached(Map<String, dynamic> map) {
+    final code = map[_codeKey] as String? ?? '';
+    return Course.fromJson(
+      map,
+      courseCode: code,
+      resolvedTitle: CoursesMasterService().getTitle(code),
+    );
+  }
 
   /// Fetch courses with pagination support
   Future<List<Course>> fetchCoursesWithPagination({
@@ -82,10 +101,31 @@ class CourseDataService {
       _loadCompleter = Completer<List<Course>>();
 
       try {
+        // Persistent cache first: costs 1 metadata read instead of a full
+        // collection scan. Survives page reloads, which is where the read
+        // volume was coming from.
+        final cachedMaps = await _localCache.readIfFresh(
+          _cacheKey,
+          metadataRef: CampusService.metadataDocRef(_firestore),
+        );
+        if (cachedMaps != null && cachedMaps.isNotEmpty) {
+          final cachedCourses = cachedMaps.map(_courseFromCached).toList();
+          _cachedCourses = cachedCourses;
+          _lastFetchTime = DateTime.now();
+          _cachedCampus = currentCampus;
+          _cachedVersion =
+              (await _getCurrentMetadata(currentCampus))?['version'] as String?;
+          cacheHit = true;
+          _loadCompleter!.complete(cachedCourses);
+          _loadCompleter = null;
+          return cachedCourses;
+        }
+
         final allCourses = <Course>[];
+        final rawDocs = <Map<String, dynamic>>[];
         DocumentSnapshot? lastDocument;
         bool hasMore = true;
-        
+
         while (hasMore) {
           Query query = CampusService.timetableRef(_firestore)
               .limit(AppLimits.coursePageSize);
@@ -106,6 +146,7 @@ class CourseDataService {
                 final title = CoursesMasterService().getTitle(code);
                 final course = Course.fromJson(data, courseCode: code, resolvedTitle: title);
                 allCourses.add(course);
+                rawDocs.add({...data, _codeKey: code});
               } catch (e) {
                 // Skip unparseable course ${doc.id}
               }
@@ -128,6 +169,9 @@ class CourseDataService {
         _lastFetchTime = DateTime.now();
         _cachedCampus = currentCampus;
         _cachedVersion = currentVersion;
+
+        // Persist so the next page load costs 1 read instead of a full scan.
+        await _localCache.write(_cacheKey, rawDocs);
 
         _loadCompleter!.complete(allCourses);
         _loadCompleter = null;

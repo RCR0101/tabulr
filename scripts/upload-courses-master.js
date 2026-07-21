@@ -28,8 +28,59 @@ const db = getFirestore();
 
 const CAMPUSES = ['pilani', 'goa', 'hyderabad'];
 
+// Firestore's hard document limit is 1MiB; leave headroom.
+const MAX_BUNDLE_BYTES = 900 * 1024;
+
 function sanitize(s) {
   return (s || '').replace(/[\n\r]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Writes the single-document catalogue bundle the app reads on cold start.
+ *
+ * Without this the client would have to read every courses_master document
+ * (~2.8k per campus) on each load. Built from the same in-memory `courses`
+ * array we just uploaded, so it costs no extra reads.
+ */
+async function writeCatalogBundle(campusId, courses) {
+  const entries = courses
+    .map((c) => ({
+      // Keys must match CourseMasterEntry.fromMap in the Dart client.
+      course_code: c.course_code,
+      title: c.title,
+      credits: typeof c.credits === 'number' ? c.credits : Number(c.credits) || 0,
+      type: c.type || 'Normal',
+    }))
+    .sort((a, b) => a.course_code.localeCompare(b.course_code));
+
+  const entriesJson = JSON.stringify(entries);
+  const bytes = Buffer.byteLength(entriesJson, 'utf8');
+  if (bytes > MAX_BUNDLE_BYTES) {
+    throw new Error(
+      `${campusId}: bundle is ${(bytes / 1024).toFixed(1)}KB, over the ` +
+      `${MAX_BUNDLE_BYTES / 1024}KB single-document budget — needs chunking`
+    );
+  }
+
+  const stamp = new Date();
+  await db.doc(`campuses/${campusId}/catalog/courses_master`).set({
+    version: stamp.toISOString(),
+    count: entries.length,
+    entriesJson,
+  });
+
+  // Clients cache the catalogue locally and only re-read when the campus
+  // metadata says it's newer. Without this bump they'd serve the stale bundle
+  // until their 72h TTL expired.
+  await db.doc(`campuses/${campusId}/metadata/current`).set(
+    { lastUpdated: stamp.toISOString(), version: String(stamp.getTime()) },
+    { merge: true }
+  );
+
+  console.log(
+    `  Bundle written: ${entries.length} entries, ${(bytes / 1024).toFixed(1)} KB` +
+    ` (+ metadata bumped so clients refresh)`
+  );
 }
 
 async function clearCollection(collectionRef) {
@@ -91,6 +142,8 @@ async function uploadForCampus(campusId, courses) {
   }
 
   console.log(`  ${campusId}: ${totalDocs} courses uploaded`);
+
+  await writeCatalogBundle(campusId, courses);
 }
 
 async function uploadCoursesMaster() {

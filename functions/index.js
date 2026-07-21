@@ -63,7 +63,19 @@ function requireHydAuth(request) {
 
 // Event types that may be awarded at most once per announcement (per user).
 // Prevents self-farming of repeatable client events like source_attached.
-const DEDUP_EVENTS = new Set(["source_attached"]);
+//
+// The verification payouts are included because verificationState can move
+// back and forth: a high-weight user toggling confirm<->deny oscillates the
+// state and would otherwise re-award every transition. Deduping covers the
+// penalty (confirmed_incorrect_post) too, so nobody is punished twice for the
+// same post either.
+const DEDUP_EVENTS = new Set([
+  "source_attached",
+  "post_community_verified",
+  "confirmed_verified_post",
+  "denied_incorrect_post",
+  "confirmed_incorrect_post",
+]);
 
 async function addRepEvent({ uid, type, points, description, announcementId }) {
   if (!isValidEvent(type, points)) return;
@@ -261,7 +273,7 @@ exports.toggleVote = onCall({ region: REGION, enforceAppCheck: false }, async (r
     if (existingVote === null) {
       if (voteValue === 1) upDelta = 1;
       else downDelta = 1;
-      tx.set(voteRef, { vote: voteValue });
+      tx.set(voteRef, { vote: voteValue, uid: callerDocId });
     } else if (existingVote === voteValue) {
       if (voteValue === 1) upDelta = -1;
       else downDelta = -1;
@@ -274,7 +286,7 @@ exports.toggleVote = onCall({ region: REGION, enforceAppCheck: false }, async (r
         upDelta = -1;
         downDelta = 1;
       }
-      tx.set(voteRef, { vote: voteValue });
+      tx.set(voteRef, { vote: voteValue, uid: callerDocId });
     }
 
     tx.update(annRef, {
@@ -318,6 +330,7 @@ exports.submitFlag = onCall({ region: REGION, enforceAppCheck: false }, async (r
     const weight = rep.flagWeight;
 
     tx.set(flagRef, {
+      uid: callerDocId,
       reason,
       counterSourceUrl: counterSourceUrl || null,
       confidence: confidence || "fairly_sure",
@@ -429,6 +442,7 @@ exports.submitVerification = onCall({ region: REGION, enforceAppCheck: false }, 
     }
 
     tx.set(verifRef, {
+      uid: callerDocId,
       type,
       note: note || null,
       weight,
@@ -449,7 +463,14 @@ exports.submitVerification = onCall({ region: REGION, enforceAppCheck: false }, 
       await annRef.update({ verificationState: newState });
       const authorUid = annData.authorUid;
 
-      if (newState === "community_verified" && oldState !== "community_verified" && authorUid) {
+      // Each terminal state pays out at most once per announcement. Without
+      // this the fan-out below re-read the entire verifications subcollection
+      // on every oscillation of verificationState, not just re-awarding points.
+      const payouts = annData.payouts || {};
+
+      if (newState === "community_verified" && oldState !== "community_verified" &&
+          authorUid && !payouts.community_verified) {
+        await annRef.update({ "payouts.community_verified": true });
         await addRepEvent({
           uid: authorUid,
           type: "post_community_verified",
@@ -471,7 +492,9 @@ exports.submitVerification = onCall({ region: REGION, enforceAppCheck: false }, 
         }
       }
 
-      if (newState === "likely_incorrect" && oldState !== "likely_incorrect") {
+      if (newState === "likely_incorrect" && oldState !== "likely_incorrect" &&
+          !payouts.likely_incorrect) {
+        await annRef.update({ "payouts.likely_incorrect": true });
         const verifs = await annRef.collection("verifications").get();
         for (const v of verifs.docs) {
           if (v.data().type === "deny") {
@@ -556,7 +579,15 @@ exports.acceptCorrection = onCall({ region: REGION, enforceAppCheck: false }, as
     announcementId,
   });
 
-  const flagsSnap = await annRef.collection("flags").get();
+  // Only the earliest flag is needed. Reading the whole subcollection also
+  // ordered by document id (the flagger's uid), so "first correct flag" was
+  // really "alphabetically-first uid" — ordering by timestamp fixes the cost
+  // and the attribution.
+  const flagsSnap = await annRef
+    .collection("flags")
+    .orderBy("timestamp")
+    .limit(1)
+    .get();
   if (flagsSnap.docs.length > 0) {
     const firstFlag = flagsSnap.docs[0];
     const flaggerUid = firstFlag.id;

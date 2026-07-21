@@ -134,13 +134,18 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
   }
 
   void _loadAuthorTiers() {
-    final uids = _announcements.map((a) => a.authorUid).toSet();
-    for (final uid in uids) {
-      if (_authorTiers.containsKey(uid)) continue;
-      _reputationService.getReputation(uid).then((rep) {
-        if (mounted) setState(() => _authorTiers[uid] = rep.tier);
+    // One batched query per 30 authors instead of a document read each.
+    final uids = _announcements
+        .map((a) => a.authorUid)
+        .where((uid) => !_authorTiers.containsKey(uid))
+        .toSet();
+    if (uids.isEmpty) return;
+    _reputationService.getReputations(uids).then((reps) {
+      if (!mounted) return;
+      setState(() {
+        reps.forEach((uid, rep) => _authorTiers[uid] = rep.tier);
       });
-    }
+    });
   }
 
   void _applyFilter() {

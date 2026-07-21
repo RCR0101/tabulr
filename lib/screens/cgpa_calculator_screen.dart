@@ -134,13 +134,13 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       _rebuildTabController();
     }
     if (mounted) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Future.delayed(const Duration(milliseconds: 400), () {
-          if (!mounted) return;
-          TutorialService().showCGPATutorial(context);
-          TutorialService().showCgpaToolsSpotlight(context);
-        });
-      });
+      // Robust auto-start (survives the cold-start auth/layout race); the
+      // skipper spotlight is handled internally when the tour is already done.
+      TutorialService().autoStart(
+        context,
+        DrawerScreen.cgpaCalculator,
+        isMounted: () => mounted,
+      );
     }
   }
 

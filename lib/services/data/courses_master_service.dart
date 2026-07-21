@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'campus_service.dart';
@@ -46,6 +47,29 @@ class CoursesMasterService {
 
   String get _cacheKey => 'courses_master_${CampusService.campusId}';
 
+  /// Reads the single-document catalogue bundle. Returns null (so the caller
+  /// falls back to the full collection scan) when it's missing, empty or
+  /// unparseable — the bundle is an optimisation, never a hard dependency.
+  Future<List<Map<String, dynamic>>?> _readBundle(String campusId) async {
+    try {
+      final doc = await _firestore
+          .collection(FirestoreCollections.campuses)
+          .doc(campusId)
+          .collection(FirestoreCollections.catalog)
+          .doc(FirestoreCollections.coursesMasterBundle)
+          .get();
+      if (!doc.exists) return null;
+      final raw = doc.data()?['entriesJson'] as String?;
+      if (raw == null || raw.isEmpty) return null;
+      final entries = (jsonDecode(raw) as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+      return entries.isEmpty ? null : entries;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> loadForCampus({bool forceRefresh = false}) async {
     if (_loading) return;
     if (_loaded && !forceRefresh) return;
@@ -69,6 +93,21 @@ class CoursesMasterService {
         _loadStateController.add(true);
         return;
       }
+    }
+
+    // Pre-bundled catalogue: 1 read instead of ~2.8k. Falls back to the legacy
+    // per-document scan below if the bundle hasn't been generated yet.
+    final bundled = await _readBundle(campusId);
+    if (bundled != null) {
+      _cache = {
+        for (final map in bundled)
+          map['course_code'] as String: CourseMasterEntry.fromMap(map)
+      };
+      await _localCache.write(_cacheKey, bundled);
+      _loaded = true;
+      _loading = false;
+      _loadStateController.add(true);
+      return;
     }
 
     final snapshot = await _firestore

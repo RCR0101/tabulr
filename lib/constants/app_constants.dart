@@ -28,6 +28,10 @@ abstract final class FirestoreCollections {
   static const String timetable = 'timetable';
   static const String metadata = 'metadata';
   static const String current = 'current';
+  /// Pre-bundled catalogue: one document holding the whole courses_master list,
+  /// so a cold load costs 1 read instead of ~2.8k.
+  static const String catalog = 'catalog';
+  static const String coursesMasterBundle = 'courses_master';
   static const String prerequisites = 'prerequisites';
   static const String courses = 'courses';
   static const String acadDrivesIndex = 'acad_drives_index';

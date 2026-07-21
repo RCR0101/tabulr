@@ -52,29 +52,59 @@ exports.checkAdminStatus = onCall({ region: REGION, enforceAppCheck: false }, as
 // display name/photo via Firebase Auth. Only names/photos are returned (no
 // emails) since the Credits screen is visible to everyone.
 
-exports.getAdmins = onCall({ region: REGION, enforceAppCheck: false }, async () => {
-  const snap = await db.collection("admin_emails").get();
+// This is deliberately callable without auth (the Credits screen is public), so
+// it is bounded three ways: maxInstances caps what a flood can cost, a warm
+// instance serves repeats from memory, and the Auth lookups are batched into a
+// single call instead of one round trip per admin.
 
-  const admins = [];
-  for (const doc of snap.docs) {
-    const email = doc.id;
-    const data = doc.data() || {};
-    let name = data.name || null;
-    let photoUrl = null;
-    try {
-      const user = await admin.auth().getUserByEmail(email);
-      name = user.displayName || data.name || email.split("@")[0];
-      photoUrl = user.photoURL || null;
-    } catch (e) {
-      // No Auth user yet for this email — fall back to stored name / local-part.
-      name = data.name || email.split("@")[0];
+const GET_ADMINS_TTL_MS = 30 * 60 * 1000; // admin list changes ~never
+let getAdminsCache = null; // { at: number, admins: Array }
+
+exports.getAdmins = onCall(
+  { region: REGION, enforceAppCheck: false, maxInstances: 3 },
+  async () => {
+    if (getAdminsCache && Date.now() - getAdminsCache.at < GET_ADMINS_TTL_MS) {
+      return { admins: getAdminsCache.admins };
     }
-    if (name) admins.push({ name, photoUrl });
-  }
 
-  admins.sort((a, b) => a.name.localeCompare(b.name));
-  return { admins };
-});
+    const snap = await db.collection("admin_emails").get();
+    const entries = snap.docs.map((doc) => ({
+      email: doc.id,
+      stored: doc.data() || {},
+    }));
+
+    // Resolve display names/photos in one batched Auth call (100 max per call)
+    // rather than a serial getUserByEmail per admin.
+    const byEmail = new Map();
+    for (let i = 0; i < entries.length; i += 100) {
+      const chunk = entries.slice(i, i + 100);
+      try {
+        const res = await admin
+          .auth()
+          .getUsers(chunk.map((e) => ({ email: e.email })));
+        for (const user of res.users) {
+          if (user.email) byEmail.set(user.email.toLowerCase(), user);
+        }
+      } catch (e) {
+        // Fall through to stored names for this chunk.
+      }
+    }
+
+    const admins = [];
+    for (const { email, stored } of entries) {
+      const user = byEmail.get(email.toLowerCase());
+      // No Auth user yet for this email — fall back to stored name / local-part.
+      const name =
+        (user && user.displayName) || stored.name || email.split("@")[0];
+      const photoUrl = (user && user.photoURL) || null;
+      if (name) admins.push({ name, photoUrl });
+    }
+
+    admins.sort((a, b) => a.name.localeCompare(b.name));
+    getAdminsCache = { at: Date.now(), admins };
+    return { admins };
+  }
+);
 
 // ─── Professor fuzzy matching (ported from build_professor_schedules.js) ───
 

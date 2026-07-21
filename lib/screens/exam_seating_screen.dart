@@ -266,34 +266,86 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       );
     }
 
+    final isMobile = ResponsiveService.isMobile(context);
+    final saveButton = IconButton(
+      icon: _isSaving
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.save_outlined),
+      tooltip: 'Save',
+      onPressed: _isSaving ? null : _saveUserData,
+    );
+
     return Scaffold(
       appBar: AppDesign.appBar(
         context,
         title: 'Exam Seating',
-        actions: [
-          PageInfoHelper.infoButton(context, PageInfoHelper.examSeating, key: TutorialKeys.infoExamSeating),
-          IconButton(
-            icon: const Icon(Icons.file_download_outlined),
-            tooltip: 'Import Courses from Timetable',
-            onPressed: _importCoursesFromTimetable,
-          ),
-          IconButton(
-            icon: _isSaving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.save_outlined),
-            tooltip: 'Save',
-            onPressed: _isSaving ? null : _saveUserData,
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Reload Data',
-            onPressed: _loadExamData,
-          ),
-        ],
+        // On mobile keep Save visible and tuck the rest into a ⋮ menu so the
+        // bar isn't four icons wide next to the title.
+        actions: isMobile
+            ? [
+                saveButton,
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert),
+                  tooltip: 'More',
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'import':
+                        _importCoursesFromTimetable();
+                        break;
+                      case 'reload':
+                        _loadExamData();
+                        break;
+                      case 'info':
+                        PageInfoHelper.show(context, PageInfoHelper.examSeating);
+                        break;
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: 'import',
+                      child: ListTile(
+                        leading: Icon(Icons.file_download_outlined),
+                        title: Text('Import from Timetable'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'reload',
+                      child: ListTile(
+                        leading: Icon(Icons.refresh),
+                        title: Text('Reload Data'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'info',
+                      child: ListTile(
+                        leading: Icon(Icons.info_outline),
+                        title: Text('About This Page'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ],
+                ),
+              ]
+            : [
+                PageInfoHelper.infoButton(context, PageInfoHelper.examSeating, key: TutorialKeys.infoExamSeating),
+                IconButton(
+                  icon: const Icon(Icons.file_download_outlined),
+                  tooltip: 'Import Courses from Timetable',
+                  onPressed: _importCoursesFromTimetable,
+                ),
+                saveButton,
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Reload Data',
+                  onPressed: _loadExamData,
+                ),
+              ],
       ),
       body: Column(
         children: [

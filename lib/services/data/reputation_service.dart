@@ -23,6 +23,41 @@ class ReputationService {
     return UserReputation.fromFirestore(doc);
   }
 
+  /// Batched form of [getReputation] for a list of authors.
+  ///
+  /// The announcements feed needs a tier per author; fetching those one document
+  /// at a time cost one round trip per author. `whereIn` on the document id
+  /// collapses that into ceil(n/30) queries. Missing docs come back as
+  /// [UserReputation.empty] so callers can treat the map as total.
+  Future<Map<String, UserReputation>> getReputations(Iterable<String> uids) async {
+    final unique = uids.where((u) => u.isNotEmpty).toSet().toList();
+    if (unique.isEmpty) return {};
+
+    final results = <String, UserReputation>{};
+    // Firestore caps whereIn at 30 values per query.
+    const chunkSize = 30;
+    final futures = <Future<QuerySnapshot<Map<String, dynamic>>>>[];
+    for (var i = 0; i < unique.length; i += chunkSize) {
+      final chunk = unique.sublist(
+          i, i + chunkSize > unique.length ? unique.length : i + chunkSize);
+      futures.add(_firestore
+          .collection(FirestoreCollections.reputation)
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get());
+    }
+
+    for (final snap in await Future.wait(futures)) {
+      for (final doc in snap.docs) {
+        results[doc.id] = UserReputation.fromFirestore(doc);
+      }
+    }
+    // Authors with no reputation document yet still need an entry.
+    for (final uid in unique) {
+      results.putIfAbsent(uid, () => UserReputation.empty(uid));
+    }
+    return results;
+  }
+
   Stream<UserReputation> watchReputation(String uid) {
     return _docRef(uid).snapshots().map((doc) {
       if (!doc.exists) return UserReputation.empty(uid);

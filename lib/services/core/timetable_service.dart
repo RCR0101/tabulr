@@ -161,7 +161,15 @@ class TimetableService {
       timetable.availableCourses.clear();
       timetable.availableCourses.addAll(courses);
 
-      await saveTimetable(timetable);
+      // Hydrating availableCourses only touches derived, in-memory state:
+      // toFirestoreJson() deliberately omits the catalog, so writing back for a
+      // signed-in user persists nothing new. It did, however, cost a full
+      // document write on *every* timetable open and bumped updatedAt, making
+      // untouched timetables look edited. Guests still need the local save
+      // because their storage format (toJson) does persist the catalog.
+      if (!_authService.isAuthenticated) {
+        await saveTimetableToStorage(timetable);
+      }
     } catch (e) {
       SecureLogger.error('TIMETABLE_SVC', 'Error loading courses from Firestore: $e');
       

@@ -1,45 +1,118 @@
 {
   "indexes": [
     {
-      "collectionGroup": "course_announcements",
+      "collectionGroup": "announcements",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "courseCode", "order": "ASCENDING" },
-        { "fieldPath": "eventDate", "order": "DESCENDING" }
+        {
+          "fieldPath": "courseCode",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "eventDate",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "acad_drives_files",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "course_codes", "arrayConfig": "CONTAINS" },
-        { "fieldPath": "uploadedAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "course_codes",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "uploadedAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "acad_drives_index",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "fileCount", "order": "ASCENDING" },
-        { "fieldPath": "code", "order": "ASCENDING" }
+        {
+          "fieldPath": "fileCount",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "code",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "acad_drives_index",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "fileCount", "order": "DESCENDING" },
-        { "fieldPath": "code", "order": "DESCENDING" }
+        {
+          "fieldPath": "fileCount",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "code",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "bug_reports",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "authorUid", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "authorUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "votes",
+      "fieldPath": "uid",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "flags",
+      "fieldPath": "uid",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "verifications",
+      "fieldPath": "uid",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    }
+  ]
 }

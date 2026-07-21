@@ -7,6 +7,7 @@ import '../services/data/admin_service.dart';
 import '../services/data/config_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
+import '../widgets/app_drawer.dart';
 import '../utils/web_utils.dart' as web_utils;
 import '../constants/app_constants.dart';
 import '../utils/design_constants.dart';
@@ -55,11 +56,11 @@ class _AdminScreenState extends State<AdminScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 400), () {
-        if (mounted) TutorialService().showAdminTutorial(context);
-      });
-    });
+    TutorialService().autoStart(
+      context,
+      DrawerScreen.admin,
+      isMounted: () => mounted,
+    );
   }
 
   bool _uploadingTimetable = false;
@@ -623,7 +624,12 @@ class _AdminScreenState extends State<AdminScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        // Wrap (not Row) so the hint drops to the next line on narrow phones
+        // instead of overflowing off the right edge.
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: AppDesign.spacingXs,
+          runSpacing: 2,
           children: [
             Text(
               'Additional headers to exclude',
@@ -633,7 +639,6 @@ class _AdminScreenState extends State<AdminScreen> {
                 color: scheme.onSurface.withValues(alpha: AppDesign.opacityHigh),
               ),
             ),
-            const SizedBox(width: AppDesign.spacingXs),
             Text(
               '(defaults are built-in, add semester-specific ones here)',
               style: TextStyle(

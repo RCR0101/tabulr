@@ -80,7 +80,27 @@ service cloud.firestore {
         && request.resource.data.confirmWeight == 0
         && request.resource.data.denyWeight == 0
         && request.resource.data.confirmCount == 0
-        && request.resource.data.denyCount == 0;
+        && request.resource.data.denyCount == 0
+        // Content bounds: the counters above were validated but the free-text
+        // fields were not, so any signed-in user could write ~1MB documents.
+        // Nullable fields (source.url/referenceId) must tolerate null.
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 200
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 2000
+        && request.resource.data.courseCode is string
+        && request.resource.data.courseCode.size() <= 50
+        && request.resource.data.sectionId is string
+        && request.resource.data.sectionId.size() <= 30
+        && request.resource.data.authorName is string
+        && request.resource.data.authorName.size() <= 120
+        && request.resource.data.confidence is string
+        && request.resource.data.confidence.size() <= 40
+        && (request.resource.data.source.url == null
+            || request.resource.data.source.url.size() <= 500)
+        && (request.resource.data.source.referenceId == null
+            || request.resource.data.source.referenceId.size() <= 200);
       allow delete: if isBitsEmail() && appAvailable()
         && resource.data.authorUid == userDocId();
       allow update: if false;
@@ -97,6 +117,23 @@ service cloud.firestore {
         allow read: if isBitsEmail() && appAvailable();
         allow write: if false;
       }
+    }
+
+    // Collection-group reads so a user can fetch their OWN vote/flag/verification
+    // across all announcements in one query each (see fetchUserStates). Without
+    // these, that lookup costs 3 point reads per announcement. Scoped to the
+    // caller's own documents; writes still only via Cloud Functions.
+    match /{path=**}/votes/{voteId} {
+      allow read: if isBitsEmail() && appAvailable() && voteId == userDocId();
+      allow write: if false;
+    }
+    match /{path=**}/flags/{flagId} {
+      allow read: if isBitsEmail() && appAvailable() && flagId == userDocId();
+      allow write: if false;
+    }
+    match /{path=**}/verifications/{verifId} {
+      allow read: if isBitsEmail() && appAvailable() && verifId == userDocId();
+      allow write: if false;
     }
 
     // Reputation — reads by BITS users; writes only via Cloud Functions (Admin SDK)

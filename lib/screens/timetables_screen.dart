@@ -75,11 +75,14 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     await _loadTimetables();
     _loadArchivedSemesters();
     if (mounted) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Future.delayed(const Duration(milliseconds: 400), () {
-          if (mounted) TutorialService().showTimetableListTutorial(context);
-        });
-      });
+      // Auto-start the onboarding tour as soon as it's eligible and laid out.
+      // autoStart retries through the cold-start auth/layout race so the tour
+      // appears immediately on load instead of only after a later navigation.
+      TutorialService().autoStart(
+        context,
+        DrawerScreen.timetables,
+        isMounted: () => mounted,
+      );
     }
   }
 
@@ -684,6 +687,12 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                 case 'humanities_electives':
                   Navigator.push(context, FadeSlidePageRoute(page: const HumanitiesElectivesScreen()));
                   break;
+                case 'import_code':
+                  _importFromShareCode();
+                  break;
+                case 'compare':
+                  Navigator.push(context, FadeSlidePageRoute(page: const TimetableComparisonScreen()));
+                  break;
                 case 'github':
                   _openGitHub();
                   break;
@@ -714,6 +723,18 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                       ],
                     ),
                   ),
+                ),
+                const PopupMenuDivider(),
+              ],
+              // On mobile these live here instead of as stacked FABs.
+              if (ResponsiveService.isMobile(context)) ...[
+                const PopupMenuItem(
+                  value: 'import_code',
+                  child: ListTile(leading: Icon(Icons.download), title: Text('Import from Code'), contentPadding: EdgeInsets.zero),
+                ),
+                const PopupMenuItem(
+                  value: 'compare',
+                  child: ListTile(leading: Icon(Icons.compare), title: Text('Compare Timetables'), contentPadding: EdgeInsets.zero),
                 ),
                 const PopupMenuDivider(),
               ],
@@ -1172,50 +1193,20 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
       floatingActionButtonAnimator: FloatingActionButtonAnimator.noAnimation,
       floatingActionButton: ResponsiveService.buildResponsive(
         context,
-        mobile: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            FloatingActionButton(
-              key: TutorialKeys.importCodeBtn,
-              onPressed: _importFromShareCode,
-              tooltip: 'Import from Code',
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
-              heroTag: "import_code",
-              child: const Icon(Icons.download),
-            ),
-            SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 8)),
-            FloatingActionButton(
-              key: TutorialKeys.compareBtn,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  FadeSlidePageRoute(page: const TimetableComparisonScreen()),
-                );
-              },
-              tooltip: 'Compare Timetables',
-              backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-              foregroundColor:
-                  Theme.of(context).colorScheme.onSecondaryContainer,
-              heroTag: "compare",
-              child: const Icon(Icons.compare),
-            ),
-            SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 16)),
-            Semantics(
-              label: 'Create Timetable',
-              button: true,
-              child: FloatingActionButton.extended(
-                key: TutorialKeys.newTimetableBtn,
-                onPressed: _createNewTimetable,
-                icon: const Icon(Icons.add),
-                label: const Text('New Timetable'),
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                heroTag: "add",
-              ),
-            ),
-          ],
+        // Single primary FAB on mobile — Import from Code and Compare moved to
+        // the Tools (⊞) menu so stacked FABs no longer crowd the corner.
+        mobile: Semantics(
+          label: 'Create Timetable',
+          button: true,
+          child: FloatingActionButton.extended(
+            key: TutorialKeys.newTimetableBtn,
+            onPressed: _createNewTimetable,
+            icon: const Icon(Icons.add),
+            label: const Text('New Timetable'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
+            heroTag: "add",
+          ),
         ),
         desktop: Row(
           mainAxisAlignment: MainAxisAlignment.end,

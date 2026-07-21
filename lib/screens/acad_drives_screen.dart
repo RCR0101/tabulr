@@ -115,11 +115,11 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     _loadEnrolledCourses();
     _loadCourses().then((_) {
       if (mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          Future.delayed(const Duration(milliseconds: 400), () {
-            if (mounted) TutorialService().showAcadDrivesTutorial(context);
-          });
-        });
+        TutorialService().autoStart(
+          context,
+          DrawerScreen.acadDrives,
+          isMounted: () => mounted,
+        );
       }
     });
     CommandPaletteActions.register(DrawerScreen.acadDrives, () => [
