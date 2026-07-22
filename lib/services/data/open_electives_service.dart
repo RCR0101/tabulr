@@ -4,31 +4,35 @@ import 'branch_structure_service.dart';
 
 /// Derives the Open Elective (OPEL) pool.
 ///
-/// An OPEL is any offered course that is neither a Discipline Elective (DEL)
-/// nor a Humanities Elective (HUEL): OPEL = offered − (DEL ∪ HUEL). DEL and HUEL
-/// codes are pooled across every branch, since a course that is a DEL for one
-/// branch is still a DEL and so cannot double as an OPEL here.
+/// An OPEL is any offered course that isn't part of *your* degree requirements:
+/// OPEL = offered − (CDC ∪ DEL ∪ HUEL) for the selected branch(es). It is
+/// branch-relative on purpose — another discipline's core or elective is a
+/// legitimate open elective for you, so only the chosen branch(es)' codes are
+/// subtracted. All CDC semesters are excluded, since none of your cores count.
 class OpenElectivesService {
   final BranchStructureService _branchService = BranchStructureService();
 
-  Future<List<Course>> getOpenElectives(List<Course> availableCourses) async {
+  Future<List<Course>> getOpenElectives(
+    List<Course> availableCourses,
+    List<String> branchCodes,
+  ) async {
     try {
-      final branches = await _branchService.getAvailableBranches();
-
-      final electiveCodes = <String>{};
-      for (final branch in branches) {
-        electiveCodes.addAll(await _branchService.getDELs(branch));
-        electiveCodes.addAll(await _branchService.getHUELs(branch));
+      final excludedCodes = <String>{};
+      for (final branch in branchCodes) {
+        if (branch.isEmpty) continue;
+        excludedCodes.addAll(await _branchService.getCDCs(branch, null));
+        excludedCodes.addAll(await _branchService.getDELs(branch));
+        excludedCodes.addAll(await _branchService.getHUELs(branch));
       }
 
       final result = availableCourses
-          .where((c) => !electiveCodes.contains(c.courseCode))
+          .where((c) => !excludedCodes.contains(c.courseCode))
           .toList()
         ..sort((a, b) => a.courseCode.compareTo(b.courseCode));
 
       SecureLogger.debug(
           'OPEL', 'Found ${result.length} open electives of '
-          '${availableCourses.length} offered');
+          '${availableCourses.length} offered for ${branchCodes.join(", ")}');
       return result;
     } catch (e) {
       SecureLogger.error('OPEL', 'Error in getOpenElectives', e);
