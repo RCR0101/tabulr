@@ -12,6 +12,7 @@ import '../services/ui/toast_service.dart';
 import '../services/ui/page_leave_warning_service.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/common/app_dialog.dart';
+import '../widgets/common/app_tappable.dart';
 import '../widgets/common/app_button.dart';
 import '../widgets/common/app_loading_overlay.dart';
 import '../services/parsers/performance_sheet_parser.dart';
@@ -1048,7 +1049,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
               children: [
                 Expanded(
                   flex: 2,
-                  child: GestureDetector(
+                  child: AppTappable(
                     onTap: () => _showSemesterSGPADetails(),
                     child: _buildSummaryCard(
                       'CGPA',
@@ -1060,7 +1061,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: GestureDetector(
+                  child: AppTappable(
                     onTap: () => _showSemesterCreditsDetails(),
                     child: _buildSummaryCard(
                       'Credits',
@@ -1083,7 +1084,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
           : Row(
               children: [
                 Expanded(
-                  child: GestureDetector(
+                  child: AppTappable(
                     onTap: () => _showSemesterSGPADetails(),
                     child: _buildSummaryCard(
                       'Overall CGPA',
@@ -1095,7 +1096,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: GestureDetector(
+                  child: AppTappable(
                     onTap: () => _showSemesterCreditsDetails(),
                     child: _buildSummaryCard(
                       'Total Credits',

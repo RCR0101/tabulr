@@ -6,6 +6,7 @@ import '../services/ui/theme_service.dart' as theme_service;
 import '../services/data/user_settings_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../utils/design_constants.dart';
+import 'common/app_tappable.dart';
 import '../models/user_settings.dart' as user_settings;
 
 class ThemeSelectorWidget extends StatefulWidget {
@@ -431,7 +432,7 @@ class ThemePreviewCard extends StatelessWidget {
     final themeService = theme_service.ThemeService();
     final themeData = themeService.getThemeData(theme);
 
-    return GestureDetector(
+    return AppTappable(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import '../models/course.dart';
+import 'common/app_tappable.dart';
 import '../models/timetable_constraints.dart';
 import '../services/core/timetable_generator_controller.dart';
 import '../services/core/clash_detector.dart';
@@ -1347,7 +1348,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                       ),
                     ),
                     const SizedBox(width: 8),
-                    GestureDetector(
+                    AppTappable(
                       onTap: () {
                         setState(() {
                           _ctrl.instructorRankings.clear();
@@ -1381,7 +1382,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                                           rankings.practicalInstructors.length +
                                           rankings.tutorialInstructors.length;
 
-                        return GestureDetector(
+                        return AppTappable(
                           onTap: () => _showInstructorRankingDialog(),
                           child: Container(
                             padding: const EdgeInsets.all(10),

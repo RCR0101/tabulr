@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'app_tappable.dart';
 import '../../utils/design_constants.dart';
 
 enum ToastType { success, error, info, warning }
@@ -223,7 +224,7 @@ class _ToastOverlayState extends State<_ToastOverlay>
               opacity: _fadeAnimation,
               child: Material(
                 color: Colors.transparent,
-                child: GestureDetector(
+                child: AppTappable(
                   onTap: widget.onDismiss,
                   child: Container(
                   constraints: const BoxConstraints(maxWidth: 420),

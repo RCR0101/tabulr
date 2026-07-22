@@ -18,6 +18,7 @@ import '../services/ui/toast_service.dart';
 import '../models/calendar_event.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_dialog.dart';
+import '../widgets/common/app_tappable.dart';
 import '../widgets/common/app_button.dart';
 import '../utils/page_info_helper.dart';
 import '../services/ui/tutorial_service.dart';
@@ -896,7 +897,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             visualDensity: VisualDensity.compact,
             tooltip: 'Previous week',
           ),
-          GestureDetector(
+          AppTappable(
             onTap: isToday ? null : _goToToday,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -1052,7 +1053,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           return Expanded(
             child: Padding(
               padding: EdgeInsets.only(left: i == 0 ? 0 : 4, right: i == 5 ? 0 : 4),
-              child: GestureDetector(
+              child: AppTappable(
                 onTap: () => setState(() => _mobileDayIndex = i),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
@@ -1229,7 +1230,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         children: [
                           ...hourBanners.map((b) => Padding(
                                 padding: const EdgeInsets.only(bottom: 4),
-                                child: GestureDetector(
+                                child: AppTappable(
                                   onTap: () => _showItemDetail(context, b),
                                   child: Container(
                                     width: double.infinity,
@@ -1538,7 +1539,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 padding: const EdgeInsets.all(2),
                 child: Column(
                   children: banners.map((item) {
-                    return GestureDetector(
+                    return AppTappable(
                       onTap: () => _showItemDetail(context, item),
                       child: Container(
                         width: double.infinity,
@@ -1821,7 +1822,7 @@ class _SlotBlock extends StatelessWidget {
     final isScrapped = item.scrapped;
     final tall = item.spanHours > 1;
 
-    return GestureDetector(
+    return AppTappable(
       onTap: onTap,
       onLongPress: onLongPress,
       child: AnimatedOpacity(

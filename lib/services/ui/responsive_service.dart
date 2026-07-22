@@ -408,7 +408,7 @@ class ResponsiveService {
     GestureDragEndCallback? onPanEnd,
     bool enableHapticFeedback = true,
   }) {
-    return GestureDetector(
+    final detector = GestureDetector(
       onTap: onTap == null ? null : () {
         if (enableHapticFeedback) triggerSelectionFeedback(context);
         onTap();
@@ -425,6 +425,11 @@ class ResponsiveService {
       onPanEnd: onPanEnd,
       child: child,
     );
+    // A raw GestureDetector keeps the default arrow cursor on web; give tap
+    // targets the pointer (hand) so they match InkWell/button affordances.
+    // Pan-only handlers (no tap) stay on the default cursor.
+    if (onTap == null) return detector;
+    return MouseRegion(cursor: SystemMouseCursors.click, child: detector);
   }
   
   // ========== Performance Optimizations ==========

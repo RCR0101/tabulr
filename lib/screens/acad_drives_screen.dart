@@ -21,6 +21,7 @@ import '../widgets/command_palette.dart';
 import '../widgets/app_drawer.dart';
 import '../services/ui/tutorial_service.dart';
 import '../widgets/common/app_dialog.dart';
+import '../widgets/common/app_tappable.dart';
 import '../widgets/common/app_button.dart';
 import '../services/data/courses_master_service.dart';
 import '../utils/page_info_helper.dart';
@@ -1179,7 +1180,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
     Widget sectionHeader(String text, IconData icon, {Key? key, int? count, bool? expanded, VoidCallback? onToggle}) {
       final scheme = Theme.of(context).colorScheme;
-      return GestureDetector(
+      return AppTappable(
         key: key,
         onTap: onToggle,
         behavior: HitTestBehavior.opaque,
@@ -1683,7 +1684,7 @@ class _CourseCard extends StatelessWidget {
               ),
               if (onToggleStar != null) ...[
                 const SizedBox(width: 2),
-                GestureDetector(
+                AppTappable(
                   onTap: onToggleStar,
                   child: Icon(
                     starred ? Icons.star_rounded : Icons.star_outline_rounded,

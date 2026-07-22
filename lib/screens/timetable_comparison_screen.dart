@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/common/app_tappable.dart';
 import '../widgets/common/empty_state.dart';
 import '../models/timetable.dart';
 import '../models/timetable_stats.dart';
@@ -532,7 +533,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
   ) {
     final filteredItems = allItems.where((item) => item.status == filterStatus).toList();
 
-    return GestureDetector(
+    return AppTappable(
       onTap: () => _showCoursesDialog(title, filteredItems, color, icon),
       child: Container(
         padding: const EdgeInsets.all(12.0),

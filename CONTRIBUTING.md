@@ -91,6 +91,7 @@ Screens may import services, models, widgets, and utils. Services may import mod
 - No speculative abstractions — three similar lines beats a premature helper.
 - Prefer editing existing files over creating new ones.
 - Never silently swallow errors with empty `catch (_) {}` — at minimum log the error or rethrow.
+- For clickable elements that aren't Material ink surfaces, use `AppTappable` (`widgets/common/app_tappable.dart`), not a raw `GestureDetector` — the latter keeps the default arrow cursor on web instead of the pointer/hand. Pan/swipe/drag-only handlers stay on a plain `GestureDetector`.
 - `GradeConstants.normal` and `GradeConstants.points` are parallel arrays — always keep them in sync.
 
 ## What not to touch without asking
