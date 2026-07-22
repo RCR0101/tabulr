@@ -28,14 +28,14 @@ class _MinorManagementScreenState extends State<MinorManagementScreen> {
   final MinorService _service = MinorService();
   final TextEditingController _search = TextEditingController();
 
-  late Future<List<MinorProgramme>> _future;
+  List<MinorProgramme>? _minors;
   String _query = '';
   bool _reviewOnly = false;
 
   @override
   void initState() {
     super.initState();
-    _future = _service.getMinors(forceRefresh: true);
+    _load(force: true);
   }
 
   @override
@@ -44,12 +44,33 @@ class _MinorManagementScreenState extends State<MinorManagementScreen> {
     super.dispose();
   }
 
+  /// Held in state rather than a [FutureBuilder] so an inline status change can
+  /// swap one row without flashing the whole list back to a spinner.
+  Future<void> _load({bool force = false}) async {
+    final list = await _service.getMinors(forceRefresh: force);
+    if (!mounted) return;
+    setState(() => _minors = list);
+  }
+
   void _reload() {
-    // Block body, not an arrow: an arrow returns the assigned value, and
-    // setState asserts its callback didn't hand back a Future.
-    setState(() {
-      _future = _service.getMinors(forceRefresh: true);
-    });
+    setState(() => _minors = null);
+    _load(force: true);
+  }
+
+  Future<void> _setStatus(MinorProgramme m, MinorStatus status) async {
+    if (m.status == status) return;
+    final ok = await _service.setStatus(m.id, status);
+    if (!mounted) return;
+    if (ok) {
+      setState(() {
+        final list = _minors;
+        if (list == null) return;
+        final i = list.indexWhere((e) => e.id == m.id);
+        if (i != -1) list[i] = list[i].copyWith(status: status);
+      });
+    } else {
+      ToastService.showError('Could not update status');
+    }
   }
 
   @override
@@ -80,13 +101,12 @@ class _MinorManagementScreenState extends State<MinorManagementScreen> {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 900),
-          child: FutureBuilder<List<MinorProgramme>>(
-            future: _future,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
+          child: Builder(
+            builder: (context) {
+              final all = _minors;
+              if (all == null) {
                 return const Center(child: CircularProgressIndicator());
               }
-              final all = snapshot.data ?? const <MinorProgramme>[];
               final visible = all
                   .where((m) => m.matches(_query))
                   .where((m) => !_reviewOnly || m.needsReview)
@@ -163,36 +183,12 @@ class _MinorManagementScreenState extends State<MinorManagementScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        m.name,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    if (m.needsReview) ...[
-                      const SizedBox(width: AppDesign.spacingSm),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: scheme.tertiary.withValues(alpha: 0.15),
-                          borderRadius: AppDesign.borderRadiusSm,
-                        ),
-                        child: Text(
-                          'Needs review',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelSmall
-                              ?.copyWith(color: scheme.tertiary),
-                        ),
-                      ),
-                    ],
-                  ],
+                Text(
+                  m.name,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 3),
                 Text(
@@ -205,6 +201,7 @@ class _MinorManagementScreenState extends State<MinorManagementScreen> {
               ],
             ),
           ),
+          _statusChip(context, m),
           IconButton(
             icon: const Icon(Icons.edit_outlined, size: 20),
             tooltip: 'Edit',
@@ -216,6 +213,53 @@ class _MinorManagementScreenState extends State<MinorManagementScreen> {
             onPressed: () => _delete(m),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Tappable status pill: shows the current [MinorStatus] and, on tap, offers
+  /// the other two — the inline triage control for the review queue.
+  Widget _statusChip(BuildContext context, MinorProgramme m) {
+    final color = statusColor(context, m.status);
+    return PopupMenuButton<MinorStatus>(
+      tooltip: 'Set status',
+      onSelected: (s) => _setStatus(m, s),
+      itemBuilder: (context) => [
+        for (final s in MinorStatus.values)
+          PopupMenuItem(
+            value: s,
+            child: Row(
+              children: [
+                Icon(Icons.circle, size: 10, color: statusColor(context, s)),
+                const SizedBox(width: AppDesign.spacingSm),
+                Text(s.label),
+                if (s == m.status) ...[
+                  const Spacer(),
+                  const Icon(Icons.check, size: 16),
+                ],
+              ],
+            ),
+          ),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: AppDesign.borderRadiusSm,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              m.status.label,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: color, fontWeight: FontWeight.w600),
+            ),
+            Icon(Icons.arrow_drop_down, size: 16, color: color),
+          ],
+        ),
       ),
     );
   }
@@ -273,7 +317,7 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
   late final TextEditingController _minCourses;
   late final TextEditingController _minUnits;
   late final List<_GroupEditor> _groups;
-  late bool _needsReview;
+  late MinorStatus _status;
   bool _saving = false;
   Set<String> _catalogueCodes = const {};
 
@@ -285,7 +329,7 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
     _description = TextEditingController(text: m?.description ?? '');
     _minCourses = TextEditingController(text: m?.minCourses?.toString() ?? '');
     _minUnits = TextEditingController(text: m?.minUnits?.toString() ?? '');
-    _needsReview = m?.needsReview ?? false;
+    _status = m?.status ?? MinorStatus.notVerified;
     _groups = (m?.groups ?? const <MinorCourseGroup>[])
         .map(_GroupEditor.from)
         .toList();
@@ -347,7 +391,7 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
             ),
       ],
       campuses: widget.minor?.campuses ?? const [],
-      needsReview: _needsReview,
+      status: _status,
     );
 
     final ok = await _service.upsert(minor);
@@ -415,15 +459,33 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
                   ],
                 ),
                 const SizedBox(height: AppDesign.spacingMd),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: _needsReview,
-                  onChanged: (v) => setState(() => _needsReview = v),
-                  title: const Text('Needs review'),
-                  subtitle: const Text(
-                      'Turn off once the groupings have been checked against the Bulletin'),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Verification status',
+                      style: Theme.of(context).textTheme.labelLarge),
                 ),
-                const Divider(),
+                const SizedBox(height: AppDesign.spacingSm),
+                SegmentedButton<MinorStatus>(
+                  segments: [
+                    for (final s in MinorStatus.values)
+                      ButtonSegment(value: s, label: Text(s.label)),
+                  ],
+                  selected: {_status},
+                  showSelectedIcon: false,
+                  onSelectionChanged: (sel) =>
+                      setState(() => _status = sel.first),
+                ),
+                const SizedBox(height: AppDesign.spacingSm),
+                Text(
+                  'Mark Verified once the groupings have been checked against the Bulletin.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withValues(alpha: 0.6),
+                      ),
+                ),
+                const Divider(height: AppDesign.spacingLg),
                 for (final (i, g) in _groups.indexed) ...[
                   _groupEditor(context, g, i),
                   const SizedBox(height: AppDesign.spacingMd),
@@ -646,6 +708,13 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
     });
   }
 }
+
+/// Shared so the list pill and the editor selector read the same.
+Color statusColor(BuildContext context, MinorStatus status) => switch (status) {
+      MinorStatus.notVerified => AppDesign.danger(context),
+      MinorStatus.inReview => AppDesign.warning(context),
+      MinorStatus.verified => AppDesign.success(context),
+    };
 
 /// One group's working state in the editor.
 ///

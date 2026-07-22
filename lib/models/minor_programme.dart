@@ -75,6 +75,32 @@ class MinorCourseGroup {
       );
 }
 
+/// Where a minor sits in the admin verification workflow.
+///
+/// Seeded records import as [notVerified]; an admin moves them through
+/// [inReview] to [verified] once the groupings have been checked against the
+/// Bulletin. Persisted as [name]; documents that predate this and only stored
+/// the `needsReview` bool map true → [notVerified], false → [verified].
+enum MinorStatus {
+  notVerified('Not verified'),
+  inReview('In review'),
+  verified('Verified');
+
+  const MinorStatus(this.label);
+
+  final String label;
+
+  static MinorStatus fromData(Map<String, dynamic> data) {
+    final raw = data['status'];
+    if (raw is String) {
+      for (final s in MinorStatus.values) {
+        if (s.name == raw) return s;
+      }
+    }
+    return data['needsReview'] == true ? notVerified : verified;
+  }
+}
+
 /// A minor programme as published in the Bulletin.
 ///
 /// Stored in Firestore rather than compiled in, because the Bulletin is
@@ -90,7 +116,7 @@ class MinorProgramme {
     this.minUnits,
     this.groups = const [],
     this.campuses = const [],
-    this.needsReview = false,
+    this.status = MinorStatus.verified,
     this.updatedAt,
   });
 
@@ -109,9 +135,11 @@ class MinorProgramme {
   /// the UI shows it everywhere rather than hiding it.
   final List<String> campuses;
 
-  /// Set on seeded records whose extraction was uncertain, so admins can find
-  /// and verify them.
-  final bool needsReview;
+  /// Admin verification state. Seeded records start [MinorStatus.notVerified].
+  final MinorStatus status;
+
+  /// Anything not yet [MinorStatus.verified] is still on the review queue.
+  bool get needsReview => status != MinorStatus.verified;
 
   final DateTime? updatedAt;
 
@@ -146,7 +174,7 @@ class MinorProgramme {
       campuses: ((data['campuses'] as List<dynamic>?) ?? [])
           .map((c) => c.toString())
           .toList(),
-      needsReview: data['needsReview'] == true,
+      status: MinorStatus.fromData(data),
       updatedAt: data['updatedAt'] is Timestamp
           ? (data['updatedAt'] as Timestamp).toDate()
           : null,
@@ -160,6 +188,8 @@ class MinorProgramme {
         if (minUnits != null) 'minUnits': minUnits,
         'groups': groups.map((g) => g.toMap()).toList(),
         'campuses': campuses,
+        'status': status.name,
+        // Derived, kept so an older app build still reads a review flag.
         'needsReview': needsReview,
       };
 
@@ -170,7 +200,7 @@ class MinorProgramme {
     int? minUnits,
     List<MinorCourseGroup>? groups,
     List<String>? campuses,
-    bool? needsReview,
+    MinorStatus? status,
   }) =>
       MinorProgramme(
         id: id,
@@ -180,7 +210,7 @@ class MinorProgramme {
         minUnits: minUnits ?? this.minUnits,
         groups: groups ?? this.groups,
         campuses: campuses ?? this.campuses,
-        needsReview: needsReview ?? this.needsReview,
+        status: status ?? this.status,
         updatedAt: updatedAt,
       );
 }

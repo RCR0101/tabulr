@@ -104,6 +104,24 @@ class MinorService {
     }
   }
 
+  /// Sets just the verification status without rewriting the whole document,
+  /// so admins can triage from the list without opening the editor.
+  Future<bool> setStatus(String id, MinorStatus status) async {
+    if (id.isEmpty) return false;
+    try {
+      await _col.doc(id).set({
+        'status': status.name,
+        'needsReview': status != MinorStatus.verified,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      invalidateCache();
+      return true;
+    } catch (e) {
+      SecureLogger.error('MINORS', 'Failed to update minor status', e);
+      return false;
+    }
+  }
+
   Future<bool> delete(String id) async {
     try {
       await _col.doc(id).delete();

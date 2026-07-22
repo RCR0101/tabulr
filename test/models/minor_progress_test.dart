@@ -17,7 +17,7 @@ MinorProgramme minorOf(
     minUnits: null,
     groups: [MinorCourseGroup(name: 'Core', courses: courses)],
     campuses: const [],
-    needsReview: false,
+    status: MinorStatus.verified,
   );
 }
 

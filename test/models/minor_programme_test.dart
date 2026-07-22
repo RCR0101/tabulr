@@ -132,11 +132,39 @@ void main() {
     });
   });
 
+  group('MinorStatus', () {
+    test('reads an explicit status string', () {
+      expect(MinorStatus.fromData({'status': 'inReview'}),
+          MinorStatus.inReview);
+    });
+
+    test('falls back to the legacy needsReview bool', () {
+      expect(
+          MinorStatus.fromData({'needsReview': true}), MinorStatus.notVerified);
+      expect(
+          MinorStatus.fromData({'needsReview': false}), MinorStatus.verified);
+    });
+
+    test('an unknown status string falls back to verified', () {
+      expect(MinorStatus.fromData({'status': 'bogus'}), MinorStatus.verified);
+    });
+
+    test('needsReview is true unless verified', () {
+      expect(minor().copyWith(status: MinorStatus.verified).needsReview,
+          isFalse);
+      expect(minor().copyWith(status: MinorStatus.inReview).needsReview, isTrue);
+      expect(minor().copyWith(status: MinorStatus.notVerified).needsReview,
+          isTrue);
+    });
+  });
+
   group('copyWith', () {
     test('keeps the id and updates only what is passed', () {
-      final updated = minor().copyWith(name: 'Renamed', needsReview: true);
+      final updated =
+          minor().copyWith(name: 'Renamed', status: MinorStatus.inReview);
       expect(updated.id, 'data-science');
       expect(updated.name, 'Renamed');
+      expect(updated.status, MinorStatus.inReview);
       expect(updated.needsReview, isTrue);
       expect(updated.minUnits, 15);
     });
