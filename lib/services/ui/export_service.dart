@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
@@ -493,12 +494,29 @@ class ExportService {
     }
   }
 
+  // Cap the exported image so its longest side stays within the WebGL
+  // MAX_TEXTURE_SIZE that CanvasKit relies on. Many mobile/integrated GPUs
+  // limit this to 4096px per side, so a full timetable at a fixed 3x pixel
+  // ratio (~5000px+) makes toImage() fail on those devices while succeeding on
+  // desktop GPUs (16384px). 4000 leaves a small safety margin.
+  static const double _maxExportImageDimension = 4000.0;
+  static const double _preferredExportPixelRatio = 3.0;
+
   static Future<String> exportToPNG(GlobalKey key, {String? customPath}) async {
     try {
       final RenderRepaintBoundary boundary =
           key.currentContext!.findRenderObject() as RenderRepaintBoundary;
 
-      final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      final Size size = boundary.size;
+      final double longestSide = math.max(size.width, size.height);
+      double pixelRatio = _preferredExportPixelRatio;
+      if (longestSide > 0 &&
+          longestSide * pixelRatio > _maxExportImageDimension) {
+        pixelRatio = (_maxExportImageDimension / longestSide)
+            .clamp(1.0, _preferredExportPixelRatio);
+      }
+
+      final ui.Image image = await boundary.toImage(pixelRatio: pixelRatio);
       final ByteData? byteData = await image.toByteData(
         format: ui.ImageByteFormat.png,
       );

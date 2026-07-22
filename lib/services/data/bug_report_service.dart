@@ -76,6 +76,66 @@ class BugReportService {
         .map((snap) => snap.docs.map(BugReport.fromFirestore).toList());
   }
 
+  /// Live stream of a report's conversation, oldest first so it reads top-down.
+  ///
+  /// Readable by the report's author and by admins (enforced in
+  /// firestore.rules); anyone else gets a permission error from the stream.
+  Stream<List<BugMessage>> messages(String reportId) {
+    return _col
+        .doc(reportId)
+        .collection(FirestoreCollections.bugReportMessages)
+        .orderBy('createdAt')
+        .limit(maxFetch)
+        .snapshots()
+        .map((snap) => snap.docs.map(BugMessage.fromFirestore).toList());
+  }
+
+  /// Posts a reply to a report's thread.
+  ///
+  /// [asAdmin] must reflect the sender's real role — firestore.rules rejects
+  /// the write if it doesn't, so a user cannot post as the team. Also stamps
+  /// the matching `last*ReplyAt` on the parent so the other side sees an unread
+  /// marker without reading the whole thread.
+  Future<bool> sendMessage({
+    required String reportId,
+    required String body,
+    required bool asAdmin,
+  }) async {
+    final uid = _auth.userDocId;
+    final trimmed = body.trim();
+    if (uid == null || trimmed.isEmpty) return false;
+
+    try {
+      await _col
+          .doc(reportId)
+          .collection(FirestoreCollections.bugReportMessages)
+          .add({
+        'authorUid': uid,
+        'body': trimmed,
+        'isAdmin': asAdmin,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // Best-effort: the reply itself is already saved, so a failure here costs
+      // an unread badge, not the message.
+      try {
+        await _col.doc(reportId).update({
+          if (asAdmin)
+            'lastAdminReplyAt': FieldValue.serverTimestamp()
+          else
+            'lastUserReplyAt': FieldValue.serverTimestamp(),
+        });
+      } catch (e) {
+        SecureLogger.warning(
+            'BUG_REPORT', 'Failed to stamp reply time', {'error': e.toString()});
+      }
+      return true;
+    } catch (e) {
+      SecureLogger.error('BUG_REPORT', 'Failed to send message', e);
+      return false;
+    }
+  }
+
   /// Advances a report's status (admin only). Returns false on failure.
   Future<bool> updateStatus(String reportId, BugStatus status) async {
     try {

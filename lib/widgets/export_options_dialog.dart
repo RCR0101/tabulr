@@ -107,7 +107,7 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
             ),
             _buildOptionTile(
               title: 'Exam Dates',
-              subtitle: 'MidSem & CompRe dates below grid',
+              subtitle: 'MidSem & Compre dates below grid',
               value: _options.showExamDates,
               onChanged: (value) => setState(() {
                 _options = _options.copyWith(showExamDates: value);

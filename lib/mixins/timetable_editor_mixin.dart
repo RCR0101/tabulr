@@ -14,6 +14,7 @@ import '../models/export_options.dart';
 import '../services/core/timetable_service.dart';
 import '../utils/course_utils.dart';
 import '../services/ui/export_service.dart';
+import '../services/ui/secure_logger.dart';
 import '../services/data/auth_service.dart';
 import '../services/ui/toast_service.dart';
 import '../services/data/auto_load_cdc_service.dart';
@@ -804,12 +805,16 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
 
       overlay.insert(overlayEntry);
 
-      // Wait for the widget to render
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      final filePath = await ExportService.exportToPNG(tableExportKey);
-
-      overlayEntry.remove();
+      final String filePath;
+      try {
+        // Wait for the offscreen widget to lay out and paint before capturing.
+        await Future.delayed(const Duration(milliseconds: 500));
+        filePath = await ExportService.exportToPNG(tableExportKey);
+      } finally {
+        // Always tear down the offscreen overlay — leaving it inserted on a
+        // failed capture leaks a mounted timetable subtree.
+        overlayEntry.remove();
+      }
 
       if (!mounted) return;
 
@@ -826,6 +831,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         ],
       );
     } catch (e) {
+      SecureLogger.error('EXPORT', 'PNG export failed', e);
       showErrorDialog('Export failed: $e');
     }
   }

@@ -5,6 +5,7 @@ import '../services/data/bug_report_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/bug_status_chip.dart';
+import '../widgets/bug_thread.dart';
 import '../widgets/common/app_button.dart';
 import '../widgets/common/empty_state_widget.dart';
 
@@ -27,6 +28,10 @@ class _BugReportScreenState extends State<BugReportScreen> {
   // Client-side pagination over the user's (capped) report stream.
   static const int _pageSize = 5;
   int _page = 0;
+
+  /// Reports whose conversation is expanded. Threads are mounted only while
+  /// open so the screen doesn't hold a listener per row.
+  final Set<String> _openThreads = {};
 
   // Cache the stream once so form rebuilds (typing, picking a category) don't
   // re-subscribe and flash the loading/empty state. The live Firestore stream
@@ -270,6 +275,7 @@ class _BugReportScreenState extends State<BugReportScreen> {
 
   Widget _reportCard(BuildContext context, BugReport r) {
     final scheme = Theme.of(context).colorScheme;
+    final open = _openThreads.contains(r.id);
     return Container(
       margin: const EdgeInsets.only(bottom: AppDesign.spacingSm),
       padding: const EdgeInsets.all(AppDesign.spacingMd),
@@ -298,12 +304,42 @@ class _BugReportScreenState extends State<BugReportScreen> {
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: AppDesign.spacingSm),
-          Text(
-            _formatDate(r.createdAt),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurface.withValues(alpha: 0.5),
+          Row(
+            children: [
+              Text(
+                _formatDate(r.createdAt),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurface.withValues(alpha: 0.5),
+                    ),
+              ),
+              const Spacer(),
+              if (r.hasUnreadForUser && !open) ...[
+                Text(
+                  'New reply',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: scheme.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
                 ),
+                const SizedBox(width: AppDesign.spacingSm),
+              ],
+              TextButton.icon(
+                onPressed: () => setState(() {
+                  if (!_openThreads.remove(r.id)) _openThreads.add(r.id);
+                }),
+                icon: Icon(
+                  open ? Icons.expand_less : Icons.forum_outlined,
+                  size: 18,
+                ),
+                label: Text(open ? 'Hide' : 'Conversation'),
+              ),
+            ],
           ),
+          if (open) ...[
+            Divider(color: scheme.outline.withValues(alpha: 0.2)),
+            const SizedBox(height: AppDesign.spacingSm),
+            BugThread(reportId: r.id, asAdmin: false),
+          ],
         ],
       ),
     );

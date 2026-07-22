@@ -111,6 +111,42 @@ const Map<String, List<String>> bugReportTaxonomy = {
   ],
 };
 
+/// One message in a report's conversation thread.
+///
+/// Lives in `bug_reports/{reportId}/messages`. Who may post is enforced by
+/// firestore.rules: admins, and the report's own author. [isAdmin] is validated
+/// against the writer's real role there, so it can be trusted for display.
+class BugMessage {
+  final String id;
+  final String authorUid;
+  final String body;
+
+  /// True when written by an admin; drives the "Tabulr Team" attribution.
+  final bool isAdmin;
+  final DateTime createdAt;
+
+  const BugMessage({
+    required this.id,
+    required this.authorUid,
+    required this.body,
+    required this.isAdmin,
+    required this.createdAt,
+  });
+
+  factory BugMessage.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    return BugMessage(
+      id: doc.id,
+      authorUid: data['authorUid'] ?? '',
+      body: data['body'] ?? '',
+      isAdmin: data['isAdmin'] == true,
+      // A just-written message has a null server timestamp until the write
+      // lands; treating that as "now" keeps optimistic local echoes in order.
+      createdAt: BugReport._parseTimestamp(data['createdAt']),
+    );
+  }
+}
+
 /// A single bug report filed by a user.
 class BugReport {
   final String id;
@@ -123,6 +159,11 @@ class BugReport {
   final DateTime createdAt;
   final DateTime? updatedAt;
 
+  /// Last time each side posted to the thread. Used to flag unread replies
+  /// without paying for a read of the messages subcollection per list row.
+  final DateTime? lastAdminReplyAt;
+  final DateTime? lastUserReplyAt;
+
   const BugReport({
     required this.id,
     required this.authorUid,
@@ -133,6 +174,8 @@ class BugReport {
     required this.status,
     required this.createdAt,
     this.updatedAt,
+    this.lastAdminReplyAt,
+    this.lastUserReplyAt,
   });
 
   factory BugReport.fromFirestore(DocumentSnapshot doc) {
@@ -148,8 +191,24 @@ class BugReport {
       createdAt: _parseTimestamp(data['createdAt']),
       updatedAt:
           data['updatedAt'] != null ? _parseTimestamp(data['updatedAt']) : null,
+      lastAdminReplyAt: data['lastAdminReplyAt'] != null
+          ? _parseTimestamp(data['lastAdminReplyAt'])
+          : null,
+      lastUserReplyAt: data['lastUserReplyAt'] != null
+          ? _parseTimestamp(data['lastUserReplyAt'])
+          : null,
     );
   }
+
+  /// Whether the other side replied after this side last did — a cheap
+  /// "needs your attention" signal derived from the two stamps alone.
+  bool get hasUnreadForUser =>
+      lastAdminReplyAt != null &&
+      (lastUserReplyAt == null || lastAdminReplyAt!.isAfter(lastUserReplyAt!));
+
+  bool get hasUnreadForAdmin =>
+      lastUserReplyAt != null &&
+      (lastAdminReplyAt == null || lastUserReplyAt!.isAfter(lastAdminReplyAt!));
 
   /// Payload for a brand-new report. `createdAt` uses the server clock so
   /// ordering is authoritative regardless of device time.

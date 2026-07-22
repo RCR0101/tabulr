@@ -41,6 +41,7 @@ abstract final class FirestoreCollections {
   static const String cgpaSemesters = 'cgpa_semesters';
   static const String archivedTimetables = 'archivedTimetables';
   static const String bugReports = 'bug_reports';
+  static const String bugReportMessages = 'messages';
   static const String profile = 'profile';
 }
 

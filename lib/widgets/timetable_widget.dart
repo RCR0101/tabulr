@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/course.dart';
+import '../services/data/campus_service.dart';
 import '../models/timetable.dart';
 import '../models/export_options.dart';
 import '../models/timetable_display.dart';
@@ -844,12 +845,27 @@ class _TimetableWidgetState extends State<TimetableWidget> {
 
   Widget _buildExportSurface(BuildContext context, CoursePalette palette) {
     final scheme = Theme.of(context).colorScheme;
+    final effectiveSize = widget.size == TimetableSize.fit
+        ? TimetableSize.extraLarge
+        : widget.size;
+    // Size the whole surface to the grid's own width so the exam-schedule table
+    // spans exactly the timetable's width. A bounded width also keeps `stretch`
+    // and the exam Table's Flex columns valid under the unbounded export
+    // overlay, which supplies no width of its own.
+    const gridPadding = 12.0; // EdgeInsets.all below
+    const borderWidth = 1.0; // Border.all below
+    final surfaceWidth = TimetableGrid.exportContentWidth(
+          slots: widget.timetableSlots,
+          size: effectiveSize,
+        ) +
+        (gridPadding + borderWidth) * 2;
     return Container(
+      width: surfaceWidth,
       margin: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.outline),
+        border: Border.all(color: scheme.outline, width: borderWidth),
       ),
       child: RepaintBoundary(
         key: widget.tableKey,
@@ -858,16 +874,14 @@ class _TimetableWidgetState extends State<TimetableWidget> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(gridPadding),
               child: TimetableGrid(
                 slots: widget.timetableSlots,
                 // The agenda is a screen view; a captured PNG is always a grid.
                 layout: widget.layout == TimetableLayout.agenda
                     ? TimetableLayout.vertical
                     : widget.layout,
-                size: widget.size == TimetableSize.fit
-                    ? TimetableSize.extraLarge
-                    : widget.size,
+                size: effectiveSize,
                 palette: palette,
                 isForExport: true,
                 // The PNG crops the same way the grid on screen does, so what
@@ -1038,7 +1052,13 @@ class _TimetableWidgetState extends State<TimetableWidget> {
 
     String fmtDate(DateTime d) =>
         '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
-    String fmtSlot(TimeSlot s) => s == TimeSlot.FN ? 'FN' : 'AN';
+    // The campus-specific clock time, not the FN/AN shorthand — a midsem sits in
+    // one of MS1–MS4, which the old `s == FN ? 'FN' : 'AN'` mislabelled as "AN"
+    // for every one of them.
+    String fmtSlot(TimeSlot s) => TimeSlotInfo.getTimeSlotName(
+          s,
+          campus: CampusService.currentCampusCode,
+        );
 
     final scheme = Theme.of(context).colorScheme;
     return Container(
@@ -1186,6 +1206,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               fontSize: 12,
               color: scheme.onSurface.withValues(alpha: 0.6),
             ),
+            // A time range is far wider than the old "FN"/"AN"; a short week
+            // gives narrow columns, so soften rather than overflow.
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

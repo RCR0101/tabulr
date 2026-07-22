@@ -311,6 +311,26 @@ void main() {
       expect(data.uniqueCourseCount, 1);
     });
 
+    test('cgpa dedup orders canonical semesters chronologically, not by map order', () {
+      // Firestore returns documents sorted lexicographically by ID, which puts
+      // 'ST 1' after '3-1' even though the summer term comes first. Build the
+      // map in that (real) order and confirm the chronologically latest attempt
+      // still wins.
+      final data = CGPAData(semesters: {
+        '3-1': SemesterData(
+          semesterName: '3-1',
+          courses: [_entry('CS F111', 4, 'A')], // true latest attempt
+        ),
+        'ST 1': SemesterData(
+          semesterName: 'ST 1',
+          courses: [_entry('CS F111', 4, 'C')], // earlier, but last in map
+        ),
+      });
+
+      expect(data.cgpa, 10.0);
+      expect(data.uniqueCourseCount, 1);
+    });
+
     test('cgpa with mixed repeated and unique courses', () {
       final data = CGPAData(semesters: {
         'Sem 1': SemesterData(

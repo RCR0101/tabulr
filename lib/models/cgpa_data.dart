@@ -169,11 +169,28 @@ class CGPAData {
     return totalCredits > 0 ? totalGradePoints / totalCredits : 0.0;
   }
 
+  /// Semesters in chronological order.
+  ///
+  /// The backing map's iteration order cannot be trusted: it comes from
+  /// Firestore, which returns documents sorted lexicographically by ID, so
+  /// 'ST 1' lands after '5-2' rather than after '2-2'. Ordering by
+  /// [SemesterConstants.all] (the same list the calculator screen uses) is what
+  /// makes "latest attempt" actually mean latest. Semesters with names outside
+  /// that list keep their map order and sort last.
+  Iterable<SemesterData> get _chronologicalSemesters {
+    final known = SemesterConstants.all.toSet();
+    return [
+      for (final name in SemesterConstants.all)
+        if (semesters[name] != null) semesters[name]!,
+      for (final entry in semesters.entries)
+        if (!known.contains(entry.key)) entry.value,
+    ];
+  }
+
   // Returns one CourseEntry per course code, keeping only the latest semester's attempt.
-  // Semester ordering follows their insertion order in the map (chronological).
   List<CourseEntry> _deduplicatedCourses() {
     final latest = <String, CourseEntry>{};
-    for (final semester in semesters.values) {
+    for (final semester in _chronologicalSemesters) {
       for (final course in semester.courses) {
         if (course.courseType != CourseType.normal ||
             course.grade == null ||

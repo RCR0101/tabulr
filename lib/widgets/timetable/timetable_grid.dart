@@ -59,6 +59,25 @@ class TimetableGrid extends StatefulWidget {
   final void Function(CourseBlock block)? onSlotTap;
   final void Function(String courseCode, String sectionId)? onRemoveSection;
 
+  // Export geometry, kept in one place so it can't drift from
+  // [_TimetableGridState._measure] (which uses these) and so the export surface
+  // can size the exam-schedule table to the grid's own width.
+  static const double _verticalLeadWidth = 62.0;
+  static double exportColumnExtent(double rowExtent) =>
+      (rowExtent * 2.0).clamp(150.0, 300.0);
+
+  /// Natural rendered width of the grid in export mode: vertical layout, no
+  /// text scaling, cropped to the occupied days. Lets the export surface make
+  /// the exam-schedule table exactly as wide as the timetable.
+  static double exportContentWidth({
+    required List<TimetableSlot> slots,
+    required TimetableSize size,
+  }) {
+    final days = TimetableBlockMap.fromSlots(slots).visibleDays(showAll: false);
+    final rowExtent = (size.fixedRowHeight ?? 84.0).clamp(34.0, 132.0);
+    return _verticalLeadWidth + exportColumnExtent(rowExtent) * days.length;
+  }
+
   @override
   State<TimetableGrid> createState() => _TimetableGridState();
 }
@@ -157,7 +176,7 @@ class _TimetableGridState extends State<TimetableGrid> {
     final columnCount = vertical ? days.length : hours.length;
     final rowCount = vertical ? hours.length : days.length;
 
-    final leadWidth = (vertical ? 62.0 : 78.0) * scale;
+    final leadWidth = (vertical ? TimetableGrid._verticalLeadWidth : 78.0) * scale;
     final headerHeight = (vertical ? 42.0 : 50.0) * scale;
 
     final maxRow = vertical ? 132.0 : 168.0;
@@ -184,7 +203,7 @@ class _TimetableGridState extends State<TimetableGrid> {
         days: days,
         leadWidth: leadWidth,
         headerHeight: headerHeight,
-        columnExtent: (row * 2.0).clamp(150.0, 300.0),
+        columnExtent: TimetableGrid.exportColumnExtent(row),
         rowExtent: row,
         needsHorizontalScroll: false,
       );

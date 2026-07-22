@@ -210,11 +210,47 @@ service cloud.firestore {
         && request.resource.data.description is string
         && request.resource.data.description.size() > 0
         && request.resource.data.description.size() < 5000;
-      allow update: if isAdmin() && appAvailable()
-        && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['status', 'updatedAt'])
-        && request.resource.data.status in ['pending', 'in_review', 'dev_in_progress', 'fixed'];
+      // Admins advance status; the author may only stamp their own reply time.
+      // Neither side can rewrite the report body once filed.
+      allow update: if appAvailable() && (
+        (isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'updatedAt', 'lastAdminReplyAt'])
+          && request.resource.data.status in ['pending', 'in_review', 'dev_in_progress', 'fixed'])
+        ||
+        (request.auth != null
+          && resource.data.authorUid == userDocId()
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['lastUserReplyAt']))
+      );
       allow delete: if false;
+
+      // Conversation thread. Only the report's author and admins can read or
+      // post, and `isAdmin` on a message must match the writer's real role —
+      // that is what lets the UI trust it for attribution.
+      match /messages/{messageId} {
+        function report() {
+          return get(/databases/$(database)/documents/bug_reports/$(reportId)).data;
+        }
+        function isReporter() {
+          return request.auth != null && report().authorUid == userDocId();
+        }
+
+        allow read: if appAvailable() && (isAdmin() || isReporter());
+        allow create: if appAvailable()
+          && request.resource.data.authorUid == userDocId()
+          && request.resource.data.isAdmin is bool
+          && request.resource.data.body is string
+          && request.resource.data.body.size() > 0
+          && request.resource.data.body.size() < 5000
+          && request.resource.data.createdAt == request.time
+          && (
+            (isAdmin() && request.resource.data.isAdmin == true)
+            || (isReporter() && request.resource.data.isAdmin == false)
+          );
+        // Threads are an audit trail — nothing is editable or removable.
+        allow update, delete: if false;
+      }
     }
 
     // Admin metadata

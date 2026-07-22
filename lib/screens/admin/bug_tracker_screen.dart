@@ -4,6 +4,7 @@ import '../../services/data/bug_report_service.dart';
 import '../../services/ui/toast_service.dart';
 import '../../utils/design_constants.dart';
 import '../../widgets/bug_status_chip.dart';
+import '../../widgets/bug_thread.dart';
 import '../../widgets/common/empty_state_widget.dart';
 
 class BugTrackerScreen extends StatefulWidget {
@@ -19,6 +20,10 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
   BugStatus? _filter; // null = all
   int _page = 0;
   static const int _pageSize = 10;
+
+  /// Reports whose conversation is expanded. Threads are mounted only while
+  /// open so the screen doesn't hold a listener per row.
+  final Set<String> _openThreads = {};
 
   @override
   Widget build(BuildContext context) {
@@ -132,6 +137,7 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
 
   Widget _reportCard(BuildContext context, BugReport r) {
     final scheme = Theme.of(context).colorScheme;
+    final open = _openThreads.contains(r.id);
     return Container(
       margin: const EdgeInsets.only(bottom: AppDesign.spacingSm),
       padding: const EdgeInsets.all(AppDesign.spacingMd),
@@ -164,6 +170,10 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
                 ),
               ),
               const SizedBox(width: AppDesign.spacingSm),
+              if (r.hasUnreadForAdmin) ...[
+                const _UnreadDot(),
+                const SizedBox(width: AppDesign.spacingSm),
+              ],
               BugStatusChip(status: r.status, small: true),
             ],
           ),
@@ -178,8 +188,25 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
                       )),
               const SizedBox(width: AppDesign.spacingSm),
               _statusDropdown(context, r),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: () => setState(() {
+                  if (!_openThreads.remove(r.id)) _openThreads.add(r.id);
+                }),
+                icon: Icon(
+                  open ? Icons.expand_less : Icons.forum_outlined,
+                  size: 18,
+                ),
+                label: Text(open ? 'Hide' : 'Reply'),
+              ),
             ],
           ),
+          if (open) ...[
+            const SizedBox(height: AppDesign.spacingSm),
+            Divider(color: scheme.outline.withValues(alpha: 0.2)),
+            const SizedBox(height: AppDesign.spacingSm),
+            BugThread(reportId: r.id, asAdmin: true),
+          ],
         ],
       ),
     );
@@ -255,5 +282,25 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
     final hh = d.hour.toString().padLeft(2, '0');
     final mm = d.minute.toString().padLeft(2, '0');
     return '${d.day} ${months[d.month - 1]} ${d.year}, $hh:$mm';
+  }
+}
+
+/// Marks a report whose latest reply came from the other side.
+class _UnreadDot extends StatelessWidget {
+  const _UnreadDot();
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'New reply',
+      child: Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary,
+          shape: BoxShape.circle,
+        ),
+      ),
+    );
   }
 }
