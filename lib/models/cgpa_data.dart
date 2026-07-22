@@ -21,6 +21,14 @@ class CourseEntry {
     return GradeConstants.pointsFor(grade ?? '');
   }
 
+  /// Whether this attempt counts toward SGPA/CGPA.
+  ///
+  /// Only graded (non-ATC) courses carrying a *letter* grade do. An NC — like
+  /// any other report — is excluded from both the grade points and the units
+  /// (Academic Regulations 4.21).
+  bool get countsTowardCgpa =>
+      courseType == CourseType.normal && GradeConstants.isLetterGrade(grade);
+
   double get totalGradePoints => credits * gradePoints;
 
   Map<String, dynamic> toJson() {
@@ -68,59 +76,26 @@ class SemesterData {
   SemesterData({required this.semesterName, List<CourseEntry>? courses})
     : courses = courses ?? [];
 
+  /// The courses in this semester that count toward a grade average — normal
+  /// courses carrying a letter grade. Reports (NC) and ATC courses are out.
+  Iterable<CourseEntry> get _gradedCourses =>
+      courses.where((c) => c.countsTowardCgpa);
+
   // Calculate SGPA for this semester
   double get sgpa {
-    if (courses.isEmpty) return 0.0;
-
-    // Only consider Normal courses with grades
-    final normalCourses =
-        courses
-            .where(
-              (c) =>
-                  c.courseType == CourseType.normal &&
-                  c.grade != null &&
-                  c.grade!.isNotEmpty,
-            )
-            .toList();
-
-    if (normalCourses.isEmpty) return 0.0;
-
-    final totalGradePoints = normalCourses.fold<double>(
-      0.0,
-      (sum, course) => sum + course.totalGradePoints,
-    );
-
-    final totalCredits = normalCourses.fold<double>(
-      0.0,
-      (sum, course) => sum + course.credits,
-    );
-
-    return totalCredits > 0 ? totalGradePoints / totalCredits : 0.0;
+    final graded = _gradedCourses;
+    if (graded.isEmpty) return 0.0;
+    final credits = totalCredits;
+    return credits > 0 ? totalGradePoints / credits : 0.0;
   }
 
   // Get total credits for this semester (only Normal courses)
-  double get totalCredits {
-    return courses
-        .where(
-          (c) =>
-              c.courseType == CourseType.normal &&
-              c.grade != null &&
-              c.grade!.isNotEmpty,
-        )
-        .fold<double>(0.0, (sum, course) => sum + course.credits);
-  }
+  double get totalCredits =>
+      _gradedCourses.fold<double>(0.0, (sum, course) => sum + course.credits);
 
   // Get total grade points for this semester (only Normal courses)
-  double get totalGradePoints {
-    return courses
-        .where(
-          (c) =>
-              c.courseType == CourseType.normal &&
-              c.grade != null &&
-              c.grade!.isNotEmpty,
-        )
-        .fold<double>(0.0, (sum, course) => sum + course.totalGradePoints);
-  }
+  double get totalGradePoints => _gradedCourses.fold<double>(
+      0.0, (sum, course) => sum + course.totalGradePoints);
 
   Map<String, dynamic> toJson() {
     return {
@@ -190,22 +165,22 @@ class CGPAData {
     ];
   }
 
-  /// The most recent attempt of every graded course, keyed by course code.
+  /// The most recent *letter-graded* attempt of every course, keyed by code.
   ///
-  /// A repeated course code counts once, as its latest attempt — so every
-  /// consumer (CGPA, Grade Planner, CG Booster) agrees on which attempt is
-  /// current. Pass [excludingSemester] to get the standing *before* a semester,
-  /// which is what the planner projects from.
+  /// Academic Regulations 4.21: a new grade "will replace the earlier one in
+  /// the calculation of CGPA", but where "merely a report emerges, this event
+  /// by itself will not alter the CGPA". So a later NC does not displace an
+  /// earlier letter grade — it is skipped, and the earlier grade stands.
+  ///
+  /// Shared by CGPA, Grade Planner and CG Booster so all three agree on which
+  /// attempt is current. Pass [excludingSemester] to get the standing *before*
+  /// a semester, which is what the planner projects from.
   Map<String, CourseAttempt> latestAttempts({String? excludingSemester}) {
     final latest = <String, CourseAttempt>{};
     for (final entry in _chronologicalSemesters) {
       if (excludingSemester != null && entry.key == excludingSemester) continue;
       for (final course in entry.value.courses) {
-        if (course.courseType != CourseType.normal ||
-            course.grade == null ||
-            course.grade!.isEmpty) {
-          continue;
-        }
+        if (!course.countsTowardCgpa) continue;
         latest[course.courseCode] = (semester: entry.key, entry: course);
       }
     }

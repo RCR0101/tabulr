@@ -111,16 +111,44 @@ abstract final class GradeConstants {
     'E': '2 Grade Points',
     'GD': 'Good', 'PR': 'Poor', 'NC': 'Not Cleared',
     'SA': 'Satisfactory', 'US': 'Unsatisfactory',
+    'W': 'Withdrawn', 'RC': 'Registration Cancelled',
+    'I': 'Incomplete', 'GA': 'Grade Awaited',
   };
+
+  /// Reports, not grades (Academic Regulations clause 4.12).
+  ///
+  /// None of these carry grade points or units, and none displaces an earlier
+  /// letter grade on a repeat — clauses 4.17 (W) and 4.18–4.19 (RC) spell out
+  /// the same "go backward to the previous performance" rule that 4.21 gives
+  /// for NC. `I` and `GA` are transient placeholders awaiting a real grade.
+  static const List<String> reports = ['NC', 'W', 'RC', 'I', 'GA'];
 
   static final List<String> normal = gradePoints.keys.toList();
   static final List<double> points = gradePoints.values.toList();
-  static final List<String> normalWithNc = [...normal, 'NC'];
+  static final List<String> normalWithReports = [...normal, ...reports];
   static const List<String> atc = ['GD', 'PR', 'SA', 'US', 'NC'];
-  static final Set<String> allValid = {...gradePoints.keys, 'NC', 'GD', 'PR', 'SA', 'US'};
+  static final Set<String> allValid = {
+    ...gradePoints.keys,
+    ...reports,
+    'GD',
+    'PR',
+    'SA',
+    'US',
+  };
   static const Set<String> electiveTags = {'HEL', 'DEL', 'EL'};
 
   static double pointsFor(String grade) => gradePoints[grade] ?? 0.0;
+
+  /// Whether [grade] is a *letter grade* (A…E) as opposed to a *report*
+  /// (NC, W, I, GA, RC, …).
+  ///
+  /// Academic Regulations clause 4.21: the CGPA covers "all courses in which
+  /// He/she is awarded letter grades", and "if through this process merely a
+  /// report emerges, this event by itself will not alter the CGPA". So a report
+  /// contributes neither grade points nor units, and never displaces an earlier
+  /// letter grade on a repeat.
+  static bool isLetterGrade(String? grade) =>
+      grade != null && gradePoints.containsKey(grade);
   static String descriptionFor(String grade) => descriptions[grade] ?? '';
 }
 

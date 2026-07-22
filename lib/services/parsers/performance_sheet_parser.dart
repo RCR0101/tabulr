@@ -60,7 +60,12 @@ class ParsedPerformanceSheet {
 }
 
 class PerformanceSheetParser {
-  static final _validGrades = GradeConstants.allValid;
+  // 'I' is excluded: the tokeniser walks backwards from the end of a course
+  // line, and a lone "I" is indistinguishable from the trailing numeral in
+  // titles like "Mathematics I". An Incomplete is transient anyway — clause
+  // 4.13 requires it to be replaced with a real grade within two weeks — so
+  // missing it costs far less than mis-reading a course title as a grade.
+  static final _validGrades = GradeConstants.allValid.difference({'I'});
   static const _validTags = GradeConstants.electiveTags;
 
   // Course code: 2-4 uppercase letters + 1-3 spaces + F/G + 3 digits

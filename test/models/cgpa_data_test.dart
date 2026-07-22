@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:timetable_maker/constants/app_constants.dart';
 import 'package:timetable_maker/models/cgpa_data.dart';
 import 'package:timetable_maker/models/course_type.dart';
 
@@ -145,13 +146,15 @@ void main() {
       final sem = SemesterData(
         semesterName: 'Sem 1',
         courses: [
-          _entry('CS F111', 4, 'A'),  // 40 / 4
-          _entry('CS F222', 3, 'NC'), // 0 / 3 — but NC still has grade, so it IS included
+          _entry('CS F111', 4, 'A'),
+          _entry('CS F222', 3, 'NC'),
         ],
       );
-      // NC has gradePoints=0, but courseType is Normal and grade is non-empty,
-      // so it enters the denominator: (40 + 0) / (4 + 3)
-      expect(sem.sgpa, closeTo(5.714, 0.001));
+      // NC is a report, not a letter grade, so it contributes neither points
+      // nor units (Academic Regulations 4.21) — only the 4-unit A counts.
+      // This previously evaluated to 5.714 because the NC's units landed in the
+      // denominator, which understated every affected student's SGPA and CGPA.
+      expect(sem.sgpa, 10.0);
     });
 
     test('sgpa with all same grades', () {
@@ -329,6 +332,138 @@ void main() {
 
       expect(data.cgpa, 10.0);
       expect(data.uniqueCourseCount, 1);
+    });
+
+    // Academic Regulations 4.21: the CGPA covers courses "in which He/she is
+    // awarded letter grades", and where "merely a report emerges, this event by
+    // itself will not alter the CGPA". NC is a report, not a letter grade.
+    group('NC is a report, not a grade (clause 4.21)', () {
+      test('an NC contributes neither grade points nor units', () {
+        final sem = SemesterData(semesterName: '1-1', courses: [
+          _entry('CS F111', 4, 'A'),
+          _entry('BIO F110', 3, 'NC'),
+        ]);
+
+        // Only the 4-unit A counts — the NC's 3 units stay out of the divisor.
+        expect(sem.totalCredits, 4.0);
+        expect(sem.totalGradePoints, 40.0);
+        expect(sem.sgpa, 10.0);
+      });
+
+      test('a course with only an NC is absent from the CGPA entirely', () {
+        final data = CGPAData(semesters: {
+          '1-1': SemesterData(
+            semesterName: '1-1',
+            courses: [_entry('BIO F110', 3, 'NC')],
+          ),
+        });
+
+        expect(data.uniqueCourseCount, 0);
+        expect(data.effectiveTotalCredits, 0.0);
+        expect(data.cgpa, 0.0);
+      });
+
+      test('a later NC does not displace an earlier letter grade', () {
+        final data = CGPAData(semesters: {
+          '1-1': SemesterData(
+            semesterName: '1-1',
+            courses: [_entry('CS F111', 4, 'B')],
+          ),
+          '1-2': SemesterData(
+            semesterName: '1-2',
+            courses: [_entry('CS F111', 4, 'NC')],
+          ),
+        });
+
+        // The B stands; the NC is merely a report.
+        expect(data.cgpa, 8.0);
+        expect(data.latestAttempts()['CS F111']!.entry.grade, 'B');
+        expect(data.latestAttempts()['CS F111']!.semester, '1-1');
+      });
+
+      // Clause 4.17 (W) and 4.18-4.19 (RC): the report "will be ignored; this
+      // means one should go backward to the previous performance, if any, which
+      // takes over and this process must be repeated until one reaches a
+      // performance which cannot be ignored". I and GA are transient (4.13,
+      // 4.15) and behave the same until a real grade replaces them.
+      for (final report in GradeConstants.reports) {
+        test('a later $report falls back to the previous letter grade', () {
+          final data = CGPAData(semesters: {
+            '1-1': SemesterData(
+              semesterName: '1-1',
+              courses: [_entry('CS F111', 4, 'B')],
+            ),
+            '1-2': SemesterData(
+              semesterName: '1-2',
+              courses: [_entry('CS F111', 4, report)],
+            ),
+          });
+
+          expect(data.cgpa, 8.0, reason: '$report must not displace the B');
+          expect(data.latestAttempts()['CS F111']!.semester, '1-1');
+        });
+
+        test('$report contributes no units to a semester', () {
+          final sem = SemesterData(semesterName: '1-1', courses: [
+            _entry('CS F111', 4, 'A'),
+            _entry('BIO F110', 3, report),
+          ]);
+
+          expect(sem.totalCredits, 4.0);
+          expect(sem.sgpa, 10.0);
+        });
+      }
+
+      test('consecutive reports keep falling back to the last real grade', () {
+        final data = CGPAData(semesters: {
+          '1-1': SemesterData(
+            semesterName: '1-1',
+            courses: [_entry('CS F111', 4, 'C')],
+          ),
+          '1-2': SemesterData(
+            semesterName: '1-2',
+            courses: [_entry('CS F111', 4, 'W')],
+          ),
+          '2-1': SemesterData(
+            semesterName: '2-1',
+            courses: [_entry('CS F111', 4, 'NC')],
+          ),
+        });
+
+        // "repeated until one reaches a performance which cannot be ignored"
+        expect(data.cgpa, 6.0);
+        expect(data.latestAttempts()['CS F111']!.semester, '1-1');
+      });
+
+      test('a report is superseded once a real grade finally arrives', () {
+        final data = CGPAData(semesters: {
+          '1-1': SemesterData(
+            semesterName: '1-1',
+            courses: [_entry('CS F111', 4, 'GA')],
+          ),
+          '1-2': SemesterData(
+            semesterName: '1-2',
+            courses: [_entry('CS F111', 4, 'A')],
+          ),
+        });
+
+        expect(data.cgpa, 10.0);
+      });
+
+      test('a later letter grade still replaces an earlier one', () {
+        final data = CGPAData(semesters: {
+          '1-1': SemesterData(
+            semesterName: '1-1',
+            courses: [_entry('CS F111', 4, 'E')],
+          ),
+          '1-2': SemesterData(
+            semesterName: '1-2',
+            courses: [_entry('CS F111', 4, 'A')],
+          ),
+        });
+
+        expect(data.cgpa, 10.0);
+      });
     });
 
     test('latestAttempts keeps one attempt per code and reports its semester', () {

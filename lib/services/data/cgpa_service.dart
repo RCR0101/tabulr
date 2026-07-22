@@ -16,7 +16,7 @@ class CGPAService {
   final AuthService _authService = AuthService();
 
   static const List<String> defaultSemesters = SemesterConstants.all;
-  static final List<String> normalGrades = GradeConstants.normalWithNc;
+  static final List<String> normalGrades = GradeConstants.normalWithReports;
   static const List<String> atcGrades = GradeConstants.atc;
 
   Future<String> _getIdToken() async {

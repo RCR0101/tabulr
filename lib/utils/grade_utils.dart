@@ -28,7 +28,13 @@ Color getGradeColor(String grade, {Brightness brightness = Brightness.light, Col
         return scheme.primary.withValues(alpha: 0.8);
       case 'PR':
         return scheme.secondary.withValues(alpha: 0.8);
+      // Reports carry no grade points, so they read as neutral rather than
+      // sitting on the good/bad colour ramp.
       case 'NC':
+      case 'W':
+      case 'RC':
+      case 'I':
+      case 'GA':
         return scheme.onSurface.withValues(alpha: 0.45);
       default:
         return scheme.onSurface.withValues(alpha: 0.45);
@@ -60,6 +66,10 @@ Color getGradeColor(String grade, {Brightness brightness = Brightness.light, Col
     case 'PR':
       return isDark ? const Color(0xFFC084FC) : const Color(0xFFA855F7);
     case 'NC':
+    case 'W':
+    case 'RC':
+    case 'I':
+    case 'GA':
       return isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     default:
       return isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
