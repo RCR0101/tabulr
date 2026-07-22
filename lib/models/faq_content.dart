@@ -202,6 +202,18 @@ const List<FaqCategory> faqCategories = [
         keywords: ['compre', 'midsem', 'exam', 'evaluation', 'open book'],
       ),
       FaqEntry(
+        question: 'Is there a minimum attendance requirement?',
+        answer:
+            'No. The regulations explicitly do not stipulate any minimum attendance percentage before you may sit a test or examination.',
+        bullets: [
+          'You are still expected to attend regularly, sit scheduled tests, and complete assigned work.',
+          'The real consequence is different: if you cooperate so little that the instructor cannot award a grade at all, they may report NC.',
+          'Withdrawal, make-ups and feedback exist to absorb genuinely unforeseen situations.',
+        ],
+        source: 'Academic Regulations 1.17',
+        keywords: ['attendance', '75', 'percentage', 'minimum', 'bunk', 'absent'],
+      ),
+      FaqEntry(
         question: 'I missed a test — can I get a make-up?',
         answer:
             'Approach the instructor-in-charge immediately. If satisfied it was genuine, they may arrange a make-up as close as possible to the original.',
@@ -225,6 +237,80 @@ const List<FaqCategory> faqCategories = [
     title: 'Courses & Registration',
     icon: Icons.menu_book_outlined,
     entries: [
+      FaqEntry(
+        question: 'What can stop me registering for a semester at all?',
+        answer:
+            'Four things block registration outright, regardless of your grades.',
+        bullets: [
+          'Dues outstanding to the Institute, hostel or any recognised body.',
+          'Your grade sheet from the previous semester being withheld.',
+          'An Incomplete (I) report in the immediately preceding semester.',
+          'Being specifically debarred or asked to stay away that semester.',
+          'Registration is in person and is your own responsibility — without it you may not attend classes or use Institute facilities.',
+        ],
+        source: 'Academic Regulations 3.04, 3.09',
+        keywords: ['register', 'blocked', 'dues', 'cannot register', 'hold'],
+      ),
+      FaqEntry(
+        question: 'How does a backlog restrict what I can register for?',
+        answer:
+            'Backlog is the first charge on your registration. You must register for your entire backlog before anything else — the order is strict.',
+        bullets: [
+          'Backlog first, then your prescribed semester courses (PSC), and only then higher-level or repeat courses.',
+          'If you are registered for only part of your backlog, you cannot add anything else that semester.',
+          'Dropping works in reverse: remove higher-level and repeat courses first, then PSC, then backlog.',
+          'Backlog counts courses with no grade, unresolved NC, or a grade too low for a later course\'s prerequisite.',
+        ],
+        source: 'Academic Regulations 3.25 I',
+        keywords: ['backlog', 'bl', 'psc', 'order', 'priority', 'first charge'],
+      ),
+      FaqEntry(
+        question: 'What is the difference between a prerequisite and prior preparation?',
+        answer:
+            'A prerequisite attaches to a single course. Prior preparation is a package — a whole set of earlier courses you must have cleared before a semester\'s courses or Practice School open up.',
+        bullets: [
+          'PS-I normally needs everything in the semesters before it; PS-II needs all named courses including PS-I.',
+          'If at most two courses of the package are outstanding and they do not bear on Core courses, the DCA may recommend a modified semester pattern.',
+          'Prerequisites still have to be met even under a modified pattern.',
+        ],
+        source: 'Academic Regulations 3.13, 3.14',
+        keywords: ['prerequisite', 'prereq', 'prior preparation', 'dca'],
+      ),
+      FaqEntry(
+        question: 'What are PSC, and can I move ahead of them?',
+        answer:
+            'Your prescribed semester courses (PSC) are the courses sitting in your current semester of the programme pattern. Anything earlier is your past region; anything later is a higher-level course.',
+        bullets: [
+          'You may depart from your PSC at your own responsibility where the rules permit.',
+          'With planning you can graduate earlier or later than the Bulletin pattern.',
+          'Anyone going off-pace should make sure they stay clear of the clause 5.02 sanctions, and is advised to plan with a Registration Advisor.',
+        ],
+        source: 'Academic Regulations 3.21–3.23',
+        keywords: ['psc', 'higher level', 'early', 'graduate early', 'pace'],
+      ),
+      FaqEntry(
+        question: 'Can I take a course from outside my own discipline?',
+        answer:
+            'Yes — the general course pool is open for electives, but two extra conditions apply on top of the usual prerequisites.',
+        bullets: [
+          'A Discipline course of another degree needs the prior preparation of your own third year, first semester.',
+          'A higher-degree course in your own discipline needs your first set of Discipline Core courses cleared — normally prescribed in second year.',
+          'You cannot register for a course you are considered over-prepared or under-prepared for.',
+        ],
+        source: 'Academic Regulations 3.15, 3.18',
+        keywords: ['other discipline', 'outside', 'pool', 'higher degree course'],
+      ),
+      FaqEntry(
+        question: 'Does my timetable have to be clash-free to register?',
+        answer:
+            'Yes — the regulations require the final semester programme to be free from any timetable conflict.',
+        bullets: [
+          'Where a backlog course clashes with a prescribed course, the Dean names which combination you must register in.',
+          'If a course you are required to take is no longer offered, the Dean names an academically similar one carrying the same units.',
+        ],
+        source: 'Academic Regulations 3.19, 3.20, 3.25 I(d)',
+        keywords: ['clash', 'conflict', 'timetable', 'overlap'],
+      ),
       FaqEntry(
         question: 'Can I swap or drop a course after registering?',
         answer:
@@ -278,6 +364,36 @@ const List<FaqCategory> faqCategories = [
         ],
         source: 'Academic Regulations 7.06, 7.07',
         keywords: ['summer', 'cancelled', 'guaranteed'],
+      ),
+      FaqEntry(
+        question: 'How many courses and units does my degree need in total?',
+        answer:
+            'An integrated first degree needs at least 42 courses and 144 units, split across three requirement buckets plus Practice School or Thesis.',
+        bullets: [
+          'General Institutional Requirement — 51 to 54 units across 19 to 22 courses.',
+          'Discipline requirement (Core + Electives) — 57 to 60 units across 15 to 20 courses.',
+          'Open Electives — 15 to 27 units across 5 to 9 courses.',
+          'PS-I and PS-II together are 25 units; the Thesis route is 9 to 20 units instead.',
+          'You must clear the minimum in every category, not just the overall total.',
+        ],
+        source: 'Bulletin 2025-26, Part IV',
+        keywords: ['units', 'total', 'requirement', 'how many', 'graduation', '144'],
+      ),
+      FaqEntry(
+        question: 'What makes up the General Institutional Requirement?',
+        answer:
+            'The GIR is the common foundation every first-degree student takes, whatever their branch.',
+        bullets: [
+          'Humanities Electives — 8 units, 3 courses',
+          'Science Foundation — 9 units, 3 courses',
+          'Mathematics Foundation — 12 units, 4 courses',
+          'Engineering Foundation — 6 units, 2 courses',
+          'Technical Arts — 10 units, 4 courses',
+          'General Awareness / Professional — 6 to 9 units, 3 to 6 courses',
+          'In a dual degree the GIR is shared — you do not repeat it for the second degree.',
+        ],
+        source: 'Bulletin 2025-26, Part IV',
+        keywords: ['gir', 'general institutional', 'foundation', 'technical arts'],
       ),
       FaqEntry(
         question: 'How many electives do I need?',
@@ -341,6 +457,44 @@ const List<FaqCategory> faqCategories = [
         ],
         source: 'Bulletin 2025-26, Part II',
         keywords: ['dual degree', 'dual', 'second degree'],
+      ),
+      FaqEntry(
+        question: 'How long is Practice School, and can I take courses during it?',
+        answer:
+            'PS-I runs about 8 weeks and PS-II about 22 weeks. While registered for any PS course you cannot register for any other course at the same time.',
+        bullets: [
+          'PS-II opens only after every named course, PS-I included, has been cleared.',
+          'A substantial part of the summer term is used to fit these durations alongside semester time.',
+          'You must be available for the exact dates in the academic calendar, or you may be moved out of the PS option.',
+          'At graduation you also receive a Practice School Transcript rating your professional performance.',
+        ],
+        source: 'Academic Regulations 6.04–6.06a',
+        keywords: ['ps', 'ps1', 'ps2', 'practice school', 'duration', 'weeks'],
+      ),
+      FaqEntry(
+        question: 'What happens if I ignore my PS station allotment?',
+        answer:
+            'You may forfeit the Practice School option entirely, which forces a move to the Thesis or Dissertation route instead.',
+        bullets: [
+          'Dean PS assigns stations and semesters, and that decision is final even when options are invited.',
+          'Dean PS may advance or delay PS-I by a year, or PS-II by a semester.',
+          'You are free to leave the PS option for Thesis voluntarily — but before allotment.',
+        ],
+        source: 'Academic Regulations 6.07–6.10',
+        keywords: ['ps station', 'allotment', 'forfeit', 'reject', 'refuse'],
+      ),
+      FaqEntry(
+        question: 'Thesis instead of PS — 9 units or 16 units?',
+        answer:
+            'A first-degree student choosing Thesis picks between two sizes, and the choice changes what else you must take.',
+        bullets: [
+          '16-unit Thesis — you cannot be registered for any other course alongside it.',
+          '9-unit Thesis — you may take courses concurrently, but must add at least 2 more electives (6+ units), lifting the Open Electives requirement to at least 7 courses and 21 units.',
+          'Graduation needs either a 16-unit Thesis, or PS-I (5 units) plus PS-II (20 units).',
+          'If you did PS-I and then took a 9-unit Thesis, PS-I can count toward that raised elective requirement.',
+        ],
+        source: 'Academic Regulations 6.16(c), 6.16(d)',
+        keywords: ['thesis', 'ts', '9 units', '16 units', 'dissertation'],
       ),
       FaqEntry(
         question: 'How does a dual degree actually work day to day?',

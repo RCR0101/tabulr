@@ -16,6 +16,7 @@ import '../screens/professors_screen.dart';
 import '../screens/course_announcements_screen.dart';
 import '../screens/bug_report_screen.dart';
 import '../screens/faq_screen.dart';
+import '../screens/minors_screen.dart';
 import '../screens/admin_screen.dart';
 import '../screens/free_slot_finder_screen.dart';
 import '../screens/credits_screen.dart';
@@ -127,6 +128,7 @@ class _AppShellState extends State<AppShell> {
       DrawerScreen.acadDrives => const AcadDrivesScreen(),
       DrawerScreen.profChambers => const ProfessorsScreen(),
       DrawerScreen.announcements => const CourseAnnouncementsScreen(),
+      DrawerScreen.minors => const MinorsScreen(),
       DrawerScreen.faq => const FaqScreen(),
       DrawerScreen.bugReport => const BugReportScreen(),
       DrawerScreen.admin => const AdminScreen(),
@@ -214,6 +216,7 @@ class _MobileShell extends StatelessWidget {
     if (auth.isAuthenticated && CourseAnnouncementService().isHyderabadUser()) {
       items.add(DrawerScreen.announcements);
     }
+    items.add(DrawerScreen.minors);
     items.add(DrawerScreen.faq);
     if (auth.isAuthenticated) items.add(DrawerScreen.bugReport);
     if (auth.isAuthenticated && AdminService().isAdmin) {
@@ -326,6 +329,7 @@ class _MobileShell extends StatelessWidget {
         DrawerScreen.acadDrives => Icons.folder_shared,
         DrawerScreen.profChambers => Icons.person,
         DrawerScreen.announcements => Icons.campaign,
+        DrawerScreen.minors => Icons.workspace_premium_outlined,
         DrawerScreen.faq => Icons.help_outline,
         DrawerScreen.bugReport => Icons.bug_report_outlined,
         DrawerScreen.admin => Icons.admin_panel_settings,
@@ -340,6 +344,7 @@ class _MobileShell extends StatelessWidget {
         DrawerScreen.acadDrives => 'Acad Drives',
         DrawerScreen.profChambers => 'Prof Chambers',
         DrawerScreen.announcements => 'Announcements',
+        DrawerScreen.minors => 'Minors',
         DrawerScreen.faq => 'Academic FAQ',
         DrawerScreen.bugReport => 'Bug Report',
         DrawerScreen.admin => 'Admin',

@@ -18,6 +18,7 @@ import 'admin/course_guide_management_screen.dart';
 import 'admin/prerequisites_management_screen.dart';
 import 'admin/duplicate_courses_management_screen.dart';
 import 'admin/course_management_screen.dart';
+import 'admin/minor_management_screen.dart';
 import 'admin/exam_seating_management_screen.dart';
 import 'admin/professor_management_screen.dart';
 import 'admin/bug_tracker_screen.dart';
@@ -899,6 +900,14 @@ class _AdminScreenState extends State<AdminScreen> {
         color: accent,
         onTap: () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => const CourseManagementScreen())),
+      ),
+      _managementCard(
+        icon: Icons.workspace_premium_outlined,
+        title: 'Minor Programmes',
+        subtitle: 'Minor catalogue & course groups',
+        color: accent,
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const MinorManagementScreen())),
       ),
       _managementCard(
         icon: Icons.event_seat_rounded,

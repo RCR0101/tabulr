@@ -98,6 +98,13 @@ void main() {
         'deadline',
         'branch change',
         'improve',
+        'backlog',
+        'prerequisite',
+        'clash',
+        'thesis',
+        'attendance',
+        'psc',
+        'units',
       ]) {
         expect(allEntries.any((e) => e.matches(term)), isTrue,
             reason: 'no FAQ answers "$term"');

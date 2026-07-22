@@ -190,6 +190,13 @@ service cloud.firestore {
         && resource.data.ownerId == userDocId();
     }
 
+    // Minor programmes — reference data from the Bulletin. Readable by anyone
+    // using the app (guests included, like the FAQ); only admins can edit.
+    match /minors/{minorId} {
+      allow read: if appAvailable();
+      allow write: if isAdmin() && appAvailable();
+    }
+
     // Bug reports — authors file and read their own; admins read all and can
     // only advance the status. Nothing is deletable from the client.
     match /bug_reports/{reportId} {
