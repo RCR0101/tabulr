@@ -34,7 +34,7 @@ void main() {
       expect(labels.toSet().length, labels.length);
     });
 
-    test('the editor menu holds the six course-planning tools', () {
+    test('the editor menu holds the course-planning tools', () {
       expect(
         AppTools.editorMenu.map((i) => i.tool),
         [
@@ -42,6 +42,7 @@ void main() {
           AppTool.prerequisites,
           AppTool.disciplineElectives,
           AppTool.humanitiesElectives,
+          AppTool.openElectives,
           AppTool.minors,
           AppTool.profChambers,
         ],

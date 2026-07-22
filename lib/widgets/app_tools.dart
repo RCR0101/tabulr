@@ -5,6 +5,7 @@ import '../screens/credits_screen.dart';
 import '../screens/discipline_electives_screen.dart';
 import '../screens/humanities_electives_screen.dart';
 import '../screens/minors_screen.dart';
+import '../screens/open_electives_screen.dart';
 import '../screens/prerequisites_screen.dart';
 import '../screens/professors_screen.dart';
 import '../screens/timetable_comparison_screen.dart';
@@ -16,6 +17,7 @@ enum AppTool {
   prerequisites,
   disciplineElectives,
   humanitiesElectives,
+  openElectives,
   minors,
   profChambers,
   compareTimetables,
@@ -87,6 +89,14 @@ abstract final class AppTools {
             description: 'Browse and add humanities electives',
             inEditorMenu: true,
             build: (link) => HumanitiesElectivesScreen(selectionLink: link),
+          ),
+        AppTool.openElectives => AppToolInfo(
+            tool: tool,
+            icon: Icons.explore_outlined,
+            label: 'Open Electives',
+            description: 'Offered courses outside the DEL and HUEL pools',
+            inEditorMenu: true,
+            build: (link) => OpenElectivesScreen(selectionLink: link),
           ),
         AppTool.minors => AppToolInfo(
             tool: tool,
