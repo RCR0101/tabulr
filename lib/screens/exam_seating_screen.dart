@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import '../services/data/exam_seating_service.dart';
-import '../widgets/common/empty_state.dart';
+import '../widgets/common/empty_state_widget.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../services/core/timetable_service.dart';
 import '../services/ui/responsive_service.dart';

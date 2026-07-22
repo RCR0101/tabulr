@@ -5,24 +5,24 @@ import '../services/ui/toast_service.dart';
 ///
 /// Purely presentational: it takes the message to display and a retry callback.
 /// The decision to show it lives in the root gate (see `MaintenanceGate`).
-class TabulrDownScreen extends StatefulWidget {
+class MaintenanceScreen extends StatefulWidget {
   final String message;
 
   /// Invoked when the user taps "Try again". Should re-check the kill switch
   /// and return whether the app is now available.
   final Future<bool> Function() onRetry;
 
-  const TabulrDownScreen({
+  const MaintenanceScreen({
     super.key,
     required this.message,
     required this.onRetry,
   });
 
   @override
-  State<TabulrDownScreen> createState() => _TabulrDownScreenState();
+  State<MaintenanceScreen> createState() => _MaintenanceScreenState();
 }
 
-class _TabulrDownScreenState extends State<TabulrDownScreen> {
+class _MaintenanceScreenState extends State<MaintenanceScreen> {
   bool _checking = false;
 
   @override

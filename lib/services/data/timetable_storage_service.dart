@@ -4,10 +4,10 @@ import 'auth_service.dart';
 import '../ui/secure_logger.dart';
 import '../../constants/app_constants.dart';
 
-class FirestoreService {
-  static final FirestoreService _instance = FirestoreService._internal();
-  factory FirestoreService() => _instance;
-  FirestoreService._internal();
+class TimetableStorageService {
+  static final TimetableStorageService _instance = TimetableStorageService._internal();
+  factory TimetableStorageService() => _instance;
+  TimetableStorageService._internal();
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AuthService _authService = AuthService();

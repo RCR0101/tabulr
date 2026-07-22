@@ -77,7 +77,7 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
                             ],
                           ),
                         ),
-                        DropdownButton<user_settings.ThemeMode>(
+                        DropdownButton<user_settings.AppThemeMode>(
                           value: themeMode,
                           onChanged: (value) async {
                             if (value == null) return;
@@ -97,7 +97,7 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
                             }
                           },
                           underline: Container(),
-                          items: user_settings.ThemeMode.values.map((mode) {
+                          items: user_settings.AppThemeMode.values.map((mode) {
                             return DropdownMenuItem(
                               value: mode,
                               child: Text(_getThemeModeName(mode)),
@@ -232,48 +232,48 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
     );
   }
 
-  IconData _getThemeModeIcon(user_settings.ThemeMode mode) {
+  IconData _getThemeModeIcon(user_settings.AppThemeMode mode) {
     switch (mode) {
-      case user_settings.ThemeMode.light:
+      case user_settings.AppThemeMode.light:
         return Icons.light_mode;
-      case user_settings.ThemeMode.dark:
+      case user_settings.AppThemeMode.dark:
         return Icons.dark_mode;
-      case user_settings.ThemeMode.system:
+      case user_settings.AppThemeMode.system:
         return Icons.brightness_auto;
     }
   }
 
-  String _getThemeModeName(user_settings.ThemeMode mode) {
+  String _getThemeModeName(user_settings.AppThemeMode mode) {
     switch (mode) {
-      case user_settings.ThemeMode.light:
+      case user_settings.AppThemeMode.light:
         return 'Light Mode';
-      case user_settings.ThemeMode.dark:
+      case user_settings.AppThemeMode.dark:
         return 'Dark Mode';
-      case user_settings.ThemeMode.system:
+      case user_settings.AppThemeMode.system:
         return 'System Mode';
     }
   }
 
-  String _getThemeModeDescription(user_settings.ThemeMode mode) {
+  String _getThemeModeDescription(user_settings.AppThemeMode mode) {
     switch (mode) {
-      case user_settings.ThemeMode.light:
+      case user_settings.AppThemeMode.light:
         return 'Always use light theme';
-      case user_settings.ThemeMode.dark:
+      case user_settings.AppThemeMode.dark:
         return 'Always use dark theme';
-      case user_settings.ThemeMode.system:
+      case user_settings.AppThemeMode.system:
         return 'Follow system settings';
     }
   }
 
-  void _updateThemeServiceMode(user_settings.ThemeMode mode) {
+  void _updateThemeServiceMode(user_settings.AppThemeMode mode) {
     switch (mode) {
-      case user_settings.ThemeMode.light:
+      case user_settings.AppThemeMode.light:
         _themeService.setThemeMode(ThemeMode.light);
         break;
-      case user_settings.ThemeMode.dark:
+      case user_settings.AppThemeMode.dark:
         _themeService.setThemeMode(ThemeMode.dark);
         break;
-      case user_settings.ThemeMode.system:
+      case user_settings.AppThemeMode.system:
         _themeService.setThemeMode(ThemeMode.system);
         break;
     }
@@ -389,15 +389,15 @@ class ThemeToggleButton extends StatelessWidget {
         String tooltip;
 
         switch (themeMode) {
-          case user_settings.ThemeMode.light:
+          case user_settings.AppThemeMode.light:
             icon = Icons.light_mode;
             tooltip = 'Theme: Light Mode';
             break;
-          case user_settings.ThemeMode.dark:
+          case user_settings.AppThemeMode.dark:
             icon = Icons.dark_mode;
             tooltip = 'Theme: Dark Mode';
             break;
-          case user_settings.ThemeMode.system:
+          case user_settings.AppThemeMode.system:
             icon = Icons.brightness_auto;
             tooltip = 'Theme: System Mode';
             break;

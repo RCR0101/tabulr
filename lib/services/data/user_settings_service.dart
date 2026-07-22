@@ -122,7 +122,7 @@ class UserSettingsService extends ChangeNotifier {
   }
 
   // Update theme mode
-  Future<void> updateThemeMode(ThemeMode themeMode) async {
+  Future<void> updateThemeMode(AppThemeMode themeMode) async {
     // Ensure settings are initialized
     if (_userSettings == null) {
       await initializeSettings(force: true);
@@ -406,7 +406,7 @@ class UserSettingsService extends ChangeNotifier {
   }
 
   // Get theme mode
-  ThemeMode get themeMode => _userSettings?.themeMode ?? ThemeMode.system;
+  AppThemeMode get themeMode => _userSettings?.themeMode ?? AppThemeMode.system;
 
   // Get theme variant
   theme_service.AppTheme get themeVariant => _userSettings?.themeVariant ?? theme_service.AppTheme.githubDark;

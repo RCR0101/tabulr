@@ -10,27 +10,23 @@ import '../../utils/datetime_utils.dart';
 import 'course_palette.dart';
 import 'timetable_blocks.dart';
 
-/// Which cell fields a block should render. Replaces the old stringly-typed
-/// `_shouldShowField('courseCode')`, which silently returned true for typos.
+/// Which cell fields a block should render. Enumerated rather than
+/// stringly-keyed so an unknown field is a compile error, not a silent no-op.
 enum TimetableField { courseCode, courseTitle, sectionId, instructor, room }
 
 /// The week grid.
 ///
 /// Two invariants drive the whole layout:
 ///
-///  * **Columns divide the available width.** The old grid gave columns a fixed
-///    width from the size enum — 1,267 px at medium — and leaned on
-///    `InteractiveViewer` to cope, so on a 1440×900 laptop roughly a third of
-///    the grid was on screen at first paint with no auto-fit. Here the column
-///    width is measured, and only a viewport too narrow for a legible minimum
-///    falls back to horizontal scrolling.
+///  * **Columns divide the available width.** Column width is measured from the
+///    viewport; only a viewport too narrow for a legible minimum falls back to
+///    horizontal scrolling.
 ///  * **Row height is the only thing density controls**, and
 ///    [TimetableSize.fit] derives it from the viewport so the entire grid is
 ///    visible at once.
 ///
-/// Headers are pinned on both axes, which the previous
-/// `InteractiveViewer(constrained: false)` could not do: panning right lost the
-/// time column and panning down lost the day names.
+/// Headers are pinned on both axes: panning never loses the time column or the
+/// day names.
 class TimetableGrid extends StatefulWidget {
   const TimetableGrid({
     super.key,

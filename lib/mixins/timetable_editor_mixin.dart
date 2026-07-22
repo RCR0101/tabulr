@@ -12,7 +12,7 @@ import '../models/timetable.dart' as timetable_models;
 import '../models/timetable_stats.dart';
 import '../models/export_options.dart';
 import '../services/core/timetable_service.dart';
-import '../services/core/course_utils.dart';
+import '../utils/course_utils.dart';
 import '../services/ui/export_service.dart';
 import '../services/data/auth_service.dart';
 import '../services/ui/toast_service.dart';
@@ -62,7 +62,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   AuthService get authService;
   PageLeaveWarningService get pageLeaveWarning;
 
-  /// Class 1 does nothing; Class 2 calls widget.onUnsavedChangesChanged?.call(value)
+  /// Notifies the host that unsaved-changes state flipped. Hosts without a
+  /// listener may implement this as a no-op.
   void onUnsavedChangesChanged(bool value);
 
   UserSettingsService get userSettingsService;
@@ -279,10 +280,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     setState(() {
       var courses = tt.availableCourses;
 
-      // Apply text search
       courses = CourseUtils.searchCourses(courses, query);
 
-      // Apply course code filter
       if (filters['courseCode'] != null &&
           filters['courseCode'].toString().isNotEmpty) {
         courses = CourseUtils.filterByCourseCode(
@@ -291,7 +290,6 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         );
       }
 
-      // Apply instructor filter
       if (filters['instructor'] != null &&
           filters['instructor'].toString().isNotEmpty) {
         courses = CourseUtils.filterByInstructor(
@@ -300,26 +298,22 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         );
       }
 
-      // Apply credits filter
       courses = CourseUtils.filterByCredits(
         courses,
         filters['minCredits'],
         filters['maxCredits'],
       );
 
-      // Apply days filter
       if (filters['days'] != null &&
           (filters['days'] as List<DayOfWeek>).isNotEmpty) {
         courses = CourseUtils.filterByDays(courses, filters['days']);
       }
 
-      // Apply hours filter
       if (filters['hours'] != null &&
           (filters['hours'] as List<int>).isNotEmpty) {
         courses = CourseUtils.filterByHours(courses, filters['hours']);
       }
 
-      // Apply exam date filters
       if (filters['midSemDate'] != null) {
         courses = CourseUtils.filterByExamDate(
           courses,

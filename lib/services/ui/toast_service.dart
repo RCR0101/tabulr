@@ -1,13 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../widgets/common/app_toast.dart' as toast;
 
-enum ToastType {
-  success,
-  error,
-  info,
-  warning,
-}
-
 class ToastService {
   static final ToastService _instance = ToastService._internal();
   factory ToastService() => _instance;

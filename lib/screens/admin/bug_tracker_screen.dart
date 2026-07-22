@@ -4,7 +4,7 @@ import '../../services/data/bug_report_service.dart';
 import '../../services/ui/toast_service.dart';
 import '../../utils/design_constants.dart';
 import '../../widgets/bug_status_chip.dart';
-import '../../widgets/common/empty_state.dart';
+import '../../widgets/common/empty_state_widget.dart';
 
 class BugTrackerScreen extends StatefulWidget {
   const BugTrackerScreen({super.key});

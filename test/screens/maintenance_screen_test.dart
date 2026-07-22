@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:timetable_maker/screens/tabulr_down_screen.dart';
+import 'package:timetable_maker/screens/maintenance_screen.dart';
 
 void main() {
   Widget wrap(Widget child) => MaterialApp(home: child);
 
-  group('TabulrDownScreen', () {
+  group('MaintenanceScreen', () {
     testWidgets('shows the title and the provided message', (tester) async {
-      await tester.pumpWidget(wrap(TabulrDownScreen(
+      await tester.pumpWidget(wrap(MaintenanceScreen(
         message: 'Down for scheduled maintenance.',
         onRetry: () async => false,
       )));
@@ -19,7 +19,7 @@ void main() {
 
     testWidgets('invokes onRetry when the button is tapped', (tester) async {
       var called = 0;
-      await tester.pumpWidget(wrap(TabulrDownScreen(
+      await tester.pumpWidget(wrap(MaintenanceScreen(
         message: 'x',
         onRetry: () async {
           called++;
@@ -37,7 +37,7 @@ void main() {
     });
 
     testWidgets('shows a toast when retry reports still-down', (tester) async {
-      await tester.pumpWidget(wrap(TabulrDownScreen(
+      await tester.pumpWidget(wrap(MaintenanceScreen(
         message: 'x',
         onRetry: () async => false,
       )));

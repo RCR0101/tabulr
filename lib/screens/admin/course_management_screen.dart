@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/ui/secure_logger.dart';
 import '../../utils/debouncer.dart';
 import '../../models/course.dart';
-import '../../services/data/admin_crud_service.dart';
+import '../../services/data/admin_data_service.dart';
 import '../../services/data/admin_service.dart';
 import '../../services/data/campus_service.dart';
 import '../../services/data/professor_service.dart';
@@ -37,7 +37,7 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
   static const _campusIds = CampusConstants.ids;
   static const _campusLabels = CampusConstants.labels;
 
-  final _crud = AdminCrudService();
+  final _crud = AdminDataService();
   final _searchController = TextEditingController();
   final _debounce = Debouncer(duration: const Duration(milliseconds: 400));
   List<Map<String, dynamic>> _courses = [];

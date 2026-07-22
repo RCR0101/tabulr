@@ -1,16 +1,16 @@
 import 'package:flutter/foundation.dart';
-import 'firestore_service.dart';
+import 'timetable_storage_service.dart';
 import '../ui/secure_logger.dart';
 import '../../models/announcement.dart';
 
 export '../../models/announcement.dart';
 
-class AnnouncementService extends ChangeNotifier {
-  static final AnnouncementService _instance = AnnouncementService._internal();
-  factory AnnouncementService() => _instance;
-  AnnouncementService._internal();
+class AppAnnouncementService extends ChangeNotifier {
+  static final AppAnnouncementService _instance = AppAnnouncementService._internal();
+  factory AppAnnouncementService() => _instance;
+  AppAnnouncementService._internal();
 
-  final FirestoreService _firestoreService = FirestoreService();
+  final TimetableStorageService _firestoreService = TimetableStorageService();
   
   Announcement? _currentAnnouncement;
   bool _isLoading = false;

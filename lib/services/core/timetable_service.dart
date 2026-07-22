@@ -5,7 +5,7 @@ import '../../models/timetable.dart';
 import '../../models/course.dart';
 import 'clash_detector.dart';
 import '../data/auth_service.dart';
-import '../data/firestore_service.dart';
+import '../data/timetable_storage_service.dart';
 import '../data/course_data_service.dart';
 import '../data/campus_service.dart';
 import '../data/config_service.dart';
@@ -18,7 +18,7 @@ class TimetableService {
   TimetableService._internal();
 
   final AuthService _authService = AuthService();
-  final FirestoreService _firestoreService = FirestoreService();
+  final TimetableStorageService _firestoreService = TimetableStorageService();
   final CourseDataService _courseDataService = CourseDataService();
   final CourseCatalogService _allCourseService = CourseCatalogService();
 

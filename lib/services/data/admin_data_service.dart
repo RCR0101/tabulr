@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../constants/app_constants.dart';
 
-class AdminCrudService {
-  static final AdminCrudService _instance = AdminCrudService._internal();
-  factory AdminCrudService() => _instance;
-  AdminCrudService._internal();
+class AdminDataService {
+  static final AdminDataService _instance = AdminDataService._internal();
+  factory AdminDataService() => _instance;
+  AdminDataService._internal();
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 

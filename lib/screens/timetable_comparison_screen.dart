@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/common/app_tappable.dart';
-import '../widgets/common/empty_state.dart';
+import '../widgets/common/empty_state_widget.dart';
 import '../models/timetable.dart';
 import '../models/timetable_stats.dart';
 import '../models/course.dart';

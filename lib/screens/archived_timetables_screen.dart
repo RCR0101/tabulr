@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
-import '../services/data/firestore_service.dart';
+import '../services/data/timetable_storage_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/timetable_widget.dart';
 
@@ -25,7 +25,7 @@ class _ArchivedTimetablesScreenState extends State<ArchivedTimetablesScreen> {
   }
 
   Future<void> _load() async {
-    final timetables = await FirestoreService().getArchivedTimetables(widget.semester.id);
+    final timetables = await TimetableStorageService().getArchivedTimetables(widget.semester.id);
     if (mounted) {
       setState(() {
         _timetables = timetables;

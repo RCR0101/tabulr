@@ -51,7 +51,7 @@ void main() {
       final settings = UserSettings.defaultSettings('user-1');
 
       expect(settings.userId, 'user-1');
-      expect(settings.themeMode, ThemeMode.system);
+      expect(settings.themeMode, AppThemeMode.system);
       expect(settings.themeVariant, theme_service.AppTheme.githubDark);
       expect(settings.sortOrder, TimetableListSortOrder.dateModifiedDesc);
       expect(settings.timetableSettings, isEmpty);
@@ -62,7 +62,7 @@ void main() {
     test('toJson -> fromJson roundtrip', () {
       final settings = UserSettings(
         userId: 'user-1',
-        themeMode: ThemeMode.dark,
+        themeMode: AppThemeMode.dark,
         themeVariant: theme_service.AppTheme.githubDark,
         sortOrder: TimetableListSortOrder.alphabeticalAsc,
         timetableSettings: {
@@ -80,7 +80,7 @@ void main() {
       final restored = UserSettings.fromJson(json);
 
       expect(restored.userId, 'user-1');
-      expect(restored.themeMode, ThemeMode.dark);
+      expect(restored.themeMode, AppThemeMode.dark);
       expect(restored.sortOrder, TimetableListSortOrder.alphabeticalAsc);
       expect(restored.timetableSettings['tt-1']!.size, TimetableSize.large);
       expect(restored.customTimetableOrder, ['tt-1', 'tt-2']);
@@ -90,11 +90,11 @@ void main() {
     test('copyWith overrides specified fields', () {
       final original = UserSettings.defaultSettings('user-1');
       final copied = original.copyWith(
-        themeMode: ThemeMode.light,
+        themeMode: AppThemeMode.light,
         dontShowBottomDisclaimer: true,
       );
 
-      expect(copied.themeMode, ThemeMode.light);
+      expect(copied.themeMode, AppThemeMode.light);
       expect(copied.dontShowBottomDisclaimer, isTrue);
       expect(copied.userId, 'user-1');
       expect(copied.sortOrder, TimetableListSortOrder.dateModifiedDesc);
@@ -122,7 +122,7 @@ void main() {
     test('removeTimetableSettings removes entry and custom order', () {
       final settings = UserSettings(
         userId: 'user-1',
-        themeMode: ThemeMode.system,
+        themeMode: AppThemeMode.system,
         themeVariant: theme_service.AppTheme.githubDark,
         sortOrder: TimetableListSortOrder.custom,
         timetableSettings: {
@@ -146,7 +146,7 @@ void main() {
         'lastUpdated': '2026-01-01T00:00:00.000',
       });
 
-      expect(settings.themeMode, ThemeMode.system);
+      expect(settings.themeMode, AppThemeMode.system);
       expect(settings.sortOrder, TimetableListSortOrder.dateModifiedDesc);
       expect(settings.timetableSettings, isEmpty);
     });

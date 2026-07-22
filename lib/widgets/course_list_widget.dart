@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import '../models/course.dart';
 import '../models/timetable.dart';
-import '../services/core/course_utils.dart';
+import '../utils/course_utils.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/data/campus_service.dart';
 import '../services/core/clash_detector.dart';

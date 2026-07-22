@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'common/empty_state.dart';
+import 'common/empty_state_widget.dart';
 import '../services/data/course_guide_service.dart';
 import '../services/data/courses_master_service.dart';
 import '../services/data/branch_structure_service.dart';

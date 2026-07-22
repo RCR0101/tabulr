@@ -1,4 +1,4 @@
-import '../../models/course.dart';
+import '../models/course.dart';
 
 class CourseUtils {
   static String getInstructorInCharge(Course course) {

@@ -12,7 +12,7 @@ import '../services/data/courses_master_service.dart';
 import '../services/data/user_settings_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../utils/design_constants.dart';
-import '../widgets/common/empty_state.dart';
+import '../widgets/common/empty_state_widget.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../mixins/timetable_editor_mixin.dart';
 import '../services/ui/tutorial_service.dart';

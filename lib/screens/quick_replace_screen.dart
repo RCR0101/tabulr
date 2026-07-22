@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
-import '../widgets/common/empty_state.dart';
+import '../widgets/common/empty_state_widget.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 import '../services/core/course_comparison_service.dart';
@@ -10,6 +10,7 @@ import '../services/core/clash_detector.dart';
 import '../services/data/campus_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
+import '../services/ui/secure_logger.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
 import '../utils/design_constants.dart';
@@ -84,25 +85,20 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     super.dispose();
   }
 
-  // Load course categories from Firebase
   Future<void> _loadCourseCategories() async {
     setState(() {
       _isLoadingCategories = true;
     });
 
     try {
-      // Load available branches first (needed for DEL dropdowns)
+      // Branches are needed for the DEL dropdowns; DEL courses themselves load
+      // lazily only once a branch/semester is chosen.
       _availableBranches = await _delService.getAvailableBranches();
-      
-      // Load HUEL courses
+
       final huelCourses = await _huelService.getAllHumanitiesElectives(widget.availableCourses);
       _huelCourses = huelCourses.map((course) => course.courseCode).toSet();
-
-      // Don't load DEL courses automatically - only when DEL category is selected
-      // and user has configured branch/semester
-      
     } catch (e) {
-      // ignored
+      SecureLogger.warning('QuickReplace', 'Failed to load course categories', {'error': e.toString()});
     } finally {
       setState(() {
         _isLoadingCategories = false;
@@ -144,7 +140,6 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     _delCourses = allDelCourses;
   }
 
-  // Get unique courses from selected sections
   List<Course> get _selectedCourses {
     final selectedCourseCodes = widget.selectedSections
         .map((section) => section.courseCode)
@@ -155,7 +150,6 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
         .toList();
   }
 
-  // Determine course category
   CourseCategory _getCourseCategory(String courseCode) {
     if (_huelCourses.contains(courseCode)) {
       return CourseCategory.huel;
@@ -166,7 +160,6 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     }
   }
 
-  // Get category display name
   String _getCategoryDisplayName(CourseCategory category) {
     switch (category) {
       case CourseCategory.huel:
@@ -178,7 +171,6 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     }
   }
   
-  // Check if search can be performed
   bool _canSearch() {
     // Must have selected a course
     if (_selectedCourse == null) return false;
@@ -196,7 +188,6 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     return true;
   }
   
-  // Get validation message
   String _getValidationMessage() {
     if (_selectedCourse == null) {
       return 'Please select a course to replace';
@@ -581,7 +572,6 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     );
   }
 
-  // Build course selection widget
   Widget _buildCourseSelection() {
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
@@ -1028,7 +1018,6 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     return AppDesign.danger(context);
   }
 
-  // Build category badge for course cards
   Widget _buildCategoryBadge(CourseCategory category) {
     Color badgeColor;
     String categoryText;
@@ -1066,7 +1055,6 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     );
   }
 
-  // Build comprehensive search parameters widget (collapsible)
   Widget _buildSearchParameters() {
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),

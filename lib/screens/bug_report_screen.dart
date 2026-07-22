@@ -6,7 +6,7 @@ import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/bug_status_chip.dart';
 import '../widgets/common/app_button.dart';
-import '../widgets/common/empty_state.dart';
+import '../widgets/common/empty_state_widget.dart';
 
 class BugReportScreen extends StatefulWidget {
   const BugReportScreen({super.key});

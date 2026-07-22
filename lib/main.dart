@@ -7,7 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'screens/auth_screen.dart';
 import 'screens/home_screen.dart';
-import 'screens/tabulr_down_screen.dart';
+import 'screens/maintenance_screen.dart';
 import 'widgets/common/shimmer_loading.dart';
 import 'widgets/app_shell.dart';
 import 'services/data/auth_service.dart';
@@ -98,9 +98,9 @@ void main() async {
   if (savedSettings != null) {
     await themeService.setTheme(savedSettings.themeVariant);
     final flutterMode = switch (savedSettings.themeMode) {
-      user_settings.ThemeMode.light => ThemeMode.light,
-      user_settings.ThemeMode.dark => ThemeMode.dark,
-      user_settings.ThemeMode.system => ThemeMode.system,
+      user_settings.AppThemeMode.light => ThemeMode.light,
+      user_settings.AppThemeMode.dark => ThemeMode.dark,
+      user_settings.AppThemeMode.system => ThemeMode.system,
     };
     await themeService.setThemeMode(flutterMode);
   }
@@ -192,7 +192,7 @@ class _TimetableMakerAppState extends State<TimetableMakerApp> {
 
 /// Root kill-switch gate. If `reference/app_config.maintenance` is true (read
 /// at startup by [ConfigService] at no extra read cost), shows the
-/// [TabulrDownScreen] instead of the app. The "Try again" action re-fetches the
+/// [MaintenanceScreen] instead of the app. The "Try again" action re-fetches the
 /// config so users can recover without a manual reload. Server-side enforcement
 /// is handled independently by firestore.rules.
 class MaintenanceGate extends StatefulWidget {
@@ -209,7 +209,7 @@ class _MaintenanceGateState extends State<MaintenanceGate> {
     final config = ConfigService();
     if (!config.isMaintenance) return widget.child;
 
-    return TabulrDownScreen(
+    return MaintenanceScreen(
       message: config.maintenanceMessage,
       onRetry: () async {
         await config.reloadAppConfig();
@@ -280,9 +280,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
       final themeService = theme_service.ThemeService();
       await themeService.setTheme(settings.themeVariant);
       final flutterMode = switch (settings.themeMode) {
-        user_settings.ThemeMode.light => ThemeMode.light,
-        user_settings.ThemeMode.dark => ThemeMode.dark,
-        user_settings.ThemeMode.system => ThemeMode.system,
+        user_settings.AppThemeMode.light => ThemeMode.light,
+        user_settings.AppThemeMode.dark => ThemeMode.dark,
+        user_settings.AppThemeMode.system => ThemeMode.system,
       };
       await themeService.setThemeMode(flutterMode);
     }

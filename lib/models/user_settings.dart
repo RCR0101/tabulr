@@ -1,9 +1,9 @@
 import 'timetable_display.dart';
-import '../services/ui/theme_service.dart' as theme_service;
+import 'app_theme.dart';
 import '../utils/datetime_utils.dart';
 import 'timetable_constraints.dart';
 
-enum ThemeMode { light, dark, system }
+enum AppThemeMode { light, dark, system }
 
 enum TimetableListSortOrder {
   dateCreatedDesc,
@@ -64,8 +64,8 @@ class TimetableSettings {
 
 class UserSettings {
   final String userId;
-  final ThemeMode themeMode;
-  final theme_service.AppTheme themeVariant;
+  final AppThemeMode themeMode;
+  final AppTheme themeVariant;
   final TimetableListSortOrder sortOrder;
   final Map<String, TimetableSettings> timetableSettings; // timetableId -> settings
   final List<String> customTimetableOrder; // for custom sorting
@@ -116,13 +116,13 @@ class UserSettings {
   factory UserSettings.fromJson(Map<String, dynamic> json) {
     return UserSettings(
       userId: json['userId'] ?? '',
-      themeMode: ThemeMode.values.firstWhere(
+      themeMode: AppThemeMode.values.firstWhere(
         (e) => e.toString() == json['themeMode'],
-        orElse: () => ThemeMode.system,
+        orElse: () => AppThemeMode.system,
       ),
-      themeVariant: theme_service.AppTheme.values.firstWhere(
+      themeVariant: AppTheme.values.firstWhere(
         (e) => e.toString() == json['themeVariant'],
-        orElse: () => theme_service.AppTheme.githubDark,
+        orElse: () => AppTheme.githubDark,
       ),
       sortOrder: TimetableListSortOrder.values.firstWhere(
         (e) => e.toString() == json['sortOrder'],
@@ -149,8 +149,8 @@ class UserSettings {
   factory UserSettings.defaultSettings(String userId) {
     return UserSettings(
       userId: userId,
-      themeMode: ThemeMode.system,
-      themeVariant: theme_service.AppTheme.githubDark,
+      themeMode: AppThemeMode.system,
+      themeVariant: AppTheme.githubDark,
       sortOrder: TimetableListSortOrder.dateModifiedDesc,
       timetableSettings: {},
       customTimetableOrder: [],
@@ -165,8 +165,8 @@ class UserSettings {
 
   UserSettings copyWith({
     String? userId,
-    ThemeMode? themeMode,
-    theme_service.AppTheme? themeVariant,
+    AppThemeMode? themeMode,
+    AppTheme? themeVariant,
     TimetableListSortOrder? sortOrder,
     Map<String, TimetableSettings>? timetableSettings,
     List<String>? customTimetableOrder,

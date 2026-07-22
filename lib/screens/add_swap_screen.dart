@@ -4,7 +4,7 @@ import '../models/timetable.dart';
 import '../services/data/course_data_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
-import '../widgets/common/empty_state.dart';
+import '../widgets/common/empty_state_widget.dart';
 import '../widgets/search_filter_widget.dart';
 import '../services/data/campus_service.dart';
 import '../services/core/clash_detector.dart';

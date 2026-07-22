@@ -224,19 +224,9 @@ class Professor {
     final minute = time.minute;
     final totalMinutes = hour * 60 + minute;
 
-    // Hour slots:
-    // 1: 8:00-8:50
-    // 2: 9:00-9:50
-    // 3: 10:00-10:50
-    // 4: 11:00-11:50
-    // 5: 12:00-12:50
-    // 6: 13:00-13:50 (1:00 PM)
-    // 7: 14:00-14:50 (2:00 PM)
-    // 8: 15:00-15:50 (3:00 PM)
-    // 9: 16:00-16:50 (4:00 PM)
-    // 10: 17:00-17:50 (5:00 PM)
-    // 11: 18:00-18:50 (6:00 PM)
-    // 12: 19:00-19:50 (7:00 PM)
+    // Maps a wall-clock time to a BITS hour slot (1 = 8:00, … 12 = 19:00).
+    // Slot boundaries are the single source of truth in
+    // ScheduleConstants.hourSlotNames.
 
     if (totalMinutes >= 8 * 60 && totalMinutes < 8 * 60 + 50) return 1;
     if (totalMinutes >= 9 * 60 && totalMinutes < 9 * 60 + 50) return 2;
