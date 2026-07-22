@@ -22,7 +22,7 @@ import '../screens/free_slot_finder_screen.dart';
 import '../screens/credits_screen.dart';
 import '../screens/profile_screen.dart';
 import '../services/data/admin_service.dart';
-import 'app_drawer.dart';
+import 'app_destinations.dart';
 import 'app_sidebar.dart';
 import 'command_palette.dart';
 import 'theme_selector_widget.dart';
@@ -34,6 +34,20 @@ class AppShell extends StatefulWidget {
     super.key,
     this.initialScreen = DrawerScreen.timetables,
   });
+
+  /// The mounted shell, if there is one.
+  ///
+  /// Routes pushed on top of the shell (the timetable editor) can't reach it
+  /// through the widget tree — a pushed route is the Navigator's sibling of the
+  /// shell, not its descendant — so [goTo] goes through here instead.
+  static _AppShellState? _active;
+
+  /// Switches the screen the shell is showing. Does nothing when no shell is
+  /// mounted, which is the case in widget tests and on the auth route.
+  ///
+  /// This only changes what sits *underneath* the current route; callers on a
+  /// pushed route are responsible for leaving it themselves.
+  static void goTo(DrawerScreen screen) => _active?._onScreenSelected(screen);
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -51,6 +65,7 @@ class _AppShellState extends State<AppShell> {
     super.initState();
     _currentScreen = widget.initialScreen;
     _visitedScreens.add(_currentScreen);
+    AppShell._active = this;
     // Handle Cmd/Ctrl+K at the keyboard level so it works regardless of where
     // focus currently sits — a focused CallbackShortcuts stops firing once focus
     // drifts off its subtree (tab switches, closed dialogs).
@@ -68,6 +83,9 @@ class _AppShellState extends State<AppShell> {
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_handleGlobalCommandPaletteKey);
+    // Guarded so a shell being replaced by a newer one doesn't clear the
+    // newcomer's registration on its way out.
+    if (identical(AppShell._active, this)) AppShell._active = null;
     super.dispose();
   }
 

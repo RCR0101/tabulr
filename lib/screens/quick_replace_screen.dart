@@ -8,6 +8,7 @@ import '../services/data/humanities_electives_service.dart';
 import '../services/data/discipline_electives_service.dart';
 import '../services/core/clash_detector.dart';
 import '../services/data/campus_service.dart';
+import '../services/data/profile_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../services/ui/secure_logger.dart';
@@ -85,6 +86,29 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     super.dispose();
   }
 
+  /// Pre-selects the student's saved branch and semester for the DEL filters,
+  /// so choosing the DEL category doesn't mean re-entering what the profile
+  /// already knows. Everything stays editable.
+  void _prefillFromProfile() {
+    final profile = ProfileService().cached;
+    final codes = _availableBranches.map((b) => b.code).toSet();
+
+    if (profile.primaryBranch != null && codes.contains(profile.primaryBranch)) {
+      _primaryBranch = profile.primaryBranch;
+    }
+    // The secondary dropdown excludes the primary, so never pre-fill it to the
+    // same branch.
+    if (profile.secondaryBranch != null &&
+        profile.secondaryBranch != _primaryBranch &&
+        codes.contains(profile.secondaryBranch)) {
+      _secondaryBranch = profile.secondaryBranch;
+    }
+    if (profile.currentSemester != null &&
+        _semesterOptions.contains(profile.currentSemester)) {
+      _primarySemester = profile.currentSemester;
+    }
+  }
+
   Future<void> _loadCourseCategories() async {
     setState(() {
       _isLoadingCategories = true;
@@ -94,6 +118,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
       // Branches are needed for the DEL dropdowns; DEL courses themselves load
       // lazily only once a branch/semester is chosen.
       _availableBranches = await _delService.getAvailableBranches();
+      _prefillFromProfile();
 
       final huelCourses = await _huelService.getAllHumanitiesElectives(widget.availableCourses);
       _huelCourses = huelCourses.map((course) => course.courseCode).toSet();

@@ -124,6 +124,10 @@ abstract final class GradeConstants {
   /// for NC. `I` and `GA` are transient placeholders awaiting a real grade.
   static const List<String> reports = ['NC', 'W', 'RC', 'I', 'GA'];
 
+  /// The one letter grade that is a fail (clause 5.02: a first degree tolerates
+  /// no more than one, a higher degree none).
+  static const String failingGrade = 'E';
+
   static final List<String> normal = gradePoints.keys.toList();
   static final List<double> points = gradePoints.values.toList();
   static final List<String> normalWithReports = [...normal, ...reports];

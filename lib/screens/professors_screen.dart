@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../models/academic_record.dart';
+import '../models/timetable_selection_link.dart';
 import '../services/data/professor_service.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../services/ui/responsive_service.dart';
@@ -11,12 +13,18 @@ import '../utils/design_constants.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
 import '../widgets/common/app_search_field.dart';
+import '../widgets/common/app_tappable.dart';
 import '../utils/page_info_helper.dart';
 import '../services/ui/tutorial_service.dart';
 
 
 class ProfessorsScreen extends StatefulWidget {
-  const ProfessorsScreen({super.key});
+  /// Set when opened from the editor, which turns the "teaches" chips in a
+  /// professor's detail dialog into one-tap adds for that exact section — the
+  /// professor being the thing students actually pick a section on.
+  final TimetableSelectionLink? selectionLink;
+
+  const ProfessorsScreen({super.key, this.selectionLink});
 
   @override
   State<ProfessorsScreen> createState() => _ProfessorsScreenState();
@@ -392,7 +400,10 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
   void _showScheduleDialog(Professor professor) {
     showDialog(
       context: context,
-      builder: (context) => _ProfessorDetailDialog(professor: professor),
+      builder: (context) => _ProfessorDetailDialog(
+        professor: professor,
+        selectionLink: widget.selectionLink,
+      ),
     );
   }
 
@@ -532,7 +543,12 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
 
 class _ProfessorDetailDialog extends StatelessWidget {
   final Professor professor;
-  const _ProfessorDetailDialog({required this.professor});
+  final TimetableSelectionLink? selectionLink;
+
+  const _ProfessorDetailDialog({
+    required this.professor,
+    this.selectionLink,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -666,10 +682,12 @@ class _ProfessorDetailDialog extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
-        children: dayOrder
-            .where((day) => scheduleByDay.containsKey(day))
-            .map((day) => _buildDaySchedule(context, day, scheduleByDay[day]!))
-            .toList(),
+        children: [
+          _buildTaughtSections(context),
+          ...dayOrder
+              .where((day) => scheduleByDay.containsKey(day))
+              .map((day) => _buildDaySchedule(context, day, scheduleByDay[day]!)),
+        ],
       ),
     );
   }
@@ -758,6 +776,134 @@ class _ProfessorDetailDialog extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  /// The professor's distinct course sections, pulled out of the day grid where
+  /// each one repeats across every day it meets.
+  ///
+  /// Worth its own row even unlinked — "what does this professor teach" is
+  /// otherwise something you have to reconstruct by reading the whole grid.
+  /// When linked, each chip adds that exact section to the open timetable.
+  Widget _buildTaughtSections(BuildContext context) {
+    final seen = <String>{};
+    final sections = <ProfessorScheduleEntry>[];
+    for (final entry in professor.schedule) {
+      if (seen.add('${entry.courseCode}|${entry.sectionId}')) {
+        sections.add(entry);
+      }
+    }
+    if (sections.isEmpty) return const SizedBox.shrink();
+
+    final link = selectionLink;
+    final scheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            link == null ? 'TEACHES' : 'TEACHES — TAP TO ADD',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
+                  color: scheme.primary,
+                ),
+          ),
+          const SizedBox(height: 6),
+          // This dialog is stateless, so without listening to the link a tapped
+          // chip would keep saying "add" until the dialog is reopened.
+          if (link == null)
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final entry in sections)
+                  _buildTaughtChip(context, entry, null),
+              ],
+            )
+          else
+            ListenableBuilder(
+              listenable: link.revision,
+              builder: (context, _) => Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final entry in sections)
+                    _buildTaughtChip(context, entry, link),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTaughtChip(
+    BuildContext context,
+    ProfessorScheduleEntry entry,
+    TimetableSelectionLink? link,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    final label = '${entry.courseCode} ${entry.sectionId}';
+
+    // Only offer the add when the open timetable actually carries this course;
+    // a chip that fails on tap is worse than a plain one.
+    final addable = link != null &&
+        link.availableCourses.any((c) =>
+            AcademicRecord.normalizeCode(c.courseCode) ==
+            AcademicRecord.normalizeCode(entry.courseCode));
+
+    final selected = link != null &&
+        link.selectedSections.any((s) =>
+            s.courseCode == entry.courseCode && s.sectionId == entry.sectionId);
+
+    final chip = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: selected
+            ? scheme.primary.withValues(alpha: 0.15)
+            : scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: selected
+              ? scheme.primary.withValues(alpha: 0.5)
+              : scheme.outline.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (addable) ...[
+            Icon(
+              selected ? Icons.check_circle : Icons.add_circle_outline,
+              size: 13,
+              color: scheme.primary,
+            ),
+            const SizedBox(width: 5),
+          ],
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  color: selected ? scheme.primary : null,
+                ),
+          ),
+        ],
+      ),
+    );
+
+    if (!addable) return chip;
+
+    return AppTappable(
+      onTap: () => link.onSectionToggle(
+        entry.courseCode,
+        entry.sectionId,
+        selected,
+      ),
+      child: chip,
     );
   }
 

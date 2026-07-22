@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import '../widgets/common/app_search_field.dart';
+import '../models/academic_record.dart';
 import '../models/prerequisite.dart';
+import '../models/prerequisite_status.dart';
 import '../repositories/prerequisites_repository.dart';
+import '../services/data/academic_record_service.dart';
 import '../services/data/courses_master_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
+import '../widgets/common/course_record_badge.dart';
 import '../widgets/common/shimmer_loading.dart';
 
 class PrerequisitesScreen extends StatefulWidget {
@@ -25,10 +29,20 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
   bool _isLoadingInitial = true;
   CoursePrerequisites? _selectedCourse;
 
+  /// Loaded alongside the catalogue rather than gating it — with no CGPA record
+  /// the screen simply behaves as it always did.
+  AcademicRecord _record = AcademicRecord.empty;
+
   @override
   void initState() {
     super.initState();
     _loadInitialCourses();
+    _loadRecord();
+  }
+
+  Future<void> _loadRecord() async {
+    final record = await AcademicRecordService().load();
+    if (mounted) setState(() => _record = record);
   }
 
   @override
@@ -402,6 +416,8 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
           ),
           const SizedBox(height: 12),
 
+          _buildEligibilityBanner(theme, colorScheme, course),
+
           // All/One requirement indicator
           if (course.hasPrerequisites && course.allOne != null)
             Container(
@@ -484,6 +500,83 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  /// One-line verdict against the student's own record. Absent entirely when
+  /// there's nothing to say — no record, or no prerequisites to check — so the
+  /// screen doesn't grow a permanent empty strip.
+  Widget _buildEligibilityBanner(
+    ThemeData theme,
+    ColorScheme colorScheme,
+    CoursePrerequisites course,
+  ) {
+    final status = PrerequisiteStatus.of(course, _record);
+    final met = status.isMet;
+    if (met == null) return const SizedBox.shrink();
+
+    final missing = status.outstanding.map((p) => p.courseCode).join(', ');
+    final color = met ? AppDesign.success(context) : colorScheme.error;
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(met ? Icons.task_alt : Icons.pending_outlined,
+                  size: 20, color: color),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  met
+                      ? "You've met the prerequisites for this course."
+                      : 'You still need $missing.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (status.concurrent.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Can be taken alongside: '
+              '${status.concurrent.map((p) => p.courseCode).join(', ')}.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+          if (status.unclear.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Check for yourself: the requirement type is unrecorded for '
+              '${status.unclear.map((p) => p.courseCode).join(', ')}.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+          const SizedBox(height: 6),
+          Text(
+            'Based on the grades in your CGPA calculator.',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+            ),
+          ),
         ],
       ),
     );
@@ -588,6 +681,8 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
                           ),
                         ),
                       ),
+                      const Spacer(),
+                      CourseRecordBadge(record: _record, courseCode: prereqCode),
                     ],
                   ),
                   const SizedBox(height: 8),

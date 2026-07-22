@@ -10,17 +10,73 @@ import 'package:flutter/widgets.dart';
 /// and the failure mode is a visible overflow stripe. Here the candidates
 /// measure themselves via [RenderBox.getMaxIntrinsicWidth].
 ///
-/// Only the chosen candidate is laid out, painted, hit-tested, or exposed to
-/// semantics; the rest cost a build and an intrinsic measurement, which for a
-/// toolbar's worth of children is negligible.
-class FirstThatFits extends MultiChildRenderObjectWidget {
-  const FirstThatFits({super.key, required List<Widget> candidates})
-      : assert(candidates.length > 0, 'Needs at least one candidate'),
-        super(children: candidates);
+/// Only the chosen candidate is laid out, painted, hit-tested, exposed to
+/// semantics, or reachable by keyboard focus; the rest cost a build and an
+/// intrinsic measurement, which for a toolbar's worth of children is
+/// negligible.
+///
+/// The focus part is not optional. Every candidate is *built*, so every
+/// candidate's buttons register focus nodes — and focus traversal reads the
+/// rect of each one it sorts. Reading a rect off a render box that was never
+/// laid out asserts, so leaving the unchosen candidates focusable crashed the
+/// app on the first Tab keypress. [ExcludeFocus] keeps them out of traversal,
+/// which also stops Tab landing on invisible duplicate buttons.
+class FirstThatFits extends StatefulWidget {
+  const FirstThatFits({super.key, required this.candidates})
+      : assert(candidates.length > 0, 'Needs at least one candidate');
+
+  final List<Widget> candidates;
+
+  @override
+  State<FirstThatFits> createState() => _FirstThatFitsState();
+}
+
+class _FirstThatFitsState extends State<FirstThatFits> {
+  /// Which candidate is currently laid out.
+  ///
+  /// Starts at the first (widest) rather than "none": the real choice isn't
+  /// known until layout, and on that first frame exactly one candidate should
+  /// be focusable rather than all of them.
+  int _selected = 0;
+
+  void _onSelected(int index) {
+    if (index < 0 || index == _selected) return;
+    // The render object reports this from performLayout, so the rebuild has to
+    // wait for the frame to finish.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _selected != index) setState(() => _selected = index);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _FirstThatFitsLayout(
+      onSelected: _onSelected,
+      candidates: [
+        for (final (i, candidate) in widget.candidates.indexed)
+          ExcludeFocus(excluding: i != _selected, child: candidate),
+      ],
+    );
+  }
+}
+
+class _FirstThatFitsLayout extends MultiChildRenderObjectWidget {
+  const _FirstThatFitsLayout({
+    required List<Widget> candidates,
+    required this.onSelected,
+  }) : super(children: candidates);
+
+  final ValueChanged<int> onSelected;
 
   @override
   RenderFirstThatFits createRenderObject(BuildContext context) =>
-      RenderFirstThatFits();
+      RenderFirstThatFits(onSelected: onSelected);
+
+  @override
+  void updateRenderObject(
+      BuildContext context, RenderFirstThatFits renderObject) {
+    renderObject.onSelected = onSelected;
+  }
 }
 
 class _FitParentData extends ContainerBoxParentData<RenderBox> {}
@@ -29,6 +85,12 @@ class RenderFirstThatFits extends RenderBox
     with
         ContainerRenderObjectMixin<RenderBox, _FitParentData>,
         RenderBoxContainerDefaultsMixin<RenderBox, _FitParentData> {
+  RenderFirstThatFits({required this.onSelected});
+
+  /// Reports which candidate won, so the widget layer can keep the others out
+  /// of focus traversal.
+  ValueChanged<int> onSelected;
+
   RenderBox? _selected;
 
   /// Index of the candidate currently laid out, or -1 before first layout.
@@ -66,7 +128,10 @@ class RenderFirstThatFits extends RenderBox
   void performLayout() {
     final (chosen, index) = _choose(constraints.maxWidth);
     _selected = chosen;
-    _selectedIndex = index;
+    if (index != _selectedIndex) {
+      _selectedIndex = index;
+      onSelected(index);
+    }
     if (chosen == null) {
       size = constraints.smallest;
       return;

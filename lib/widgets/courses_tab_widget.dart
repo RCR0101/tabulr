@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/academic_record.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 import 'course_list_widget.dart';
@@ -14,6 +15,9 @@ class CoursesTabWidget extends StatefulWidget {
   final int projectCount;
   final ValueChanged<int> onProjectCountChanged;
 
+  /// Marks courses the student has already cleared.
+  final AcademicRecord record;
+
   const CoursesTabWidget({
     super.key,
     required this.courses,
@@ -21,6 +25,7 @@ class CoursesTabWidget extends StatefulWidget {
     required this.onSectionToggle,
     required this.projectCount,
     required this.onProjectCountChanged,
+    this.record = AcademicRecord.empty,
   });
 
   @override
@@ -236,6 +241,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                 courses: widget.courses,
                 selectedSections: widget.selectedSections,
                 onSectionToggle: widget.onSectionToggle,
+                record: widget.record,
                 showOnlySelected: false,
               ),
               // My Courses tab - shows only selected courses

@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../constants/app_constants.dart';
 import '../../models/minor_programme.dart';
+import '../../utils/course_code.dart';
+import 'courses_master_service.dart';
 import '../ui/secure_logger.dart';
 
 /// Reads and writes the `minors` collection.
@@ -30,11 +32,56 @@ class MinorService {
     if (!forceRefresh && _cache != null) return _cache!;
     try {
       final snap = await _col.orderBy('name').get();
-      _cache = snap.docs.map(MinorProgramme.fromFirestore).toList();
+      final minors = snap.docs.map(MinorProgramme.fromFirestore).toList();
+      _cache = await _withCourseTitles(minors);
       return _cache!;
     } catch (e) {
       SecureLogger.error('MINORS', 'Failed to load minors', e);
       return _cache ?? const [];
+    }
+  }
+
+  /// Fills each course's title from the course master.
+  ///
+  /// Done here rather than at render so everything downstream — the cards, the
+  /// admin editor, and `MinorProgramme.matches`, which searches titles — sees a
+  /// fully populated model and needs no resolver threaded through it.
+  ///
+  /// A failure leaves whatever the document held, which for older records is
+  /// the title the Bulletin import wrote.
+  Future<List<MinorProgramme>> _withCourseTitles(
+      List<MinorProgramme> minors) async {
+    try {
+      final master = CoursesMasterService();
+      await master.loadForCampus();
+
+      final titles = {
+        for (final course in master.allCourses)
+          normalizeCourseCode(course.courseCode): course.title,
+      };
+      if (titles.isEmpty) return minors;
+
+      return [
+        for (final minor in minors)
+          minor.copyWith(groups: [
+            for (final group in minor.groups)
+              MinorCourseGroup(
+                name: group.name,
+                courses: [
+                  for (final course in group.courses)
+                    course.copyWith(
+                      title: titles[normalizeCourseCode(course.code)] ??
+                          course.title,
+                    ),
+                ],
+              ),
+          ]),
+      ];
+    } catch (e) {
+      SecureLogger.warning('MINORS', 'Could not resolve course titles', {
+        'error': e.toString(),
+      });
+      return minors;
     }
   }
 

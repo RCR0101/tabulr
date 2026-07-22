@@ -12,7 +12,7 @@ import '../services/data/profile_service.dart';
 import '../models/timetable.dart';
 import '../utils/design_constants.dart';
 import '../widgets/command_palette.dart';
-import '../widgets/app_drawer.dart';
+import '../widgets/app_destinations.dart';
 import '../services/ui/tutorial_service.dart';
 import '../utils/page_info_helper.dart';
 

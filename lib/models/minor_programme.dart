@@ -4,25 +4,37 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class MinorCourse {
   const MinorCourse({
     required this.code,
-    required this.title,
+    this.title = '',
     this.units,
   });
 
   final String code;
+
+  /// Filled in from the course master when the catalogue loads, not persisted
+  /// — see [toMap]. Empty for a code the catalogue doesn't carry.
   final String title;
 
   /// Null where the Bulletin omits or footnotes the unit count.
+  ///
+  /// Kept in the document rather than read off the course master: the Bulletin
+  /// states a minor's requirement in units, while the master carries the credit
+  /// count of the current offering. They usually agree, but they answer
+  /// different questions and the 15-unit minimum is the Bulletin's.
   final int? units;
 
+  /// Still reads a stored `title` so documents written before titles were
+  /// dropped keep working until their next save.
   factory MinorCourse.fromMap(Map<String, dynamic> map) => MinorCourse(
         code: (map['code'] ?? '').toString(),
         title: (map['title'] ?? '').toString(),
         units: (map['units'] as num?)?.toInt(),
       );
 
+  /// No title: it belongs to the course master, which carries the same ~2,800
+  /// courses for every campus. Storing a copy here only created something that
+  /// could drift out of date.
   Map<String, dynamic> toMap() => {
         'code': code,
-        'title': title,
         if (units != null) 'units': units,
       };
 

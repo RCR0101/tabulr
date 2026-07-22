@@ -36,7 +36,9 @@ import '../widgets/clash_warnings_widget.dart';
 import '../widgets/search_filter_widget.dart';
 import '../widgets/theme_selector_widget.dart';
 import '../widgets/command_palette.dart';
-import '../widgets/app_drawer.dart';
+import '../widgets/app_destinations.dart';
+import '../widgets/app_tools.dart';
+import '../widgets/app_shell.dart';
 import '../services/ui/tutorial_service.dart';
 import '../widgets/campus_selector_widget.dart';
 import '../widgets/common/app_dialog.dart';
@@ -45,11 +47,13 @@ import '../screens/generator_screen.dart';
 import '../screens/add_swap_screen.dart';
 import '../screens/quick_replace_screen.dart';
 import '../widgets/exam_timeline_widget.dart';
-import '../screens/course_guide_screen.dart';
-import '../screens/discipline_electives_screen.dart';
-import '../screens/humanities_electives_screen.dart';
-import '../screens/prerequisites_screen.dart';
+import '../models/academic_record.dart';
+import '../models/prerequisite_status.dart';
+import '../models/timetable_selection_link.dart';
+import '../repositories/prerequisites_repository.dart';
+import '../services/data/academic_record_service.dart';
 import '../utils/page_info_helper.dart';
+import '../utils/route_utils.dart';
 
 mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   // Abstract getters/setters that subclasses must implement
@@ -75,6 +79,34 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
 
   // -- Undo/Redo --
   final UndoRedoService undoRedoService = UndoRedoService();
+
+  // -- Selection broadcast --
+  // Screens pushed on top of the editor (the elective browsers) hold the live
+  // selectedSections list, so they only need a ping to know it changed. While
+  // one of them is on top the only paths that can change the selection are
+  // addSection and removeSection — including the exam-clash Override, which
+  // re-enters addSection from a toast — so bumping there is sufficient.
+  final ValueNotifier<int> _selectionRevision = ValueNotifier(0);
+
+  /// Wires a pushed browser screen to the timetable being edited. Null when no
+  /// timetable is open, which leaves those screens read-only.
+  TimetableSelectionLink? get selectionLink {
+    final tt = currentTimetable;
+    if (tt == null) return null;
+    return TimetableSelectionLink(
+      selectedSections: tt.selectedSections,
+      availableCourses: tt.availableCourses,
+      onSectionToggle: (courseCode, sectionId, isSelected) {
+        if (isSelected) {
+          removeSection(courseCode, sectionId);
+        } else {
+          addSection(courseCode, sectionId);
+        }
+      },
+      revision: _selectionRevision,
+      timetableName: tt.name,
+    );
+  }
 
   void _pushUndo(String description) {
     final tt = currentTimetable;
@@ -107,6 +139,47 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     if (snapshot != null) _applySnapshot(snapshot);
   }
 
+  // -- Academic record --
+  // Drives the "already cleared" markers in the course list and the
+  // prerequisite warning below. Empty until loaded, and stays empty for anyone
+  // who has never filled in the CGPA calculator.
+  AcademicRecord _academicRecord = AcademicRecord.empty;
+  AcademicRecord get academicRecord => _academicRecord;
+
+  Future<void> _loadAcademicRecord() async {
+    final record = await AcademicRecordService().load();
+    if (mounted) setState(() => _academicRecord = record);
+  }
+
+  /// Flags — after the fact, never blocking — a newly added course whose
+  /// prerequisites the student's record says are outstanding.
+  ///
+  /// Advice only, deliberately: the prerequisite data is incomplete for some
+  /// courses, and a student may well have cleared something they never entered
+  /// into the calculator. Refusing the add on that basis would be wrong.
+  Future<void> _warnAboutPrerequisites(String courseCode) async {
+    try {
+      if (_academicRecord.isEmpty) return;
+      final prereqs =
+          await PrerequisitesRepository().getCoursePrerequisites(courseCode);
+      if (prereqs == null || !mounted) return;
+
+      final status = PrerequisiteStatus.of(prereqs, _academicRecord);
+      if (status.isMet != false) return;
+
+      ToastService.showWarning(
+        '$courseCode normally needs '
+        '${status.outstanding.map((p) => p.courseCode).join(', ')} first — '
+        'check before you register.',
+      );
+    } catch (e) {
+      SecureLogger.warning('EDITOR', 'Prerequisite check failed', {
+        'courseCode': courseCode,
+        'error': e.toString(),
+      });
+    }
+  }
+
   // Cmd/Ctrl+K is handled at the keyboard level rather than via a focused
   // CallbackShortcuts, so it keeps working even after focus has drifted off the
   // editor subtree (dialogs, tab switches). The route-is-current guard means
@@ -115,11 +188,13 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   void initState() {
     super.initState();
     HardwareKeyboard.instance.addHandler(_handleGlobalCommandPaletteKey);
+    _loadAcademicRecord();
   }
 
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_handleGlobalCommandPaletteKey);
+    _selectionRevision.dispose();
     super.dispose();
   }
 
@@ -240,7 +315,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
           onSelect: importFromTT,
         ),
       ],
-      onNavigate: (_) {},
+      onNavigate: navigateToShellScreen,
+      selectionLink: selectionLink,
       onToggleTheme: () => ThemeSelectorDialog.show(context),
       onReplayTour: () => TutorialService().showEditorTutorial(context, force: true),
       onSignOut: () => authService.signOut(),
@@ -396,6 +472,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         });
         onUnsavedChangesChanged(true);
         pageLeaveWarning.enableWarning(true);
+        _selectionRevision.value++;
+        if (isNewCourse) _warnAboutPrerequisites(courseCode);
         if (allowExamClash) {
           ToastService.showWarning(
             'Added $courseCode-$sectionId with an exam clash — you cannot sit both exams.',
@@ -430,6 +508,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         hasUnsavedChanges = true;
       });
       onUnsavedChangesChanged(true);
+      _selectionRevision.value++;
     } catch (e) {
       showErrorDialog('Error removing section: $e');
     }
@@ -855,6 +934,25 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     );
   }
 
+  /// Sends the user to one of the shell's drawer screens — Calendar, CGPA
+  /// Calculator and the rest — from inside the editor.
+  ///
+  /// The editor is a pushed route, so those screens live on a sibling route
+  /// rather than below this one; getting to them means leaving the editor
+  /// first. Deferring the switch via [popThen] keeps the unsaved-changes
+  /// prompt honest: back out of it and the shell stays exactly where it was
+  /// rather than having silently moved underneath.
+  void navigateToShellScreen(DrawerScreen screen) {
+    popThen(context, () => AppShell.goTo(screen));
+  }
+
+  void openTool(AppTool tool) {
+    Navigator.push(
+      context,
+      FadeSlidePageRoute(page: AppTools.of(tool).build(selectionLink)),
+    );
+  }
+
   Future<void> openGenerator() async {
     final tt = currentTimetable;
     final result =
@@ -970,6 +1068,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
             child: CoursesTabWidget(
               courses: filteredCourses,
               selectedSections: tt.selectedSections,
+              record: _academicRecord,
               projectCount: tt.projectCount,
               onProjectCountChanged: (count) {
                 setState(() {
@@ -988,7 +1087,53 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
             ),
           ),
         ),
+        if (ResponsiveService.isDesktop(context)) _buildBuildActionsBar(),
       ],
+    );
+  }
+
+  /// The two "build my timetable" actions, docked under the courses panel on
+  /// wide layouts.
+  ///
+  /// They used to be Scaffold FABs, which put them over the bottom-right of the
+  /// *grid* — and in fit-to-screen the grid fills its panel exactly, so there
+  /// was no scrolling the Friday/Saturday cells out from under them. Docking
+  /// here costs the grid nothing. Mobile keeps its floating button: the panels
+  /// are tabs there, so a bar living in the Courses tab would be unreachable
+  /// from the Timetable one.
+  Widget _buildBuildActionsBar() {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: FilledButton.tonalIcon(
+              key: TutorialKeys.addSwapFab,
+              onPressed: openAddSwap,
+              icon: const Icon(Icons.swap_horiz, size: 18),
+              label: const Text('Add/Swap'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(0, 44),
+                backgroundColor: scheme.secondaryContainer,
+                foregroundColor: scheme.onSecondaryContainer,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: FilledButton.icon(
+              key: TutorialKeys.generatorFab,
+              onPressed: openGenerator,
+              icon: const Icon(Icons.auto_awesome_mosaic, size: 18),
+              label: const Text('TT Generator'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(0, 44),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1217,61 +1362,23 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       // On mobile the Tools items are merged into the More (⋮) menu below, so
       // the app bar shows a single overflow instead of two.
       if (!isMobileLayout)
-        PopupMenuButton<String>(
-        key: TutorialKeys.toolsMenu,
-        icon: const Icon(Icons.menu_book),
-        tooltip: 'Tools',
-        onSelected: (value) {
-          switch (value) {
-            case 'course_guide':
-              Navigator.push(context, FadeSlidePageRoute(page: const CourseGuideScreen()));
-              break;
-            case 'prerequisites':
-              Navigator.push(context, FadeSlidePageRoute(page: const PrerequisitesScreen()));
-              break;
-            case 'discipline_electives':
-              Navigator.push(context, FadeSlidePageRoute(page: const DisciplineElectivesScreen()));
-              break;
-            case 'humanities_electives':
-              Navigator.push(context, FadeSlidePageRoute(page: const HumanitiesElectivesScreen()));
-              break;
-          }
-        },
-        itemBuilder: (context) => const [
-          PopupMenuItem(
-            value: 'course_guide',
-            child: ListTile(
-              leading: Icon(Icons.menu_book),
-              title: Text('Course Guide'),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-          PopupMenuItem(
-            value: 'prerequisites',
-            child: ListTile(
-              leading: Icon(Icons.account_tree),
-              title: Text('Prerequisites'),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-          PopupMenuItem(
-            value: 'discipline_electives',
-            child: ListTile(
-              leading: Icon(Icons.school),
-              title: Text('Discipline Electives'),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-          PopupMenuItem(
-            value: 'humanities_electives',
-            child: ListTile(
-              leading: Icon(Icons.library_books),
-              title: Text('Humanities Electives'),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-        ],
-      ),
+        PopupMenuButton<AppTool>(
+          key: TutorialKeys.toolsMenu,
+          icon: const Icon(Icons.menu_book),
+          tooltip: 'Tools',
+          onSelected: openTool,
+          itemBuilder: (context) => [
+            for (final info in AppTools.editorMenu)
+              PopupMenuItem(
+                value: info.tool,
+                child: ListTile(
+                  leading: Icon(info.icon),
+                  title: Text(info.label),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+          ],
+        ),
       PopupMenuButton<String>(
         // On mobile this doubles as the Tools menu (see above), so the tour's
         // Tools spotlight targets it here.
@@ -1279,11 +1386,13 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         icon: const Icon(Icons.more_vert),
         tooltip: 'More',
         onSelected: (value) {
+          // Tools share this menu on mobile; they're keyed by AppTool.name.
+          final tool = AppTools.byName(value);
+          if (tool != null) {
+            openTool(tool);
+            return;
+          }
           switch (value) {
-            case 'course_guide': Navigator.push(context, FadeSlidePageRoute(page: const CourseGuideScreen())); break;
-            case 'prerequisites': Navigator.push(context, FadeSlidePageRoute(page: const PrerequisitesScreen())); break;
-            case 'discipline_electives': Navigator.push(context, FadeSlidePageRoute(page: const DisciplineElectivesScreen())); break;
-            case 'humanities_electives': Navigator.push(context, FadeSlidePageRoute(page: const HumanitiesElectivesScreen())); break;
             case 'share': shareTimetable(); break;
             case 'page_info': PageInfoHelper.show(context, PageInfoHelper.timetableCreator); break;
             case 'import_tt': importFromTT(); break;
@@ -1295,38 +1404,15 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         },
         itemBuilder: (context) => [
           if (isMobileLayout) ...[
-            const PopupMenuItem(
-              value: 'course_guide',
-              child: ListTile(
-                leading: Icon(Icons.menu_book),
-                title: Text('Course Guide'),
-                contentPadding: EdgeInsets.zero,
+            for (final info in AppTools.editorMenu)
+              PopupMenuItem(
+                value: info.tool.name,
+                child: ListTile(
+                  leading: Icon(info.icon),
+                  title: Text(info.label),
+                  contentPadding: EdgeInsets.zero,
+                ),
               ),
-            ),
-            const PopupMenuItem(
-              value: 'prerequisites',
-              child: ListTile(
-                leading: Icon(Icons.account_tree),
-                title: Text('Prerequisites'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'discipline_electives',
-              child: ListTile(
-                leading: Icon(Icons.school),
-                title: Text('Discipline Electives'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'humanities_electives',
-              child: ListTile(
-                leading: Icon(Icons.library_books),
-                title: Text('Humanities Electives'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
             const PopupMenuDivider(),
           ],
           if (isMobileLayout) ...[
@@ -1510,32 +1596,9 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   }
 
   Widget? buildFABs(bool isWideScreen) {
-    if (isWideScreen) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.extended(
-            key: TutorialKeys.addSwapFab,
-            onPressed: openAddSwap,
-            icon: const Icon(Icons.swap_horiz),
-            label: const Text('Add/Swap'),
-            backgroundColor: Theme.of(context).colorScheme.secondary,
-            foregroundColor: Theme.of(context).colorScheme.onSecondary,
-            heroTag: 'add_swap',
-          ),
-          const SizedBox(width: 8),
-          FloatingActionButton.extended(
-            key: TutorialKeys.generatorFab,
-            onPressed: openGenerator,
-            icon: const Icon(Icons.auto_awesome_mosaic),
-            label: const Text('TT Generator'),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Theme.of(context).colorScheme.onPrimary,
-            heroTag: 'generator',
-          ),
-        ],
-      );
-    }
+    // Wide layouts dock these under the courses panel instead — see
+    // _buildBuildActionsBar for why they can't float over the grid.
+    if (isWideScreen) return null;
     // A single FAB that opens a chooser, so two stacked FABs no longer occlude
     // the grid's bottom-right corner on small screens.
     return FloatingActionButton(

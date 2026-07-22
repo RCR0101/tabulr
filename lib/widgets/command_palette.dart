@@ -2,19 +2,13 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/data/auth_service.dart';
-import '../services/data/admin_service.dart';
-import '../services/data/course_announcement_service.dart';
-import '../screens/course_guide_screen.dart';
-import '../screens/prerequisites_screen.dart';
-import '../screens/discipline_electives_screen.dart';
-import '../screens/humanities_electives_screen.dart';
-import '../screens/timetable_comparison_screen.dart';
-import '../screens/credits_screen.dart';
 import '../screens/profile_screen.dart';
+import '../models/timetable_selection_link.dart';
 import '../services/ui/theme_service.dart';
 import '../utils/design_constants.dart';
 import '../utils/page_transitions.dart';
-import 'app_drawer.dart';
+import 'app_destinations.dart';
+import 'app_tools.dart';
 
 class CommandPaletteEntry {
   final String label;
@@ -85,6 +79,10 @@ class CommandPalette extends StatefulWidget {
   final VoidCallback? onSignOut;
   final VoidCallback? onReplayTour;
 
+  /// Passed to the elective browsers so they can add straight to the timetable
+  /// being edited. Null everywhere except the editor, where it's read-only.
+  final TimetableSelectionLink? selectionLink;
+
   const CommandPalette({
     super.key,
     required this.onNavigate,
@@ -93,6 +91,7 @@ class CommandPalette extends StatefulWidget {
     this.onToggleTheme,
     this.onSignOut,
     this.onReplayTour,
+    this.selectionLink,
   });
 
   static Future<void> show(
@@ -103,6 +102,7 @@ class CommandPalette extends StatefulWidget {
     VoidCallback? onToggleTheme,
     VoidCallback? onSignOut,
     VoidCallback? onReplayTour,
+    TimetableSelectionLink? selectionLink,
   }) {
     return showDialog(
       context: context,
@@ -114,6 +114,7 @@ class CommandPalette extends StatefulWidget {
         onToggleTheme: onToggleTheme,
         onSignOut: onSignOut,
         onReplayTour: onReplayTour,
+        selectionLink: selectionLink,
       ),
     );
   }
@@ -161,142 +162,49 @@ class _CommandPaletteState extends State<CommandPalette> {
       nonRecentEntries.addAll(CommandPaletteActions.entriesFor(widget.currentScreen));
     }
 
-    // Sidebar screens
+    // Every shell destination, straight from the registry. Hand-listing these
+    // is what let Minors and Academic FAQ ship to the sidebar and never appear
+    // here; now a new DrawerScreen shows up in both or compiles in neither.
+    // A tool that is also a shell destination wins when there's a timetable to
+    // add to — pushing it keeps the editor underneath, navigating would not.
+    final linkedScreens = widget.selectionLink == null
+        ? const <DrawerScreen>{}
+        : {for (final info in AppTools.all) if (info.screen != null) info.screen!};
+
     nonRecentEntries.addAll([
-      CommandPaletteEntry(
-        label: 'Timetables',
-        subtitle: 'View and manage your timetables',
-        icon: Icons.schedule,
-        category: CommandCategory.navigation,
-        onSelect: () => widget.onNavigate(DrawerScreen.timetables),
-      ),
-      CommandPaletteEntry(
-        label: 'Calendar',
-        subtitle: 'Academic calendar view',
-        icon: Icons.calendar_month,
-        category: CommandCategory.navigation,
-        onSelect: () => widget.onNavigate(DrawerScreen.calendar),
-      ),
-      CommandPaletteEntry(
-        label: 'Exam Seating',
-        subtitle: 'Find your exam seat',
-        icon: Icons.event_seat,
-        category: CommandCategory.navigation,
-        onSelect: () => widget.onNavigate(DrawerScreen.examSeating),
-      ),
+      for (final destination in AppDestinations.visible)
+        if (!linkedScreens.contains(destination.screen))
+          CommandPaletteEntry(
+            label: destination.label,
+            subtitle: destination.description,
+            icon: destination.icon,
+            category: CommandCategory.navigation,
+            onSelect: () => widget.onNavigate(destination.screen),
+          ),
     ]);
 
     if (auth.isAuthenticated) {
-      nonRecentEntries.addAll([
-        CommandPaletteEntry(
-          label: 'Free Slot Finder',
-          subtitle: 'Find common free slots with friends',
-          icon: Icons.group,
-          category: CommandCategory.navigation,
-          onSelect: () => widget.onNavigate(DrawerScreen.freeSlotFinder),
-        ),
-        CommandPaletteEntry(
-          label: 'CGPA Calculator',
-          subtitle: 'Calculate and plan your CGPA',
-          icon: Icons.calculate,
-          category: CommandCategory.navigation,
-          onSelect: () => widget.onNavigate(DrawerScreen.cgpaCalculator),
-        ),
-        CommandPaletteEntry(
-          label: 'Acad Drives',
-          subtitle: 'Course materials and resources',
-          icon: Icons.folder_shared,
-          category: CommandCategory.navigation,
-          onSelect: () => widget.onNavigate(DrawerScreen.acadDrives),
-        ),
-        CommandPaletteEntry(
-          label: 'Prof Chambers',
-          subtitle: 'Professor details and ratings',
-          icon: Icons.person,
-          category: CommandCategory.navigation,
-          onSelect: () => widget.onNavigate(DrawerScreen.profChambers),
-        ),
-        CommandPaletteEntry(
-          label: 'Report a Bug',
-          subtitle: 'File and track bug reports',
-          icon: Icons.bug_report_outlined,
-          category: CommandCategory.navigation,
-          onSelect: () => widget.onNavigate(DrawerScreen.bugReport),
-        ),
-        CommandPaletteEntry(
-          label: 'Profile',
-          subtitle: 'Your ID, branch & semester defaults',
-          icon: Icons.badge_outlined,
-          category: CommandCategory.navigation,
-          onSelect: () => nav.push(FadeSlidePageRoute(page: const ProfileScreen())),
-        ),
-      ]);
-
-      if (CourseAnnouncementService().isHyderabadUser()) {
-        nonRecentEntries.add(CommandPaletteEntry(
-          label: 'Announcements',
-          subtitle: 'Course announcements',
-          icon: Icons.campaign,
-          category: CommandCategory.navigation,
-          onSelect: () => widget.onNavigate(DrawerScreen.announcements),
-        ));
-      }
-
-      if (AdminService().isAdmin) {
-        nonRecentEntries.add(CommandPaletteEntry(
-          label: 'Admin',
-          subtitle: 'Admin panel',
-          icon: Icons.admin_panel_settings,
-          category: CommandCategory.navigation,
-          onSelect: () => widget.onNavigate(DrawerScreen.admin),
-        ));
-      }
+      // Not a shell destination — Profile is a pushed route.
+      nonRecentEntries.add(CommandPaletteEntry(
+        label: 'Profile',
+        subtitle: 'Your ID, branch & semester defaults',
+        icon: Icons.badge_outlined,
+        category: CommandCategory.navigation,
+        onSelect: () => nav.push(FadeSlidePageRoute(page: const ProfileScreen())),
+      ));
     }
 
-    // Tool screens (pushed as routes)
     nonRecentEntries.addAll([
-      CommandPaletteEntry(
-        label: 'Course Guide',
-        subtitle: 'Browse course details and sections',
-        icon: Icons.menu_book,
-        category: CommandCategory.navigation,
-        onSelect: () => nav.push(FadeSlidePageRoute(page: const CourseGuideScreen())),
-      ),
-      CommandPaletteEntry(
-        label: 'Prerequisites',
-        subtitle: 'View course prerequisite chains',
-        icon: Icons.account_tree,
-        category: CommandCategory.navigation,
-        onSelect: () => nav.push(FadeSlidePageRoute(page: const PrerequisitesScreen())),
-      ),
-      CommandPaletteEntry(
-        label: 'Discipline Electives',
-        subtitle: 'Browse discipline elective options',
-        icon: Icons.school,
-        category: CommandCategory.navigation,
-        onSelect: () => nav.push(FadeSlidePageRoute(page: const DisciplineElectivesScreen())),
-      ),
-      CommandPaletteEntry(
-        label: 'Humanities Electives',
-        subtitle: 'Browse humanities elective options',
-        icon: Icons.library_books,
-        category: CommandCategory.navigation,
-        onSelect: () => nav.push(FadeSlidePageRoute(page: const HumanitiesElectivesScreen())),
-      ),
-      CommandPaletteEntry(
-        label: 'Compare Timetables',
-        subtitle: 'Side-by-side timetable comparison',
-        icon: Icons.compare,
-        category: CommandCategory.navigation,
-        onSelect: () => nav.push(FadeSlidePageRoute(page: const TimetableComparisonScreen())),
-      ),
-      CommandPaletteEntry(
-        label: 'Credits',
-        subtitle: 'About Tabulr and the people behind it',
-        icon: Icons.info_outline,
-        category: CommandCategory.navigation,
-        onSelect: () => nav.push(FadeSlidePageRoute(page: const CreditsScreen())),
-      ),
+      for (final info in AppTools.all)
+        if (info.screen == null || widget.selectionLink != null)
+          CommandPaletteEntry(
+            label: info.label,
+            subtitle: info.description,
+            icon: info.icon,
+            category: CommandCategory.navigation,
+            onSelect: () => nav.push(
+                FadeSlidePageRoute(page: info.build(widget.selectionLink))),
+          ),
     ]);
 
     // Global actions

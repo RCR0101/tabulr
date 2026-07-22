@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'campus_service.dart';
 import 'local_cache_service.dart';
 import '../../constants/app_constants.dart';
@@ -33,7 +34,12 @@ class CoursesMasterService {
   factory CoursesMasterService() => _instance;
   CoursesMasterService._();
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // Resolved on use rather than held as a field: this is a singleton, so an
+  // eager initializer would demand Firebase be up the first time anything
+  // touches the service — including code paths that only read the in-memory
+  // cache and never go near Firestore.
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
+
   final LocalCacheService _localCache = LocalCacheService();
 
   Map<String, CourseMasterEntry> _cache = {};
@@ -76,56 +82,61 @@ class CoursesMasterService {
     _loading = true;
     _loadStateController.add(false);
 
-    final campusId = CampusService.campusId;
+    // finally, not a trailing assignment: a throw anywhere below used to leave
+    // _loading stuck true, and the `if (_loading) return` guard above then made
+    // every later attempt a no-op — one transient Firestore error left the
+    // catalogue permanently empty for the rest of the session.
+    try {
+      final campusId = CampusService.campusId;
 
-    if (!forceRefresh) {
-      final cached = await _localCache.readIfFresh(
-        _cacheKey,
-        metadataRef: CampusService.metadataDocRef(_firestore),
-      );
-      if (cached != null) {
+      if (!forceRefresh) {
+        final cached = await _localCache.readIfFresh(
+          _cacheKey,
+          metadataRef: CampusService.metadataDocRef(_firestore),
+        );
+        if (cached != null) {
+          _cache = {
+            for (final map in cached)
+              map['course_code'] as String: CourseMasterEntry.fromMap(map)
+          };
+          _loaded = true;
+          _loadStateController.add(true);
+          return;
+        }
+      }
+
+      // Pre-bundled catalogue: 1 read instead of ~2.8k. Falls back to the
+      // legacy per-document scan below if the bundle hasn't been generated yet.
+      final bundled = await _readBundle(campusId);
+      if (bundled != null) {
         _cache = {
-          for (final map in cached)
+          for (final map in bundled)
             map['course_code'] as String: CourseMasterEntry.fromMap(map)
         };
+        await _localCache.write(_cacheKey, bundled);
         _loaded = true;
-        _loading = false;
         _loadStateController.add(true);
         return;
       }
-    }
 
-    // Pre-bundled catalogue: 1 read instead of ~2.8k. Falls back to the legacy
-    // per-document scan below if the bundle hasn't been generated yet.
-    final bundled = await _readBundle(campusId);
-    if (bundled != null) {
+      final snapshot = await _firestore
+          .collection(FirestoreCollections.campuses)
+          .doc(campusId)
+          .collection(FirestoreCollections.coursesMaster)
+          .get();
+
+      final docs = snapshot.docs.map((doc) => doc.data()).toList();
       _cache = {
-        for (final map in bundled)
+        for (final map in docs)
           map['course_code'] as String: CourseMasterEntry.fromMap(map)
       };
-      await _localCache.write(_cacheKey, bundled);
+
+      await _localCache.write(_cacheKey, docs);
       _loaded = true;
-      _loading = false;
       _loadStateController.add(true);
-      return;
+    } finally {
+      _loading = false;
     }
-
-    final snapshot = await _firestore
-        .collection(FirestoreCollections.campuses)
-        .doc(campusId)
-        .collection(FirestoreCollections.coursesMaster)
-        .get();
-
-    final docs = snapshot.docs.map((doc) => doc.data()).toList();
-    _cache = {
-      for (final map in docs)
-        map['course_code'] as String: CourseMasterEntry.fromMap(map)
-    };
-
-    await _localCache.write(_cacheKey, docs);
-    _loaded = true;
-    _loading = false;
-    _loadStateController.add(true);
   }
 
   String getTitle(String courseCode) {
@@ -143,5 +154,23 @@ class CoursesMasterService {
     _loaded = false;
     _loading = false;
     _localCache.invalidate(_cacheKey);
+  }
+
+  /// Fills the catalogue in-memory and marks it loaded, so widgets that read it
+  /// can be tested without Firestore. Never call this from app code.
+  @visibleForTesting
+  void seedForTest(List<CourseMasterEntry> entries) {
+    _cache = {for (final e in entries) e.courseCode: e};
+    _loaded = true;
+    _loading = false;
+  }
+
+  /// Undoes [seedForTest] without touching the on-disk cache, which
+  /// [clear] would try to reach.
+  @visibleForTesting
+  void resetForTest() {
+    _cache = {};
+    _loaded = false;
+    _loading = false;
   }
 }

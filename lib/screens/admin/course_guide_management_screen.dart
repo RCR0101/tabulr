@@ -9,6 +9,7 @@ import '../../services/ui/toast_service.dart';
 import '../../utils/branch_constants.dart' as constants;
 import '../../utils/design_constants.dart';
 import '../../widgets/common/app_button.dart';
+import '../../widgets/common/course_picker_sheet.dart';
 import 'branch_group_management_screen.dart';
 
 class CourseGuideManagementScreen extends StatefulWidget {
@@ -33,7 +34,6 @@ class _CourseGuideManagementScreenState
   bool _dirty = false;
   bool _initLoading = true;
 
-  List<CourseMasterEntry> _allCourses = [];
   List<String> _dualDegreeOverrides = [];
 
   @override
@@ -47,11 +47,12 @@ class _CourseGuideManagementScreenState
     if (mounted) setState(() => _initLoading = false);
   }
 
+  /// Warms the catalogue so the rows below can resolve titles, and so the
+  /// shared picker opens without a spinner.
   Future<void> _loadMasterCourses() async {
     if (!_masterService.isLoaded) {
       await _masterService.loadForCampus();
     }
-    _allCourses = _masterService.allCourses;
   }
 
   Future<void> _loadDualDegreeOverrides() async {
@@ -111,13 +112,20 @@ class _CourseGuideManagementScreenState
   }
 
   Future<void> _addCourse(String semester) async {
-    final code = await _pickCourseCode('Add Course to $semester');
-    if (code == null || code.isEmpty) return;
+    final existing = _cdcs[semester] ?? const <String>[];
+    final picked = await showCoursePicker(
+      context,
+      alreadyChosen: existing.toSet(),
+      title: 'Add courses to $semester',
+    );
+    if (picked == null || picked.isEmpty) return;
     setState(() {
-      _cdcs.putIfAbsent(semester, () => []);
-      if (!_cdcs[semester]!.contains(code)) {
-        _cdcs[semester]!.add(code);
-        _dirty = true;
+      final list = _cdcs.putIfAbsent(semester, () => []);
+      for (final course in picked) {
+        if (!list.contains(course.courseCode)) {
+          list.add(course.courseCode);
+          _dirty = true;
+        }
       }
     });
   }
@@ -129,14 +137,20 @@ class _CourseGuideManagementScreenState
     });
   }
 
-  /// Add a course to a flat elective list (DELs or HUELs).
+  /// Add courses to a flat elective list (DELs or HUELs).
   Future<void> _addElective(List<String> list, String label) async {
-    final code = await _pickCourseCode('Add $label');
-    if (code == null || code.isEmpty) return;
+    final picked = await showCoursePicker(
+      context,
+      alreadyChosen: list.toSet(),
+      title: 'Add $label',
+    );
+    if (picked == null || picked.isEmpty) return;
     setState(() {
-      if (!list.contains(code)) {
-        list.add(code);
-        _dirty = true;
+      for (final course in picked) {
+        if (!list.contains(course.courseCode)) {
+          list.add(course.courseCode);
+          _dirty = true;
+        }
       }
     });
   }
@@ -148,143 +162,6 @@ class _CourseGuideManagementScreenState
     });
   }
 
-  Future<String?> _pickCourseCode(String title) async {
-    final codeCtrl = TextEditingController();
-    String? selectedName;
-
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) {
-        final scheme = Theme.of(ctx).colorScheme;
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) => Dialog(
-            insetPadding: const EdgeInsets.all(16),
-            child: ConstrainedBox(
-              constraints:
-                  const BoxConstraints(maxWidth: 400, maxHeight: 280),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        style: Theme.of(ctx)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 16),
-                    Autocomplete<CourseMasterEntry>(
-                      optionsBuilder: (v) {
-                        if (v.text.isEmpty) return const [];
-                        final q = v.text.toUpperCase();
-                        return _allCourses
-                            .where((c) =>
-                                c.courseCode.toUpperCase().contains(q) ||
-                                c.title.toUpperCase().contains(q))
-                            .take(8);
-                      },
-                      displayStringForOption: (c) => c.courseCode,
-                      onSelected: (c) {
-                        codeCtrl.text = c.courseCode;
-                        setDialogState(() => selectedName = c.title);
-                      },
-                      optionsViewBuilder: (ctx, onSelected, options) {
-                        return Align(
-                          alignment: Alignment.topLeft,
-                          child: Material(
-                            elevation: 4,
-                            borderRadius: AppDesign.borderRadiusSm,
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(
-                                  maxHeight: 200, maxWidth: 360),
-                              child: ListView.builder(
-                                padding: EdgeInsets.zero,
-                                shrinkWrap: true,
-                                itemCount: options.length,
-                                itemBuilder: (_, i) {
-                                  final c = options.elementAt(i);
-                                  return ListTile(
-                                    dense: true,
-                                    title: Text(c.courseCode,
-                                        style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600)),
-                                    subtitle: Text(c.title,
-                                        style:
-                                            const TextStyle(fontSize: 12)),
-                                    onTap: () => onSelected(c),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                      fieldViewBuilder: (_, textCtrl, focusNode, __) {
-                        textCtrl.text = codeCtrl.text;
-                        textCtrl.addListener(() {
-                          codeCtrl.text = textCtrl.text;
-                          if (selectedName != null &&
-                              textCtrl.text !=
-                                  _allCourses
-                                      .where(
-                                          (c) => c.title == selectedName)
-                                      .firstOrNull
-                                      ?.courseCode) {
-                            setDialogState(() => selectedName = null);
-                          }
-                        });
-                        return TextField(
-                          controller: textCtrl,
-                          focusNode: focusNode,
-                          style: const TextStyle(fontSize: 14),
-                          decoration: AppDesign.inputDecoration(ctx,
-                              label: 'Course Code',
-                              hint: 'e.g. CS F111'),
-                        );
-                      },
-                    ),
-                    if (selectedName != null) ...[
-                      const SizedBox(height: 8),
-                      Text(selectedName!,
-                          style: TextStyle(
-                              fontSize: 13,
-                              color: scheme.onSurface
-                                  .withValues(alpha: AppDesign.opacityMedium))),
-                    ],
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        AppButton(
-                          label: 'Cancel',
-                          variant: AppButtonVariant.ghost,
-                          onTap: () => Navigator.pop(ctx),
-                        ),
-                        const SizedBox(width: 8),
-                        AppButton(
-                          label: 'Add',
-                          icon: Icons.add_rounded,
-                          onTap: codeCtrl.text.trim().isEmpty
-                              ? null
-                              : () => Navigator.pop(
-                                  ctx, codeCtrl.text.trim()),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-
-    codeCtrl.dispose();
-    return result;
-  }
 
   Future<void> _showCreateDualDegreeDialog() async {
     String? msc;

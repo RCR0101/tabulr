@@ -7,7 +7,7 @@ import '../services/data/admin_service.dart';
 import '../services/data/config_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
-import '../widgets/app_drawer.dart';
+import '../widgets/app_destinations.dart';
 import '../utils/web_utils.dart' as web_utils;
 import '../constants/app_constants.dart';
 import '../utils/design_constants.dart';

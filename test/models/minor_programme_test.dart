@@ -100,6 +100,31 @@ void main() {
       expect(MinorCourse.fromMap(c.toMap()).units, isNull);
     });
 
+    test('does not persist the title', () {
+      // It belongs to the course master, which carries the same courses for
+      // every campus. A copy here would only drift.
+      const c = MinorCourse(code: 'CS F320', title: 'Data Science', units: 3);
+      expect(c.toMap().containsKey('title'), isFalse);
+      expect(c.toMap(), {'code': 'CS F320', 'units': 3});
+    });
+
+    test('still reads a title from documents written before that', () {
+      // Records keep their imported title until their next save, and it stays
+      // the fallback for codes the master doesn't carry.
+      final c = MinorCourse.fromMap(const {
+        'code': 'CS F320',
+        'title': 'Foundations of Data Science',
+        'units': 3,
+      });
+      expect(c.title, 'Foundations of Data Science');
+    });
+
+    test('a course with no title at all is still valid', () {
+      const c = MinorCourse(code: 'CS F320');
+      expect(c.title, '');
+      expect(c.toMap(), {'code': 'CS F320'});
+    });
+
     test('tolerates missing fields from Firestore', () {
       final g = MinorCourseGroup.fromMap(const {});
       expect(g.name, '');

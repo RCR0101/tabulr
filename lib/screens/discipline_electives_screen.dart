@@ -8,12 +8,18 @@ import '../services/data/campus_service.dart';
 import '../services/data/profile_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../models/course.dart';
-import '../widgets/course_list_widget.dart';
+import '../models/timetable_selection_link.dart';
+import '../widgets/elective_course_list.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/inline_error_card.dart';
 
 class DisciplineElectivesScreen extends StatefulWidget {
-  const DisciplineElectivesScreen({super.key});
+  /// Set when opened from the editor, which makes the results list writable —
+  /// Add/Remove goes straight onto that timetable. Null elsewhere (the
+  /// timetable list, the global command palette), leaving the screen read-only.
+  final TimetableSelectionLink? selectionLink;
+
+  const DisciplineElectivesScreen({super.key, this.selectionLink});
 
   @override
   State<DisciplineElectivesScreen> createState() =>
@@ -77,8 +83,10 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
           .getAvailableBranches()
           .timeout(AppDurations.shortNetworkTimeout);
 
-      // Load courses for current campus
-      final courses = await _courseDataService.fetchCourses();
+      // When linked to a timetable, browse that timetable's embedded catalog so
+      // everything offered here is something it can actually accept.
+      final courses = widget.selectionLink?.availableCourses ??
+          await _courseDataService.fetchCourses();
 
       setState(() {
         _availableBranches = branches;
@@ -574,6 +582,10 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                     ),
                   ),
                 ],
+                if (widget.selectionLink != null) ...[
+                  const SizedBox(height: 8),
+                  ElectiveTimetableBanner(selectionLink: widget.selectionLink),
+                ],
               ],
             ),
           ),
@@ -586,12 +598,10 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
                 tablet: 350,
                 desktop: 400,
               ),
-              child: CourseListWidget(
+              child: ElectiveCourseList(
                 courses: courses,
-                selectedSections: const [],
-                onSectionToggle: (courseCode, sectionId, isSelected) {
-                  // Read-only mode - no section toggles allowed
-                },
+                catalog: _availableCourses,
+                selectionLink: widget.selectionLink,
               ),
             ),
           ] else ...[

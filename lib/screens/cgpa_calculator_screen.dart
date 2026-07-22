@@ -26,7 +26,7 @@ import 'grade_planner_screen.dart';
 import '../utils/design_constants.dart';
 import '../utils/grade_utils.dart' as grade_utils;
 import '../widgets/command_palette.dart';
-import '../widgets/app_drawer.dart';
+import '../widgets/app_destinations.dart';
 import '../services/ui/tutorial_service.dart';
 import '../services/core/timetable_service.dart';
 import '../widgets/cgpa/course_selection_dialog.dart';

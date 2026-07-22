@@ -3,6 +3,7 @@ import 'common/empty_state_widget.dart';
 import '../services/data/course_guide_service.dart';
 import '../services/data/courses_master_service.dart';
 import '../services/data/branch_structure_service.dart';
+import '../services/data/profile_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../utils/branch_constants.dart' as constants;
 
@@ -38,12 +39,34 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
     _loadBranches();
   }
 
+  /// Pre-selects the student's saved defaults where they're valid options, so
+  /// the form opens ready to search. Everything stays editable.
+  void _prefillFromProfile(List<String> branches) {
+    final profile = ProfileService().cached;
+    if (profile.primaryBranch != null &&
+        branches.contains(profile.primaryBranch)) {
+      _selectedPrimaryBranch = profile.primaryBranch;
+    }
+    // The secondary dropdown excludes the primary, so never pre-fill it to the
+    // same branch.
+    if (profile.secondaryBranch != null &&
+        profile.secondaryBranch != _selectedPrimaryBranch &&
+        branches.contains(profile.secondaryBranch)) {
+      _selectedSecondaryBranch = profile.secondaryBranch;
+    }
+    if (profile.currentSemester != null &&
+        _semesterOptions.contains(profile.currentSemester)) {
+      _selectedSemester = profile.currentSemester;
+    }
+  }
+
   Future<void> _loadBranches() async {
     try {
       final branches = await _branchService.getAvailableBranches();
       setState(() {
         _availableBranches = branches;
         _isLoading = false;
+        _prefillFromProfile(branches);
       });
     } catch (e) {
       setState(() {

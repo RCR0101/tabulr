@@ -18,7 +18,7 @@ import '../constants/app_constants.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/command_palette.dart';
-import '../widgets/app_drawer.dart';
+import '../widgets/app_destinations.dart';
 import '../services/ui/tutorial_service.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_tappable.dart';

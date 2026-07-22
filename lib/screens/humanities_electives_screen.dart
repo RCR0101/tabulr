@@ -7,13 +7,19 @@ import '../services/data/course_data_service.dart';
 import '../services/data/campus_service.dart';
 import '../services/data/profile_service.dart';
 import '../models/course.dart';
-import '../widgets/course_list_widget.dart';
+import '../models/timetable_selection_link.dart';
+import '../widgets/elective_course_list.dart';
 import '../services/ui/responsive_service.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/inline_error_card.dart';
 
 class HumanitiesElectivesScreen extends StatefulWidget {
-  const HumanitiesElectivesScreen({super.key});
+  /// Set when opened from the editor, which makes the results list writable —
+  /// Add/Remove goes straight onto that timetable. Null elsewhere (the
+  /// timetable list, the global command palette), leaving the screen read-only.
+  final TimetableSelectionLink? selectionLink;
+
+  const HumanitiesElectivesScreen({super.key, this.selectionLink});
 
   @override
   State<HumanitiesElectivesScreen> createState() => _HumanitiesElectivesScreenState();
@@ -92,8 +98,10 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
         _errorMessage = '';
       });
 
-      // Load courses for current campus
-      final courses = await _courseDataService.fetchCourses();
+      // When linked to a timetable, browse that timetable's embedded catalog so
+      // everything offered here is something it can actually accept.
+      final courses = widget.selectionLink?.availableCourses ??
+          await _courseDataService.fetchCourses();
 
       setState(() {
         _availableCourses = courses;
@@ -409,18 +417,20 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
+                if (widget.selectionLink != null) ...[
+                  const SizedBox(height: 4),
+                  ElectiveTimetableBanner(selectionLink: widget.selectionLink),
+                ],
               ],
             ),
           ),
           const Divider(height: 1),
           SizedBox(
             height: 400,
-            child: CourseListWidget(
+            child: ElectiveCourseList(
               courses: _huelCourses,
-              selectedSections: const [],
-              onSectionToggle: (courseCode, sectionId, isSelected) {
-                // Read-only mode - no section toggles allowed
-              },
+              catalog: _availableCourses,
+              selectionLink: widget.selectionLink,
             ),
           ),
         ],

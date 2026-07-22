@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import '../services/data/admin_service.dart';
 import '../services/data/auth_service.dart';
-import '../services/data/course_announcement_service.dart';
 import '../services/ui/tutorial_service.dart';
 import '../utils/design_constants.dart';
 import '../screens/credits_screen.dart';
 import '../screens/profile_screen.dart';
-import 'app_drawer.dart';
+import 'app_destinations.dart';
 
 class AppSidebar extends StatefulWidget {
   final DrawerScreen currentScreen;
@@ -49,96 +48,10 @@ class _AppSidebarState extends State<AppSidebar> {
     if (mounted) setState(() {});
   }
 
-  List<_SidebarItem> _buildItems() {
-    final items = <_SidebarItem>[
-      _SidebarItem(
-        screen: DrawerScreen.timetables,
-        icon: Icons.schedule,
-        label: 'TT Builder',
-      ),
-    ];
-
-    if (_auth.isAuthenticated) {
-      items.add(_SidebarItem(
-        screen: DrawerScreen.calendar,
-        icon: Icons.calendar_month,
-        label: 'Calendar',
-      ));
-      items.add(_SidebarItem(
-        screen: DrawerScreen.freeSlotFinder,
-        icon: Icons.group,
-        label: 'Free Time Finder',
-      ));
-    }
-
-    if (_auth.isAuthenticated) {
-      items.add(_SidebarItem(
-        screen: DrawerScreen.cgpaCalculator,
-        icon: Icons.calculate,
-        label: 'CGPA',
-      ));
-    }
-
-    items.add(_SidebarItem(
-      screen: DrawerScreen.examSeating,
-      icon: Icons.event_seat,
-      label: 'Exam Seating',
-    ));
-
-    if (_auth.isAuthenticated) {
-      items.add(_SidebarItem(
-        screen: DrawerScreen.acadDrives,
-        icon: Icons.folder_shared,
-        label: 'Acad Drives',
-      ));
-      items.add(_SidebarItem(
-        screen: DrawerScreen.profChambers,
-        icon: Icons.person,
-        label: 'Prof Chambers',
-      ));
-    }
-
-    if (_auth.isAuthenticated &&
-        CourseAnnouncementService().isHyderabadUser()) {
-      items.add(_SidebarItem(
-        screen: DrawerScreen.announcements,
-        icon: Icons.campaign,
-        label: 'Announcements',
-      ));
-    }
-
-    // Open to guests too — the regulations are public, and someone deciding
-    // whether to sign up benefits from them as much as a logged-in student.
-    items.add(_SidebarItem(
-      screen: DrawerScreen.minors,
-      icon: Icons.workspace_premium_outlined,
-      label: 'Minors',
-    ));
-
-    items.add(_SidebarItem(
-      screen: DrawerScreen.faq,
-      icon: Icons.help_outline,
-      label: 'Academic FAQ',
-    ));
-
-    if (_auth.isAuthenticated) {
-      items.add(_SidebarItem(
-        screen: DrawerScreen.bugReport,
-        icon: Icons.bug_report_outlined,
-        label: 'Bug Report',
-      ));
-    }
-
-    if (_auth.isAuthenticated && AdminService().isAdmin) {
-      items.add(_SidebarItem(
-        screen: DrawerScreen.admin,
-        icon: Icons.admin_panel_settings,
-        label: 'Admin',
-      ));
-    }
-
-    return items;
-  }
+  /// Straight from [AppDestinations] — the sidebar no longer keeps its own
+  /// copy of the navigation surface, so it can't drift from the command
+  /// palette the way it did when Minors and Academic FAQ landed here only.
+  List<AppDestination> _buildItems() => AppDestinations.visible;
 
   @override
   Widget build(BuildContext context) {
@@ -309,7 +222,7 @@ class _AppSidebarState extends State<AppSidebar> {
   Widget _buildItem(
     BuildContext context,
     ColorScheme scheme,
-    _SidebarItem item,
+    AppDestination item,
     bool isSelected,
     bool isHovered,
     int index,
@@ -509,16 +422,4 @@ class _AppSidebarState extends State<AppSidebar> {
       ),
     );
   }
-}
-
-class _SidebarItem {
-  final DrawerScreen screen;
-  final IconData icon;
-  final String label;
-
-  const _SidebarItem({
-    required this.screen,
-    required this.icon,
-    required this.label,
-  });
 }

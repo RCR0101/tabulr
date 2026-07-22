@@ -34,7 +34,7 @@ import '../widgets/common/app_button.dart';
 import '../widgets/common/app_loading_overlay.dart';
 import '../widgets/share_timetable_dialog.dart';
 import '../widgets/command_palette.dart';
-import '../widgets/app_drawer.dart';
+import '../widgets/app_destinations.dart';
 import '../services/ui/tutorial_service.dart';
 import 'timetable_editor_screen.dart';
 import 'course_guide_screen.dart';

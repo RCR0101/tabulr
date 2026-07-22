@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
+import '../models/academic_record.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
+import 'common/course_record_badge.dart';
 import '../utils/course_utils.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/data/campus_service.dart';
@@ -14,12 +16,24 @@ class CourseListWidget extends StatelessWidget {
   final Function(String courseCode, String sectionId, bool isSelected) onSectionToggle;
   final bool showOnlySelected;
 
+  /// Catalog used to resolve [selectedSections] back to courses for the
+  /// exam-clash checks. Defaults to [courses]. The elective browsers pass the
+  /// full catalog because their [courses] holds electives only, so a CDC
+  /// already on the timetable would otherwise be invisible to those checks.
+  final List<Course>? catalog;
+
+  /// Marks courses the student has already taken. Empty by default, in which
+  /// case nothing extra is drawn.
+  final AcademicRecord record;
+
   CourseListWidget({
     super.key,
     required this.courses,
     required this.selectedSections,
     required this.onSectionToggle,
     this.showOnlySelected = false,
+    this.catalog,
+    this.record = AcademicRecord.empty,
   });
 
   late final Set<String> _selectedKeys = {
@@ -36,7 +50,7 @@ class CourseListWidget extends StatelessWidget {
   // on every scroll. The index makes the lookup O(1); _selectedCourses caches
   // the resolved set the exam checks iterate.
   late final Map<String, Course> _courseIndex = {
-    for (final c in courses) c.courseCode: c,
+    for (final c in catalog ?? courses) c.courseCode: c,
   };
 
   late final List<Course> _selectedCourses = {
@@ -235,192 +249,204 @@ class CourseListWidget extends StatelessWidget {
                 ),
               ],
             ),
-            child: Column(
-              children: [
-                ExpansionTile(
-                  title: Row(
-                    children: [
-                      if (isSelectedCourse && !showOnlySelected) ...[
-                        Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.secondary,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.5),
-                                blurRadius: 4,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                      ],
-                      Expanded(
-                        child: Text(
-                          course.courseCode,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: hasClashes
-                              ? Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityLow)
-                              : (isSelectedCourse && !showOnlySelected)
-                                ? Theme.of(context).colorScheme.primary
-                                : Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (course.courseTitle.isNotEmpty && course.courseTitle != course.courseCode)
-                        Text(course.courseTitle),
-                      Text('Instructor in Charge: ${CourseUtils.getInstructorInCharge(course)}',
-                           style: TextStyle(
-                             color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
-                           )),
-                      Text('Credits: L${course.lectureCredits} P${course.practicalCredits} U${course.totalCredits}'),
-                      if (course.midSemExam != null)
-                        Text('MidSem: ${course.midSemExam!.date.day}/${course.midSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot, campus: CampusService.currentCampusCode)}'),
-                      if (course.endSemExam != null)
-                        Text('EndSem: ${course.endSemExam!.date.day}/${course.endSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot, campus: CampusService.currentCampusCode)}'),
-                      if (_getSelectedSectionsText(course.courseCode).isNotEmpty)
-                        Text(
-                          'Selected: ${_getSelectedSectionsText(course.courseCode)}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).brightness == Brightness.dark
-                              ? Theme.of(context).colorScheme.primaryContainer
-                              : Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                    ],
-                  ),
-                  children: course.sections.map((section) {
-                    final isSelected = _isSectionSelected(course.courseCode, section.sectionId);
-                    final isTypeAlreadySelected = _isSectionTypeAlreadySelected(course.courseCode, section.type);
-                    final canSelect = isSelected || !isTypeAlreadySelected;
-                    final sectionConflict = isSelected ? null : _getSectionConflict(section, course.courseCode);
-                    final isBlocked = !canSelect || sectionConflict != null;
-
-                    return Container(
-                      constraints: BoxConstraints(
-                        minHeight: ResponsiveService.getTouchTargetSize(context),
-                      ),
-                      child: ListTile(
-                        title: Text(
-                          '${section.sectionId} - ${section.instructor}',
-                          style: TextStyle(
-                            color: isBlocked && !isSelected ? AppDesign.muted(context) : null,
-                            fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
-                          ),
-                        ),
-                        contentPadding: ResponsiveService.getAdaptivePadding(
-                          context,
-                          const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Room: ${section.room}',
-                              style: TextStyle(color: isBlocked && !isSelected ? AppDesign.muted(context) : null),
-                            ),
-                            Text(
-                              'Schedule: ${TimeSlotInfo.getFormattedSchedule(section.schedule)}',
-                              style: TextStyle(color: isBlocked && !isSelected ? AppDesign.muted(context) : null),
-                            ),
-                            if (!canSelect && !isSelected)
-                              Text(
-                                'Already selected ${section.type.name} section for this course',
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
-                                  fontSize: 12
-                                ),
-                              ),
-                            if (sectionConflict != null && canSelect)
-                              Text(
-                                sectionConflict,
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
-                                  fontSize: 12,
-                                ),
-                              ),
-                          ],
-                        ),
-                        trailing: SizedBox(
-                          width: 70,
-                          height: 32,
-                          child: TextButton(
-                            onPressed: (!isBlocked || isSelected) ? () {
-                              onSectionToggle(course.courseCode, section.sectionId, isSelected);
-                            } : null,
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              backgroundColor: isSelected
-                                ? Theme.of(context).colorScheme.error.withValues(alpha: 0.1)
-                                : Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                            ),
-                            child: Text(
-                              isSelected ? 'Remove' : 'Add',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: (!isBlocked || isSelected)
-                                  ? (isSelected
-                                    ? Theme.of(context).colorScheme.error
-                                    : Theme.of(context).colorScheme.primary)
-                                  : AppDesign.muted(context),
-                              ),
-                            ),
-                          ),
-                        ),
-                        tileColor: isSelected
-                          ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
-                          : (isBlocked ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.3) : null),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                if (hasClashes)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(12),
-                        bottomRight: Radius.circular(12),
-                      ),
-                    ),
-                    child: Row(
+            // The decoration above would otherwise be the nearest thing
+            // between these tiles and a Material, swallowing their ink
+            // splashes. A transparent Material inside it puts the splashes
+            // back on top of the card colour, clipped to the same corners.
+            child: Material(
+              type: MaterialType.transparency,
+              borderRadius: BorderRadius.circular(12),
+              child: Column(
+                children: [
+                  ExpansionTile(
+                    title: Row(
                       children: [
-                        Icon(
-                          Icons.warning_amber_rounded,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                        const SizedBox(width: 8),
+                        if (isSelectedCourse && !showOnlySelected) ...[
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.secondary,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.5),
+                                  blurRadius: 4,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
                         Expanded(
                           child: Text(
-                            clashes.join(' • '),
+                            course.courseCode,
                             style: TextStyle(
-                              fontSize: 12,
-                              color: Theme.of(context).colorScheme.error,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
+                              color: hasClashes
+                                ? Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityLow)
+                                : (isSelectedCourse && !showOnlySelected)
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                         ),
+                        CourseRecordBadge(
+                          record: record,
+                          courseCode: course.courseCode,
+                        ),
                       ],
                     ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (course.courseTitle.isNotEmpty && course.courseTitle != course.courseCode)
+                          Text(course.courseTitle),
+                        Text('Instructor in Charge: ${CourseUtils.getInstructorInCharge(course)}',
+                             style: TextStyle(
+                               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
+                             )),
+                        Text('Credits: L${course.lectureCredits} P${course.practicalCredits} U${course.totalCredits}'),
+                        if (course.midSemExam != null)
+                          Text('MidSem: ${course.midSemExam!.date.day}/${course.midSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot, campus: CampusService.currentCampusCode)}'),
+                        if (course.endSemExam != null)
+                          Text('EndSem: ${course.endSemExam!.date.day}/${course.endSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot, campus: CampusService.currentCampusCode)}'),
+                        if (_getSelectedSectionsText(course.courseCode).isNotEmpty)
+                          Text(
+                            'Selected: ${_getSelectedSectionsText(course.courseCode)}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).brightness == Brightness.dark
+                                ? Theme.of(context).colorScheme.primaryContainer
+                                : Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                      ],
+                    ),
+                    children: course.sections.map((section) {
+                      final isSelected = _isSectionSelected(course.courseCode, section.sectionId);
+                      final isTypeAlreadySelected = _isSectionTypeAlreadySelected(course.courseCode, section.type);
+                      final canSelect = isSelected || !isTypeAlreadySelected;
+                      final sectionConflict = isSelected ? null : _getSectionConflict(section, course.courseCode);
+                      final isBlocked = !canSelect || sectionConflict != null;
+
+                      return Container(
+                        constraints: BoxConstraints(
+                          minHeight: ResponsiveService.getTouchTargetSize(context),
+                        ),
+                        child: ListTile(
+                          title: Text(
+                            '${section.sectionId} - ${section.instructor}',
+                            style: TextStyle(
+                              color: isBlocked && !isSelected ? AppDesign.muted(context) : null,
+                              fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
+                            ),
+                          ),
+                          contentPadding: ResponsiveService.getAdaptivePadding(
+                            context,
+                            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Room: ${section.room}',
+                                style: TextStyle(color: isBlocked && !isSelected ? AppDesign.muted(context) : null),
+                              ),
+                              Text(
+                                'Schedule: ${TimeSlotInfo.getFormattedSchedule(section.schedule)}',
+                                style: TextStyle(color: isBlocked && !isSelected ? AppDesign.muted(context) : null),
+                              ),
+                              if (!canSelect && !isSelected)
+                                Text(
+                                  'Already selected ${section.type.name} section for this course',
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
+                                    fontSize: 12
+                                  ),
+                                ),
+                              if (sectionConflict != null && canSelect)
+                                Text(
+                                  sectionConflict,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          trailing: SizedBox(
+                            width: 70,
+                            height: 32,
+                            child: TextButton(
+                              onPressed: (!isBlocked || isSelected) ? () {
+                                onSectionToggle(course.courseCode, section.sectionId, isSelected);
+                              } : null,
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.zero,
+                                backgroundColor: isSelected
+                                  ? Theme.of(context).colorScheme.error.withValues(alpha: 0.1)
+                                  : Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                              ),
+                              child: Text(
+                                isSelected ? 'Remove' : 'Add',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: (!isBlocked || isSelected)
+                                    ? (isSelected
+                                      ? Theme.of(context).colorScheme.error
+                                      : Theme.of(context).colorScheme.primary)
+                                    : AppDesign.muted(context),
+                                ),
+                              ),
+                            ),
+                          ),
+                          tileColor: isSelected
+                            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
+                            : (isBlocked ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.3) : null),
+                        ),
+                      );
+                    }).toList(),
                   ),
-              ],
+                  if (hasClashes)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(12),
+                          bottomRight: Radius.circular(12),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            size: 16,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              clashes.join(' • '),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(context).colorScheme.error,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         );

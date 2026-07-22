@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../models/minor_programme.dart';
+import '../../services/data/courses_master_service.dart';
 import '../../services/data/minor_service.dart';
 import '../../services/ui/toast_service.dart';
+import '../../utils/course_code.dart';
 import '../../utils/design_constants.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_dialog.dart';
 import '../../widgets/common/app_search_field.dart';
+import '../../widgets/common/course_picker_sheet.dart';
 import '../../widgets/common/empty_state_widget.dart';
 
 /// Admin editor for the minor catalogue.
@@ -42,7 +45,11 @@ class _MinorManagementScreenState extends State<MinorManagementScreen> {
   }
 
   void _reload() {
-    setState(() => _future = _service.getMinors(forceRefresh: true));
+    // Block body, not an arrow: an arrow returns the assigned value, and
+    // setState asserts its callback didn't hand back a Future.
+    setState(() {
+      _future = _service.getMinors(forceRefresh: true);
+    });
   }
 
   @override
@@ -242,10 +249,12 @@ class _MinorManagementScreenState extends State<MinorManagementScreen> {
   }
 }
 
-/// Full-page editor. Course rows are edited as plain text — one
-/// `CODE | Title | units` per line — which is far quicker to correct in bulk
-/// than a form with a widget per course, and matches how the seed data needs
-/// fixing (moving rows between Core and Electives).
+/// Full-page editor.
+///
+/// Courses come from the campus course master through a multi-select picker,
+/// so a code, title and unit count are never retyped by hand. Each row also
+/// carries a move-to-group control, because reshuffling Core and Electives is
+/// the actual work the `needsReview` queue exists for.
 class _MinorEditorScreen extends StatefulWidget {
   const _MinorEditorScreen({this.minor});
 
@@ -266,6 +275,7 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
   late final List<_GroupEditor> _groups;
   late bool _needsReview;
   bool _saving = false;
+  Set<String> _catalogueCodes = const {};
 
   @override
   void initState() {
@@ -280,8 +290,30 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
         .map(_GroupEditor.from)
         .toList();
     if (_groups.isEmpty) {
-      _groups.add(_GroupEditor(name: 'Core Courses', courses: ''));
+      _groups.add(_GroupEditor(name: 'Core Courses'));
     }
+    _loadCatalogue();
+  }
+
+  /// Warms the course master so existing rows can be checked against it on the
+  /// first render, rather than only once the picker has been opened.
+  ///
+  /// Held as normalized codes rather than queried through
+  /// [CoursesMasterService.get], which matches the raw string: seeded minors
+  /// spell codes the Bulletin's way and would otherwise all look unknown.
+  Future<void> _loadCatalogue() async {
+    try {
+      await CoursesMasterService().loadForCampus();
+    } catch (_) {
+      // Only costs the "not in catalogue" hints; editing still works.
+    }
+    if (!mounted) return;
+    setState(() {
+      _catalogueCodes = {
+        for (final c in CoursesMasterService().allCourses)
+          normalizeCourseCode(c.courseCode),
+      };
+    });
   }
 
   @override
@@ -311,7 +343,7 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
           if (g.nameController.text.trim().isNotEmpty)
             MinorCourseGroup(
               name: g.nameController.text.trim(),
-              courses: g.parseCourses(),
+              courses: List.of(g.courses),
             ),
       ],
       campuses: widget.minor?.campuses ?? const [],
@@ -401,7 +433,7 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
                   icon: Icons.add,
                   variant: AppButtonVariant.secondary,
                   onTap: () => setState(() => _groups
-                      .add(_GroupEditor(name: 'Electives', courses: ''))),
+                      .add(_GroupEditor(name: 'Electives'))),
                 ),
                 const SizedBox(height: AppDesign.spacingLg),
                 AppButton(
@@ -448,73 +480,188 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
             ],
           ),
           const SizedBox(height: AppDesign.spacingSm),
-          TextFormField(
-            controller: g.coursesController,
-            minLines: 4,
-            maxLines: 20,
-            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-            decoration: AppDesign.inputDecoration(
-              context,
-              label: 'Courses',
-              hint: 'CS F320 | Foundations of Data Science | 3',
-              dense: true,
-            ),
-          ),
-          const SizedBox(height: AppDesign.spacingXs),
-          Text(
-            'One per line: CODE | Title | units. Units may be left off.',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.5),
-                ),
+          if (g.courses.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppDesign.spacingSm),
+              child: Text(
+                'No courses yet.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withValues(alpha: 0.5),
+                    ),
+              ),
+            )
+          else
+            for (final (ci, course) in g.courses.indexed)
+              _courseRow(context, g, index, ci, course),
+          const SizedBox(height: AppDesign.spacingSm),
+          AppButton(
+            label: 'Add courses',
+            icon: Icons.playlist_add,
+            variant: AppButtonVariant.secondary,
+            onTap: () => _addCourses(g),
           ),
         ],
       ),
     );
   }
+
+  Widget _courseRow(
+    BuildContext context,
+    _GroupEditor group,
+    int groupIndex,
+    int courseIndex,
+    MinorCourse course,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    // Seeded entries can name a course the current campus catalogue doesn't
+    // carry. Surfaced rather than dropped — it's a data point for the review
+    // pass, not something to silently discard on the next save. Stays quiet
+    // until the catalogue has actually loaded, so rows don't all flash a
+    // warning on first paint.
+    final known = _catalogueCodes.isEmpty ||
+        _catalogueCodes.contains(normalizeCourseCode(course.code));
+
+    // Default IconButton padding is 48px each way, which made these rows twice
+    // the height of their content in a list that is mostly rows.
+    const density = VisualDensity(horizontal: -4, vertical: -4);
+    const iconConstraints = BoxConstraints.tightFor(width: 32, height: 32);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 96,
+            child: Text(
+              course.code,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              course.title.isEmpty ? '—' : course.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurface.withValues(alpha: 0.7),
+                  ),
+            ),
+          ),
+          // Fixed-width from here on, so the columns line up down the list
+          // instead of drifting with whichever badges a given row happens to
+          // carry.
+          SizedBox(
+            width: 22,
+            child: known
+                ? null
+                : Tooltip(
+                    message: 'Not in this campus catalogue',
+                    child: Icon(Icons.help_outline,
+                        size: 15, color: scheme.tertiary),
+                  ),
+          ),
+          SizedBox(
+            width: 30,
+            child: Text(
+              course.units == null ? '' : '${course.units}u',
+              textAlign: TextAlign.right,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurface.withValues(alpha: 0.45),
+                  ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          // Moving rows between Core and Electives is the main job of the
+          // review queue, so it gets a control rather than a delete-and-re-add.
+          SizedBox(
+            width: 32,
+            child: _groups.length > 1
+                ? PopupMenuButton<int>(
+                    icon: const Icon(Icons.drive_file_move_outline, size: 18),
+                    tooltip: 'Move to group',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 160),
+                    iconSize: 18,
+                    onSelected: (target) => setState(() {
+                      group.courses.removeAt(courseIndex);
+                      _groups[target].courses.add(course);
+                    }),
+                    itemBuilder: (context) => [
+                      for (final (i, other) in _groups.indexed)
+                        if (i != groupIndex)
+                          PopupMenuItem(
+                            value: i,
+                            child: Text(other.nameController.text.trim().isEmpty
+                                ? 'Group ${i + 1}'
+                                : other.nameController.text.trim()),
+                          ),
+                    ],
+                  )
+                : null,
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18),
+            tooltip: 'Remove',
+            visualDensity: density,
+            constraints: iconConstraints,
+            padding: EdgeInsets.zero,
+            onPressed: () =>
+                setState(() => group.courses.removeAt(courseIndex)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _addCourses(_GroupEditor group) async {
+    // Excludes everything already on the minor, not just this group — no
+    // course may count toward a minor twice.
+    final taken = {
+      for (final g in _groups)
+        for (final c in g.courses) c.code,
+    };
+
+    final picked = await showCoursePicker(
+      context,
+      alreadyChosen: taken,
+      title: 'Add to ${group.nameController.text.trim()}',
+    );
+    if (picked == null || picked.isEmpty) return;
+
+    setState(() {
+      for (final course in picked) {
+        group.courses.add(MinorCourse(
+          code: course.courseCode,
+          title: course.title,
+          // The catalogue carries fractional credits for some courses; the
+          // Bulletin states minors in whole units.
+          units: course.credits > 0 ? course.credits.round() : null,
+        ));
+      }
+    });
+  }
 }
 
-/// Backing controllers for one group in the editor.
+/// One group's working state in the editor.
+///
+/// Courses are held as models rather than text: they come from the course
+/// master via the picker, so there is nothing to parse and no way to mistype a
+/// code, title or unit count.
 class _GroupEditor {
-  _GroupEditor({required String name, required String courses})
+  _GroupEditor({required String name, List<MinorCourse>? courses})
       : nameController = TextEditingController(text: name),
-        coursesController = TextEditingController(text: courses);
+        courses = [...?courses];
 
-  factory _GroupEditor.from(MinorCourseGroup group) => _GroupEditor(
-        name: group.name,
-        courses: group.courses
-            .map((c) => [
-                  c.code,
-                  c.title,
-                  if (c.units != null) '${c.units}',
-                ].join(' | '))
-            .join('\n'),
-      );
+  factory _GroupEditor.from(MinorCourseGroup group) =>
+      _GroupEditor(name: group.name, courses: group.courses);
 
   final TextEditingController nameController;
-  final TextEditingController coursesController;
+  final List<MinorCourse> courses;
 
-  /// Parses the textarea back into courses, skipping blank lines. A line with
-  /// no separator is treated as a code-only entry rather than being dropped.
-  List<MinorCourse> parseCourses() {
-    final out = <MinorCourse>[];
-    for (final line in coursesController.text.split('\n')) {
-      final trimmed = line.trim();
-      if (trimmed.isEmpty) continue;
-      final parts = trimmed.split('|').map((p) => p.trim()).toList();
-      out.add(MinorCourse(
-        code: parts.isNotEmpty ? parts[0] : trimmed,
-        title: parts.length > 1 ? parts[1] : '',
-        units: parts.length > 2 ? int.tryParse(parts[2]) : null,
-      ));
-    }
-    return out;
-  }
-
-  void dispose() {
-    nameController.dispose();
-    coursesController.dispose();
-  }
+  void dispose() => nameController.dispose();
 }

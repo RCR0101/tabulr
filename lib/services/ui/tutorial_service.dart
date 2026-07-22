@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import '../../constants/app_constants.dart';
-import '../../widgets/app_drawer.dart';
+import '../../widgets/app_destinations.dart';
 import '../data/user_settings_service.dart';
 import '../data/auth_service.dart';
 

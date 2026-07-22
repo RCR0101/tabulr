@@ -14,7 +14,7 @@ import '../widgets/common/app_button.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/share_timetable_dialog.dart';
 import '../widgets/command_palette.dart';
-import '../widgets/app_drawer.dart';
+import '../widgets/app_destinations.dart';
 import '../services/ui/tutorial_service.dart';
 import '../utils/page_info_helper.dart';
 
