@@ -107,6 +107,14 @@ class _AppSidebarState extends State<AppSidebar> {
       ));
     }
 
+    // Open to guests too — the regulations are public, and someone deciding
+    // whether to sign up benefits from them as much as a logged-in student.
+    items.add(_SidebarItem(
+      screen: DrawerScreen.faq,
+      icon: Icons.help_outline,
+      label: 'Academic FAQ',
+    ));
+
     if (_auth.isAuthenticated) {
       items.add(_SidebarItem(
         screen: DrawerScreen.bugReport,
