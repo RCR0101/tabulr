@@ -331,6 +331,43 @@ void main() {
       expect(data.uniqueCourseCount, 1);
     });
 
+    test('latestAttempts keeps one attempt per code and reports its semester', () {
+      final data = CGPAData(semesters: {
+        '1-1': SemesterData(
+          semesterName: '1-1',
+          courses: [_entry('CS F111', 4, 'E'), _entry('MATH F111', 3, 'B')],
+        ),
+        '1-2': SemesterData(
+          semesterName: '1-2',
+          courses: [_entry('CS F111', 4, 'A')],
+        ),
+      });
+
+      final latest = data.latestAttempts();
+      expect(latest.keys.toSet(), {'CS F111', 'MATH F111'});
+      expect(latest['CS F111']!.entry.grade, 'A');
+      expect(latest['CS F111']!.semester, '1-2');
+      expect(latest['MATH F111']!.semester, '1-1');
+    });
+
+    test('latestAttempts can exclude a semester for prior-standing maths', () {
+      final data = CGPAData(semesters: {
+        '1-1': SemesterData(
+          semesterName: '1-1',
+          courses: [_entry('CS F111', 4, 'E')],
+        ),
+        '1-2': SemesterData(
+          semesterName: '1-2',
+          courses: [_entry('CS F111', 4, 'A')],
+        ),
+      });
+
+      // Planning 1-2 means the standing before it still holds the 1-1 attempt.
+      final prior = data.latestAttempts(excludingSemester: '1-2');
+      expect(prior['CS F111']!.entry.grade, 'E');
+      expect(prior['CS F111']!.semester, '1-1');
+    });
+
     test('cgpa with mixed repeated and unique courses', () {
       final data = CGPAData(semesters: {
         'Sem 1': SemesterData(

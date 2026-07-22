@@ -147,6 +147,9 @@ class SemesterData {
   }
 }
 
+/// A course's most recent attempt and the semester it was taken in.
+typedef CourseAttempt = ({String semester, CourseEntry entry});
+
 // Model representing the complete CGPA data
 class CGPAData {
   final Map<String, SemesterData> semesters;
@@ -169,7 +172,7 @@ class CGPAData {
     return totalCredits > 0 ? totalGradePoints / totalCredits : 0.0;
   }
 
-  /// Semesters in chronological order.
+  /// Semesters in chronological order, paired with their name.
   ///
   /// The backing map's iteration order cannot be trusted: it comes from
   /// Firestore, which returns documents sorted lexicographically by ID, so
@@ -177,31 +180,41 @@ class CGPAData {
   /// [SemesterConstants.all] (the same list the calculator screen uses) is what
   /// makes "latest attempt" actually mean latest. Semesters with names outside
   /// that list keep their map order and sort last.
-  Iterable<SemesterData> get _chronologicalSemesters {
+  Iterable<MapEntry<String, SemesterData>> get _chronologicalSemesters {
     final known = SemesterConstants.all.toSet();
     return [
       for (final name in SemesterConstants.all)
-        if (semesters[name] != null) semesters[name]!,
+        if (semesters[name] != null) MapEntry(name, semesters[name]!),
       for (final entry in semesters.entries)
-        if (!known.contains(entry.key)) entry.value,
+        if (!known.contains(entry.key)) entry,
     ];
   }
 
-  // Returns one CourseEntry per course code, keeping only the latest semester's attempt.
-  List<CourseEntry> _deduplicatedCourses() {
-    final latest = <String, CourseEntry>{};
-    for (final semester in _chronologicalSemesters) {
-      for (final course in semester.courses) {
+  /// The most recent attempt of every graded course, keyed by course code.
+  ///
+  /// A repeated course code counts once, as its latest attempt — so every
+  /// consumer (CGPA, Grade Planner, CG Booster) agrees on which attempt is
+  /// current. Pass [excludingSemester] to get the standing *before* a semester,
+  /// which is what the planner projects from.
+  Map<String, CourseAttempt> latestAttempts({String? excludingSemester}) {
+    final latest = <String, CourseAttempt>{};
+    for (final entry in _chronologicalSemesters) {
+      if (excludingSemester != null && entry.key == excludingSemester) continue;
+      for (final course in entry.value.courses) {
         if (course.courseType != CourseType.normal ||
             course.grade == null ||
             course.grade!.isEmpty) {
           continue;
         }
-        latest[course.courseCode] = course;
+        latest[course.courseCode] = (semester: entry.key, entry: course);
       }
     }
-    return latest.values.toList();
+    return latest;
   }
+
+  // Returns one CourseEntry per course code, keeping only the latest semester's attempt.
+  List<CourseEntry> _deduplicatedCourses() =>
+      latestAttempts().values.map((a) => a.entry).toList();
 
   int get uniqueCourseCount => _deduplicatedCourses().length;
 

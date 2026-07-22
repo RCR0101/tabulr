@@ -34,42 +34,28 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
         .toList();
   }
 
+  /// Standing before the semester being planned.
+  ///
+  /// Summing each semester's own totals would count a repeated course twice;
+  /// [CGPAData.latestAttempts] keeps one attempt per course code, matching how
+  /// the headline CGPA is computed.
+  Iterable<CourseEntry> get _priorCourses => widget.cgpaData
+      .latestAttempts(excludingSemester: _selectedSemester)
+      .values
+      .map((a) => a.entry);
+
   // Calculate CGPA excluding selected semester
   double get _currentCGPA {
     if (_selectedSemester == null) return widget.cgpaData.cgpa;
-
-    double totalGradePoints = 0.0;
-    double totalCredits = 0.0;
-
-    for (final entry in widget.cgpaData.semesters.entries) {
-      if (entry.key != _selectedSemester) {
-        totalGradePoints += entry.value.totalGradePoints;
-        totalCredits += entry.value.totalCredits;
-      }
-    }
-
-    return totalCredits > 0 ? totalGradePoints / totalCredits : 0.0;
+    final credits = _priorCredits;
+    return credits > 0 ? _priorGradePoints / credits : 0.0;
   }
 
-  double get _priorCredits {
-    double total = 0.0;
-    for (final entry in widget.cgpaData.semesters.entries) {
-      if (entry.key != _selectedSemester) {
-        total += entry.value.totalCredits;
-      }
-    }
-    return total;
-  }
+  double get _priorCredits =>
+      _priorCourses.fold<double>(0.0, (sum, c) => sum + c.credits);
 
-  double get _priorGradePoints {
-    double total = 0.0;
-    for (final entry in widget.cgpaData.semesters.entries) {
-      if (entry.key != _selectedSemester) {
-        total += entry.value.totalGradePoints;
-      }
-    }
-    return total;
-  }
+  double get _priorGradePoints =>
+      _priorCourses.fold<double>(0.0, (sum, c) => sum + c.totalGradePoints);
 
   void _onSemesterChanged(String? semester) {
     setState(() {

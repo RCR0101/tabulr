@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/cgpa_data.dart';
-import '../models/course_type.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
@@ -46,20 +45,15 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
   }
 
   void _buildCandidates() {
-    final latest = <String, _CandidateInfo>{};
-    for (final entry in widget.cgpaData.semesters.entries) {
-      for (final course in entry.value.courses) {
-        if (course.courseType != CourseType.normal ||
-            course.grade == null ||
-            course.grade!.isEmpty) {
-          continue;
-        }
-        latest[course.courseCode] = _CandidateInfo(
-          entry: course,
-          semester: entry.key,
-        );
-      }
-    }
+    // Shared with the CGPA and Grade Planner so all three agree on which
+    // attempt of a repeated course is the current one — iterating the semester
+    // map directly would order by Firestore's lexicographic doc IDs, which puts
+    // summer terms after final year.
+    final latest = {
+      for (final a in widget.cgpaData.latestAttempts().values)
+        a.entry.courseCode:
+            _CandidateInfo(entry: a.entry, semester: a.semester),
+    };
 
     _candidates = latest.values
         .where((c) => c.entry.gradePoints < 10.0 && c.entry.gradePoints > 0.0)
