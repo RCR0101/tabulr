@@ -113,6 +113,7 @@ class Section {
       sectionId: json['sectionId'],
       type: SectionType.values.firstWhere(
         (e) => e.toString() == json['type'],
+        orElse: () => SectionType.L,
       ),
       instructor: json['instructor'],
       room: json['room'],
@@ -146,10 +147,14 @@ class ScheduleEntry {
 
   factory ScheduleEntry.fromJson(Map<String, dynamic> json) {
     return ScheduleEntry(
+      // Defensive: drop an unrecognised day rather than crashing the load or
+      // defaulting to a wrong day (a class on the wrong weekday is worse than a
+      // missing one).
       days: (json['days'] as List)
-          .map((d) => DayOfWeek.values.firstWhere(
-                (e) => e.toString() == d,
-              ))
+          .map((d) => DayOfWeek.values
+              .cast<DayOfWeek?>()
+              .firstWhere((e) => e.toString() == d, orElse: () => null))
+          .whereType<DayOfWeek>()
           .toList(),
       hours: List<int>.from(json['hours']),
     );
@@ -186,8 +191,11 @@ class ExamSchedule {
     
     return ExamSchedule(
       date: DateTime(year, month, day),
+      // Defensive: an unrecognised slot keeps the (correct) exam date rather
+      // than failing the whole timetable load. FN is a neutral fallback.
       timeSlot: TimeSlot.values.firstWhere(
         (e) => e.toString() == json['timeSlot'],
+        orElse: () => TimeSlot.FN,
       ),
     );
   }

@@ -122,6 +122,19 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   @override
+  void didUpdateWidget(HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_isStandalone &&
+        widget.timetable != null &&
+        !identical(widget.timetable, oldWidget.timetable)) {
+      setState(() {
+        _timetable = widget.timetable;
+        _filteredCourses = _timetable!.availableCourses;
+      });
+    }
+  }
+
+  @override
   void dispose() {
     disposeSavedIndicator();
     _campusSubscription?.cancel();

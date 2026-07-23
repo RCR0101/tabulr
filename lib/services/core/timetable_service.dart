@@ -141,8 +141,10 @@ class TimetableService {
     try {
       final courses = await _courseDataService.fetchCourses();
       if (courses.isEmpty) return;
+      final currentCampus = CampusService.currentCampus;
       for (final timetable in timetables) {
-        if (timetable.availableCourses.isEmpty) {
+        if (timetable.campus == currentCampus &&
+            timetable.availableCourses.isEmpty) {
           timetable.availableCourses.addAll(courses);
         }
       }

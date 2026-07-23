@@ -105,5 +105,40 @@ void main() {
       await sink.flush();
       expect(posted, isEmpty);
     });
+
+    test('stamps the app user id onto every buffered record', () async {
+      sink.initialize(enabled: true, workerUrl: 'https://logger.test');
+      sink.setUserId('f20220123H');
+      sink.enqueue({'message': 'a'}, levelIndex: 1);
+      sink.enqueue({'message': 'b'}, levelIndex: 2);
+      await sink.flush();
+
+      final entries = (posted.first['body'] as Map)['entries'] as List;
+      expect(entries, hasLength(2));
+      expect(entries.every((e) => e['userId'] == 'f20220123H'), isTrue);
+    });
+
+    test('omits userId for guests / signed-out (null id)', () async {
+      sink.initialize(enabled: true);
+      // No setUserId call → null.
+      sink.enqueue({'message': 'a'}, levelIndex: 1);
+      await sink.flush();
+
+      final entry = ((posted.first['body'] as Map)['entries'] as List).first;
+      expect((entry as Map).containsKey('userId'), isFalse);
+    });
+
+    test('a later setUserId(null) stops attributing subsequent records', () async {
+      sink.initialize(enabled: true);
+      sink.setUserId('f20220123H');
+      sink.enqueue({'message': 'signed-in'}, levelIndex: 1);
+      sink.setUserId(null); // sign-out
+      sink.enqueue({'message': 'signed-out'}, levelIndex: 1);
+      await sink.flush();
+
+      final entries = (posted.first['body'] as Map)['entries'] as List;
+      expect(entries[0]['userId'], 'f20220123H');
+      expect((entries[1] as Map).containsKey('userId'), isFalse);
+    });
   });
 }

@@ -133,6 +133,17 @@ void main() {
       expect(restored.schedule, isEmpty);
     });
 
+    test('fromJson degrades gracefully on an unknown section type', () {
+      final restored = Section.fromJson({
+        'sectionId': 'L1',
+        'type': 'SectionType.Z',
+        'instructor': 'Prof',
+        'room': 'R1',
+        'schedule': [],
+      });
+      expect(restored.type, SectionType.L); // safe default
+    });
+
     test('days getter aggregates across schedule entries', () {
       final section = Section(
         sectionId: 'L1',
@@ -177,6 +188,15 @@ void main() {
       expect(restored.days, entry.days);
       expect(restored.hours, entry.hours);
     });
+
+    test('fromJson drops an unrecognised day instead of crashing', () {
+      final restored = ScheduleEntry.fromJson({
+        'days': ['DayOfWeek.M', 'DayOfWeek.Sun', 'DayOfWeek.W'],
+        'hours': [1, 2],
+      });
+      // The bad 'Sun' is dropped; the valid days survive.
+      expect(restored.days, [DayOfWeek.M, DayOfWeek.W]);
+    });
   });
 
   group('ExamSchedule', () {
@@ -199,6 +219,15 @@ void main() {
 
       final exam = ExamSchedule.fromJson(json);
       expect(exam.date, DateTime(2026, 3, 10));
+    });
+
+    test('fromJson keeps the date when the slot is unrecognised', () {
+      final exam = ExamSchedule.fromJson({
+        'date': '2026-03-10T00:00:00.000Z',
+        'timeSlot': 'TimeSlot.XYZ',
+      });
+      expect(exam.date, DateTime(2026, 3, 10)); // date preserved
+      expect(exam.timeSlot, TimeSlot.FN); // safe fallback, no crash
     });
   });
 

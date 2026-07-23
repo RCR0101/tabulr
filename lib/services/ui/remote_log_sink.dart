@@ -32,6 +32,15 @@ class RemoteLogSink {
   String _workerUrl = AppUrls.perfLoggerWorker;
   String? _apiKey;
 
+  /// App-specific user id (e.g. "f20220123H" — see
+  /// AuthService.deriveUserDocId), stamped onto every buffered record so log
+  /// entries in R2 are attributable to a session. This is the *app* id, never
+  /// the Firebase UID. Null for guests / signed-out users. Set by AuthService
+  /// on auth-state changes; a plain setter keeps this sink free of any Firebase
+  /// dependency.
+  String? _userId;
+  void setUserId(String? userId) => _userId = userId;
+
   /// Records below this level are dropped before buffering. Defaults to info so
   /// debug spam never reaches R2.
   int minLevelIndex = 1; // LogLevel.info
@@ -72,6 +81,10 @@ class RemoteLogSink {
   void enqueue(Map<String, dynamic> record, {int levelIndex = 1}) {
     if (!_enabled) return;
     if (levelIndex < minLevelIndex) return;
+
+    // Stamp the current app-user id so every entry is attributable, whichever
+    // source enqueued it (SecureLogger, admin audit, perf). Absent for guests.
+    if (_userId != null) record['userId'] = _userId;
 
     _buffer.add(record);
 
@@ -128,6 +141,7 @@ class RemoteLogSink {
     _initialized = false;
     _enabled = false;
     _apiKey = null;
+    _userId = null;
     minLevelIndex = 1;
     poster = _defaultPoster;
   }

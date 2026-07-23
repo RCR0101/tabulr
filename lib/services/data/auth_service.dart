@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'config_service.dart';
 import '../ui/secure_logger.dart';
+import '../ui/remote_log_sink.dart';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
@@ -21,6 +22,10 @@ class AuthService {
   
   // Stream controller for auth state changes including guest mode
   final StreamController<bool> _authStateController = StreamController<bool>.broadcast();
+
+  // Feeds the current app-user id to the remote log sink; subscribed once in
+  // initialize() so login/logout keep shipped logs attributable.
+  StreamSubscription<User?>? _authSub;
   
   User? get currentUser => _firebaseAuth.currentUser;
   bool get isAuthenticated => _firebaseAuth.currentUser != null;
@@ -85,6 +90,15 @@ class AuthService {
         // validated yet so currentUser can be null temporarily. The pref is
         // only cleared on explicit sign-out.
       }
+
+      // Keep the remote log sink's user id in lockstep with auth state, so every
+      // shipped log carries the app-specific id (e.g. "f20220123H"). Fires on
+      // login, logout, and persistence restore. Uses the app id, never the
+      // Firebase UID.
+      RemoteLogSink().setUserId(userDocId);
+      _authSub ??= authStateChanges.listen((user) {
+        RemoteLogSink().setUserId(deriveUserDocId(user?.email));
+      });
     } catch (e) {
       SecureLogger.error('AUTH', 'Failed to initialize AuthService', e);
     }

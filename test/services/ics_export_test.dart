@@ -107,6 +107,21 @@ void main() {
       expect(examEvent, isNot(contains('LOCATION:')));
     });
 
+    test('exam times use the timetable\'s own campus, not the global one', () {
+      final course = makeCourse(midSemExam: makeExam(
+        date: DateTime(2026, 3, 10),
+        timeSlot: TimeSlot.FN,
+      ));
+      final ics = ExportService.buildIcsContent(
+        [makeSelectedSection()],
+        [course],
+        campusId: 'pilani',
+      );
+      final examEvent = _vevents(ics)
+          .firstWhere((e) => e.contains('Mid-Sem Exam'));
+      expect(examEvent, contains(RegExp(r'DTSTART;TZID=Asia/Kolkata:\d{8}T080000')));
+    });
+
     test('academic deadlines export as all-day reminders; holidays are omitted',
         () {
       final ics = ExportService.buildIcsContent(

@@ -183,6 +183,7 @@ class ExportService {
       calendarName: calendarName,
       academicEvents: academicEvents,
       options: options,
+      campusId: campusId,
     );
     return await ExportServiceStub.saveIcsContent(icsContent);
   }
@@ -197,7 +198,12 @@ class ExportService {
     String? calendarName,
     List<AcademicCalendarEvent> academicEvents = const [],
     ExportOptions options = const ExportOptions(),
+    String? campusId,
   }) {
+    // Exam slot start times differ by campus, so resolve them against the
+    // timetable's own campus, not the globally-selected one. Falls back to the
+    // current campus when a caller doesn't supply it (e.g. legacy tests).
+    final examCampus = campusId ?? CampusService.currentCampusCode;
     final dtstamp = _formatUtcForICS(DateTime.now());
     // Stable per-timetable namespace, so re-importing after an edit updates the
     // same events instead of piling up duplicates (the old random-UUID UIDs
@@ -293,8 +299,8 @@ class ExportService {
       final course = courses.firstWhere((c) => c.courseCode == sel.courseCode);
 
       void addExam(ExamSchedule exam, String kind, String tag) {
-        final start = _getExamDateTime(exam);
-        final end = _getExamDateTime(exam, endTime: true);
+        final start = _getExamDateTime(exam, campus: examCampus);
+        final end = _getExamDateTime(exam, endTime: true, campus: examCampus);
         final examDesc = [
           if (options.showCourseTitle && course.courseTitle.isNotEmpty)
             course.courseTitle,
@@ -703,9 +709,11 @@ class ExportService {
     );
   }
 
-  static DateTime _getExamDateTime(ExamSchedule exam, {bool endTime = false}) {
-    // Use campus-specific time slot mappings
-    final slotTimes = TimeSlotInfo.getCampusExamTimes(CampusService.currentCampusCode);
+  static DateTime _getExamDateTime(ExamSchedule exam,
+      {bool endTime = false, String? campus}) {
+    // Use campus-specific time slot mappings for the timetable's own campus.
+    final slotTimes = TimeSlotInfo.getCampusExamTimes(
+        campus ?? CampusService.currentCampusCode);
 
     final timeInfo = slotTimes[exam.timeSlot];
     if (timeInfo == null) {
