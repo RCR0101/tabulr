@@ -16,6 +16,8 @@ import '../services/data/config_service.dart';
 import '../services/data/course_data_service.dart';
 import '../services/ui/toast_service.dart';
 import '../models/calendar_event.dart';
+import '../models/academic_calendar_event.dart';
+import '../services/data/academic_calendar_service.dart';
 import '../utils/datetime_utils.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_dialog.dart';
@@ -57,6 +59,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   List<CalendarEvent> _customEvents = [];
   Map<String, Course> _courseMap = {};
   final ConfigService _config = ConfigService();
+  List<AcademicCalendarEvent> _academicEvents = [];
 
   // Scrapped (dismissed) slots: keys are "day-hour" for timetable, event IDs for custom
   Set<String> _scrappedForWeek = {};
@@ -147,6 +150,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       _resolveExamRooms();
       _watchAnnouncements();
+      _loadAcademicCalendar(selected);
     } catch (e) {
       ToastService.showError('Failed to load calendar data');
     } finally {
@@ -291,6 +295,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
     _resolveExamRooms();
     _watchAnnouncements();
+    _loadAcademicCalendar(timetable);
     _savePrefs();
   }
 
@@ -494,7 +499,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   // Build calendar items for a given day, merging consecutive identical slots
-  List<_CalendarItem> _itemsForDay(DayOfWeek day, {DateTime? date}) {
+  /// The [DayOfWeek] for a 0-based week-column index, or null for Sunday
+  /// (index 6), which the enum has no value for. The week runs Mon(0)…Sun(6).
+  static DayOfWeek? _bitsDayFor(int index) =>
+      index >= 0 && index < DayOfWeek.values.length
+          ? DayOfWeek.values[index]
+          : null;
+
+  /// Day-column items for [day]. [day] is null for Sunday, which has no
+  /// [DayOfWeek] and therefore no classes or custom events — only the
+  /// date-based exam items during exam weeks.
+  List<_CalendarItem> _itemsForDay(DayOfWeek? day, {DateTime? date}) {
     final items = <_CalendarItem>[];
     if (_selectedTimetable == null) return items;
 
@@ -514,6 +529,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       _addCustomEvents(items, day);
       return items;
     }
+
+    // No classes on Sunday.
+    if (day == null) return items;
 
     // Collect raw per-hour entries grouped by section identity
     final sectionSlots = <String, _RawSlotGroup>{};
@@ -561,7 +579,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return items;
   }
 
-  void _addCustomEvents(List<_CalendarItem> items, DayOfWeek day) {
+  void _addCustomEvents(List<_CalendarItem> items, DayOfWeek? day) {
+    if (day == null) return; // Custom events are Mon–Sat only.
     for (final event in _customEvents) {
       if (event.day == day) {
         final key = 'event-${event.id}-${event.hour}';
@@ -676,8 +695,36 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+  /// Best-effort load of the selected timetable's campus academic calendar
+  /// (holidays, deadlines, exam windows). A failure just leaves the overlay
+  /// empty rather than disturbing the rest of the calendar.
+  Future<void> _loadAcademicCalendar(Timetable? timetable) async {
+    if (timetable == null) return;
+    try {
+      final events =
+          await AcademicCalendarService().load(campusId: timetable.campus.code);
+      if (!mounted) return;
+      setState(() => _academicEvents = events);
+    } catch (_) {
+      // Overlay stays empty.
+    }
+  }
+
   List<_CalendarItem> _bannersForDay(DateTime date) {
     final items = <_CalendarItem>[];
+
+    // Academic calendar (holidays, add/drop deadlines, exam windows).
+    for (final ev in _academicEvents) {
+      if (!ev.coversDay(date)) continue;
+      items.add(_CalendarItem(
+        type: _ItemType.academic,
+        title: ev.label,
+        subtitle: ev.isRange ? 'Academic calendar · multi-day' : 'Academic calendar',
+        hour: 0,
+        color: academicCategoryColor(context, ev.category),
+        slotKey: 'acad-${ev.category.name}-${ev.label}-${date.day}',
+      ));
+    }
 
     // Exam seating
     for (final entry in _examSeatingData) {
@@ -818,7 +865,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildDesktopHeader(ThemeData theme) {
     final scheme = theme.colorScheme;
-    final weekEnd = _weekStart.add(const Duration(days: 5));
+    final weekEnd = _weekStart.add(const Duration(days: 6));
     const months = DayConstants.monthNames;
 
     String weekLabel;
@@ -937,7 +984,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       );
     }
 
-    final weekEnd = _weekStart.add(const Duration(days: 5));
+    final weekEnd = _weekStart.add(const Duration(days: 6));
     const months = DayConstants.monthNames;
     String weekLabel;
     if (_weekStart.month == weekEnd.month) {
@@ -1022,20 +1069,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildMobileDaySelector(ThemeData theme) {
-    final days = List.generate(6, (i) => _weekStart.add(Duration(days: i)));
-    final dayLabels = DayConstants.shortLabels;
+    final days = List.generate(7, (i) => _weekStart.add(Duration(days: i)));
+    final dayLabels = DayConstants.weekDays;
     final today = DateTime.now();
-    final selected = _mobileDayIndex.clamp(0, 5);
+    final selected = _mobileDayIndex.clamp(0, 6);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: Row(
-        children: List.generate(6, (i) {
+        children: List.generate(7, (i) {
           final isToday = _sameDay(days[i], today);
           final isSelected = i == selected;
           return Expanded(
             child: Padding(
-              padding: EdgeInsets.only(left: i == 0 ? 0 : 4, right: i == 5 ? 0 : 4),
+              padding: EdgeInsets.only(left: i == 0 ? 0 : 4, right: i == 6 ? 0 : 4),
               child: AppTappable(
                 onTap: () => setState(() => _mobileDayIndex = i),
                 child: AnimatedContainer(
@@ -1089,10 +1136,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildSingleDayView(ThemeData theme) {
-    final dayIndex = _mobileDayIndex.clamp(0, 5);
-    final bitsDays = [DayOfWeek.M, DayOfWeek.T, DayOfWeek.W, DayOfWeek.Th, DayOfWeek.F, DayOfWeek.S];
-    final fullDayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    final day = bitsDays[dayIndex];
+    final dayIndex = _mobileDayIndex.clamp(0, 6);
+    final day = _bitsDayFor(dayIndex);
+    final fullDayNames = [
+      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+    ];
     final date = _weekStart.add(Duration(days: dayIndex));
     final items = _itemsForDay(day, date: date);
     final banners = _bannersForDay(date);
@@ -1110,7 +1158,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return GestureDetector(
       onHorizontalDragEnd: (details) {
         if (details.primaryVelocity == null) return;
-        if (details.primaryVelocity! < -200 && dayIndex < 5) {
+        if (details.primaryVelocity! < -200 && dayIndex < 6) {
           setState(() => _mobileDayIndex = dayIndex + 1);
         } else if (details.primaryVelocity! > 200 && dayIndex > 0) {
           setState(() => _mobileDayIndex = dayIndex - 1);
@@ -1253,17 +1301,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildWeekView(ThemeData theme) {
     final scheme = theme.colorScheme;
-    final days = List.generate(6, (i) => _weekStart.add(Duration(days: i)));
-    final dayLabels = DayConstants.shortLabels;
+    final days = List.generate(7, (i) => _weekStart.add(Duration(days: i)));
+    final dayLabels = DayConstants.weekDays;
     final today = DateTime.now();
-    final bitsDays = [
-      DayOfWeek.M,
-      DayOfWeek.T,
-      DayOfWeek.W,
-      DayOfWeek.Th,
-      DayOfWeek.F,
-      DayOfWeek.S,
-    ];
+    final bitsDays = [for (var i = 0; i < 7; i++) _bitsDayFor(i)];
 
     const startHour = 1;
     const endHour = 12;
@@ -1273,7 +1314,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final dayWidth = (constraints.maxWidth - timeColWidth) / 6;
+        final dayWidth = (constraints.maxWidth - timeColWidth) / 7;
 
         return Column(
           children: [
@@ -1286,14 +1327,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
               child: Row(
                 children: [
                   SizedBox(width: timeColWidth),
-                  ...List.generate(6, (i) {
+                  ...List.generate(7, (i) {
                     final isDayToday = _sameDay(days[i], today);
                     final banners = _bannersForDay(days[i]);
                     final hasExam = banners.any((b) => b.type == _ItemType.exam);
                     final hasAnn = banners.any((b) => b.type == _ItemType.announcement);
+                    final bitsDay = bitsDays[i];
 
                     return GestureDetector(
-                      onLongPress: () => _showDayMenu(bitsDays[i]),
+                      // Sunday (null) has no classes to scrap, so no day menu.
+                      onLongPress:
+                          bitsDay == null ? null : () => _showDayMenu(bitsDay),
                       child: Container(
                         width: dayWidth.clamp(44.0, double.infinity),
                         decoration: BoxDecoration(
@@ -1408,7 +1452,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ),
 
                       // Day columns
-                      ...List.generate(6, (dayIdx) {
+                      ...List.generate(7, (dayIdx) {
                         final dayItems = _itemsForDay(bitsDays[dayIdx], date: days[dayIdx]);
                         final now = DateTime.now();
                         final isToday = days[dayIdx].year == now.year &&
@@ -1499,7 +1543,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   ) {
     final allBanners = <int, List<_CalendarItem>>{};
     bool any = false;
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 7; i++) {
       final banners = _bannersForDay(days[i]);
       allBanners[i] = banners;
       if (banners.isNotEmpty) any = true;
@@ -1513,7 +1557,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(width: timeColWidth),
-          ...List.generate(6, (i) {
+          ...List.generate(7, (i) {
             final banners = allBanners[i] ?? [];
             if (banners.isEmpty) return SizedBox(width: dayWidth);
             return SizedBox(
@@ -2311,7 +2355,7 @@ class _AddEventDialogState extends State<_AddEventDialog> {
 
 enum _PeriodType { classes, midsem, endsem, beforeSemester, afterSemester }
 
-enum _ItemType { classSlot, exam, announcement, customEvent }
+enum _ItemType { classSlot, exam, announcement, customEvent, academic }
 
 class _TimeIndicatorLine extends StatefulWidget {
   final int startHour;

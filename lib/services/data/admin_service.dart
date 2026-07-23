@@ -108,6 +108,7 @@ class AdminService extends ChangeNotifier {
     required String fileName,
     List<String> excludeHeaders = const [],
     List<int>? pageRange,
+    List<int>? calendarPageRange,
     int examYear = 2026,
   }) async {
     const action = 'upload_timetable';
@@ -123,12 +124,18 @@ class AdminService extends ChangeNotifier {
       if (pageRange != null && pageRange.length == 2) {
         payload['pageRange'] = pageRange;
       }
+      // Optional: parse the booklet's academic-calendar page(s) in the same
+      // pass and refresh this campus's calendar. Omitted → calendar untouched.
+      if (calendarPageRange != null && calendarPageRange.length == 2) {
+        payload['calendarPageRange'] = calendarPageRange;
+      }
       payload['examYear'] = examYear;
       final result =
           await _functions.httpsCallable('upload_timetable', options: HttpsCallableOptions(timeout: AppDurations.uploadTimetableTimeout)).call(payload);
       final uploaded = result.data['coursesUploaded'] as int;
+      final calendarUploaded = (result.data['calendarEventsUploaded'] as int?) ?? 0;
       _audit.success(action, 'Uploaded $uploaded courses for $campusCode',
-          {'campusCode': campusCode, 'examYear': examYear});
+          {'campusCode': campusCode, 'examYear': examYear, 'calendarEvents': calendarUploaded});
       return uploaded;
     } catch (e) {
       _audit.error(action, 'Upload failed for $campusCode', e,

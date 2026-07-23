@@ -37,6 +37,33 @@ void main() {
       final course = Course.fromJson(json);
       expect(course.lectureCredits, 3.0);
       expect(course.practicalCredits, 1.0);
+      // No stored total → falls back to L + P.
+      expect(course.totalCredits, 4.0);
+    });
+
+    test('fromJson uses a stored total_credits (U) over L + P', () {
+      // A project course: PDF gives "- - 3" → L=0, P=0, but 3 units.
+      final course = Course.fromJson({
+        'courseCode': 'BIO F231',
+        'courseTitle': 'Biology Project',
+        'lecture_credits': 0,
+        'practical_credits': 0,
+        'total_credits': 3,
+        'sections': [],
+      });
+      expect(course.lectureCredits, 0.0);
+      expect(course.practicalCredits, 0.0);
+      expect(course.totalCredits, 3.0); // not 0
+    });
+
+    test('fromJson honours a total that differs from L + P', () {
+      final course = Course.fromJson({
+        'courseCode': 'BITS E584',
+        'lecture_credits': 3,
+        'practical_credits': 0,
+        'total_credits': 4, // U is 4, not 3
+        'sections': [],
+      });
       expect(course.totalCredits, 4.0);
     });
 

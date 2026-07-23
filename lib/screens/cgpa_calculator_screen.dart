@@ -22,6 +22,7 @@ import '../models/all_course.dart';
 import '../utils/page_info_helper.dart';
 
 import 'cg_booster_screen.dart';
+import 'cgpa_trajectory_screen.dart';
 import 'grade_planner_screen.dart';
 import '../utils/design_constants.dart';
 import '../utils/grade_utils.dart' as grade_utils;
@@ -96,6 +97,14 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
             FadeSlidePageRoute(page: CGBoosterScreen(cgpaData: _controller.cgpaData))),
       ),
       CommandPaletteEntry(
+        label: 'CGPA Trajectory',
+        subtitle: 'Chart your SGPA and CGPA over time',
+        icon: Icons.show_chart,
+        category: CommandCategory.context,
+        onSelect: () => Navigator.push(context,
+            FadeSlidePageRoute(page: CgpaTrajectoryScreen(cgpaData: _controller.cgpaData))),
+      ),
+      CommandPaletteEntry(
         label: 'Load CDCs',
         subtitle: 'Auto-load compulsory courses',
         icon: Icons.school_outlined,
@@ -163,7 +172,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       final allTimetables = await _timetableService.getAllTimetables();
 
       if (allTimetables.isEmpty) {
-        _showErrorDialog('No timetables found. Please create a timetable first.');
+        ToastService.showWarning('No timetables yet — create one first, then import its courses here.');
         return;
       }
 
@@ -204,7 +213,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
 
       final file = result.files.first;
       if (file.bytes == null) {
-        _showErrorDialog('Could not read the selected file.');
+        ToastService.showError('Could not read that file — it may be empty or corrupted. Try selecting it again.');
         return;
       }
 
@@ -1002,6 +1011,9 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                 case 'cg_booster':
                   Navigator.push(context, FadeSlidePageRoute(page: CGBoosterScreen(cgpaData: _controller.cgpaData)));
                   break;
+                case 'trajectory':
+                  Navigator.push(context, FadeSlidePageRoute(page: CgpaTrajectoryScreen(cgpaData: _controller.cgpaData)));
+                  break;
                 case 'load_cdcs':
                   _loadCDCs();
                   break;
@@ -1016,6 +1028,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
             itemBuilder: (context) => [
               const PopupMenuItem(value: 'grade_planner', child: ListTile(leading: Icon(Icons.calculate_outlined), title: Text('Grade Planner'), contentPadding: EdgeInsets.zero)),
               const PopupMenuItem(value: 'cg_booster', child: ListTile(leading: Icon(Icons.bolt_outlined), title: Text('CG Booster'), contentPadding: EdgeInsets.zero)),
+              const PopupMenuItem(value: 'trajectory', child: ListTile(leading: Icon(Icons.show_chart), title: Text('CGPA Trajectory'), contentPadding: EdgeInsets.zero)),
               const PopupMenuDivider(),
               const PopupMenuItem(value: 'load_cdcs', child: ListTile(leading: Icon(Icons.school_outlined), title: Text('Load CDCs'), contentPadding: EdgeInsets.zero)),
               const PopupMenuItem(value: 'import_timetable', child: ListTile(leading: Icon(Icons.file_download_outlined), title: Text('Import from Timetable'), contentPadding: EdgeInsets.zero)),

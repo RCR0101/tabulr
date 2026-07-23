@@ -285,7 +285,7 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
     final pracCtrl = TextEditingController(
         text: (existing?['practical_credits'] ?? 0).toString());
     final totalCtrl = TextEditingController(
-        text: (existing?['credits'] ?? ((existing?['lecture_credits'] ?? 0) + (existing?['practical_credits'] ?? 0))).toString());
+        text: (existing?['total_credits'] ?? existing?['credits'] ?? ((existing?['lecture_credits'] ?? 0) + (existing?['practical_credits'] ?? 0))).toString());
 
     final sections = <Map<String, dynamic>>[];
     if (existing != null && existing['sections'] is List) {
@@ -778,6 +778,9 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                                         'end_sem_exam': endSem?.toJson(),
                                         'lecture_credits': lec,
                                         'practical_credits': prac,
+                                        // Persist U so the client shows the real
+                                        // unit count, not a recomputed L + P.
+                                        'total_credits': total,
                                         if (ic.isNotEmpty)
                                           'instructor_in_charge': ic,
                                       },

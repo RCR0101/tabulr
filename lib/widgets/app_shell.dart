@@ -353,6 +353,12 @@ class _MobileShell extends StatelessWidget {
         DrawerScreen.admin => Icons.admin_panel_settings,
       };
 
+  /// Short label for the bottom nav, where width is tight.
+  static String _navLabelFor(DrawerScreen screen) => switch (screen) {
+        DrawerScreen.examSeating => 'Exams',
+        _ => _labelFor(screen),
+      };
+
   static String _labelFor(DrawerScreen screen) => switch (screen) {
         DrawerScreen.timetables => 'Timetables',
         DrawerScreen.calendar => 'Calendar',
@@ -383,21 +389,15 @@ class _MobileShell extends StatelessWidget {
         backgroundColor: scheme.surface,
         indicatorColor: scheme.primary.withValues(alpha: 0.12),
         destinations: [
-          NavigationDestination(
-            icon: Icon(Icons.schedule, color: scheme.onSurface.withValues(alpha: 0.6)),
-            selectedIcon: Icon(Icons.schedule, color: scheme.primary),
-            label: 'Timetables',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month, color: scheme.onSurface.withValues(alpha: 0.6)),
-            selectedIcon: Icon(Icons.calendar_month, color: scheme.primary),
-            label: 'Calendar',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.event_seat, color: scheme.onSurface.withValues(alpha: 0.6)),
-            selectedIcon: Icon(Icons.event_seat, color: scheme.primary),
-            label: 'Exams',
-          ),
+          // Primary tabs are derived so this list and _primaryTabs can't drift
+          // out of index alignment.
+          for (final tab in _primaryTabs)
+            NavigationDestination(
+              icon: Icon(_iconFor(tab),
+                  color: scheme.onSurface.withValues(alpha: 0.6)),
+              selectedIcon: Icon(_iconFor(tab), color: scheme.primary),
+              label: _navLabelFor(tab),
+            ),
           NavigationDestination(
             icon: Icon(Icons.search, color: scheme.onSurface.withValues(alpha: 0.6)),
             selectedIcon: Icon(Icons.search, color: scheme.primary),

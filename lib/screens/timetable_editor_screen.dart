@@ -6,6 +6,7 @@ import '../services/ui/secure_logger.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/empty_state_widget.dart';
 import '../widgets/common/app_dialog.dart';
+import '../widgets/timetable_changes_dialog.dart';
 import 'home_screen.dart';
 
 class TimetableEditorScreen extends StatefulWidget {
@@ -45,6 +46,7 @@ class _TimetableEditorScreenState extends State<TimetableEditorScreen> {
       final fresh = await _timetableService.getTimetableById(widget.timetableId);
       if (fresh != null && mounted) {
         setState(() => _timetable = fresh);
+        TimetableChangesNotice.notify(context, fresh.reconciliation);
       }
     } catch (e) {
       SecureLogger.warning('TIMETABLES', 'Background course refresh failed', {'error': e.toString()});
@@ -56,11 +58,13 @@ class _TimetableEditorScreenState extends State<TimetableEditorScreen> {
       final timetable = await _timetableService.getTimetableById(
         widget.timetableId,
       );
+      if (!mounted) return;
       if (timetable != null) {
         setState(() {
           _timetable = timetable;
           _isLoading = false;
         });
+        TimetableChangesNotice.notify(context, timetable.reconciliation);
       } else {
         if (mounted) {
           Navigator.pop(context);

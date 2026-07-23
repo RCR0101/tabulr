@@ -1,5 +1,6 @@
 import 'campus.dart';
 import 'course.dart';
+import 'timetable_reconciliation.dart';
 import '../utils/datetime_utils.dart';
 
 class Timetable {
@@ -30,6 +31,12 @@ class Timetable {
   ///
   /// Null on timetables created before term tracking existed.
   String? term;
+
+  /// Set transiently by the load-time reconcile when the freshly loaded
+  /// catalogue differs from the student's saved selections (e.g. after an admin
+  /// re-upload). Read once by the editor to surface a "what changed" notice;
+  /// never serialized, never carried by [copyWith].
+  TimetableReconciliation? reconciliation;
 
   Timetable({
     required this.id,

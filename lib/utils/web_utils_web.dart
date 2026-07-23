@@ -15,6 +15,11 @@ html.EventListener? _beforeUnloadListener;
 void addBeforeUnloadListener(bool Function() shouldWarn) {
   _beforeUnloadListener = (event) {
     if (shouldWarn()) {
+      // Modern browsers show their own generic message and ignore this string,
+      // but the confirmation dialog only fires reliably when the event is both
+      // cancelled and given a returnValue — setting returnValue alone is no
+      // longer enough in current Chrome.
+      event.preventDefault();
       (event as html.BeforeUnloadEvent).returnValue =
           'You have unsaved changes. Are you sure you want to leave?';
     }

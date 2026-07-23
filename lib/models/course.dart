@@ -45,13 +45,21 @@ class Course {
 
   factory Course.fromJson(Map<String, dynamic> json, {String? courseCode, String? resolvedTitle}) {
     final code = courseCode ?? json['courseCode'] ?? '';
+    final lecture = (json['lecture_credits'] ?? json['lectureCredits'] ?? 0).toDouble();
+    final practical = (json['practical_credits'] ?? json['practicalCredits'] ?? 0).toDouble();
+    // Prefer the stored unit count (U). Many BITS courses — projects, theses,
+    // labs, seminars — carry units that are NOT lecture + practical (the PDF
+    // gives them as "- - 3"), so falling back to L+P here reported 0 for all of
+    // them. Only fall back when no total was persisted (older data).
+    final storedTotal = json['total_credits'] ?? json['totalCredits'] ?? json['credits'];
     return Course(
       courseCode: code,
       courseTitle: resolvedTitle ?? json['courseTitle'] ?? code,
-      lectureCredits: (json['lecture_credits'] ?? json['lectureCredits'] ?? 0).toDouble(),
-      practicalCredits: (json['practical_credits'] ?? json['practicalCredits'] ?? 0).toDouble(),
-      totalCredits: ((json['lecture_credits'] ?? json['lectureCredits'] ?? 0) +
-          (json['practical_credits'] ?? json['practicalCredits'] ?? 0)).toDouble(),
+      lectureCredits: lecture,
+      practicalCredits: practical,
+      totalCredits: storedTotal != null
+          ? (storedTotal as num).toDouble()
+          : lecture + practical,
       sections: (json['sections'] as List?)
               ?.map((s) => Section.fromJson(s))
               .toList() ??

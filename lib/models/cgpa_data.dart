@@ -125,6 +125,15 @@ class SemesterData {
 /// A course's most recent attempt and the semester it was taken in.
 typedef CourseAttempt = ({String semester, CourseEntry entry});
 
+/// One point on the CGPA trajectory: a semester's SGPA and the cumulative CGPA
+/// standing after it.
+typedef CgpaTrajectoryPoint = ({
+  String semester,
+  double sgpa,
+  double cumulativeCgpa,
+  double credits,
+});
+
 // Model representing the complete CGPA data
 class CGPAData {
   final Map<String, SemesterData> semesters;
@@ -199,6 +208,55 @@ class CGPAData {
 
   double get effectiveTotalGradePoints {
     return _deduplicatedCourses().fold<double>(0.0, (sum, c) => sum + c.totalGradePoints);
+  }
+
+  /// Semesters in chronological order (public view of the internal ordering).
+  List<MapEntry<String, SemesterData>> get orderedSemesters =>
+      _chronologicalSemesters.toList();
+
+  /// Per-semester SGPA paired with the running CGPA *after* that semester, in
+  /// chronological order. Semesters with no graded course are skipped (they add
+  /// no point) but still contribute nothing to the running total. This is the
+  /// series behind the trajectory chart.
+  List<CgpaTrajectoryPoint> trajectory() {
+    final points = <CgpaTrajectoryPoint>[];
+    final running = <String, SemesterData>{};
+    for (final entry in _chronologicalSemesters) {
+      running[entry.key] = entry.value;
+      if (entry.value.totalCredits <= 0) continue;
+      final cumulative = CGPAData(semesters: Map.of(running)).cgpa;
+      points.add((
+        semester: entry.key,
+        sgpa: entry.value.sgpa,
+        cumulativeCgpa: cumulative,
+        credits: entry.value.totalCredits,
+      ));
+    }
+    return points;
+  }
+
+  /// How many of each letter grade the student holds, counting only the latest
+  /// attempt of every course. Keyed by grade ('A', 'A-', …).
+  Map<String, int> gradeDistribution() {
+    final dist = <String, int>{};
+    for (final attempt in latestAttempts().values) {
+      final g = attempt.entry.grade;
+      if (GradeConstants.isLetterGrade(g)) {
+        dist[g!] = (dist[g] ?? 0) + 1;
+      }
+    }
+    return dist;
+  }
+
+  /// The SGPA a future semester of [nextCredits] credits must average to lift the
+  /// CGPA to [targetCgpa], given the current standing. May exceed 10 (target
+  /// unreachable in one semester) or go negative (already past target) — callers
+  /// present those cases rather than clamping silently.
+  double requiredSgpa({required double targetCgpa, required double nextCredits}) {
+    if (nextCredits <= 0) return 0.0;
+    final curCredits = effectiveTotalCredits;
+    final curPoints = effectiveTotalGradePoints;
+    return (targetCgpa * (curCredits + nextCredits) - curPoints) / nextCredits;
   }
 
   Map<String, dynamic> toJson() {

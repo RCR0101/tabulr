@@ -10,6 +10,7 @@ import '../models/timetable_stats.dart';
 import '../utils/page_transitions.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/common/empty_state_widget.dart';
+import '../widgets/timetable_insights_sheet.dart';
 import '../widgets/announcement_banner_widget.dart';
 import '../services/core/timetable_service.dart';
 import '../services/data/timetable_storage_service.dart';
@@ -315,7 +316,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
 
   Future<void> _deleteTimetable(Timetable timetable) async {
     if (_sortedTimetables.length <= 1) {
-      _showErrorDialog('Cannot delete the last timetable');
+      ToastService.showWarning('This is your only timetable — create another before deleting it.');
       return;
     }
 
@@ -1098,34 +1099,45 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                     const SizedBox(height: 6),
                                     Builder(builder: (context) {
                                       final stats = TimetableStats.fromTimetable(timetable);
-                                      return Row(
-                                        children: [
-                                          Icon(Icons.schedule, size: 13, color: scheme.onSurface.withValues(alpha: 0.4)),
-                                          const SizedBox(width: 4),
-                                          Expanded(
-                                            child: Text(
-                                              stats.summaryLine,
-                                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                                color: scheme.onSurface.withValues(alpha: 0.5),
-                                              ),
-                                            ),
-                                          ),
-                                          if (stats.hasExamClusters)
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                              decoration: BoxDecoration(
-                                                color: scheme.error.withValues(alpha: 0.1),
-                                                borderRadius: BorderRadius.circular(6),
-                                              ),
-                                              child: Text(
-                                                '${stats.worstClusterSize} exams clustered',
-                                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                                  color: scheme.error,
-                                                  fontSize: 10,
+                                      // Tapping the stats line opens the visual
+                                      // insights (weekly load + exam timeline).
+                                      return InkWell(
+                                        onTap: () => TimetableInsightsSheet.show(context, timetable),
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 2),
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.schedule, size: 13, color: scheme.onSurface.withValues(alpha: 0.4)),
+                                              const SizedBox(width: 4),
+                                              Expanded(
+                                                child: Text(
+                                                  stats.summaryLine,
+                                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                                    color: scheme.onSurface.withValues(alpha: 0.5),
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                        ],
+                                              if (stats.hasExamClusters)
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                                  decoration: BoxDecoration(
+                                                    color: scheme.error.withValues(alpha: 0.1),
+                                                    borderRadius: BorderRadius.circular(6),
+                                                  ),
+                                                  child: Text(
+                                                    '${stats.worstClusterSize} exams clustered',
+                                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                                      color: scheme.error,
+                                                      fontSize: 10,
+                                                    ),
+                                                  ),
+                                                ),
+                                              const SizedBox(width: 4),
+                                              Icon(Icons.bar_chart_rounded, size: 15, color: scheme.primary.withValues(alpha: 0.7)),
+                                            ],
+                                          ),
+                                        ),
                                       );
                                     }),
                                   ],

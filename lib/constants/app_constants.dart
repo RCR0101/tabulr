@@ -44,6 +44,7 @@ abstract final class FirestoreCollections {
   static const String bugReports = 'bug_reports';
   static const String bugReportMessages = 'messages';
   static const String profile = 'profile';
+  static const String academicCalendar = 'academicCalendar';
 }
 
 // ── SharedPreferences / local-storage keys ─────────────────────────────

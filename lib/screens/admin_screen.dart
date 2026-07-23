@@ -13,6 +13,7 @@ import '../constants/app_constants.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_button.dart';
 import '../widgets/common/section_header.dart';
+import 'admin/academic_calendar_management_screen.dart';
 import 'admin/branch_group_management_screen.dart';
 import 'admin/course_guide_management_screen.dart';
 import 'admin/prerequisites_management_screen.dart';
@@ -49,6 +50,14 @@ class _AdminScreenState extends State<AdminScreen> {
     for (final c in _campuses) c: TextEditingController(),
   };
   final Map<String, TextEditingController> _pageToControllers = {
+    for (final c in _campuses) c: TextEditingController(),
+  };
+  // Optional academic-calendar page range: when both are filled, that campus's
+  // calendar is (re)parsed from the same PDF in the same upload.
+  final Map<String, TextEditingController> _calFromControllers = {
+    for (final c in _campuses) c: TextEditingController(),
+  };
+  final Map<String, TextEditingController> _calToControllers = {
     for (final c in _campuses) c: TextEditingController(),
   };
   final TextEditingController _examYearController =
@@ -101,6 +110,12 @@ class _AdminScreenState extends State<AdminScreen> {
       c.dispose();
     }
     for (final c in _pageToControllers.values) {
+      c.dispose();
+    }
+    for (final c in _calFromControllers.values) {
+      c.dispose();
+    }
+    for (final c in _calToControllers.values) {
       c.dispose();
     }
     _examYearController.dispose();
@@ -160,6 +175,8 @@ class _AdminScreenState extends State<AdminScreen> {
             'Uploading $label (${ done + 1}/$total)...');
         final from = int.tryParse(_pageFromControllers[campus]!.text.trim());
         final to = int.tryParse(_pageToControllers[campus]!.text.trim());
+        final calFrom = int.tryParse(_calFromControllers[campus]!.text.trim());
+        final calTo = int.tryParse(_calToControllers[campus]!.text.trim());
         final year = int.tryParse(_examYearController.text.trim()) ?? 2026;
         final count = await _adminService.uploadTimetable(
           campusCode: campus,
@@ -167,6 +184,8 @@ class _AdminScreenState extends State<AdminScreen> {
           fileName: entry.value.name,
           excludeHeaders: _getHeaders(_timetableHeaders[campus]!),
           pageRange: (from != null && to != null) ? [from, to] : null,
+          calendarPageRange:
+              (calFrom != null && calTo != null) ? [calFrom, calTo] : null,
           examYear: year,
         );
         done++;
@@ -625,6 +644,56 @@ class _AdminScreenState extends State<AdminScreen> {
               ),
             ],
           ),
+          const SizedBox(height: AppDesign.spacingMd),
+          Row(
+            children: [
+              Text(
+                'Academic calendar pages',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: scheme.onSurface.withValues(alpha: AppDesign.opacityHigh),
+                ),
+              ),
+              const SizedBox(width: AppDesign.spacingXs),
+              Text(
+                '(optional — refreshes the calendar)',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppDesign.spacingSm),
+          Row(
+            children: [
+              SizedBox(
+                width: 80,
+                child: TextField(
+                  controller: _calFromControllers[campus]!,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(fontSize: 13),
+                  decoration: inputDeco('From'),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppDesign.spacingSm),
+                child: Text('–',
+                    style: TextStyle(
+                        color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium))),
+              ),
+              SizedBox(
+                width: 80,
+                child: TextField(
+                  controller: _calToControllers[campus]!,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(fontSize: 13),
+                  decoration: inputDeco('To'),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: AppDesign.spacingSm),
         ],
       ),
@@ -974,6 +1043,16 @@ class _AdminScreenState extends State<AdminScreen> {
             context,
             MaterialPageRoute(
                 builder: (_) => const DuplicateCoursesManagementScreen())),
+      ),
+      _managementCard(
+        icon: Icons.event_note_rounded,
+        title: 'Academic Calendar',
+        subtitle: 'Holidays, deadlines & exams',
+        color: tertiary,
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => const AcademicCalendarManagementScreen())),
       ),
       _managementCard(
         icon: Icons.bug_report_rounded,

@@ -3,8 +3,10 @@ import '../../services/data/admin_service.dart';
 import '../../services/data/courses_master_service.dart';
 import '../../services/data/duplicate_courses_service.dart';
 import '../../services/ui/toast_service.dart';
+import '../../services/ui/page_leave_warning_service.dart';
 import '../../utils/design_constants.dart';
 import '../../widgets/common/app_button.dart';
+import '../../widgets/common/app_dialog.dart';
 import '../../widgets/common/app_search_field.dart';
 
 /// Admin editor for course-equivalence (duplicate) mappings.
@@ -21,6 +23,8 @@ class DuplicateCoursesManagementScreen extends StatefulWidget {
 
 class _DuplicateCoursesManagementScreenState
     extends State<DuplicateCoursesManagementScreen> {
+  static const _leaveSource = 'duplicateCourses';
+
   final _service = DuplicateCoursesService();
   final _masterService = CoursesMasterService();
 
@@ -40,9 +44,28 @@ class _DuplicateCoursesManagementScreenState
 
   @override
   void dispose() {
+    // Never leave a stale unload prompt armed on the screens that come after.
+    PageLeaveWarningService().clear(_leaveSource);
     _searchCtrl.dispose();
     super.dispose();
   }
+
+  /// Single choke point for dirty state: keeps the Save button and the web
+  /// refresh/close prompt in lockstep so neither can be armed without the other.
+  void _setDirty(bool value) {
+    if (_dirty != value) setState(() => _dirty = value);
+    PageLeaveWarningService().setUnsaved(_leaveSource, value);
+  }
+
+  Future<bool> _confirmDiscard() => AppDialog.confirm(
+        context: context,
+        title: 'Unsaved Changes',
+        message:
+            'You have unsaved mapping changes that will be lost. Leave anyway?',
+        confirmLabel: 'Leave',
+        cancelLabel: 'Stay',
+        isDangerous: true,
+      );
 
   bool _matches(List<String> group) {
     if (_search.isEmpty) return true;
@@ -69,10 +92,8 @@ class _DuplicateCoursesManagementScreenState
     setState(() => _saving = true);
     try {
       await _service.saveGroups(cleaned);
-      setState(() {
-        _groups = cleaned;
-        _dirty = false;
-      });
+      setState(() => _groups = cleaned);
+      _setDirty(false);
       ToastService.showSuccess('Mappings saved');
     } catch (e) {
       ToastService.showError('Save failed');
@@ -80,31 +101,30 @@ class _DuplicateCoursesManagementScreenState
     if (mounted) setState(() => _saving = false);
   }
 
-  void _newGroup() => setState(() {
-        _groups.insert(0, []);
-        _dirty = true;
-      });
+  void _newGroup() {
+    setState(() => _groups.insert(0, []));
+    _setDirty(true);
+  }
 
-  void _deleteGroup(int i) => setState(() {
-        _groups.removeAt(i);
-        _dirty = true;
-      });
+  void _deleteGroup(int i) {
+    setState(() => _groups.removeAt(i));
+    _setDirty(true);
+  }
 
-  void _removeCode(int groupIndex, String code) => setState(() {
-        _groups[groupIndex].remove(code);
-        _dirty = true;
-      });
+  void _removeCode(int groupIndex, String code) {
+    setState(() => _groups[groupIndex].remove(code));
+    _setDirty(true);
+  }
 
   Future<void> _addCode(int groupIndex) async {
     final code = await _pickCourse();
     if (code == null || code.isEmpty) return;
+    if (_groups[groupIndex].contains(code)) return;
     setState(() {
-      if (!_groups[groupIndex].contains(code)) {
-        _groups[groupIndex].add(code);
-        _groups[groupIndex].sort();
-        _dirty = true;
-      }
+      _groups[groupIndex].add(code);
+      _groups[groupIndex].sort();
     });
+    _setDirty(true);
   }
 
   Future<String?> _pickCourse() async {
@@ -215,7 +235,14 @@ class _DuplicateCoursesManagementScreenState
     }
     final scheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
+    return PopScope(
+      canPop: !_dirty,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final navigator = Navigator.of(context);
+        if (await _confirmDiscard() && navigator.canPop()) navigator.pop();
+      },
+      child: Scaffold(
       appBar:
           AppDesign.appBar(context, title: 'Duplicate Courses', actions: [
         IconButton(
@@ -253,6 +280,7 @@ class _DuplicateCoursesManagementScreenState
                 Expanded(child: _groupList(scheme)),
               ],
             ),
+      ),
     );
   }
 

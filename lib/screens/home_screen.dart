@@ -14,6 +14,7 @@ import '../services/ui/responsive_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/empty_state_widget.dart';
 import '../widgets/common/shimmer_loading.dart';
+import '../widgets/timetable_changes_dialog.dart';
 import '../mixins/timetable_editor_mixin.dart';
 import '../services/ui/tutorial_service.dart';
 
@@ -160,8 +161,7 @@ class _HomeScreenState extends State<HomeScreen>
           _filteredCourses = newCourses;
           _hasUnsavedChanges = true;
         });
-        widget.onUnsavedChangesChanged?.call(true);
-        _pageLeaveWarning.enableWarning(true);
+        markUnsaved(true);
         ToastService.showInfo(
           'Switched to ${CampusService.getCampusDisplayName(campus)} campus. Timetable cleared.',
         );
@@ -181,6 +181,7 @@ class _HomeScreenState extends State<HomeScreen>
         _filteredCourses = timetable.availableCourses;
         _isLoading = false;
       });
+      TimetableChangesNotice.notify(context, timetable.reconciliation);
     } catch (e) {
       if (!mounted || seq != _loadSeq) return;
       setState(() => _isLoading = false);
@@ -230,7 +231,11 @@ class _HomeScreenState extends State<HomeScreen>
                   ? null
                   : IconButton(
                       icon: const Icon(Icons.arrow_back),
-                      onPressed: () => Navigator.of(context).pop(),
+                      // maybePop, not pop: the editor's PopScope guard only sees
+                      // pops that go through the pop-disposition machinery, so an
+                      // unconditional pop here would skip the unsaved-changes
+                      // prompt.
+                      onPressed: () => Navigator.maybePop(context),
                       tooltip: 'Back',
                     ),
               actions: buildCommonActions(),

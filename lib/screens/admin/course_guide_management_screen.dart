@@ -6,9 +6,11 @@ import '../../constants/app_constants.dart';
 import '../../services/data/admin_service.dart';
 import '../../services/data/courses_master_service.dart';
 import '../../services/ui/toast_service.dart';
+import '../../services/ui/page_leave_warning_service.dart';
 import '../../utils/branch_constants.dart' as constants;
 import '../../utils/design_constants.dart';
 import '../../widgets/common/app_button.dart';
+import '../../widgets/common/app_dialog.dart';
 import '../../widgets/common/course_picker_sheet.dart';
 import 'branch_group_management_screen.dart';
 
@@ -22,6 +24,8 @@ class CourseGuideManagementScreen extends StatefulWidget {
 
 class _CourseGuideManagementScreenState
     extends State<CourseGuideManagementScreen> {
+  static const _leaveSource = 'courseGuide';
+
   final _db = FirebaseFirestore.instance;
   final _masterService = CoursesMasterService();
 
@@ -34,6 +38,11 @@ class _CourseGuideManagementScreenState
   bool _dirty = false;
   bool _initLoading = true;
 
+  // Bumped to force the branch dropdown to rebuild from _selectedBranch — used
+  // to snap it back when a switch is cancelled over unsaved edits (a
+  // DropdownButtonFormField otherwise keeps the new pick in its FormField state).
+  int _branchPickerEpoch = 0;
+
   List<String> _dualDegreeOverrides = [];
 
   @override
@@ -41,6 +50,30 @@ class _CourseGuideManagementScreenState
     super.initState();
     _init();
   }
+
+  @override
+  void dispose() {
+    // Never leave a stale unload prompt armed on the screens that come after.
+    PageLeaveWarningService().clear(_leaveSource);
+    super.dispose();
+  }
+
+  /// Single choke point for dirty state: keeps the Save button and the web
+  /// refresh/close prompt in lockstep so neither can be armed without the other.
+  void _setDirty(bool value) {
+    if (_dirty != value) setState(() => _dirty = value);
+    PageLeaveWarningService().setUnsaved(_leaveSource, value);
+  }
+
+  Future<bool> _confirmDiscard({String confirmLabel = 'Leave'}) =>
+      AppDialog.confirm(
+        context: context,
+        title: 'Unsaved Changes',
+        message: 'You have unsaved course changes that will be lost. Continue?',
+        confirmLabel: confirmLabel,
+        cancelLabel: 'Stay',
+        isDangerous: true,
+      );
 
   Future<void> _init() async {
     await Future.wait([_loadMasterCourses(), _loadDualDegreeOverrides()]);
@@ -72,10 +105,8 @@ class _CourseGuideManagementScreenState
       _db.collection(FirestoreCollections.reference).doc(FirestoreCollections.branches).collection(FirestoreCollections.data);
 
   Future<void> _loadBranch(String branchCode) async {
-    setState(() {
-      _loading = true;
-      _dirty = false;
-    });
+    setState(() => _loading = true);
+    _setDirty(false);
     try {
       final doc = await _branchesRef.doc(branchCode).get();
       final data = doc.data() ?? {};
@@ -103,7 +134,7 @@ class _CourseGuideManagementScreenState
         'dels': _dels,
         'huels': _huels,
       }, SetOptions(merge: true));
-      setState(() => _dirty = false);
+      _setDirty(false);
       ToastService.showSuccess('Saved ${constants.branchCodeToName[_selectedBranch] ?? _selectedBranch}');
     } catch (e) {
       ToastService.showError('Save failed');
@@ -119,22 +150,22 @@ class _CourseGuideManagementScreenState
       title: 'Add courses to $semester',
     );
     if (picked == null || picked.isEmpty) return;
+    var changed = false;
     setState(() {
       final list = _cdcs.putIfAbsent(semester, () => []);
       for (final course in picked) {
         if (!list.contains(course.courseCode)) {
           list.add(course.courseCode);
-          _dirty = true;
+          changed = true;
         }
       }
     });
+    if (changed) _setDirty(true);
   }
 
   void _removeCourse(String semester, int index) {
-    setState(() {
-      _cdcs[semester]!.removeAt(index);
-      _dirty = true;
-    });
+    setState(() => _cdcs[semester]!.removeAt(index));
+    _setDirty(true);
   }
 
   /// Add courses to a flat elective list (DELs or HUELs).
@@ -145,25 +176,31 @@ class _CourseGuideManagementScreenState
       title: 'Add $label',
     );
     if (picked == null || picked.isEmpty) return;
+    var changed = false;
     setState(() {
       for (final course in picked) {
         if (!list.contains(course.courseCode)) {
           list.add(course.courseCode);
-          _dirty = true;
+          changed = true;
         }
       }
     });
+    if (changed) _setDirty(true);
   }
 
   void _removeElective(List<String> list, int index) {
-    setState(() {
-      list.removeAt(index);
-      _dirty = true;
-    });
+    setState(() => list.removeAt(index));
+    _setDirty(true);
   }
 
 
   Future<void> _showCreateDualDegreeDialog() async {
+    // Creating an override switches to it, discarding unsaved edits on the
+    // current branch — confirm before opening the dialog.
+    if (_dirty) {
+      final ok = await _confirmDiscard(confirmLabel: 'Continue');
+      if (!mounted || !ok) return;
+    }
     String? msc;
     String? be;
     final mscBranches = constants.branchCodeToName.entries
@@ -294,7 +331,14 @@ class _CourseGuideManagementScreenState
       }
     }
 
-    return Scaffold(
+    return PopScope(
+      canPop: !_dirty,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final navigator = Navigator.of(context);
+        if (await _confirmDiscard() && navigator.canPop()) navigator.pop();
+      },
+      child: Scaffold(
       appBar: AppDesign.appBar(context, title: 'Course Guide', actions: [
         IconButton(
           icon: const Icon(Icons.add_rounded),
@@ -319,17 +363,28 @@ class _CourseGuideManagementScreenState
           Padding(
             padding: const EdgeInsets.all(AppDesign.spacingMd),
             child: DropdownButtonFormField<String>(
+              key: ValueKey('branch-$_selectedBranch-$_branchPickerEpoch'),
               initialValue: _selectedBranch,
               decoration: AppDesign.inputDecoration(context,
                   label: 'Branch',
                   hint: 'Select a branch',
                   prefixIcon: const Icon(Icons.school_rounded, size: 20)),
               items: dropdownItems,
-              onChanged: (v) {
-                if (v != null) {
-                  setState(() => _selectedBranch = v);
-                  _loadBranch(v);
+              onChanged: (v) async {
+                if (v == null || v == _selectedBranch) return;
+                // Switching reloads the branch, discarding any unsaved edits on
+                // the current one — confirm first, and snap the dropdown back if
+                // the switch is declined.
+                if (_dirty) {
+                  final ok = await _confirmDiscard(confirmLabel: 'Switch');
+                  if (!mounted) return;
+                  if (!ok) {
+                    setState(() => _branchPickerEpoch++);
+                    return;
+                  }
                 }
+                setState(() => _selectedBranch = v);
+                _loadBranch(v);
               },
             ),
           ),
@@ -361,6 +416,7 @@ class _CourseGuideManagementScreenState
               ),
             ),
         ],
+      ),
       ),
     );
   }

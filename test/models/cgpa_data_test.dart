@@ -586,4 +586,56 @@ void main() {
       expect(restored.cgpa, data.cgpa);
     });
   });
+
+  group('CGPAData trajectory & what-if', () {
+    CGPAData data() => CGPAData(semesters: {
+          '1-1': SemesterData(
+              semesterName: '1-1',
+              courses: [_entry('A', 4, 'A'), _entry('B', 4, 'B')]), // sgpa 9.0
+          '1-2': SemesterData(
+              semesterName: '1-2',
+              courses: [_entry('C', 4, 'B'), _entry('D', 4, 'B')]), // sgpa 8.0
+        });
+
+    test('trajectory yields per-semester SGPA and running CGPA in order', () {
+      final t = data().trajectory();
+      expect(t.map((p) => p.semester), ['1-1', '1-2']);
+      expect(t[0].sgpa, 9.0);
+      expect(t[0].cumulativeCgpa, 9.0);
+      expect(t[1].sgpa, 8.0);
+      // After both: (10+8+8+8)*4 / 16 = 8.5
+      expect(t[1].cumulativeCgpa, closeTo(8.5, 1e-9));
+    });
+
+    test('trajectory skips a semester with no graded courses', () {
+      final d = CGPAData(semesters: {
+        '1-1': SemesterData(semesterName: '1-1', courses: [_entry('A', 4, 'A')]),
+        '1-2': SemesterData(
+            semesterName: '1-2',
+            courses: [_entry('X', 3, 'NC')]), // report only → no point
+      });
+      expect(d.trajectory().map((p) => p.semester), ['1-1']);
+    });
+
+    test('gradeDistribution counts latest letter grades', () {
+      final dist = data().gradeDistribution();
+      expect(dist['A'], 1);
+      expect(dist['B'], 3);
+      expect(dist.containsKey('NC'), isFalse);
+    });
+
+    test('requiredSgpa solves for the next semester', () {
+      // Standing after data(): 16 credits, 136 grade points (CGPA 8.5).
+      // Target 8.6 over 20 credits: (8.6*36 - 136)/20 = 8.68.
+      final needed =
+          data().requiredSgpa(targetCgpa: 8.6, nextCredits: 20);
+      expect(needed, closeTo(8.68, 1e-9));
+    });
+
+    test('requiredSgpa goes non-positive when the target is well below current', () {
+      // CGPA 8.5; target 3.0 over 20 credits: (3*36 - 136)/20 = -1.4.
+      expect(data().requiredSgpa(targetCgpa: 3.0, nextCredits: 20),
+          lessThanOrEqualTo(0));
+    });
+  });
 }

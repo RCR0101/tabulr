@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/data/auth_service.dart';
+import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/disclaimer_widget.dart';
 import '../widgets/error_dialog.dart';
@@ -25,24 +26,24 @@ class _AuthScreenState extends State<AuthScreen> {
       if (userCredential != null) {
         // Authentication successful, AuthWrapper will handle navigation
       } else {
-        // User cancelled the sign-in
-        _showErrorDialog('Sign-in was cancelled. Please try again if you want to sign in.');
+        // Cancelling is a benign, deliberate choice — a gentle nudge, not an
+        // error modal.
+        ToastService.showInfo('Sign-in cancelled.');
       }
     } catch (e) {
-      // Show more specific error messages
-      String errorMessage = 'Failed to sign in with Google.';
-      
+      // These are already user-ready, so bypass the error translator (it would
+      // otherwise flatten "popup was blocked" etc. to a generic message).
+      String errorMessage = 'Failed to sign in with Google. Please try again.';
+
       if (e.toString().contains('popup')) {
         errorMessage = 'Sign-in popup was blocked. Please allow popups for this site and try again.';
       } else if (e.toString().contains('network')) {
         errorMessage = 'Network error. Please check your internet connection and try again.';
       } else if (e.toString().contains('unauthorized')) {
         errorMessage = 'This app is not authorized. Please contact support.';
-      } else {
-        errorMessage = 'Sign-in failed: ${e.toString()}';
       }
-      
-      _showErrorDialog(errorMessage);
+
+      _showErrorDialog(errorMessage, translate: false);
     } finally {
       // On success AuthWrapper navigates away and disposes this screen before
       // the finally runs, so guard the rebuild.
@@ -73,8 +74,8 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  void _showErrorDialog(String message) {
-    ErrorDialog.show(context, message);
+  void _showErrorDialog(String message, {bool translate = true}) {
+    ErrorDialog.show(context, message, translate: translate);
   }
 
   @override

@@ -71,6 +71,15 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   /// listener may implement this as a no-op.
   void onUnsavedChangesChanged(bool value);
 
+  /// The single place an edit announces it has dirtied (or cleaned) the
+  /// timetable. It arms *both* the host's back-guard prompt and the web
+  /// refresh/close prompt at once, so no mutation path can flip one without the
+  /// other — the cause of a refresh sneaking through with unsaved edits.
+  void markUnsaved(bool value) {
+    onUnsavedChangesChanged(value);
+    pageLeaveWarning.enableWarning(value);
+  }
+
   UserSettingsService get userSettingsService;
 
   // -- Shared filteredCourses state --
@@ -121,8 +130,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     setState(() {
       hasUnsavedChanges = true;
     });
-    onUnsavedChangesChanged(true);
-    pageLeaveWarning.enableWarning(true);
+    markUnsaved(true);
   }
 
   void undo() {
@@ -470,8 +478,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         setState(() {
           hasUnsavedChanges = true;
         });
-        onUnsavedChangesChanged(true);
-        pageLeaveWarning.enableWarning(true);
+        markUnsaved(true);
         _selectionRevision.value++;
         if (isNewCourse) _warnAboutPrerequisites(courseCode);
         if (allowExamClash) {
@@ -507,7 +514,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       setState(() {
         hasUnsavedChanges = true;
       });
-      onUnsavedChangesChanged(true);
+      markUnsaved(true);
       _selectionRevision.value++;
     } catch (e) {
       showErrorDialog('Error removing section: $e');
@@ -535,7 +542,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       setState(() {
         hasUnsavedChanges = true;
       });
-      onUnsavedChangesChanged(true);
+      markUnsaved(true);
       ToastService.showSuccess('Sections shuffled successfully');
     } catch (e) {
       showErrorDialog('Error shuffling sections: $e');
@@ -611,7 +618,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       setState(() {
         hasUnsavedChanges = true;
       });
-      onUnsavedChangesChanged(true);
+      markUnsaved(true);
 
       ToastService.showSuccess(
         'Replaced ${selectedCourse.courseCode} with ${replacementCourse.courseCode}',
@@ -657,8 +664,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
           setState(() {
             hasUnsavedChanges = true;
           });
-          onUnsavedChangesChanged(true);
-          pageLeaveWarning.enableWarning(true);
+          markUnsaved(true);
 
           ToastService.showSuccess(
             'Auto-loaded ${selectedSections.length} CDC courses',
@@ -696,8 +702,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         setState(() {
           hasUnsavedChanges = true;
         });
-        onUnsavedChangesChanged(true);
-        pageLeaveWarning.enableWarning(true);
+        markUnsaved(true);
 
         ToastService.showSuccess('Timetable cleared successfully');
       } catch (e) {
@@ -721,8 +726,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         hasUnsavedChanges = false;
         isSaving = false;
       });
-      onUnsavedChangesChanged(false);
-      pageLeaveWarning.enableWarning(false);
+      markUnsaved(false);
       triggerSavedIndicator();
 
       ToastService.showSuccess('Timetable saved successfully!');
@@ -783,14 +787,27 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   Future<void> exportToICS() async {
     final tt = currentTimetable;
     if (tt == null || tt.selectedSections.isEmpty) {
-      showErrorDialog('No sections selected to export');
+      ToastService.showWarning('Add courses to your timetable before exporting.');
       return;
     }
+
+    // Same conditional-export dialog the PNG export uses, so the calendar file
+    // carries only the fields the user wants.
+    final ExportOptions? exportOptions = await showDialog<ExportOptions>(
+      context: context,
+      builder: (context) => const ExportOptionsDialog(),
+    );
+    if (exportOptions == null) return; // User cancelled.
+    if (!mounted) return;
 
     try {
       final filePath = await ExportService.exportToICS(
         tt.selectedSections,
         tt.availableCourses,
+        timetableId: tt.id,
+        calendarName: tt.name,
+        campusId: tt.campus.code,
+        options: exportOptions,
       );
 
       if (!mounted) return;
@@ -815,7 +832,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   Future<void> exportToPNG() async {
     final tt = currentTimetable;
     if (tt == null || tt.selectedSections.isEmpty) {
-      showErrorDialog('No sections selected to export');
+      ToastService.showWarning('Add courses to your timetable before exporting.');
       return;
     }
 
@@ -1005,8 +1022,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
               tt.selectedSections.addAll(updatedSections);
               hasUnsavedChanges = true;
             });
-            onUnsavedChangesChanged(true);
-            pageLeaveWarning.enableWarning(true);
+            markUnsaved(true);
           },
         ),
       ),
@@ -1075,7 +1091,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
                   tt.projectCount = count;
                   hasUnsavedChanges = true;
                 });
-                onUnsavedChangesChanged(true);
+                markUnsaved(true);
               },
               onSectionToggle: (courseCode, sectionId, isSelected) {
                 if (isSelected) {
@@ -1707,8 +1723,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
           hasUnsavedChanges = false;
         });
 
-        pageLeaveWarning.enableWarning(false);
-        onUnsavedChangesChanged(false);
+        markUnsaved(false);
 
         if (!mounted) return;
         ToastService.showSuccess(
@@ -1723,7 +1738,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   Future<void> exportToTTWithFilePicker() async {
     final tt = currentTimetable;
     if (tt == null || tt.selectedSections.isEmpty) {
-      showErrorDialog('No sections selected to export');
+      ToastService.showWarning('Add courses to your timetable before exporting.');
       return;
     }
 

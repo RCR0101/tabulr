@@ -14,6 +14,10 @@ class TimetableStats {
   final Map<DayOfWeek, int> hoursPerDay;
   final List<ExamCluster> examClusters;
 
+  /// Every exam (mid-sem + comprehensive) across the selected courses, sorted by
+  /// date then session — the series behind the exam-crunch timeline.
+  final List<ExamEntry> allExams;
+
   const TimetableStats({
     required this.totalHoursPerWeek,
     required this.totalCredits,
@@ -26,6 +30,7 @@ class TimetableStats {
     required this.longestGapDay,
     required this.hoursPerDay,
     required this.examClusters,
+    required this.allExams,
   });
 
   static const _empty = TimetableStats(
@@ -40,6 +45,7 @@ class TimetableStats {
     longestGapDay: null,
     hoursPerDay: {},
     examClusters: [],
+    allExams: [],
   );
 
   static TimetableStats fromTimetable(Timetable timetable) {
@@ -101,8 +107,9 @@ class TimetableStats {
       }
     }
 
-    // Exam clusters
-    final examClusters = _computeExamClusters(timetable);
+    // Exams + clusters
+    final allExams = _computeExams(timetable);
+    final examClusters = _clustersOf(allExams);
 
     return TimetableStats(
       totalHoursPerWeek: totalHours,
@@ -116,10 +123,11 @@ class TimetableStats {
       longestGapDay: longestGapDay,
       hoursPerDay: hoursPerDay,
       examClusters: examClusters,
+      allExams: allExams,
     );
   }
 
-  static List<ExamCluster> _computeExamClusters(Timetable timetable) {
+  static List<ExamEntry> _computeExams(Timetable timetable) {
     final examEntries = <ExamEntry>[];
     final seenCourses = <String>{};
 
@@ -150,15 +158,18 @@ class TimetableStats {
       }
     }
 
-    if (examEntries.isEmpty) return [];
-
     examEntries.sort((a, b) {
       final dateCompare = a.date.compareTo(b.date);
       if (dateCompare != 0) return dateCompare;
       return a.timeSlot.index.compareTo(b.timeSlot.index);
     });
+    return examEntries;
+  }
 
-    // Group exams within 2-day windows to find clusters
+  /// Runs of exams packed within a day of each other (≥2 in the run).
+  static List<ExamCluster> _clustersOf(List<ExamEntry> examEntries) {
+    if (examEntries.isEmpty) return [];
+
     final clusters = <ExamCluster>[];
     var clusterStart = 0;
 

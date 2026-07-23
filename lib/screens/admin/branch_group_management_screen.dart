@@ -3,6 +3,7 @@ import '../../services/data/admin_service.dart';
 import '../../services/data/branch_group_service.dart';
 import '../../services/data/courses_master_service.dart';
 import '../../services/ui/toast_service.dart';
+import '../../services/ui/page_leave_warning_service.dart';
 import '../../utils/branch_constants.dart' as constants;
 import '../../utils/design_constants.dart';
 import '../../widgets/common/app_button.dart';
@@ -25,6 +26,8 @@ class BranchGroupManagementScreen extends StatefulWidget {
 
 class _BranchGroupManagementScreenState
     extends State<BranchGroupManagementScreen> {
+  static const _leaveSource = 'branchGroups';
+
   final _service = BranchGroupService();
   final _masterService = CoursesMasterService();
 
@@ -39,6 +42,30 @@ class _BranchGroupManagementScreenState
     super.initState();
     _load();
   }
+
+  @override
+  void dispose() {
+    // Never leave a stale unload prompt armed on the screens that come after.
+    PageLeaveWarningService().clear(_leaveSource);
+    super.dispose();
+  }
+
+  /// Single choke point for dirty state: keeps the Save button and the web
+  /// refresh/close prompt in lockstep so neither can be armed without the other.
+  void _setDirty(bool value) {
+    if (_dirty != value) setState(() => _dirty = value);
+    PageLeaveWarningService().setUnsaved(_leaveSource, value);
+  }
+
+  Future<bool> _confirmDiscard() => AppDialog.confirm(
+        context: context,
+        title: 'Unsaved Changes',
+        message:
+            'You have unsaved group changes that will be lost. Leave anyway?',
+        confirmLabel: 'Leave',
+        cancelLabel: 'Stay',
+        isDangerous: true,
+      );
 
   Future<void> _load() async {
     setState(() => _loading = true);
@@ -56,7 +83,7 @@ class _BranchGroupManagementScreenState
     setState(() => _saving = true);
     try {
       await _service.saveGroups(_groups);
-      setState(() => _dirty = false);
+      _setDirty(false);
       ToastService.showSuccess('Groups saved');
     } catch (e) {
       ToastService.showError('Save failed');
@@ -77,17 +104,15 @@ class _BranchGroupManagementScreenState
         sem12: [],
         branches: [],
       ));
-      _dirty = true;
     });
+    _setDirty(true);
   }
 
   Future<void> _renameGroup(BranchGroup group) async {
     final name = await _promptName('Rename Group', group.name);
     if (name == null || name.isEmpty) return;
-    setState(() {
-      group.name = name;
-      _dirty = true;
-    });
+    setState(() => group.name = name);
+    _setDirty(true);
   }
 
   Future<void> _deleteGroup(BranchGroup group) async {
@@ -101,10 +126,8 @@ class _BranchGroupManagementScreenState
       isDangerous: true,
     );
     if (ok) {
-      setState(() {
-        _groups.remove(group);
-        _dirty = true;
-      });
+      setState(() => _groups.remove(group));
+      _setDirty(true);
     }
   }
 
@@ -121,21 +144,16 @@ class _BranchGroupManagementScreenState
   // ── CDC editing ───────────────────────────────────────────────────────────
 
   void _removeCourse(List<String> list, int index) {
-    setState(() {
-      list.removeAt(index);
-      _dirty = true;
-    });
+    setState(() => list.removeAt(index));
+    _setDirty(true);
   }
 
   Future<void> _addCourse(BranchGroup group, String sem, List<String> list) async {
     final code = await _showCoursePicker(group.name, sem);
     if (code == null || code.isEmpty) return;
-    setState(() {
-      if (!list.contains(code)) {
-        list.add(code);
-        _dirty = true;
-      }
-    });
+    if (list.contains(code)) return;
+    setState(() => list.add(code));
+    _setDirty(true);
   }
 
   Future<String?> _showCoursePicker(String groupName, String sem) async {
@@ -265,15 +283,13 @@ class _BranchGroupManagementScreenState
       }
       target.branches.add(code);
       target.branches.sort();
-      _dirty = true;
     });
+    _setDirty(true);
   }
 
   void _removeBranch(BranchGroup group, String code) {
-    setState(() {
-      group.branches.remove(code);
-      _dirty = true;
-    });
+    setState(() => group.branches.remove(code));
+    _setDirty(true);
   }
 
   Future<void> _showAddBranchDialog(BranchGroup target) async {
@@ -369,7 +385,14 @@ class _BranchGroupManagementScreenState
     }
 
     final scheme = Theme.of(context).colorScheme;
-    return Scaffold(
+    return PopScope(
+      canPop: !_dirty,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final navigator = Navigator.of(context);
+        if (await _confirmDiscard() && navigator.canPop()) navigator.pop();
+      },
+      child: Scaffold(
       appBar: AppDesign.appBar(context, title: 'Branch Groups', actions: [
         IconButton(
           icon: const Icon(Icons.add_rounded),
@@ -397,6 +420,7 @@ class _BranchGroupManagementScreenState
                 const SizedBox(height: 60),
               ],
             ),
+      ),
     );
   }
 

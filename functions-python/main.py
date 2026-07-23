@@ -941,6 +941,260 @@ def parse_exam_seating_rows(data):
     return exams
 
 
+# ─── Academic-calendar parser ───────────────────────────────────────────────
+#
+# The calendar lives on one page of the timetable booklet as a date→event list
+# beside the little month grids. pdfplumber's extract_table() only grabs the
+# grids, and reading-order text collides the two print columns and interleaves
+# the grid digits, so this walks word coordinates instead: cluster the "Month
+# DD" anchors into print columns by x, then read each anchor's row-band. A date
+# always sits to the left of its own label, so everything between an anchor's
+# date blob and the next anchor is that event. See the scoping notes for the
+# per-campus quirks; residual noise is fixed in the admin review screen.
+
+CAL_MONTHS = {m: i + 1 for i, m in enumerate([
+    "January", "February", "March", "April", "May", "June", "July",
+    "August", "September", "October", "November", "December"])}
+CAL_MONTH_RE = "|".join(CAL_MONTHS)
+
+# Leading month + day, optionally a (Dow), a comma/ampersand day list, or a
+# range to another day (or Month day). Stops before the alphabetic label.
+CAL_DATE_RE = re.compile(
+    r'(?P<mon>' + CAL_MONTH_RE + r')\s+'
+    r'(?P<body>\d{1,2}'
+    r'(?:\s*\([^)]*\))?'
+    r'(?:\s*[,&]\s*\d{1,2})*'
+    r'(?:\s*[-–—]\s*(?:(?:' + CAL_MONTH_RE + r')\s+)?\d{1,2}(?:\s*\([^)]*\))?)?'
+    r')'
+)
+
+# Month-grid leftovers that leak into a label: the day-name header row and long
+# runs of bare 1–2 digit numbers (the calendars themselves).
+CAL_GRID_HEADER_RE = re.compile(r'\b(?:Su\s+M\s+T\s+W\s+Th\s+F\s+S\b\s*)+', re.I)
+CAL_GRID_NUMS_RE = re.compile(r'(?:\b\d{1,2}\b[ \t]*){4,}')
+CAL_DOW_RE = re.compile(r'\((Su|Th|M|T|W|F|S)\)')
+
+
+def _cal_clean(s):
+    return re.sub(r'\s+', ' ', s).strip()
+
+
+def _cal_strip_label(s):
+    s = CAL_GRID_HEADER_RE.sub(' ', s)
+    s = CAL_GRID_NUMS_RE.sub(' ', s)
+    # Trailing booklet footnotes / section headers that trail the last event.
+    s = re.split(r'\*Holiday subject|\bNote:|HOLIDAYS\s+RECESS', s)[0]
+    s = _cal_clean(s)
+    # An orphan "(Dow)" left when a date range wrapped to the next print line.
+    s = re.sub(r'^\([^)]*\)\s*', '', s)
+    return _cal_clean(s)
+
+
+def _cal_category(label):
+    low = label.lower()
+    if "(h)" in low:
+        return "holiday"
+    if "exam" in low:
+        return "exam"
+    if any(k in low for k in (
+            "last day", "last date", "registration", "withdrawal",
+            "substitution")):
+        return "deadline"
+    if any(k in low for k in (
+            "classwork", "class work", "semester ends", "semester begins",
+            "grading", "vacation", "summer term")):
+        return "milestone"
+    return "event"
+
+
+def _cal_parse_body(mon, body):
+    """Turns a date blob ('09 (M)-March 14 (S)') into its month/day components.
+
+    Years are assigned later (see [_assign_years]) because that depends on which
+    semester the page belongs to, not on the blob alone.
+    """
+    start_month = CAL_MONTHS[mon]
+    end_month = start_month
+    m2 = re.search(r'(' + CAL_MONTH_RE + r')', body)
+    if m2:
+        end_month = CAL_MONTHS[m2.group(1)]
+    days = [int(x) for x in re.findall(r'\d{1,2}', body)]
+    if not days:
+        return None
+    dow_m = CAL_DOW_RE.search(body)
+    return {
+        "start_month": start_month,
+        "start_day": days[0],
+        "end_month": end_month if len(days) > 1 else None,
+        "end_day": days[-1] if len(days) > 1 else None,
+        "dayOfWeek": dow_m.group(1) if dow_m else None,
+    }
+
+
+def _cal_parse_page(page):
+    words = page.extract_words(use_text_flow=False, keep_blank_chars=False)
+    anchors = []
+    for i, w in enumerate(words):
+        if w["text"] in CAL_MONTHS:
+            nxt = words[i + 1]["text"] if i + 1 < len(words) else ""
+            if re.match(r'^\d', nxt):
+                anchors.append(w)
+    if not anchors:
+        return []
+    # Column starts from clustered anchor x-positions; a word belongs to the
+    # nearest start at or to its left.
+    xs = sorted(a["x0"] for a in anchors)
+    starts = [xs[0]]
+    for a, b in zip(xs, xs[1:]):
+        if b - a > 60:
+            starts.append(b)
+
+    def col(x):
+        c = 0
+        for i, st in enumerate(starts):
+            if x >= st - 2:
+                c = i
+        return c
+
+    from collections import defaultdict
+    per_col = defaultdict(list)
+    for a in anchors:
+        per_col[col(a["x0"])].append(a)
+
+    events = []
+    for c, alist in per_col.items():
+        alist.sort(key=lambda w: w["top"])
+        cwords = [w for w in words if col(w["x0"]) == c]
+        for j, a in enumerate(alist):
+            top0 = a["top"] - 3
+            top1 = alist[j + 1]["top"] - 3 if j + 1 < len(alist) else 1e9
+            seg = [w for w in cwords if top0 <= w["top"] < top1]
+            seg.sort(key=lambda w: (round(w["top"] / 6), w["x0"]))
+            text = _cal_clean(" ".join(w["text"] for w in seg))
+            m = CAL_DATE_RE.match(text)
+            if not m:
+                continue
+            parsed = _cal_parse_body(m.group("mon"), _cal_clean(m.group("body")))
+            if not parsed:
+                continue
+            label = _cal_strip_label(text[m.end():])
+            if not label:
+                continue
+            events.append({
+                "_col": c, "_top": a["top"],
+                **parsed,
+                "label": label,
+                "category": _cal_category(label),
+            })
+    events.sort(key=lambda e: (e["_col"], e["_top"]))
+    return events
+
+
+def _detect_semester(text):
+    """Which semester the calendar page describes, from its heading.
+
+    Booklets label the list "Second Semester …" / "Semester II" or "First
+    Semester …" / "Semester 1". Checked second-first so "Semester II" can't be
+    mistaken for "Semester I". Defaults to 2 when unlabelled.
+    """
+    low = text.lower()
+    if re.search(r'second semester|semester\s*ii\b|semester\s*2\b', low):
+        return 2
+    if re.search(r'first semester|semester\s*i\b|semester\s*1\b', low):
+        return 1
+    return 2
+
+
+def _iso(year, month, day):
+    return "{:04d}-{:02d}-{:02d}".format(year, month, day)
+
+
+def _assign_years(e, exam_year, semester):
+    """Attach a calendar year to a parsed row and decide if it belongs to this
+    semester. Inclusion + year both key off the *start* month:
+
+    - Semester 2 runs Jan–Jul of exam_year. A page that also prints the prior
+      first semester puts those in Aug–Dec — dropped here.
+    - Semester 1 runs Jul/Aug–Dec of exam_year; a Dec→Jan range (the recess)
+      wraps its end into exam_year + 1.
+
+    Returns the finished event dict, or None if the row is the other semester.
+    """
+    sm, sd = e["start_month"], e["start_day"]
+    em, ed = e["end_month"], e["end_day"]
+
+    if semester == 2:
+        if not (1 <= sm <= 7):
+            return None
+        start_year = exam_year
+    else:
+        if not (7 <= sm <= 12):
+            return None
+        start_year = exam_year
+
+    date = _iso(start_year, sm, sd)
+    end = None
+    if em is not None and ed is not None:
+        # A range whose end month is earlier than its start wrapped into the
+        # next calendar year (a December→January recess).
+        end_year = start_year + 1 if em < sm else start_year
+        end = _iso(end_year, em, ed)
+        if end == date:
+            end = None
+    return {
+        "date": date,
+        "endDate": end,
+        "dayOfWeek": e["dayOfWeek"],
+        "label": e["label"],
+        "category": e["category"],
+    }
+
+
+def parse_academic_calendar(pdf_path, page_range, exam_year, semester=None):
+    import pdfplumber
+
+    pdf = pdfplumber.open(pdf_path)
+    pages = pdf.pages
+    if page_range and len(page_range) == 2:
+        pages = pages[page_range[0] - 1 : page_range[1]]
+
+    raw = []
+    page_text = []
+    for page in pages:
+        raw.extend(_cal_parse_page(page))
+        page_text.append(page.extract_text() or "")
+    pdf.close()
+
+    if semester is None:
+        semester = _detect_semester("\n".join(page_text))
+
+    events = []
+    seen = set()
+    for e in raw:
+        finished = _assign_years(e, exam_year, semester)
+        if finished is None:
+            continue
+        key = (finished["date"], finished["label"])
+        if key in seen:
+            continue
+        seen.add(key)
+        events.append(finished)
+    events.sort(key=lambda e: e["date"])
+    return events
+
+
+def upload_calendar_to_firestore(events, campus_code, exam_year):
+    campus_id = CAMPUS_IDS.get(campus_code.lower(), "hyderabad")
+    db = get_db()
+    from datetime import datetime
+    db.collection("campuses").document(campus_id).collection(
+        "academicCalendar").document("current").set({
+            "events": events,
+            "examYear": exam_year,
+            "updatedAt": datetime.utcnow().isoformat() + "Z",
+        })
+
+
 # ─── Firestore batch upload (ported from base-parser.js) ───
 
 
@@ -977,12 +1231,18 @@ def upload_courses_to_firestore(courses, campus_code, clear_first=True):
                     "room": sanitize(s.get("room", "")),
                 })
 
+            lec = course.get("lectureCredits", 0)
+            prac = course.get("practicalCredits", 0)
             batch.set(timetable_ref.document(doc_id), {
                 "sections": sections,
                 "mid_sem_exam": course.get("midSemExam"),
                 "end_sem_exam": course.get("endSemExam"),
-                "lecture_credits": course.get("lectureCredits", 0),
-                "practical_credits": course.get("practicalCredits", 0),
+                "lecture_credits": lec,
+                "practical_credits": prac,
+                # The unit count (U column). Persisted because it is NOT always
+                # L + P — projects/theses/labs are e.g. "- - 3" — and the client
+                # would otherwise recompute it as L + P and report 0.
+                "total_credits": course.get("totalCredits", lec + prac),
             })
         batch.commit()
 
@@ -1039,7 +1299,10 @@ def sync_courses_master(courses, campus_id):
             # the raw code here would store a key nothing ever queries.
             "course_code": doc_id.replace("_", " "),
             "title": title,
-            "credits": course.get("lectureCredits", 0) + course.get("practicalCredits", 0),
+            # The unit count (U), not L + P — see upload_courses_to_firestore.
+            "credits": course.get(
+                "totalCredits",
+                course.get("lectureCredits", 0) + course.get("practicalCredits", 0)),
             # The PDF carries no course type; curated rows (e.g. ATC) keep
             # theirs because existing documents are never touched.
             "type": "Normal",
@@ -1127,6 +1390,7 @@ def upload_timetable(req: https_fn.CallableRequest):
     extra_headers = req.data.get("excludeHeaders", [])
     exclude_headers = DEFAULT_TIMETABLE_HEADERS.get(campus_code, []) + extra_headers
     page_range_raw = req.data.get("pageRange")
+    calendar_range_raw = req.data.get("calendarPageRange")
     EXAM_YEAR = req.data.get("examYear", 2026)
 
     if not campus_code or not storage_path:
@@ -1134,9 +1398,18 @@ def upload_timetable(req: https_fn.CallableRequest):
     if campus_code not in ("hyderabad", "pilani", "goa"):
         raise https_fn.HttpsError(https_fn.FunctionalErrorCode.INVALID_ARGUMENT, "Invalid campus")
 
-    page_range = None
-    if page_range_raw and isinstance(page_range_raw, list) and len(page_range_raw) == 2:
-        page_range = [int(page_range_raw[0]), int(page_range_raw[1])]
+    def _as_range(raw):
+        if raw and isinstance(raw, list) and len(raw) == 2:
+            return [int(raw[0]), int(raw[1])]
+        return None
+
+    page_range = _as_range(page_range_raw)
+    calendar_range = _as_range(calendar_range_raw)
+    # Optional explicit semester (1 or 2); otherwise the parser reads it off the
+    # page heading.
+    calendar_semester = req.data.get("calendarSemester")
+    if calendar_semester not in (1, 2):
+        calendar_semester = None
 
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
         tmp_path = tmp.name
@@ -1147,6 +1420,12 @@ def upload_timetable(req: https_fn.CallableRequest):
         exact_headers = PILANI_EXTRA_HEADERS if campus_code == "pilani" else None
         rows = extract_pdf_tables(tmp_path, exclude_headers, page_range, exact_headers)
         courses = parse_timetable_rows(rows, campus_code)
+        # The academic calendar rides along on the same PDF: only parse it when
+        # the admin supplies its page range, otherwise leave the stored one be.
+        calendar_events = None
+        if calendar_range:
+            calendar_events = parse_academic_calendar(
+                tmp_path, calendar_range, EXAM_YEAR, semester=calendar_semester)
     finally:
         os.unlink(tmp_path)
 
@@ -1154,6 +1433,11 @@ def upload_timetable(req: https_fn.CallableRequest):
         raise https_fn.HttpsError(https_fn.FunctionalErrorCode.INVALID_ARGUMENT, "No courses found in PDF")
 
     upload_courses_to_firestore(courses, campus_code, clear_first=True)
+
+    calendar_uploaded = 0
+    if calendar_events:
+        upload_calendar_to_firestore(calendar_events, campus_code, EXAM_YEAR)
+        calendar_uploaded = len(calendar_events)
 
     campus_id = CAMPUS_IDS.get(campus_code.lower(), "hyderabad")
 
@@ -1170,7 +1454,11 @@ def upload_timetable(req: https_fn.CallableRequest):
         "campusCode": campus_code,
     }, merge=True)
 
-    return {"success": True, "coursesUploaded": len(courses)}
+    return {
+        "success": True,
+        "coursesUploaded": len(courses),
+        "calendarEventsUploaded": calendar_uploaded,
+    }
 
 
 @https_fn.on_call(region="asia-south1", enforce_app_check=False, timeout_sec=300, memory=options.MemoryOption.MB_512)

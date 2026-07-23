@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/app_constants.dart';
 import '../../models/timetable.dart';
 import '../../models/course.dart';
+import '../../models/timetable_reconciliation.dart';
 import 'clash_detector.dart';
 import '../data/auth_service.dart';
 import '../data/timetable_storage_service.dart';
@@ -187,6 +189,85 @@ class TimetableService {
       ));
   }
 
+  /// Compares each saved selection against the freshly loaded catalogue,
+  /// rewriting the embedded section in place when its details moved and flagging
+  /// selections whose section (or course) is gone. Nothing is dropped — a
+  /// removed section stays selected so the student never silently loses a course
+  /// — the returned report just records what to surface.
+  @visibleForTesting
+  static TimetableReconciliation reconcileSelections(Timetable timetable) {
+    final byCode = <String, Course>{
+      for (final c in timetable.availableCourses) c.courseCode: c,
+    };
+    final changes = <SectionChange>[];
+
+    for (var i = 0; i < timetable.selectedSections.length; i++) {
+      final sel = timetable.selectedSections[i];
+      final course = byCode[sel.courseCode];
+      final fresh = course?.sections
+          .cast<Section?>()
+          .firstWhere((s) => s!.sectionId == sel.sectionId, orElse: () => null);
+
+      if (fresh == null) {
+        changes.add(SectionChange(
+          courseCode: sel.courseCode,
+          courseTitle: course?.courseTitle ?? sel.courseCode,
+          sectionId: sel.sectionId,
+          changedFields: const [],
+          oldSection: sel.section,
+          newSection: null,
+        ));
+        continue;
+      }
+
+      final diff = _sectionDiff(sel.section, fresh);
+      if (diff.isEmpty) continue;
+
+      changes.add(SectionChange(
+        courseCode: sel.courseCode,
+        courseTitle: course!.courseTitle,
+        sectionId: sel.sectionId,
+        changedFields: diff,
+        oldSection: sel.section,
+        newSection: fresh,
+      ));
+      // Adopt the corrected data so the grid, clashes and exports are accurate.
+      timetable.selectedSections[i] = SelectedSection(
+        courseCode: sel.courseCode,
+        sectionId: sel.sectionId,
+        section: fresh,
+      );
+    }
+
+    return TimetableReconciliation(changes);
+  }
+
+  /// Human-readable labels for the fields that differ between a saved section
+  /// and its fresh counterpart. Empty when they are equivalent.
+  static List<String> _sectionDiff(Section saved, Section fresh) {
+    final fields = <String>[];
+    if (saved.instructor.trim() != fresh.instructor.trim()) {
+      fields.add('Instructor');
+    }
+    if (saved.room.trim() != fresh.room.trim()) fields.add('Room');
+    if (!_sameTiming(saved, fresh)) fields.add('Timing');
+    return fields;
+  }
+
+  /// Order-insensitive comparison of when two sections meet, by their set of
+  /// (day, hour) slots — schedule entries can be split or reordered on re-parse
+  /// without the actual timing having changed.
+  static bool _sameTiming(Section a, Section b) {
+    Set<String> slots(Section s) => {
+          for (final e in s.schedule)
+            for (final d in e.days)
+              for (final h in e.hours) '${d.index}:$h',
+        };
+    final sa = slots(a);
+    final sb = slots(b);
+    return sa.length == sb.length && sa.containsAll(sb);
+  }
+
   Future<void> _loadCoursesFromFirestore(Timetable timetable) async {
     try {
       // Try to fetch courses directly without checking metadata first
@@ -200,16 +281,30 @@ class TimetableService {
       timetable.availableCourses.clear();
       timetable.availableCourses.addAll(courses);
 
+      // Refresh saved selections against the catalogue just loaded. A past-term
+      // timetable is a historical record built from a catalogue that no longer
+      // applies, so it is never reconciled — its saved sections stay frozen.
+      final reconciliation = ConfigService().isPastTerm(timetable.term)
+          ? null
+          : reconcileSelections(timetable);
+      timetable.reconciliation = reconciliation;
+
       applyCurrentTerm(timetable);
 
       // Hydrating availableCourses only touches derived, in-memory state, and
       // neither storage form embeds the catalog now, so a signed-in write-back
-      // would persist nothing new while costing a document write on every open
-      // and bumping updatedAt. The guest save is kept because it is cheap (slim
-      // JSON) and rewrites any timetable still stored in the old catalog-embedded
-      // format down to the slim one on first open.
+      // would normally persist nothing new while costing a document write on
+      // every open. The exception is a reconcile that actually rewrote embedded
+      // section data: persisting it once (preserving updatedAt, so the list
+      // doesn't reorder) is what makes the "what changed" notice fire exactly
+      // once rather than on every open. The guest save is kept unconditionally
+      // because it is cheap (slim JSON) and also migrates old catalog-embedded
+      // saves down to the slim format on first open.
       if (!_authService.isAuthenticated) {
         await saveTimetableToStorage(timetable);
+      } else if (reconciliation?.hasChanges ?? false) {
+        // Direct write, not saveTimetable(), so updatedAt is preserved.
+        await _firestoreService.saveTimetable(timetable);
       }
     } catch (e) {
       SecureLogger.error('TIMETABLE_SVC', 'Error loading courses from Firestore: $e');
