@@ -47,6 +47,10 @@ class _OpenElectivesScreenState extends State<OpenElectivesScreen> {
   String _query = '';
   StreamSubscription<Campus>? _campusSubscription;
 
+  // Bumped per load; a stale campus-change reload that finishes late compares
+  // unequal and drops its result instead of overwriting fresher data.
+  int _loadSeq = 0;
+
   @override
   void initState() {
     super.initState();
@@ -63,6 +67,7 @@ class _OpenElectivesScreenState extends State<OpenElectivesScreen> {
   }
 
   Future<void> _loadInitialData() async {
+    final seq = ++_loadSeq;
     try {
       setState(() {
         _isLoading = true;
@@ -78,7 +83,7 @@ class _OpenElectivesScreenState extends State<OpenElectivesScreen> {
       final courses = widget.selectionLink?.availableCourses ??
           await _courseDataService.fetchCourses();
 
-      if (!mounted) return;
+      if (!mounted || seq != _loadSeq) return;
       setState(() {
         _availableBranches = branches;
         _availableCourses = courses;

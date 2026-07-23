@@ -44,7 +44,11 @@ class CoursesMasterService {
 
   Map<String, CourseMasterEntry> _cache = {};
   bool _loaded = false;
-  bool _loading = false;
+
+  // The in-flight load, shared by concurrent callers. Without this a second
+  // caller used to hit an `if (_loading) return` and get its `await` back
+  // *before* the first load populated the cache — reading an empty catalogue.
+  Future<void>? _inflight;
 
   final StreamController<bool> _loadStateController =
       StreamController<bool>.broadcast();
@@ -76,67 +80,68 @@ class CoursesMasterService {
     }
   }
 
-  Future<void> loadForCampus({bool forceRefresh = false}) async {
-    if (_loading) return;
-    if (_loaded && !forceRefresh) return;
-    _loading = true;
+  /// Test seam substituting the Firestore-backed load, so the single-flight
+  /// coalescing can be exercised without Firebase. Never set from app code.
+  @visibleForTesting
+  Future<void> Function(bool forceRefresh)? loaderForTest;
+
+  Future<void> loadForCampus({bool forceRefresh = false}) {
+    if (_loaded && !forceRefresh) return Future.value();
+    // Coalesce concurrent callers onto one load; whenComplete clears the slot
+    // even on error, so a transient Firestore failure can't wedge it shut.
+    return _inflight ??= (loaderForTest ?? _doLoad)(forceRefresh)
+        .whenComplete(() => _inflight = null);
+  }
+
+  Future<void> _doLoad(bool forceRefresh) async {
     _loadStateController.add(false);
+    final campusId = CampusService.campusId;
 
-    // finally, not a trailing assignment: a throw anywhere below used to leave
-    // _loading stuck true, and the `if (_loading) return` guard above then made
-    // every later attempt a no-op — one transient Firestore error left the
-    // catalogue permanently empty for the rest of the session.
-    try {
-      final campusId = CampusService.campusId;
-
-      if (!forceRefresh) {
-        final cached = await _localCache.readIfFresh(
-          _cacheKey,
-          metadataRef: CampusService.metadataDocRef(_firestore),
-        );
-        if (cached != null) {
-          _cache = {
-            for (final map in cached)
-              map['course_code'] as String: CourseMasterEntry.fromMap(map)
-          };
-          _loaded = true;
-          _loadStateController.add(true);
-          return;
-        }
-      }
-
-      // Pre-bundled catalogue: 1 read instead of ~2.8k. Falls back to the
-      // legacy per-document scan below if the bundle hasn't been generated yet.
-      final bundled = await _readBundle(campusId);
-      if (bundled != null) {
+    if (!forceRefresh) {
+      final cached = await _localCache.readIfFresh(
+        _cacheKey,
+        metadataRef: CampusService.metadataDocRef(_firestore),
+      );
+      if (cached != null) {
         _cache = {
-          for (final map in bundled)
+          for (final map in cached)
             map['course_code'] as String: CourseMasterEntry.fromMap(map)
         };
-        await _localCache.write(_cacheKey, bundled);
         _loaded = true;
         _loadStateController.add(true);
         return;
       }
+    }
 
-      final snapshot = await _firestore
-          .collection(FirestoreCollections.campuses)
-          .doc(campusId)
-          .collection(FirestoreCollections.coursesMaster)
-          .get();
-
-      final docs = snapshot.docs.map((doc) => doc.data()).toList();
+    // Pre-bundled catalogue: 1 read instead of ~2.8k. Falls back to the
+    // legacy per-document scan below if the bundle hasn't been generated yet.
+    final bundled = await _readBundle(campusId);
+    if (bundled != null) {
       _cache = {
-        for (final map in docs)
+        for (final map in bundled)
           map['course_code'] as String: CourseMasterEntry.fromMap(map)
       };
-
-      await _localCache.write(_cacheKey, docs);
+      await _localCache.write(_cacheKey, bundled);
       _loaded = true;
       _loadStateController.add(true);
-    } finally {
-      _loading = false;
+      return;
     }
+
+    final snapshot = await _firestore
+        .collection(FirestoreCollections.campuses)
+        .doc(campusId)
+        .collection(FirestoreCollections.coursesMaster)
+        .get();
+
+    final docs = snapshot.docs.map((doc) => doc.data()).toList();
+    _cache = {
+      for (final map in docs)
+        map['course_code'] as String: CourseMasterEntry.fromMap(map)
+    };
+
+    await _localCache.write(_cacheKey, docs);
+    _loaded = true;
+    _loadStateController.add(true);
   }
 
   String getTitle(String courseCode) {
@@ -152,7 +157,7 @@ class CoursesMasterService {
   void clear() {
     _cache = {};
     _loaded = false;
-    _loading = false;
+    _inflight = null;
     _localCache.invalidate(_cacheKey);
   }
 
@@ -162,7 +167,7 @@ class CoursesMasterService {
   void seedForTest(List<CourseMasterEntry> entries) {
     _cache = {for (final e in entries) e.courseCode: e};
     _loaded = true;
-    _loading = false;
+    _inflight = null;
   }
 
   /// Undoes [seedForTest] without touching the on-disk cache, which
@@ -171,6 +176,6 @@ class CoursesMasterService {
   void resetForTest() {
     _cache = {};
     _loaded = false;
-    _loading = false;
+    _inflight = null;
   }
 }

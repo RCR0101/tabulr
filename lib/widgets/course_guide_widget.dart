@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/app_constants.dart';
 import 'common/empty_state_widget.dart';
 import '../services/data/course_guide_service.dart';
 import '../services/data/courses_master_service.dart';
@@ -29,9 +30,7 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
   String? _error;
   String? _validationError;
 
-  final List<String> _semesterOptions = [
-    '1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2',
-  ];
+  final List<String> _semesterOptions = SemesterConstants.yearsOneToFour;
 
   @override
   void initState() {
@@ -63,12 +62,14 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
   Future<void> _loadBranches() async {
     try {
       final branches = await _branchService.getAvailableBranches();
+      if (!mounted) return;
       setState(() {
         _availableBranches = branches;
         _isLoading = false;
         _prefillFromProfile(branches);
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = 'Failed to load branches: $e';
         _isLoading = false;
@@ -120,11 +121,13 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
         );
       }
 
+      if (!mounted) return;
       setState(() {
         _cdcData = data;
         _isSearching = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = 'Failed to load CDCs: $e';
         _isSearching = false;

@@ -44,15 +44,11 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
   String _errorMessage = '';
   StreamSubscription<Campus>? _campusSubscription;
 
-  // Semester options from 2-1 to 4-2
-  final List<String> _semesterOptions = [
-    '2-1',
-    '2-2',
-    '3-1',
-    '3-2',
-    '4-1',
-    '4-2',
-  ];
+  // Bumped per load; a stale campus-change reload that finishes late compares
+  // unequal and drops its result instead of overwriting fresher data.
+  int _loadSeq = 0;
+
+  final List<String> _semesterOptions = SemesterConstants.electives;
 
   @override
   void initState() {
@@ -72,6 +68,7 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
   }
 
   Future<void> _loadInitialData() async {
+    final seq = ++_loadSeq;
     try {
       setState(() {
         _isLoading = true;
@@ -88,6 +85,7 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
       final courses = widget.selectionLink?.availableCourses ??
           await _courseDataService.fetchCourses();
 
+      if (!mounted || seq != _loadSeq) return;
       setState(() {
         _availableBranches = branches;
         _availableCourses = courses;
@@ -95,6 +93,7 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
         _prefillFromProfile(branches);
       });
     } catch (e) {
+      if (!mounted || seq != _loadSeq) return;
       setState(() {
         _errorMessage = 'Failed to load data: $e';
         _isLoading = false;
@@ -151,6 +150,7 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
             _availableCourses,
           );
 
+      if (!mounted) return;
       setState(() {
         _disciplineElectives = electives;
         _isSearching = false;
@@ -163,6 +163,7 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage =
             'Unable to load discipline electives at this time. Please try again later.';
@@ -196,6 +197,7 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
           )
           .timeout(AppDurations.networkTimeout);
 
+      if (!mounted) return;
       setState(() {
         _disciplineElectives = electives;
         _isSearching = false;
@@ -208,6 +210,7 @@ class _DisciplineElectivesScreenState extends State<DisciplineElectivesScreen> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage =
             'Unable to load discipline electives at this time. Please try again later.';

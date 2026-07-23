@@ -3,6 +3,7 @@ import '../../models/course.dart';
 import '../../models/timetable_constraints.dart';
 import '../../models/timetable.dart' as timetable;
 import '../../constants/app_constants.dart';
+import '../../utils/datetime_utils.dart';
 import 'clash_detector.dart';
 
 /// Generates ranked timetable options from a set of courses and user preferences.
@@ -184,8 +185,7 @@ class TimetableGenerator {
     if (freeDays.length >= 2) {
       tags.add('${freeDays.length} free days');
     } else if (freeDays.length == 1) {
-      const names = {DayOfWeek.M: 'Mon', DayOfWeek.T: 'Tue', DayOfWeek.W: 'Wed', DayOfWeek.Th: 'Thu', DayOfWeek.F: 'Fri', DayOfWeek.S: 'Sat'};
-      tags.add('${names[freeDays.first]} off');
+      tags.add('${getDayName(freeDays.first, abbreviated: true)} off');
     }
 
     if (maxH <= 4) {
@@ -675,11 +675,6 @@ class TimetableGenerator {
     final maxHours = hoursPerDay.values.reduce(max);
     final minHours = hoursPerDay.values.where((h) => h > 0).reduce(min);
 
-    const dayNames = {
-      DayOfWeek.M: 'Mon', DayOfWeek.T: 'Tue', DayOfWeek.W: 'Wed',
-      DayOfWeek.Th: 'Thu', DayOfWeek.F: 'Fri', DayOfWeek.S: 'Sat',
-    };
-
     // Schedule distribution
     if (maxHours <= constraints.maxHoursPerDay) {
       pros.add('Within ${constraints.maxHoursPerDay}h/day limit');
@@ -753,14 +748,14 @@ class TimetableGenerator {
     if (constraints.freeDayPreference.isNotEmpty) {
       final matchedFreeDays = constraints.freeDayPreference
           .where((d) => freeDays.contains(d))
-          .map((d) => dayNames[d]!)
+          .map((d) => getDayName(d, abbreviated: true))
           .toList();
       if (matchedFreeDays.isNotEmpty) {
         pros.add('Free on ${matchedFreeDays.join(', ')}');
       }
       final topPref = constraints.freeDayPreference.first;
       if (!freeDays.contains(topPref)) {
-        cons.add('${dayNames[topPref]} is not free');
+        cons.add('${getDayName(topPref, abbreviated: true)} is not free');
       }
     } else if (daysWithClasses <= 4) {
       pros.add('Compact schedule ($daysWithClasses days)');

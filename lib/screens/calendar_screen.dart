@@ -16,6 +16,7 @@ import '../services/data/config_service.dart';
 import '../services/data/course_data_service.dart';
 import '../services/ui/toast_service.dart';
 import '../models/calendar_event.dart';
+import '../utils/datetime_utils.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_tappable.dart';
@@ -744,22 +745,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return colors[hash.abs() % colors.length];
   }
 
-  String _dayLabel(DayOfWeek d) {
-    switch (d) {
-      case DayOfWeek.M:
-        return 'Mon';
-      case DayOfWeek.T:
-        return 'Tue';
-      case DayOfWeek.W:
-        return 'Wed';
-      case DayOfWeek.Th:
-        return 'Thu';
-      case DayOfWeek.F:
-        return 'Fri';
-      case DayOfWeek.S:
-        return 'Sat';
-    }
-  }
+  String _dayLabel(DayOfWeek d) => getDayName(d, abbreviated: true);
 
   @override
   Widget build(BuildContext context) {
@@ -952,15 +938,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
 
     final weekEnd = _weekStart.add(const Duration(days: 5));
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
+    const months = DayConstants.monthNames;
     String weekLabel;
     if (_weekStart.month == weekEnd.month) {
-      weekLabel = '${_weekStart.day}–${weekEnd.day} ${months[_weekStart.month - 1]}';
+      weekLabel = '${_weekStart.day}–${weekEnd.day} ${months[_weekStart.month]}';
     } else {
-      weekLabel = '${_weekStart.day} ${months[_weekStart.month - 1]}–${weekEnd.day} ${months[weekEnd.month - 1]}';
+      weekLabel = '${_weekStart.day} ${months[_weekStart.month]}–${weekEnd.day} ${months[weekEnd.month]}';
     }
 
     return Padding(
@@ -1138,7 +1121,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         itemCount: endHour - startHour + 1,
       itemBuilder: (context, index) {
         if (index == 0) {
-          final monthDay = '${date.day} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][date.month - 1]}';
+          final monthDay = formatDayMonth(date);
           return Padding(
             padding: const EdgeInsets.only(bottom: 12, left: 4),
             child: Row(
@@ -2145,16 +2128,8 @@ class _AddEventDialogState extends State<_AddEventDialog> {
                   isDense: true,
                 ),
                 items: DayOfWeek.values.map((d) {
-                  const labels = {
-                    DayOfWeek.M: 'Monday',
-                    DayOfWeek.T: 'Tuesday',
-                    DayOfWeek.W: 'Wednesday',
-                    DayOfWeek.Th: 'Thursday',
-                    DayOfWeek.F: 'Friday',
-                    DayOfWeek.S: 'Saturday',
-                  };
                   return DropdownMenuItem(
-                      value: d, child: Text(labels[d] ?? d.name));
+                      value: d, child: Text(getDayName(d)));
                 }).toList(),
                 onChanged: (val) {
                   if (val != null) setState(() => _selectedDay = val);

@@ -44,9 +44,13 @@ class _AuthScreenState extends State<AuthScreen> {
       
       _showErrorDialog(errorMessage);
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      // On success AuthWrapper navigates away and disposes this screen before
+      // the finally runs, so guard the rebuild.
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -61,9 +65,11 @@ class _AuthScreenState extends State<AuthScreen> {
     } catch (e) {
       _showErrorDialog('Failed to continue as guest: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

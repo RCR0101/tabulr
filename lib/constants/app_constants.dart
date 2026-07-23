@@ -164,6 +164,25 @@ abstract final class SemesterConstants {
     '1-1', '1-2', '2-1', '2-2', 'ST 1',
     '3-1', '3-2', 'ST 2', '4-1', '4-2', 'ST 3', '5-1', '5-2',
   ];
+
+  /// Regular teaching semesters (special terms excluded) — the base every
+  /// year-range subset below is derived from, so there is one list to edit.
+  static final List<String> regular =
+      all.where((s) => !s.startsWith('ST')).toList();
+
+  static int _year(String semester) => int.parse(semester.split('-').first);
+
+  static List<String> _range(int from, int to) =>
+      regular.where((s) => _year(s) >= from && _year(s) <= to).toList();
+
+  /// Years 1–4 — where the 5th year isn't offered (CDCs, course guide).
+  static List<String> get yearsOneToFour => _range(1, 4);
+
+  /// Years 1–3 — Quick Replace's simplified range.
+  static List<String> get yearsOneToThree => _range(1, 3);
+
+  /// Years 2–4 — electives are taken from the second year on (DEL/HUEL/OPEL).
+  static List<String> get electives => _range(2, 4);
 }
 
 // ── Day / schedule labels ──────────────────────────────────────────────

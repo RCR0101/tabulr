@@ -129,6 +129,12 @@ class _AdminScreenState extends State<AdminScreen> {
     }
   }
 
+  // Uploads are foreground actions, but the finally-blocks below still fire if
+  // the admin leaves mid-op — guard every rebuild against a disposed state.
+  void _setStateIfMounted(VoidCallback fn) {
+    if (mounted) setState(fn);
+  }
+
   Future<void> _uploadTimetables() async {
     final toUpload = <String, PlatformFile>{};
     for (final campus in _campuses) {
@@ -137,7 +143,7 @@ class _AdminScreenState extends State<AdminScreen> {
     }
     if (toUpload.isEmpty) return;
 
-    setState(() {
+    _setStateIfMounted(() {
       _uploadingTimetable = true;
       _timetableResult = null;
       _timetableProgress = null;
@@ -150,7 +156,7 @@ class _AdminScreenState extends State<AdminScreen> {
       for (final entry in toUpload.entries) {
         final campus = entry.key;
         final label = _campusLabels[campus]!;
-        setState(() => _timetableProgress =
+        _setStateIfMounted(() => _timetableProgress =
             'Uploading $label (${ done + 1}/$total)...');
         final from = int.tryParse(_pageFromControllers[campus]!.text.trim());
         final to = int.tryParse(_pageToControllers[campus]!.text.trim());
@@ -165,53 +171,53 @@ class _AdminScreenState extends State<AdminScreen> {
         );
         done++;
         results.add('$label: $count courses');
-        setState(() => _timetableProgress =
+        _setStateIfMounted(() => _timetableProgress =
             '${results.join(' | ')}${done < total ? ' | Processing...' : ''}');
       }
-      setState(() {
+      _setStateIfMounted(() {
         _timetableResult = results.join('\n');
         _timetableProgress = null;
       });
       ToastService.showSuccess('Timetable upload complete');
     } catch (e) {
-      setState(() {
+      _setStateIfMounted(() {
         _timetableResult = 'Error: $e';
         _timetableProgress = null;
       });
       ToastService.showError('Upload failed');
     } finally {
-      setState(() => _uploadingTimetable = false);
+      _setStateIfMounted(() => _uploadingTimetable = false);
     }
   }
 
   Future<void> _uploadExamSeating() async {
     if (_examFile == null || _examFile!.bytes == null) return;
-    setState(() {
+    _setStateIfMounted(() {
       _uploadingExam = true;
       _examResult = null;
       _examProgress = 'Uploading PDF...';
     });
     try {
-      setState(() => _examProgress = 'Processing exam seating...');
+      _setStateIfMounted(() => _examProgress = 'Processing exam seating...');
       final count = await _adminService.uploadExamSeating(
         campusCode: 'hyderabad',
         fileBytes: _examFile!.bytes!,
         fileName: _examFile!.name,
         excludeHeaders: _getHeaders(_examHeaders),
       );
-      setState(() {
+      _setStateIfMounted(() {
         _examResult = 'Uploaded $count exams';
         _examProgress = null;
       });
       ToastService.showSuccess('Uploaded $count exams');
     } catch (e) {
-      setState(() {
+      _setStateIfMounted(() {
         _examResult = 'Error: $e';
         _examProgress = null;
       });
       ToastService.showError('Upload failed');
     } finally {
-      setState(() => _uploadingExam = false);
+      _setStateIfMounted(() => _uploadingExam = false);
     }
   }
 
@@ -252,7 +258,7 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Future<void> _rebuildProfessors() async {
-    setState(() {
+    _setStateIfMounted(() {
       _rebuildingProfs = true;
       _profsResult = null;
       _profsProgress = 'Rebuilding professor schedules...';
@@ -263,19 +269,19 @@ class _AdminScreenState extends State<AdminScreen> {
       );
       final total = result['professorsUpdated'] ?? 0;
       final matched = result['withSchedule'] ?? 0;
-      setState(() {
+      _setStateIfMounted(() {
         _profsResult = 'Updated $total professors ($matched matched)';
         _profsProgress = null;
       });
       ToastService.showSuccess('Updated $total professors');
     } catch (e) {
-      setState(() {
+      _setStateIfMounted(() {
         _profsResult = 'Error: $e';
         _profsProgress = null;
       });
       ToastService.showError('Rebuild failed');
     } finally {
-      setState(() => _rebuildingProfs = false);
+      _setStateIfMounted(() => _rebuildingProfs = false);
     }
   }
 
@@ -285,7 +291,7 @@ class _AdminScreenState extends State<AdminScreen> {
       ToastService.showError('Enter academic year in YYYY-YYYY format');
       return;
     }
-    setState(() {
+    _setStateIfMounted(() {
       _archiving = true;
       _archiveResult = null;
       _archiveProgress = 'Archiving timetables...';
@@ -302,20 +308,20 @@ class _AdminScreenState extends State<AdminScreen> {
       // Archiving also opens the next term, which hides every timetable built
       // in the old one — surface it so the effect is never a surprise.
       await ConfigService().reloadAppConfig();
-      setState(() {
+      _setStateIfMounted(() {
         _archiveResult = 'Archived $total timetables from $processed users ($skipped skipped)'
             '${newTerm != null ? '\nCurrent term is now $newTerm — timetables from earlier terms are now read-only.' : ''}';
         _archiveProgress = null;
       });
       ToastService.showSuccess('Archived $total timetables');
     } catch (e) {
-      setState(() {
+      _setStateIfMounted(() {
         _archiveResult = 'Error: $e';
         _archiveProgress = null;
       });
       ToastService.showError('Archive failed');
     } finally {
-      setState(() => _archiving = false);
+      _setStateIfMounted(() => _archiving = false);
     }
   }
 
@@ -329,19 +335,19 @@ class _AdminScreenState extends State<AdminScreen> {
       ToastService.showError('Each start date must be on or before its end date');
       return;
     }
-    setState(() {
+    _setStateIfMounted(() {
       _savingDates = true;
       _datesResult = null;
     });
     try {
       await ConfigService().saveSemesterDates(_semesterDates);
-      setState(() => _datesResult = 'Semester dates saved');
+      _setStateIfMounted(() => _datesResult = 'Semester dates saved');
       ToastService.showSuccess('Semester dates saved');
     } catch (e) {
-      setState(() => _datesResult = 'Error: $e');
+      _setStateIfMounted(() => _datesResult = 'Error: $e');
       ToastService.showError('Save failed');
     } finally {
-      setState(() => _savingDates = false);
+      _setStateIfMounted(() => _savingDates = false);
     }
   }
 
@@ -354,7 +360,7 @@ class _AdminScreenState extends State<AdminScreen> {
       lastDate: DateTime(current.year + 3),
     );
     if (picked != null) {
-      setState(() {
+      _setStateIfMounted(() {
         _semesterDates[key] = picked;
         _datesResult = null;
       });
@@ -707,7 +713,7 @@ class _AdminScreenState extends State<AdminScreen> {
                         size: 18,
                         color: scheme.error.withValues(alpha: 0.7)),
                     onPressed: () {
-                      setState(() {
+                      _setStateIfMounted(() {
                         controllers[i].dispose();
                         controllers.removeAt(i);
                       });
@@ -723,7 +729,7 @@ class _AdminScreenState extends State<AdminScreen> {
           alignment: Alignment.centerLeft,
           child: InkWell(
             onTap: () {
-              setState(() => controllers.add(TextEditingController()));
+              _setStateIfMounted(() => controllers.add(TextEditingController()));
             },
             borderRadius: AppDesign.borderRadiusSm,
             child: Padding(
@@ -993,7 +999,7 @@ class _AdminScreenState extends State<AdminScreen> {
             file: _timetableFiles[campus],
             extensions: ['pdf'],
             onChanged: (f) =>
-                setState(() => _timetableFiles[campus] = f),
+                _setStateIfMounted(() => _timetableFiles[campus] = f),
           ),
           if (_timetableFiles[campus] != null) ...[
             _buildPageRange(campus),
@@ -1029,7 +1035,7 @@ class _AdminScreenState extends State<AdminScreen> {
           label: 'PDF File',
           file: _examFile,
           extensions: ['pdf'],
-          onChanged: (f) => setState(() => _examFile = f),
+          onChanged: (f) => _setStateIfMounted(() => _examFile = f),
         ),
         const SizedBox(height: AppDesign.spacingSm),
         _buildHeaderExclusions(_examHeaders),
@@ -1058,7 +1064,7 @@ class _AdminScreenState extends State<AdminScreen> {
           label: 'profs.json',
           file: _profsFile,
           extensions: ['json'],
-          onChanged: (f) => setState(() => _profsFile = f),
+          onChanged: (f) => _setStateIfMounted(() => _profsFile = f),
         ),
         Text(
           'Optional — uses stored data if not provided',
@@ -1123,7 +1129,7 @@ class _AdminScreenState extends State<AdminScreen> {
             DropdownMenuItem(value: 1, child: Text('Semester 1')),
             DropdownMenuItem(value: 2, child: Text('Semester 2')),
           ],
-          onChanged: (v) => setState(() => _archiveSemester = v ?? 1),
+          onChanged: (v) => _setStateIfMounted(() => _archiveSemester = v ?? 1),
         ),
         const SizedBox(height: AppDesign.spacingSm + 4),
         AppButton(

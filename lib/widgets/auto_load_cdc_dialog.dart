@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/app_constants.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/data/profile_service.dart';
 import '../utils/branch_constants.dart' as constants;
@@ -31,16 +32,7 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
       constants.branchCodeToName.keys.toList()..sort();
 
   // Dual-degree students run to 4-2; a single degree simply never selects those.
-  final List<String> _semesters = [
-    '1-1',
-    '1-2',
-    '2-1',
-    '2-2',
-    '3-1',
-    '3-2',
-    '4-1',
-    '4-2',
-  ];
+  final List<String> _semesters = SemesterConstants.yearsOneToFour;
 
   String? _selectedBranch;
   String? _selectedSecondaryBranch;

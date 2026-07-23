@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
+import '../utils/branch_constants.dart';
 import '../utils/design_constants.dart';
 import '../services/data/humanities_electives_service.dart';
 import '../services/data/course_data_service.dart';
@@ -41,16 +42,16 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
   String _errorMessage = '';
   StreamSubscription<Campus>? _campusSubscription;
 
-  // Semester options from 2-1 to 4-2
-  final List<String> _semesterOptions = [
-    '2-1', '2-2', '3-1', '3-2', '4-1', '4-2'
-  ];
+  // Bumped per load; a stale campus-change reload that finishes late compares
+  // unequal and drops its result instead of overwriting fresher data.
+  int _loadSeq = 0;
 
-  // Branch options (common engineering branches)
-  final List<String> _branchOptions = [
-    'A1', 'A2', 'A3', 'A4', 'A5', 'A7', 'A8', 'AA', 'AB', 'AD',
-    'B1', 'B2', 'B3', 'B4', 'B5',
-  ];
+  final List<String> _semesterOptions = SemesterConstants.electives;
+
+  // The full canonical branch set, not a hand-maintained subset, so a student
+  // whose branch was missing from the old list can now prefill and search.
+  final List<String> _branchOptions =
+      branchCodeToName.keys.toList()..sort();
 
   @override
   void initState() {
@@ -92,6 +93,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
   }
 
   Future<void> _loadInitialData() async {
+    final seq = ++_loadSeq;
     try {
       setState(() {
         _isLoading = true;
@@ -103,11 +105,13 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
       final courses = widget.selectionLink?.availableCourses ??
           await _courseDataService.fetchCourses();
 
+      if (!mounted || seq != _loadSeq) return;
       setState(() {
         _availableCourses = courses;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted || seq != _loadSeq) return;
       setState(() {
         _errorMessage = 'Failed to load data: $e';
         _isLoading = false;
@@ -127,6 +131,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
         _availableCourses,
       );
 
+      if (!mounted) return;
       setState(() {
         _huelCourses = huelCourses;
         _isSearching = false;
@@ -138,6 +143,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Unable to load humanities electives at this time. Please try again later.';
         _isSearching = false;
@@ -168,6 +174,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
         _availableCourses,
       ).timeout(AppDurations.networkTimeout);
 
+      if (!mounted) return;
       setState(() {
         _huelCourses = huelCourses;
         _isSearching = false;
@@ -179,6 +186,7 @@ class _HumanitiesElectivesScreenState extends State<HumanitiesElectivesScreen> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Unable to load humanities electives at this time. Please try again later.';
         _isSearching = false;

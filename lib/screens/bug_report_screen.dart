@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/bug_report.dart';
+import '../utils/datetime_utils.dart';
 import '../services/data/auth_service.dart';
 import '../services/data/bug_report_service.dart';
 import '../services/ui/toast_service.dart';
@@ -307,7 +308,7 @@ class _BugReportScreenState extends State<BugReportScreen> {
           Row(
             children: [
               Text(
-                _formatDate(r.createdAt),
+                formatRelativeDate(r.createdAt),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: scheme.onSurface.withValues(alpha: 0.5),
                     ),
@@ -368,27 +369,5 @@ class _BugReportScreenState extends State<BugReportScreen> {
         ],
       ),
     );
-  }
-
-  static String _formatDate(DateTime d) {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    final now = DateTime.now();
-    final diff = now.difference(d);
-    String rel;
-    if (diff.inMinutes < 1) {
-      rel = 'just now';
-    } else if (diff.inHours < 1) {
-      rel = '${diff.inMinutes}m ago';
-    } else if (diff.inDays < 1) {
-      rel = '${diff.inHours}h ago';
-    } else if (diff.inDays < 7) {
-      rel = '${diff.inDays}d ago';
-    } else {
-      rel = '${d.day} ${months[d.month - 1]} ${d.year}';
-    }
-    return rel;
   }
 }

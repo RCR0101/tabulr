@@ -24,6 +24,10 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   bool _isLoading = true;
   StreamSubscription<Campus>? _campusSubscription;
 
+  // Bumped per load; a stale campus-change reload that finishes late compares
+  // unequal and drops its result instead of overwriting fresher data.
+  int _loadSeq = 0;
+
   @override
   void initState() {
     super.initState();
@@ -42,6 +46,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   }
 
   Future<void> _loadCourses() async {
+    final seq = ++_loadSeq;
     try {
       setState(() {
         _isLoading = true;
@@ -50,11 +55,13 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
       // Load courses directly for current campus without affecting campus selection
       final courses = await _courseDataService.fetchCourses();
 
+      if (!mounted || seq != _loadSeq) return;
       setState(() {
         _availableCourses = courses;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted || seq != _loadSeq) return;
       setState(() {
         _isLoading = false;
       });

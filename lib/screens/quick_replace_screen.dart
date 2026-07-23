@@ -63,10 +63,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
   final HumanitiesElectivesService _huelService = HumanitiesElectivesService();
   final DisciplineElectivesService _delService = DisciplineElectivesService();
   
-  // Common semester options (simplified)
-  static final List<String> _semesterOptions = SemesterConstants.all
-      .where((s) => !s.startsWith('ST') && int.tryParse(s[0]) != null && int.parse(s[0]) <= 3)
-      .toList();
+  static final List<String> _semesterOptions = SemesterConstants.yearsOneToThree;
 
   // Section shuffle state
   Course? _shuffleCourse;

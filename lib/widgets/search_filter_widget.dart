@@ -313,6 +313,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                             firstDate: DateTime(2026, 1, 1),
                             lastDate: DateTime(2026, 12, 31),
                           );
+                          if (!mounted) return;
                           setState(() {
                             _selectedMidSemDate = date;
                           });
@@ -335,6 +336,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                             firstDate: DateTime(2026, 1, 1),
                             lastDate: DateTime(2026, 12, 31),
                           );
+                          if (!mounted) return;
                           setState(() {
                             _selectedEndSemDate = date;
                           });
@@ -359,6 +361,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                             firstDate: DateTime(2026, 1, 1),
                             lastDate: DateTime(2026, 12, 31),
                           );
+                          if (!mounted) return;
                           setState(() {
                             _selectedMidSemDate = date;
                           });
@@ -379,6 +382,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                             firstDate: DateTime(2026, 1, 1),
                             lastDate: DateTime(2026, 12, 31),
                           );
+                          if (!mounted) return;
                           setState(() {
                             _selectedEndSemDate = date;
                           });

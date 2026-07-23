@@ -62,6 +62,10 @@ class _HomeScreenState extends State<HomeScreen>
   List<Course> _filteredCourses = [];
   bool _isLoading = true;
   bool _hasUnsavedChanges = false;
+
+  // Bumped per timetable load; a stale campus-change reload that finishes late
+  // compares unequal and drops its result instead of overwriting fresher data.
+  int _loadSeq = 0;
   bool _isSaving = false;
   StreamSubscription<Campus>? _campusSubscription;
 
@@ -141,6 +145,7 @@ class _HomeScreenState extends State<HomeScreen>
       try {
         final courseDataService = CourseDataService();
         final newCourses = await courseDataService.fetchCourses();
+        if (!mounted) return;
         setState(() {
           _timetable = Timetable(
             id: _timetable!.id,
@@ -167,14 +172,17 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _loadTimetable() async {
+    final seq = ++_loadSeq;
     try {
       final timetable = await _timetableService.loadTimetable();
+      if (!mounted || seq != _loadSeq) return;
       setState(() {
         _timetable = timetable;
         _filteredCourses = timetable.availableCourses;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted || seq != _loadSeq) return;
       setState(() => _isLoading = false);
       String errorMessage = 'Error loading timetable: $e';
       if (e.toString().contains('No course data available')) {

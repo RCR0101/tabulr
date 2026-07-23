@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/bug_report.dart';
+import '../utils/datetime_utils.dart';
 import '../services/data/bug_report_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
@@ -203,12 +204,8 @@ class _BugThreadState extends State<BugThread> {
   }
 
   static String _formatDateTime(DateTime d) {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
     final hh = d.hour.toString().padLeft(2, '0');
     final mm = d.minute.toString().padLeft(2, '0');
-    return '${d.day} ${months[d.month - 1]}, $hh:$mm';
+    return '${formatDayMonth(d)}, $hh:$mm';
   }
 }

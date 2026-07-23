@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/datetime_utils.dart';
 import 'course.dart';
 
 int timeToSlotHour(TimeOfDay t) => t.hour - 7;
@@ -9,13 +10,7 @@ int slotSpanFromTimes(TimeOfDay start, TimeOfDay end) {
   return (endSlot - startSlot).clamp(1, 12);
 }
 
-String dayFullName(DayOfWeek day) {
-  const names = {
-    DayOfWeek.M: 'Monday', DayOfWeek.T: 'Tuesday', DayOfWeek.W: 'Wednesday',
-    DayOfWeek.Th: 'Thursday', DayOfWeek.F: 'Friday', DayOfWeek.S: 'Saturday',
-  };
-  return names[day] ?? day.name;
-}
+String dayFullName(DayOfWeek day) => getDayName(day);
 
 class CalendarEvent {
   final String id;

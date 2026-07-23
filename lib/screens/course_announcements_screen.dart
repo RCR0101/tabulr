@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../utils/datetime_utils.dart';
 import '../utils/web_utils.dart' as web_utils;
 import 'package:flutter/material.dart';
 import '../models/announcement_flag.dart';
@@ -327,13 +328,8 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
     return '${dt.day}/${dt.month}/${dt.year}';
   }
 
-  String _formatEventDate(DateTime dt) {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-    ];
-    return '${months[dt.month - 1]} ${dt.day}, ${dt.year}';
-  }
+  String _formatEventDate(DateTime dt) =>
+      '${monthAbbrev(dt.month)} ${dt.day}, ${dt.year}';
 
   String _formatTimeRange(TimeOfDay start, TimeOfDay? end) {
     final s = _formatTime(start);

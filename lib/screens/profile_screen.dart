@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/app_constants.dart';
 import '../models/user_profile.dart';
 import '../services/data/profile_service.dart';
 import '../services/ui/toast_service.dart';
@@ -17,9 +18,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final ProfileService _service = ProfileService();
   final TextEditingController _idController = TextEditingController();
 
-  static const List<String> _semesters = [
-    '1-1', '1-2', '2-1', '2-2', '3-1', '3-2', '4-1', '4-2', '5-1', '5-2'
-  ];
+  static final List<String> _semesters = SemesterConstants.regular;
 
   final List<String> _branches = branch_constants.branchCodeToName.keys.toList()
     ..sort();

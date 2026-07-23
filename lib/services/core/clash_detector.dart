@@ -259,15 +259,9 @@ class ClashDetector {
     return null;
   }
 
-  static const List<String> _monthNames = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
-
   /// Short exam date, e.g. "15 Dec". Shared with the UI so the toast, the
   /// warning banner and the clash list all phrase dates the same way.
-  static String formatExamDate(DateTime date) =>
-      '${date.day} ${_monthNames[date.month - 1]}';
+  static String formatExamDate(DateTime date) => formatDayMonth(date);
 
   static bool _examTimesConflict(ExamSchedule exam1, ExamSchedule exam2) {
     return exam1.date.day == exam2.date.day &&

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import '../models/course.dart';
+import '../utils/datetime_utils.dart';
 import 'common/app_tappable.dart';
 import '../models/timetable_constraints.dart';
 import '../services/core/timetable_generator_controller.dart';
@@ -936,15 +937,6 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     );
   }
 
-  static const _dayNames = {
-    DayOfWeek.M: 'Mon',
-    DayOfWeek.T: 'Tue',
-    DayOfWeek.W: 'Wed',
-    DayOfWeek.Th: 'Thu',
-    DayOfWeek.F: 'Fri',
-    DayOfWeek.S: 'Sat',
-  };
-
   Widget _buildFreeDayRanking() {
     final unranked = DayOfWeek.values
         .where((d) => !_ctrl.freeDayPreference.contains(d))
@@ -1046,7 +1038,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        _dayNames[day]!,
+                        getDayName(day, abbreviated: true),
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                       ),
                       const Spacer(),
@@ -1057,7 +1049,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                           });
                         },
                         icon: const Icon(Icons.close, size: 14),
-                        tooltip: 'Remove ${_dayNames[day]}',
+                        tooltip: 'Remove ${getDayName(day, abbreviated: true)}',
                         constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                         padding: EdgeInsets.zero,
                       ),
@@ -1074,7 +1066,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
               runSpacing: 6,
               children: unranked.map((day) {
                 return ActionChip(
-                  label: Text(_dayNames[day]!, style: const TextStyle(fontSize: 12)),
+                  label: Text(getDayName(day, abbreviated: true), style: const TextStyle(fontSize: 12)),
                   onPressed: () {
                     setState(() {
                       _ctrl.freeDayPreference.add(day);
