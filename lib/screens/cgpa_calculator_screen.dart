@@ -1866,7 +1866,18 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                     );
                   },
                   suggestionsCallback: (pattern) {
-                    return _controller.searchCourses(pattern);
+                    // A course already in this semester can't be added twice, so
+                    // don't even offer it — the onSelected guard below is only a
+                    // backstop for races.
+                    final existing = _controller
+                            .cgpaData.semesters[semesterName]?.courses
+                            .map((c) => c.courseCode)
+                            .toSet() ??
+                        const <String>{};
+                    return _controller
+                        .searchCourses(pattern)
+                        .where((c) => !existing.contains(c.courseCode))
+                        .toList();
                   },
                   itemBuilder: (context, course) {
                     return ListTile(

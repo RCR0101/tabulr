@@ -646,6 +646,26 @@ ThemeData _buildTheme(_ThemeColors c) {
   final g = c.geometry;
   final textTheme = _buildTextTheme(c.onSurface, g);
 
+  // Material 3 names far more colour roles than the palettes above set — the
+  // whole *container* family plus onSurfaceVariant / outlineVariant /
+  // surfaceTint / inversePrimary. Left unset they fall back to Material's
+  // generic baseline, which made tonal buttons, chips, badges and dividers read
+  // off-palette regardless of the selected theme. Derive them from the colours
+  // each theme already defines so every role tracks the theme — no per-palette
+  // edits, every theme fixed at once.
+  Color tintedSurface(Color accent, double alpha) =>
+      Color.alphaBlend(accent.withValues(alpha: alpha), c.surface);
+  Color darken(Color color, double amount) {
+    final hsl = HSLColor.fromColor(color);
+    return hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0)).toColor();
+  }
+
+  // Dark themes: a low-alpha accent over the dark surface reads as a tinted
+  // container, and the bright accent itself is legible on it. Light themes need
+  // a darker accent for on-container text against the pale tint.
+  final containerAlpha = isDark ? 0.22 : 0.16;
+  Color onContainer(Color accent) => isDark ? accent : darken(accent, 0.24);
+
   return base.copyWith(
     textTheme: textTheme,
     primaryColor: c.background,
@@ -669,6 +689,20 @@ ThemeData _buildTheme(_ThemeColors c) {
       surfaceContainer: c.surfaceContainer,
       surfaceContainerHigh: c.surfaceContainerHigh,
       surfaceContainerLow: c.surfaceContainerLow,
+      // Derived roles — see the block above _buildTheme's return.
+      primaryContainer: tintedSurface(c.primary, containerAlpha),
+      onPrimaryContainer: onContainer(c.primary),
+      secondaryContainer: tintedSurface(c.secondary, containerAlpha),
+      onSecondaryContainer: onContainer(c.secondary),
+      tertiaryContainer: tintedSurface(c.tertiary, containerAlpha),
+      onTertiaryContainer: onContainer(c.tertiary),
+      errorContainer: tintedSurface(c.error, containerAlpha),
+      onErrorContainer: onContainer(c.error),
+      // labelColor is the theme's muted text tone; null keeps the M3 default.
+      onSurfaceVariant: c.labelColor,
+      outlineVariant: c.outline,
+      surfaceTint: c.primary,
+      inversePrimary: c.primary,
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: c.background,

@@ -16,6 +16,28 @@ import '../widgets/app_destinations.dart';
 import '../services/ui/tutorial_service.dart';
 import '../utils/page_info_helper.dart';
 
+/// Whether an exam-seating entry covers [courseCode].
+///
+/// Combined exams are stored under one hyphen-joined code: the official seating
+/// sheet writes "CS F211/MAC F242" and the parser turns the slash into a dash
+/// for the document id (the code lives only in the id), so the client sees
+/// "CS F211-MAC F242". A timetable course therefore matches when its code equals
+/// the whole entry *or* any of the hyphen-separated parts — otherwise a student
+/// in only one of a combined pair could never import their seating.
+bool examCoversCourse(String examCourseCode, String courseCode) {
+  String norm(String s) => s.replaceAll(' ', '').toUpperCase();
+  final target = norm(courseCode);
+  if (target.isEmpty) return false;
+  final exam = norm(examCourseCode);
+  return exam == target || exam.split('-').any((part) => part == target);
+}
+
+/// Course code as it should read to a human. A combined exam is *stored* with a
+/// hyphen — the parser turns the seating sheet's slash into a dash for the
+/// document id — so restore the slash for display only:
+/// "CS F211-MAC F242" → "CS F211 / MAC F242". The stored value keeps its dash,
+/// so identity and [examCoversCourse] matching are unaffected.
+String displayExamCode(String code) => code.replaceAll('-', ' / ');
 
 class ExamSeatingScreen extends StatefulWidget {
   const ExamSeatingScreen({super.key});
@@ -95,8 +117,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
         // Find matching exams for saved course codes
         for (final courseCode in savedData.selectedCourseCodes) {
           final exam = exams.firstWhere(
-            (e) => e.courseCode.replaceAll(' ', '').toUpperCase() ==
-                courseCode.replaceAll(' ', '').toUpperCase(),
+            (e) => examCoversCourse(e.courseCode, courseCode),
             orElse: () => ExamSeating(
               courseCode: courseCode,
               courseTitle: '',
@@ -152,9 +173,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       final coursesToAdd = <ExamSeating>[];
       for (final courseCode in selectedCourses) {
         final exam = _allExams.firstWhere(
-          (e) =>
-              e.courseCode.replaceAll(' ', '').toUpperCase() ==
-              courseCode.replaceAll(' ', '').toUpperCase(),
+          (e) => examCoversCourse(e.courseCode, courseCode),
           orElse: () => ExamSeating(
             courseCode: courseCode,
             courseTitle: '',
@@ -364,13 +383,11 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       ),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).colorScheme.outlineVariant,
           ),
-        ],
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -408,7 +425,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
             itemBuilder: (context, exam) {
               return ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                title: Text(exam.courseCode, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                title: Text(displayExamCode(exam.courseCode), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                 subtitle: Text(
                   exam.courseTitle.isNotEmpty
                       ? exam.courseTitle
@@ -581,6 +598,115 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
     }
   }
 
+  static const _monthAbbr = [
+    '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  /// "24 Nov" from a parseable exam date, else null.
+  String? _examDayLabel(String raw) {
+    final dt = _parseExamDateTime(raw);
+    if (dt == null) return null;
+    return '${dt.day} ${_monthAbbr[dt.month]}';
+  }
+
+  /// The session token — AN/FN, or a start time like "9:30 AM" — else null.
+  String? _sessionLabel(String raw) {
+    final u = raw.toUpperCase();
+    if (RegExp(r'\bAN\b').hasMatch(u)) return 'AN';
+    if (RegExp(r'\bFN\b').hasMatch(u)) return 'FN';
+    final t = RegExp(r'\d{1,2}:\d{2}\s*(AM|PM)', caseSensitive: false)
+        .firstMatch(raw);
+    return t?.group(0)?.replaceAll(RegExp(r'\s+'), ' ').toUpperCase();
+  }
+
+  /// Days-until label; null once the exam is in the past or unparseable.
+  ({String text, bool urgent})? _countdown(String raw) {
+    final dt = _parseExamDateTime(raw);
+    if (dt == null) return null;
+    final now = DateTime.now();
+    final days = DateTime(dt.year, dt.month, dt.day)
+        .difference(DateTime(now.year, now.month, now.day))
+        .inDays;
+    if (days < 0) return null;
+    if (days == 0) return (text: 'today', urgent: true);
+    if (days == 1) return (text: 'tomorrow', urgent: true);
+    return (text: 'in $days days', urgent: days <= 3);
+  }
+
+  /// A small rounded pill used for the date / session / countdown metadata.
+  Widget _metaChip(IconData? icon, String label, {Color? fg, Color? bg}) {
+    final scheme = Theme.of(context).colorScheme;
+    final foreground = fg ?? scheme.onSurfaceVariant;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg ?? scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 13, color: foreground),
+            const SizedBox(width: 5),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: foreground,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The room-lookup result strip (found / not-found), tinted by [color].
+  Widget _resultBox({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: color,
+                      ),
+                ),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: color.withValues(alpha: 0.9),
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSelectedCourses() {
     if (_selectedCourses.isEmpty) {
       return const EmptyStateWidget(
@@ -608,152 +734,116 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
         final room = _searchResults[course.courseCode];
         final hasSearched = _searchResults.containsKey(course.courseCode);
 
-        return Card(
+        final scheme = Theme.of(context).colorScheme;
+        final dayLabel = _examDayLabel(course.examDate);
+        final session = _sessionLabel(course.examDate);
+        final countdown = _countdown(course.examDate);
+
+        return Container(
           margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: scheme.outlineVariant),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            course.courseCode,
+                            displayExamCode(course.courseCode),
                             style: Theme.of(context)
                                 .textTheme
                                 .titleMedium
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           if (course.courseTitle.isNotEmpty)
-                            Text(
-                              course.courseTitle,
-                              style: Theme.of(context).textTheme.bodyMedium,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          if (course.examDate.isNotEmpty)
                             Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.event,
-                                    size: 16,
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    course.examDate,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .primary,
-                                        ),
-                                  ),
-                                ],
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                course.courseTitle,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: scheme.onSurfaceVariant),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                         ],
                       ),
                     ),
+                    // Subtle, compact remove affordance.
                     IconButton(
-                      icon: const Icon(Icons.close),
+                      icon: const Icon(Icons.close, size: 20),
+                      color: scheme.onSurfaceVariant,
+                      visualDensity: VisualDensity.compact,
                       onPressed: () => _removeCourse(course),
                       tooltip: 'Remove course',
                     ),
                   ],
                 ),
 
-                // Show room result if searched
-                if (hasSearched) ...[
-                  const Divider(height: 24),
-                  if (room != null)
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppDesign.success(context).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: AppDesign.success(context).withValues(alpha: 0.3),
+                // Date / session / countdown chips (fall back to the raw string
+                // when the date can't be parsed into a day + session).
+                if (dayLabel != null || session != null) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      if (dayLabel != null)
+                        _metaChip(Icons.calendar_today_outlined, dayLabel),
+                      if (session != null)
+                        _metaChip(
+                          null,
+                          session,
+                          fg: scheme.onPrimaryContainer,
+                          bg: scheme.primaryContainer,
                         ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.check_circle,
-                            color: AppDesign.success(context),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Room: ${room.roomNo}',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: AppDesign.success(context),
-                                      ),
-                                ),
-                                Text(
-                                  'ID Range: ${room.idFrom} - ${room.idTo}',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                        color: AppDesign.success(context),
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                      if (countdown != null)
+                        _metaChip(
+                          Icons.schedule,
+                          countdown.text,
+                          fg: countdown.urgent
+                              ? AppDesign.warning(context)
+                              : scheme.onSurfaceVariant,
+                          bg: countdown.urgent
+                              ? AppDesign.warning(context).withValues(alpha: 0.12)
+                              : scheme.surfaceContainerHighest,
+                        ),
+                    ],
+                  ),
+                ] else if (course.examDate.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _metaChip(Icons.event, course.examDate),
+                ],
+
+                // Room result once the user has searched their ID.
+                if (hasSearched) ...[
+                  const SizedBox(height: 14),
+                  if (room != null)
+                    _resultBox(
+                      icon: Icons.check_circle,
+                      color: AppDesign.success(context),
+                      title: 'Room ${room.roomNo}',
+                      subtitle: 'Seats ${room.idFrom} – ${room.idTo}',
                     )
                   else
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppDesign.warning(context).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: AppDesign.warning(context).withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.warning_amber,
-                            color: AppDesign.warning(context),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'No room found for your ID in this course',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    color: AppDesign.warning(context),
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    _resultBox(
+                      icon: Icons.warning_amber_rounded,
+                      color: AppDesign.warning(context),
+                      title: 'No room found',
+                      subtitle: 'Your ID isn\'t in this course\'s seating list',
                     ),
                 ],
               ],
@@ -805,9 +895,7 @@ class _TimetableCourseSelectionDialogState
 
     // Filter to only courses that have exam seating data
     return courseCodes.where((code) {
-      return widget.allExams.any((exam) =>
-          exam.courseCode.replaceAll(' ', '').toUpperCase() ==
-          code.replaceAll(' ', '').toUpperCase());
+      return widget.allExams.any((exam) => examCoversCourse(exam.courseCode, code));
     }).toList();
   }
 

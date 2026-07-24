@@ -95,60 +95,32 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
 
 
   Widget _buildSearchBar() {
-    return Card(
-      margin: const EdgeInsets.all(16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  'Search Professors',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '(${_professorService.professors.length})',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                  ),
-                ),
-              ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Semantics(
+              label: 'Search Professors',
+              textField: true,
+              child: AppSearchField(
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                hint: 'Search by name or chamber (e.g. "John" or "A101")',
+                onChanged: (value) => setState(() {}),
+                onSubmitted: (value) => _searchFocusNode.unfocus(),
+                onClear: _clearSearch,
+              ),
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: Semantics(
-                    label: 'Search Professors',
-                    textField: true,
-                    child: AppSearchField(
-                      controller: _searchController,
-                      focusNode: _searchFocusNode,
-                      hint: 'Search by professor name or chamber (e.g., "John" or "A101")',
-                      onChanged: (value) => setState(() {}),
-                      onSubmitted: (value) => _searchFocusNode.unfocus(),
-                      onClear: _clearSearch,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: _showSortDialog,
-                  icon: const Icon(Icons.sort),
-                  label: const Text('Sort'),
-                ),
-              ],
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 12),
+          FilledButton.tonalIcon(
+            onPressed: _showSortDialog,
+            icon: const Icon(Icons.sort, size: 18),
+            label: const Text('Sort'),
+            style: FilledButton.styleFrom(minimumSize: const Size(0, 50)),
+          ),
+        ],
       ),
     );
   }
@@ -266,133 +238,155 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
 
   Widget _buildProfessorList() {
     final professors = _professorService.professors;
+    final count = professors.length;
 
-    return Card(
-      margin: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Text(
-                  'Results',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '(${professors.length})',
-                  style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
-                ),
-              ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+          child: Text(
+            '$count professor${count == 1 ? '' : 's'}',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-          const Divider(height: 1),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _loadProfessors,
-              child: ListView.separated(
-                scrollCacheExtent: ScrollCacheExtent.pixels(800),
-                padding: const EdgeInsets.all(16),
-                itemCount: professors.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  return _buildProfessorCard(professors[index]);
-                },
-              ),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _loadProfessors,
+            child: ListView.separated(
+              scrollCacheExtent: ScrollCacheExtent.pixels(800),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              itemCount: count,
+              separatorBuilder: (context, index) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                return _buildProfessorCard(professors[index]);
+              },
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfessorCard(Professor professor) {
+    final scheme = Theme.of(context).colorScheme;
+    final isOccupied = professor.isCurrentlyOccupied();
+    final currentClass = professor.getCurrentClass();
+    final hasSchedule = professor.schedule.isNotEmpty;
+    final chamberUnavailable = professor.chamber == 'Unavailable';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        border: Border.all(color: scheme.outlineVariant),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        // The whole row opens the schedule; only meaningful when there is one.
+        onTap: hasSchedule ? () => _showScheduleDialog(professor) : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      professor.name,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        _chamberChip(professor.chamber, chamberUnavailable),
+                        if (hasSchedule) _statusChip(isOccupied),
+                      ],
+                    ),
+                    if (isOccupied && currentClass != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'In ${currentClass.courseCode} · ${currentClass.room}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: scheme.error,
+                            ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (hasSchedule)
+                Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The chamber (office) location — the primary reason to visit this screen —
+  /// as a prominent room chip.
+  Widget _chamberChip(String chamber, bool unavailable) {
+    final scheme = Theme.of(context).colorScheme;
+    final fg = unavailable ? scheme.error : scheme.onSurfaceVariant;
+    final bg = unavailable
+        ? scheme.error.withValues(alpha: 0.1)
+        : scheme.surfaceContainerHighest;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.meeting_room_outlined, size: 14, color: fg),
+          const SizedBox(width: 5),
+          Text(
+            chamber,
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: fg),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildProfessorCard(Professor professor) {
-    final isOccupied = professor.isCurrentlyOccupied();
-    final currentClass = professor.getCurrentClass();
-    final hasSchedule = professor.schedule.isNotEmpty;
-
+  /// Free (green) / Occupied (red) availability, with a leading dot.
+  Widget _statusChip(bool isOccupied) {
+    final color =
+        isOccupied ? Theme.of(context).colorScheme.error : AppDesign.success(context);
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-        ),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        title: Text(
-          professor.name,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              professor.chamber,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: professor.chamber == 'Unavailable'
-                        ? Theme.of(context).colorScheme.error
-                        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                  ),
-            ),
-            if (isOccupied && currentClass != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                'In: ${currentClass.courseCode} @ ${currentClass.room}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
-                      fontStyle: FontStyle.italic,
-                    ),
-              ),
-            ],
-          ],
-        ),
-        trailing: hasSchedule
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildStatusBadge(isOccupied, currentClass),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: Icon(
-                      Icons.info_outline,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    tooltip: 'View schedule',
-                    onPressed: () => _showScheduleDialog(professor),
-                  ),
-                ],
-              )
-            : null,
-      ),
-    );
-  }
-
-  Widget _buildStatusBadge(bool isOccupied, ProfessorScheduleEntry? currentClass) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: isOccupied
-            ? Theme.of(context).colorScheme.error.withValues(alpha: 0.1)
-            : Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isOccupied
-              ? Theme.of(context).colorScheme.error.withValues(alpha: 0.3)
-              : Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-        ),
-      ),
-      child: Text(
-        isOccupied ? 'Occupied' : 'Free',
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: isOccupied
-              ? Theme.of(context).colorScheme.error
-              : Theme.of(context).colorScheme.primary,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            isOccupied ? 'Occupied' : 'Free',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color),
+          ),
+        ],
       ),
     );
   }
