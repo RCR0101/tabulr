@@ -5,11 +5,21 @@ import '../utils/datetime_utils.dart';
 import 'common/app_tappable.dart';
 import '../models/timetable_constraints.dart';
 import '../services/core/timetable_generator_controller.dart';
+import '../services/core/timetable_ranker.dart';
 import '../services/core/clash_detector.dart';
 import '../services/ui/toast_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/data/campus_service.dart';
-import '../services/data/user_settings_service.dart';
+import '../services/data/auto_load_cdc_service.dart';
+import '../services/data/academic_record_service.dart';
+import '../repositories/prerequisites_repository.dart';
+import '../models/academic_record.dart';
+import '../models/prerequisite.dart';
+import '../models/prerequisite_status.dart';
+import 'auto_load_cdc_dialog.dart';
+import '../models/timetable.dart' as tt_model;
+import '../screens/timetable_comparison_screen.dart';
+import '../utils/page_transitions.dart';
 import '../utils/design_constants.dart';
 import 'common/app_dialog.dart';
 import 'common/app_button.dart';
@@ -18,11 +28,10 @@ import 'generator/time_avoidance_dialog.dart';
 import 'generator/lab_avoidance_dialog.dart';
 import 'generator/instructor_avoidance_dialog.dart';
 import 'generator/instructor_ranking_dialog.dart';
-import 'generator/weight_entry.dart';
 
 class TimetableGeneratorWidget extends StatefulWidget {
   final List<Course> availableCourses;
-  final Function(List<ConstraintSelectedSection>) onTimetableSelected;
+  final Function(GeneratedTimetable) onTimetableSelected;
 
   const TimetableGeneratorWidget({
     super.key,
@@ -37,16 +46,43 @@ class TimetableGeneratorWidget extends StatefulWidget {
 class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     with SingleTickerProviderStateMixin {
   final TimetableGeneratorController _ctrl = TimetableGeneratorController();
-  bool _advancedExpanded = false;
+  bool _isAutoLoadingCDCs = false;
+
+  /// Indices into `_ctrl.rankedTimetables` currently picked for comparison.
+  final Set<int> _compareSelection = {};
   TabController? _tabController;
+
+  // Loaded once for the prereq warning: the student's cleared courses and the
+  // prereq requirements keyed by course code. Both are best-effort — if either
+  // is unavailable the warning simply stays quiet.
+  AcademicRecord _record = AcademicRecord.empty;
+  final Map<String, CoursePrerequisites> _prereqByCode = {};
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _ctrl.scoringWeights = UserSettingsService().scoringWeights;
-    _ctrl.savedScoringWeights = _ctrl.scoringWeights;
     _ctrl.addListener(_onControllerChanged);
+    _loadPrereqData();
+  }
+
+  Future<void> _loadPrereqData() async {
+    try {
+      final record = await AcademicRecordService().load();
+      // No CGPA record means every verdict is "unknown", so there's nothing to
+      // warn about — skip the prereq fetch entirely.
+      if (!record.isNotEmpty) return;
+      final withPrereqs = await PrerequisitesRepository().getCoursesWithPrerequisites();
+      if (!mounted) return;
+      setState(() {
+        _record = record;
+        for (final c in withPrereqs) {
+          _prereqByCode[c.courseCode] = c;
+        }
+      });
+    } catch (_) {
+      // Prereq warnings are advisory; a load failure must not break generation.
+    }
   }
 
   void _onControllerChanged() {
@@ -99,7 +135,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                                 const SizedBox(height: 16),
                                 _buildConstraintsPanel(),
                                 const SizedBox(height: 16),
-                                _buildAdvancedWeightsPanel(),
+                                _buildImportancePanel(),
                               ],
                             ),
                           ),
@@ -139,7 +175,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                       const SizedBox(height: 16),
                       _buildConstraintsPanel(),
                       const SizedBox(height: 16),
-                      _buildAdvancedWeightsPanel(),
+                      _buildImportancePanel(),
                     ],
                   ),
                 ),
@@ -199,7 +235,13 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           ),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: _buildCourseSelection(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildCourseSelection(),
+                _buildPrereqWarning(),
+              ],
+            ),
           ),
         ],
       ),
@@ -213,7 +255,13 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
-      child: Column(
+      // The panel's card colour would otherwise hide the ink/background of the
+      // CheckboxListTiles inside it. A transparent Material puts those effects
+      // back on top of the card, clipped to the same corners.
+      child: Material(
+        type: MaterialType.transparency,
+        borderRadius: BorderRadius.circular(12),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
@@ -250,6 +298,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
             child: _buildConstraints(),
           ),
         ],
+        ),
       ),
     );
   }
@@ -291,7 +340,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                   ),
                 ),
                 const Spacer(),
-                if (_ctrl.generatedTimetables.isNotEmpty)
+                if (_ctrl.rankedTimetables.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
@@ -299,7 +348,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '${_ctrl.generatedTimetables.length} found',
+                      '${_ctrl.rankedTimetables.length} found',
                       style: TextStyle(
                         fontSize: 12,
                         color: Theme.of(context).colorScheme.primary,
@@ -311,7 +360,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
             ),
           ),
           Expanded(
-            child: _ctrl.generatedTimetables.isEmpty
+            child: _ctrl.rankedTimetables.isEmpty
                 ? _buildEmptyResults()
                 : _buildGeneratedTimetables(),
           ),
@@ -322,6 +371,45 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
 
   Widget _buildEmptyResults() {
     final scheme = Theme.of(context).colorScheme;
+
+    // Generated, but the advanced hard constraints filtered everything out.
+    final result = _ctrl.rankingResult;
+    if (!_ctrl.isGenerating && result != null && result.ranked.isEmpty && result.unmetIntents.isNotEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.lock_outline, color: AppDesign.warning(context)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Your required constraints left no options',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: scheme.onSurface),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ...result.unmetIntents.map((n) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text('• $n', style: TextStyle(fontSize: 13, color: scheme.onSurface.withValues(alpha: 0.85))),
+              )),
+              const SizedBox(height: 12),
+              Text(
+                'Turn off "Require this" on a constraint to fall back to best-effort ranking.',
+                style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.6)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -369,6 +457,53 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     );
   }
 
+  /// Pulls the CDCs for the student's degree+year (via the shared dialog) and
+  /// drops the course codes straight into the mandatory list — the generator
+  /// picks the actual sections. Codes already sitting in the optional list are
+  /// promoted to mandatory rather than duplicated.
+  Future<void> _autoAddCDCs() async {
+    final result = await showDialog<AutoLoadCDCResult>(
+      context: context,
+      builder: (context) => const AutoLoadCDCDialog(),
+    );
+    if (result == null || !mounted) return;
+
+    setState(() => _isAutoLoadingCDCs = true);
+    try {
+      final sections = await AutoLoadCDCService().loadCDCsForDegree(
+        primaryBranch: result.primaryBranch,
+        secondaryBranch: result.secondaryBranch,
+        semester: result.semester,
+        availableCourses: widget.availableCourses,
+      );
+      if (!mounted) return;
+
+      final codes = sections.map((s) => s.courseCode).toSet();
+      var added = 0;
+      setState(() {
+        for (final code in codes) {
+          _ctrl.optionalCourses.remove(code);
+          if (!_ctrl.mandatoryCourses.contains(code)) {
+            _ctrl.mandatoryCourses.add(code);
+            added++;
+          }
+        }
+      });
+
+      if (added > 0) {
+        ToastService.showSuccess('Added $added CDC${added > 1 ? 's' : ''} to mandatory courses');
+      } else if (codes.isNotEmpty) {
+        ToastService.showInfo('All CDCs for that branch and year are already added');
+      } else {
+        ToastService.showInfo('No CDC courses found for the selected branch and year');
+      }
+    } catch (e) {
+      if (mounted) ToastService.showError('Could not auto-add CDCs: $e');
+    } finally {
+      if (mounted) setState(() => _isAutoLoadingCDCs = false);
+    }
+  }
+
   Widget _buildCourseSelection() {
     final mandatoryCredits = _ctrl.mandatoryCourses.fold(0.0, (sum, code) {
       final c = widget.availableCourses.firstWhere((c) => c.courseCode == code,
@@ -384,7 +519,21 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Mandatory Courses (${mandatoryCredits.toStringAsFixed(1)} credits):', style: const TextStyle(fontWeight: FontWeight.bold)),
+        Row(
+          children: [
+            Expanded(
+              child: Text('Mandatory Courses (${mandatoryCredits.toStringAsFixed(1)} credits):', style: const TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            TextButton.icon(
+              onPressed: _isAutoLoadingCDCs ? null : _autoAddCDCs,
+              icon: _isAutoLoadingCDCs
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.playlist_add_check, size: 18),
+              label: const Text('Auto-add CDCs'),
+              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+            ),
+          ],
+        ),
         const SizedBox(height: 4),
         Text('Must be included in every timetable', style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
         const SizedBox(height: 8),
@@ -397,9 +546,129 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         Text('Generator will fit as many as possible within credit limit', style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
         const SizedBox(height: 8),
         _buildCourseSearchField(_ctrl.optionalCourses, _ctrl.mandatoryCourses),
+        _buildOptionalTargetSelector(),
         const SizedBox(height: 8),
         _buildOptionalCoursesRanking(),
       ],
+    );
+  }
+
+  /// "Any N of M electives" — cap how many optionals the generator includes.
+  /// Only meaningful once there are at least two optionals to choose between.
+  Widget _buildOptionalTargetSelector() {
+    final m = _ctrl.optionalCourses.length;
+    if (m < 2) return const SizedBox.shrink();
+
+    // A stale target (e.g. optionals removed) shouldn't exceed what's available.
+    if (_ctrl.optionalTarget != null && _ctrl.optionalTarget! > m) {
+      _ctrl.optionalTarget = m;
+    }
+    final target = _ctrl.optionalTarget;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              target == null ? 'Include: as many as fit' : 'Include: any $target of $m',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            ),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            tooltip: 'Fewer',
+            onPressed: () => setState(() {
+              // as-many (null) → one below M, then down to 1, no lower.
+              final current = _ctrl.optionalTarget ?? m;
+              _ctrl.optionalTarget = (current - 1).clamp(1, m);
+            }),
+            icon: const Icon(Icons.remove_circle_outline, size: 20),
+          ),
+          Text(
+            target?.toString() ?? 'All',
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+          ),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            tooltip: 'More',
+            onPressed: () => setState(() {
+              // Stepping up past M-1 means "all", represented as null.
+              final current = _ctrl.optionalTarget ?? m;
+              final next = current + 1;
+              _ctrl.optionalTarget = next >= m ? null : next;
+            }),
+            icon: const Icon(Icons.add_circle_outline, size: 20),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Advisory banner: for each selected course whose `pre` requirements the
+  /// student's record shows as not-yet-cleared, list what's still missing.
+  /// Never blocks generation — some students clear things off-record.
+  Widget _buildPrereqWarning() {
+    if (_prereqByCode.isEmpty) return const SizedBox.shrink();
+
+    final warnings = <String, List<String>>{};
+    for (final code in [..._ctrl.mandatoryCourses, ..._ctrl.optionalCourses]) {
+      final prereqs = _prereqByCode[code];
+      if (prereqs == null) continue;
+      final status = PrerequisiteStatus.of(prereqs, _record);
+      if (status.isMet == false) {
+        warnings[code] = status.outstanding.map((g) => g.label).toList();
+      }
+    }
+
+    if (warnings.isEmpty) return const SizedBox.shrink();
+
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppDesign.warning(context).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppDesign.warning(context).withValues(alpha: 0.4)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.rule, size: 18, color: AppDesign.warning(context)),
+                const SizedBox(width: 6),
+                Text(
+                  'Prerequisite check',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppDesign.warning(context)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              "Your CGPA record doesn't show these as cleared yet:",
+              style: TextStyle(fontSize: 11, color: scheme.onSurface.withValues(alpha: 0.7)),
+            ),
+            const SizedBox(height: 6),
+            ...warnings.entries.map((e) => Padding(
+              padding: const EdgeInsets.only(bottom: 3),
+              child: RichText(
+                text: TextSpan(
+                  style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.9)),
+                  children: [
+                    TextSpan(text: '${e.key} ', style: const TextStyle(fontWeight: FontWeight.w600)),
+                    TextSpan(
+                      text: e.value.isEmpty ? '— prerequisites not met' : '— needs ${e.value.join(", ")}',
+                    ),
+                  ],
+                ),
+              ),
+            )),
+          ],
+        ),
+      ),
     );
   }
 
@@ -784,7 +1053,18 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
             )),
             _buildCheckConstraint('Avoid back-to-back classes', _ctrl.avoidBackToBack, (v) => setState(() { _ctrl.avoidBackToBack = v ?? false; })),
             _buildCheckConstraint('Minimize gaps between classes', _ctrl.minimizeGaps, (v) => setState(() { _ctrl.minimizeGaps = v ?? false; })),
-            _buildCheckConstraint('Protect lunch break (12–2 PM)', _ctrl.protectLunchBreak, (v) => setState(() { _ctrl.protectLunchBreak = v ?? false; })),
+            _buildCheckConstraint('Protect lunch break (12–2 PM)', _ctrl.protectLunchBreak, (v) => setState(() {
+              _ctrl.protectLunchBreak = v ?? false;
+              if (!_ctrl.protectLunchBreak) _ctrl.requireLunchFree = false;
+            })),
+            if (_ctrl.protectLunchBreak)
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: _buildRequireToggle(
+                  value: _ctrl.requireLunchFree,
+                  onChanged: (v) => setState(() => _ctrl.requireLunchFree = v),
+                ),
+              ),
             _buildRowConstraint('Prefer classes in', Container(
               height: 34,
               padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -806,6 +1086,8 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                 ),
               ),
             )),
+            const SizedBox(height: 8),
+            _buildClassHoursWindow(),
             const SizedBox(height: 12),
             _buildFreeDayRanking(),
             const SizedBox(height: 12),
@@ -913,6 +1195,119 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     );
   }
 
+  /// Short clock label for an hour slot (1 = 8 AM … 12 = 7 PM).
+  String _slotClockLabel(int slot) {
+    final hour24 = slot + 7; // slot 1 → 08:00
+    final period = hour24 >= 12 ? 'PM' : 'AM';
+    final hour12 = hour24 > 12 ? hour24 - 12 : hour24;
+    return '$hour12 $period';
+  }
+
+  /// Soft "no classes before X / after Y" window. A full 1–12 range means no
+  /// bound (nulls on the controller); narrowing either end sets that bound.
+  Widget _buildClassHoursWindow() {
+    final start = (_ctrl.earliestStartSlot ?? 1).toDouble();
+    final end = (_ctrl.latestEndSlot ?? 12).toDouble();
+    final isBounded = _ctrl.earliestStartSlot != null || _ctrl.latestEndSlot != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text('Class hours window', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+            const Spacer(),
+            Text(
+              isBounded
+                  ? '${_slotClockLabel(start.round())} – ${_slotClockLabel(end.round())}'
+                  : 'Any time',
+              style: TextStyle(
+                fontSize: 12,
+                color: isBounded ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (isBounded)
+              InkResponse(
+                onTap: () => setState(() {
+                  _ctrl.earliestStartSlot = null;
+                  _ctrl.latestEndSlot = null;
+                  _ctrl.requireHoursWindow = false;
+                }),
+                radius: 16,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 6),
+                  child: Icon(Icons.close, size: 16, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+                ),
+              ),
+          ],
+        ),
+        RangeSlider(
+          min: 1,
+          max: 12,
+          divisions: 11,
+          values: RangeValues(start, end),
+          labels: RangeLabels(_slotClockLabel(start.round()), _slotClockLabel(end.round())),
+          onChanged: (values) {
+            setState(() {
+              final s = values.start.round();
+              final e = values.end.round();
+              _ctrl.earliestStartSlot = s <= 1 ? null : s;
+              _ctrl.latestEndSlot = e >= 12 ? null : e;
+              if (_ctrl.earliestStartSlot == null && _ctrl.latestEndSlot == null) {
+                _ctrl.requireHoursWindow = false;
+              }
+            });
+          },
+        ),
+        Text(
+          'Classes outside this window are penalised, not blocked.',
+          style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55)),
+        ),
+        if (isBounded)
+          _buildRequireToggle(
+            value: _ctrl.requireHoursWindow,
+            onChanged: (v) => setState(() => _ctrl.requireHoursWindow = v),
+          ),
+      ],
+    );
+  }
+
+  /// Advanced opt-in that hardens a soft intent into a filter. Deliberately
+  /// blunt about the consequence: a required constraint can return nothing.
+  Widget _buildRequireToggle({required bool value, required ValueChanged<bool> onChanged}) {
+    final color = value ? AppDesign.warning(context) : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
+    return InkWell(
+      onTap: () => onChanged(!value),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          children: [
+            Icon(Icons.lock_outline, size: 15, color: color),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                value ? 'Required — may return no timetables' : 'Require this (hard filter)',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: value ? FontWeight.w600 : FontWeight.normal,
+                  color: color,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Switch(
+              value: value,
+              onChanged: onChanged,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildCheckConstraint(String label, bool value, ValueChanged<bool?> onChanged) {
     return CheckboxListTile(
       title: Text(label, style: const TextStyle(fontSize: 13)),
@@ -961,6 +1356,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                   onPressed: () {
                     setState(() {
                       _ctrl.freeDayPreference.clear();
+                      _ctrl.requireFreeDays = false;
                     });
                   },
                   style: TextButton.styleFrom(
@@ -1075,6 +1471,11 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                   visualDensity: VisualDensity.compact,
                 );
               }).toList(),
+            ),
+          if (_ctrl.freeDayPreference.isNotEmpty)
+            _buildRequireToggle(
+              value: _ctrl.requireFreeDays,
+              onChanged: (v) => setState(() => _ctrl.requireFreeDays = v),
             ),
         ],
       ),
@@ -1532,37 +1933,74 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
 
   String _formatAvoidTimeHours(List<int> hours) {
     if (hours.isEmpty) return '';
-    if (hours.length == 1) {
-      return TimeSlotInfo.getHourSlotName(hours.first);
-    }
 
-    // Sort hours and format as range
-    final sortedHours = [...hours]..sort();
-    return TimeSlotInfo.getHourRangeName(sortedHours);
+    // The picked slots can be disjoint (e.g. 2 and 8), so group them into
+    // contiguous runs and format each run — a plain first→last range would
+    // misrepresent {2, 8} as the whole 9 AM–3:50 PM block.
+    final sorted = [...hours]..sort();
+    final runs = <List<int>>[];
+    for (final h in sorted) {
+      if (runs.isNotEmpty && h == runs.last.last + 1) {
+        runs.last.add(h);
+      } else {
+        runs.add([h]);
+      }
+    }
+    return runs
+        .map((run) => run.length == 1
+            ? TimeSlotInfo.getHourSlotName(run.first)
+            : TimeSlotInfo.getHourRangeName(run))
+        .join(', ');
   }
 
   Future<void> _addTimeAvoidance() async {
+    // Existing avoided hours per day → the dialog locks them, and we merge into
+    // the same-day entry so there's one clean chip per day.
+    final existing = <DayOfWeek, Set<int>>{};
+    for (final a in _ctrl.avoidTimes) {
+      existing.putIfAbsent(a.day, () => <int>{}).addAll(a.hours);
+    }
+
     final result = await showDialog<TimeAvoidance>(
       context: context,
-      builder: (context) => const TimeAvoidanceDialog(),
+      builder: (context) => TimeAvoidanceDialog(disabledByDay: existing),
     );
 
     if (result != null && mounted) {
       setState(() {
-        _ctrl.avoidTimes.add(result);
+        final idx = _ctrl.avoidTimes.indexWhere((a) => a.day == result.day);
+        if (idx >= 0) {
+          final merged = {..._ctrl.avoidTimes[idx].hours, ...result.hours}.toList()..sort();
+          _ctrl.avoidTimes[idx] = TimeAvoidance(day: result.day, hours: merged);
+        } else {
+          _ctrl.avoidTimes.add(result);
+        }
       });
     }
   }
 
   Future<void> _addLabAvoidance() async {
+    // Existing avoided lab hours per day → the dialog locks them, and we merge
+    // into the same-day entry so there's one clean chip per day.
+    final existing = <DayOfWeek, Set<int>>{};
+    for (final a in _ctrl.avoidLabs) {
+      existing.putIfAbsent(a.day, () => <int>{}).addAll(a.hours);
+    }
+
     final result = await showDialog<LabAvoidance>(
       context: context,
-      builder: (context) => const LabAvoidanceDialog(),
+      builder: (context) => LabAvoidanceDialog(disabledByDay: existing),
     );
 
     if (result != null && mounted) {
       setState(() {
-        _ctrl.avoidLabs.add(result);
+        final idx = _ctrl.avoidLabs.indexWhere((a) => a.day == result.day);
+        if (idx >= 0) {
+          final merged = {..._ctrl.avoidLabs[idx].hours, ...result.hours}.toList()..sort();
+          _ctrl.avoidLabs[idx] = LabAvoidance(day: result.day, hours: merged);
+        } else {
+          _ctrl.avoidLabs.add(result);
+        }
       });
     }
   }
@@ -1710,225 +2148,114 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     }
   }
 
-  void _setScoringWeights(ScoringWeights weights) {
-    setState(() { _ctrl.scoringWeights = weights; });
-  }
-
-  void _saveScoringWeights() {
-    setState(() { _ctrl.savedScoringWeights = _ctrl.scoringWeights; });
-    UserSettingsService().updateScoringWeights(_ctrl.scoringWeights);
-  }
-
-  Widget _buildAdvancedWeightsPanel() {
-    final scheme = Theme.of(context).colorScheme;
-    final isDefault = _ctrl.scoringWeights == const ScoringWeights();
-
+  /// Ranker-native customisation: how much each intent axis counts when
+  /// ordering results (feeds the TOPSIS weights). Replaces the old per-penalty
+  /// weight sliders with five intuitive Low/Normal/High controls.
+  Widget _buildImportancePanel() {
+    final anyChanged = _ctrl.axisImportance.values.any((v) => v != AxisImportance.normal);
     return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.outline),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          InkWell(
-            onTap: () => setState(() { _advancedExpanded = !_advancedExpanded; }),
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: scheme.surface,
-                borderRadius: _advancedExpanded
-                    ? const BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12))
-                    : BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.science, color: scheme.primary, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Advanced Scoring',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: scheme.onSurface),
+          Row(
+            children: [
+              Icon(Icons.tune, size: 18, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              const Text('Ranking importance', style: TextStyle(fontWeight: FontWeight.w600)),
+              const Spacer(),
+              if (anyChanged)
+                TextButton(
+                  onPressed: () => setState(() => _ctrl.axisImportance.clear()),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  if (!isDefault) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: scheme.primary.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text('Custom', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: scheme.primary)),
-                    ),
-                  ],
-                  const Spacer(),
-                  if (_advancedExpanded) ...[
-                    if (_ctrl.scoringWeights != _ctrl.savedScoringWeights)
-                      InkWell(
-                        onTap: _saveScoringWeights,
-                        borderRadius: BorderRadius.circular(4),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          child: Text('Save', style: TextStyle(fontSize: 12, color: AppDesign.success(context), fontWeight: FontWeight.w600)),
-                        ),
-                      ),
-                    if (!isDefault)
-                      InkWell(
-                        onTap: () { _setScoringWeights(const ScoringWeights()); _saveScoringWeights(); },
-                        borderRadius: BorderRadius.circular(4),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          child: Text('Reset', style: TextStyle(fontSize: 12, color: scheme.primary, fontWeight: FontWeight.w500)),
-                        ),
-                      ),
-                  ],
-                  Icon(
-                    _advancedExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: scheme.onSurface.withValues(alpha: 0.5),
-                  ),
-                ],
-              ),
-            ),
+                  child: const Text('Reset', style: TextStyle(fontSize: 12)),
+                ),
+            ],
           ),
-          if (_advancedExpanded)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Adjust how much each factor affects timetable ranking. Higher values = stronger effect on score.',
-                    style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.6)),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildWeightSection(
-                    title: 'Penalties',
-                    subtitle: 'Negative factors that lower score',
-                    color: AppDesign.danger(context),
-                    icon: Icons.remove_circle_outline,
-                    weights: [
-                      WeightEntry('Max hours/day exceeded', _ctrl.scoringWeights.maxHoursPerDayPenalty, 15, 0, 25,
-                        (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(maxHoursPerDayPenalty: v))),
-                      WeightEntry('Avoid time conflicts', _ctrl.scoringWeights.avoidTimesPenalty, 15, 0, 25,
-                        (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(avoidTimesPenalty: v))),
-                      WeightEntry('Lab time conflicts', _ctrl.scoringWeights.avoidLabsPenalty, 10, 0, 20,
-                        (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(avoidLabsPenalty: v))),
-                      WeightEntry('Avoided instructors', _ctrl.scoringWeights.avoidedInstructorsPenalty, 15, 0, 25,
-                        (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(avoidedInstructorsPenalty: v))),
-                      WeightEntry('Back-to-back classes', _ctrl.scoringWeights.backToBackPenalty, 8, 0, 15,
-                        (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(backToBackPenalty: v))),
-                      WeightEntry('Gaps between classes', _ctrl.scoringWeights.gapsPenalty, 8, 0, 15,
-                        (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(gapsPenalty: v))),
-                      WeightEntry('Lunch break violation', _ctrl.scoringWeights.lunchBreakPenalty, 5, 0, 10,
-                        (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(lunchBreakPenalty: v))),
-                      WeightEntry('Time-of-day mismatch', _ctrl.scoringWeights.timeOfDayPenalty, 7, 0, 15,
-                        (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(timeOfDayPenalty: v))),
-                      WeightEntry('Exam spread (close exams)', _ctrl.scoringWeights.examSpreadPenalty, 7, 0, 15,
-                        (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(examSpreadPenalty: v))),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _buildWeightSection(
-                    title: 'Bonuses',
-                    subtitle: 'Positive factors that raise score',
-                    color: AppDesign.success(context),
-                    icon: Icons.add_circle_outline,
-                    weights: [
-                      WeightEntry('Preferred instructors', _ctrl.scoringWeights.preferredInstructorsBonus, 2, 0, 5,
-                        (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(preferredInstructorsBonus: v))),
-                      WeightEntry('Instructor rankings', _ctrl.scoringWeights.instructorRankingsBonus, 2, 0, 5,
-                        (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(instructorRankingsBonus: v))),
-                      WeightEntry('Free day / compact', _ctrl.scoringWeights.freeDayBonus, 3, 0, 8,
-                        (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(freeDayBonus: v))),
-                      WeightEntry('Exam slot preference', _ctrl.scoringWeights.examSlotBonus, 2, 0, 5,
-                        (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(examSlotBonus: v))),
-                      WeightEntry('Optional courses fit', _ctrl.scoringWeights.optionalCoursesBonus, 3, 0, 8,
-                        (v) => _setScoringWeights(_ctrl.scoringWeights.copyWith(optionalCoursesBonus: v))),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+          const SizedBox(height: 4),
+          Text(
+            'How much each factor matters when ordering the best options',
+            style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+          ),
+          const SizedBox(height: 8),
+          ...RankAxis.values.map(_importanceRow),
         ],
       ),
     );
   }
 
-  Widget _buildWeightSection({
-    required String title,
-    required String subtitle,
-    required Color color,
-    required IconData icon,
-    required List<WeightEntry> weights,
-  }) {
+  Widget _importanceRow(RankAxis axis) {
+    const values = AxisImportance.values;
     final scheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 16, color: color.withValues(alpha: 0.7)),
-            const SizedBox(width: 6),
-            Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: scheme.onSurface)),
-            const SizedBox(width: 8),
-            Text(subtitle, style: TextStyle(fontSize: 11, color: scheme.onSurface.withValues(alpha: 0.5))),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ...weights.map((w) => _buildWeightRow(w, color)),
-      ],
-    );
-  }
-
-  Widget _buildWeightRow(WeightEntry entry, Color accentColor) {
-    final scheme = Theme.of(context).colorScheme;
-    final isDefault = entry.value == entry.defaultValue;
+    final idx = values.indexOf(_ctrl.axisImportance[axis] ?? AxisImportance.normal);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          SizedBox(
-            width: 160,
-            child: Text(
-              entry.label,
-              style: TextStyle(
-                fontSize: 12,
-                color: isDefault ? scheme.onSurface.withValues(alpha: 0.7) : scheme.onSurface,
-                fontWeight: isDefault ? FontWeight.normal : FontWeight.w500,
-              ),
+          Expanded(child: Text(axis.label, style: const TextStyle(fontSize: 13))),
+          Container(
+            width: 156,
+            height: 30,
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(9),
             ),
-          ),
-          Expanded(
-            child: SliderTheme(
-              data: SliderThemeData(
-                trackHeight: 3,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-                activeTrackColor: accentColor.withValues(alpha: 0.6),
-                inactiveTrackColor: scheme.outlineVariant.withValues(alpha: 0.3),
-                thumbColor: accentColor,
-              ),
-              child: Slider(
-                value: entry.value,
-                min: entry.min,
-                max: entry.max,
-                divisions: (entry.max - entry.min).toInt(),
-                onChanged: entry.onChanged,
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 32,
-            child: Text(
-              entry.value.toInt().toString(),
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isDefault ? scheme.onSurface.withValues(alpha: 0.5) : accentColor,
-              ),
+            child: LayoutBuilder(
+              builder: (context, c) {
+                final segWidth = c.maxWidth / values.length;
+                return Stack(
+                  children: [
+                    // Sliding selection pill — animates between segments.
+                    AnimatedAlign(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      alignment: Alignment(-1 + 2 * (idx / (values.length - 1)), 0),
+                      child: Container(
+                        width: segWidth,
+                        height: double.infinity,
+                        decoration: BoxDecoration(
+                          color: scheme.primary,
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        for (var i = 0; i < values.length; i++)
+                          Expanded(
+                            child: AppTappable(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => setState(() => _ctrl.axisImportance[axis] = values[i]),
+                              child: Center(
+                                child: AnimatedDefaultTextStyle(
+                                  duration: const Duration(milliseconds: 220),
+                                  curve: Curves.easeOutCubic,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: i == idx ? FontWeight.w700 : FontWeight.w400,
+                                    color: i == idx ? scheme.onPrimary : scheme.onSurface.withValues(alpha: 0.7),
+                                  ),
+                                  child: Text(values[i].label),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -2021,12 +2348,15 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     if (isMobile && _tabController != null) {
       _tabController!.animateTo(1);
     }
+    _compareSelection.clear();
 
     try {
-      final timetables = await _ctrl.generate(widget.availableCourses);
+      final result = await _ctrl.generate(widget.availableCourses);
       if (!mounted) return;
-      if (timetables.isEmpty) {
-        _showNoTimetablesDialog();
+      if (result.ranked.isEmpty) {
+        // A hard-constraint conflict explains itself in the results panel;
+        // only the generic "no clash-free combo" case needs the dialog.
+        if (result.unmetIntents.isEmpty) _showNoTimetablesDialog();
       }
     } catch (e) {
       ToastService.showError('Error generating timetables: $e');
@@ -2034,26 +2364,55 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   }
 
   Widget _buildGeneratedTimetables() {
+    final canCompare = _compareSelection.length >= 2;
     return Expanded(
       child: Card(
         margin: const EdgeInsets.all(8),
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                'Generated Timetables (${_ctrl.generatedTimetables.length})',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Generated Timetables (${_ctrl.rankedTimetables.length})',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  if (_compareSelection.isNotEmpty)
+                    FilledButton.tonalIcon(
+                      onPressed: canCompare ? _showComparison : null,
+                      icon: const Icon(Icons.compare_arrows, size: 18),
+                      label: Text('Compare (${_compareSelection.length})'),
+                      style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
+                    ),
+                ],
               ),
             ),
+            if (_compareSelection.isNotEmpty && !canCompare)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  'Select one more to compare',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
+                ),
+              ),
+            _buildRefineChips(),
+            _buildDiagnosis(),
             Expanded(
               child: ListView.builder(
-                itemCount: _ctrl.generatedTimetables.length,
+                itemCount: _ctrl.rankedTimetables.length,
                 itemBuilder: (context, index) {
-                  final timetable = _ctrl.generatedTimetables[index];
+                  final ranked = _ctrl.rankedTimetables[index];
                   return GeneratedTimetableCard(
-                    timetable: timetable,
-                    onSelect: () => widget.onTimetableSelected(timetable.sections),
+                    ranked: ranked,
+                    selectedForCompare: _compareSelection.contains(index),
+                    onToggleCompare: () => _toggleCompare(index),
+                    onSelect: () => widget.onTimetableSelected(ranked.timetable),
                   );
                 },
               ),
@@ -2061,6 +2420,135 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           ],
         ),
       ),
+    );
+  }
+
+  /// One-tap "make the results more like this" nudges. Each tweaks a constraint
+  /// or weight (reflected live in the Configure tab) and regenerates.
+  /// Feasibility diagnosis: intents that no clash-free option could fully meet.
+  /// This is the system doing the "is my wish list even possible" discovery the
+  /// user can't, and handing back why.
+  Widget _buildDiagnosis() {
+    final notes = _ctrl.rankingResult?.unmetIntents ?? const <String>[];
+    if (notes.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppDesign.warning(context).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppDesign.warning(context).withValues(alpha: 0.4)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.info_outline, size: 16, color: AppDesign.warning(context)),
+                const SizedBox(width: 6),
+                Text("Couldn't fully honour", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppDesign.warning(context))),
+              ],
+            ),
+            const SizedBox(height: 4),
+            ...notes.map((n) => Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text('• $n', style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.85))),
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRefineChips() {
+    if (_ctrl.rankedTimetables.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: Row(
+        children: [
+          Text(
+            'Refine:',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _refineChip('Less packed', Icons.compress, () => _ctrl.maxHoursPerDay = (_ctrl.maxHoursPerDay - 1).clamp(4, 12)),
+                  _refineChip('More free days', Icons.weekend_outlined, () => _ctrl.axisImportance[RankAxis.freeDays] = AxisImportance.high),
+                  _refineChip('Later start', Icons.wb_twilight_outlined, () => _ctrl.earliestStartSlot = 2),
+                  _refineChip('Fewer gaps', Icons.unfold_less, () => _ctrl.minimizeGaps = true),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _refineChip(String label, IconData icon, VoidCallback apply) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: ActionChip(
+        visualDensity: VisualDensity.compact,
+        avatar: Icon(icon, size: 15),
+        label: Text(label, style: const TextStyle(fontSize: 12)),
+        onPressed: _ctrl.isGenerating ? null : () => _applyRefinement(label, apply),
+      ),
+    );
+  }
+
+  Future<void> _applyRefinement(String label, VoidCallback apply) async {
+    apply();
+    ToastService.showInfo('Refined: $label');
+    await _generateTimetables();
+  }
+
+  void _toggleCompare(int index) {
+    setState(() {
+      if (!_compareSelection.remove(index)) {
+        if (_compareSelection.length >= 3) {
+          ToastService.showInfo('Compare up to 3 at a time');
+          return;
+        }
+        _compareSelection.add(index);
+      }
+    });
+  }
+
+  void _showComparison() {
+    // Reuse the app's full comparison page by turning the picked generated
+    // options into ephemeral timetables it can render.
+    final selected = (_compareSelection.toList()..sort())
+        .map((i) => _ctrl.rankedTimetables[i])
+        .toList();
+    final timetables = [
+      for (var i = 0; i < selected.length; i++) _generatedToTimetable(selected[i].timetable, i),
+    ];
+    Navigator.push(
+      context,
+      FadeSlidePageRoute(page: TimetableComparisonScreen(presetTimetables: timetables)),
+    );
+  }
+
+  tt_model.Timetable _generatedToTimetable(GeneratedTimetable g, int index) {
+    final now = DateTime.now();
+    return tt_model.Timetable(
+      id: 'generated_$index',
+      name: g.id,
+      createdAt: now,
+      updatedAt: now,
+      campus: CampusService.currentCampus,
+      availableCourses: widget.availableCourses,
+      selectedSections: [
+        for (final s in g.sections)
+          tt_model.SelectedSection(courseCode: s.courseCode, sectionId: s.sectionId, section: s.section),
+      ],
+      clashWarnings: const [],
     );
   }
 

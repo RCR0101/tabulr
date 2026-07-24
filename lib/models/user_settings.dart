@@ -1,7 +1,6 @@
 import 'timetable_display.dart';
 import 'app_theme.dart';
 import '../utils/datetime_utils.dart';
-import 'timetable_constraints.dart';
 
 enum AppThemeMode { light, dark, system }
 
@@ -71,7 +70,6 @@ class UserSettings {
   final List<String> customTimetableOrder; // for custom sorting
   final bool dontShowBottomDisclaimer; // whether to hide the bottom disclaimer permanently
   final DateTime? dontShowTopUpdated; // when the user last dismissed the top announcement
-  final ScoringWeights scoringWeights;
   final Set<String> completedTutorials;
   final Set<String> acadDriveBookmarks;
   final Set<String> starredCourses;
@@ -86,7 +84,6 @@ class UserSettings {
     required this.customTimetableOrder,
     this.dontShowBottomDisclaimer = false,
     this.dontShowTopUpdated,
-    this.scoringWeights = const ScoringWeights(),
     this.completedTutorials = const {},
     this.acadDriveBookmarks = const {},
     this.starredCourses = const {},
@@ -105,7 +102,6 @@ class UserSettings {
       'customTimetableOrder': customTimetableOrder,
       'dontShowBottomDisclaimer': dontShowBottomDisclaimer,
       'dontShowTopUpdated': dontShowTopUpdated?.toIso8601String(),
-      if (scoringWeights != const ScoringWeights()) 'scoringWeights': scoringWeights.toJson(),
       'completedTutorials': completedTutorials.toList(),
       'acadDriveBookmarks': acadDriveBookmarks.toList(),
       'starredCourses': starredCourses.toList(),
@@ -136,9 +132,6 @@ class UserSettings {
       customTimetableOrder: List<String>.from(json['customTimetableOrder'] ?? []),
       dontShowBottomDisclaimer: json['dontShowBottomDisclaimer'] ?? false,
       dontShowTopUpdated: json['dontShowTopUpdated'] != null ? parseDateTime(json['dontShowTopUpdated']) : null,
-      scoringWeights: json['scoringWeights'] != null
-          ? ScoringWeights.fromJson(json['scoringWeights'] as Map<String, dynamic>)
-          : const ScoringWeights(),
       completedTutorials: Set<String>.from(json['completedTutorials'] ?? []),
       acadDriveBookmarks: Set<String>.from(json['acadDriveBookmarks'] ?? []),
       starredCourses: Set<String>.from(json['starredCourses'] ?? []),
@@ -172,7 +165,6 @@ class UserSettings {
     List<String>? customTimetableOrder,
     bool? dontShowBottomDisclaimer,
     DateTime? dontShowTopUpdated,
-    ScoringWeights? scoringWeights,
     Set<String>? completedTutorials,
     Set<String>? acadDriveBookmarks,
     Set<String>? starredCourses,
@@ -187,7 +179,6 @@ class UserSettings {
       customTimetableOrder: customTimetableOrder ?? this.customTimetableOrder,
       dontShowBottomDisclaimer: dontShowBottomDisclaimer ?? this.dontShowBottomDisclaimer,
       dontShowTopUpdated: dontShowTopUpdated ?? this.dontShowTopUpdated,
-      scoringWeights: scoringWeights ?? this.scoringWeights,
       completedTutorials: completedTutorials ?? this.completedTutorials,
       acadDriveBookmarks: acadDriveBookmarks ?? this.acadDriveBookmarks,
       starredCourses: starredCourses ?? this.starredCourses,

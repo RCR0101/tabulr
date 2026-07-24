@@ -45,7 +45,6 @@ void main() {
       expect(results, isNotEmpty);
       for (final tt in results) {
         expect(tt.sections, isNotEmpty);
-        expect(tt.score, greaterThanOrEqualTo(0));
       }
     });
 
@@ -121,22 +120,6 @@ void main() {
       expect(results.length, lessThanOrEqualTo(5));
     });
 
-    test('results are sorted by score descending', () async {
-      final sw = Stopwatch()..start();
-      final courses = fiveCourseRealistic();
-      final constraints = TimetableConstraints(
-        mandatoryCourses: courses.map((c) => c.courseCode).toList(),
-      );
-
-      final results = await TimetableGenerator.generateTimetables(courses, constraints);
-      sw.stop();
-      _record('sorted by score descending', true, sw.elapsedMilliseconds);
-
-      for (int i = 1; i < results.length; i++) {
-        expect(results[i].score, lessThanOrEqualTo(results[i - 1].score));
-      }
-    });
-
     test('includes optional courses when credits allow', () async {
       final sw = Stopwatch()..start();
       final courses = [
@@ -168,6 +151,40 @@ void main() {
       _record('includes optionals', anyHasOptional, sw.elapsedMilliseconds);
 
       expect(anyHasOptional, isTrue);
+    });
+
+    test('optionalTarget caps how many optionals are included', () async {
+      final sw = Stopwatch()..start();
+      final courses = [
+        makeCourse(
+          courseCode: 'CS F111',
+          lectureCredits: 3,
+          sections: [makeSection(sectionId: 'L1', days: [DayOfWeek.M], hours: [1])],
+        ),
+        for (var i = 0; i < 3; i++)
+          makeCourse(
+            courseCode: 'OPT F10$i',
+            courseTitle: 'Optional $i',
+            lectureCredits: 2,
+            sections: [makeSection(sectionId: 'L1', days: [DayOfWeek.T], hours: [2 + i])],
+          ),
+      ];
+
+      final constraints = TimetableConstraints(
+        mandatoryCourses: ['CS F111'],
+        optionalCourses: ['OPT F100', 'OPT F101', 'OPT F102'],
+        optionalTarget: 1,
+        maxCredits: 25,
+      );
+
+      final results = await TimetableGenerator.generateTimetables(courses, constraints);
+      sw.stop();
+
+      final capRespected = results.every((tt) => tt.optionalCourseCodes.length <= 1);
+      _record('optionalTarget cap', capRespected, sw.elapsedMilliseconds);
+
+      expect(results, isNotEmpty);
+      expect(capRespected, isTrue);
     });
 
     test('deduplicates identical section combos', () async {

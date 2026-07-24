@@ -83,7 +83,7 @@ class _PrerequisitesManagementScreenState
     final existing = _prereqByCode[code] ??
         await _repo.getCoursePrerequisites(code) ??
         CoursePrerequisites(
-            courseCode: code, prereqs: [], hasPrerequisites: false);
+            courseCode: code, groups: const [], hasPrerequisites: false);
     await _openEditor(existing);
   }
 
@@ -179,8 +179,8 @@ class _PrerequisitesManagementScreenState
         return _entryTile(
           code: c.courseCode,
           subtitle: title.isEmpty
-              ? '${c.prereqs.length} prerequisite(s)'
-              : '$title · ${c.prereqs.length} prereq(s)',
+              ? '${c.groups.length} prerequisite(s)'
+              : '$title · ${c.groups.length} prereq(s)',
           scheme: scheme,
           onEdit: () => _openEditor(c),
           onDelete: () => _delete(c),
@@ -209,7 +209,7 @@ class _PrerequisitesManagementScreenState
         return _entryTile(
           code: m.courseCode,
           subtitle: existing != null
-              ? '${m.title} · ${existing.prereqs.length} prereq(s)'
+              ? '${m.title} · ${existing.groups.length} prereq(s)'
               : m.title,
           scheme: scheme,
           hasEntry: existing != null,
@@ -286,8 +286,7 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
 
   late final TextEditingController _codeCtrl;
   late bool _hasPrereqs;
-  late String _allOne;
-  late List<Prerequisite> _prereqs;
+  late List<_GroupDraft> _groups;
   bool _saving = false;
 
   @override
@@ -296,9 +295,11 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
     final e = widget.existing;
     _codeCtrl = TextEditingController(text: e?.courseCode ?? '');
     _hasPrereqs = e?.hasPrerequisites ?? false;
-    _allOne = (e?.allOne?.toLowerCase() == 'one') ? 'one' : 'all';
-    _prereqs = e?.prereqs
-            .map((p) => Prerequisite(courseCode: p.courseCode, type: p.type))
+    _groups = e?.groups
+            .map((g) => _GroupDraft(
+                  g.options.map((o) => o.courseCode).toList(),
+                  g.type,
+                ))
             .toList() ??
         [];
   }
@@ -309,10 +310,21 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
     super.dispose();
   }
 
-  Future<void> _addPrereq() async {
-    final code = await _pickCourse('Add prerequisite course');
+  /// Adds a new requirement (a group starting with one option).
+  Future<void> _addGroup() async {
+    final code = await _pickCourse('Add requirement');
     if (code == null || code.isEmpty) return;
-    setState(() => _prereqs.add(Prerequisite(courseCode: code, type: 'pre')));
+    setState(() => _groups.add(_GroupDraft([code.toUpperCase()], 'pre')));
+  }
+
+  /// Adds another acceptable course to an existing requirement (an OR option).
+  Future<void> _addOption(int groupIndex) async {
+    final code = await _pickCourse('Add alternative course');
+    if (code == null || code.isEmpty) return;
+    final c = code.toUpperCase();
+    setState(() {
+      if (!_groups[groupIndex].codes.contains(c)) _groups[groupIndex].codes.add(c);
+    });
   }
 
   Future<String?> _pickCourse(String title) async {
@@ -421,11 +433,20 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
     }
     setState(() => _saving = true);
     try {
+      final groups = _hasPrereqs
+          ? _groups
+              .where((g) => g.codes.isNotEmpty)
+              .map((g) => PrerequisiteGroup(
+                    g.codes
+                        .map((c) => Prerequisite(courseCode: c, type: g.type))
+                        .toList(),
+                  ))
+              .toList()
+          : <PrerequisiteGroup>[];
       await _repo.saveCoursePrerequisites(CoursePrerequisites(
         courseCode: code,
-        prereqs: _hasPrereqs ? _prereqs : [],
-        hasPrerequisites: _hasPrereqs,
-        allOne: _hasPrereqs ? _allOne : null,
+        groups: groups,
+        hasPrerequisites: _hasPrereqs && groups.isNotEmpty,
       ));
       ToastService.showSuccess('Saved $code');
       if (mounted) Navigator.pop(context, true);
@@ -462,41 +483,37 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
           ),
           if (_hasPrereqs) ...[
             const SizedBox(height: AppDesign.spacingSm),
-            Text('Requirement', style: _labelStyle(scheme)),
-            const SizedBox(height: 6),
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'all', label: Text('All required')),
-                ButtonSegment(value: 'one', label: Text('Any one')),
-              ],
-              selected: {_allOne},
-              onSelectionChanged: (s) => setState(() => _allOne = s.first),
-            ),
-            const SizedBox(height: AppDesign.spacingMd),
             Row(
               children: [
-                Text('Prerequisite courses', style: _labelStyle(scheme)),
-                const Spacer(),
+                Expanded(
+                  child: Text('Requirements (each must be met)',
+                      style: _labelStyle(scheme)),
+                ),
                 AppButton(
-                    label: 'Add',
+                    label: 'Add requirement',
                     icon: Icons.add_rounded,
                     variant: AppButtonVariant.ghost,
-                    onTap: _addPrereq),
+                    onTap: _addGroup),
               ],
             ),
             const SizedBox(height: 6),
-            if (_prereqs.isEmpty)
+            Text(
+              'A requirement with more than one course is satisfied by any one '
+              'of them (cross-listed equivalents or alternatives).',
+              style: TextStyle(fontSize: 11, color: AppDesign.muted(context)),
+            ),
+            const SizedBox(height: 8),
+            if (_groups.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text('No prerequisite courses added',
+                child: Text('No requirements added',
                     style: TextStyle(
                         fontSize: 12,
                         fontStyle: FontStyle.italic,
                         color: AppDesign.muted(context))),
               )
             else
-              for (var i = 0; i < _prereqs.length; i++)
-                _prereqRow(i, scheme),
+              for (var i = 0; i < _groups.length; i++) _groupCard(i, scheme),
           ],
           const SizedBox(height: AppDesign.spacingLg),
           AppButton(
@@ -511,59 +528,88 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
     );
   }
 
-  Widget _prereqRow(int index, ColorScheme scheme) {
-    final p = _prereqs[index];
-    final title = _masterService.getTitle(p.courseCode);
+  Widget _groupCard(int index, ColorScheme scheme) {
+    final g = _groups[index];
+    final isChoice = g.codes.length > 1;
     return Container(
-      margin: const EdgeInsets.only(bottom: AppDesign.spacingXs),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      margin: const EdgeInsets.only(bottom: AppDesign.spacingSm),
+      padding: const EdgeInsets.all(12),
       decoration: AppDesign.cardDecoration(context),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(p.courseCode,
-                    style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w600)),
-                if (title.isNotEmpty)
-                  Text(title,
-                      style: TextStyle(
-                          fontSize: 11, color: AppDesign.muted(context)),
-                      overflow: TextOverflow.ellipsis),
-              ],
-            ),
+          Row(
+            children: [
+              Text('Requirement ${index + 1}',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurfaceVariant)),
+              const Spacer(),
+              // Type applies to the whole requirement.
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(8),
+                  border:
+                      Border.all(color: scheme.outline.withValues(alpha: 0.15)),
+                ),
+                child: DropdownButton<String>(
+                  value: _types.contains(g.type) ? g.type : 'pre',
+                  underline: const SizedBox.shrink(),
+                  isDense: true,
+                  borderRadius: BorderRadius.circular(8),
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: scheme.onSurface),
+                  items: _types
+                      .map((t) => DropdownMenuItem(
+                          value: t, child: Text(_typeLabels[t] ?? t)))
+                      .toList(),
+                  onChanged: (v) => setState(() => g.type = v ?? 'pre'),
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.delete_outline_rounded,
+                    size: 18, color: scheme.error.withValues(alpha: 0.8)),
+                tooltip: 'Remove requirement',
+                onPressed: () => setState(() => _groups.removeAt(index)),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: scheme.outline.withValues(alpha: 0.15)),
-            ),
-            child: DropdownButton<String>(
-              value: _types.contains(p.type) ? p.type : 'pre',
-              underline: const SizedBox.shrink(),
-              isDense: true,
-              borderRadius: BorderRadius.circular(8),
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: scheme.onSurface),
-              items: _types
-                  .map((t) => DropdownMenuItem(
-                      value: t, child: Text(_typeLabels[t] ?? t)))
-                  .toList(),
-              onChanged: (v) => setState(() => _prereqs[index] =
-                  Prerequisite(courseCode: p.courseCode, type: v ?? 'pre')),
-            ),
-          ),
-          IconButton(
-            icon: Icon(Icons.close_rounded,
-                size: 16, color: scheme.error.withValues(alpha: 0.7)),
-            onPressed: () => setState(() => _prereqs.removeAt(index)),
+          if (isChoice) ...[
+            const SizedBox(height: 2),
+            Text('Any one of:',
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppDesign.muted(context))),
+          ],
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final code in g.codes)
+                Chip(
+                  label: Text(code, style: const TextStyle(fontSize: 12)),
+                  deleteIcon: const Icon(Icons.close, size: 15),
+                  onDeleted: () => setState(() {
+                    g.codes.remove(code);
+                    if (g.codes.isEmpty) _groups.removeAt(index);
+                  }),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ActionChip(
+                avatar: const Icon(Icons.add, size: 15),
+                label: const Text('Alternative', style: TextStyle(fontSize: 12)),
+                onPressed: () => _addOption(index),
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
           ),
         ],
       ),
@@ -574,4 +620,11 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
       fontSize: 12,
       fontWeight: FontWeight.w600,
       color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium));
+}
+
+/// Mutable working copy of one requirement group while editing.
+class _GroupDraft {
+  final List<String> codes;
+  String type;
+  _GroupDraft(this.codes, this.type);
 }

@@ -141,6 +141,30 @@ class _InstructorRankingDialogState extends State<InstructorRankingDialog>
     );
   }
 
+  void _writeBackRanking(String courseCode, String typeKey, List<String> list) {
+    switch (typeKey) {
+      case 'L':
+        _rankings[courseCode] = _rankings[courseCode]!.copyWith(lectureInstructors: list);
+        break;
+      case 'P':
+        _rankings[courseCode] = _rankings[courseCode]!.copyWith(practicalInstructors: list);
+        break;
+      case 'T':
+        _rankings[courseCode] = _rankings[courseCode]!.copyWith(tutorialInstructors: list);
+        break;
+    }
+  }
+
+  /// One-tap alternative to dragging: promote an instructor to rank #1 (most
+  /// preferred) for this course + section type.
+  void _pinToTop(String courseCode, String typeKey, List<String> ranked, int index) {
+    setState(() {
+      final instructor = ranked.removeAt(index);
+      ranked.insert(0, instructor);
+      _writeBackRanking(courseCode, typeKey, ranked);
+    });
+  }
+
   Widget _buildSectionTypeRanking(String courseCode, String typeName, String typeKey, List<String> availableInstructors) {
     final currentRankings = _rankings[courseCode]!;
     List<String> rankedInstructors;
@@ -224,24 +248,7 @@ class _InstructorRankingDialogState extends State<InstructorRankingDialog>
                   setState(() {
                     final instructor = rankedInstructors.removeAt(oldIndex);
                     rankedInstructors.insert(newIndex, instructor);
-
-                    switch (typeKey) {
-                      case 'L':
-                        _rankings[courseCode] = _rankings[courseCode]!.copyWith(
-                          lectureInstructors: rankedInstructors,
-                        );
-                        break;
-                      case 'P':
-                        _rankings[courseCode] = _rankings[courseCode]!.copyWith(
-                          practicalInstructors: rankedInstructors,
-                        );
-                        break;
-                      case 'T':
-                        _rankings[courseCode] = _rankings[courseCode]!.copyWith(
-                          tutorialInstructors: rankedInstructors,
-                        );
-                        break;
-                    }
+                    _writeBackRanking(courseCode, typeKey, rankedInstructors);
                   });
                 },
                 itemBuilder: (context, index) {
@@ -249,19 +256,22 @@ class _InstructorRankingDialogState extends State<InstructorRankingDialog>
                   final position = index + 1;
                   final isTopRank = position <= 3;
 
-                  return Container(
+                  return Padding(
                     key: ValueKey('$courseCode-$typeKey-$instructor'),
-                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: isTopRank
-                        ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
-                        : Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(6),
-                      border: isTopRank
-                        ? Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3))
-                        : null,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    // Color/shape live on the ListTile (tileColor + shape) rather
+                    // than a wrapping decorated Container, so the tile's ink and
+                    // background stay visible.
                     child: ListTile(
+                      tileColor: isTopRank
+                          ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
+                          : Theme.of(context).colorScheme.surface,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        side: isTopRank
+                            ? BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3))
+                            : BorderSide.none,
+                      ),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       leading: Container(
                         width: 32,
@@ -302,9 +312,28 @@ class _InstructorRankingDialogState extends State<InstructorRankingDialog>
                           color: Theme.of(context).colorScheme.primary,
                         ),
                       ) : null,
-                      trailing: Icon(
-                        Icons.drag_handle,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            tooltip: position == 1 ? 'Pinned as most preferred' : 'Pin as most preferred',
+                            onPressed: position == 1
+                                ? null
+                                : () => _pinToTop(courseCode, typeKey, rankedInstructors, index),
+                            icon: Icon(
+                              position == 1 ? Icons.push_pin : Icons.push_pin_outlined,
+                              size: 18,
+                              color: position == 1
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          Icon(
+                            Icons.drag_handle,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ],
                       ),
                     ),
                   );

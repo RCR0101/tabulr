@@ -8,7 +8,6 @@ import '../utils/web_utils.dart' as web_utils;
 import '../models/course.dart';
 import '../utils/page_transitions.dart';
 import '../models/timetable.dart';
-import '../models/timetable.dart' as timetable_models;
 import '../models/timetable_stats.dart';
 import '../models/export_options.dart';
 import '../services/core/timetable_service.dart';
@@ -182,7 +181,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
 
       ToastService.showWarning(
         '$courseCode normally needs '
-        '${status.outstanding.map((p) => p.courseCode).join(', ')} first — '
+        '${status.outstanding.map((g) => g.label).join(', ')} first — '
         'check before you register.',
       );
     } catch (e) {
@@ -977,36 +976,34 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
 
   Future<void> openGenerator() async {
     final tt = currentTimetable;
-    final result =
-        await Navigator.push<List<timetable_models.SelectedSection>>(
+    final result = await Navigator.push<GeneratorSelection>(
       context,
       FadeSlidePageRoute(page: const GeneratorScreen()),
     );
 
-    if (!mounted) return;
+    // Only "apply to current" returns a selection; "save as new" is handled
+    // inside the generator screen and never pops back here.
+    if (!mounted || result == null || tt == null) return;
+    try {
+      _pushUndo('Apply generated timetable');
+      // Clear current selections
+      tt.selectedSections.clear();
 
-    if (result != null && tt != null) {
-      try {
-        _pushUndo('Apply generated timetable');
-        // Clear current selections
-        tt.selectedSections.clear();
-
-        // Add new selections from generator
-        for (final section in result) {
-          await timetableService.addSection(
-            section.courseCode,
-            section.sectionId,
-            tt,
-          );
-        }
-
-        if (!mounted) return;
-        setState(() {});
-
-        ToastService.showSuccess('Generated timetable applied successfully!');
-      } catch (e) {
-        showErrorDialog('Error applying generated timetable: $e');
+      // Add new selections from generator
+      for (final section in result.sections) {
+        await timetableService.addSection(
+          section.courseCode,
+          section.sectionId,
+          tt,
+        );
       }
+
+      if (!mounted) return;
+      setState(() {});
+
+      ToastService.showSuccess('Generated timetable applied successfully!');
+    } catch (e) {
+      showErrorDialog('Error applying generated timetable: $e');
     }
   }
 

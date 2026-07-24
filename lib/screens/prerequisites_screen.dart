@@ -319,7 +319,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
                             const SizedBox(width: 4),
                             Text(
                               course.hasPrerequisites
-                                  ? '${course.prereqs.length} prerequisite(s)'
+                                  ? '${course.groups.length} prerequisite(s)'
                                   : 'No prerequisites',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: colorScheme.onSurfaceVariant,
@@ -418,49 +418,8 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
 
           _buildEligibilityBanner(theme, colorScheme, course),
 
-          // All/One requirement indicator
-          if (course.hasPrerequisites && course.allOne != null)
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: colorScheme.secondaryContainer.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: colorScheme.secondary.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    course.allOne?.toLowerCase() == 'all'
-                        ? Icons.check_circle_outline
-                        : Icons.alt_route,
-                    color: colorScheme.onSecondaryContainer,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      course.allOne?.toLowerCase() == 'all'
-                          ? 'All of the following courses must be completed'
-                          : 'At least one of the following courses must be completed',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSecondaryContainer,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
           if (course.hasPrerequisites)
-            ...course.prereqs.map((prereq) => _buildPrerequisiteCard(
-                  theme,
-                  colorScheme,
-                  prereq,
-                ))
+            ..._buildRequirementsList(theme, colorScheme, course)
           else
             Card(
               shape: RoundedRectangleBorder(
@@ -517,7 +476,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
     final met = status.isMet;
     if (met == null) return const SizedBox.shrink();
 
-    final missing = status.outstanding.map((p) => p.courseCode).join(', ');
+    final missing = status.outstanding.map((g) => g.label).join(', ');
     final color = met ? AppDesign.success(context) : colorScheme.error;
 
     return Container(
@@ -554,7 +513,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
             const SizedBox(height: 6),
             Text(
               'Can be taken alongside: '
-              '${status.concurrent.map((p) => p.courseCode).join(', ')}.',
+              '${status.concurrent.map((g) => g.label).join(', ')}.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -564,7 +523,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
             const SizedBox(height: 6),
             Text(
               'Check for yourself: the requirement type is unrecorded for '
-              '${status.unclear.map((p) => p.courseCode).join(', ')}.',
+              '${status.unclear.map((g) => g.label).join(', ')}.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
               ),
@@ -582,15 +541,97 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
     );
   }
 
+  /// Renders the requirement groups with their logic made explicit: a header
+  /// stating all requirements must be met (AND), and an "AND" connector between
+  /// consecutive cards. Each card in turn shows "Any one of" when it holds
+  /// multiple options (OR). A single requirement needs no such scaffolding.
+  List<Widget> _buildRequirementsList(
+    ThemeData theme,
+    ColorScheme colorScheme,
+    CoursePrerequisites course,
+  ) {
+    final groups = course.groups;
+    if (groups.length <= 1) {
+      return [
+        for (final g in groups) _buildPrerequisiteCard(theme, colorScheme, g),
+      ];
+    }
+
+    return [
+      Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Row(
+          children: [
+            Icon(Icons.checklist_rtl, size: 18, color: colorScheme.onSurfaceVariant),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'All ${groups.length} requirements below must be met:',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      for (var i = 0; i < groups.length; i++) ...[
+        if (i > 0) _buildAndConnector(theme, colorScheme),
+        _buildPrerequisiteCard(theme, colorScheme, groups[i]),
+      ],
+    ];
+  }
+
+  /// Small centred "AND" chip separating two required requirement cards.
+  Widget _buildAndConnector(ThemeData theme, ColorScheme colorScheme) {
+    final line = Expanded(
+      child: Divider(
+        color: colorScheme.outlineVariant.withValues(alpha: 0.6),
+        thickness: 1,
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          line,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'AND',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
+          line,
+        ],
+      ),
+    );
+  }
+
   Widget _buildPrerequisiteCard(
     ThemeData theme,
     ColorScheme colorScheme,
-    Prerequisite prereq,
+    PrerequisiteGroup group,
   ) {
-    final prereqCode = prereq.courseCode;
-    final prereqTitle = CoursesMasterService().getTitle(prereq.courseCode);
+    // A group is one requirement; its options are cross-listed equivalents /
+    // alternatives, any one of which satisfies it.
+    final isChoice = group.options.length > 1;
+    final prereqCode = group.options.first.courseCode;
+    final prereqTitle = CoursesMasterService().getTitle(prereqCode);
 
-    final typeLower = prereq.type.toLowerCase();
+    final typeLower = group.type.toLowerCase();
     final isPrerequisite = typeLower == 'pre';
     final isCorequisite = typeLower == 'co/pre';
     final isUnclear = typeLower == 'nan';
@@ -625,7 +666,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
       containerColor = colorScheme.surfaceContainerHighest;
       textColor = colorScheme.onSurface;
       iconData = Icons.info_outline;
-      typeLabel = prereq.type.toUpperCase();
+      typeLabel = group.type.toUpperCase();
       description = 'See course requirements';
     }
 
@@ -682,23 +723,86 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
                         ),
                       ),
                       const Spacer(),
-                      CourseRecordBadge(record: _record, courseCode: prereqCode),
+                      if (!isChoice)
+                        CourseRecordBadge(record: _record, courseCode: prereqCode),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    prereqCode,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.primary,
+                  if (isChoice) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'ANY ONE OF THESE',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                          color: colorScheme.onSecondaryContainer,
+                        ),
+                      ),
                     ),
-                  ),
-                  if (prereqTitle.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 8),
+                    for (var oi = 0; oi < group.options.length; oi++) ...[
+                      if (oi > 0)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Text(
+                            'or',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontStyle: FontStyle.italic,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    group.options[oi].courseCode,
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: colorScheme.primary,
+                                    ),
+                                  ),
+                                  if (CoursesMasterService().getTitle(group.options[oi].courseCode).isNotEmpty &&
+                                      CoursesMasterService().getTitle(group.options[oi].courseCode) != group.options[oi].courseCode)
+                                    Text(
+                                      CoursesMasterService().getTitle(group.options[oi].courseCode),
+                                      style: theme.textTheme.bodySmall,
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            CourseRecordBadge(record: _record, courseCode: group.options[oi].courseCode),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ] else ...[
                     Text(
-                      prereqTitle,
-                      style: theme.textTheme.bodyMedium,
+                      prereqCode,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colorScheme.primary,
+                      ),
                     ),
+                    if (prereqTitle.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        prereqTitle,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
                   ],
                   const SizedBox(height: 8),
                   Text(

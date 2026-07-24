@@ -15,7 +15,12 @@ import '../widgets/common/shimmer_loading.dart';
 enum ComparisonViewMode { grid, list }
 
 class TimetableComparisonScreen extends StatefulWidget {
-  const TimetableComparisonScreen({super.key});
+  /// When supplied, these are compared directly (e.g. options from the
+  /// generator) instead of loading the user's saved timetables. The first two
+  /// are pre-selected on each side.
+  final List<Timetable>? presetTimetables;
+
+  const TimetableComparisonScreen({super.key, this.presetTimetables});
 
   @override
   State<TimetableComparisonScreen> createState() => _TimetableComparisonScreenState();
@@ -34,7 +39,15 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
   @override
   void initState() {
     super.initState();
-    _loadTimetables();
+    final preset = widget.presetTimetables;
+    if (preset != null && preset.isNotEmpty) {
+      _allTimetables = preset;
+      _leftTimetable = preset.first;
+      _rightTimetable = preset.length > 1 ? preset[1] : preset.first;
+      _isLoading = false;
+    } else {
+      _loadTimetables();
+    }
   }
 
   @override
@@ -276,6 +289,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
             timetableSlots: _convertToTimetableSlots(timetable),
             size: TimetableSize.compact,
             incompleteSelectionWarnings: const [],
+            readOnly: true,
           ),
         ),
       ],

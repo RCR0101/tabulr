@@ -26,6 +26,12 @@ class TimetableWidget extends StatefulWidget {
   final TimetableLayout layout;
   final Function(TimetableLayout)? onLayoutChanged;
   final bool isForExport;
+
+  /// Renders the grid without the editing toolbar (density/fit/undo/save/…),
+  /// but keeps normal on-screen behaviour: responsive layout, scrolling, and
+  /// hour cropping. For read-only contexts like the comparison view — unlike
+  /// [isForExport], which forces a full desktop grid sized for image capture.
+  final bool readOnly;
   final GlobalKey? tableKey;
   final bool hasUnsavedChanges;
   final bool isSaving;
@@ -53,6 +59,7 @@ class TimetableWidget extends StatefulWidget {
     this.layout = TimetableLayout.vertical,
     this.onLayoutChanged,
     this.isForExport = false,
+    this.readOnly = false,
     this.tableKey,
     this.hasUnsavedChanges = false,
     this.isSaving = false,
@@ -485,7 +492,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
   /// it roughly 760 px, and the exact budget shifts with text scale, labels and
   /// which callbacks the caller wired up.
   Widget _buildAppBar() {
-    if (widget.isForExport) return const SizedBox.shrink();
+    if (widget.isForExport || widget.readOnly) return const SizedBox.shrink();
     return Padding(
       padding: EdgeInsets.all(_isMobile ? 6 : 8),
       child: _isMobile ? _buildMobileAppBar(context) : _buildDesktopAppBar(context),

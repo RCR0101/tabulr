@@ -3,7 +3,11 @@ import '../../models/course.dart';
 import '../../models/timetable_constraints.dart';
 
 class LabAvoidanceDialog extends StatefulWidget {
-  const LabAvoidanceDialog({super.key});
+  /// Hours already marked to avoid labs, per day. These are shown as locked in
+  /// the grid so the same slot can't be picked twice.
+  final Map<DayOfWeek, Set<int>> disabledByDay;
+
+  const LabAvoidanceDialog({super.key, this.disabledByDay = const {}});
 
   @override
   State<LabAvoidanceDialog> createState() => _LabAvoidanceDialogState();
@@ -12,6 +16,9 @@ class LabAvoidanceDialog extends StatefulWidget {
 class _LabAvoidanceDialogState extends State<LabAvoidanceDialog> {
   DayOfWeek? _selectedDay;
   final List<int> _selectedHours = [];
+
+  Set<int> get _alreadyAvoided =>
+      _selectedDay == null ? const {} : (widget.disabledByDay[_selectedDay] ?? const {});
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +39,9 @@ class _LabAvoidanceDialogState extends State<LabAvoidanceDialog> {
               onChanged: (value) {
                 setState(() {
                   _selectedDay = value;
+                  // A slot picked for the previous day may already be avoided
+                  // for the new one — clear so nothing invalid carries over.
+                  _selectedHours.removeWhere(_alreadyAvoided.contains);
                 });
               },
             ),
@@ -52,25 +62,39 @@ class _LabAvoidanceDialogState extends State<LabAvoidanceDialog> {
                 itemCount: 10,
                 itemBuilder: (context, index) {
                   final hour = index + 1;
+                  final alreadyAvoided = _alreadyAvoided.contains(hour);
                   final isSelected = _selectedHours.contains(hour);
                   return FilterChip(
-                    label: Text(
-                      hour.toString(),
-                      style: TextStyle(fontSize: 10),
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (alreadyAvoided)
+                          const Padding(
+                            padding: EdgeInsets.only(right: 2),
+                            child: Icon(Icons.lock, size: 10),
+                          ),
+                        Text(hour.toString(), style: const TextStyle(fontSize: 10)),
+                      ],
                     ),
-                    tooltip: TimeSlotInfo.getHourSlotName(hour),
-                    selected: isSelected,
+                    tooltip: alreadyAvoided
+                        ? '${TimeSlotInfo.getHourSlotName(hour)} — already avoided'
+                        : TimeSlotInfo.getHourSlotName(hour),
+                    selected: isSelected || alreadyAvoided,
                     selectedColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
                     checkmarkColor: Theme.of(context).colorScheme.error,
-                    onSelected: (selected) {
-                      setState(() {
-                        if (selected) {
-                          _selectedHours.add(hour);
-                        } else {
-                          _selectedHours.remove(hour);
-                        }
-                      });
-                    },
+                    // Locked once already avoided for this day — can't re-pick.
+                    onSelected: alreadyAvoided
+                        ? null
+                        : (selected) {
+                            setState(() {
+                              if (selected) {
+                                _selectedHours.add(hour);
+                              } else {
+                                _selectedHours.remove(hour);
+                              }
+                            });
+                          },
                   );
                 },
               ),

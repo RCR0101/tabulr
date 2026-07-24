@@ -1,5 +1,13 @@
 # Tabulr
 
+![Platform](https://img.shields.io/badge/platform-web%20%7C%20macOS%20%7C%20windows%20%7C%20linux-blue)
+![Flutter](https://img.shields.io/badge/Flutter-3.7%2B-02569B?logo=flutter&logoColor=white)
+![Dart](https://img.shields.io/badge/Dart-0175C2?logo=dart&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-backend-FFCA28?logo=firebase&logoColor=black)
+![Version](https://img.shields.io/badge/version-2.5.29-informational)
+![License](https://img.shields.io/badge/license-MIT-green)
+![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)
+
 A course-planning and timetable app for BITS Pilani students. Build clash-free
 schedules, plan your CGPA, look up exam rooms and professor chambers, explore
 electives and minors, and share it all — across **Pilani, Goa, and Hyderabad**.

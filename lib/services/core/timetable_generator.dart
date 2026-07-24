@@ -16,32 +16,20 @@ import 'clash_detector.dart';
 /// 2. **Validate** — reject any combination with a class or exam clash
 ///    (delegates to [ClashDetector.detectClashes]). See [_isValidCombination].
 /// 3. **Greedy optional insertion** — for each surviving mandatory combo, try
-///    adding optional courses one at a time (best-scoring section combo wins),
-///    respecting maxCredits. Multiple orderings of optionals are tried for
-///    variety. See [_addOptionalCourses], [_generateOptionalOrderings].
+///    adding optional courses one at a time (best [_comboFitness] section combo
+///    wins), respecting maxCredits. Multiple orderings of optionals are tried
+///    for variety. See [_addOptionalCourses], [_generateOptionalOrderings].
 /// 4. **Deduplicate** — a section-key string set prevents identical timetables
 ///    generated via different orderings.
-/// 5. **Score** — base 90, subtract penalties, add bonuses (clamped 0–100).
-///    See [_scoreTimetable] for the full breakdown.
-/// 6. **Sort & trim** — top [maxTimetables] by score are returned with
-///    descriptive names.
-///
-/// ## Scoring (see [_scoreTimetable])
-///
-/// **Penalties** (subtracted from 90): maxHoursPerDay exceeded, avoided time
-/// slots, avoided lab slots, avoided instructors, back-to-back classes, gaps
-/// between classes, lunch-hour classes, time-of-day mismatch, exam spread
-/// (back-to-back compres penalized more than midsems).
-///
-/// **Bonuses** (added, capped per category and overall): preferred instructors,
-/// instructor ranking match, free day preference, exam slot preference,
-/// optional course inclusion.
+/// 5. **Prune** — the pool is trimmed to [maxTimetables] by [_comboFitness], a
+///    cheap internal day-shape heuristic (not user-facing).
+/// 6. **Name** — each survivor gets a descriptive name. Ordering the user sees
+///    is decided later by `TimetableRanker` (Pareto tiers + TOPSIS), not here.
 ///
 /// ## Hook points
 ///
-/// - New penalty/bonus: add a calculation in [_scoreTimetable] and mirror in
-///   [_analyzeTimetable] for pros/cons text. Add a weight field to
-///   `ScoringWeights` in `timetable_constraints.dart`.
+/// - New user-facing ranking factor: add an axis to `TimetableRanker`, not here.
+/// - New generation-time heuristic: extend [_comboFitness].
 /// - New section type: extend the L/P/T branching in
 ///   [_generateAllCombinations].
 class TimetableGenerator {
@@ -110,7 +98,6 @@ class TimetableGenerator {
         if (seen.contains(key)) continue;
         seen.add(key);
 
-        final score = _scoreTimetable(result.sections, constraints, allCourses);
         final analysis = _analyzeTimetable(result.sections, constraints, allCourses);
 
         if (result.optionalCodes.isNotEmpty) {
@@ -121,7 +108,6 @@ class TimetableGenerator {
         validTimetables.add(GeneratedTimetable(
           id: '',
           sections: result.sections,
-          score: score,
           pros: analysis['pros'] as List<String>,
           cons: analysis['cons'] as List<String>,
           hoursPerDay: _calculateHoursPerDay(result.sections),
@@ -134,16 +120,21 @@ class TimetableGenerator {
       if (validTimetables.length >= maxTimetables * 3) break;
     }
 
-    validTimetables.sort((a, b) => b.score.compareTo(a.score));
-    final results = validTimetables.take(maxTimetables).toList();
+    // Prune the pool with a cheap internal fitness (day-shape, avoided slots /
+    // instructors). This is *not* the ranking the user sees — it only decides
+    // which candidates advance to the intent-based ranker.
+    final scored = [
+      for (final t in validTimetables) (t, _comboFitness(t.sections, constraints)),
+    ]..sort((a, b) => b.$2.compareTo(a.$2));
+    final results = scored.take(maxTimetables).map((e) => e.$1).toList();
 
     // Assign descriptive names
+    final usedLabels = <String>{};
     for (int i = 0; i < results.length; i++) {
       final tt = results[i];
       results[i] = GeneratedTimetable(
-        id: _generateName(tt, i, results.length),
+        id: _generateName(tt, i, usedLabels),
         sections: tt.sections,
-        score: tt.score,
         pros: tt.pros,
         cons: tt.cons,
         hoursPerDay: tt.hoursPerDay,
@@ -175,20 +166,44 @@ class TimetableGenerator {
     return orderings;
   }
 
-  static String _generateName(GeneratedTimetable tt, int index, int total) {
-    final freeDays = tt.hoursPerDay.entries.where((e) => e.value == 0).map((e) => e.key).toList();
-    final daysWithClasses = tt.hoursPerDay.values.where((h) => h > 0).length;
-    final maxH = tt.hoursPerDay.values.reduce(max);
+  // Saturday is off for virtually every BITS timetable, so "Sat off" describes
+  // nothing and can't tell two options apart. Only Mon–Fri freedom is notable.
+  static const _weekdays = {DayOfWeek.M, DayOfWeek.T, DayOfWeek.W, DayOfWeek.Th, DayOfWeek.F};
 
+  static String _generateName(GeneratedTimetable tt, int index, Set<String> usedLabels) {
+    final freeWeekdays = tt.hoursPerDay.entries
+        .where((e) => _weekdays.contains(e.key) && e.value == 0)
+        .map((e) => e.key)
+        .toList();
+    final daysWithClasses = tt.hoursPerDay.values.where((h) => h > 0).length;
+    final maxH = tt.hoursPerDay.values.fold(0, max);
+
+    // Earliest / latest occupied slot across the week (slot 1 = 8 AM, 6 = 1 PM).
+    final allSlots = _getSlotsPerDay(tt.sections).values.expand((s) => s).toList();
+    final earliest = allSlots.isEmpty ? 0 : allSlots.reduce(min);
+    final latest = allSlots.isEmpty ? 0 : allSlots.reduce(max);
+
+    // Ordered by how distinctive each trait is, so the first two tags carry the
+    // most signal. Enough independent axes here that options rarely collide.
     final tags = <String>[];
 
-    if (freeDays.length >= 2) {
-      tags.add('${freeDays.length} free days');
-    } else if (freeDays.length == 1) {
-      tags.add('${getDayName(freeDays.first, abbreviated: true)} off');
+    if (freeWeekdays.length >= 2) {
+      tags.add('$daysWithClasses-day week');
+    } else if (freeWeekdays.length == 1) {
+      tags.add('${getDayName(freeWeekdays.first, abbreviated: true)} off');
     }
 
-    if (maxH <= 4) {
+    if (earliest >= 3) {
+      tags.add('late starts');
+    } else if (earliest >= 2) {
+      tags.add('no 8 AMs');
+    }
+
+    if (latest > 0 && latest <= 6) {
+      tags.add('afternoons free');
+    }
+
+    if (maxH > 0 && maxH <= 4) {
       tags.add('light days');
     } else if (maxH >= 8) {
       tags.add('packed');
@@ -198,17 +213,23 @@ class TimetableGenerator {
       tags.add('+${tt.optionalCourseCodes.length} elective${tt.optionalCourseCodes.length > 1 ? 's' : ''}');
     }
 
-    if (tt.score >= 85) {
-      tags.add('top pick');
-    } else if (daysWithClasses <= 4) {
-      tags.add('compact');
+    if (tags.isEmpty) tags.add('balanced');
+
+    // Prefer a 2-tag descriptor, but widen to 3 (then fall back to "option N")
+    // if a shorter label was already handed to an earlier option — no two cards
+    // should read the same.
+    String label = tags.take(2).join(', ');
+    if (usedLabels.contains(label) && tags.length > 2) {
+      label = tags.take(3).join(', ');
     }
+    if (usedLabels.contains(label)) {
+      label = 'option ${index + 1}';
+    }
+    usedLabels.add(label);
 
-    if (tags.isEmpty) tags.add('option ${index + 1}');
-
-    final label = tags.take(2).join(', ');
-    final prefix = String.fromCharCode(65 + (index % 26));
-    return '$prefix. ${label[0].toUpperCase()}${label.substring(1)}';
+    // No ordering prefix: the ranker (Pareto tier + closeness) owns order now,
+    // so the name is a pure descriptor of what the timetable is like.
+    return '${label[0].toUpperCase()}${label.substring(1)}';
   }
 
   static _OptionalResult _addOptionalCourses(
@@ -223,6 +244,8 @@ class TimetableGenerator {
     final addedCodes = <String>{};
 
     for (final optCourse in optionalCourses) {
+      // "Any N of M": stop once the requested number of optionals is in.
+      if (constraints.optionalTarget != null && addedCodes.length >= constraints.optionalTarget!) break;
       if (currentCredits + optCourse.totalCredits > constraints.maxCredits) continue;
 
       final sectionCombos = _generateAllCombinations([optCourse]);
@@ -233,7 +256,7 @@ class TimetableGenerator {
         final candidate = [...current, ...combo];
         if (!_isValidCombination(candidate, allCourses)) continue;
 
-        final score = _scoreTimetable(candidate, constraints, allCourses);
+        final score = _comboFitness(candidate, constraints);
         if (score > bestScore) {
           bestScore = score;
           bestCombo = combo;
@@ -381,167 +404,44 @@ class TimetableGenerator {
     }
   }
 
-  static double _scoreTimetable(List<ConstraintSelectedSection> sections, TimetableConstraints constraints, List<Course> courses) {
-    final w = constraints.scoringWeights;
-    double bonus = 0;
-    double penalty = 0;
-
+  /// Cheap internal fitness used only to pick a section combo and prune the
+  /// candidate pool — never shown to the user (the ranker owns what they see).
+  /// Higher is better: penalises long days, gaps, avoided slots/instructors,
+  /// and out-of-window / lunch classes; rewards preferred instructors.
+  static double _comboFitness(List<ConstraintSelectedSection> sections, TimetableConstraints c) {
     final hoursPerDay = _calculateHoursPerDay(sections);
-    final slotsPerDay = _getSlotsPerDay(sections);
-
-    // --- Penalties ---
-
-    double hoursPenalty = 0;
-    for (final hours in hoursPerDay.values) {
-      if (hours > constraints.maxHoursPerDay) {
-        hoursPenalty += (hours - constraints.maxHoursPerDay) * 5;
-      }
+    var penalty = 0.0;
+    for (final h in hoursPerDay.values) {
+      if (h > c.maxHoursPerDay) penalty += (h - c.maxHoursPerDay) * 5;
     }
-    penalty += hoursPenalty.clamp(0, w.maxHoursPerDayPenalty);
+    penalty += _calculateGapPenalty(_getSlotsPerDay(sections));
 
-    double timePenalty = 0;
-    for (final avoidTime in constraints.avoidTimes) {
-      for (final section in sections) {
-        for (final scheduleEntry in section.section.schedule) {
-          if (scheduleEntry.days.contains(avoidTime.day)) {
-            timePenalty += scheduleEntry.hours
-                .where((hour) => avoidTime.hours.contains(hour))
-                .length * 5;
+    for (final s in sections) {
+      for (final entry in s.section.schedule) {
+        final days = entry.days.length;
+        for (final h in entry.hours) {
+          if (c.earliestStartSlot != null && h < c.earliestStartSlot!) penalty += 3 * days;
+          if (c.latestEndSlot != null && h > c.latestEndSlot!) penalty += 3 * days;
+          if (c.protectLunchBreak && (h == 5 || h == 6)) penalty += 1.5 * days;
+        }
+      }
+      if (c.avoidedInstructors.contains(s.section.instructor)) penalty += 15;
+    }
+    for (final avoid in c.avoidTimes) {
+      for (final s in sections) {
+        for (final entry in s.section.schedule) {
+          if (entry.days.contains(avoid.day)) {
+            penalty += entry.hours.where((h) => avoid.hours.contains(h)).length * 5;
           }
         }
       }
     }
-    penalty += timePenalty.clamp(0, w.avoidTimesPenalty);
 
-    double labPenalty = 0;
-    for (final avoidLab in constraints.avoidLabs) {
-      for (final section in sections) {
-        if (section.section.type == SectionType.P) {
-          for (final scheduleEntry in section.section.schedule) {
-            if (scheduleEntry.days.contains(avoidLab.day)) {
-              labPenalty += scheduleEntry.hours
-                  .where((hour) => avoidLab.hours.contains(hour))
-                  .length * 8;
-            }
-          }
-        }
-      }
+    var bonus = 0.0;
+    for (final s in sections) {
+      if (c.preferredInstructors.contains(s.section.instructor)) bonus += 2;
     }
-    penalty += labPenalty.clamp(0, w.avoidLabsPenalty);
-
-    double avoidedPenalty = 0;
-    for (final section in sections) {
-      if (constraints.avoidedInstructors.contains(section.section.instructor)) {
-        avoidedPenalty += 15;
-      }
-    }
-    penalty += avoidedPenalty.clamp(0, w.avoidedInstructorsPenalty);
-
-    if (constraints.avoidBackToBackClasses) {
-      final backToBackCount = _calculateBackToBackPenalty(sections);
-      penalty += (backToBackCount * 3.0).clamp(0, w.backToBackPenalty);
-    }
-
-    if (constraints.minimizeGaps) {
-      final gapPenalty = _calculateGapPenalty(slotsPerDay);
-      penalty += gapPenalty.clamp(0, w.gapsPenalty);
-    }
-
-    if (constraints.protectLunchBreak) {
-      double lunchPenalty = 0;
-      for (final section in sections) {
-        for (final entry in section.section.schedule) {
-          final lunchHits = entry.hours.where((h) => h == 5 || h == 6).length;
-          lunchPenalty += lunchHits * entry.days.length * 1.5;
-        }
-      }
-      penalty += lunchPenalty.clamp(0, w.lunchBreakPenalty);
-    }
-
-    if (constraints.timeOfDayPreference != TimeOfDayPreference.none) {
-      final todPenalty = _calculateTimeOfDayPenalty(sections, constraints.timeOfDayPreference);
-      penalty += todPenalty.clamp(0, w.timeOfDayPenalty);
-    }
-
-    final examSpreadPenalty = _calculateExamSpreadPenalty(sections, courses);
-    penalty += examSpreadPenalty.clamp(0, w.examSpreadPenalty);
-
-    // --- Bonuses ---
-
-    if (constraints.preferredInstructors.isNotEmpty) {
-      final matched = sections
-          .where((s) => constraints.preferredInstructors.contains(s.section.instructor))
-          .length;
-      bonus += (matched / sections.length * w.preferredInstructorsBonus).clamp(0, w.preferredInstructorsBonus);
-    }
-
-    if (constraints.instructorRankings.isNotEmpty) {
-      double rankBonus = 0;
-      int ranked = 0;
-      for (final section in sections) {
-        if (constraints.instructorRankings.containsKey(section.courseCode)) {
-          final rankings = constraints.instructorRankings[section.courseCode]!;
-          final rank = rankings.getInstructorRank(section.section.instructor, section.section.type);
-          if (rank > 0) {
-            rankBonus += rank;
-            ranked++;
-          }
-        }
-      }
-      if (ranked > 0) {
-        bonus += (rankBonus / ranked).clamp(0, w.instructorRankingsBonus);
-      }
-    }
-
-    final freeDays = hoursPerDay.entries
-        .where((e) => e.value == 0)
-        .map((e) => e.key)
-        .toSet();
-
-    if (constraints.freeDayPreference.isNotEmpty) {
-      double fdBonus = 0;
-      final total = constraints.freeDayPreference.length;
-      for (int i = 0; i < total; i++) {
-        if (freeDays.contains(constraints.freeDayPreference[i])) {
-          fdBonus += (total - i) / total * (w.freeDayBonus / 2);
-        }
-      }
-      bonus += fdBonus.clamp(0, w.freeDayBonus);
-    } else {
-      final daysWithClasses = hoursPerDay.values.where((hours) => hours > 0).length;
-      if (daysWithClasses <= 4) {
-        bonus += ((5 - daysWithClasses) * 1.0).clamp(0, w.freeDayBonus);
-      }
-    }
-
-    if (constraints.preferredMidsemSlot != null || constraints.preferredCompreSlot != null) {
-      final courseCodes = sections.map((s) => s.courseCode).toSet();
-      int matched = 0;
-      int total = 0;
-      for (final code in courseCodes) {
-        final course = courses.firstWhere((c) => c.courseCode == code, orElse: () => Course(
-          courseCode: code, courseTitle: '', lectureCredits: 0, practicalCredits: 0, totalCredits: 0, sections: [],
-        ));
-        if (constraints.preferredMidsemSlot != null && course.midSemExam != null) {
-          total++;
-          if (course.midSemExam!.timeSlot == constraints.preferredMidsemSlot) matched++;
-        }
-        if (constraints.preferredCompreSlot != null && course.endSemExam != null) {
-          total++;
-          if (course.endSemExam!.timeSlot == constraints.preferredCompreSlot) matched++;
-        }
-      }
-      if (total > 0) bonus += (matched / total * w.examSlotBonus).clamp(0, w.examSlotBonus);
-    }
-
-    final optionalCodes = constraints.optionalCourses.toSet();
-    final includedOptionals = sections.map((s) => s.courseCode).toSet().intersection(optionalCodes);
-    if (optionalCodes.isNotEmpty) {
-      bonus += (includedOptionals.length / optionalCodes.length * w.optionalCoursesBonus).clamp(0, w.optionalCoursesBonus);
-    }
-
-    final rawScore = 90 - penalty + bonus.clamp(0, w.totalBonusCap);
-    return rawScore.clamp(0, 100);
+    return bonus - penalty;
   }
 
   static Map<DayOfWeek, List<int>> _getSlotsPerDay(List<ConstraintSelectedSection> sections) {
@@ -572,98 +472,6 @@ class TimetableGenerator {
       }
     }
     return totalGaps * 1.5;
-  }
-
-  static double _calculateTimeOfDayPenalty(List<ConstraintSelectedSection> sections, TimeOfDayPreference pref) {
-    double mismatch = 0;
-    for (final section in sections) {
-      for (final entry in section.section.schedule) {
-        for (final hour in entry.hours) {
-          if (pref == TimeOfDayPreference.morning && hour >= 7) {
-            mismatch += 1;
-          } else if (pref == TimeOfDayPreference.afternoon && hour <= 4) {
-            mismatch += 1;
-          }
-        }
-      }
-    }
-    return mismatch;
-  }
-
-  static double _calculateExamSpreadPenalty(List<ConstraintSelectedSection> sections, List<Course> courses) {
-    final courseCodes = sections.map((s) => s.courseCode).toSet();
-    final midsemDates = <DateTime>[];
-    final compreDates = <DateTime>[];
-
-    for (final code in courseCodes) {
-      final course = courses.firstWhere((c) => c.courseCode == code, orElse: () => Course(
-        courseCode: code, courseTitle: '', lectureCredits: 0, practicalCredits: 0, totalCredits: 0, sections: [],
-      ));
-      if (course.midSemExam != null) midsemDates.add(course.midSemExam!.date);
-      if (course.endSemExam != null) compreDates.add(course.endSemExam!.date);
-    }
-
-    double penalty = 0;
-
-    // Compres: back-to-back is avoidable and costly
-    if (compreDates.length >= 2) {
-      compreDates.sort();
-      for (int i = 1; i < compreDates.length; i++) {
-        final daysDiff = compreDates[i].difference(compreDates[i - 1]).inDays;
-        if (daysDiff == 0) {
-          penalty += 4;
-        } else if (daysDiff == 1) {
-          penalty += 2;
-        }
-      }
-    }
-
-    // Midsems: crammed into one week, back-to-back is common — light penalty
-    if (midsemDates.length >= 2) {
-      midsemDates.sort();
-      for (int i = 1; i < midsemDates.length; i++) {
-        final daysDiff = midsemDates[i].difference(midsemDates[i - 1]).inDays;
-        if (daysDiff == 0) {
-          penalty += 2;
-        } else if (daysDiff == 1) {
-          penalty += 0.5;
-        }
-      }
-    }
-
-    return penalty;
-  }
-
-
-
-  static int _calculateBackToBackPenalty(List<ConstraintSelectedSection> sections) {
-    final timeSlots = <String, List<ConstraintSelectedSection>>{};
-    
-    for (final section in sections) {
-      for (final scheduleEntry in section.section.schedule) {
-        for (final day in scheduleEntry.days) {
-          for (final hour in scheduleEntry.hours) {
-            final key = '${day.toString()}_$hour';
-            timeSlots[key] ??= [];
-            timeSlots[key]!.add(section);
-          }
-        }
-      }
-    }
-
-    int backToBackCount = 0;
-    for (final day in DayOfWeek.values) {
-      for (int hour = 1; hour <= 9; hour++) {
-        final currentKey = '${day.toString()}_$hour';
-        final nextKey = '${day.toString()}_${hour + 1}';
-        
-        if (timeSlots.containsKey(currentKey) && timeSlots.containsKey(nextKey)) {
-          backToBackCount++;
-        }
-      }
-    }
-
-    return backToBackCount;
   }
 
   static Map<String, dynamic> _analyzeTimetable(List<ConstraintSelectedSection> sections, TimetableConstraints constraints, List<Course> courses) {

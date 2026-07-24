@@ -82,7 +82,6 @@ void main() {
             ),
           ),
         ],
-        score: 85.5,
         pros: ['No gaps'],
         cons: ['Early morning'],
         hoursPerDay: {DayOfWeek.M: 1},
@@ -91,7 +90,6 @@ void main() {
       );
 
       expect(tt.sections.length, 1);
-      expect(tt.score, 85.5);
       expect(tt.pros, contains('No gaps'));
       expect(tt.optionalCourseCodes, contains('OPT F100'));
     });
