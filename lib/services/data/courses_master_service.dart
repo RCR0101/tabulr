@@ -38,7 +38,13 @@ class CoursesMasterService {
   // eager initializer would demand Firebase be up the first time anything
   // touches the service — including code paths that only read the in-memory
   // cache and never go near Firestore.
-  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
+  /// Test seam: substitute an in-memory Firestore so the real load paths can be
+  /// exercised without a network. Never set from app code.
+  @visibleForTesting
+  FirebaseFirestore? firestoreForTest;
+
+  FirebaseFirestore get _firestore =>
+      firestoreForTest ?? FirebaseFirestore.instance;
 
   final LocalCacheService _localCache = LocalCacheService();
 
@@ -104,12 +110,8 @@ class CoursesMasterService {
         metadataRef: CampusService.metadataDocRef(_firestore),
       );
       if (cached != null) {
-        _cache = {
-          for (final map in cached)
-            map['course_code'] as String: CourseMasterEntry.fromMap(map)
-        };
-        _loaded = true;
-        _loadStateController.add(true);
+        // Already persisted — don't rewrite (that would reset its TTL).
+        await _commit(campusId, cached, persist: false);
         return;
       }
     }
@@ -118,13 +120,7 @@ class CoursesMasterService {
     // legacy per-document scan below if the bundle hasn't been generated yet.
     final bundled = await _readBundle(campusId);
     if (bundled != null) {
-      _cache = {
-        for (final map in bundled)
-          map['course_code'] as String: CourseMasterEntry.fromMap(map)
-      };
-      await _localCache.write(_cacheKey, bundled);
-      _loaded = true;
-      _loadStateController.add(true);
+      await _commit(campusId, bundled);
       return;
     }
 
@@ -136,12 +132,27 @@ class CoursesMasterService {
         .timeout(AppDurations.startupReadTimeout);
 
     final docs = snapshot.docs.map((doc) => doc.data()).toList();
+    await _commit(campusId, docs);
+  }
+
+  /// Publishes a freshly-loaded catalogue — but only if the campus hasn't
+  /// changed since this load began. A campus switch clears the cache and kicks
+  /// off a new load; if the *old* campus's load was slower and resolves after
+  /// the switch, committing it here would overwrite the current campus's
+  /// catalogue (and, because [_cacheKey] tracks the current campus, persist the
+  /// wrong data under the new campus's key). Dropping the stale result leaves
+  /// the newer load to finish.
+  Future<void> _commit(
+    String loadedForCampus,
+    List<Map<String, dynamic>> docs, {
+    bool persist = true,
+  }) async {
+    if (loadedForCampus != CampusService.campusId) return;
     _cache = {
       for (final map in docs)
         map['course_code'] as String: CourseMasterEntry.fromMap(map)
     };
-
-    await _localCache.write(_cacheKey, docs);
+    if (persist) await _localCache.write('courses_master_$loadedForCampus', docs);
     _loaded = true;
     _loadStateController.add(true);
   }

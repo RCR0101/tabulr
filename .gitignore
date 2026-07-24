@@ -3,6 +3,9 @@
 *.log
 *.pyc
 *.swp
+# Source PDFs (timetables, exam schedules, academic calendars) are kept locally
+# but not tracked — they're admin-uploaded/parsed inputs, not shipped assets.
+*.pdf
 .DS_Store
 .atom/
 .build/

@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 2.5.27+131
+version: 2.5.28+132
 
 environment:
   sdk: ^3.7.0
@@ -70,6 +70,13 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
   mocktail: ^1.0.4
+  # In-memory Firestore for tests that exercise the real Firestore-backed load
+  # paths (startup timeouts, campus-switch races, migrations) without a network.
+  fake_cloud_firestore: ^3.0.3
+  # Used directly by tests to redirect path_provider at a temp dir (transitive
+  # via path_provider, declared here so the analyzer is satisfied).
+  path_provider_platform_interface: ^2.1.0
+  plugin_platform_interface: ^2.1.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

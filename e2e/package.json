@@ -1,0 +1,15 @@
+{
+  "name": "tabulr-e2e",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Browser-level stress/regression tests for Tabulr (loading, corrupt-storage recovery, multi-tab). Runs against a built web app; not part of the Flutter unit suite.",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report",
+    "install:browsers": "playwright install"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  }
+}
