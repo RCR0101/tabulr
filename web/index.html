@@ -94,7 +94,59 @@
   </script>
 
   <script>
+    // Boot watchdog. The app's own caches self-heal (a bad entry is caught and
+    // re-fetched), but Firestore's IndexedDB persistence is owned by the SDK
+    // with no such guard — a corrupt or wedged store (seen on privacy-hardened
+    // browsers like Brave) can make startup hang before it ever paints. We
+    // count boots that never reach first frame; after two, we assume local
+    // state is the problem and purge everything (IndexedDB incl. Firestore,
+    // Cache Storage, service workers, localStorage) before booting clean. A
+    // healthy boot clears the counter on first frame, so this never runs when
+    // things are working, and an intentional post-deploy reload resets it too.
+    var BOOT_FAIL_KEY = 'boot_fails';
+    var BOOT_FAIL_LIMIT = 2;
+
+    async function purgeLocalState() {
+      try {
+        if ('serviceWorker' in navigator) {
+          var regs = await navigator.serviceWorker.getRegistrations();
+          for (var r of regs) await r.unregister();
+        }
+      } catch (e) {}
+      try {
+        var keys = await caches.keys();
+        for (var k of keys) await caches.delete(k);
+      } catch (e) {}
+      try {
+        if (indexedDB.databases) {
+          var dbs = await indexedDB.databases();
+          await Promise.all(dbs.map(function (db) {
+            return new Promise(function (resolve) {
+              try {
+                var req = indexedDB.deleteDatabase(db.name);
+                req.onsuccess = req.onerror = req.onblocked = function () { resolve(); };
+              } catch (e) { resolve(); }
+            });
+          }));
+        }
+      } catch (e) {}
+      try {
+        localStorage.clear();
+      } catch (e) {}
+    }
+
     (async function() {
+      // Recover from / count a stuck boot before doing anything else.
+      var bootFails = 0;
+      try { bootFails = parseInt(localStorage.getItem(BOOT_FAIL_KEY) || '0', 10) || 0; } catch (e) {}
+      if (bootFails >= BOOT_FAIL_LIMIT) {
+        await purgeLocalState();
+        try { localStorage.setItem(BOOT_FAIL_KEY, '0'); } catch (e) {}
+      } else {
+        // Provisionally mark this attempt as unconfirmed; first frame clears it.
+        try { localStorage.setItem(BOOT_FAIL_KEY, String(bootFails + 1)); } catch (e) {}
+      }
+
       var version = '';
       try {
         if ('serviceWorker' in navigator) {
@@ -102,8 +154,23 @@
           for (var r of regs) await r.unregister();
         }
 
-        var resp = await fetch('version.json?t=' + Date.now());
-        var data = await resp.json();
+        // Some browsers/extensions (observed on Brave) silently stall this
+        // request instead of failing it. Without a cap the bootstrap script
+        // below is never injected and the page hangs on the spinner. Abort
+        // after a few seconds and fall through to the cached-version path,
+        // which reuses the preloaded engine bytes warmed above.
+        var controller = new AbortController();
+        var timer = setTimeout(function() { controller.abort(); }, 4000);
+        var data;
+        try {
+          var resp = await fetch('version.json?t=' + Date.now(), {
+            signal: controller.signal,
+            cache: 'no-store'
+          });
+          data = await resp.json();
+        } finally {
+          clearTimeout(timer);
+        }
         version = data.version || '';
         var prev = localStorage.getItem('app_version');
 
@@ -111,11 +178,17 @@
           var keys = await caches.keys();
           for (var k of keys) await caches.delete(k);
           localStorage.setItem('app_version', version);
+          // Intentional reload — don't let the watchdog blame it as a stuck boot.
+          try { localStorage.setItem(BOOT_FAIL_KEY, '0'); } catch (e) {}
           window.location.reload();
           return;
         }
         localStorage.setItem('app_version', version);
-      } catch(e) {}
+      } catch(e) {
+        // Version check failed or timed out: proceed with the last known
+        // version so the engine still boots (and reuses the preloaded bytes).
+        try { version = localStorage.getItem('app_version') || ''; } catch(_) {}
+      }
 
       // Load Flutter bootstrap with version query param for cache busting
       var s = document.createElement('script');
@@ -126,6 +199,8 @@
   </script>
   <script>
     window.addEventListener('flutter-first-frame', function () {
+      // Boot reached first frame — clear the watchdog's failure counter.
+      try { localStorage.removeItem(BOOT_FAIL_KEY); } catch (e) {}
       var el = document.getElementById('loading');
       if (el) el.remove();
     });

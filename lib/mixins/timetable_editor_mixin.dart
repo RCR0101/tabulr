@@ -89,6 +89,11 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   // -- Undo/Redo --
   final UndoRedoService undoRedoService = UndoRedoService();
 
+  // Wide-layout only: lets the user fold the left course panel away to a slim
+  // rail so the grid can use the full width. Ephemeral (per editor session);
+  // mobile uses tabs instead, so it's ignored there.
+  bool _coursesCollapsed = false;
+
   // -- Selection broadcast --
   // Screens pushed on top of the editor (the elective browsers) hold the live
   // selectedSections list, so they only need a ping to know it changed. While
@@ -1073,6 +1078,99 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   // Shared UI builders
   // ---------------------------------------------------------------------------
 
+  /// Wraps [buildCoursesPanel] with a slim header carrying the collapse
+  /// control, shown only in the wide two-pane layout.
+  Widget _buildExpandedCoursesPanel() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 6, 4, 0),
+          child: Row(
+            children: [
+              Text(
+                'Courses',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.chevron_left),
+                tooltip: 'Collapse courses panel',
+                visualDensity: VisualDensity.compact,
+                onPressed: () => setState(() => _coursesCollapsed = true),
+              ),
+            ],
+          ),
+        ),
+        Expanded(child: buildCoursesPanel()),
+      ],
+    );
+  }
+
+  /// The folded state of the course panel: a narrow rail that restores the full
+  /// panel (tap the label or the chevron) while the grid spans the freed width.
+  /// The two build actions live here too — on wide layouts they only otherwise
+  /// dock under the open panel (buildFABs is null), so folding must not strand
+  /// them.
+  Widget _buildCollapsedCoursesRail() {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: Material(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(12),
+        clipBehavior: Clip.antiAlias,
+        child: SizedBox(
+          width: 44,
+          child: Column(
+            children: [
+              const SizedBox(height: 4),
+              IconButton(
+                icon: const Icon(Icons.chevron_right),
+                tooltip: 'Expand courses panel',
+                visualDensity: VisualDensity.compact,
+                onPressed: () => setState(() => _coursesCollapsed = false),
+              ),
+              Expanded(
+                child: InkWell(
+                  onTap: () => setState(() => _coursesCollapsed = false),
+                  child: Center(
+                    child: RotatedBox(
+                      quarterTurns: 3,
+                      child: Text(
+                        'Courses',
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const Divider(height: 1, indent: 8, endIndent: 8),
+              IconButton(
+                icon: const Icon(Icons.swap_horiz),
+                tooltip: 'Add / Swap',
+                visualDensity: VisualDensity.compact,
+                onPressed: openAddSwap,
+              ),
+              IconButton(
+                icon: Icon(Icons.auto_awesome_mosaic, color: scheme.primary),
+                tooltip: 'TT Generator',
+                visualDensity: VisualDensity.compact,
+                onPressed: openGenerator,
+              ),
+              const SizedBox(height: 4),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget buildCoursesPanel() {
     final tt = currentTimetable!;
     return Column(
@@ -1574,11 +1672,69 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
 
   Widget buildBodyLayout(bool isWideScreen) {
     if (isWideScreen) {
-      return Row(
-        children: [
-          Expanded(flex: 1, child: buildCoursesPanel()),
-          Expanded(flex: 2, child: buildTimetablePanel()),
-        ],
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          // The open panel keeps its old ~1/3 share (floored so it stays usable
+          // on narrower desktops); folded, it shrinks to a slim rail and the
+          // grid — the only Expanded child — animates out to fill the gap.
+          final third = constraints.maxWidth / 3;
+          final expandedWidth = third < 300 ? 300.0 : third;
+          const railWidth = 60.0;
+          final collapsed = _coursesCollapsed;
+          const duration = Duration(milliseconds: 260);
+          const curve = Curves.easeInOutCubic;
+          return Row(
+            children: [
+              AnimatedContainer(
+                duration: duration,
+                curve: curve,
+                width: collapsed ? railWidth : expandedWidth,
+                // Both the full panel and the rail stay laid out at the open
+                // width and clipped to the animating frame, so nothing reflows
+                // as the width changes. The two cross-fade over the *same*
+                // duration/curve as the width, so the chevron and contents move
+                // in step with the grid reclaiming the space rather than
+                // snapping ahead of it.
+                child: ClipRect(
+                  child: OverflowBox(
+                    alignment: Alignment.centerLeft,
+                    minWidth: expandedWidth,
+                    maxWidth: expandedWidth,
+                    child: Stack(
+                      children: [
+                        AnimatedOpacity(
+                          opacity: collapsed ? 0 : 1,
+                          duration: duration,
+                          curve: curve,
+                          child: IgnorePointer(
+                            ignoring: collapsed,
+                            child: _buildExpandedCoursesPanel(),
+                          ),
+                        ),
+                        Positioned(
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: railWidth,
+                          child: AnimatedOpacity(
+                            opacity: collapsed ? 1 : 0,
+                            duration: duration,
+                            curve: curve,
+                            child: IgnorePointer(
+                              ignoring: !collapsed,
+                              child: _buildCollapsedCoursesRail(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(child: buildTimetablePanel()),
+            ],
+          );
+        },
       );
     }
     return DefaultTabController(

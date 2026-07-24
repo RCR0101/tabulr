@@ -16,7 +16,7 @@ class ConfigService {
   // App Configuration
   String get appName => 'Tabulr';
   // Keep in sync with pubspec.yaml `version:` field.
-  String get appVersion => '2.5.26';
+  String get appVersion => '2.5.27';
 
   // Debug Settings
   bool get debugMode => false;
@@ -129,7 +129,7 @@ class ConfigService {
   Future<void> loadSemesterDates({bool force = false}) async {
     if (_loaded && !force) return;
     try {
-      final snap = await _configRef.get();
+      final snap = await _configRef.get().timeout(AppDurations.startupReadTimeout);
       final doc = snap.data();
       if (doc != null) {
         _maintenance = doc['maintenance'] == true;

@@ -67,7 +67,8 @@ class CoursesMasterService {
           .doc(campusId)
           .collection(FirestoreCollections.catalog)
           .doc(FirestoreCollections.coursesMasterBundle)
-          .get();
+          .get()
+          .timeout(AppDurations.startupReadTimeout);
       if (!doc.exists) return null;
       final raw = doc.data()?['entriesJson'] as String?;
       if (raw == null || raw.isEmpty) return null;
@@ -131,7 +132,8 @@ class CoursesMasterService {
         .collection(FirestoreCollections.campuses)
         .doc(campusId)
         .collection(FirestoreCollections.coursesMaster)
-        .get();
+        .get()
+        .timeout(AppDurations.startupReadTimeout);
 
     final docs = snapshot.docs.map((doc) => doc.data()).toList();
     _cache = {

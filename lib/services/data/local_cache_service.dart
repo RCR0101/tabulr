@@ -1,5 +1,6 @@
 import 'dart:convert';
 import '../ui/secure_logger.dart';
+import '../../constants/app_constants.dart';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
@@ -127,7 +128,8 @@ class LocalCacheService {
       final decoded = _decode(await _readRaw(cacheKey), _maxAgeHours);
       if (decoded == null) return null;
 
-      final metaSnap = await metadataRef.get();
+      final metaSnap =
+          await metadataRef.get().timeout(AppDurations.startupReadTimeout);
       if (metaSnap.exists) {
         final lastUpdated = metaSnap.data()?[metadataField];
         if (lastUpdated != null) {

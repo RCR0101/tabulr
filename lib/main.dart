@@ -24,6 +24,7 @@ import 'services/ui/performance_monitor.dart';
 import 'services/ui/remote_log_sink.dart';
 import 'widgets/theme_transition_overlay.dart';
 import 'utils/app_scroll_behavior.dart';
+import 'constants/app_constants.dart';
 
 void main() async {
   final totalStopwatch = Stopwatch()..start();
@@ -61,6 +62,11 @@ void main() async {
 
   // Each service is wrapped so a single failure (e.g. Firestore permission-denied
   // when App Check token is invalid) doesn't kill the entire startup.
+  // Bounded by [AppDurations.startupPrefetchTimeout]: a request that stalls
+  // without erroring (seen on Brave, where per-service catchError never fires)
+  // must not keep the first frame from painting. Anything unfinished keeps
+  // running in the background and populates its cache when it resolves; the
+  // UI shows immediately and consumers lazy-load on first use.
   await SecureLogger.measureAsync('parallel_services', () => Future.wait([
     CoursesMasterService().loadForCampus().catchError((e) {
       SecureLogger.error('STARTUP', 'Failed to load courses', e);
@@ -84,12 +90,20 @@ void main() async {
     ConfigService().loadSemesterDates().catchError((e) {
       SecureLogger.error('STARTUP', 'Failed to load semester dates', e);
     }),
-  ]));
+  ]).timeout(AppDurations.startupPrefetchTimeout, onTimeout: () {
+    SecureLogger.warning('STARTUP',
+        'Startup pre-fetch timed out; painting UI with cached/lazy data');
+    return const <void>[];
+  }));
 
-  // Re-load settings if auth won the race (settings may have loaded as guest)
+  // Re-load settings if auth won the race (settings may have loaded as guest).
+  // Timed out for the same reason as the pre-fetch above — a stalled read here
+  // would otherwise re-block the first frame.
   if (AuthService().isAuthenticated) {
     try {
-      await userSettingsService.initializeSettings(force: true);
+      await userSettingsService
+          .initializeSettings(force: true)
+          .timeout(AppDurations.startupPrefetchTimeout);
     } catch (e) {
       SecureLogger.error('STARTUP', 'Failed to re-load user settings', e);
     }

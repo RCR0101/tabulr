@@ -325,6 +325,8 @@ abstract final class AppDurations {
   static const Duration uploadExamSeatingTimeout = Duration(minutes: 5);
   static const Duration networkTimeout = Duration(seconds: 20);
   static const Duration shortNetworkTimeout = Duration(seconds: 15);
+  static const Duration startupReadTimeout = Duration(seconds: 8);
+  static const Duration startupPrefetchTimeout = Duration(seconds: 12);
 }
 
 // ── Responsive breakpoints & scaling ───────────────────────────────────
