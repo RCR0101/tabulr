@@ -6,7 +6,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/academic_record.dart';
 import '../models/timetable_selection_link.dart';
+import '../services/data/campus_service.dart';
 import '../services/data/professor_service.dart';
+import '../services/ui/toast_service.dart';
+import '../widgets/campus_selector_widget.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../services/ui/responsive_service.dart';
 import '../utils/design_constants.dart';
@@ -74,6 +77,15 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
         title: 'Prof Chambers',
         actions: [
           PageInfoHelper.infoButton(context, PageInfoHelper.profChambers, key: TutorialKeys.infoProfChambers),
+          CampusSelectorWidget(
+            onCampusChanged: (campus) {
+              ToastService.showInfo(
+                'Switched to ${CampusService.getCampusDisplayName(campus)} campus',
+              );
+              _loadProfessors();
+            },
+          ),
+          const SizedBox(width: 4),
           if (kIsWeb)
             IconButton(
               onPressed: _professorService.refresh,
@@ -194,7 +206,8 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
 
   Widget _buildEmptyView() {
     final hasSearch = _professorService.searchQuery.isNotEmpty;
-    
+    final campusName = CampusService.currentCampusDisplayName;
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -208,7 +221,8 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
           Text(
             hasSearch
                 ? 'No professors found'
-                : 'No professors available',
+                : 'No professors available for $campusName',
+            textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
@@ -217,7 +231,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
           Text(
             hasSearch
                 ? 'Try searching with different keywords'
-                : 'Professor data is not available yet',
+                : 'Check the campus selector above — data may be under a different campus',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
