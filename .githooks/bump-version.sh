@@ -25,11 +25,36 @@ for f in "$PUBSPEC" "$CONFIG" "$WEB_JSON"; do
   fi
 done
 
+parse_version() {  # reads "version: X.Y.Z+B" from stdin
+  sed -n 's/^version:[[:space:]]*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*+[0-9][0-9]*\).*/\1/p' | head -1
+}
+
 # Current "version: X.Y.Z+B" from pubspec (the single source of truth).
-current="$(sed -n 's/^version:[[:space:]]*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*+[0-9][0-9]*\).*/\1/p' "$PUBSPEC" | head -1)"
+current="$(parse_version < "$PUBSPEC")"
 if [ -z "$current" ]; then
   echo "bump-version: could not parse 'version: X.Y.Z+B' from $PUBSPEC" >&2
   exit 1
+fi
+
+# Already bumped since the last commit? Leave it alone.
+#
+# Git runs pre-commit (which calls this) BEFORE commit-msg, and only pre-commit
+# can add files to the commit being built — so the bump cannot be deferred until
+# after the message is validated. When commit-msg then rejects the message, the
+# commit does not happen but this bump is already written and staged. Without
+# this check the retry bumped a second time and the version number silently
+# skipped one.
+#
+# Comparing against HEAD rather than tracking state: if the working version
+# already differs from the committed one, a bump is pending and re-running is a
+# no-op.
+committed="$(git show HEAD:"$PUBSPEC" 2>/dev/null | parse_version || true)"
+if [ -n "$committed" ] && [ "$current" != "$committed" ]; then
+  echo "bump-version: $current already pending since $committed; not bumping again"
+  if [ "${1:-}" = "--stage" ]; then
+    git add "$PUBSPEC" "$CONFIG" "$WEB_JSON"
+  fi
+  exit 0
 fi
 
 semver="${current%%+*}"   # X.Y.Z
