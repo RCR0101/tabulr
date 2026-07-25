@@ -307,6 +307,48 @@ await test('a non-admin still cannot write campus data', async () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
+group('professor directory is not anonymously scrapable');
+
+await seed(async (db) => {
+  await setDoc(doc(db, 'reference/professors/hyderabad-entries/p1'), {
+    name: 'Prof X', chamber: 'D-201', schedule: [],
+  });
+});
+
+await test('an anonymous visitor CANNOT list the professor directory', async () => {
+  await assertFails(getDocs(collection(env.unauthenticatedContext().firestore(),
+    'reference/professors/hyderabad-entries')));
+});
+
+await test('an anonymous visitor CANNOT read a professor doc', async () => {
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(),
+    'reference/professors/hyderabad-entries/p1')));
+});
+
+await test('a signed-in user still sees the directory (the real flow)', async () => {
+  await assertSucceeds(getDocs(collection(user(HYD),
+    'reference/professors/hyderabad-entries')));
+});
+
+await test('a guest can read the reference/app_config DOCUMENT itself', async () => {
+  // `match /reference/app_config/{sub=**}` has to match the document, not just
+  // things under it — MaintenanceGate reads this path directly, so getting the
+  // wildcard wrong takes down the "we're down" message.
+  await seed(async (db) => {
+    await setDoc(doc(db, 'reference/app_config'), { maintenance: false });
+  });
+  await assertSucceeds(
+    getDoc(doc(env.unauthenticatedContext().firestore(), 'reference/app_config')));
+});
+
+await test('other reference data stays open for guests', async () => {
+  // Guests build timetables without signing in, so prerequisites, branches and
+  // app_config must not be caught by the professors rule.
+  const guest = env.unauthenticatedContext().firestore();
+  await assertSucceeds(getDoc(doc(guest, 'reference/prerequisites/courses/CS_F211')));
+});
+
+// ───────────────────────────────────────────────────────────────────────────
 group('admin_emails stays invisible');
 
 await test('nobody can read the admin allowlist', async () => {

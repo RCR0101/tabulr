@@ -443,7 +443,13 @@ class TimetableGeneratorController extends ChangeNotifier {
 
   // ── Ranking importance ─────────────────────────────────────────────────────
 
-  void setAxisImportance(RankAxis axis, AxisImportance value) {
+  /// A null [value] removes the override, putting the axis back to its implicit
+  /// Normal. The refine chips need that to undo themselves.
+  void setAxisImportance(RankAxis axis, AxisImportance? value) {
+    if (value == null) {
+      if (_axisImportance.remove(axis) != null) _changed([importance]);
+      return;
+    }
     if (_axisImportance[axis] == value) return;
     _axisImportance[axis] = value;
     _changed([importance]);

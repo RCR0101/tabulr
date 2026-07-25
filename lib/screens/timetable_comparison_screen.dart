@@ -152,6 +152,9 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: DropdownButton<Timetable>(
+                // A square highlight inside a rounded box reads as a stray
+                // grey block; the box border is the focus affordance.
+                focusColor: Colors.transparent,
                 value: selectedTimetable,
                 isExpanded: true,
                 underline: Container(),

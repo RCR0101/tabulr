@@ -223,6 +223,9 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<BugStatus>(
+          // A square highlight inside a rounded box reads as a stray
+          // grey block; the box border is the focus affordance.
+          focusColor: Colors.transparent,
           value: r.status,
           isDense: true,
           borderRadius: AppDesign.borderRadiusMd,

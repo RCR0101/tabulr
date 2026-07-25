@@ -578,7 +578,8 @@ class _TimetableGridState extends State<TimetableGrid> {
     final accent = widget.palette.colorFor(block.slot.courseCode);
     final warning = _incompleteWarningFor(block.slot.courseCode);
 
-    return ValueListenableBuilder<_GridFocus>(
+    return RepaintBoundary(
+      child: ValueListenableBuilder<_GridFocus>(
       valueListenable: _focus,
       builder: (context, focus, _) {
         final isHovered = focus.hoveredKey == block.sectionKey;
@@ -611,6 +612,7 @@ class _TimetableGridState extends State<TimetableGrid> {
               : () => widget.onRemoveSection!(block.slot.courseCode, block.slot.sectionId),
         );
       },
+      ),
     );
   }
 

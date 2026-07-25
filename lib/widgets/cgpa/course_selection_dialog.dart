@@ -77,6 +77,9 @@ class _CourseSelectionDialogState extends State<CourseSelectionDialog> {
                           borderRadius: BorderRadius.circular(ResponsiveService.getAdaptiveBorderRadius(context, 8)),
                         ),
                         child: DropdownButton<Timetable>(
+                          // A square highlight inside a rounded box reads as a stray
+                          // grey block; the box border is the focus affordance.
+                          focusColor: Colors.transparent,
                           value: _selectedTimetable,
                           isExpanded: true,
                           underline: Container(),
@@ -129,6 +132,9 @@ class _CourseSelectionDialogState extends State<CourseSelectionDialog> {
                             borderRadius: BorderRadius.circular(ResponsiveService.getAdaptiveBorderRadius(context, 8)),
                           ),
                           child: DropdownButton<String>(
+                            // A square highlight inside a rounded box reads as a stray
+                            // grey block; the box border is the focus affordance.
+                            focusColor: Colors.transparent,
                             value: _selectedSemester,
                             isExpanded: true,
                             underline: Container(),

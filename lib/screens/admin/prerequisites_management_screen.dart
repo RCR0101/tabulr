@@ -556,6 +556,9 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
                       Border.all(color: scheme.outline.withValues(alpha: 0.15)),
                 ),
                 child: DropdownButton<String>(
+                  // A square highlight inside a rounded box reads as a stray
+                  // grey block; the box border is the focus affordance.
+                  focusColor: Colors.transparent,
                   value: _types.contains(g.type) ? g.type : 'pre',
                   underline: const SizedBox.shrink(),
                   isDense: true,

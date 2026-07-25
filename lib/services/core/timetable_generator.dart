@@ -128,12 +128,13 @@ class TimetableGenerator {
     ]..sort((a, b) => b.$2.compareTo(a.$2));
     final results = scored.take(maxTimetables).map((e) => e.$1).toList();
 
-    // Assign descriptive names
-    final usedLabels = <String>{};
+    // Descriptive names, assigned together so collisions can be resolved for a
+    // whole group at once (see _assignNames).
+    final names = _assignNames(results);
     for (int i = 0; i < results.length; i++) {
       final tt = results[i];
       results[i] = GeneratedTimetable(
-        id: _generateName(tt, i, usedLabels),
+        id: names[i],
         sections: tt.sections,
         pros: tt.pros,
         cons: tt.cons,
@@ -170,7 +171,8 @@ class TimetableGenerator {
   // nothing and can't tell two options apart. Only Mon–Fri freedom is notable.
   static const _weekdays = {DayOfWeek.M, DayOfWeek.T, DayOfWeek.W, DayOfWeek.Th, DayOfWeek.F};
 
-  static String _generateName(GeneratedTimetable tt, int index, Set<String> usedLabels) {
+  /// Traits of the week this timetable produces, most distinctive first.
+  static List<String> _shapeTags(GeneratedTimetable tt) {
     final freeWeekdays = tt.hoursPerDay.entries
         .where((e) => _weekdays.contains(e.key) && e.value == 0)
         .map((e) => e.key)
@@ -183,8 +185,6 @@ class TimetableGenerator {
     final earliest = allSlots.isEmpty ? 0 : allSlots.reduce(min);
     final latest = allSlots.isEmpty ? 0 : allSlots.reduce(max);
 
-    // Ordered by how distinctive each trait is, so the first two tags carry the
-    // most signal. Enough independent axes here that options rarely collide.
     final tags = <String>[];
 
     if (freeWeekdays.length >= 2) {
@@ -214,22 +214,124 @@ class TimetableGenerator {
     }
 
     if (tags.isEmpty) tags.add('balanced');
+    return tags;
+  }
 
-    // Prefer a 2-tag descriptor, but widen to 3 (then fall back to "option N")
-    // if a shorter label was already handed to an earlier option — no two cards
-    // should read the same.
-    String label = tags.take(2).join(', ');
-    if (usedLabels.contains(label) && tags.length > 2) {
-      label = tags.take(3).join(', ');
-    }
-    if (usedLabels.contains(label)) {
-      label = 'option ${index + 1}';
-    }
-    usedLabels.add(label);
+  /// The sections one option picked for one course, sorted.
+  static List<String> _sectionIdsFor(GeneratedTimetable tt, String courseCode) {
+    return tt.sections
+        .where((s) => s.courseCode == courseCode)
+        .map((s) => s.sectionId)
+        .toList()
+      ..sort();
+  }
 
-    // No ordering prefix: the ranker (Pareto tier + closeness) owns order now,
-    // so the name is a pure descriptor of what the timetable is like.
-    return '${label[0].toUpperCase()}${label.substring(1)}';
+  /// Per-course descriptors of what makes each option in [group] different,
+  /// keyed by option index — e.g. `{0: ['CS F111 L1', 'EEE F111 L2'], ...}`.
+  ///
+  /// Compares each course's *set* of chosen sections across the group. A flat
+  /// set of section ids would misread a course that simply has several
+  /// components — a lecture AND a tutorial — as one whose choice varies.
+  /// Components common to every option are dropped: a tutorial that is the same
+  /// in all of them lengthens every name equally and distinguishes nothing.
+  static Map<int, List<String>> _distinguishingPicks(
+    List<int> group,
+    List<GeneratedTimetable> results,
+  ) {
+    final codes = {
+      for (final i in group)
+        for (final s in results[i].sections) s.courseCode,
+    };
+
+    final picks = {for (final i in group) i: <String>[]};
+    for (final code in codes.toList()..sort()) {
+      final perOption = {
+        for (final i in group) i: _sectionIdsFor(results[i], code),
+      };
+      if (perOption.values.map((ids) => ids.join('+')).toSet().length == 1) {
+        continue; // identical in every option — says nothing
+      }
+      final common = perOption.values
+          .map((ids) => ids.toSet())
+          .reduce((a, b) => a.intersection(b));
+      for (final i in group) {
+        final differing = perOption[i]!.where((id) => !common.contains(id));
+        for (final id in differing) {
+          picks[i]!.add('$code $id');
+        }
+      }
+    }
+    return picks;
+  }
+
+  /// Names every option in one pass.
+  ///
+  /// One pass rather than one-at-a-time because a collision is a property of a
+  /// *set* of options: naming them in sequence let the first keep the plain
+  /// shape label while the rest were pushed onto a fallback, so a group that
+  /// differs only by section read as "Balanced", "Option 2", "Option 3".
+  ///
+  /// Sections of a course usually occupy the same slots, so options frequently
+  /// share an identical week shape and shape tags alone cannot separate them.
+  /// When that happens the section choice IS the difference, and naming it is
+  /// both honest and actionable. Nothing falls back to a bare index: the index
+  /// said nothing about the timetable, and — because the ranker reorders after
+  /// naming — did not even match the position the card appeared in.
+  static List<String> _assignNames(List<GeneratedTimetable> results) {
+    final tags = [for (final tt in results) _shapeTags(tt)];
+
+    final byLabel = <String, List<int>>{};
+    for (var i = 0; i < results.length; i++) {
+      (byLabel[tags[i].take(2).join(', ')] ??= []).add(i);
+    }
+
+    final names = List<String>.filled(results.length, '');
+    for (final entry in byLabel.entries) {
+      final group = entry.value;
+      if (group.length == 1) {
+        names[group.first] = entry.key;
+        continue;
+      }
+
+      // Widening to every shape tag separates some groups on its own.
+      final widened = {for (final i in group) i: tags[i].join(', ')};
+      if (widened.values.toSet().length == group.length) {
+        for (final i in group) {
+          names[i] = widened[i]!;
+        }
+        continue;
+      }
+
+      // Same week shape — name them by the sections that actually differ. Two
+      // are usually enough to read at a glance; widening to all of them is
+      // guaranteed to separate the group, since options with an identical
+      // section set were already deduplicated when the pool was built.
+      //
+      // "balanced" means "nothing notable about the shape", so it is dropped
+      // once there is something concrete to say instead.
+      final picks = _distinguishingPicks(group, results);
+      final maxPicks = picks.values.fold(0, (m, p) => p.length > m ? p.length : m);
+      final prefix = entry.key == 'balanced' ? <String>[] : [entry.key];
+
+      for (final limit in {2, maxPicks}) {
+        final candidate = {
+          for (final i in group)
+            i: [...prefix, ...picks[i]!.take(limit)].join(', '),
+        };
+        final unique = candidate.values.toSet().length == group.length;
+        if (unique || limit == maxPicks) {
+          for (final i in group) {
+            names[i] = candidate[i]!;
+          }
+          if (unique) break;
+        }
+      }
+    }
+
+    return [
+      for (final n in names)
+        n.isEmpty ? 'Balanced' : '${n[0].toUpperCase()}${n.substring(1)}',
+    ];
   }
 
   static _OptionalResult _addOptionalCourses(

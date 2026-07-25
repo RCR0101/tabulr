@@ -46,6 +46,12 @@
         "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }]
       },
       {
+        "//": "Always fetched with a unique ?v=<version> (or ?t=<ts> on a first visit), so the URL itself changes whenever the deploy does and caching it forever is safe. This is the one JS file index.html version-stamps.",
+        "source": "flutter_bootstrap.js",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      },
+      {
+        "//": "main.dart.js and its part files keep STABLE filenames across deploys and are requested by the bootstrap without a version query, so immutable would strand clients on stale JS — index.html clears Cache Storage but cannot clear the HTTP cache. no-cache still revalidates cheaply: the 4.7 MB body is not resent, only a conditional request per file.",
         "source": "**/*.@(js|mjs|wasm)",
         "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
       },

@@ -52,10 +52,41 @@ service cloud.firestore {
       allow write: if isAdmin() && writesAllowed();
     }
 
-    // Reference data (professors, app_config, etc.)
-    // Reads stay open so clients can fetch the kill-switch message while down.
-    match /reference/{category}/{sub=**} {
+    // Reference data. Categories are listed explicitly rather than matched with
+    // a wildcard, because rules OR together: a `read: if true` catch-all would
+    // re-grant anything a narrower rule below tried to restrict. Listing them
+    // also means a NEW category is denied until someone decides its audience.
+    //
+    // Public — guests build timetables without signing in, and the kill-switch
+    // message has to be fetchable while the app is down.
+    match /reference/app_config/{sub=**} {
       allow read: if true;
+      allow write: if isAdmin() && writesAllowed();
+    }
+    match /reference/prerequisites/{sub=**} {
+      allow read: if true;
+      allow write: if isAdmin() && writesAllowed();
+    }
+    match /reference/branches/{sub=**} {
+      allow read: if true;
+      allow write: if isAdmin() && writesAllowed();
+    }
+    match /reference/duplicate_courses/{sub=**} {
+      allow read: if true;
+      allow write: if isAdmin() && writesAllowed();
+    }
+    match /reference/_metadata/{sub=**} {
+      allow read: if true;
+      allow write: if isAdmin() && writesAllowed();
+    }
+
+    // Signed-in only: names, chambers and full teaching schedules. The Prof
+    // Chambers screen is already behind auth in the UI (app_shell.dart), but the
+    // old catch-all left the whole directory scrapable by anyone with the URL.
+    // `request.auth != null` rather than isBitsEmail(), so an account the app
+    // treats as authenticated never hits a screen the rules refuse to serve.
+    match /reference/professors/{sub=**} {
+      allow read: if request.auth != null;
       allow write: if isAdmin() && writesAllowed();
     }
 

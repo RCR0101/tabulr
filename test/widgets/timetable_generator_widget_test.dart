@@ -212,6 +212,87 @@ void main() {
     });
   });
 
+  group('refine chips', () {
+    /// Picks a mandatory course and generates, so the refine row exists.
+    Future<void> generate(WidgetTester tester) async {
+      await tester.enterText(find.byType(TextField).first, 'CS F111');
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('CS F111').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Generate Timetables'));
+      await tester.pumpAndSettle();
+    }
+
+    Finder maxHoursDropdown() => find.byWidgetPredicate(
+        (w) => w is DropdownButton<int> && w.value != null);
+
+    int currentMaxHours(WidgetTester tester) =>
+        tester.widget<DropdownButton<int>>(maxHoursDropdown()).value!;
+
+    testWidgets('a chip reads as off until it is tapped', (tester) async {
+      await tester.pumpWidget(_host());
+      await tester.pumpAndSettle();
+      await generate(tester);
+
+      expect(find.text('Less packed'), findsOneWidget);
+      expect(find.text('Less packed — on'), findsNothing);
+    });
+
+    testWidgets('tapping applies the change and marks the chip on',
+        (tester) async {
+      await tester.pumpWidget(_host());
+      await tester.pumpAndSettle();
+      await generate(tester);
+      final before = currentMaxHours(tester);
+
+      await tester.tap(find.text('Less packed'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Less packed — on'), findsOneWidget);
+      expect(currentMaxHours(tester), before - 1);
+    });
+
+    testWidgets('tapping again reverses the change and clears the chip',
+        (tester) async {
+      await tester.pumpWidget(_host());
+      await tester.pumpAndSettle();
+      await generate(tester);
+      final before = currentMaxHours(tester);
+
+      await tester.tap(find.text('Less packed'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Less packed — on'));
+      await tester.pumpAndSettle();
+
+      expect(currentMaxHours(tester), before,
+          reason: 'the second tap must restore the original value');
+      expect(find.text('Less packed'), findsOneWidget);
+      expect(find.text('Less packed — on'), findsNothing);
+    });
+
+    testWidgets('editing the same setting by hand releases the chip',
+        (tester) async {
+      await tester.pumpWidget(_host());
+      await tester.pumpAndSettle();
+      await generate(tester);
+
+      await tester.tap(find.text('Less packed'));
+      await tester.pumpAndSettle();
+      expect(find.text('Less packed — on'), findsOneWidget);
+
+      // Change max hours/day directly; the chip no longer set this value, so
+      // it must stop claiming it did.
+      await tester.tap(maxHoursDropdown());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('9').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Less packed — on'), findsNothing);
+      expect(find.text('Less packed'), findsOneWidget);
+    });
+  });
+
   group('results panel', () {
     testWidgets('shows the empty state before generating', (tester) async {
       await tester.pumpWidget(_host());

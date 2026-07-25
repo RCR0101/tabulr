@@ -78,6 +78,9 @@ class _ThemeSelectorWidgetState extends State<ThemeSelectorWidget> {
                           ),
                         ),
                         DropdownButton<user_settings.AppThemeMode>(
+                          // A square highlight inside a rounded box reads as a stray
+                          // grey block; the box border is the focus affordance.
+                          focusColor: Colors.transparent,
                           value: themeMode,
                           onChanged: (value) async {
                             if (value == null) return;

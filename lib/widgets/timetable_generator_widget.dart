@@ -22,12 +22,16 @@ import '../screens/timetable_comparison_screen.dart';
 import '../utils/page_transitions.dart';
 import '../utils/design_constants.dart';
 import 'common/app_dialog.dart';
+import 'common/app_dropdown.dart';
 import 'common/app_button.dart';
 import 'generated_timetable_card.dart';
 import 'generator/time_avoidance_dialog.dart';
 import 'generator/lab_avoidance_dialog.dart';
 import 'generator/instructor_avoidance_dialog.dart';
 import 'generator/instructor_ranking_dialog.dart';
+import 'generator/constraint_controls.dart';
+import 'generator/generator_results_views.dart';
+import 'generator/ranking_importance_panel.dart';
 
 class TimetableGeneratorWidget extends StatefulWidget {
   final List<Course> availableCourses;
@@ -143,12 +147,26 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                                 const SizedBox(height: 16),
                                 _watch(_ctrl.constraints, _buildConstraintsPanel),
                                 const SizedBox(height: 16),
-                                _watch(_ctrl.importance, _buildImportancePanel),
+                                _watch(
+                          _ctrl.importance,
+                          () => RankingImportancePanel(
+                            importance: _ctrl.axisImportance,
+                            onChanged: _ctrl.setAxisImportance,
+                            onReset: _ctrl.clearAxisImportance,
+                          ),
+                        ),
                               ],
                             ),
                           ),
                         ),
-                        _watch(Listenable.merge([_ctrl.courses, _ctrl.results]), _buildGenerateButton),
+                        _watch(
+                          Listenable.merge([_ctrl.courses, _ctrl.results]),
+                          () => GenerateButton(
+                            enabled: _ctrl.mandatoryCourses.isNotEmpty,
+                            isGenerating: _ctrl.isGenerating,
+                            onGenerate: _generateTimetables,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -183,12 +201,26 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                       const SizedBox(height: 16),
                       _watch(_ctrl.constraints, _buildConstraintsPanel),
                       const SizedBox(height: 16),
-                      _watch(_ctrl.importance, _buildImportancePanel),
+                      _watch(
+                          _ctrl.importance,
+                          () => RankingImportancePanel(
+                            importance: _ctrl.axisImportance,
+                            onChanged: _ctrl.setAxisImportance,
+                            onReset: _ctrl.clearAxisImportance,
+                          ),
+                        ),
                     ],
                   ),
                 ),
               ),
-              _watch(Listenable.merge([_ctrl.courses, _ctrl.results]), _buildGenerateButton),
+              _watch(
+                          Listenable.merge([_ctrl.courses, _ctrl.results]),
+                          () => GenerateButton(
+                            enabled: _ctrl.mandatoryCourses.isNotEmpty,
+                            isGenerating: _ctrl.isGenerating,
+                            onGenerate: _generateTimetables,
+                          ),
+                        ),
             ],
           ),
         ),
@@ -367,99 +399,29 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
               ],
             ),
           ),
+          // Results appear after a visibly slow generate, and previously
+          // replaced the empty state in one hard cut. The keys are what make
+          // the switcher fire: without them the two branches are both a
+          // Widget subtree at the same position and it cross-fades nothing.
           Expanded(
-            child: _ctrl.rankedTimetables.isEmpty
-                ? _buildEmptyResults()
-                : _buildGeneratedTimetables(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyResults() {
-    final scheme = Theme.of(context).colorScheme;
-
-    // Generated, but the advanced hard constraints filtered everything out.
-    final result = _ctrl.rankingResult;
-    if (!_ctrl.isGenerating && result != null && result.ranked.isEmpty && result.unmetIntents.isNotEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.lock_outline, color: AppDesign.warning(context)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Your required constraints left no options',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: scheme.onSurface),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeIn,
+              child: _ctrl.rankedTimetables.isEmpty
+                  ? KeyedSubtree(
+                      key: const ValueKey('results-empty'),
+                      child: EmptyResults(
+                        isGenerating: _ctrl.isGenerating,
+                        result: _ctrl.rankingResult,
+                      ),
+                    )
+                  : KeyedSubtree(
+                      key: const ValueKey('results-list'),
+                      child: _buildGeneratedTimetables(),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              ...result.unmetIntents.map((n) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Text('• $n', style: TextStyle(fontSize: 13, color: scheme.onSurface.withValues(alpha: 0.85))),
-              )),
-              const SizedBox(height: 12),
-              Text(
-                'Turn off "Require this" on a constraint to fall back to best-effort ranking.',
-                style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.6)),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: scheme.onSurface.withValues(alpha: 0.05),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              _ctrl.isGenerating ? Icons.hourglass_top_rounded : Icons.table_chart_outlined,
-              size: 48,
-              color: scheme.onSurface.withValues(alpha: 0.35),
             ),
           ),
-          const SizedBox(height: 20),
-          Text(
-            _ctrl.isGenerating ? 'Generating timetables...' : 'No timetables generated yet',
-            style: TextStyle(
-              color: scheme.onSurface,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _ctrl.isGenerating
-                ? 'This may take a few moments'
-                : 'Select courses and click Generate to see results',
-            style: TextStyle(
-              color: scheme.onSurface.withValues(alpha: 0.5),
-              fontSize: 14,
-            ),
-          ),
-          if (_ctrl.isGenerating) ...[
-            const SizedBox(height: 20),
-            CircularProgressIndicator(
-              color: scheme.primary,
-              strokeWidth: 3,
-            ),
-          ],
         ],
       ),
     );
@@ -1032,33 +994,24 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         const SizedBox(height: 10),
 
         // Schedule group
-        _buildConstraintGroup(
+        ConstraintGroup(
           icon: Icons.schedule,
           title: 'Schedule',
           children: [
-            _buildRowConstraint('Max hours/day', Container(
-              width: 80,
-              height: 34,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+            ConstraintRow(
+              label: 'Max hours/day',
+              child: AppDropdown<int>(
+                width: 80,
+                value: _ctrl.maxHoursPerDay,
+                items: List.generate(12, (i) => DropdownMenuItem(
+                  value: i + 1,
+                  child: Text('${i + 1}'),
+                )),
+                onChanged: (value) {
+                  if (value != null) _ctrl.maxHoursPerDay = value;
+                },
               ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<int>(
-                  value: _ctrl.maxHoursPerDay,
-                  isDense: true,
-                  style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface),
-                  items: List.generate(12, (i) => DropdownMenuItem(
-                    value: i + 1,
-                    child: Text('${i + 1}'),
-                  )),
-                  onChanged: (value) {
-                    if (value != null) _ctrl.maxHoursPerDay = value;
-                  },
-                ),
-              ),
-            )),
+            ),
             _buildCheckConstraint('Avoid back-to-back classes', _ctrl.avoidBackToBack, (v) => _ctrl.avoidBackToBack = v ?? false),
             _buildCheckConstraint('Minimize gaps between classes', _ctrl.minimizeGaps, (v) => _ctrl.minimizeGaps = v ?? false),
             // Clearing lunch protection also drops requireLunchFree; that
@@ -1067,32 +1020,23 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
             if (_ctrl.protectLunchBreak)
               Padding(
                 padding: const EdgeInsets.only(left: 8),
-                child: _buildRequireToggle(
+                child: RequireToggle(
                   value: _ctrl.requireLunchFree,
                   onChanged: (v) => _ctrl.requireLunchFree = v,
                 ),
               ),
-            _buildRowConstraint('Prefer classes in', Container(
-              height: 34,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+            ConstraintRow(
+              label: 'Prefer classes in',
+              child: AppDropdown<TimeOfDayPreference>(
+                value: _ctrl.timeOfDayPreference,
+                items: const [
+                  DropdownMenuItem(value: TimeOfDayPreference.none, child: Text('No preference')),
+                  DropdownMenuItem(value: TimeOfDayPreference.morning, child: Text('Morning (before 12 PM)')),
+                  DropdownMenuItem(value: TimeOfDayPreference.afternoon, child: Text('Afternoon (after 12 PM)')),
+                ],
+                onChanged: (value) => _ctrl.timeOfDayPreference = value ?? TimeOfDayPreference.none,
               ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<TimeOfDayPreference>(
-                  value: _ctrl.timeOfDayPreference,
-                  isDense: true,
-                  style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface),
-                  items: const [
-                    DropdownMenuItem(value: TimeOfDayPreference.none, child: Text('No preference')),
-                    DropdownMenuItem(value: TimeOfDayPreference.morning, child: Text('Morning (before 12 PM)')),
-                    DropdownMenuItem(value: TimeOfDayPreference.afternoon, child: Text('Afternoon (after 12 PM)')),
-                  ],
-                  onChanged: (value) => _ctrl.timeOfDayPreference = value ?? TimeOfDayPreference.none,
-                ),
-              ),
-            )),
+            ),
             const SizedBox(height: 8),
             _buildClassHoursWindow(),
             const SizedBox(height: 12),
@@ -1106,7 +1050,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         const SizedBox(height: 10),
 
         // Instructors group
-        _buildConstraintGroup(
+        ConstraintGroup(
           icon: Icons.person,
           title: 'Instructors',
           children: [
@@ -1118,85 +1062,41 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         const SizedBox(height: 10),
 
         // Exams group
-        _buildConstraintGroup(
+        ConstraintGroup(
           icon: Icons.event,
           title: 'Exams',
           children: [
-            _buildRowConstraint('Preferred midsem', Container(
-              height: 34,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+            ConstraintRow(
+              label: 'Preferred midsem',
+              child: AppDropdown<TimeSlot?>(
+                value: _ctrl.preferredMidsemSlot,
+                hint: const Text('Any', style: TextStyle(fontSize: 13)),
+                items: [
+                  const DropdownMenuItem<TimeSlot?>(value: null, child: Text('Any')),
+                  ...TimeSlotInfo.getMidSemSlots().map((slot) => DropdownMenuItem(
+                    value: slot,
+                    child: Text(TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode)),
+                  )),
+                ],
+                onChanged: (value) => _ctrl.preferredMidsemSlot = value,
               ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<TimeSlot?>(
-                  value: _ctrl.preferredMidsemSlot,
-                  hint: const Text('Any', style: TextStyle(fontSize: 13)),
-                  isDense: true,
-                  style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface),
-                  items: [
-                    const DropdownMenuItem<TimeSlot?>(value: null, child: Text('Any')),
-                    ...TimeSlotInfo.getMidSemSlots().map((slot) => DropdownMenuItem(
-                      value: slot,
-                      child: Text(TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode)),
-                    )),
-                  ],
-                  onChanged: (value) => _ctrl.preferredMidsemSlot = value,
-                ),
+            ),
+            ConstraintRow(
+              label: 'Preferred compre',
+              child: AppDropdown<TimeSlot?>(
+                value: _ctrl.preferredCompreSlot,
+                hint: const Text('Any', style: TextStyle(fontSize: 13)),
+                items: [
+                  const DropdownMenuItem<TimeSlot?>(value: null, child: Text('Any')),
+                  ...TimeSlotInfo.getEndSemSlots().map((slot) => DropdownMenuItem(
+                    value: slot,
+                    child: Text(TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode)),
+                  )),
+                ],
+                onChanged: (value) => _ctrl.preferredCompreSlot = value,
               ),
-            )),
-            _buildRowConstraint('Preferred compre', Container(
-              height: 34,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<TimeSlot?>(
-                  value: _ctrl.preferredCompreSlot,
-                  hint: const Text('Any', style: TextStyle(fontSize: 13)),
-                  isDense: true,
-                  style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurface),
-                  items: [
-                    const DropdownMenuItem<TimeSlot?>(value: null, child: Text('Any')),
-                    ...TimeSlotInfo.getEndSemSlots().map((slot) => DropdownMenuItem(
-                      value: slot,
-                      child: Text(TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode)),
-                    )),
-                  ],
-                  onChanged: (value) => _ctrl.preferredCompreSlot = value,
-                ),
-              ),
-            )),
+            ),
           ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildConstraintGroup({required IconData icon, required String title, required List<Widget> children}) {
-    final scheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 16, color: scheme.onSurface.withValues(alpha: 0.5)),
-            const SizedBox(width: 8),
-            Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: scheme.onSurface.withValues(alpha: 0.7))),
-            const SizedBox(width: 12),
-            Expanded(child: Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.4))),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.only(left: 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: children,
-          ),
         ),
       ],
     );
@@ -1261,46 +1161,11 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55)),
         ),
         if (isBounded)
-          _buildRequireToggle(
+          RequireToggle(
             value: _ctrl.requireHoursWindow,
             onChanged: (v) => _ctrl.requireHoursWindow = v,
           ),
       ],
-    );
-  }
-
-  /// Advanced opt-in that hardens a soft intent into a filter. Deliberately
-  /// blunt about the consequence: a required constraint can return nothing.
-  Widget _buildRequireToggle({required bool value, required ValueChanged<bool> onChanged}) {
-    final color = value ? AppDesign.warning(context) : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
-    return InkWell(
-      onTap: () => onChanged(!value),
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          children: [
-            Icon(Icons.lock_outline, size: 15, color: color),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                value ? 'Required — may return no timetables' : 'Require this (hard filter)',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: value ? FontWeight.w600 : FontWeight.normal,
-                  color: color,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Switch(
-              value: value,
-              onChanged: onChanged,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -1312,19 +1177,6 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       contentPadding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
       onChanged: onChanged,
-    );
-  }
-
-  Widget _buildRowConstraint(String label, Widget trailing) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Text(label, style: const TextStyle(fontSize: 13)),
-          const Spacer(),
-          trailing,
-        ],
-      ),
     );
   }
 
@@ -1451,7 +1303,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
               }).toList(),
             ),
           if (_ctrl.freeDayPreference.isNotEmpty)
-            _buildRequireToggle(
+            RequireToggle(
               value: _ctrl.requireFreeDays,
               onChanged: (v) => _ctrl.requireFreeDays = v,
             ),
@@ -1461,182 +1313,51 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   }
 
   Widget _buildTimeAvoidance() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Text('Avoid time slots:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-            const Spacer(),
-            TextButton.icon(
-              onPressed: _addTimeAvoidance,
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Add', style: TextStyle(fontSize: 12)),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            ),
-          ],
-        ),
-        if (_ctrl.avoidTimes.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Container(
-            constraints: const BoxConstraints(maxHeight: 80),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
-            ),
-            padding: const EdgeInsets.all(8),
-            child: SingleChildScrollView(
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: _ctrl.avoidTimes.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final avoidTime = entry.value;
-                  return Chip(
-                    label: Text(
-                      '${avoidTime.day.name}: ${_formatAvoidTimeHours(avoidTime.hours)}',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    deleteIcon: const Icon(Icons.close, size: 16),
-                    onDeleted: () => _ctrl.removeTimeAvoidance(index),
-                    backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                    deleteIconColor: AppDesign.danger(context),
-                  );
-                }).toList(),
-              ),
-            ),
+    return ChipListSection(
+      title: 'Avoid time slots:',
+      actionLabel: 'Add',
+      onAction: _addTimeAvoidance,
+      chips: [
+        for (final (index, a) in _ctrl.avoidTimes.indexed)
+          RemovableChip(
+            label: '${a.day.name}: ${_formatAvoidTimeHours(a.hours)}',
+            onRemove: () => _ctrl.removeTimeAvoidance(index),
           ),
-        ],
       ],
     );
   }
 
   Widget _buildLabAvoidance() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Text('Avoid labs on:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-            const Spacer(),
-            TextButton.icon(
-              onPressed: _addLabAvoidance,
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Add', style: TextStyle(fontSize: 12)),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            ),
-          ],
-        ),
-        if (_ctrl.avoidLabs.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Container(
-            constraints: const BoxConstraints(maxHeight: 80),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
-            ),
-            padding: const EdgeInsets.all(8),
-            child: SingleChildScrollView(
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: _ctrl.avoidLabs.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final avoidLab = entry.value;
-                  return Chip(
-                    label: Text(
-                      '${avoidLab.day.name}: ${_formatAvoidTimeHours(avoidLab.hours)} (Labs)',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    deleteIcon: const Icon(Icons.close, size: 16),
-                    onDeleted: () => _ctrl.removeLabAvoidance(index),
-                    backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
-                    deleteIconColor: AppDesign.danger(context),
-                  );
-                }).toList(),
-              ),
-            ),
+    return ChipListSection(
+      title: 'Avoid labs on:',
+      actionLabel: 'Add',
+      onAction: _addLabAvoidance,
+      chips: [
+        for (final (index, a) in _ctrl.avoidLabs.indexed)
+          RemovableChip(
+            label: '${a.day.name}: ${_formatAvoidTimeHours(a.hours)} (Labs)',
+            onRemove: () => _ctrl.removeLabAvoidance(index),
+            tint: Theme.of(context).colorScheme.error,
           ),
-        ],
       ],
     );
   }
 
   Widget _buildInstructorAvoidance() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Text('Avoid instructors:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-            const Spacer(),
-            TextButton.icon(
-              onPressed: _ctrl.mandatoryCourses.isNotEmpty ? _addInstructorAvoidance : null,
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Add', style: TextStyle(fontSize: 12)),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-            ),
-          ],
-        ),
-        if (_ctrl.avoidedInstructors.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Container(
-            constraints: const BoxConstraints(maxHeight: 80),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
-            ),
-            padding: const EdgeInsets.all(8),
-            child: SingleChildScrollView(
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: _ctrl.avoidedInstructors.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final instructor = entry.value;
-                  return Chip(
-                    label: Text(
-                      instructor,
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    deleteIcon: const Icon(Icons.close, size: 16),
-                    onDeleted: () => _ctrl.removeAvoidedInstructor(index),
-                    backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
-                    deleteIconColor: AppDesign.danger(context),
-                  );
-                }).toList(),
-              ),
-            ),
+    return ChipListSection(
+      title: 'Avoid instructors:',
+      actionLabel: 'Add',
+      onAction: _ctrl.mandatoryCourses.isNotEmpty ? _addInstructorAvoidance : null,
+      emptyHint: _ctrl.mandatoryCourses.isEmpty
+          ? 'Select courses first to see available instructors'
+          : null,
+      chips: [
+        for (final (index, name) in _ctrl.avoidedInstructors.indexed)
+          RemovableChip(
+            label: name,
+            onRemove: () => _ctrl.removeAvoidedInstructor(index),
+            tint: Theme.of(context).colorScheme.error,
           ),
-        ] else if (_ctrl.mandatoryCourses.isEmpty) ...[
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
-            ),
-            child: const Text(
-              'Select courses first to see available instructors',
-              style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -2078,201 +1799,6 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     if (result != null && mounted) _ctrl.setInstructorRankings(result);
   }
 
-  /// Ranker-native customisation: how much each intent axis counts when
-  /// ordering results (feeds the TOPSIS weights). Replaces the old per-penalty
-  /// weight sliders with five intuitive Low/Normal/High controls.
-  Widget _buildImportancePanel() {
-    final anyChanged = _ctrl.hasCustomImportance;
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.tune, size: 18, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 8),
-              const Text('Ranking importance', style: TextStyle(fontWeight: FontWeight.w600)),
-              const Spacer(),
-              if (anyChanged)
-                TextButton(
-                  onPressed: _ctrl.clearAxisImportance,
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text('Reset', style: TextStyle(fontSize: 12)),
-                ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'How much each factor matters when ordering the best options',
-            style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
-          ),
-          const SizedBox(height: 8),
-          ...RankAxis.values.map(_importanceRow),
-        ],
-      ),
-    );
-  }
-
-  Widget _importanceRow(RankAxis axis) {
-    const values = AxisImportance.values;
-    final scheme = Theme.of(context).colorScheme;
-    final idx = values.indexOf(_ctrl.axisImportance[axis] ?? AxisImportance.normal);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Expanded(child: Text(axis.label, style: const TextStyle(fontSize: 13))),
-          Container(
-            width: 156,
-            height: 30,
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: LayoutBuilder(
-              builder: (context, c) {
-                final segWidth = c.maxWidth / values.length;
-                return Stack(
-                  children: [
-                    // Sliding selection pill — animates between segments.
-                    AnimatedAlign(
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeOutCubic,
-                      alignment: Alignment(-1 + 2 * (idx / (values.length - 1)), 0),
-                      child: Container(
-                        width: segWidth,
-                        height: double.infinity,
-                        decoration: BoxDecoration(
-                          color: scheme.primary,
-                          borderRadius: BorderRadius.circular(7),
-                        ),
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        for (var i = 0; i < values.length; i++)
-                          Expanded(
-                            child: AppTappable(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: () => _ctrl.setAxisImportance(axis, values[i]),
-                              child: Center(
-                                child: AnimatedDefaultTextStyle(
-                                  duration: const Duration(milliseconds: 220),
-                                  curve: Curves.easeOutCubic,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: i == idx ? FontWeight.w700 : FontWeight.w400,
-                                    color: i == idx ? scheme.onPrimary : scheme.onSurface.withValues(alpha: 0.7),
-                                  ),
-                                  child: Text(values[i].label),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGenerateButton() {
-    return Semantics(
-      label: 'Generate Timetables',
-      button: true,
-      child: Container(
-      width: double.infinity,
-      height: 56,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        gradient: _ctrl.mandatoryCourses.isNotEmpty && !_ctrl.isGenerating
-            ? LinearGradient(
-                colors: [Theme.of(context).colorScheme.primary, Theme.of(context).colorScheme.primary.withValues(alpha: 0.8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : null,
-        color: _ctrl.mandatoryCourses.isEmpty || _ctrl.isGenerating
-            ? Theme.of(context).colorScheme.surface
-            : null,
-      ),
-      child: FilledButton(
-        onPressed: _ctrl.mandatoryCourses.isNotEmpty && !_ctrl.isGenerating ? _generateTimetables : null,
-        style: FilledButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        child: _ctrl.isGenerating
-            ? Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Text(
-                    'Generating...',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ],
-              )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.auto_awesome,
-                    color: _ctrl.mandatoryCourses.isNotEmpty
-                        ? Theme.of(context).scaffoldBackgroundColor
-                        : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Generate Timetables',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: _ctrl.mandatoryCourses.isNotEmpty
-                          ? Theme.of(context).scaffoldBackgroundColor
-                          : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-                ],
-              ),
-      ),
-    ),
-    );
-  }
-
   Future<void> _generateTimetables() async {
     final isMobile = ResponsiveService.isMobile(context) || ResponsiveService.isTablet(context);
     if (isMobile && _tabController != null) {
@@ -2294,8 +1820,10 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   }
 
   Widget _buildGeneratedTimetables() {
-    return Expanded(
-      child: Card(
+    // No Expanded here: the caller already wraps this in one. Nesting a second
+    // put a Flex-only ParentDataWidget inside the AnimatedSwitcher's Stack,
+    // which asserts as soon as any result is shown.
+    return Card(
         margin: const EdgeInsets.all(8),
         child: Column(
           children: [
@@ -2344,7 +1872,14 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                 );
               },
             ),
-            _buildRefineChips(),
+            // The chips show whether each refinement is currently in effect,
+            // which is constraint/importance state — so they have to watch
+            // those too, or editing the same setting by hand in the Configure
+            // panel leaves a chip stuck reading "on".
+            _watch(
+              Listenable.merge([_ctrl.constraints, _ctrl.importance]),
+              _buildRefineChips,
+            ),
             _buildDiagnosis(),
             Expanded(
               child: ListView.builder(
@@ -2365,7 +1900,6 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -2423,10 +1957,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _refineChip('Less packed', Icons.compress, () => _ctrl.maxHoursPerDay = (_ctrl.maxHoursPerDay - 1).clamp(4, 12)),
-                  _refineChip('More free days', Icons.weekend_outlined, () => _ctrl.setAxisImportance(RankAxis.freeDays, AxisImportance.high)),
-                  _refineChip('Later start', Icons.wb_twilight_outlined, () => _ctrl.earliestStartSlot = 2),
-                  _refineChip('Fewer gaps', Icons.unfold_less, () => _ctrl.minimizeGaps = true),
+                  for (final r in _refinements) _refineChip(r),
                 ],
               ),
             ),
@@ -2436,21 +1967,84 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     );
   }
 
-  Widget _refineChip(String label, IconData icon, VoidCallback apply) {
+  /// The one-tap nudges under the results, and how to take each one back.
+  ///
+  /// `read`/`write` are a pair over one controller field, so applying stores
+  /// the previous value and reverting restores exactly it. `isOn` is derived
+  /// from live controller state rather than a local flag: editing the same
+  /// setting by hand in the Configure panel releases the chip instead of
+  /// leaving it stuck on claiming credit for a value it no longer set.
+  List<_Refinement> get _refinements => [
+        _Refinement<int>(
+          label: 'Less packed',
+          icon: Icons.compress,
+          read: () => _ctrl.maxHoursPerDay,
+          write: (v) => _ctrl.maxHoursPerDay = v,
+          // A nudge, not a fixed target: each tap trims another hour.
+          next: (current) => (current - 1).clamp(4, 12),
+        ),
+        _Refinement<AxisImportance?>(
+          label: 'More free days',
+          icon: Icons.weekend_outlined,
+          read: () => _ctrl.axisImportance[RankAxis.freeDays],
+          write: (v) => _ctrl.setAxisImportance(RankAxis.freeDays, v),
+          next: (_) => AxisImportance.high,
+        ),
+        _Refinement<int?>(
+          label: 'Later start',
+          icon: Icons.wb_twilight_outlined,
+          read: () => _ctrl.earliestStartSlot,
+          write: (v) => _ctrl.earliestStartSlot = v,
+          next: (_) => 2,
+        ),
+        _Refinement<bool>(
+          label: 'Fewer gaps',
+          icon: Icons.unfold_less,
+          read: () => _ctrl.minimizeGaps,
+          write: (v) => _ctrl.minimizeGaps = v,
+          next: (_) => true,
+        ),
+      ];
+
+  /// What each applied refinement set, and what it replaced. Keyed by label.
+  final Map<String, ({Object? before, Object? applied})> _appliedRefinements = {};
+
+  bool _isRefinementOn(_Refinement r) {
+    final record = _appliedRefinements[r.label];
+    return record != null && r.readDynamic() == record.applied;
+  }
+
+  Widget _refineChip(_Refinement r) {
+    final on = _isRefinementOn(r);
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(right: 6),
-      child: ActionChip(
+      child: FilterChip(
         visualDensity: VisualDensity.compact,
-        avatar: Icon(icon, size: 15),
-        label: Text(label, style: const TextStyle(fontSize: 12)),
-        onPressed: _ctrl.isGenerating ? null : () => _applyRefinement(label, apply),
+        selected: on,
+        showCheckmark: false,
+        avatar: Icon(on ? Icons.check : r.icon,
+            size: 15, color: on ? scheme.onSecondaryContainer : null),
+        label: Text(on ? '${r.label} — on' : r.label,
+            style: const TextStyle(fontSize: 12)),
+        onSelected:
+            _ctrl.isGenerating ? null : (_) => _toggleRefinement(r, on),
       ),
     );
   }
 
-  Future<void> _applyRefinement(String label, VoidCallback apply) async {
-    apply();
-    ToastService.showInfo('Refined: $label');
+  /// No toast: the chip itself now carries the state persistently, so a
+  /// transient "Refined: X" only repeated what the label already says.
+  Future<void> _toggleRefinement(_Refinement r, bool isOn) async {
+    if (isOn) {
+      // Put back exactly what was there before this chip touched it.
+      r.writeDynamic(_appliedRefinements.remove(r.label)!.before);
+    } else {
+      final before = r.readDynamic();
+      final applied = r.nextDynamic(before);
+      r.writeDynamic(applied);
+      _appliedRefinements[r.label] = (before: before, applied: applied);
+    }
     await _generateTimetables();
   }
 
@@ -2561,4 +2155,30 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       ],
     );
   }
+}
+/// One reversible refine nudge over a single controller field.
+///
+/// Generic in the field's type so `read`/`write`/`next` stay type-safe at the
+/// definition site; the `*Dynamic` accessors let the widget hold a
+/// heterogeneous list of them.
+class _Refinement<T> {
+  const _Refinement({
+    required this.label,
+    required this.icon,
+    required this.read,
+    required this.write,
+    required this.next,
+  });
+
+  final String label;
+  final IconData icon;
+  final T Function() read;
+  final void Function(T) write;
+
+  /// The value to move to, given what is there now.
+  final T Function(T current) next;
+
+  Object? readDynamic() => read();
+  void writeDynamic(Object? value) => write(value as T);
+  Object? nextDynamic(Object? current) => next(current as T);
 }

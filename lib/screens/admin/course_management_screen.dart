@@ -443,6 +443,9 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                       ),
                       const SizedBox(width: 8),
                       DropdownButton<TimeSlot>(
+                        // A square highlight inside a rounded box reads as a stray
+                        // grey block; the box border is the focus affordance.
+                        focusColor: Colors.transparent,
                         value: exam?.timeSlot ?? slots.first,
                         underline: const SizedBox(),
                         style:
@@ -517,6 +520,9 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                       ),
                       const SizedBox(width: 8),
                       DropdownButton<String>(
+                        // A square highlight inside a rounded box reads as a stray
+                        // grey block; the box border is the focus affordance.
+                        focusColor: Colors.transparent,
                         value: typeStr,
                         underline: const SizedBox(),
                         style:

@@ -905,6 +905,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
+                // A square highlight inside a rounded box reads as a stray
+                // grey block; the box border is the focus affordance.
+                focusColor: Colors.transparent,
                 value: _selectedTimetable?.id,
                 isDense: true,
                 style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
