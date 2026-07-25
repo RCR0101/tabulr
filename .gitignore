@@ -15,6 +15,7 @@
 .swiftpm/
 migrate_working_dir/
 scripts/node_modules
+test/rules/node_modules
 
 # IntelliJ related
 *.iml

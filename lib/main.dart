@@ -60,8 +60,9 @@ void main() async {
   final userSettingsService = UserSettingsService();
   final themeService = theme_service.ThemeService();
 
-  // Each service is wrapped so a single failure (e.g. Firestore permission-denied
-  // when App Check token is invalid) doesn't kill the entire startup.
+  // Each service is wrapped so a single failure (e.g. a Firestore
+  // permission-denied, or a transient network error) doesn't kill the entire
+  // startup.
   // Bounded by [AppDurations.startupPrefetchTimeout]: a request that stalls
   // without erroring (seen on Brave, where per-service catchError never fires)
   // must not keep the first frame from painting. Anything unfinished keeps
@@ -276,10 +277,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
         _authReady = true;
         if (mounted) setState(() {});
       } else {
-        // User was previously authenticated but Firebase emitted null.
-        // This happens on web when App Check hasn't validated yet.
-        // Wait for the next emission — if the session is truly gone,
-        // Firebase will emit null again and we'll show login.
+        // User was previously authenticated but Firebase emitted null. On web
+        // the persisted session is restored asynchronously, so the first
+        // emission can be null before it lands. Wait for the next one — if the
+        // session is truly gone, Firebase emits null again and we show login.
         _wasPreviouslyAuthenticated = false;
         // Don't set _authReady yet — keep showing skeleton
       }

@@ -4,18 +4,14 @@ service cloud.firestore {
 
     function isBitsEmail() {
       return request.auth != null &&
+             request.auth.token.email != null &&
+             request.auth.token.get('email_verified', false) == true &&
+             request.auth.token.firebase.sign_in_provider == 'google.com' &&
              request.auth.token.email.matches('.*@(hyderabad|pilani|goa|dubai)[.]bits-pilani[.]ac[.]in$');
     }
 
     function isOwner(userId) {
-      let email = request.auth.token.email;
-      let username = email.split('@')[0];
-      return request.auth != null && (
-        userId == username + 'H' && email.matches('.*@hyderabad[.]bits-pilani[.]ac[.]in$') ||
-        userId == username + 'P' && email.matches('.*@pilani[.]bits-pilani[.]ac[.]in$') ||
-        userId == username + 'G' && email.matches('.*@goa[.]bits-pilani[.]ac[.]in$') ||
-        userId == username + 'D' && email.matches('.*@dubai[.]bits-pilani[.]ac[.]in$')
-      );
+      return isBitsEmail() && userId != '' && userId == userDocId();
     }
 
     // Admins are identified by email via the `admin_emails` collection
@@ -30,47 +26,50 @@ service cloud.firestore {
     function userDocId() {
       let email = request.auth.token.email;
       let username = email.split('@')[0];
-      let suffix = email.matches('.*@hyderabad[.]bits-pilani[.]ac[.]in$') ? 'H' :
-                   email.matches('.*@pilani[.]bits-pilani[.]ac[.]in$') ? 'P' :
-                   email.matches('.*@goa[.]bits-pilani[.]ac[.]in$') ? 'G' : 'D';
-      return username + suffix;
+      return email.matches('.*@hyderabad[.]bits-pilani[.]ac[.]in$') ? username + 'H' :
+             email.matches('.*@pilani[.]bits-pilani[.]ac[.]in$') ? username + 'P' :
+             email.matches('.*@goa[.]bits-pilani[.]ac[.]in$') ? username + 'G' :
+             email.matches('.*@dubai[.]bits-pilani[.]ac[.]in$') ? username + 'D' : '';
     }
 
     // ── Kill switch ────────────────────────────────────────────────────────
-    // Flip `maintenance` to true on reference/app_config (Firestore console) to
-    // freeze all access below except admins and the reference docs themselves
-    // (so clients can still read the "down" message). Fail-open: if the config
-    // doc is missing, the app stays available.
+    // Writes only: get()/exists() in rules are billed reads, so gating reads too
+    // cost 2 extra per request. The client's MaintenanceGate covers the read
+    // side. exists() stays — get() on a missing doc raises, i.e. fails closed.
     function maintenanceOn() {
       return exists(/databases/$(database)/documents/reference/app_config)
         && get(/databases/$(database)/documents/reference/app_config).data.get('maintenance', false) == true;
     }
-    function appAvailable() {
+    function writesAllowed() {
       return !maintenanceOn() || isAdmin();
     }
 
-    // Campus data (courses_master, timetable, exam_seating, metadata)
+    // Campus data (courses_master, timetable, exam_seating, metadata).
+    // Reads open for guest mode, and ungated by the kill switch: highest-volume
+    // path in the app, so its lookup cost landed on every catalogue load.
     match /campuses/{campusId}/{sub=**} {
-      allow read: if appAvailable();
-      allow write: if isAdmin();
+      allow read: if true;
+      allow write: if isAdmin() && writesAllowed();
     }
 
     // Reference data (professors, app_config, etc.)
     // Reads stay open so clients can fetch the kill-switch message while down.
     match /reference/{category}/{sub=**} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAdmin() && writesAllowed();
     }
 
-    // User data — owner only
+    // User data — owner only. Reads are owner-scoped already, so the kill
+    // switch would add only cost; writes still freeze during maintenance.
     match /users/{userId}/{sub=**} {
-      allow read, write: if isOwner(userId) && appAvailable();
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && writesAllowed();
     }
 
     // Announcements — reads by BITS users; create/delete by author; updates only via Cloud Functions
     match /announcements/{announcementId} {
-      allow read: if isBitsEmail() && appAvailable();
-      allow create: if isBitsEmail() && appAvailable()
+      allow read: if isBitsEmail();
+      allow create: if isBitsEmail() && writesAllowed()
         && request.resource.data.authorUid == userDocId()
         && request.resource.data.upvotes == 0
         && request.resource.data.downvotes == 0
@@ -101,20 +100,20 @@ service cloud.firestore {
             || request.resource.data.source.url.size() <= 500)
         && (request.resource.data.source.referenceId == null
             || request.resource.data.source.referenceId.size() <= 200);
-      allow delete: if isBitsEmail() && appAvailable()
+      allow delete: if isBitsEmail() && writesAllowed()
         && resource.data.authorUid == userDocId();
       allow update: if false;
 
       match /votes/{visitorUid} {
-        allow read: if isBitsEmail() && appAvailable();
+        allow read: if isBitsEmail();
         allow write: if false;
       }
       match /flags/{flagUid} {
-        allow read: if isBitsEmail() && appAvailable();
+        allow read: if isBitsEmail();
         allow write: if false;
       }
       match /verifications/{verifUid} {
-        allow read: if isBitsEmail() && appAvailable();
+        allow read: if isBitsEmail();
         allow write: if false;
       }
     }
@@ -124,34 +123,37 @@ service cloud.firestore {
     // these, that lookup costs 3 point reads per announcement. Scoped to the
     // caller's own documents; writes still only via Cloud Functions.
     match /{path=**}/votes/{voteId} {
-      allow read: if isBitsEmail() && appAvailable() && voteId == userDocId();
+      allow read: if isBitsEmail() && voteId == userDocId();
       allow write: if false;
     }
     match /{path=**}/flags/{flagId} {
-      allow read: if isBitsEmail() && appAvailable() && flagId == userDocId();
+      allow read: if isBitsEmail() && flagId == userDocId();
       allow write: if false;
     }
     match /{path=**}/verifications/{verifId} {
-      allow read: if isBitsEmail() && appAvailable() && verifId == userDocId();
+      allow read: if isBitsEmail() && verifId == userDocId();
       allow write: if false;
     }
 
-    // Reputation — reads by BITS users; writes only via Cloud Functions (Admin SDK)
+    // Reputation — writes only via Cloud Functions (Admin SDK).
+    // `get` not `read`: `read` covers list, which let any student enumerate
+    // every score and event log. Nothing here is read by anything but id.
     match /reputation/{uid} {
-      allow read: if isBitsEmail() && appAvailable();
+      allow get: if isBitsEmail();
+      allow list: if false;
       allow write: if false;
     }
 
     // Academic drives — three top-level collections
     match /acad_drives_files/{docId} {
-      allow read: if appAvailable();
+      allow read: if true;
       allow write: if false;
     }
     match /acad_drives_submissions/{docId} {
       // Schema mirrors the client payload (acad_drives_screen.dart): driveLink,
       // title, contributorName, submittedBy, status, submittedAt. driveLink must
       // be an https:// URL; other fields are length-bounded.
-      allow create: if isBitsEmail() && appAvailable()
+      allow create: if isBitsEmail() && writesAllowed()
         && request.resource.data.keys().hasOnly(
              ['driveLink', 'title', 'contributorName', 'submittedBy', 'status', 'submittedAt'])
         && request.resource.data.keys().hasAll(
@@ -166,45 +168,51 @@ service cloud.firestore {
         && request.resource.data.contributorName is string
         && request.resource.data.contributorName.size() < 100
         && request.resource.data.status == 'pending';
-      allow read: if appAvailable();
+      // These carry the submitter's raw email and the old rule needed no auth
+      // at all. The client only ever writes here (acad_drives_service.dart).
+      allow read: if isAdmin();
       allow update, delete: if false;
     }
     match /acad_drives_tags/{docId} {
-      allow read: if appAvailable();
+      allow read: if true;
       allow write: if false;
     }
     match /acad_drives_index/{docId} {
-      allow read: if appAvailable();
+      allow read: if true;
       allow write: if false;
     }
 
-    // Shared timetables
+    // Shared timetables. `get` not `read`: the share code is an unguessable
+    // UUIDv4, but `read` also grants `list`, which let any student enumerate
+    // every share — owner name, f-number, schedule — regardless of the code.
     match /shared_timetables/{docId} {
-      allow read: if isBitsEmail() && appAvailable();
-      allow create: if isBitsEmail() && appAvailable()
+      allow get: if isBitsEmail();
+      allow list: if false;
+      allow create: if isBitsEmail() && writesAllowed()
         && request.resource.data.ownerId == userDocId();
-      allow update: if isBitsEmail() && appAvailable()
+      allow update: if isBitsEmail() && writesAllowed()
         && resource.data.ownerId == userDocId()
         && request.resource.data.ownerId == userDocId();
-      allow delete: if isBitsEmail() && appAvailable()
+      allow delete: if isBitsEmail() && writesAllowed()
         && resource.data.ownerId == userDocId();
     }
 
     // Minor programmes — reference data from the Bulletin. Readable by anyone
     // using the app (guests included, like the FAQ); only admins can edit.
     match /minors/{minorId} {
-      allow read: if appAvailable();
-      allow write: if isAdmin() && appAvailable();
+      allow read: if true;
+      allow write: if isAdmin() && writesAllowed();
     }
 
     // Bug reports — authors file and read their own; admins read all and can
     // only advance the status. Nothing is deletable from the client.
+    // Author checks are isBitsEmail(), not `request.auth != null`: with the old
+    // 'D' fall-through in userDocId(), a bare non-null check let any Google
+    // account with a matching local part read a Dubai student's private thread.
     match /bug_reports/{reportId} {
-      allow read: if appAvailable() && (
-        isAdmin() ||
-        (request.auth != null && resource.data.authorUid == userDocId())
-      );
-      allow create: if isBitsEmail() && appAvailable()
+      allow read: if isAdmin() ||
+        (isBitsEmail() && resource.data.authorUid == userDocId());
+      allow create: if isBitsEmail() && writesAllowed()
         && request.resource.data.authorUid == userDocId()
         && request.resource.data.authorEmail == request.auth.token.email
         && request.resource.data.status == 'pending'
@@ -219,13 +227,13 @@ service cloud.firestore {
         && request.resource.data.description.size() < 5000;
       // Admins advance status; the author may only stamp their own reply time.
       // Neither side can rewrite the report body once filed.
-      allow update: if appAvailable() && (
+      allow update: if writesAllowed() && (
         (isAdmin()
           && request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly(['status', 'updatedAt', 'lastAdminReplyAt'])
           && request.resource.data.status in ['pending', 'in_review', 'dev_in_progress', 'fixed'])
         ||
-        (request.auth != null
+        (isBitsEmail()
           && resource.data.authorUid == userDocId()
           && request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly(['lastUserReplyAt']))
@@ -240,11 +248,11 @@ service cloud.firestore {
           return get(/databases/$(database)/documents/bug_reports/$(reportId)).data;
         }
         function isReporter() {
-          return request.auth != null && report().authorUid == userDocId();
+          return isBitsEmail() && report().authorUid == userDocId();
         }
 
-        allow read: if appAvailable() && (isAdmin() || isReporter());
-        allow create: if appAvailable()
+        allow read: if isAdmin() || isReporter();
+        allow create: if writesAllowed()
           && request.resource.data.authorUid == userDocId()
           && request.resource.data.isAdmin is bool
           && request.resource.data.body is string
@@ -260,9 +268,9 @@ service cloud.firestore {
       }
     }
 
-    // Admin metadata
+    // Admin metadata — upload stats, written only by the Admin SDK.
     match /admin_metadata/{docId} {
-      allow read: if appAvailable();
+      allow read: if true;
       allow write: if false;
     }
 

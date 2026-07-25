@@ -17,11 +17,14 @@ import '../screens/course_announcements_screen.dart';
 import '../screens/bug_report_screen.dart';
 import '../screens/faq_screen.dart';
 import '../screens/minors_screen.dart';
-import '../screens/admin_screen.dart';
+// Deferred: ~7k lines across screens/admin/ that only allowlisted accounts can
+// open, otherwise compiled into the bundle every visitor downloads.
+import '../screens/admin_screen.dart' deferred as admin_screen;
 import '../screens/free_slot_finder_screen.dart';
 import '../screens/credits_screen.dart';
 import '../screens/profile_screen.dart';
 import '../services/data/admin_service.dart';
+import 'common/deferred_screen.dart';
 import 'app_destinations.dart';
 import 'app_sidebar.dart';
 import 'command_palette.dart';
@@ -149,7 +152,10 @@ class _AppShellState extends State<AppShell> {
       DrawerScreen.minors => const MinorsScreen(),
       DrawerScreen.faq => const FaqScreen(),
       DrawerScreen.bugReport => const BugReportScreen(),
-      DrawerScreen.admin => const AdminScreen(),
+      DrawerScreen.admin => DeferredScreen(
+          load: admin_screen.loadLibrary,
+          builder: () => admin_screen.AdminScreen(),
+        ),
     };
   }
 

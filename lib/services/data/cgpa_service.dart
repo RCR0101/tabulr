@@ -59,6 +59,59 @@ class CGPAService {
     return (jsonDecode(response.body) as Map<String, dynamic>)['result'] as String;
   }
 
+  /// Encrypts several payloads in one request. Unlike [_decryptBatch] a partial
+  /// failure throws — writing a semester with no ciphertext would drop grades.
+  Future<List<String>> _encryptBatch(List<String> payloads) async {
+    if (payloads.isEmpty) return const [];
+    final token = await _getIdToken();
+    final response = await http.post(
+      Uri.parse(AppUrls.cgpaEncryptionWorker),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'action': 'encryptBatch', 'items': payloads}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Encryption failed: ${response.statusCode}');
+    }
+    final results =
+        (jsonDecode(response.body) as Map<String, dynamic>)['results'] as List;
+    return results.map<String>((r) {
+      final entry = r as Map<String, dynamic>;
+      if (entry['ok'] != true) throw Exception('Encryption failed for one item');
+      return entry['result'] as String;
+    }).toList();
+  }
+
+  /// Decrypts several blobs in one request, rather than one round trip per
+  /// semester before the CGPA screen can render. The worker keys on the
+  /// caller's own id, so a batch can only hold the caller's own data.
+  ///
+  /// Aligned positionally with [blobs]; null where that blob failed, so one
+  /// unreadable semester doesn't lose the rest.
+  Future<List<String?>> _decryptBatch(List<String> blobs) async {
+    if (blobs.isEmpty) return const [];
+    final token = await _getIdToken();
+    final response = await http.post(
+      Uri.parse(AppUrls.cgpaEncryptionWorker),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'action': 'decryptBatch', 'items': blobs}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Decryption failed: ${response.statusCode} ${response.body}');
+    }
+    final results =
+        (jsonDecode(response.body) as Map<String, dynamic>)['results'] as List;
+    return results.map<String?>((r) {
+      final entry = r as Map<String, dynamic>;
+      return entry['ok'] == true ? entry['result'] as String : null;
+    }).toList();
+  }
+
   // Save semester data to Firestore (encrypted)
   Future<bool> saveSemesterData(
     String semesterName,
@@ -111,19 +164,16 @@ class CGPAService {
           .doc(_authService.userDocId!)
           .collection(FirestoreCollections.cgpaSemesters);
 
-      // Encrypt every semester in parallel rather than awaiting each in turn —
-      // the batch write is one round trip regardless, so the sequential awaits
-      // were pure added latency (up to 8 encryptions back to back).
-      final encrypted = await Future.wait(
-        semesters.entries.map((entry) async {
-          final jsonData = jsonEncode(entry.value.toJson());
-          return (key: entry.key, data: await _encryptData(jsonData));
-        }),
+      // One request for every semester. This was already parallel, so latency
+      // was fine, but it spent one worker invocation per semester.
+      final entries = semesters.entries.toList();
+      final ciphertexts = await _encryptBatch(
+        entries.map((e) => jsonEncode(e.value.toJson())).toList(),
       );
 
-      for (final item in encrypted) {
-        batch.set(colRef.doc(item.key), {
-          'encryptedData': item.data,
+      for (var i = 0; i < entries.length; i++) {
+        batch.set(colRef.doc(entries[i].key), {
+          'encryptedData': ciphertexts[i],
           'encryptionVersion': 2,
           'lastUpdated': FieldValue.serverTimestamp(),
         });
@@ -212,32 +262,32 @@ class CGPAService {
       final semesters = <String, SemesterData>{};
       final failedSemesters = <String>[];
 
-      final processingFutures = snapshot.docs.map((doc) async {
-        try {
-          final data = doc.data();
-          if (data.containsKey('encryptedData')) {
-            final decryptedData = await _decryptData(
-              data['encryptedData'] as String,
-            );
-            final jsonData = jsonDecode(decryptedData) as Map<String, dynamic>;
-            final semesterData = SemesterData.fromJson(jsonData);
-            return MapEntry(doc.id, semesterData);
-          }
-          return null;
-        } catch (e) {
-          SecureLogger.error('CGPA', 'Failed to load semester data', e, null, {'semesterId': doc.id});
-          failedSemesters.add(doc.id);
-          return null;
-        }
-      });
+      // Docs with no `encryptedData` are dropped first so the batch stays
+      // positionally aligned with `encrypted`.
+      final encrypted = snapshot.docs
+          .where((doc) => doc.data().containsKey('encryptedData'))
+          .toList();
+      final plaintexts = await _decryptBatch(
+        encrypted.map((doc) => doc.data()['encryptedData'] as String).toList(),
+      );
 
-      // Wait for all processing to complete
-      final results = await Future.wait(processingFutures);
-      
-      // Add successful results to semesters map
-      for (final result in results) {
-        if (result != null) {
-          semesters[result.key] = result.value;
+      for (var i = 0; i < encrypted.length; i++) {
+        final docId = encrypted[i].id;
+        final plaintext = plaintexts[i];
+        if (plaintext == null) {
+          SecureLogger.error('CGPA', 'Failed to decrypt semester data', null,
+              null, {'semesterId': docId});
+          failedSemesters.add(docId);
+          continue;
+        }
+        try {
+          semesters[docId] = SemesterData.fromJson(
+              jsonDecode(plaintext) as Map<String, dynamic>);
+        } catch (e) {
+          // Decrypted but didn't parse — still per-semester, not fatal.
+          SecureLogger.error('CGPA', 'Failed to parse semester data', e, null,
+              {'semesterId': docId});
+          failedSemesters.add(docId);
         }
       }
 

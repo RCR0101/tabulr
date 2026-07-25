@@ -86,9 +86,10 @@ class AuthService {
         await prefs.setBool('is_authenticated', true);
       } else {
         SecureLogger.debug('AUTH', 'No current user found during initialization');
-        // Don't clear is_authenticated here — on web, App Check may not have
-        // validated yet so currentUser can be null temporarily. The pref is
-        // only cleared on explicit sign-out.
+        // Don't clear is_authenticated here — on web, Firebase restores the
+        // persisted session asynchronously, so currentUser can be null for a
+        // moment after startup. The pref is only cleared on explicit sign-out.
+        // (This previously blamed App Check, which was never activated.)
       }
 
       // Keep the remote log sink's user id in lockstep with auth state, so every

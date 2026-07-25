@@ -86,25 +86,32 @@ class _TimetableGridState extends State<TimetableGrid> {
   final ValueNotifier<_GridFocus> _focus = ValueNotifier(const _GridFocus());
   final ScrollController _bodyHorizontal = ScrollController();
   final ScrollController _headerHorizontal = ScrollController();
-  Timer? _nowTicker;
-  DateTime _now = DateTime.now();
+  Timer? _dayTicker;
+  DateTime _today = DateTime.now();
 
   @override
   void initState() {
     super.initState();
     _bodyHorizontal.addListener(_syncHeaderScroll);
     if (!widget.isForExport) {
-      // The current-time line would otherwise drift until an unrelated rebuild
-      // happened to refresh it.
-      _nowTicker = Timer.periodic(const Duration(minutes: 1), (_) {
-        if (mounted) setState(() => _now = DateTime.now());
+      // The current-time line owns its own ticker (_NowIndicator); advancing it
+      // here rebuilt every day column and course block once a minute. All this
+      // needs is to refresh the "today" highlight when the date rolls over.
+      _dayTicker = Timer.periodic(const Duration(minutes: 1), (_) {
+        if (!mounted) return;
+        final now = DateTime.now();
+        if (now.day != _today.day ||
+            now.month != _today.month ||
+            now.year != _today.year) {
+          setState(() => _today = now);
+        }
       });
     }
   }
 
   @override
   void dispose() {
-    _nowTicker?.cancel();
+    _dayTicker?.cancel();
     _bodyHorizontal.removeListener(_syncHeaderScroll);
     _bodyHorizontal.dispose();
     _headerHorizontal.dispose();
@@ -274,7 +281,7 @@ class _TimetableGridState extends State<TimetableGrid> {
 
   Widget _dayHeader(BuildContext context, DayOfWeek day, _GridGeometry geo) {
     final scheme = Theme.of(context).colorScheme;
-    final isToday = !widget.isForExport && day == _todayOfWeek(_now);
+    final isToday = !widget.isForExport && day == _todayOfWeek(_today);
     // Full day names need roughly 80 px; below that they truncate to noise.
     final abbreviated = geo.columnExtent < 104;
     return Center(
@@ -342,7 +349,7 @@ class _TimetableGridState extends State<TimetableGrid> {
                         style: TextStyle(
                           fontSize: _textScaler.scale(12.5),
                           fontWeight: FontWeight.w600,
-                          color: geo.days[index] == _todayOfWeek(_now) && !widget.isForExport
+                          color: geo.days[index] == _todayOfWeek(_today) && !widget.isForExport
                               ? scheme.primary
                               : scheme.onSurface.withValues(alpha: 0.7),
                         ),
@@ -429,7 +436,6 @@ class _TimetableGridState extends State<TimetableGrid> {
   ) {
     final scheme = Theme.of(context).colorScheme;
     final todayIndex = _todayColumnIndex(geo);
-    final nowOffset = _nowOffset(geo);
 
     return SizedBox(
       width: geo.bodyWidth,
@@ -448,14 +454,17 @@ class _TimetableGridState extends State<TimetableGrid> {
                 ),
               ),
             ),
+          // Static for a given geometry — keep them off the blocks' layer.
           Positioned.fill(
-            child: CustomPaint(
-              painter: _GridLinesPainter(
-                columnExtent: geo.columnExtent,
-                rowExtent: geo.rowExtent,
-                columnCount: geo.columnCount,
-                rowCount: geo.rowCount,
-                color: scheme.outline.withValues(alpha: 0.14),
+            child: RepaintBoundary(
+              child: CustomPaint(
+                painter: _GridLinesPainter(
+                  columnExtent: geo.columnExtent,
+                  rowExtent: geo.rowExtent,
+                  columnCount: geo.columnCount,
+                  rowCount: geo.rowCount,
+                  color: scheme.outline.withValues(alpha: 0.14),
+                ),
               ),
             ),
           ),
@@ -479,19 +488,10 @@ class _TimetableGridState extends State<TimetableGrid> {
                   ),
               ],
             ),
-          if (nowOffset != null)
-            Positioned(
-              top: geo.vertical ? nowOffset : 0,
-              left: geo.vertical ? 0 : nowOffset,
-              width: geo.vertical ? geo.bodyWidth : 1.5,
-              height: geo.vertical ? 1.5 : geo.bodyHeight,
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: scheme.error.withValues(alpha: 0.7),
-                  ),
-                ),
-              ),
+          if (!widget.isForExport)
+            _NowIndicator(
+              geo: geo,
+              color: scheme.error.withValues(alpha: 0.7),
             ),
         ],
       ),
@@ -623,30 +623,62 @@ class _TimetableGridState extends State<TimetableGrid> {
 
   // ── Today / now ───────────────────────────────────────────────────────────
 
-  static DayOfWeek? _todayOfWeek(DateTime now) => switch (now.weekday) {
-    DateTime.monday => DayOfWeek.M,
-    DateTime.tuesday => DayOfWeek.T,
-    DateTime.wednesday => DayOfWeek.W,
-    DateTime.thursday => DayOfWeek.Th,
-    DateTime.friday => DayOfWeek.F,
-    DateTime.saturday => DayOfWeek.S,
-    _ => null,
-  };
-
   int? _todayColumnIndex(_GridGeometry geo) {
     if (widget.isForExport) return null;
-    final today = _todayOfWeek(_now);
+    final today = _todayOfWeek(_today);
     if (today == null) return null;
     final index = geo.days.indexOf(today);
     return index < 0 ? null : index;
   }
 
+}
+
+DayOfWeek? _todayOfWeek(DateTime now) => switch (now.weekday) {
+  DateTime.monday => DayOfWeek.M,
+  DateTime.tuesday => DayOfWeek.T,
+  DateTime.wednesday => DayOfWeek.W,
+  DateTime.thursday => DayOfWeek.Th,
+  DateTime.friday => DayOfWeek.F,
+  DateTime.saturday => DayOfWeek.S,
+  _ => null,
+};
+
+/// The current-time rule. Owns its own ticker so advancing it repaints only
+/// this line, not the grid of course blocks behind it.
+class _NowIndicator extends StatefulWidget {
+  const _NowIndicator({required this.geo, required this.color});
+
+  final _GridGeometry geo;
+  final Color color;
+
+  @override
+  State<_NowIndicator> createState() => _NowIndicatorState();
+}
+
+class _NowIndicatorState extends State<_NowIndicator> {
+  late Timer _ticker;
+  DateTime _now = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() => _now = DateTime.now());
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker.cancel();
+    super.dispose();
+  }
+
   /// Distance along the hour axis for the current time, or null when outside
   /// teaching hours. Hour 1 starts at 08:00.
-  double? _nowOffset(_GridGeometry geo) {
-    if (widget.isForExport) return null;
-    if (_todayOfWeek(_now) == null) return null;
-    if (!geo.days.contains(_todayOfWeek(_now))) return null;
+  double? _offset() {
+    final geo = widget.geo;
+    final today = _todayOfWeek(_now);
+    if (today == null || !geo.days.contains(today)) return null;
 
     final minutesSinceFirstHour = (_now.hour * 60 + _now.minute) - 8 * 60;
     if (minutesSinceFirstHour < 0) return null;
@@ -654,8 +686,25 @@ class _TimetableGridState extends State<TimetableGrid> {
     final hoursElapsed = minutesSinceFirstHour / 60.0;
     if (hoursElapsed > geo.hours.length) return null;
 
-    final extent = geo.vertical ? geo.rowExtent : geo.columnExtent;
-    return hoursElapsed * extent;
+    return hoursElapsed * (geo.vertical ? geo.rowExtent : geo.columnExtent);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final offset = _offset();
+    if (offset == null) return const SizedBox.shrink();
+    final geo = widget.geo;
+    return Positioned(
+      top: geo.vertical ? offset : 0,
+      left: geo.vertical ? 0 : offset,
+      width: geo.vertical ? geo.bodyWidth : 1.5,
+      height: geo.vertical ? 1.5 : geo.bodyHeight,
+      child: IgnorePointer(
+        child: RepaintBoundary(
+          child: DecoratedBox(decoration: BoxDecoration(color: widget.color)),
+        ),
+      ),
+    );
   }
 }
 

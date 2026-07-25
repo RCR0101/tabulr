@@ -59,6 +59,56 @@ function deriveUserDocId(email) {
   return null;
 }
 
+// ─── Input validation ───
+//
+// These callables run on the Admin SDK, so firestore.rules does not apply and
+// the bounds it puts on client writes have to be restated here. Several of
+// these fields land on the announcement doc every reader downloads.
+
+const LIMITS = {
+  reason: 500,
+  counterSourceUrl: 500,
+  confidence: 40,
+  note: 1000,
+  correctionText: 2000,
+  correctionSource: 500,
+};
+
+/** Required string field: must be a non-empty string within its bound. */
+function requireString(value, field, max) {
+  if (typeof value !== "string") {
+    throw new HttpsError("invalid-argument", `${field} must be a string`);
+  }
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    throw new HttpsError("invalid-argument", `${field} must not be empty`);
+  }
+  if (trimmed.length > max) {
+    throw new HttpsError(
+      "invalid-argument",
+      `${field} must be at most ${max} characters`
+    );
+  }
+  return trimmed;
+}
+
+/** Optional string field: null/undefined passes through, anything else is bounded. */
+function optionalString(value, field, max) {
+  if (value == null) return null;
+  return requireString(value, field, max);
+}
+
+// collection().doc() accepts an odd-segment path, so an unchecked id like
+// "a/b/c" steers the write into a nested subcollection.
+const DOC_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+function requireAnnouncementId(value) {
+  if (typeof value !== "string" || !DOC_ID_RE.test(value)) {
+    throw new HttpsError("invalid-argument", "Invalid announcementId");
+  }
+  return value;
+}
+
 function requireHydAuth(request) {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Must be signed in");
@@ -194,11 +244,16 @@ exports.addReputationEvent = onCall({ region: REGION, enforceAppCheck: false }, 
     throw new HttpsError("permission-denied", "Unrecognized email domain");
   }
 
-  const { targetUid, type, points, description, announcementId } =
-    request.data;
-  if (!targetUid || !type || points == null || !description) {
+  const { targetUid, type, points } = request.data;
+  if (!targetUid || !type || points == null) {
     throw new HttpsError("invalid-argument", "Missing required fields");
   }
+  // Stored verbatim in the reputation event log.
+  const description = requireString(request.data.description, "description", 200);
+  // Optional: post_removed_inaccuracy legitimately carries no announcementId.
+  const announcementId = request.data.announcementId == null
+    ? null
+    : requireAnnouncementId(request.data.announcementId);
   if (!CLIENT_ALLOWED_EVENTS.has(type)) {
     throw new HttpsError("permission-denied", "Event type not allowed from client");
   }
@@ -261,9 +316,10 @@ exports.touchReputationActivity = onCall({ region: REGION, enforceAppCheck: fals
 exports.toggleVote = onCall({ region: REGION, enforceAppCheck: false }, async (request) => {
   const callerDocId = requireHydAuth(request);
 
-  const { announcementId, voteValue } = request.data;
-  if (!announcementId || (voteValue !== 1 && voteValue !== -1)) {
-    throw new HttpsError("invalid-argument", "Invalid announcementId or voteValue");
+  const announcementId = requireAnnouncementId(request.data.announcementId);
+  const { voteValue } = request.data;
+  if (voteValue !== 1 && voteValue !== -1) {
+    throw new HttpsError("invalid-argument", "Invalid voteValue");
   }
 
   const annRef = db.collection(ANN_COLLECTION).doc(announcementId);
@@ -316,10 +372,14 @@ exports.toggleVote = onCall({ region: REGION, enforceAppCheck: false }, async (r
 exports.submitFlag = onCall({ region: REGION, enforceAppCheck: false }, async (request) => {
   const callerDocId = requireHydAuth(request);
 
-  const { announcementId, reason, counterSourceUrl, confidence } = request.data;
-  if (!announcementId || !reason) {
-    throw new HttpsError("invalid-argument", "Missing announcementId or reason");
-  }
+  // reason/counterSourceUrl become topFlagReason/topFlagCounterSource on the
+  // announcement itself, which every reader of that course's feed downloads.
+  const announcementId = requireAnnouncementId(request.data.announcementId);
+  const reason = requireString(request.data.reason, "reason", LIMITS.reason);
+  const counterSourceUrl = optionalString(
+    request.data.counterSourceUrl, "counterSourceUrl", LIMITS.counterSourceUrl);
+  const confidence = optionalString(
+    request.data.confidence, "confidence", LIMITS.confidence);
 
   const rep = await getReputation(callerDocId);
   if (rep.isSuspended) {
@@ -407,10 +467,12 @@ exports.submitFlag = onCall({ region: REGION, enforceAppCheck: false }, async (r
 exports.submitVerification = onCall({ region: REGION, enforceAppCheck: false }, async (request) => {
   const callerDocId = requireHydAuth(request);
 
-  const { announcementId, type, note } = request.data;
-  if (!announcementId || (type !== "confirm" && type !== "deny")) {
-    throw new HttpsError("invalid-argument", "Invalid announcementId or type");
+  const announcementId = requireAnnouncementId(request.data.announcementId);
+  const { type } = request.data;
+  if (type !== "confirm" && type !== "deny") {
+    throw new HttpsError("invalid-argument", "Invalid type");
   }
+  const note = optionalString(request.data.note, "note", LIMITS.note);
 
   const rep = await getReputation(callerDocId);
   if (rep.isSuspended) {
@@ -559,10 +621,12 @@ exports.submitVerification = onCall({ region: REGION, enforceAppCheck: false }, 
 exports.acceptCorrection = onCall({ region: REGION, enforceAppCheck: false }, async (request) => {
   const callerDocId = requireHydAuth(request);
 
-  const { announcementId, correctionText, correctionSource } = request.data;
-  if (!announcementId || !correctionText) {
-    throw new HttpsError("invalid-argument", "Missing announcementId or correctionText");
-  }
+  // Both land on the public announcement document (see the update below).
+  const announcementId = requireAnnouncementId(request.data.announcementId);
+  const correctionText = requireString(
+    request.data.correctionText, "correctionText", LIMITS.correctionText);
+  const correctionSource = optionalString(
+    request.data.correctionSource, "correctionSource", LIMITS.correctionSource);
 
   const annRef = db.collection(ANN_COLLECTION).doc(announcementId);
   const annSnap = await annRef.get();
@@ -623,6 +687,9 @@ exports.acceptCorrection = onCall({ region: REGION, enforceAppCheck: false }, as
 
 // ─── Admin functions (Node.js — checkAdmin, professors) ───
 // uploadTimetable and uploadExamSeating are in functions-python/
+// Exposed for functions/test/validation.test.js only; not a callable.
+exports._test = { requireString, optionalString, requireAnnouncementId };
+
 const adminFunctions = require("./admin");
 exports.checkAdminStatus = adminFunctions.checkAdminStatus;
 exports.getAdmins = adminFunctions.getAdmins;

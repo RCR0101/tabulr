@@ -305,7 +305,10 @@ abstract final class ScheduleConstants {
 abstract final class AppLimits {
   static const int maxUndoStackSize = 50;
   static const int combinationCap = 10000;
-  static const int coursePageSize = 100;
+  /// Sized to exceed a campus catalogue (~400 courses) so CourseDataService's
+  /// cold scan completes in one round trip. Cursor pagination is serial, so a
+  /// smaller page only adds latency — the read count is per document regardless.
+  static const int coursePageSize = 1000;
   static const int acadDriveCoursePageSize = 40;
   static const int acadDriveFilePageSize = 200;
   static const int acadDriveFileMaxSize = 5000;

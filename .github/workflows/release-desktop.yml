@@ -23,10 +23,6 @@ jobs:
         env:
           FIREBASE_OPTIONS: ${{ secrets.FIREBASE_OPTIONS_DART }}
 
-      - run: echo "$DOT_ENV" > .env
-        env:
-          DOT_ENV: ${{ secrets.DOT_ENV }}
-
       - run: flutter analyze
       - run: flutter test
       - run: flutter build macos --release
@@ -57,10 +53,6 @@ jobs:
       - run: echo "$env:FIREBASE_OPTIONS" > lib/firebase_options.dart
         env:
           FIREBASE_OPTIONS: ${{ secrets.FIREBASE_OPTIONS_DART }}
-
-      - run: echo "$env:DOT_ENV" > .env
-        env:
-          DOT_ENV: ${{ secrets.DOT_ENV }}
 
       - run: flutter analyze
       - run: flutter test
@@ -93,10 +85,6 @@ jobs:
       - run: echo "$FIREBASE_OPTIONS" > lib/firebase_options.dart
         env:
           FIREBASE_OPTIONS: ${{ secrets.FIREBASE_OPTIONS_DART }}
-
-      - run: echo "$DOT_ENV" > .env
-        env:
-          DOT_ENV: ${{ secrets.DOT_ENV }}
 
       - run: flutter analyze
       - run: flutter test

@@ -123,22 +123,34 @@ class CourseDataService {
         // Persistent cache first: costs 1 metadata read instead of a full
         // collection scan. Survives page reloads, which is where the read
         // volume was coming from.
+        // readIfFresh already fetches the metadata doc to judge staleness, so
+        // take the version from that snapshot. This used to call
+        // _getCurrentMetadata() right after — two serial reads for one field.
+        Map<String, dynamic>? freshMetadata;
         final cachedMaps = await _localCache.readIfFresh(
           _cacheKey,
           metadataRef: CampusService.metadataDocRef(_firestore),
+          onMetadata: (m) => freshMetadata = m,
         );
         if (cachedMaps != null && cachedMaps.isNotEmpty) {
           final cachedCourses = await _coursesFromCachedChunked(cachedMaps);
           _cachedCourses = cachedCourses;
           _lastFetchTime = DateTime.now();
           _cachedCampus = currentCampus;
-          _cachedVersion =
-              (await _getCurrentMetadata(currentCampus))?['version'] as String?;
+          _cachedVersion = freshMetadata?['version'] as String?;
           cacheHit = true;
           _loadCompleter!.complete(cachedCourses);
           _loadCompleter = null;
           return cachedCourses;
         }
+
+        // Cold load. Cursor pagination is serial, so the old 100-doc page size
+        // meant 4 round trips plus an empty probe for a ~400-course catalogue.
+        // The page size now exceeds it, making this one trip; the read count is
+        // unchanged either way. The loop stays so growth degrades gracefully.
+        // Started before the scan, awaited after: the version stamp doesn't
+        // depend on the course docs, so a serial trip after it was wasted.
+        final metadataFuture = _getCurrentMetadata(currentCampus);
 
         final allCourses = <Course>[];
         final rawDocs = <Map<String, dynamic>>[];
@@ -179,9 +191,8 @@ class CourseDataService {
           }
         }
 
-        // Get the current version to cache alongside the courses
-        final metadata = await _getCurrentMetadata(currentCampus);
-        final currentVersion = metadata?['version'] as String?;
+        // Version stamp, requested in parallel with the scan above.
+        final currentVersion = (await metadataFuture)?['version'] as String?;
         
         // Update cache with current campus and version
         _cachedCourses = allCourses;

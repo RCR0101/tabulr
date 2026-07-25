@@ -19,6 +19,18 @@ async function isAdminEmail(email) {
   return doc.exists;
 }
 
+// Firestore caps a WriteBatch at 500 operations. Batches commit in sequence so
+// a large rebuild can't stampede the write path.
+const BATCH_LIMIT = 500;
+
+async function commitInBatches(db, items, add) {
+  for (let i = 0; i < items.length; i += BATCH_LIMIT) {
+    const batch = db.batch();
+    for (const item of items.slice(i, i + BATCH_LIMIT)) add(batch, item);
+    await batch.commit();
+  }
+}
+
 async function requireAdmin(request) {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Must be signed in");
@@ -401,15 +413,16 @@ exports.rebuildProfessorSchedules = onCall(
       }
     }
 
+    // Delete-then-recreate, batched. This was one independent write per
+    // document via Promise.all — several hundred round trips per campus.
     const professorsRef = db.collection(`reference/professors/${campus}-entries`);
-    const existingSnapshot = await professorsRef.get();
-    const deletePromises = [];
-    existingSnapshot.forEach((doc) => deletePromises.push(doc.ref.delete()));
-    if (deletePromises.length > 0) await Promise.all(deletePromises);
+    const existingRefs = await professorsRef.listDocuments();
+    await commitInBatches(db, existingRefs, (batch, ref) => batch.delete(ref));
 
-    const uploadPromises = [];
+    const writes = [];
     let matchedCount = 0;
     let unmatchedCount = 0;
+    const now = new Date();
 
     professorData.profs.forEach((prof) => {
       if (!prof.name || !prof.chamber) return;
@@ -421,24 +434,25 @@ exports.rebuildProfessorSchedules = onCall(
       else unmatchedCount++;
 
       const docRef = professorsRef.doc();
-      uploadPromises.push(
-        docRef.set({
+      writes.push({
+        ref: docRef,
+        data: {
           id: docRef.id,
           name: prof.name.trim(),
           chamber: prof.chamber.trim(),
           nameSearch: prof.name.trim().toLowerCase(),
           chamberSearch: prof.chamber.trim().toLowerCase(),
           schedule,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-      );
+          createdAt: now,
+          updatedAt: now,
+        },
+      });
     });
 
-    await Promise.all(uploadPromises);
+    await commitInBatches(db, writes, (batch, w) => batch.set(w.ref, w.data));
 
     await db.doc(`admin_metadata/professors_${campus}`).set({
-      totalProfessors: uploadPromises.length,
+      totalProfessors: writes.length,
       professorsWithSchedule: matchedCount,
       professorsWithoutSchedule: unmatchedCount,
       lastUpdated: new Date(),
@@ -448,7 +462,7 @@ exports.rebuildProfessorSchedules = onCall(
 
     return {
       success: true,
-      professorsUpdated: uploadPromises.length,
+      professorsUpdated: writes.length,
       withSchedule: matchedCount,
       withoutSchedule: unmatchedCount,
     };

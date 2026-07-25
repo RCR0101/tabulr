@@ -21,10 +21,6 @@ jobs:
         env:
           FIREBASE_OPTIONS: ${{ secrets.FIREBASE_OPTIONS_DART }}
 
-      - run: echo "$DOT_ENV" > .env
-        env:
-          DOT_ENV: ${{ secrets.DOT_ENV }}
-
       - run: flutter analyze
       - run: flutter test
       - run: flutter build web --release --pwa-strategy=none --dart-define=LOGGER_API_KEY=${{ secrets.LOGGER_API_KEY }}

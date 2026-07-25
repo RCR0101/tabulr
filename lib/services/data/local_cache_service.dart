@@ -119,10 +119,14 @@ class LocalCacheService {
   /// The staleness check costs 1 Firestore read. On any error (network
   /// failure, missing doc, bad field) the cache is treated as **stale** so
   /// the caller falls through to a full fetch — correctness over speed.
+  ///
+  /// [onMetadata] hands back the metadata document this already fetched, so a
+  /// caller wanting another of its fields need not re-read it.
   Future<List<Map<String, dynamic>>?> readIfFresh(
     String cacheKey, {
     required DocumentReference<Map<String, dynamic>> metadataRef,
     String metadataField = 'lastUpdated',
+    void Function(Map<String, dynamic>? metadata)? onMetadata,
   }) async {
     try {
       final decoded = _decode(await _readRaw(cacheKey), _maxAgeHours);
@@ -130,6 +134,7 @@ class LocalCacheService {
 
       final metaSnap =
           await metadataRef.get().timeout(AppDurations.startupReadTimeout);
+      onMetadata?.call(metaSnap.exists ? metaSnap.data() : null);
       if (metaSnap.exists) {
         final lastUpdated = metaSnap.data()?[metadataField];
         if (lastUpdated != null) {

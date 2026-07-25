@@ -1751,6 +1751,9 @@ class _FlagDialogState extends State<_FlagDialog> {
                       ? '${20 - charCount} more characters needed'
                       : null,
                 ),
+                // Mirrors the bound submitFlag enforces (functions/index.js
+                // LIMITS), so over-long text is stopped here, not by an error.
+                maxLength: 500,
                 maxLines: 3,
                 textCapitalization: TextCapitalization.sentences,
                 onChanged: (_) => setState(() {}),
@@ -1761,7 +1764,9 @@ class _FlagDialogState extends State<_FlagDialog> {
                 decoration: InputDecoration(
                   labelText: 'Counter-source URL (optional)',
                   hintText: 'Link to correct information...',
+                  counterText: '',
                 ),
+                maxLength: 500,
                 keyboardType: TextInputType.url,
               ),
               const SizedBox(height: 12),
@@ -1897,6 +1902,7 @@ class _AcceptCorrectionDialogState extends State<_AcceptCorrectionDialog> {
                   labelText: 'Correct information *',
                   hintText: 'What is the correct information?',
                 ),
+                maxLength: 2000,
                 maxLines: 3,
                 textCapitalization: TextCapitalization.sentences,
                 onChanged: (_) => setState(() {}),
@@ -1907,7 +1913,9 @@ class _AcceptCorrectionDialogState extends State<_AcceptCorrectionDialog> {
                 decoration: InputDecoration(
                   labelText: 'Source URL (optional)',
                   hintText: 'Link to correct source...',
+                  counterText: '',
                 ),
+                maxLength: 500,
                 keyboardType: TextInputType.url,
               ),
               const SizedBox(height: 20),
