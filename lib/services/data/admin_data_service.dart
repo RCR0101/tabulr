@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../constants/app_constants.dart';
+import '../../utils/course_code.dart';
 
 class AdminDataService {
   static final AdminDataService _instance = AdminDataService._internal();
@@ -76,7 +77,7 @@ class AdminDataService {
         all.add({
           'docId': doc.id,
           ...doc.data(),
-          'course_code': master?['course_code'] ?? doc.id.replaceAll('_', ' '),
+          'course_code': master?['course_code'] ?? docIdToCourseCode(doc.id),
           'title': master?['title'] ?? '',
           'credits': master?['credits'] ?? 0,
           'type': master?['type'] ?? 'Normal',

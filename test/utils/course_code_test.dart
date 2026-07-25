@@ -26,4 +26,24 @@ void main() {
       expect(normalizeCourseCode(''), '');
     });
   });
+
+  group('Firestore document ids', () {
+    test('round-trips a code through its document id', () {
+      expect(courseCodeToDocId('CS F211'), 'CS_F211');
+      expect(docIdToCourseCode('CS_F211'), 'CS F211');
+      expect(docIdToCourseCode(courseCodeToDocId('MATH F112')), 'MATH F112');
+    });
+
+    test('leaves a code with no space alone', () {
+      expect(courseCodeToDocId('BITS'), 'BITS');
+      expect(docIdToCourseCode('BITS'), 'BITS');
+    });
+
+    test('is distinct from normalizeCourseCode', () {
+      // normalizeCourseCode strips whitespace for cross-source comparison and
+      // must never be used to build a document id.
+      expect(normalizeCourseCode('CS F211'), 'CSF211');
+      expect(courseCodeToDocId('CS F211'), 'CS_F211');
+    });
+  });
 }

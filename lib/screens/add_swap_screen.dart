@@ -1003,7 +1003,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
         const SizedBox(width: 8),
         Expanded(
           child: Text(
-            '${_formatDate(exam.date)} - ${TimeSlotInfo.getTimeSlotName(exam.timeSlot, campus: CampusService.currentCampusCode)}',
+            '${_formatDate(exam.date)} - ${TimeSlotInfo.getTimeSlotName(exam.timeSlot, campus: CampusService.campusId)}',
             style: const TextStyle(fontSize: 12),
           ),
         ),
@@ -1034,7 +1034,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
         const SizedBox(width: 6),
         Expanded(
           child: Text(
-            '${_formatDate(exam.date)} - ${TimeSlotInfo.getTimeSlotName(exam.timeSlot, campus: CampusService.currentCampusCode)}',
+            '${_formatDate(exam.date)} - ${TimeSlotInfo.getTimeSlotName(exam.timeSlot, campus: CampusService.campusId)}',
             style: const TextStyle(fontSize: 10),
             overflow: TextOverflow.ellipsis,
           ),

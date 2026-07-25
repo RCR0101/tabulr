@@ -1017,7 +1017,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         page: AddSwapScreen(
           currentSelectedSections: tt.selectedSections,
           availableCourses: tt.availableCourses,
-          currentCampus: CampusService.currentCampusCode,
+          currentCampus: CampusService.campusId,
           onTimetableUpdated: (updatedSections) {
             setState(() {
               tt.selectedSections.clear();

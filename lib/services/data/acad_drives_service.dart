@@ -48,10 +48,22 @@ class AcadDrivesService {
     return q.get();
   }
 
+  /// How long the on-disk course index may be served without refetching.
+  ///
+  /// Deliberately far below LocalCacheService's 72h default. Every other
+  /// catalogue service checks a Firestore metadata document for staleness, but
+  /// this index comes from R2 over the CDN precisely so it costs no Firestore
+  /// reads — polling a metadata document would put that cost straight back.
+  /// A short TTL is the cheaper equivalent: the thing it refetches is one
+  /// cached CDN GET, so a stale window of days bought almost nothing and hid
+  /// newly synced drives from students for up to three of them.
+  static const _indexCacheHours = 6;
+
   Future<List<Map<String, dynamic>>> fetchAllCoursesData() async {
     if (_allCoursesCache != null) return _allCoursesCache!;
 
-    final cached = await _localCache.read(_cacheKey);
+    final cached =
+        await _localCache.read(_cacheKey, maxAgeHours: _indexCacheHours);
     if (cached != null) {
       _allCoursesCache = cached;
       return cached;
@@ -86,11 +98,6 @@ class AcadDrivesService {
     _allCoursesCache = data;
     await _localCache.write(_cacheKey, data);
     return data;
-  }
-
-  void invalidateCoursesCache() {
-    _allCoursesCache = null;
-    _localCache.invalidate(_cacheKey);
   }
 
   Future<QuerySnapshot<Map<String, dynamic>>> fetchAllCourses() {

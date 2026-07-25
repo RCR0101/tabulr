@@ -203,7 +203,7 @@ class ExportService {
     // Exam slot start times differ by campus, so resolve them against the
     // timetable's own campus, not the globally-selected one. Falls back to the
     // current campus when a caller doesn't supply it (e.g. legacy tests).
-    final examCampus = campusId ?? CampusService.currentCampusCode;
+    final examCampus = campusId ?? CampusService.campusId;
     final dtstamp = _formatUtcForICS(DateTime.now());
     // Stable per-timetable namespace, so re-importing after an edit updates the
     // same events instead of piling up duplicates (the old random-UUID UIDs
@@ -713,7 +713,7 @@ class ExportService {
       {bool endTime = false, String? campus}) {
     // Use campus-specific time slot mappings for the timetable's own campus.
     final slotTimes = TimeSlotInfo.getCampusExamTimes(
-        campus ?? CampusService.currentCampusCode);
+        campus ?? CampusService.campusId);
 
     final timeInfo = slotTimes[exam.timeSlot];
     if (timeInfo == null) {

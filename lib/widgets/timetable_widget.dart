@@ -1064,7 +1064,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     // for every one of them.
     String fmtSlot(TimeSlot s) => TimeSlotInfo.getTimeSlotName(
           s,
-          campus: CampusService.currentCampusCode,
+          campus: CampusService.campusId,
         );
 
     final scheme = Theme.of(context).colorScheme;

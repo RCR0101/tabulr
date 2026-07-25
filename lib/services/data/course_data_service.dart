@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../../constants/app_constants.dart';
 import '../../models/course.dart';
 import 'campus_service.dart';
 import 'courses_master_service.dart';
 import 'local_cache_service.dart';
 import '../ui/secure_logger.dart';
+import '../../utils/course_code.dart';
 
 class CourseDataService {
   static final CourseDataService _instance = CourseDataService._internal();
@@ -17,7 +19,17 @@ class CourseDataService {
     });
   }
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  /// Test seam: substitute an in-memory Firestore so the real load paths can be
+  /// exercised without a network. Never set from app code.
+  ///
+  /// Resolved on use rather than held as a field: an eager initializer demands
+  /// Firebase be up the moment anything touches this class, including paths
+  /// that only read the in-memory cache.
+  @visibleForTesting
+  FirebaseFirestore? firestoreForTest;
+
+  FirebaseFirestore get _firestore =>
+      firestoreForTest ?? FirebaseFirestore.instance;
   final LocalCacheService _localCache = LocalCacheService();
 
   // Campus-aware cache for courses
@@ -83,7 +95,7 @@ class CourseDataService {
         try {
           final doc = snapshot.docs[i];
           final data = doc.data() as Map<String, dynamic>;
-          final code = doc.id.replaceAll('_', ' ');
+          final code = docIdToCourseCode(doc.id);
           final title = CoursesMasterService().getTitle(code);
           final course = Course.fromJson(data, courseCode: code, resolvedTitle: title);
           courses.add(course);
@@ -173,7 +185,7 @@ class CourseDataService {
             for (final doc in snapshot.docs) {
               try {
                 final data = doc.data() as Map<String, dynamic>;
-                final code = doc.id.replaceAll('_', ' ');
+                final code = docIdToCourseCode(doc.id);
                 final title = CoursesMasterService().getTitle(code);
                 final course = Course.fromJson(data, courseCode: code, resolvedTitle: title);
                 allCourses.add(course);

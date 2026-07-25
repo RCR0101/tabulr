@@ -132,7 +132,7 @@ class ClashDetector {
 
         warnings.add(ClashWarning(
           type: ClashType.midSemExam,
-          message: 'MidSem exam clash on ${formatExamDate(date)} ${TimeSlotInfo.getTimeSlotName(timeSlot, campus: CampusService.currentCampusCode)}',
+          message: 'MidSem exam clash on ${formatExamDate(date)} ${TimeSlotInfo.getTimeSlotName(timeSlot, campus: CampusService.campusId)}',
           conflictingCourses: entry.value.toList(),
           severity: ClashSeverity.error,
           examDate: date,
@@ -148,7 +148,7 @@ class ClashDetector {
 
         warnings.add(ClashWarning(
           type: ClashType.endSemExam,
-          message: 'EndSem exam clash on ${formatExamDate(date)} ${TimeSlotInfo.getTimeSlotName(timeSlot, campus: CampusService.currentCampusCode)}',
+          message: 'EndSem exam clash on ${formatExamDate(date)} ${TimeSlotInfo.getTimeSlotName(timeSlot, campus: CampusService.campusId)}',
           conflictingCourses: entry.value.toList(),
           severity: ClashSeverity.error,
           examDate: date,
@@ -239,7 +239,7 @@ class ClashDetector {
         return AddSectionCheck.blocked(
           AddBlockReason.examClash,
           'Midsem clash: ${newCourse.courseCode} and ${existingCourse.courseCode} both sit on '
-          '${formatExamDate(mid.date)}, ${TimeSlotInfo.getTimeSlotName(mid.timeSlot, campus: CampusService.currentCampusCode)}.',
+          '${formatExamDate(mid.date)}, ${TimeSlotInfo.getTimeSlotName(mid.timeSlot, campus: CampusService.campusId)}.',
           conflictingCourses: [existingCourse.courseCode],
         );
       }
@@ -250,7 +250,7 @@ class ClashDetector {
         return AddSectionCheck.blocked(
           AddBlockReason.examClash,
           'Compre clash: ${newCourse.courseCode} and ${existingCourse.courseCode} both sit on '
-          '${formatExamDate(end.date)}, ${TimeSlotInfo.getTimeSlotName(end.timeSlot, campus: CampusService.currentCampusCode)}.',
+          '${formatExamDate(end.date)}, ${TimeSlotInfo.getTimeSlotName(end.timeSlot, campus: CampusService.campusId)}.',
           conflictingCourses: [existingCourse.courseCode],
         );
       }
@@ -322,7 +322,7 @@ class ClashDetector {
               conflictingCourse: currentSelected.courseCode,
               conflictingSectionId: 'Mid-Sem Exam',
               day: DayOfWeek.M,
-              time: 'Mid-Sem Exam: ${TimeSlotInfo.getTimeSlotName(newCourse.midSemExam!.timeSlot, campus: CampusService.currentCampusCode)}',
+              time: 'Mid-Sem Exam: ${TimeSlotInfo.getTimeSlotName(newCourse.midSemExam!.timeSlot, campus: CampusService.campusId)}',
             ));
           }
         }
@@ -341,7 +341,7 @@ class ClashDetector {
               conflictingCourse: currentSelected.courseCode,
               conflictingSectionId: 'Comprehensive Exam',
               day: DayOfWeek.M,
-              time: 'Comprehensive Exam: ${TimeSlotInfo.getTimeSlotName(newCourse.endSemExam!.timeSlot, campus: CampusService.currentCampusCode)}',
+              time: 'Comprehensive Exam: ${TimeSlotInfo.getTimeSlotName(newCourse.endSemExam!.timeSlot, campus: CampusService.campusId)}',
             ));
           }
         }
@@ -446,7 +446,7 @@ class ClashDetector {
             conflictingCourse: otherCourseCode,
             conflictingSectionId: 'Mid-Sem Exam',
             day: DayOfWeek.M,
-            time: 'Mid-Sem Exam: ${TimeSlotInfo.getTimeSlotName(currentCourse.midSemExam!.timeSlot, campus: CampusService.currentCampusCode)}',
+            time: 'Mid-Sem Exam: ${TimeSlotInfo.getTimeSlotName(currentCourse.midSemExam!.timeSlot, campus: CampusService.campusId)}',
           ));
         }
       }
@@ -457,7 +457,7 @@ class ClashDetector {
             conflictingCourse: otherCourseCode,
             conflictingSectionId: 'Comprehensive Exam',
             day: DayOfWeek.M,
-            time: 'Comprehensive Exam: ${TimeSlotInfo.getTimeSlotName(currentCourse.endSemExam!.timeSlot, campus: CampusService.currentCampusCode)}',
+            time: 'Comprehensive Exam: ${TimeSlotInfo.getTimeSlotName(currentCourse.endSemExam!.timeSlot, campus: CampusService.campusId)}',
           ));
         }
       }

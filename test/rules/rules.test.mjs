@@ -349,6 +349,34 @@ await test('other reference data stays open for guests', async () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
+group('cache freshness markers are readable by the clients that poll them');
+
+// Every service that caches locally polls a metadata document to decide whether
+// its cache is stale. LocalCacheService.readIfFresh swallows a failed read and
+// reports "stale", so a marker the rules do not cover does not raise — it
+// silently disables the cache and turns every load into a full collection scan.
+// PrerequisitesRepository pointed at a top-level `metadata/prerequisites`,
+// which no rule matches, and did exactly that.
+for (const path of [
+  'reference/prerequisites',            // PrerequisitesRepository
+  'reference/branches/data/_metadata',  // BranchStructureService
+  'admin_metadata/professors_hyderabad',// ProfessorService
+  'admin_metadata/exam_seating',        // ExamSeatingService
+  'campuses/hyderabad/metadata/current',// CoursesMaster / CourseDataService
+]) {
+  await test(`a guest can read ${path}`, async () => {
+    await assertSucceeds(
+      getDoc(doc(env.unauthenticatedContext().firestore(), path)));
+  });
+}
+
+await test('a non-admin still cannot bump the prerequisites marker', async () => {
+  await assertFails(
+    setDoc(doc(user(HYD), 'reference/prerequisites'),
+        { lastUpdated: 'x' }, { merge: true }));
+});
+
+// ───────────────────────────────────────────────────────────────────────────
 group('admin_emails stays invisible');
 
 await test('nobody can read the admin allowlist', async () => {

@@ -45,7 +45,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
 
   /// "owner/repo" on GitHub. When set, the Contributors section is fetched
   /// live from the GitHub API. Leave empty to fall back to [_manualContributors].
-  static const String _githubRepoSlug = 'RCR0101/timetable_maker';
+  static const String _githubRepoSlug = 'RCR0101/tabulr';
 
   static const _creator = _Person(
     name: 'Aryan Dalmia',

@@ -49,7 +49,7 @@ electives and minors, and share it all — across **Pilani, Goa, and Hyderabad**
 ## Quick start
 
 ```bash
-cd timetable_maker
+cd tabulr
 flutter pub get
 flutter run -d chrome        # web
 flutter run -d macos         # or windows / linux

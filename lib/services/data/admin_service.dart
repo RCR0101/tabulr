@@ -110,6 +110,7 @@ class AdminService extends ChangeNotifier {
     List<int>? pageRange,
     List<int>? calendarPageRange,
     int examYear = 2026,
+    bool force = false,
   }) async {
     const action = 'upload_timetable';
     _validatePdf(fileBytes, action);
@@ -130,6 +131,10 @@ class AdminService extends ChangeNotifier {
         payload['calendarPageRange'] = calendarPageRange;
       }
       payload['examYear'] = examYear;
+      // The backend refuses an upload that would drop most of the collection —
+      // usually a bad page range rather than a real change. This is the
+      // acknowledged override; without it the refusal is a dead end.
+      if (force) payload['force'] = true;
       final result =
           await _functions.httpsCallable('upload_timetable', options: HttpsCallableOptions(timeout: AppDurations.uploadTimetableTimeout)).call(payload);
       final uploaded = result.data['coursesUploaded'] as int;

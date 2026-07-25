@@ -17,9 +17,16 @@ class CampusService {
   
   static Stream<Campus> get campusChangeStream => _campusChangeController.stream;
   
-  static String get currentCampusCode => _currentCampus.code;
-  static String get currentCampusDisplayName => _currentCampus.displayName;
+  /// The current campus's code — `hyderabad`, `pilani`, `goa`.
+  ///
+  /// Doubles as the Firestore path segment (`campuses/{campusId}/...`) and as
+  /// the `campus:` argument to TimeSlotInfo, because they are the same value.
+  /// There used to be a second getter, `currentCampusCode`, returning exactly
+  /// this: two names for one value, with no distinction anywhere to tell a
+  /// reader which was meant where.
   static String get campusId => _currentCampus.code;
+
+  static String get currentCampusDisplayName => _currentCampus.displayName;
 
   static CollectionReference<Map<String, dynamic>> coursesMasterRef(FirebaseFirestore firestore) {
     return firestore.collection(FirestoreCollections.campuses).doc(campusId).collection(FirestoreCollections.coursesMaster);

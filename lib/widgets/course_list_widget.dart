@@ -309,9 +309,9 @@ class CourseListWidget extends StatelessWidget {
                              )),
                         Text('Credits: L${course.lectureCredits} P${course.practicalCredits} U${course.totalCredits}'),
                         if (course.midSemExam != null)
-                          Text('MidSem: ${course.midSemExam!.date.day}/${course.midSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot, campus: CampusService.currentCampusCode)}'),
+                          Text('MidSem: ${course.midSemExam!.date.day}/${course.midSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot, campus: CampusService.campusId)}'),
                         if (course.endSemExam != null)
-                          Text('EndSem: ${course.endSemExam!.date.day}/${course.endSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot, campus: CampusService.currentCampusCode)}'),
+                          Text('EndSem: ${course.endSemExam!.date.day}/${course.endSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot, campus: CampusService.campusId)}'),
                         if (_getSelectedSectionsText(course.courseCode).isNotEmpty)
                           Text(
                             'Selected: ${_getSelectedSectionsText(course.courseCode)}',

@@ -1075,7 +1075,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                   const DropdownMenuItem<TimeSlot?>(value: null, child: Text('Any')),
                   ...TimeSlotInfo.getMidSemSlots().map((slot) => DropdownMenuItem(
                     value: slot,
-                    child: Text(TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode)),
+                    child: Text(TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.campusId)),
                   )),
                 ],
                 onChanged: (value) => _ctrl.preferredMidsemSlot = value,
@@ -1090,7 +1090,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                   const DropdownMenuItem<TimeSlot?>(value: null, child: Text('Any')),
                   ...TimeSlotInfo.getEndSemSlots().map((slot) => DropdownMenuItem(
                     value: slot,
-                    child: Text(TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode)),
+                    child: Text(TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.campusId)),
                   )),
                 ],
                 onChanged: (value) => _ctrl.preferredCompreSlot = value,

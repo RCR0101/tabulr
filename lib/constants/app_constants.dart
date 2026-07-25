@@ -81,7 +81,7 @@ abstract final class AppUrls {
   static const String cgpaEncryptionWorker =
       'https://cgpa-encryption.dalmia-aryan.workers.dev';
   static const String githubRepo =
-      'https://github.com/RCR0101/timetable_maker';
+      'https://github.com/RCR0101/tabulr';
   static const String acadDrivesIndexUrl =
       'https://pub-f49326688b9147a48953bfe887abd9ce.r2.dev/tabulr_meta/acad-drives-index.json';
 }

@@ -862,12 +862,42 @@ def parse_timetable_rows_goa(data):
 # ─── Campus dispatch ───
 
 
+# A course code is a 2-6 letter subject, whitespace, an optional catalogue
+# letter, then three digits: "CS F111", "SS G514", "BIO U101", "BITS C790T".
+#
+# Deliberately permissive after the digits. Hyderabad really does print
+# "BITS F101-2" (SOCIAL CONDUCT) and "BITS K101-2" as distinct rows with their
+# own instructors, so anchoring the end of the code would silently delete real
+# courses — which is the failure this filter exists to prevent, in reverse.
+COURSE_CODE_RE = re.compile(r"^[A-Z]{2,6}\s+[A-Z]?\d{3}")
+
+
+def is_course_row(course):
+    """Whether a parsed row is a course rather than page furniture.
+
+    The extractors walk every table on every page, so day headers ("M", "T"),
+    repeated column headers ("COURSE\\nNO"), calendar day numbers and time-slot
+    legends ("8.00 - 8.50 AM") arrive looking like rows. Nothing downstream
+    filtered them: upload_courses_to_firestore wrote each one as a course
+    document, and sync_courses_master then INSERTED the junk code into the
+    curated master catalogue, which by design never deletes a row again.
+    """
+    return bool(COURSE_CODE_RE.match((course.get("courseCode") or "").strip()))
+
+
 def parse_timetable_rows(data, campus_code):
     if campus_code == "pilani":
-        return parse_timetable_rows_pilani(data)
-    if campus_code == "goa":
-        return parse_timetable_rows_goa(data)
-    return parse_timetable_rows_hyd(data)
+        courses = parse_timetable_rows_pilani(data)
+    elif campus_code == "goa":
+        courses = parse_timetable_rows_goa(data)
+    else:
+        courses = parse_timetable_rows_hyd(data)
+
+    kept = [c for c in courses if is_course_row(c)]
+    dropped = len(courses) - len(kept)
+    if dropped:
+        print(f"[parse] dropped {dropped} non-course rows (headers/legends)")
+    return kept
 
 
 # ─── Exam seating parser (ported from upload-exam-seating.js) ───
@@ -1198,12 +1228,91 @@ def upload_calendar_to_firestore(events, campus_code, exam_year):
 # ─── Firestore batch upload (ported from base-parser.js) ───
 
 
-def upload_courses_to_firestore(courses, campus_code, clear_first=True):
+# A re-upload that suddenly carries a fraction of the courses is far more
+# likely to be a layout change the parser mishandled than a real timetable that
+# shrank by that much. Since the upload clears the collection first, letting one
+# through replaces good data with a truncated parse, and the only signal is a
+# student finding their course missing.
+MIN_COURSE_RETENTION = 0.8
+
+
+class CourseCountDropError(Exception):
+    """Raised when an upload would shrink the collection implausibly."""
+
+
+def dedupe_by_doc_id(courses):
+    """Collapse rows that share a Firestore document id, keeping the richest.
+
+    The Hyderabad booklet prints every course in both the I-SEM and II-SEM
+    tables, and the copy in the semester it is not offered in carries no
+    credits and no sections. Parsing the whole booklet — which is a supported
+    path, `pageRange` is optional — therefore yields two rows per course.
+
+    upload_courses_to_firestore writes them in order with batch.set(), so the
+    LAST one wins, and for all 382 duplicated Hyderabad courses that is the
+    empty one: the upload would replace 382 real courses with blanks that have
+    no sections, no schedule and zero credits. Preferring the populated row
+    makes the write order-independent instead of relying on which table the
+    registrar happened to print second.
+
+    Cross-listed codes ("EEE F211 / ECE F211") also collapse here, because
+    course_code_to_doc_id keeps only the first code — same reasoning applies.
+    """
+    best = {}
+    order = []
+    for course in courses:
+        doc_id = course_code_to_doc_id(course["courseCode"])
+        if doc_id not in best:
+            best[doc_id] = course
+            order.append(doc_id)
+            continue
+        # Richer = more sections, then more credits. Ties keep the first seen,
+        # so the result does not depend on page order.
+        current = best[doc_id]
+        candidate = (len(course.get("sections", [])), course.get("totalCredits", 0))
+        incumbent = (len(current.get("sections", [])), current.get("totalCredits", 0))
+        if candidate > incumbent:
+            best[doc_id] = course
+    return [best[d] for d in order]
+
+
+def _guard_course_count(timetable_ref, courses, force=False):
+    """Refuse an upload that drops more than 1 - MIN_COURSE_RETENTION of rows.
+
+    Mirrors _write_catalog_bundle, which already refuses to write an empty
+    bundle; the collection write had no equivalent.
+    """
+    existing = len(list(timetable_ref.list_documents()))
+    if existing == 0:
+        return  # first upload for this campus — nothing to compare against
+    floor = int(existing * MIN_COURSE_RETENTION)
+    if len(courses) >= floor:
+        return
+    message = (
+        f"parsed {len(courses)} courses but {existing} are live "
+        f"(minimum {floor} = {MIN_COURSE_RETENTION:.0%}); refusing to replace "
+        f"the collection. Check the page range and the PDF layout, then re-run "
+        f"with force=True if the drop is real."
+    )
+    if not force:
+        raise CourseCountDropError(message)
+    print(f"[upload] WARNING: {message}")
+
+
+def upload_courses_to_firestore(courses, campus_code, clear_first=True, force=False):
     campus_id = CAMPUS_IDS.get(campus_code.lower(), "hyderabad")
     db = get_db()
     timetable_ref = db.collection(f"campuses/{campus_id}/timetable")
 
+    # Before anything counts or writes: two rows sharing a document id are one
+    # course, and writing both means the second silently replaces the first.
+    before = len(courses)
+    courses = dedupe_by_doc_id(courses)
+    if len(courses) != before:
+        print(f"[upload] collapsed {before - len(courses)} duplicate document ids")
+
     if clear_first:
+        _guard_course_count(timetable_ref, courses, force=force)
         docs = timetable_ref.get()
         batch = db.batch()
         count = 0
@@ -1432,7 +1541,14 @@ def upload_timetable(req: https_fn.CallableRequest):
     if not courses:
         raise https_fn.HttpsError(https_fn.FunctionalErrorCode.INVALID_ARGUMENT, "No courses found in PDF")
 
-    upload_courses_to_firestore(courses, campus_code, clear_first=True)
+    # `force` lets an admin push through a genuine large drop (a campus really
+    # trimming its offering); without it the guard below refuses and explains.
+    try:
+        upload_courses_to_firestore(
+            courses, campus_code, clear_first=True, force=bool(req.data.get("force")))
+    except CourseCountDropError as e:
+        raise https_fn.HttpsError(
+            https_fn.FunctionalErrorCode.FAILED_PRECONDITION, str(e))
 
     calendar_uploaded = 0
     if calendar_events:

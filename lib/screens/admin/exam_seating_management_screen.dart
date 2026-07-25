@@ -9,6 +9,7 @@ import '../../constants/app_constants.dart';
 import '../../utils/design_constants.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_dialog.dart';
+import '../../utils/course_code.dart';
 
 class ExamSeatingManagementScreen extends StatefulWidget {
   const ExamSeatingManagementScreen({super.key});
@@ -83,7 +84,7 @@ class _ExamSeatingManagementScreenState
   Future<void> _showDialog({Map<String, dynamic>? existing}) async {
     final isNew = existing == null;
     final codeCtrl = TextEditingController(
-        text: existing?['docId']?.toString().replaceAll('_', ' ') ?? '');
+        text: docIdToCourseCode(existing?['docId']?.toString() ?? ''));
     final dateCtrl =
         TextEditingController(text: existing?['exam_date']?.toString() ?? '');
 
@@ -486,7 +487,7 @@ class _ExamSeatingManagementScreenState
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(docId.replaceAll('_', ' '),
+                                  Text(docIdToCourseCode(docId),
                                       style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w700,

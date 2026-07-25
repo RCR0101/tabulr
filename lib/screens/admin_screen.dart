@@ -74,6 +74,12 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   bool _uploadingTimetable = false;
+
+  /// Overrides the backend's "this upload would drop most of the collection"
+  /// refusal. Off by default and reset after every upload: that guard exists
+  /// because a big drop is usually a wrong page range, and a sticky override
+  /// would quietly disarm it for every future upload.
+  bool _forceTimetableUpload = false;
   bool _uploadingExam = false;
   bool _rebuildingProfs = false;
   bool _archiving = false;
@@ -187,6 +193,7 @@ class _AdminScreenState extends State<AdminScreen> {
           calendarPageRange:
               (calFrom != null && calTo != null) ? [calFrom, calTo] : null,
           examYear: year,
+          force: _forceTimetableUpload,
         );
         done++;
         results.add('$label: $count courses');
@@ -196,6 +203,7 @@ class _AdminScreenState extends State<AdminScreen> {
       _setStateIfMounted(() {
         _timetableResult = results.join('\n');
         _timetableProgress = null;
+        _forceTimetableUpload = false;
       });
       ToastService.showSuccess('Timetable upload complete');
     } catch (e) {
@@ -1087,6 +1095,22 @@ class _AdminScreenState extends State<AdminScreen> {
         ],
         const SizedBox(height: AppDesign.spacingSm),
         _buildExamYearField(),
+        // Only offered once an upload has been refused: the guard's whole point
+        // is that a large drop is usually a wrong page range, so this must read
+        // as a deliberate override rather than a routine toggle.
+        if (_timetableResult != null && _timetableResult!.contains('refusing'))
+          CheckboxListTile(
+            value: _forceTimetableUpload,
+            onChanged: (v) =>
+                _setStateIfMounted(() => _forceTimetableUpload = v ?? false),
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            title: const Text(
+              'Upload anyway — the drop is real, not a bad page range',
+              style: TextStyle(fontSize: 13),
+            ),
+          ),
         AppButton(
           label: 'Upload Timetables',
           icon: Icons.cloud_upload_rounded,

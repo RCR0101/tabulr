@@ -1,12 +1,37 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../services/ui/secure_logger.dart';
 import '../constants/app_constants.dart';
 import '../models/prerequisite.dart';
 import '../services/data/courses_master_service.dart';
 import '../services/data/local_cache_service.dart';
+import '../utils/course_code.dart';
 
+/// Reads the prerequisite catalogue, cached in memory and on disk.
+///
+/// A singleton, like every service around it. It used to be a plain class, and
+/// every call site wrote `PrerequisitesRepository()` — so the generator's prereq
+/// warning and the prereq screen each got a fresh instance with an empty
+/// in-memory cache, and re-read and re-deserialised the whole catalogue from
+/// disk on every open. Sharing one instance makes the in-memory cache do the
+/// job it was written for.
 class PrerequisitesRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  static final PrerequisitesRepository _instance =
+      PrerequisitesRepository._internal();
+  factory PrerequisitesRepository() => _instance;
+  PrerequisitesRepository._internal();
+
+  /// Test seam: substitute an in-memory Firestore so the real load paths can be
+  /// exercised without a network. Never set from app code.
+  ///
+  /// Resolved on use rather than held as a field: an eager initializer demands
+  /// Firebase be up the moment anything touches this class, including paths
+  /// that only read the in-memory cache.
+  @visibleForTesting
+  FirebaseFirestore? firestoreForTest;
+
+  FirebaseFirestore get _firestore =>
+      firestoreForTest ?? FirebaseFirestore.instance;
   final LocalCacheService _localCache = LocalCacheService();
 
   static const _cacheKey = 'prerequisites';
@@ -14,8 +39,22 @@ class PrerequisitesRepository {
   CollectionReference<Map<String, dynamic>> get _prereqsRef =>
       _firestore.collection(FirestoreCollections.reference).doc(FirestoreCollections.prerequisites).collection(FirestoreCollections.courses);
 
+  /// Freshness marker for the local cache.
+  ///
+  /// Lives on the `reference/prerequisites` document — the parent of the
+  /// `courses` subcollection this repository reads — so it is covered by the
+  /// same rule (`match /reference/prerequisites/{sub=**}`): world-readable,
+  /// admin-writable.
+  ///
+  /// It used to point at a top-level `metadata/prerequisites`, which no rule
+  /// matches. Firestore denied it, `readIfFresh` caught the error and reported
+  /// the cache as stale, and every prereq load fell through to a full scan of
+  /// the collection — hundreds of document reads per load, for every user,
+  /// while the persistent cache was never once used.
   DocumentReference<Map<String, dynamic>> get _metadataRef =>
-      _firestore.collection('metadata').doc('prerequisites');
+      _firestore
+          .collection(FirestoreCollections.reference)
+          .doc(FirestoreCollections.prerequisites);
 
   List<CoursePrerequisites>? _cache;
 
@@ -47,24 +86,32 @@ class PrerequisitesRepository {
     _localCache.invalidate(_cacheKey);
   }
 
-  static String _docId(String courseCode) => courseCode.replaceAll(' ', '_');
+  /// Drops the in-memory cache only, leaving the on-disk one intact.
+  ///
+  /// Exists so tests can exercise the persistent tier, which is otherwise
+  /// unreachable once this became a singleton — the previous tests relied on
+  /// constructing a second instance to get an empty in-memory cache.
+  @visibleForTesting
+  void resetInMemoryCache() => _cache = null;
+
 
   /// Create or replace a course's prerequisites (admin). Bumps the freshness
   /// marker so other devices refresh, and clears the local cache.
   Future<void> saveCoursePrerequisites(CoursePrerequisites course) async {
-    await _prereqsRef.doc(_docId(course.courseCode)).set(course.toMap());
+    await _prereqsRef.doc(courseCodeToDocId(course.courseCode)).set(course.toMap());
     await _bumpMetadata();
     clearCache();
   }
 
   Future<void> deleteCoursePrerequisites(String courseCode) async {
-    await _prereqsRef.doc(_docId(courseCode)).delete();
+    await _prereqsRef.doc(courseCodeToDocId(courseCode)).delete();
     await _bumpMetadata();
     clearCache();
   }
 
   /// Best-effort freshness bump; the prereq doc write is the source of truth,
-  /// so a denied metadata write must not fail the save.
+  /// so a failed metadata write must not fail the save. (This is now writable
+  /// by admins — it was silently denied while the marker sat outside the rules.)
   Future<void> _bumpMetadata() async {
     try {
       await _metadataRef.set(
@@ -114,7 +161,7 @@ class PrerequisitesRepository {
 
   Future<CoursePrerequisites?> getCoursePrerequisites(String courseCode) async {
     try {
-      final docId = courseCode.replaceAll(' ', '_');
+      final docId = courseCodeToDocId(courseCode);
       final doc = await _prereqsRef.doc(docId).get();
 
       if (doc.exists) {

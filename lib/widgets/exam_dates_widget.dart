@@ -268,7 +268,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
         : '';
 
       final midSemTime = course.midSemExam != null
-        ? TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot, campus: CampusService.currentCampusCode)
+        ? TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot, campus: CampusService.campusId)
         : '';
 
       final endSemText = course.endSemExam != null
@@ -276,7 +276,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
         : '';
 
       final endSemTime = course.endSemExam != null
-        ? TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot, campus: CampusService.currentCampusCode)
+        ? TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot, campus: CampusService.campusId)
         : '';
 
       examDataList.add(ExamData(

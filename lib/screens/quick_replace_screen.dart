@@ -833,10 +833,10 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     if (course.midSemExam != null || course.endSemExam != null) {
       final examTexts = <String>[];
       if (course.midSemExam != null) {
-        examTexts.add('MidSem: ${course.midSemExam!.date.day}/${course.midSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot, campus: CampusService.currentCampusCode)}');
+        examTexts.add('MidSem: ${course.midSemExam!.date.day}/${course.midSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot, campus: CampusService.campusId)}');
       }
       if (course.endSemExam != null) {
-        examTexts.add('EndSem: ${course.endSemExam!.date.day}/${course.endSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot, campus: CampusService.currentCampusCode)}');
+        examTexts.add('EndSem: ${course.endSemExam!.date.day}/${course.endSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot, campus: CampusService.campusId)}');
       }
       items.add(
         Row(
