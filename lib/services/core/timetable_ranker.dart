@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import '../../constants/app_constants.dart';
 import '../../models/course.dart';
 import '../../models/timetable_constraints.dart';
 import '../../utils/datetime_utils.dart';
@@ -296,7 +297,7 @@ class TimetableRanker {
   static bool _meetsLunch(GeneratedTimetable tt, TimetableConstraints c) {
     for (final s in tt.sections) {
       for (final entry in s.section.schedule) {
-        if (entry.hours.any((h) => h == 5 || h == 6)) return false;
+        if (entry.hours.any(ScheduleConstants.lunchHours.contains)) return false;
       }
     }
     return true;
@@ -375,7 +376,9 @@ class TimetableRanker {
           if (c.latestEndSlot != null && h > c.latestEndSlot!) cost += days;
           if (c.timeOfDayPreference == TimeOfDayPreference.morning && h >= 7) cost += days;
           if (c.timeOfDayPreference == TimeOfDayPreference.afternoon && h <= 4) cost += days;
-          if (c.protectLunchBreak && (h == 5 || h == 6)) cost += days;
+          if (c.protectLunchBreak && ScheduleConstants.lunchHours.contains(h)) {
+            cost += days;
+          }
         }
       }
     }

@@ -296,6 +296,13 @@ abstract final class ScheduleConstants {
     10: '5:00-5:50 PM', 11: '6:00-6:50 PM', 12: '7:00-7:50 PM',
   };
 
+  /// Hour slots the generator's "protect lunch" preference keeps clear, and
+  /// which the stats sheet counts against. 12:00 and 1:00 PM.
+  static const List<int> lunchHours = [5, 6];
+
+  /// Hour slot 1 — the 8 AM start students plan around.
+  static const int firstHour = 1;
+
   static const Duration midsemExamDuration = Duration(minutes: 90);
   static const Duration endsemExamDuration = Duration(hours: 3);
 }
@@ -303,6 +310,10 @@ abstract final class ScheduleConstants {
 // ── Algorithm / behavior limits ────────────────────────────────────────
 
 abstract final class AppLimits {
+  /// The per-semester credit cap. Also the generator's default [maxCredits],
+  /// and what the stats sheet measures a timetable's load against.
+  static const double semesterCreditCap = 25;
+
   static const int maxUndoStackSize = 50;
   static const int combinationCap = 10000;
   /// Sized to exceed a campus catalogue (~400 courses) so CourseDataService's

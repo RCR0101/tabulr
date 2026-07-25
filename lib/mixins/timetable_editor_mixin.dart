@@ -8,7 +8,6 @@ import '../utils/web_utils.dart' as web_utils;
 import '../models/course.dart';
 import '../utils/page_transitions.dart';
 import '../models/timetable.dart';
-import '../models/timetable_stats.dart';
 import '../models/export_options.dart';
 import '../services/core/timetable_service.dart';
 import '../utils/course_utils.dart';
@@ -45,7 +44,7 @@ import '../widgets/common/app_button.dart';
 import '../screens/generator_screen.dart';
 import '../screens/add_swap_screen.dart';
 import '../screens/quick_replace_screen.dart';
-import '../widgets/exam_timeline_widget.dart';
+import '../widgets/timetable_stats_panel.dart';
 import '../models/academic_record.dart';
 import '../models/prerequisite_status.dart';
 import '../models/timetable_selection_link.dart';
@@ -1321,61 +1320,11 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     );
   }
 
-  static String _dayLabel(DayOfWeek day) => switch (day) {
-    DayOfWeek.M => 'Mon',
-    DayOfWeek.T => 'Tue',
-    DayOfWeek.W => 'Wed',
-    DayOfWeek.Th => 'Thu',
-    DayOfWeek.F => 'Fri',
-    DayOfWeek.S => 'Sat',
-  };
-
   void _showStatsSheet(BuildContext context) {
     final tt = currentTimetable;
     if (tt == null) return;
-    final stats = TimetableStats.fromTimetable(tt);
-    final scheme = Theme.of(context).colorScheme;
 
-    Widget statsContent(BuildContext ctx) {
-      final labelStyle = Theme.of(ctx).textTheme.labelSmall?.copyWith(
-        color: scheme.onSurface.withValues(alpha: 0.6),
-      );
-      final valueStyle = Theme.of(ctx).textTheme.titleMedium?.copyWith(
-        fontWeight: FontWeight.w700,
-      );
-
-      Widget statTile(IconData icon, String value, String label) {
-        return Column(
-          children: [
-            Icon(icon, size: 20, color: scheme.primary),
-            const SizedBox(height: 4),
-            Text(value, style: valueStyle),
-            Text(label, style: labelStyle),
-          ],
-        );
-      }
-
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                statTile(Icons.schedule, '${stats.totalHoursPerWeek}', 'hrs/wk'),
-                statTile(Icons.trending_up, '${_dayLabel(stats.busiestDay)} (${stats.busiestDayHours}h)', 'busiest'),
-                statTile(Icons.event_available, '${stats.freeDayCount}', 'free days'),
-                if (stats.longestGapHours > 0)
-                  statTile(Icons.hourglass_empty, '${stats.longestGapHours}h', 'gap ${_dayLabel(stats.longestGapDay!)}'),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          Flexible(child: ExamTimelineWidget(timetable: tt)),
-        ],
-      );
-    }
+    Widget statsContent(BuildContext ctx) => TimetableStatsPanel(timetable: tt);
 
     final isMobile = ResponsiveService.isMobile(context);
     if (isMobile) {

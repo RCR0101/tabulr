@@ -524,7 +524,9 @@ class TimetableGenerator {
         for (final h in entry.hours) {
           if (c.earliestStartSlot != null && h < c.earliestStartSlot!) penalty += 3 * days;
           if (c.latestEndSlot != null && h > c.latestEndSlot!) penalty += 3 * days;
-          if (c.protectLunchBreak && (h == 5 || h == 6)) penalty += 1.5 * days;
+          if (c.protectLunchBreak && ScheduleConstants.lunchHours.contains(h)) {
+            penalty += 1.5 * days;
+          }
         }
       }
       if (c.avoidedInstructors.contains(s.section.instructor)) penalty += 15;
@@ -686,7 +688,7 @@ class TimetableGenerator {
       bool lunchFree = true;
       for (final section in sections) {
         for (final entry in section.section.schedule) {
-          if (entry.hours.contains(5) || entry.hours.contains(6)) {
+          if (entry.hours.any(ScheduleConstants.lunchHours.contains)) {
             lunchFree = false;
             break;
           }

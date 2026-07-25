@@ -1,3 +1,4 @@
+import '../constants/app_constants.dart';
 import 'course.dart';
 
 /// User preferences fed to [TimetableGenerator.generateTimetables].
@@ -48,7 +49,7 @@ class TimetableConstraints {
     this.mandatoryCourses = const [],
     this.optionalCourses = const [],
     this.optionalTarget,
-    this.maxCredits = 25,
+    this.maxCredits = AppLimits.semesterCreditCap,
     this.avoidTimes = const [],
     this.avoidLabs = const [],
     this.maxHoursPerDay = 8,

@@ -1,3 +1,4 @@
+import '../constants/app_constants.dart';
 import 'course.dart';
 import 'timetable.dart';
 
@@ -13,6 +14,18 @@ class TimetableStats {
   final DayOfWeek? longestGapDay;
   final Map<DayOfWeek, int> hoursPerDay;
   final List<ExamCluster> examClusters;
+
+  /// Days whose first class is the 8 AM slot. The single most asked-about
+  /// property of a BITS timetable after "is it clash free".
+  final List<DayOfWeek> earlyStartDays;
+
+  /// Every free hour sandwiched between two classes on the same day. Unlike
+  /// [longestGapHours] this is the whole week's dead time.
+  final int totalGapHours;
+
+  /// The longest unbroken run of classes on any one day, and where.
+  final int longestStreakHours;
+  final DayOfWeek? longestStreakDay;
 
   /// Every exam (mid-sem + comprehensive) across the selected courses, sorted by
   /// date then session — the series behind the exam-crunch timeline.
@@ -31,6 +44,10 @@ class TimetableStats {
     required this.hoursPerDay,
     required this.examClusters,
     required this.allExams,
+    this.earlyStartDays = const [],
+    this.totalGapHours = 0,
+    this.longestStreakHours = 0,
+    this.longestStreakDay,
   });
 
   static const _empty = TimetableStats(
@@ -92,17 +109,43 @@ class TimetableStats {
     const weekdays = [DayOfWeek.M, DayOfWeek.T, DayOfWeek.W, DayOfWeek.Th, DayOfWeek.F];
     final freeDays = weekdays.where((d) => (hoursPerDay[d] ?? 0) == 0).toList();
 
-    // Longest gap: largest break between consecutive classes on any day
+    // One pass per day covers gaps, back-to-back runs and 8 AM starts.
     var longestGap = 0;
     DayOfWeek? longestGapDay;
-    for (final entry in dayHours.entries) {
-      final sorted = entry.value.toList()..sort();
-      if (sorted.length < 2) continue;
+    var totalGap = 0;
+    var longestStreak = 0;
+    DayOfWeek? longestStreakDay;
+    final earlyStartDays = <DayOfWeek>[];
+
+    // Iterate the enum, not the map, so day lists come out in week order.
+    for (final day in DayOfWeek.values) {
+      final hours = dayHours[day];
+      if (hours == null || hours.isEmpty) continue;
+
+      final sorted = hours.toList()..sort();
+      if (sorted.first == ScheduleConstants.firstHour) earlyStartDays.add(day);
+
+      // A day with a single class is still a one-hour run.
+      var streak = 1;
+      if (streak > longestStreak) {
+        longestStreak = streak;
+        longestStreakDay = day;
+      }
       for (int i = 1; i < sorted.length; i++) {
         final gap = sorted[i] - sorted[i - 1] - 1;
-        if (gap > longestGap) {
-          longestGap = gap;
-          longestGapDay = entry.key;
+        if (gap > 0) {
+          totalGap += gap;
+          if (gap > longestGap) {
+            longestGap = gap;
+            longestGapDay = day;
+          }
+          streak = 1;
+        } else {
+          streak++;
+        }
+        if (streak > longestStreak) {
+          longestStreak = streak;
+          longestStreakDay = day;
         }
       }
     }
@@ -124,6 +167,10 @@ class TimetableStats {
       hoursPerDay: hoursPerDay,
       examClusters: examClusters,
       allExams: allExams,
+      earlyStartDays: earlyStartDays,
+      totalGapHours: totalGap,
+      longestStreakHours: longestStreak,
+      longestStreakDay: longestStreakDay,
     );
   }
 
@@ -196,6 +243,11 @@ class TimetableStats {
   }
 
   bool get hasExamClusters => examClusters.isNotEmpty;
+
+  /// Days that have at least one class.
+  int get classDayCount => hoursPerDay.values.where((h) => h > 0).length;
+
+  bool get isOverCreditCap => totalCredits > AppLimits.semesterCreditCap;
 
   int get worstClusterSize =>
       examClusters.isEmpty ? 0 : examClusters.map((c) => c.exams.length).reduce((a, b) => a > b ? a : b);
