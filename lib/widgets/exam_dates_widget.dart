@@ -5,8 +5,20 @@ import '../services/data/campus_service.dart';
 import '../utils/design_constants.dart';
 
 enum SortColumn { course, midSem, endSem }
+
 enum SortDirection { ascending, descending }
 
+/// The exam schedule for the sections currently on a timetable.
+///
+/// Rewritten from a bordered `Table` whose header cells doubled as sort
+/// controls — except below 768px, where they stopped being tappable and a
+/// second row of sort buttons appeared *inside* the table instead. That is two
+/// interaction models for one job, plus grid lines around every cell.
+///
+/// Every field the table carried is kept: course code, title, and the date and
+/// time of both exams. Two things are added, because the data was already here
+/// and only the presentation hid it — dates read as "10 Mar" rather than
+/// "10/3", and two exams landing on one day are called out.
 class ExamDatesWidget extends StatefulWidget {
   final List<SelectedSection> selectedSections;
   final List<Course> courses;
@@ -25,221 +37,348 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
   SortColumn _sortColumn = SortColumn.course;
   SortDirection _sortDirection = SortDirection.ascending;
 
+  static const _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  /// "10 Mar" reads unambiguously; "10/3" is a date-format coin toss.
+  static String _formatDate(DateTime d) =>
+      '${d.day} ${(d.month >= 1 && d.month <= 12) ? _months[d.month - 1] : d.month}';
+
+  /// Booklet slots arrive as "9:30AM-11:00AM"; give the meridiem its space.
+  static String _formatSlot(String raw) => raw
+      .replaceAllMapped(RegExp(r'(\d)(AM|PM)'), (m) => '${m[1]} ${m[2]}')
+      .replaceAll('-', ' – ');
+
   @override
   Widget build(BuildContext context) {
     final examData = _getExamData();
-    
+
+    // Dates carrying more than one exam. Two papers in a day is the most useful
+    // thing this screen can tell a student, and the table left them to spot it
+    // by eye across three columns.
+    final busyDays = <String, int>{};
+    for (final e in examData) {
+      for (final d in [e.midSemDate, e.endSemDate]) {
+        if (d == null) continue;
+        final key = '${d.year}-${d.month}-${d.day}';
+        busyDays[key] = (busyDays[key] ?? 0) + 1;
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Icon(Icons.event, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 8),
-              const Text(
-                'Exam Schedule',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '${examData.length} courses',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        _buildHeader(context, examData.length),
         if (examData.isEmpty)
           Expanded(
             child: Center(
-              child: Text(
-                'No courses selected',
-                style: TextStyle(color: AppDesign.muted(context)),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.event_busy_outlined,
+                      size: 38, color: AppDesign.muted(context)),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No courses selected',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppDesign.muted(context)),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Add sections and their exams will appear here',
+                    style:
+                        TextStyle(fontSize: 12, color: AppDesign.muted(context)),
+                  ),
+                ],
               ),
             ),
           )
         else
           Expanded(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Table(
-                  border: TableBorder.all(
-                    color: Theme.of(context).colorScheme.outline,
-                    width: 1,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildColumnLabels(context),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    itemCount: examData.length,
+                    itemBuilder: (context, i) =>
+                        _buildExamRow(context, examData[i], busyDays, i),
                   ),
-                  columnWidths: const {
-                    0: FlexColumnWidth(2.5),
-                    1: FlexColumnWidth(2),
-                    2: FlexColumnWidth(2),
-                  },
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, int count) {
+    final scheme = Theme.of(context).colorScheme;
+
+    final title = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.event_note_outlined, size: 19, color: scheme.primary),
+        const SizedBox(width: 8),
+        const Text('Exam Schedule',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        const SizedBox(width: 7),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+          decoration: BoxDecoration(
+            color: scheme.primary.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(7),
+          ),
+          child: Text('$count',
+              style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: scheme.primary)),
+        ),
+      ],
+    );
+
+    // The four sort controls plus the title do not fit a phone width. Rather
+    // than shrink them below a comfortable tap target, they drop to their own
+    // row — which costs one line and keeps every control full size.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final roomForOneRow = constraints.maxWidth >= 560;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+          child: roomForOneRow
+              ? Row(children: [
+                  title,
+                  const Spacer(),
+                  _buildSortControls(context),
+                ])
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header row
-                    TableRow(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                      ),
-                      children: [
-                        _buildSortableHeader(
-                          'Course',
-                          SortColumn.course,
-                        ),
-                        _buildSortableHeader(
-                          'MidSem Exam',
-                          SortColumn.midSem,
-                        ),
-                        _buildSortableHeader(
-                          'EndSem Exam',
-                          SortColumn.endSem,
-                        ),
-                      ],
+                    title,
+                    const SizedBox(height: 8),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: _buildSortControls(context),
                     ),
-                    // Small screen sorting buttons row
-                    if (MediaQuery.sizeOf(context).width < 768)
-                      TableRow(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                        ),
-                        children: [
-                          _buildMobileSortButton(SortColumn.course),
-                          _buildMobileSortButton(SortColumn.midSem),
-                          _buildMobileSortButton(SortColumn.endSem),
-                        ],
-                      ),
-                    // Data rows
-                    ...examData.map((exam) => TableRow(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                exam.courseCode,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                exam.courseTitle,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 2,
-                              ),
-                            ],
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: exam.midSemText.isNotEmpty
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.2),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      exam.midSemText,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Theme.of(context).colorScheme.tertiary,
-                                      ),
-                                    ),
-                                  ),
-                                  if (exam.midSemTime.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      exam.midSemTime,
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              )
-                            : Text(
-                                '-',
-                                style: TextStyle(color: AppDesign.muted(context)),
-                              ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: exam.endSemText.isNotEmpty
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context).colorScheme.error.withValues(alpha: 0.2),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      exam.endSemText,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Theme.of(context).colorScheme.error,
-                                      ),
-                                    ),
-                                  ),
-                                  if (exam.endSemTime.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      exam.endSemTime,
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              )
-                            : Text(
-                                '-',
-                                style: TextStyle(color: AppDesign.muted(context)),
-                              ),
-                        ),
-                      ],
-                    )),
                   ],
+                ),
+        );
+      },
+    );
+  }
+
+  /// Two controls, not one: which field to sort on, and which way.
+  ///
+  /// They used to be the same gesture — tap a column to sort by it, tap it
+  /// again to reverse — which meant reversing the order required knowing the
+  /// field was already selected, and there was no way to see the direction
+  /// without reading an arrow buried in a header.
+  Widget _buildSortControls(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final ascending = _sortDirection == SortDirection.ascending;
+
+    Widget field(SortColumn column, String label) {
+      final selected = _sortColumn == column;
+      return Padding(
+        padding: const EdgeInsets.only(left: 4),
+        child: Material(
+          color: selected
+              ? scheme.primary.withValues(alpha: 0.14)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(7),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(7),
+            onTap: () => setState(() => _sortColumn = column),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected
+                      ? scheme.primary
+                      : scheme.onSurface.withValues(alpha: 0.65),
                 ),
               ),
             ),
           ),
-        const SizedBox(height: 16),
+        ),
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Sort',
+            style: TextStyle(
+                fontSize: 11,
+                color: scheme.onSurface.withValues(alpha: 0.5))),
+        field(SortColumn.course, 'Course'),
+        field(SortColumn.midSem, 'Midsem'),
+        field(SortColumn.endSem, 'Compre'),
+        const SizedBox(width: 4),
+        // Direction is its own button, so reversing never depends on which
+        // field happens to be active.
+        Tooltip(
+          message: ascending ? 'Ascending' : 'Descending',
+          child: Material(
+            color: scheme.surfaceContainerHighest.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(7),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(7),
+              onTap: () => setState(() => _sortDirection = ascending
+                  ? SortDirection.descending
+                  : SortDirection.ascending),
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Icon(
+                  ascending ? Icons.arrow_upward : Icons.arrow_downward,
+                  size: 15,
+                  color: scheme.onSurface.withValues(alpha: 0.75),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Column labels for the rows below. Aligned columns are the point: a student
+  /// reading this is asking "when are my exams", which means scanning a date
+  /// column top to bottom. The card layout this replaced put each course in its
+  /// own box, which killed that and needed scrolling for four courses.
+  Widget _buildColumnLabels(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    TextStyle style() => TextStyle(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.4,
+          color: scheme.onSurface.withValues(alpha: 0.5),
+        );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 2, 14, 6),
+      child: Row(
+        children: [
+          Expanded(flex: 4, child: Text('COURSE', style: style())),
+          Expanded(flex: 3, child: Text('MIDSEM', style: style())),
+          Expanded(flex: 3, child: Text('COMPRE', style: style())),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExamRow(
+      BuildContext context, ExamData exam, Map<String, int> busyDays, int index) {
+    final scheme = Theme.of(context).colorScheme;
+
+    bool sharesDay(DateTime? d) {
+      if (d == null) return false;
+      return (busyDays['${d.year}-${d.month}-${d.day}'] ?? 0) > 1;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        // A faint banded background instead of grid lines: it keeps the eye on
+        // a row across three columns without drawing a box around every cell.
+        color: index.isEven
+            ? scheme.surfaceContainerLow.withValues(alpha: 0.5)
+            : Colors.transparent,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            flex: 4,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(exam.courseCode,
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w700)),
+                if (exam.courseTitle.isNotEmpty &&
+                    exam.courseTitle != exam.courseCode)
+                  Text(
+                    exam.courseTitle,
+                    style: TextStyle(
+                        fontSize: 11,
+                        color: scheme.onSurface.withValues(alpha: 0.6)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: _examCell(context, exam.midSemDate, exam.midSemTime,
+                scheme.tertiary, sharesDay(exam.midSemDate)),
+          ),
+          Expanded(
+            flex: 3,
+            child: _examCell(context, exam.endSemDate, exam.endSemTime,
+                scheme.primary, sharesDay(exam.endSemDate)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _examCell(BuildContext context, DateTime? date, String time,
+      Color accent, bool sharesDay) {
+    final scheme = Theme.of(context).colorScheme;
+
+    if (date == null) {
+      return Text('—',
+          style: TextStyle(
+              fontSize: 13, color: scheme.onSurface.withValues(alpha: 0.35)));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Flexible(
+              child: Text(
+                _formatDate(date),
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: accent),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (sharesDay) ...[
+              const SizedBox(width: 4),
+              Tooltip(
+                message: 'Another exam falls on this day',
+                child: Icon(Icons.warning_amber_rounded,
+                    size: 13, color: AppDesign.warning(context)),
+              ),
+            ],
+          ],
+        ),
+        if (time.isNotEmpty)
+          Text(
+            _formatSlot(time),
+            style: TextStyle(
+                fontSize: 10.5,
+                color: scheme.onSurface.withValues(alpha: 0.6)),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
       ],
     );
   }
@@ -249,279 +388,74 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
     final processedCourses = <String>{};
 
     for (var selectedSection in widget.selectedSections) {
-      if (processedCourses.contains(selectedSection.courseCode)) {
-        continue;
-      }
+      if (processedCourses.contains(selectedSection.courseCode)) continue;
 
-      final course = widget.courses.where(
-        (c) => c.courseCode == selectedSection.courseCode,
-      ).firstOrNull;
-
-      if (course == null) {
-        continue; // Skip if course not found instead of throwing exception
-      }
+      final course = widget.courses
+          .where((c) => c.courseCode == selectedSection.courseCode)
+          .firstOrNull;
+      if (course == null) continue;
 
       processedCourses.add(selectedSection.courseCode);
-
-      final midSemText = course.midSemExam != null
-        ? '${course.midSemExam!.date.day}/${course.midSemExam!.date.month}'
-        : '';
-
-      final midSemTime = course.midSemExam != null
-        ? TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot, campus: CampusService.campusId)
-        : '';
-
-      final endSemText = course.endSemExam != null
-        ? '${course.endSemExam!.date.day}/${course.endSemExam!.date.month}'
-        : '';
-
-      final endSemTime = course.endSemExam != null
-        ? TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot, campus: CampusService.campusId)
-        : '';
 
       examDataList.add(ExamData(
         courseCode: course.courseCode,
         courseTitle: course.courseTitle,
-        midSemText: midSemText,
-        midSemTime: midSemTime,
-        endSemText: endSemText,
-        endSemTime: endSemTime,
+        midSemDate: course.midSemExam?.date,
+        midSemTime: course.midSemExam != null
+            ? TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot,
+                campus: CampusService.campusId)
+            : '',
+        endSemDate: course.endSemExam?.date,
+        endSemTime: course.endSemExam != null
+            ? TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot,
+                campus: CampusService.campusId)
+            : '',
       ));
     }
 
-    // Apply sorting
     _sortExamData(examDataList);
     return examDataList;
   }
 
-  Widget _buildSortableHeader(String title, SortColumn column) {
-    final isCurrentColumn = _sortColumn == column;
-    final isAscending = _sortDirection == SortDirection.ascending;
-    final isSmallScreen = MediaQuery.sizeOf(context).width < 768;
-
-    // On small screens, headers are not clickable (sorting buttons are in separate row)
-    if (isSmallScreen) {
-      return _buildMobileHeader(title, isCurrentColumn, isAscending);
-    }
-
-    // On large screens, headers are clickable
-    return InkWell(
-      onTap: () {
-        setState(() {
-          if (isCurrentColumn) {
-            _sortDirection = isAscending
-              ? SortDirection.descending
-              : SortDirection.ascending;
-          } else {
-            _sortColumn = column;
-            _sortDirection = SortDirection.ascending;
-          }
-        });
-      },
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: _buildWebHeader(title, isCurrentColumn, isAscending),
-      ),
-    );
-  }
-
-  Widget _buildWebHeader(String title, bool isCurrentColumn, bool isAscending) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            color: isCurrentColumn
-              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
-              : Colors.transparent,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.keyboard_arrow_up,
-                size: 20,
-                color: isCurrentColumn && isAscending
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-              const SizedBox(height: 1),
-              Icon(
-                Icons.keyboard_arrow_down,
-                size: 20,
-                color: isCurrentColumn && !isAscending
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMobileHeader(String title, bool isCurrentColumn, bool isAscending) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 14,
-          color: Theme.of(context).colorScheme.onSurface,
-        ),
-        overflow: TextOverflow.ellipsis,
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
-
-  Widget _buildMobileSortButton(SortColumn column) {
-    final isCurrentColumn = _sortColumn == column;
-    final isAscending = _sortDirection == SortDirection.ascending;
-
-    return InkWell(
-      onTap: () {
-        setState(() {
-          if (isCurrentColumn) {
-            _sortDirection = isAscending
-              ? SortDirection.descending
-              : SortDirection.ascending;
-          } else {
-            _sortColumn = column;
-            _sortDirection = SortDirection.ascending;
-          }
-        });
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Sort',
-              style: TextStyle(
-                fontSize: 12,
-                color: isCurrentColumn
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                fontWeight: isCurrentColumn ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                color: isCurrentColumn
-                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
-                  : Colors.transparent,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.keyboard_arrow_up,
-                    size: 16,
-                    color: isCurrentColumn && isAscending
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                  Icon(
-                    Icons.keyboard_arrow_down,
-                    size: 16,
-                    color: isCurrentColumn && !isAscending
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _sortExamData(List<ExamData> examData) {
     examData.sort((a, b) {
-      int compareResult;
-      
-      switch (_sortColumn) {
-        case SortColumn.course:
-          compareResult = a.courseCode.compareTo(b.courseCode);
-          break;
-        case SortColumn.midSem:
-          compareResult = _compareDates(a.midSemText, b.midSemText);
-          break;
-        case SortColumn.endSem:
-          compareResult = _compareDates(a.endSemText, b.endSemText);
-          break;
-      }
-
-      return _sortDirection == SortDirection.ascending
-        ? compareResult
-        : -compareResult;
+      final int result = switch (_sortColumn) {
+        SortColumn.course => a.courseCode.compareTo(b.courseCode),
+        SortColumn.midSem => _compareDates(a.midSemDate, b.midSemDate),
+        SortColumn.endSem => _compareDates(a.endSemDate, b.endSemDate),
+      };
+      return _sortDirection == SortDirection.ascending ? result : -result;
     });
   }
 
-  int _compareDates(String dateA, String dateB) {
-    // Handle empty dates (put them at the end)
-    if (dateA.isEmpty && dateB.isEmpty) return 0;
-    if (dateA.isEmpty) return 1;
-    if (dateB.isEmpty) return -1;
-    
-    // Parse dates in format "dd/mm"
-    try {
-      final partsA = dateA.split('/');
-      final partsB = dateB.split('/');
-
-      if (partsA.length != 2 || partsB.length != 2) {
-        return dateA.compareTo(dateB);
-      }
-
-      final dayA = int.parse(partsA[0]);
-      final monthA = int.parse(partsA[1]);
-      final dayB = int.parse(partsB[0]);
-      final monthB = int.parse(partsB[1]);
-
-      // Compare month first, then day
-      if (monthA != monthB) {
-        return monthA.compareTo(monthB);
-      }
-      return dayA.compareTo(dayB);
-    } catch (e) {
-      // Fallback to string comparison if parsing fails
-      return dateA.compareTo(dateB);
-    }
+  /// Compares real dates rather than re-parsing "dd/mm" strings, which the old
+  /// version did — and which silently fell back to a string comparison whenever
+  /// the format did not match.
+  ///
+  /// A course with no exam sorts last in either direction: "unscheduled" is not
+  /// a date and does not belong at the top of a chronological list.
+  int _compareDates(DateTime? a, DateTime? b) {
+    if (a == null && b == null) return 0;
+    if (a == null) return 1;
+    if (b == null) return -1;
+    return a.compareTo(b);
   }
 }
 
 class ExamData {
   final String courseCode;
   final String courseTitle;
-  final String midSemText;
+  final DateTime? midSemDate;
   final String midSemTime;
-  final String endSemText;
+  final DateTime? endSemDate;
   final String endSemTime;
 
   ExamData({
     required this.courseCode,
     required this.courseTitle,
-    required this.midSemText,
+    required this.midSemDate,
     required this.midSemTime,
-    required this.endSemText,
+    required this.endSemDate,
     required this.endSemTime,
   });
 }

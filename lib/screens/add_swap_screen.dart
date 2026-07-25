@@ -73,9 +73,13 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     }
   }
 
+  /// Set from the advanced filters; see CourseUtils.filterOutSectionless.
+  bool _includeSectionless = false;
+
   void _filterCourses() {
     setState(() {
       _filteredCourses = _availableCourses.where((course) {
+        if (!_includeSectionless && course.sections.isEmpty) return false;
         return _searchQuery.isEmpty ||
             course.courseCode.toLowerCase().contains(_searchQuery.toLowerCase()) ||
             course.courseTitle.toLowerCase().contains(_searchQuery.toLowerCase());
@@ -585,6 +589,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
               SearchFilterWidget(
                 onSearchChanged: (query, filters) {
                   _searchQuery = query;
+                  _includeSectionless = filters['includeSectionless'] == true;
                   _filterCourses();
                 },
               ),

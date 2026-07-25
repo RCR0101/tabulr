@@ -44,3 +44,16 @@ bool isBeBranch(String branchCode) =>
   }
   return null;
 }
+
+/// Display label for a branch: `"A7 — Computer Science"`.
+///
+/// The three elective browsers each showed half of this — Humanities the bare
+/// code, Discipline and Open the bare name — so the same branch read
+/// differently depending on which screen you were on. Students use both halves:
+/// the code is what appears on registration forms, the name is what they'd
+/// recognise. Falls back to the code alone when it isn't in [branchCodeToName],
+/// so an unknown branch still renders something meaningful.
+String branchLabel(String code) {
+  final name = branchCodeToName[code];
+  return name == null || name.isEmpty ? code : '$code — $name';
+}

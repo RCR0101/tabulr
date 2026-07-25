@@ -53,6 +53,8 @@ class _ElectiveCourseListState extends State<ElectiveCourseList> {
   Widget build(BuildContext context) {
     final link = widget.selectionLink;
 
+    // No timetable open (the browser was reached from the timetable list, not
+    // from inside the editor): read-only, so no Add button to press.
     if (link == null) {
       return CourseListWidget(
         courses: widget.courses,
@@ -60,6 +62,7 @@ class _ElectiveCourseListState extends State<ElectiveCourseList> {
         record: _record,
         selectedSections: const [],
         onSectionToggle: (_, __, ___) {},
+        selectable: false,
       );
     }
 

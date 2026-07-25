@@ -56,19 +56,17 @@ Future<void> pumpList(
 
 void main() {
   group('ElectiveCourseList', () {
-    testWidgets('without a link the Add buttons do nothing', (tester) async {
+    testWidgets('without a link there is nothing to press', (tester) async {
+      // Superseded the old "the Add buttons do nothing" expectation: a button
+      // that renders live and silently no-ops is worse than no button. The
+      // course list stays browsable; only the action is withheld.
       final courses = twoCourseNoClash();
       await pumpList(tester, courses: courses);
 
       await tester.tap(find.text('CS F111'));
       await tester.pumpAndSettle();
 
-      final add = find.text('Add').first;
-      expect(add, findsOneWidget);
-      await tester.tap(add);
-      await tester.pumpAndSettle();
-
-      // Still offering Add — nothing was selected.
+      expect(find.text('Add'), findsNothing);
       expect(find.text('Remove'), findsNothing);
     });
 
@@ -168,7 +166,10 @@ void main() {
         link: link,
       );
 
-      expect(find.textContaining('MidSem clash with MATH F112'), findsOneWidget);
+      // Wording is deliberately plain — "Midsem exam clashes with X", not
+      // "MidSem clash". First-years read these before they know the jargon.
+      expect(find.textContaining('Midsem exam clashes with MATH F112'),
+          findsOneWidget);
     });
 
     testWidgets('misses that clash when no catalog is supplied', (tester) async {
@@ -216,6 +217,100 @@ void main() {
       ));
 
       expect(find.byType(Row), findsNothing);
+    });
+  });
+
+  group('read-only when no timetable is open', () {
+    // The browsers are reachable two ways: from inside the editor (a timetable
+    // is open, so Add writes to it) and from the timetable LIST (none is open).
+    // In the second case the Add button used to render anyway, wired to a
+    // no-op, so it looked live and silently did nothing.
+    testWidgets('no Add button without a selection link', (tester) async {
+      final course = makeCourse(courseCode: 'CS F211');
+      await pumpList(tester, courses: [course]);
+      // Sections are behind the course row, so expand it — otherwise the
+      // absence below proves only that nothing was rendered yet.
+      await tester.tap(find.text('CS F211'));
+      await tester.pumpAndSettle();
+
+      // The course and its sections are still browsable; only the action goes.
+      expect(find.text('CS F211'), findsWidgets);
+      expect(find.widgetWithText(TextButton, 'Add'), findsNothing);
+    });
+
+    testWidgets('the Add button is back once a timetable is open',
+        (tester) async {
+      final course = makeCourse(courseCode: 'CS F211');
+      final l = makeLink(availableCourses: [course]);
+      await pumpList(tester, courses: [course], link: l.link);
+      await tester.tap(find.text('CS F211'));
+      await tester.pumpAndSettle();
+
+      // Control for the test above: same screen, timetable open, button there.
+      expect(find.widgetWithText(TextButton, 'Add'), findsWidgets);
+    });
+  });
+
+  group('the card distinguishes its two kinds of unavailable', () {
+    // Previously a clash and "you already picked this component" rendered as
+    // the same muted grey, so the card said "unavailable" without saying why.
+    // They mean completely different things: one is a collision you cannot
+    // resolve, the other is a choice you can simply change.
+
+    testWidgets('a real clash names the course it collides with',
+        (tester) async {
+      // Two courses sharing Monday hour 1 — adding one blocks the other.
+      final courses = [
+        makeCourse(
+          courseCode: 'CS F211',
+          sections: [
+            makeSection(sectionId: 'L1', days: [DayOfWeek.M], hours: [1])
+          ],
+        ),
+        makeCourse(
+          courseCode: 'MATH F211',
+          sections: [
+            makeSection(sectionId: 'L1', days: [DayOfWeek.M], hours: [1])
+          ],
+        ),
+      ];
+      final l = makeLink(availableCourses: courses);
+      await pumpList(tester, courses: courses, link: l.link);
+
+      await tester.tap(find.text(courses.first.courseCode));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Add').first);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(courses[1].courseCode));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Clashes with'), findsWidgets);
+    });
+
+    testWidgets('choosing a section explains why its siblings are unavailable',
+        (tester) async {
+      // Two lectures for one course: taking one must not read as a clash.
+      final course = makeCourse(
+        courseCode: 'CS F211',
+        sections: [
+          makeSection(
+              sectionId: 'L1', days: [DayOfWeek.M], hours: [1]),
+          makeSection(
+              sectionId: 'L2', days: [DayOfWeek.T], hours: [4]),
+        ],
+      );
+      final l = makeLink(availableCourses: [course]);
+      await pumpList(tester, courses: [course], link: l.link);
+
+      await tester.tap(find.text('CS F211'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Add').first);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('lecture section is on your timetable'),
+          findsOneWidget);
+      expect(find.textContaining('Clashes with'), findsNothing);
     });
   });
 }

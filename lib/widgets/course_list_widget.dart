@@ -26,6 +26,14 @@ class CourseListWidget extends StatelessWidget {
   /// case nothing extra is drawn.
   final AcademicRecord record;
 
+  /// Whether sections can be added to a timetable from here.
+  ///
+  /// False when the browser was opened without a timetable — from the timetable
+  /// LIST rather than from inside the editor. The Add button used to render
+  /// anyway, wired to a no-op callback, so it looked live and silently did
+  /// nothing. Browsing is still the point of the screen; only the action goes.
+  final bool selectable;
+
   CourseListWidget({
     super.key,
     required this.courses,
@@ -34,6 +42,7 @@ class CourseListWidget extends StatelessWidget {
     this.showOnlySelected = false,
     this.catalog,
     this.record = AcademicRecord.empty,
+    this.selectable = true,
   });
 
   late final Set<String> _selectedKeys = {
@@ -116,7 +125,7 @@ class CourseListWidget extends StatelessWidget {
         if (selectedCourse.courseCode == course.courseCode) continue;
         if (selectedCourse.midSemExam != null &&
             ClashDetector.examDatesConflict(course.midSemExam!, selectedCourse.midSemExam!)) {
-          clashes.add('MidSem clash with ${selectedCourse.courseCode}');
+          clashes.add('Midsem exam clashes with ${selectedCourse.courseCode}');
           break;
         }
       }
@@ -128,7 +137,7 @@ class CourseListWidget extends StatelessWidget {
         if (selectedCourse.courseCode == course.courseCode) continue;
         if (selectedCourse.endSemExam != null &&
             ClashDetector.examDatesConflict(course.endSemExam!, selectedCourse.endSemExam!)) {
-          clashes.add('Compre clash with ${selectedCourse.courseCode}');
+          clashes.add('Compre exam clashes with ${selectedCourse.courseCode}');
           break;
         }
       }
@@ -148,9 +157,9 @@ class CourseListWidget extends StatelessWidget {
         return conflicts.isNotEmpty;
       });
       if (allBlocked) {
-        final typeName = type == SectionType.L ? 'Lecture' :
-                         type == SectionType.P ? 'Practical' : 'Tutorial';
-        clashes.add('All $typeName sections clash');
+        final typeName = type == SectionType.L ? 'lecture' :
+                         type == SectionType.P ? 'lab' : 'tutorial';
+        clashes.add('Every $typeName section clashes with your timetable');
       }
     }
 
@@ -210,10 +219,10 @@ class CourseListWidget extends StatelessWidget {
       padding: ResponsiveService.getAdaptivePadding(
         context,
         EdgeInsets.fromLTRB(
-          8,
-          8,
-          8,
-          ResponsiveService.isMobile(context) ? 100 : 8
+          6,
+          10,
+          6,
+          ResponsiveService.isMobile(context) ? 100 : 12
         ),
       ),
       itemCount: displayCourses.length,
@@ -223,234 +232,570 @@ class CourseListWidget extends StatelessWidget {
           (s) => s.courseCode == course.courseCode,
         );
         final clashes = _getCourseClashes(course);
-        final hasClashes = clashes.isNotEmpty;
 
-        return Opacity(
-          opacity: hasClashes ? 0.5 : 1.0,
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-            decoration: BoxDecoration(
-              color: hasClashes
-                ? Theme.of(context).colorScheme.surfaceContainerHighest
-                : (isSelectedCourse && !showOnlySelected)
-                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
-                  : Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(12),
-              border: hasClashes
-                ? Border.all(color: Theme.of(context).colorScheme.error.withValues(alpha: 0.3))
-                : (isSelectedCourse && !showOnlySelected)
-                  ? Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3))
-                  : null,
-              boxShadow: [
-                BoxShadow(
-                  color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.2),
-                  blurRadius: (isSelectedCourse && !showOnlySelected) ? 6 : 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            // The decoration above would otherwise be the nearest thing
-            // between these tiles and a Material, swallowing their ink
-            // splashes. A transparent Material inside it puts the splashes
-            // back on top of the card colour, clipped to the same corners.
-            child: Material(
-              type: MaterialType.transparency,
-              borderRadius: BorderRadius.circular(12),
-              child: Column(
-                children: [
-                  ExpansionTile(
-                    title: Row(
-                      children: [
-                        if (isSelectedCourse && !showOnlySelected) ...[
-                          Container(
-                            width: 10,
-                            height: 10,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.secondary,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.5),
-                                  blurRadius: 4,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                        ],
-                        Expanded(
-                          child: Text(
-                            course.courseCode,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: hasClashes
-                                ? Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityLow)
-                                : (isSelectedCourse && !showOnlySelected)
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(context).colorScheme.onSurface,
-                            ),
-                          ),
-                        ),
-                        CourseRecordBadge(
-                          record: record,
-                          courseCode: course.courseCode,
-                        ),
-                      ],
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (course.courseTitle.isNotEmpty && course.courseTitle != course.courseCode)
-                          Text(course.courseTitle),
-                        Text('Instructor in Charge: ${CourseUtils.getInstructorInCharge(course)}',
-                             style: TextStyle(
-                               color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
-                             )),
-                        Text('Credits: L${course.lectureCredits} P${course.practicalCredits} U${course.totalCredits}'),
-                        if (course.midSemExam != null)
-                          Text('MidSem: ${course.midSemExam!.date.day}/${course.midSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot, campus: CampusService.campusId)}'),
-                        if (course.endSemExam != null)
-                          Text('EndSem: ${course.endSemExam!.date.day}/${course.endSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot, campus: CampusService.campusId)}'),
-                        if (_getSelectedSectionsText(course.courseCode).isNotEmpty)
-                          Text(
-                            'Selected: ${_getSelectedSectionsText(course.courseCode)}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: Theme.of(context).brightness == Brightness.dark
-                                ? Theme.of(context).colorScheme.primaryContainer
-                                : Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                      ],
-                    ),
-                    children: course.sections.map((section) {
-                      final isSelected = _isSectionSelected(course.courseCode, section.sectionId);
-                      final isTypeAlreadySelected = _isSectionTypeAlreadySelected(course.courseCode, section.type);
-                      final canSelect = isSelected || !isTypeAlreadySelected;
-                      final sectionConflict = isSelected ? null : _getSectionConflict(section, course.courseCode);
-                      final isBlocked = !canSelect || sectionConflict != null;
-
-                      return Container(
-                        constraints: BoxConstraints(
-                          minHeight: ResponsiveService.getTouchTargetSize(context),
-                        ),
-                        child: ListTile(
-                          title: Text(
-                            '${section.sectionId} - ${section.instructor}',
-                            style: TextStyle(
-                              color: isBlocked && !isSelected ? AppDesign.muted(context) : null,
-                              fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
-                            ),
-                          ),
-                          contentPadding: ResponsiveService.getAdaptivePadding(
-                            context,
-                            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Room: ${section.room}',
-                                style: TextStyle(color: isBlocked && !isSelected ? AppDesign.muted(context) : null),
-                              ),
-                              Text(
-                                'Schedule: ${TimeSlotInfo.getFormattedSchedule(section.schedule)}',
-                                style: TextStyle(color: isBlocked && !isSelected ? AppDesign.muted(context) : null),
-                              ),
-                              if (!canSelect && !isSelected)
-                                Text(
-                                  'Already selected ${section.type.name} section for this course',
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
-                                    fontSize: 12
-                                  ),
-                                ),
-                              if (sectionConflict != null && canSelect)
-                                Text(
-                                  sectionConflict,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                            ],
-                          ),
-                          trailing: SizedBox(
-                            width: 70,
-                            height: 32,
-                            child: TextButton(
-                              onPressed: (!isBlocked || isSelected) ? () {
-                                onSectionToggle(course.courseCode, section.sectionId, isSelected);
-                              } : null,
-                              style: TextButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                                backgroundColor: isSelected
-                                  ? Theme.of(context).colorScheme.error.withValues(alpha: 0.1)
-                                  : Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                              ),
-                              child: Text(
-                                isSelected ? 'Remove' : 'Add',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: (!isBlocked || isSelected)
-                                    ? (isSelected
-                                      ? Theme.of(context).colorScheme.error
-                                      : Theme.of(context).colorScheme.primary)
-                                    : AppDesign.muted(context),
-                                ),
-                              ),
-                            ),
-                          ),
-                          tileColor: isSelected
-                            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
-                            : (isBlocked ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.3) : null),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  if (hasClashes)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: 0.3),
-                        borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(12),
-                          bottomRight: Radius.circular(12),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.warning_amber_rounded,
-                            size: 16,
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              clashes.join(' • '),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(context).colorScheme.error,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
+        return _CourseCard(
+          course: course,
+          record: record,
+          isSelectedCourse: isSelectedCourse,
+          showOnlySelected: showOnlySelected,
+          clashes: clashes,
+          selectedSummary: _getSelectedSectionsText(course.courseCode),
+          selectable: selectable,
+          sectionStates: [
+            for (final section in course.sections)
+              () {
+                final isSelected =
+                    _isSectionSelected(course.courseCode, section.sectionId);
+                return _SectionState(
+                  section: section,
+                  isSelected: isSelected,
+                  // Not a clash: you already picked an L (or T/P) for this
+                  // course, so the siblings are unavailable until you swap.
+                  // Rendered differently from a clash, because it means
+                  // something entirely different to the student.
+                  typeTaken: !isSelected &&
+                      _isSectionTypeAlreadySelected(
+                          course.courseCode, section.type),
+                  conflict: isSelected
+                      ? null
+                      : _getSectionConflict(section, course.courseCode),
+                );
+              }(),
+          ],
+          onToggle: (sectionId, isSelected) =>
+              onSectionToggle(course.courseCode, sectionId, isSelected),
         );
       },
     );
   }
+}
+
+/// One section's state, resolved once by [CourseListWidget] so the card stays
+/// presentational.
+class _SectionState {
+  const _SectionState({
+    required this.section,
+    required this.isSelected,
+    required this.typeTaken,
+    required this.conflict,
+  });
+
+  final Section section;
+  final bool isSelected;
+
+  /// Another section of this same component is already on the timetable.
+  /// Distinct from [conflict]: nothing clashes, you have simply already chosen.
+  final bool typeTaken;
+
+  /// Human-readable schedule collision with the current timetable, or null.
+  final String? conflict;
+
+  bool get blocked => typeTaken || conflict != null;
+}
+
+/// A course, its metadata and its sections.
+///
+/// Rewritten from a hand-decorated Container + ExpansionTile whose subtitle was
+/// a column of six labelled sentences ("Instructor in Charge: …", "Credits: …",
+/// "MidSem: …"). That read as roughly six lines collapsed and eighteen expanded
+/// for a six-section course — poor for a screen whose whole job is scanning.
+/// Metadata is now one wrapped row of compact facts, and each section is one
+/// line instead of three.
+class _CourseCard extends StatelessWidget {
+  const _CourseCard({
+    required this.course,
+    required this.record,
+    required this.isSelectedCourse,
+    required this.showOnlySelected,
+    required this.clashes,
+    required this.selectedSummary,
+    required this.selectable,
+    required this.sectionStates,
+    required this.onToggle,
+  });
+
+  final Course course;
+  final AcademicRecord record;
+  final bool isSelectedCourse;
+  final bool showOnlySelected;
+  final List<String> clashes;
+  final String selectedSummary;
+  final bool selectable;
+  final List<_SectionState> sectionStates;
+  final void Function(String sectionId, bool isSelected) onToggle;
+
+  bool get _hasClashes => clashes.isNotEmpty;
+  bool get _highlight => isSelectedCourse && !showOnlySelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    // Tonal surfaces rather than a hand-rolled boxShadow. The old card drew its
+    // own shadow, which meant wrapping the contents in a transparent Material
+    // just to get ink splashes back on top of it.
+    final Color surface;
+    final Color? outline;
+    if (_hasClashes) {
+      // Tinted with the error colour rather than merely a duller grey. Greys
+      // differ by a few percent lightness between themes, so "is this one
+      // available?" was not answerable at a glance on every theme — a hue
+      // shift is, whatever the palette.
+      surface = scheme.errorContainer.withValues(alpha: 0.22);
+      outline = scheme.error.withValues(alpha: 0.5);
+    } else if (_highlight) {
+      surface = scheme.primaryContainer.withValues(alpha: 0.35);
+      outline = scheme.primary.withValues(alpha: 0.45);
+    } else {
+      surface = scheme.surfaceContainerLow;
+      outline = scheme.outlineVariant.withValues(alpha: 0.5);
+    }
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 7, horizontal: 10),
+      elevation: 0,
+      color: surface,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: outline),
+      ),
+      child: Theme(
+        // The divider the ExpansionTile draws fights the card outline.
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        // The clash banner sits OUTSIDE the ExpansionTile, not among its
+        // children: a course you cannot take must say so while collapsed,
+        // otherwise the warning is hidden behind a tap.
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ExpansionTile(
+              tilePadding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
+              childrenPadding: const EdgeInsets.only(bottom: 10),
+              expandedCrossAxisAlignment: CrossAxisAlignment.start,
+              title: _header(context),
+              subtitle: Padding(
+                padding: const EdgeInsets.only(top: 9, bottom: 4),
+                child: _metadata(context),
+              ),
+              children: [
+                for (final state in sectionStates) _sectionRow(context, state),
+              ],
+            ),
+            if (_hasClashes) _clashFooter(context),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _header(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      course.courseCode,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.1,
+                        color: _hasClashes
+                            ? scheme.onSurface.withValues(alpha: 0.55)
+                            : _highlight
+                                ? scheme.primary
+                                : scheme.onSurface,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (_hasClashes) ...[
+                    const SizedBox(width: 8),
+                    // Colour alone is not enough — it fails for colour-blind
+                    // users and washes out on some themes. The word is the
+                    // affordance; the tint reinforces it.
+                    _pill(context, "Can't take", scheme.error, filled: true),
+                  ],
+                  if (_highlight && selectedSummary.isEmpty) ...[
+                    const SizedBox(width: 8),
+                    _pill(context, 'Added', scheme.primary, filled: true),
+                  ],
+                ],
+              ),
+              if (course.courseTitle.isNotEmpty &&
+                  course.courseTitle != course.courseCode)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    course.courseTitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.35,
+                      color: scheme.onSurface.withValues(alpha: 0.75),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        CourseRecordBadge(record: record, courseCode: course.courseCode),
+      ],
+    );
+  }
+
+  /// One wrapped row of facts, replacing five labelled sentences.
+  Widget _metadata(BuildContext context) {
+    final ic = CourseUtils.getInstructorInCharge(course);
+
+    // The clock time, never the slot code. "MS2" and "FN" are registrar
+    // shorthand that a first-year has no way to decode; the start time needs
+    // no explaining. Only the start is shown — the end adds width, not meaning.
+    String examLabel(ExamSchedule e) {
+      final slot = TimeSlotInfo.getTimeSlotName(e.timeSlot,
+          campus: CampusService.campusId);
+      // Booklet slots come through as "9:30AM-11:00AM"; give the meridiem the
+      // space it should have had.
+      final start = slot
+          .split('-')
+          .first
+          .trim()
+          .replaceAllMapped(RegExp(r'(\d)(AM|PM)'), (m) => '${m[1]} ${m[2]}');
+      final when = '${e.date.day} ${_month(e.date.month)}';
+      return start.isEmpty ? when : '$when, $start';
+    }
+
+    return Wrap(
+      spacing: 16,
+      runSpacing: 7,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        _fact(context, Icons.workspace_premium_outlined, _creditLabel(course)),
+        if (course.midSemExam != null)
+          _fact(context, Icons.event_outlined,
+              'Midsem ${examLabel(course.midSemExam!)}'),
+        if (course.endSemExam != null)
+          _fact(context, Icons.event_available_outlined,
+              'Compre ${examLabel(course.endSemExam!)}'),
+        // Last: the widest value, and the one a student scans for least often.
+        // Labelled, because a bare name beside dates and credits reads as
+        // unexplained.
+        if (ic.isNotEmpty)
+          _fact(context, Icons.person_outline, 'In-Charge: $ic', wide: true),
+        if (selectedSummary.isNotEmpty)
+          _fact(context, Icons.check_circle_outline,
+              'Selected: $selectedSummary',
+              wide: true, color: Theme.of(context).colorScheme.primary),
+      ],
+    );
+  }
+
+  /// "4U · 3L 1P" — units first, then the breakdown, zero parts omitted.
+  ///
+  /// Units lead because they are what counts toward the semester cap, and they
+  /// are NOT always L + P: projects and theses print as "- - 3" in the booklet,
+  /// so the breakdown alone would be wrong as often as it is confusing. A
+  /// course with no lecture or lab component shows the units and nothing else,
+  /// rather than a row of zeroes.
+  static String _creditLabel(Course course) {
+    final parts = <String>[
+      if (course.lectureCredits > 0) '${_num(course.lectureCredits)}L',
+      if (course.practicalCredits > 0) '${_num(course.practicalCredits)}P',
+    ];
+    final units = '${_num(course.totalCredits)}U';
+    return parts.isEmpty ? units : '$units · ${parts.join(' ')}';
+  }
+
+  static String _num(double v) =>
+      v == v.roundToDouble() ? v.toInt().toString() : v.toString();
+
+  Widget _fact(BuildContext context, IconData icon, String text,
+      {bool wide = false, Color? color}) {
+    final tint = color ??
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.68);
+    return ConstrainedBox(
+      // A wide fact takes the whole row rather than sharing it, so a long list
+      // of names wraps onto its own lines instead of being truncated. Nothing
+      // here is decorative — a cut-off instructor is a missing answer.
+      constraints: BoxConstraints(maxWidth: wide ? double.infinity : 240),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(icon, size: 14, color: tint),
+          ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.35,
+                color: tint,
+                fontWeight: color == null ? FontWeight.w400 : FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pill(BuildContext context, String text, Color color,
+      {bool filled = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: filled ? 0.16 : 0.09),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+            fontSize: 10.5, fontWeight: FontWeight.w700, color: color),
+      ),
+    );
+  }
+
+  /// One line per section, where the old card used three.
+  Widget _sectionRow(BuildContext context, _SectionState state) {
+    final scheme = Theme.of(context).colorScheme;
+    final section = state.section;
+    final dimmed = state.blocked && !state.isSelected;
+
+    // Every row keeps a filled surface, so an unavailable one reads as a
+    // deliberate state rather than a half-transparent version of a normal row —
+    // which is what made the expanded list look patchy.
+    final Color rowColor;
+    final Color rowBorder;
+    if (state.isSelected) {
+      rowColor = scheme.primary.withValues(alpha: 0.13);
+      rowBorder = scheme.primary.withValues(alpha: 0.45);
+    } else if (state.conflict != null) {
+      rowColor = scheme.errorContainer.withValues(alpha: 0.28);
+      rowBorder = scheme.error.withValues(alpha: 0.28);
+    } else if (state.typeTaken) {
+      rowColor = scheme.surfaceContainerHighest.withValues(alpha: 0.55);
+      rowBorder = scheme.outlineVariant.withValues(alpha: 0.5);
+    } else {
+      rowColor = scheme.surfaceContainerLowest.withValues(alpha: 0.7);
+      rowBorder = scheme.outlineVariant.withValues(alpha: 0.45);
+    }
+
+    // Text stays legible even when the row is unavailable: dimming it to 45%
+    // made blocked rows genuinely hard to read, which is not the same as
+    // marking them unavailable.
+    final textColor = dimmed
+        ? scheme.onSurface.withValues(alpha: 0.7)
+        : scheme.onSurface;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+      constraints: BoxConstraints(
+        minHeight: ResponsiveService.getTouchTargetSize(context),
+      ),
+      decoration: BoxDecoration(
+        color: rowColor,
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(color: rowBorder),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      section.sectionId,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        color: textColor,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        // Schedule and room on the section's own line, instead
+                        // of a "Room:" and a "Schedule:" line beneath it.
+                        [
+                          _compactSchedule(section.schedule),
+                          if (section.room.isNotEmpty) section.room,
+                        ].join('  ·  '),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: textColor.withValues(alpha: 0.85),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                if (section.instructor.isNotEmpty)
+                  Text(
+                    // Wraps rather than ellipsising: a section is often taught
+                    // by two or three people, and "SUNDAR B, Rajesh Ku…" hides
+                    // exactly the thing a student picks a section on.
+                    section.instructor
+                        .split(',')
+                        .map((n) => n.trim())
+                        .where((n) => n.isNotEmpty)
+                        .join(', '),
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      height: 1.4,
+                      color: textColor.withValues(alpha: 0.65),
+                    ),
+                  ),
+                // The two reasons a row is unavailable read differently,
+                // because they are different: one is a collision, the other is
+                // "you already chose".
+                if (state.conflict != null)
+                  _reason(context, Icons.error_outline, state.conflict!,
+                      scheme.error)
+                else if (state.typeTaken)
+                  _reason(
+                      context,
+                      Icons.check_circle_outline,
+                      'Another ${_typeName(section.type)} section is on your timetable',
+                      scheme.onSurface.withValues(alpha: 0.55)),
+              ],
+            ),
+          ),
+          if (selectable) ...[
+            const SizedBox(width: 8),
+            _action(context, state),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _reason(
+      BuildContext context, IconData icon, String text, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 5),
+      child: Row(
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 11, height: 1.3, color: color),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _action(BuildContext context, _SectionState state) {
+    final scheme = Theme.of(context).colorScheme;
+    final enabled = !state.blocked || state.isSelected;
+    final color = state.isSelected ? scheme.error : scheme.primary;
+
+    return SizedBox(
+      height: 30,
+      child: TextButton(
+        onPressed:
+            enabled ? () => onToggle(state.section.sectionId, state.isSelected) : null,
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          backgroundColor:
+              enabled ? color.withValues(alpha: 0.11) : Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        child: Text(
+          state.isSelected ? 'Remove' : 'Add',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: enabled ? color : AppDesign.muted(context),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _clashFooter(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 2, 12, 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: scheme.errorContainer.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.warning_amber_rounded, size: 14, color: scheme.error),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              clashes.join(' · '),
+              style: TextStyle(
+                fontSize: 11.5,
+                height: 1.35,
+                color: scheme.error,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// "M W F · 10 AM" rather than "M 10:00-10:50 AM, W 10:00-10:50 AM, F …".
+  ///
+  /// The days share an hour far more often than not, so repeating the clock
+  /// time per day was the single widest string on the card — wide enough that
+  /// it truncated mid-word.
+  static String _compactSchedule(List<ScheduleEntry> schedule) {
+    if (schedule.isEmpty) return '';
+    return schedule.map((entry) {
+      final days = entry.days.map((d) => d.name).join(' ');
+      final hours = TimeSlotInfo.getHourRangeName(entry.hours);
+      return hours.isEmpty ? days : '$days · $hours';
+    }).join('  ·  ');
+  }
+
+  static const _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  /// "10 Mar" reads unambiguously; "10/3" is a date-format coin toss.
+  static String _month(int m) =>
+      (m >= 1 && m <= 12) ? _months[m - 1] : '$m';
+
+  static String _typeName(SectionType type) => switch (type) {
+        SectionType.L => 'lecture',
+        SectionType.P => 'practical',
+        SectionType.T => 'tutorial',
+      };
 }

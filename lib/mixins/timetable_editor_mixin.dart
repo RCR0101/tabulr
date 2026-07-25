@@ -371,6 +371,12 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
 
       courses = CourseUtils.searchCourses(courses, query);
 
+      // A course with no sections cannot be added to anything, so it is hidden
+      // unless explicitly asked for in the advanced filters.
+      if (filters['includeSectionless'] != true) {
+        courses = CourseUtils.filterOutSectionless(courses);
+      }
+
       if (filters['courseCode'] != null &&
           filters['courseCode'].toString().isNotEmpty) {
         courses = CourseUtils.filterByCourseCode(

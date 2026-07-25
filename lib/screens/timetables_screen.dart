@@ -40,10 +40,9 @@ import '../services/ui/tutorial_service.dart';
 import 'timetable_editor_screen.dart';
 import 'course_guide_screen.dart';
 import 'timetable_comparison_screen.dart';
-import 'humanities_electives_screen.dart';
-import 'discipline_electives_screen.dart';
 import 'prerequisites_screen.dart';
 import 'archived_timetables_screen.dart';
+import 'electives_screen.dart';
 
 class TimetablesScreen extends StatefulWidget {
   const TimetablesScreen({super.key});
@@ -732,11 +731,8 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                 case 'prerequisites':
                   Navigator.push(context, FadeSlidePageRoute(page: const PrerequisitesScreen()));
                   break;
-                case 'discipline_electives':
-                  Navigator.push(context, FadeSlidePageRoute(page: const DisciplineElectivesScreen()));
-                  break;
-                case 'humanities_electives':
-                  Navigator.push(context, FadeSlidePageRoute(page: const HumanitiesElectivesScreen()));
+                case 'electives':
+                  Navigator.push(context, FadeSlidePageRoute(page: const ElectivesScreen()));
                   break;
                 case 'import_code':
                   _importFromShareCode();
@@ -798,12 +794,8 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                 child: ListTile(leading: Icon(Icons.account_tree), title: Text('Prerequisites'), contentPadding: EdgeInsets.zero),
               ),
               const PopupMenuItem(
-                value: 'discipline_electives',
-                child: ListTile(leading: Icon(Icons.school), title: Text('Discipline Electives'), contentPadding: EdgeInsets.zero),
-              ),
-              const PopupMenuItem(
-                value: 'humanities_electives',
-                child: ListTile(leading: Icon(Icons.library_books), title: Text('Humanities Electives'), contentPadding: EdgeInsets.zero),
+                value: 'electives',
+                child: ListTile(leading: Icon(Icons.school), title: Text('Electives'), contentPadding: EdgeInsets.zero),
               ),
               const PopupMenuDivider(),
               const PopupMenuItem(

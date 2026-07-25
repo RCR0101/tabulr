@@ -40,9 +40,9 @@ void main() {
         [
           AppTool.courseGuide,
           AppTool.prerequisites,
-          AppTool.disciplineElectives,
-          AppTool.humanitiesElectives,
-          AppTool.openElectives,
+          // One Electives entry, tabbed: the three separate browsers asked for
+          // the same branch and semester before showing anything.
+          AppTool.electives,
           AppTool.minors,
           AppTool.profChambers,
         ],

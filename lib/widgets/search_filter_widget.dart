@@ -28,6 +28,16 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
   final List<DayOfWeek> _selectedDays = [];
   final List<int> _selectedHours = [];
   bool _showAdvancedFilters = false;
+
+  /// Whether to include courses the timetable lists with no sections at all.
+  ///
+  /// Off by default: a course with no sections cannot be added to anything, so
+  /// it is noise in a list whose purpose is picking sections. They exist
+  /// because the booklet prints a course in both semester tables and the copy
+  /// for the term it is not offered in carries no rows — see dedupe_by_doc_id
+  /// in functions-python/main.py. Kept behind a switch rather than dropped
+  /// outright, because "is this course running at all?" is a real question.
+  bool _includeSectionless = false;
   final _debounce = Debouncer(duration: const Duration(milliseconds: 250));
 
   void _updateSearchDebounced() {
@@ -44,6 +54,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
       'maxCredits': _maxCredits,
       'days': _selectedDays,
       'hours': _selectedHours,
+      'includeSectionless': _includeSectionless,
     };
 
     widget.onSearchChanged(_searchController.text, filters);
@@ -60,6 +71,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
       _maxCredits = null;
       _selectedDays.clear();
       _selectedHours.clear();
+      _includeSectionless = false;
     });
     _updateSearch();
   }
@@ -205,6 +217,24 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
+
+              CheckboxListTile(
+                value: _includeSectionless,
+                onChanged: (v) {
+                  setState(() => _includeSectionless = v ?? false);
+                  _updateSearch();
+                },
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                title: const Text('Show courses with no sections',
+                    style: TextStyle(fontSize: 14)),
+                subtitle: const Text(
+                  'Listed for the year but not running this semester',
+                  style: TextStyle(fontSize: 11.5),
+                ),
+              ),
+              SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 8)),
 
               // Course Code and Instructor filters
               ResponsiveService.buildResponsive(

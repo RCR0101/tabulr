@@ -30,11 +30,19 @@ class ProfessorScheduleEntry {
     required this.hours,
   });
 
+  /// Reads both spellings, because the two sources genuinely disagree.
+  ///
+  /// rebuildProfessorSchedules (functions/admin.js) writes `course_code` and
+  /// `section_id`; [toJson] — which backs the local cache — writes `courseCode`
+  /// and `sectionId`. Reading only the camelCase names left both fields empty
+  /// for everything loaded from Firestore, which blanked the chip labels in a
+  /// professor's schedule dialog and made `addable` permanently false, so the
+  /// tap-to-add-this-section chips did nothing.
   factory ProfessorScheduleEntry.fromJson(Map<String, dynamic> json) {
     return ProfessorScheduleEntry(
-      courseCode: json['courseCode'] ?? '',
-      courseTitle: json['courseTitle'] ?? '',
-      sectionId: json['sectionId'] ?? '',
+      courseCode: json['course_code'] ?? json['courseCode'] ?? '',
+      courseTitle: json['course_title'] ?? json['courseTitle'] ?? '',
+      sectionId: json['section_id'] ?? json['sectionId'] ?? '',
       room: json['room'] ?? '',
       days: List<String>.from(json['days'] ?? []),
       hours: List<int>.from(json['hours'] ?? []),

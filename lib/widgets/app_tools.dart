@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/timetable_selection_link.dart';
+import '../screens/electives_screen.dart';
 import '../screens/course_guide_screen.dart';
 import '../screens/credits_screen.dart';
-import '../screens/discipline_electives_screen.dart';
-import '../screens/humanities_electives_screen.dart';
 import '../screens/minors_screen.dart';
-import '../screens/open_electives_screen.dart';
 import '../screens/prerequisites_screen.dart';
 import '../screens/professors_screen.dart';
 import '../screens/timetable_comparison_screen.dart';
@@ -15,9 +13,7 @@ import 'app_destinations.dart';
 enum AppTool {
   courseGuide,
   prerequisites,
-  disciplineElectives,
-  humanitiesElectives,
-  openElectives,
+  electives,
   minors,
   profChambers,
   compareTimetables,
@@ -74,29 +70,14 @@ abstract final class AppTools {
             inEditorMenu: true,
             build: (_) => const PrerequisitesScreen(),
           ),
-        AppTool.disciplineElectives => AppToolInfo(
+        AppTool.electives => AppToolInfo(
             tool: tool,
             icon: Icons.school,
-            label: 'Discipline Electives',
-            description: 'Browse and add discipline electives',
+            label: 'Electives',
+            description:
+                'Browse discipline, humanities and open electives in one place',
             inEditorMenu: true,
-            build: (link) => DisciplineElectivesScreen(selectionLink: link),
-          ),
-        AppTool.humanitiesElectives => AppToolInfo(
-            tool: tool,
-            icon: Icons.library_books,
-            label: 'Humanities Electives',
-            description: 'Browse and add humanities electives',
-            inEditorMenu: true,
-            build: (link) => HumanitiesElectivesScreen(selectionLink: link),
-          ),
-        AppTool.openElectives => AppToolInfo(
-            tool: tool,
-            icon: Icons.explore_outlined,
-            label: 'Open Electives',
-            description: 'Offered courses outside the DEL and HUEL pools',
-            inEditorMenu: true,
-            build: (link) => OpenElectivesScreen(selectionLink: link),
+            build: (link) => ElectivesScreen(selectionLink: link),
           ),
         AppTool.minors => AppToolInfo(
             tool: tool,

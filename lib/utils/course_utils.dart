@@ -120,4 +120,13 @@ class CourseUtils {
               scheduleEntry.hours.any((hour) => selectedHours.contains(hour))));
     }).toList();
   }
+
+  /// Drops courses that offer no sections at all.
+  ///
+  /// Such a course cannot be added to a timetable, so it is noise in a list
+  /// whose whole purpose is picking a section. They exist because the booklet
+  /// prints each course in both semester tables and the copy for the term it
+  /// is not offered in carries no rows.
+  static List<Course> filterOutSectionless(List<Course> courses) =>
+      courses.where((c) => c.sections.isNotEmpty).toList();
 }
