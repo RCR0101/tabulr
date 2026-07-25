@@ -126,6 +126,7 @@ class PageInfoHelper {
     title: 'Calendar',
     purpose: 'View your timetable as a weekly calendar with custom events. Navigate between weeks and temporarily hide slots.',
     features: [
+      FeatureInfo(Icons.event_note, 'Academic Calendar', 'the whole semester\'s holidays, deadlines and exam windows in one list'),
       FeatureInfo(Icons.add, 'Add Event', 'add personal events alongside your classes'),
       FeatureInfo(Icons.event_busy, 'Scrap Slots', 'temporarily hide individual slots, courses, days, or the entire week'),
       FeatureInfo(Icons.restore, 'Restore', 'bring back scrapped slots'),

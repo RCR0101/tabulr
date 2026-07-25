@@ -18,6 +18,7 @@ import '../services/ui/toast_service.dart';
 import '../models/calendar_event.dart';
 import '../models/academic_calendar_event.dart';
 import '../services/data/academic_calendar_service.dart';
+import '../widgets/academic_calendar_list.dart';
 import '../utils/datetime_utils.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/app_dialog.dart';
@@ -89,6 +90,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
         icon: Icons.add,
         category: CommandCategory.context,
         onSelect: _addEvent,
+      ),
+      CommandPaletteEntry(
+        label: 'Academic Calendar',
+        subtitle: 'Holidays, deadlines and exam windows',
+        icon: Icons.event_note,
+        category: CommandCategory.context,
+        onSelect: _showAcademicCalendar,
       ),
     ]);
   }
@@ -710,6 +718,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  /// The whole semester's holidays, deadlines and exam windows in one list.
+  /// The week grid only shows the week in view, so this is the only way to see
+  /// what is coming without paging through it.
+  void _showAcademicCalendar() {
+    showAcademicCalendarSheet(
+      context,
+      campusId: _selectedTimetable?.campus.code,
+    );
+  }
+
   List<_CalendarItem> _bannersForDay(DateTime date) {
     final items = <_CalendarItem>[];
 
@@ -803,6 +821,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
         context,
         title: 'Calendar',
         actions: [
+          IconButton(
+            icon: const Icon(Icons.event_note),
+            tooltip: 'Academic calendar',
+            onPressed: _showAcademicCalendar,
+          ),
           PageInfoHelper.infoButton(context, PageInfoHelper.calendar, key: TutorialKeys.infoCalendar),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),

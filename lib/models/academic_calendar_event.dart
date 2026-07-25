@@ -119,6 +119,16 @@ String academicCategoryShort(AcademicEventCategory c) => switch (c) {
       AcademicEventCategory.event => 'EVT',
     };
 
+/// Full-word label for a category, for surfaces with room to spell it out.
+/// [academicCategoryShort] is for the four-character chips in the grid.
+String academicCategoryLabel(AcademicEventCategory c) => switch (c) {
+      AcademicEventCategory.holiday => 'Holiday',
+      AcademicEventCategory.exam => 'Exam',
+      AcademicEventCategory.deadline => 'Deadline',
+      AcademicEventCategory.milestone => 'Milestone',
+      AcademicEventCategory.event => 'Event',
+    };
+
 /// Accent colour for a category, consistent between the admin list and the
 /// calendar overlay.
 Color academicCategoryColor(BuildContext context, AcademicEventCategory c) {
