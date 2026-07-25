@@ -46,10 +46,12 @@ class TimetableGeneratorWidget extends StatefulWidget {
 class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     with SingleTickerProviderStateMixin {
   final TimetableGeneratorController _ctrl = TimetableGeneratorController();
-  bool _isAutoLoadingCDCs = false;
+  final ValueNotifier<bool> _isAutoLoadingCDCs = ValueNotifier(false);
 
   /// Indices into `_ctrl.rankedTimetables` currently picked for comparison.
-  final Set<int> _compareSelection = {};
+  /// A ValueNotifier rather than State: toggling a compare checkbox is a
+  /// results-panel concern and must not repaint the configuration form.
+  final ValueNotifier<Set<int>> _compareSelection = ValueNotifier(const {});
   TabController? _tabController;
 
   // Loaded once for the prereq warning: the student's cleared courses and the
@@ -62,7 +64,6 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _ctrl.addListener(_onControllerChanged);
     _loadPrereqData();
   }
 
@@ -85,17 +86,24 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     }
   }
 
-  void _onControllerChanged() {
-    if (mounted) setState(() {});
-  }
-
   @override
   void dispose() {
     _tabController?.dispose();
-    _ctrl.removeListener(_onControllerChanged);
+    _compareSelection.dispose();
+    _isAutoLoadingCDCs.dispose();
     _ctrl.dispose();
     super.dispose();
   }
+
+  /// Subscribes a panel to one slice of the controller.
+  ///
+  /// Replaces the single `setState(() {})` this widget used to run on every
+  /// notification, which rebuilt the whole 2.6k-line tree — both config panels,
+  /// the importance grid, the generate button AND the results list — whenever
+  /// one checkbox moved. Slices keep a constraint edit out of the course
+  /// search's typeahead and out of the results list entirely.
+  Widget _watch(Listenable slice, Widget Function() build) =>
+      ListenableBuilder(listenable: slice, builder: (_, __) => build());
 
   @override
   Widget build(BuildContext context) {
@@ -131,23 +139,23 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                             padding: const EdgeInsets.only(bottom: 16),
                             child: Column(
                               children: [
-                                _buildConfigurationPanel(),
+                                _watch(_ctrl.courses, _buildConfigurationPanel),
                                 const SizedBox(height: 16),
-                                _buildConstraintsPanel(),
+                                _watch(_ctrl.constraints, _buildConstraintsPanel),
                                 const SizedBox(height: 16),
-                                _buildImportancePanel(),
+                                _watch(_ctrl.importance, _buildImportancePanel),
                               ],
                             ),
                           ),
                         ),
-                        _buildGenerateButton(),
+                        _watch(Listenable.merge([_ctrl.courses, _ctrl.results]), _buildGenerateButton),
                       ],
                     ),
                   ),
                   // Results Tab
                   Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: _buildResultsPanel(),
+                    child: _watch(_ctrl.results, _buildResultsPanel),
                   ),
                 ],
               ),
@@ -171,16 +179,16 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                   padding: const EdgeInsets.only(bottom: 16),
                   child: Column(
                     children: [
-                      _buildConfigurationPanel(),
+                      _watch(_ctrl.courses, _buildConfigurationPanel),
                       const SizedBox(height: 16),
-                      _buildConstraintsPanel(),
+                      _watch(_ctrl.constraints, _buildConstraintsPanel),
                       const SizedBox(height: 16),
-                      _buildImportancePanel(),
+                      _watch(_ctrl.importance, _buildImportancePanel),
                     ],
                   ),
                 ),
               ),
-              _buildGenerateButton(),
+              _watch(Listenable.merge([_ctrl.courses, _ctrl.results]), _buildGenerateButton),
             ],
           ),
         ),
@@ -188,7 +196,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         // Right panel - Results
         Expanded(
           flex: 2,
-          child: _buildResultsPanel(),
+          child: _watch(_ctrl.results, _buildResultsPanel),
         ),
       ],
     );
@@ -468,7 +476,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     );
     if (result == null || !mounted) return;
 
-    setState(() => _isAutoLoadingCDCs = true);
+    _isAutoLoadingCDCs.value = true;
     try {
       final sections = await AutoLoadCDCService().loadCDCsForDegree(
         primaryBranch: result.primaryBranch,
@@ -479,16 +487,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       if (!mounted) return;
 
       final codes = sections.map((s) => s.courseCode).toSet();
-      var added = 0;
-      setState(() {
-        for (final code in codes) {
-          _ctrl.optionalCourses.remove(code);
-          if (!_ctrl.mandatoryCourses.contains(code)) {
-            _ctrl.mandatoryCourses.add(code);
-            added++;
-          }
-        }
-      });
+      final added = _ctrl.addMandatoryCourses(codes);
 
       if (added > 0) {
         ToastService.showSuccess('Added $added CDC${added > 1 ? 's' : ''} to mandatory courses');
@@ -500,7 +499,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     } catch (e) {
       if (mounted) ToastService.showError('Could not auto-add CDCs: $e');
     } finally {
-      if (mounted) setState(() => _isAutoLoadingCDCs = false);
+      if (mounted) _isAutoLoadingCDCs.value = false;
     }
   }
 
@@ -524,28 +523,43 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
             Expanded(
               child: Text('Mandatory Courses (${mandatoryCredits.toStringAsFixed(1)} credits):', style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
-            TextButton.icon(
-              onPressed: _isAutoLoadingCDCs ? null : _autoAddCDCs,
-              icon: _isAutoLoadingCDCs
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.playlist_add_check, size: 18),
-              label: const Text('Auto-add CDCs'),
-              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+            ValueListenableBuilder<bool>(
+              valueListenable: _isAutoLoadingCDCs,
+              builder: (context, loading, _) => TextButton.icon(
+                onPressed: loading ? null : _autoAddCDCs,
+                icon: loading
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.playlist_add_check, size: 18),
+                label: const Text('Auto-add CDCs'),
+                style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+              ),
             ),
           ],
         ),
         const SizedBox(height: 4),
         Text('Must be included in every timetable', style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
         const SizedBox(height: 8),
-        _buildCourseSearchField(_ctrl.mandatoryCourses, _ctrl.optionalCourses),
+        _buildCourseSearchField(
+          targetList: _ctrl.mandatoryCourses,
+          otherList: _ctrl.optionalCourses,
+          onPick: _ctrl.addMandatoryCourse,
+        ),
         const SizedBox(height: 8),
-        _buildCourseBadges(_ctrl.mandatoryCourses, isMandatory: true),
+        _buildCourseBadges(
+          _ctrl.mandatoryCourses,
+          isMandatory: true,
+          onRemove: _ctrl.removeMandatoryCourse,
+        ),
         const SizedBox(height: 16),
         Text('Optional Courses (${optionalCredits.toStringAsFixed(1)} credits):', style: const TextStyle(fontWeight: FontWeight.bold)),
         const SizedBox(height: 4),
         Text('Generator will fit as many as possible within credit limit', style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
         const SizedBox(height: 8),
-        _buildCourseSearchField(_ctrl.optionalCourses, _ctrl.mandatoryCourses),
+        _buildCourseSearchField(
+          targetList: _ctrl.optionalCourses,
+          otherList: _ctrl.mandatoryCourses,
+          onPick: _ctrl.addOptionalCourse,
+        ),
         _buildOptionalTargetSelector(),
         const SizedBox(height: 8),
         _buildOptionalCoursesRanking(),
@@ -559,10 +573,8 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     final m = _ctrl.optionalCourses.length;
     if (m < 2) return const SizedBox.shrink();
 
-    // A stale target (e.g. optionals removed) shouldn't exceed what's available.
-    if (_ctrl.optionalTarget != null && _ctrl.optionalTarget! > m) {
-      _ctrl.optionalTarget = m;
-    }
+    // The controller clamps a stale target (optionals removed) on read, so this
+    // no longer writes to it mid-build.
     final target = _ctrl.optionalTarget;
 
     return Padding(
@@ -578,11 +590,11 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           IconButton(
             visualDensity: VisualDensity.compact,
             tooltip: 'Fewer',
-            onPressed: () => setState(() {
+            onPressed: () {
               // as-many (null) → one below M, then down to 1, no lower.
               final current = _ctrl.optionalTarget ?? m;
               _ctrl.optionalTarget = (current - 1).clamp(1, m);
-            }),
+            },
             icon: const Icon(Icons.remove_circle_outline, size: 20),
           ),
           Text(
@@ -592,12 +604,12 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           IconButton(
             visualDensity: VisualDensity.compact,
             tooltip: 'More',
-            onPressed: () => setState(() {
+            onPressed: () {
               // Stepping up past M-1 means "all", represented as null.
               final current = _ctrl.optionalTarget ?? m;
               final next = current + 1;
               _ctrl.optionalTarget = next >= m ? null : next;
-            }),
+            },
             icon: const Icon(Icons.add_circle_outline, size: 20),
           ),
         ],
@@ -672,7 +684,11 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     );
   }
 
-  Widget _buildCourseSearchField(List<String> targetList, List<String> otherList) {
+  Widget _buildCourseSearchField({
+    required List<String> targetList,
+    required List<String> otherList,
+    required ValueChanged<String> onPick,
+  }) {
     return TypeAheadField<Course>(
       builder: (context, controller, focusNode) {
         return TextField(
@@ -712,13 +728,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           trailing: Text('${course.totalCredits} credits'),
         );
       },
-      onSelected: (course) {
-        setState(() {
-          if (!targetList.contains(course.courseCode) && !otherList.contains(course.courseCode)) {
-            targetList.add(course.courseCode);
-          }
-        });
-      },
+      onSelected: (course) => onPick(course.courseCode),
       emptyBuilder: (context) => const Padding(
         padding: EdgeInsets.all(16),
         child: Text('No courses found'),
@@ -726,7 +736,11 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     );
   }
 
-  Widget _buildCourseBadges(List<String> courseList, {required bool isMandatory}) {
+  Widget _buildCourseBadges(
+    List<String> courseList, {
+    required bool isMandatory,
+    required ValueChanged<String> onRemove,
+  }) {
     if (courseList.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(12),
@@ -783,9 +797,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                 ],
               ),
               deleteIcon: const Icon(Icons.close, size: 14),
-              onDeleted: () {
-                setState(() { courseList.remove(courseCode); });
-              },
+              onDeleted: () => onRemove(courseCode),
               backgroundColor: badgeColor.withValues(alpha: 0.1),
               deleteIconColor: Theme.of(context).colorScheme.error,
               side: BorderSide(color: badgeColor.withValues(alpha: 0.3), width: 1),
@@ -925,14 +937,10 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
               itemCount: clusterCodes.length,
-              onReorderItem: (oldIndex, newIndex) {
-                setState(() {
-                  final globalOld = _ctrl.optionalCourses.indexOf(clusterCodes[oldIndex]);
-                  final globalNew = _ctrl.optionalCourses.indexOf(clusterCodes[newIndex]);
-                  final code = _ctrl.optionalCourses.removeAt(globalOld);
-                  _ctrl.optionalCourses.insert(globalNew, code);
-                });
-              },
+              onReorderItem: (oldIndex, newIndex) => _ctrl.moveOptionalCourse(
+                clusterCodes[oldIndex],
+                beforeCode: clusterCodes[newIndex],
+              ),
               itemBuilder: (context, index) {
                 return _buildOptionalCourseRow(
                   key: ValueKey(clusterCodes[index]),
@@ -1005,7 +1013,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
             ),
           ),
           IconButton(
-            onPressed: () { setState(() { _ctrl.optionalCourses.remove(courseCode); }); },
+            onPressed: () => _ctrl.removeOptionalCourse(courseCode),
             icon: Icon(Icons.close, size: 14, color: Theme.of(context).colorScheme.error),
             tooltip: 'Remove $courseCode',
             constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
@@ -1046,23 +1054,22 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                     child: Text('${i + 1}'),
                   )),
                   onChanged: (value) {
-                    if (value != null) setState(() { _ctrl.maxHoursPerDay = value; });
+                    if (value != null) _ctrl.maxHoursPerDay = value;
                   },
                 ),
               ),
             )),
-            _buildCheckConstraint('Avoid back-to-back classes', _ctrl.avoidBackToBack, (v) => setState(() { _ctrl.avoidBackToBack = v ?? false; })),
-            _buildCheckConstraint('Minimize gaps between classes', _ctrl.minimizeGaps, (v) => setState(() { _ctrl.minimizeGaps = v ?? false; })),
-            _buildCheckConstraint('Protect lunch break (12–2 PM)', _ctrl.protectLunchBreak, (v) => setState(() {
-              _ctrl.protectLunchBreak = v ?? false;
-              if (!_ctrl.protectLunchBreak) _ctrl.requireLunchFree = false;
-            })),
+            _buildCheckConstraint('Avoid back-to-back classes', _ctrl.avoidBackToBack, (v) => _ctrl.avoidBackToBack = v ?? false),
+            _buildCheckConstraint('Minimize gaps between classes', _ctrl.minimizeGaps, (v) => _ctrl.minimizeGaps = v ?? false),
+            // Clearing lunch protection also drops requireLunchFree; that
+            // cascade lives in the controller's setter.
+            _buildCheckConstraint('Protect lunch break (12–2 PM)', _ctrl.protectLunchBreak, (v) => _ctrl.protectLunchBreak = v ?? false),
             if (_ctrl.protectLunchBreak)
               Padding(
                 padding: const EdgeInsets.only(left: 8),
                 child: _buildRequireToggle(
                   value: _ctrl.requireLunchFree,
-                  onChanged: (v) => setState(() => _ctrl.requireLunchFree = v),
+                  onChanged: (v) => _ctrl.requireLunchFree = v,
                 ),
               ),
             _buildRowConstraint('Prefer classes in', Container(
@@ -1082,7 +1089,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                     DropdownMenuItem(value: TimeOfDayPreference.morning, child: Text('Morning (before 12 PM)')),
                     DropdownMenuItem(value: TimeOfDayPreference.afternoon, child: Text('Afternoon (after 12 PM)')),
                   ],
-                  onChanged: (value) { setState(() { _ctrl.timeOfDayPreference = value ?? TimeOfDayPreference.none; }); },
+                  onChanged: (value) => _ctrl.timeOfDayPreference = value ?? TimeOfDayPreference.none,
                 ),
               ),
             )),
@@ -1135,7 +1142,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                       child: Text(TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode)),
                     )),
                   ],
-                  onChanged: (value) { setState(() { _ctrl.preferredMidsemSlot = value; }); },
+                  onChanged: (value) => _ctrl.preferredMidsemSlot = value,
                 ),
               ),
             )),
@@ -1159,7 +1166,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                       child: Text(TimeSlotInfo.getTimeSlotName(slot, campus: CampusService.currentCampusCode)),
                     )),
                   ],
-                  onChanged: (value) { setState(() { _ctrl.preferredCompreSlot = value; }); },
+                  onChanged: (value) => _ctrl.preferredCompreSlot = value,
                 ),
               ),
             )),
@@ -1229,11 +1236,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
             ),
             if (isBounded)
               InkResponse(
-                onTap: () => setState(() {
-                  _ctrl.earliestStartSlot = null;
-                  _ctrl.latestEndSlot = null;
-                  _ctrl.requireHoursWindow = false;
-                }),
+                onTap: _ctrl.clearHoursWindow,
                 radius: 16,
                 child: Padding(
                   padding: const EdgeInsets.only(left: 6),
@@ -1248,17 +1251,10 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           divisions: 11,
           values: RangeValues(start, end),
           labels: RangeLabels(_slotClockLabel(start.round()), _slotClockLabel(end.round())),
-          onChanged: (values) {
-            setState(() {
-              final s = values.start.round();
-              final e = values.end.round();
-              _ctrl.earliestStartSlot = s <= 1 ? null : s;
-              _ctrl.latestEndSlot = e >= 12 ? null : e;
-              if (_ctrl.earliestStartSlot == null && _ctrl.latestEndSlot == null) {
-                _ctrl.requireHoursWindow = false;
-              }
-            });
-          },
+          onChanged: (values) => _ctrl.setHoursWindow(
+            startSlot: values.start.round(),
+            endSlot: values.end.round(),
+          ),
         ),
         Text(
           'Classes outside this window are penalised, not blocked.',
@@ -1267,7 +1263,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         if (isBounded)
           _buildRequireToggle(
             value: _ctrl.requireHoursWindow,
-            onChanged: (v) => setState(() => _ctrl.requireHoursWindow = v),
+            onChanged: (v) => _ctrl.requireHoursWindow = v,
           ),
       ],
     );
@@ -1353,12 +1349,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
               const Spacer(),
               if (_ctrl.freeDayPreference.isNotEmpty)
                 TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _ctrl.freeDayPreference.clear();
-                      _ctrl.requireFreeDays = false;
-                    });
-                  },
+                  onPressed: _ctrl.clearFreeDayPreference,
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     minimumSize: Size.zero,
@@ -1383,12 +1374,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
               physics: const NeverScrollableScrollPhysics(),
               buildDefaultDragHandles: false,
               itemCount: _ctrl.freeDayPreference.length,
-              onReorderItem: (oldIndex, newIndex) {
-                setState(() {
-                  final day = _ctrl.freeDayPreference.removeAt(oldIndex);
-                  _ctrl.freeDayPreference.insert(newIndex, day);
-                });
-              },
+              onReorderItem: _ctrl.reorderFreeDayPreference,
               itemBuilder: (context, index) {
                 final day = _ctrl.freeDayPreference[index];
                 return Container(
@@ -1439,11 +1425,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                       ),
                       const Spacer(),
                       IconButton(
-                        onPressed: () {
-                          setState(() {
-                            _ctrl.freeDayPreference.remove(day);
-                          });
-                        },
+                        onPressed: () => _ctrl.removeFreeDayPreference(day),
                         icon: const Icon(Icons.close, size: 14),
                         tooltip: 'Remove ${getDayName(day, abbreviated: true)}',
                         constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
@@ -1463,11 +1445,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
               children: unranked.map((day) {
                 return ActionChip(
                   label: Text(getDayName(day, abbreviated: true), style: const TextStyle(fontSize: 12)),
-                  onPressed: () {
-                    setState(() {
-                      _ctrl.freeDayPreference.add(day);
-                    });
-                  },
+                  onPressed: () => _ctrl.toggleFreeDayPreference(day),
                   visualDensity: VisualDensity.compact,
                 );
               }).toList(),
@@ -1475,7 +1453,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           if (_ctrl.freeDayPreference.isNotEmpty)
             _buildRequireToggle(
               value: _ctrl.requireFreeDays,
-              onChanged: (v) => setState(() => _ctrl.requireFreeDays = v),
+              onChanged: (v) => _ctrl.requireFreeDays = v,
             ),
         ],
       ),
@@ -1525,11 +1503,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                       style: TextStyle(fontSize: 12),
                     ),
                     deleteIcon: const Icon(Icons.close, size: 16),
-                    onDeleted: () {
-                      setState(() {
-                        _ctrl.avoidTimes.removeAt(index);
-                      });
-                    },
+                    onDeleted: () => _ctrl.removeTimeAvoidance(index),
                     backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                     deleteIconColor: AppDesign.danger(context),
                   );
@@ -1585,11 +1559,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                       style: TextStyle(fontSize: 12),
                     ),
                     deleteIcon: const Icon(Icons.close, size: 16),
-                    onDeleted: () {
-                      setState(() {
-                        _ctrl.avoidLabs.removeAt(index);
-                      });
-                    },
+                    onDeleted: () => _ctrl.removeLabAvoidance(index),
                     backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
                     deleteIconColor: AppDesign.danger(context),
                   );
@@ -1645,11 +1615,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                       style: TextStyle(fontSize: 12),
                     ),
                     deleteIcon: const Icon(Icons.close, size: 16),
-                    onDeleted: () {
-                      setState(() {
-                        _ctrl.avoidedInstructors.removeAt(index);
-                      });
-                    },
+                    onDeleted: () => _ctrl.removeAvoidedInstructor(index),
                     backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
                     deleteIconColor: AppDesign.danger(context),
                   );
@@ -1742,11 +1708,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                     ),
                     const SizedBox(width: 8),
                     AppTappable(
-                      onTap: () {
-                        setState(() {
-                          _ctrl.instructorRankings.clear();
-                        });
-                      },
+                      onTap: () => _ctrl.setInstructorRankings(const {}),
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
@@ -1966,17 +1928,8 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       builder: (context) => TimeAvoidanceDialog(disabledByDay: existing),
     );
 
-    if (result != null && mounted) {
-      setState(() {
-        final idx = _ctrl.avoidTimes.indexWhere((a) => a.day == result.day);
-        if (idx >= 0) {
-          final merged = {..._ctrl.avoidTimes[idx].hours, ...result.hours}.toList()..sort();
-          _ctrl.avoidTimes[idx] = TimeAvoidance(day: result.day, hours: merged);
-        } else {
-          _ctrl.avoidTimes.add(result);
-        }
-      });
-    }
+    // Merging into the same-day entry lives in the controller.
+    if (result != null && mounted) _ctrl.addTimeAvoidance(result);
   }
 
   Future<void> _addLabAvoidance() async {
@@ -1992,17 +1945,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       builder: (context) => LabAvoidanceDialog(disabledByDay: existing),
     );
 
-    if (result != null && mounted) {
-      setState(() {
-        final idx = _ctrl.avoidLabs.indexWhere((a) => a.day == result.day);
-        if (idx >= 0) {
-          final merged = {..._ctrl.avoidLabs[idx].hours, ...result.hours}.toList()..sort();
-          _ctrl.avoidLabs[idx] = LabAvoidance(day: result.day, hours: merged);
-        } else {
-          _ctrl.avoidLabs.add(result);
-        }
-      });
-    }
+    if (result != null && mounted) _ctrl.addLabAvoidance(result);
   }
 
   Future<void> _addInstructorAvoidance() async {
@@ -2087,20 +2030,12 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     );
 
     if (result != null && mounted) {
-      setState(() {
-        for (final sectionSpecificKey in result) {
-          // Extract the actual instructor name from the section-specific key
-          // Format: "courseCode-sectionType-instructorName"
-          final parts = sectionSpecificKey.split('-');
-          if (parts.length >= 3) {
-            // Join back in case instructor name had hyphens
-            final instructor = parts.sublist(2).join('-');
-            if (!_ctrl.avoidedInstructors.contains(instructor)) {
-              _ctrl.avoidedInstructors.add(instructor);
-            }
-          }
-        }
-      });
+      // Keys are "courseCode-sectionType-instructorName"; the name is rejoined
+      // in case it contained hyphens of its own.
+      _ctrl.addAvoidedInstructors(result
+          .map((key) => key.split('-'))
+          .where((parts) => parts.length >= 3)
+          .map((parts) => parts.sublist(2).join('-')));
     }
   }
 
@@ -2140,19 +2075,14 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       ),
     );
 
-    if (result != null && mounted) {
-      setState(() {
-        _ctrl.instructorRankings.clear();
-        _ctrl.instructorRankings.addAll(result);
-      });
-    }
+    if (result != null && mounted) _ctrl.setInstructorRankings(result);
   }
 
   /// Ranker-native customisation: how much each intent axis counts when
   /// ordering results (feeds the TOPSIS weights). Replaces the old per-penalty
   /// weight sliders with five intuitive Low/Normal/High controls.
   Widget _buildImportancePanel() {
-    final anyChanged = _ctrl.axisImportance.values.any((v) => v != AxisImportance.normal);
+    final anyChanged = _ctrl.hasCustomImportance;
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       padding: const EdgeInsets.all(12),
@@ -2172,7 +2102,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
               const Spacer(),
               if (anyChanged)
                 TextButton(
-                  onPressed: () => setState(() => _ctrl.axisImportance.clear()),
+                  onPressed: _ctrl.clearAxisImportance,
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     minimumSize: Size.zero,
@@ -2236,7 +2166,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                           Expanded(
                             child: AppTappable(
                               behavior: HitTestBehavior.opaque,
-                              onTap: () => setState(() => _ctrl.axisImportance[axis] = values[i]),
+                              onTap: () => _ctrl.setAxisImportance(axis, values[i]),
                               child: Center(
                                 child: AnimatedDefaultTextStyle(
                                   duration: const Duration(milliseconds: 220),
@@ -2348,7 +2278,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     if (isMobile && _tabController != null) {
       _tabController!.animateTo(1);
     }
-    _compareSelection.clear();
+    _compareSelection.value = const {};
 
     try {
       final result = await _ctrl.generate(widget.availableCourses);
@@ -2364,43 +2294,56 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   }
 
   Widget _buildGeneratedTimetables() {
-    final canCompare = _compareSelection.length >= 2;
     return Expanded(
       child: Card(
         margin: const EdgeInsets.all(8),
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Generated Timetables (${_ctrl.rankedTimetables.length})',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            // Only the compare header and the card list care about the compare
+            // selection, so the ValueListenableBuilders sit around those two
+            // rather than around the panel. Ticking a checkbox on one card no
+            // longer rebuilds the refine chips or the diagnosis banner.
+            ValueListenableBuilder<Set<int>>(
+              valueListenable: _compareSelection,
+              builder: (context, selection, _) {
+                final canCompare = selection.length >= 2;
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Generated Timetables (${_ctrl.rankedTimetables.length})',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          if (selection.isNotEmpty)
+                            FilledButton.tonalIcon(
+                              onPressed: canCompare ? _showComparison : null,
+                              icon: const Icon(Icons.compare_arrows, size: 18),
+                              label: Text('Compare (${selection.length})'),
+                              style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                  if (_compareSelection.isNotEmpty)
-                    FilledButton.tonalIcon(
-                      onPressed: canCompare ? _showComparison : null,
-                      icon: const Icon(Icons.compare_arrows, size: 18),
-                      label: Text('Compare (${_compareSelection.length})'),
-                      style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
-                    ),
-                ],
-              ),
+                    if (selection.isNotEmpty && !canCompare)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          'Select one more to compare',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
-            if (_compareSelection.isNotEmpty && !canCompare)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  'Select one more to compare',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                ),
-              ),
             _buildRefineChips(),
             _buildDiagnosis(),
             Expanded(
@@ -2408,11 +2351,14 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                 itemCount: _ctrl.rankedTimetables.length,
                 itemBuilder: (context, index) {
                   final ranked = _ctrl.rankedTimetables[index];
-                  return GeneratedTimetableCard(
-                    ranked: ranked,
-                    selectedForCompare: _compareSelection.contains(index),
-                    onToggleCompare: () => _toggleCompare(index),
-                    onSelect: () => widget.onTimetableSelected(ranked.timetable),
+                  return ValueListenableBuilder<Set<int>>(
+                    valueListenable: _compareSelection,
+                    builder: (context, selection, _) => GeneratedTimetableCard(
+                      ranked: ranked,
+                      selectedForCompare: selection.contains(index),
+                      onToggleCompare: () => _toggleCompare(index),
+                      onSelect: () => widget.onTimetableSelected(ranked.timetable),
+                    ),
                   );
                 },
               ),
@@ -2478,7 +2424,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
               child: Row(
                 children: [
                   _refineChip('Less packed', Icons.compress, () => _ctrl.maxHoursPerDay = (_ctrl.maxHoursPerDay - 1).clamp(4, 12)),
-                  _refineChip('More free days', Icons.weekend_outlined, () => _ctrl.axisImportance[RankAxis.freeDays] = AxisImportance.high),
+                  _refineChip('More free days', Icons.weekend_outlined, () => _ctrl.setAxisImportance(RankAxis.freeDays, AxisImportance.high)),
                   _refineChip('Later start', Icons.wb_twilight_outlined, () => _ctrl.earliestStartSlot = 2),
                   _refineChip('Fewer gaps', Icons.unfold_less, () => _ctrl.minimizeGaps = true),
                 ],
@@ -2509,21 +2455,21 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   }
 
   void _toggleCompare(int index) {
-    setState(() {
-      if (!_compareSelection.remove(index)) {
-        if (_compareSelection.length >= 3) {
-          ToastService.showInfo('Compare up to 3 at a time');
-          return;
-        }
-        _compareSelection.add(index);
+    final next = {..._compareSelection.value};
+    if (!next.remove(index)) {
+      if (next.length >= 3) {
+        ToastService.showInfo('Compare up to 3 at a time');
+        return;
       }
-    });
+      next.add(index);
+    }
+    _compareSelection.value = next;
   }
 
   void _showComparison() {
     // Reuse the app's full comparison page by turning the picked generated
     // options into ephemeral timetables it can render.
-    final selected = (_compareSelection.toList()..sort())
+    final selected = (_compareSelection.value.toList()..sort())
         .map((i) => _ctrl.rankedTimetables[i])
         .toList();
     final timetables = [
