@@ -38,12 +38,10 @@ import '../widgets/command_palette.dart';
 import '../widgets/app_destinations.dart';
 import '../services/ui/tutorial_service.dart';
 import 'timetable_editor_screen.dart';
-import 'course_guide_screen.dart';
 import 'timetable_comparison_screen.dart';
-import 'prerequisites_screen.dart';
 import 'archived_timetables_screen.dart';
-import 'electives_screen.dart';
 import '../utils/app_routes.dart';
+import '../widgets/app_tools.dart';
 
 class TimetablesScreen extends StatefulWidget {
   const TimetablesScreen({super.key});
@@ -136,7 +134,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
         subtitle: 'Side-by-side comparison',
         icon: Icons.compare,
         category: CommandCategory.context,
-        onSelect: () => Navigator.push(context, FadeSlidePageRoute(page: const TimetableComparisonScreen())),
+        onSelect: () => AppTools.of(AppTool.compareTimetables).pushOn(Navigator.of(context)),
       ),
       // Jump straight into any saved timetable — the list is already in memory,
       // so this turns the palette into a launcher with no extra reads.
@@ -744,19 +742,19 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
             onSelected: (value) {
               switch (value) {
                 case 'course_guide':
-                  Navigator.push(context, FadeSlidePageRoute(page: const CourseGuideScreen()));
+                  AppTools.of(AppTool.courseGuide).pushOn(Navigator.of(context));
                   break;
                 case 'prerequisites':
-                  Navigator.push(context, FadeSlidePageRoute(page: const PrerequisitesScreen()));
+                  AppTools.of(AppTool.prerequisites).pushOn(Navigator.of(context));
                   break;
                 case 'electives':
-                  Navigator.push(context, FadeSlidePageRoute(page: const ElectivesScreen()));
+                  AppTools.of(AppTool.electives).pushOn(Navigator.of(context));
                   break;
                 case 'import_code':
                   _importFromShareCode();
                   break;
                 case 'compare':
-                  Navigator.push(context, FadeSlidePageRoute(page: const TimetableComparisonScreen()));
+                  AppTools.of(AppTool.compareTimetables).pushOn(Navigator.of(context));
                   break;
                 case 'github':
                   _openGitHub();

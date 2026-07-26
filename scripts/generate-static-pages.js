@@ -366,6 +366,22 @@ ${body}`,
   });
 }
 
+function landingPage({ title, description, heading, body, canonical, ctaHref, ctaLabel, cssHref }) {
+  return page({
+    title,
+    description,
+    canonical,
+    cssHref,
+    body: `<h1>${esc(heading)}</h1>
+<p class="lead">${esc(description)}</p>
+${body}
+<section class="cta-block">
+<h2>${esc(ctaLabel)}</h2>
+<p><a class="cta" href="${esc(ctaHref)}">Open Tabulr</a></p>
+</section>`,
+  });
+}
+
 const STYLESHEET = `:root{color-scheme:light dark;--bg:#fff;--fg:#1c2128;--muted:#57606a;--line:#d0d7de;--accent:#1B4DE4;--card:#f6f8fa}
 @media(prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--muted:#8b949e;--line:#30363d;--accent:#58A6FF;--card:#161b22}}
 *{box-sizing:border-box}
@@ -396,12 +412,71 @@ img{max-width:100%}
 `;
 
 /**
- * Public app routes worth listing, mirroring the `everyone` destinations in
- * lib/widgets/app_destinations.dart. Signed-in-only screens are left out: they
- * render a sign-in wall to a crawler, and an indexed URL that nobody can open
- * is worse than no URL.
+ * Public app routes worth listing: the `everyone` destinations in
+ * lib/widgets/app_destinations.dart plus the pushed screens in
+ * lib/widgets/app_tools.dart that are not `signedInOnly`.
+ *
+ * Signed-in-only screens are left out — `/electives` and `/prerequisites`
+ * among them. Both would be strong landing pages, and their Firestore data is
+ * world-readable, but the app currently shows a crawler (and a first-time
+ * visitor) the sign-in wall, and an indexed URL nobody can open is worse than
+ * no URL. Opening those two to guests is the change that would earn them a
+ * place here.
  */
-const PUBLIC_ROUTES = ['/', '/timetables', '/exam-seating', '/minors', '/faq', '/courses/'];
+const PUBLIC_ROUTES = ['/', '/timetables', '/exam-seating', '/minors', '/faq', '/credits', '/courses/'];
+
+const LANDING_PAGES = [
+  {
+    path: 'timetables',
+    title: 'Timetable maker for BITS Pilani | Tabulr',
+    description: 'Build clash-free timetables from the official course booklet, compare schedules and export your semester.',
+    heading: 'Timetable builder',
+    body: '<p>Tabulr helps you assemble a semester timetable from live course offerings, then compare and save the result without clashes.</p><ul><li>Pick courses from the current catalogue</li><li>Compare multiple timetable options</li><li>Export to your calendar</li></ul>',
+    canonical: `${ORIGIN}/timetables/`,
+    ctaHref: '/timetables',
+    ctaLabel: 'Start building a timetable',
+  },
+  {
+    path: 'cgpa',
+    title: 'CGPA calculator for BITS Pilani | Tabulr',
+    description: 'Calculate, plan and project your CGPA with semester-by-semester grade tracking.',
+    heading: 'CGPA calculator',
+    body: '<p>Use Tabulr to track your semester grades, project future CGPA outcomes and import marks from a performance sheet when you have one.</p><ul><li>Calculate CGPA and SGPA</li><li>Project future grades</li><li>Import past results from PDF</li></ul>',
+    canonical: `${ORIGIN}/cgpa/`,
+    ctaHref: '/cgpa',
+    ctaLabel: 'Open the CGPA calculator',
+  },
+  {
+    path: 'exam-seating',
+    title: 'Exam seating lookup for BITS Pilani | Tabulr',
+    description: 'Find your exam seat and room by student ID, or import courses from a timetable.',
+    heading: 'Exam seating',
+    body: '<p>Tabulr looks up official exam seating details, helps you import the right courses and keeps the room and seat lookup in one place.</p><ul><li>Search by ID number</li><li>Import courses from a timetable</li><li>See exam room and seating details</li></ul>',
+    canonical: `${ORIGIN}/exam-seating/`,
+    ctaHref: '/exam-seating',
+    ctaLabel: 'Look up exam seating',
+  },
+  {
+    path: 'minors',
+    title: 'BITS Pilani minor programmes | Tabulr',
+    description: 'Browse minor programmes and track progress toward each one.',
+    heading: 'Minor programmes',
+    body: '<p>Browse the available minors, search by course code and keep an eye on progress when you have a CGPA record loaded.</p><ul><li>Search minors and course codes</li><li>Track cleared courses</li><li>See how far along you are</li></ul>',
+    canonical: `${ORIGIN}/minors/`,
+    ctaHref: '/minors',
+    ctaLabel: 'Browse minors',
+  },
+  {
+    path: 'faq',
+    title: 'BITS academic FAQ | Tabulr',
+    description: 'Straight answers on grades, attendance, registration and other academic rules.',
+    heading: 'Academic FAQ',
+    body: '<p>Tabulr keeps the most commonly searched academic rules in one searchable place, with answers distilled from the regulations and bulletin.</p><ul><li>Search by keyword</li><li>Filter by topic</li><li>Read concise answers fast</li></ul>',
+    canonical: `${ORIGIN}/faq/`,
+    ctaHref: '/faq',
+    ctaLabel: 'Read the academic FAQ',
+  },
+];
 
 const sitemap = (courses) => `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -510,6 +585,18 @@ async function main() {
   const coursesDir = path.join(outDir, 'courses');
   fs.mkdirSync(coursesDir, { recursive: true });
   fs.writeFileSync(path.join(coursesDir, 'index.html'), indexPage(worthAPage));
+
+  for (const landing of LANDING_PAGES) {
+    const dir = path.join(outDir, landing.path);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, 'index.html'),
+      landingPage({
+        ...landing,
+        cssHref: '../static-pages.css',
+      }),
+    );
+  }
 
   for (const course of worthAPage) {
     const dir = path.join(coursesDir, slugify(course.code));

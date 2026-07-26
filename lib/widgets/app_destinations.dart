@@ -19,6 +19,19 @@ enum DrawerScreen {
   admin,
 }
 
+/// `AuthService().isAuthenticated`, fail-closed.
+///
+/// The auth singletons reach for Firebase on construction, so asking before
+/// Firebase is up throws. Everything gated on this shows the signed-out view in
+/// that window, which is the right answer anyway — nobody is signed in yet.
+bool isSignedIn() {
+  try {
+    return AuthService().isAuthenticated;
+  } catch (_) {
+    return false;
+  }
+}
+
 /// Who a destination is for.
 ///
 /// Kept as data rather than an `if` at each call site so the sidebar and the
@@ -67,20 +80,17 @@ class AppDestination {
 
   bool get isVisible {
     if (access == DestinationAccess.everyone) return true;
+    if (!isSignedIn()) return false;
     try {
       return switch (access) {
-        DestinationAccess.everyone => true,
-        DestinationAccess.signedIn => AuthService().isAuthenticated,
-        DestinationAccess.hyderabad => AuthService().isAuthenticated &&
-            CourseAnnouncementService().isHyderabadUser(),
-        DestinationAccess.admin =>
-          AuthService().isAuthenticated && AdminService().isAdmin,
+        DestinationAccess.everyone || DestinationAccess.signedIn => true,
+        DestinationAccess.hyderabad =>
+          CourseAnnouncementService().isHyderabadUser(),
+        DestinationAccess.admin => AdminService().isAdmin,
       };
     } catch (_) {
-      // The auth singletons reach for Firebase on construction, so this throws
-      // if it is asked before Firebase is up. Fail closed and show the public
-      // destinations rather than letting the whole sidebar fall over — and
-      // nobody is signed in at that point anyway.
+      // Same Firebase-not-up hazard as [isSignedIn]: fail closed rather than
+      // letting the whole sidebar fall over.
       return false;
     }
   }

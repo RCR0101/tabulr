@@ -196,6 +196,9 @@ class _TimetableMakerAppState extends State<TimetableMakerApp> {
           theme: themeService.getLightThemeData(themeService.currentTheme),
           darkTheme: themeService.getDarkThemeData(themeService.currentTheme),
           themeMode: themeService.currentThemeMode,
+          navigatorKey: AppRoutes.navigatorKey,
+          navigatorObservers: [AppRoutes.history],
+          onGenerateRoute: AppRoutes.onGenerateRoute,
           scrollBehavior: const AppScrollBehavior(),
           debugShowCheckedModeBanner: false,
           home: ThemeTransitionOverlay(

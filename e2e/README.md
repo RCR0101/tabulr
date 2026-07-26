@@ -9,6 +9,22 @@ loading" reports.
 They are **not** wired into the Dart unit suite and won't run in CI until you set
 this up — they're committed as a ready-to-run harness.
 
+## Routing (`routing.spec.ts`)
+
+URL behaviour that only exists in a browser: the path URL strategy, deep links
+surviving the sign-in wall, and unknown paths not wedging the app.
+
+One thing it deliberately does **not** cover: switching tabs with the browser
+back button. The shell only exists for a signed-in user — `AuthWrapper` sends
+guests to `HomeScreen` and everyone else to the auth screen — so an
+unauthenticated harness cannot reach a tab, leave it, and come back. A test
+built on `history.pushState` would pass whether or not the app reacted at all,
+which is worse than having no test. Verifying that needs a signed-in session.
+
+The specs drive the canvas through Flutter's semantics tree (clicking the
+`flt-semantics-placeholder` that Flutter renders for screen readers), which is
+the only way to see or click anything in a CanvasKit build.
+
 ## Prerequisites
 
 - Node 18+.

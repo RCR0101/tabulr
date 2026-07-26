@@ -3,9 +3,8 @@ import '../services/data/admin_service.dart';
 import '../services/data/auth_service.dart';
 import '../services/ui/tutorial_service.dart';
 import '../utils/design_constants.dart';
-import '../screens/credits_screen.dart';
-import '../screens/profile_screen.dart';
 import 'app_destinations.dart';
+import 'app_tools.dart';
 
 class AppSidebar extends StatefulWidget {
   final DrawerScreen currentScreen;
@@ -328,11 +327,8 @@ class _AppSidebarState extends State<AppSidebar> {
                 Expanded(
                   child: InkWell(
                     borderRadius: AppDesign.borderRadiusSm,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const CreditsScreen()),
-                    ),
+                    onTap: () => AppTools.of(AppTool.credits)
+                        .pushOn(Navigator.of(context)),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: AppDesign.spacingSm,
@@ -382,10 +378,7 @@ class _AppSidebarState extends State<AppSidebar> {
 
   Widget _profileFooterButton(
       BuildContext context, ColorScheme scheme, bool collapsed) {
-    void open() => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const ProfileScreen()),
-        );
+    void open() => AppTools.of(AppTool.profile).pushOn(Navigator.of(context));
 
     if (collapsed) {
       return Center(

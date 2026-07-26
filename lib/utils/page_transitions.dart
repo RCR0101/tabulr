@@ -4,7 +4,7 @@ import 'design_constants.dart';
 class FadeSlidePageRoute<T> extends PageRouteBuilder<T> {
   final Widget page;
 
-  FadeSlidePageRoute({required this.page})
+  FadeSlidePageRoute({required this.page, super.settings})
       : super(
           pageBuilder: (context, animation, secondaryAnimation) => page,
           transitionDuration: AppDesign.animDurationNormal,

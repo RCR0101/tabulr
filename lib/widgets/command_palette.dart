@@ -2,11 +2,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/data/auth_service.dart';
-import '../screens/profile_screen.dart';
 import '../models/timetable_selection_link.dart';
 import '../services/ui/theme_service.dart';
 import '../utils/design_constants.dart';
-import '../utils/page_transitions.dart';
 import 'app_destinations.dart';
 import 'app_tools.dart';
 
@@ -183,27 +181,16 @@ class _CommandPaletteState extends State<CommandPalette> {
           ),
     ]);
 
-    if (auth.isAuthenticated) {
-      // Not a shell destination — Profile is a pushed route.
-      nonRecentEntries.add(CommandPaletteEntry(
-        label: 'Profile',
-        subtitle: 'Your ID, branch & semester defaults',
-        icon: Icons.badge_outlined,
-        category: CommandCategory.navigation,
-        onSelect: () => nav.push(FadeSlidePageRoute(page: const ProfileScreen())),
-      ));
-    }
-
     nonRecentEntries.addAll([
       for (final info in AppTools.all)
-        if (info.screen == null || widget.selectionLink != null)
+        if ((info.screen == null || widget.selectionLink != null) &&
+            info.isReachable)
           CommandPaletteEntry(
             label: info.label,
             subtitle: info.description,
             icon: info.icon,
             category: CommandCategory.navigation,
-            onSelect: () => nav.push(
-                FadeSlidePageRoute(page: info.build(widget.selectionLink))),
+            onSelect: () => info.pushOn(nav, widget.selectionLink),
           ),
     ]);
 
