@@ -38,12 +38,22 @@ class AppDestination {
     required this.screen,
     required this.icon,
     required this.label,
+    required this.slug,
     required this.description,
     this.access = DestinationAccess.signedIn,
   });
 
   final DrawerScreen screen;
   final IconData icon;
+
+  /// The screen's URL path segment, e.g. `cgpa` for `tabulr.net/cgpa`.
+  ///
+  /// Lives here rather than in a separate route table because that table would
+  /// be the fourth list keyed by [DrawerScreen] and the first one nothing
+  /// forces you to update — the sidebar and the palette already drifted apart
+  /// once for exactly that reason. Treat a slug as permanent once shipped: it
+  /// is a public URL, and static pages and pasted links point at it.
+  final String slug;
 
   /// Shown in the sidebar and as the command palette's title. One name per
   /// thing — the two used to disagree ("CGPA" vs "CGPA Calculator").
@@ -88,6 +98,7 @@ abstract final class AppDestinations {
   static AppDestination of(DrawerScreen screen) => switch (screen) {
         DrawerScreen.timetables => const AppDestination(
             screen: DrawerScreen.timetables,
+            slug: 'timetables',
             icon: Icons.schedule,
             label: 'TT Builder',
             description: 'Build and manage your timetables',
@@ -95,24 +106,28 @@ abstract final class AppDestinations {
           ),
         DrawerScreen.calendar => const AppDestination(
             screen: DrawerScreen.calendar,
+            slug: 'calendar',
             icon: Icons.calendar_month,
             label: 'Calendar',
             description: 'Your week, exams and announcements in one view',
           ),
         DrawerScreen.freeSlotFinder => const AppDestination(
             screen: DrawerScreen.freeSlotFinder,
+            slug: 'free-slots',
             icon: Icons.group,
             label: 'Free Time Finder',
             description: 'Find common free slots with friends',
           ),
         DrawerScreen.cgpaCalculator => const AppDestination(
             screen: DrawerScreen.cgpaCalculator,
+            slug: 'cgpa',
             icon: Icons.calculate,
             label: 'CGPA',
             description: 'Calculate, plan and project your CGPA',
           ),
         DrawerScreen.examSeating => const AppDestination(
             screen: DrawerScreen.examSeating,
+            slug: 'exam-seating',
             icon: Icons.event_seat,
             label: 'Exam Seating',
             description: 'Find your exam seat and room',
@@ -120,18 +135,21 @@ abstract final class AppDestinations {
           ),
         DrawerScreen.acadDrives => const AppDestination(
             screen: DrawerScreen.acadDrives,
+            slug: 'acad-drives',
             icon: Icons.folder_shared,
             label: 'Acad Drives',
             description: 'Course materials and resources',
           ),
         DrawerScreen.profChambers => const AppDestination(
             screen: DrawerScreen.profChambers,
+            slug: 'professors',
             icon: Icons.person,
             label: 'Prof Chambers',
             description: 'Professor chambers, schedules and contacts',
           ),
         DrawerScreen.announcements => const AppDestination(
             screen: DrawerScreen.announcements,
+            slug: 'announcements',
             icon: Icons.campaign,
             label: 'Announcements',
             description: 'Course announcements from your classmates',
@@ -141,6 +159,7 @@ abstract final class AppDestinations {
         // to sign up benefits from it as much as a logged-in student.
         DrawerScreen.minors => const AppDestination(
             screen: DrawerScreen.minors,
+            slug: 'minors',
             icon: Icons.workspace_premium_outlined,
             label: 'Minors',
             description: 'Browse minor programmes and track your progress',
@@ -148,6 +167,7 @@ abstract final class AppDestinations {
           ),
         DrawerScreen.faq => const AppDestination(
             screen: DrawerScreen.faq,
+            slug: 'faq',
             icon: Icons.help_outline,
             label: 'Academic FAQ',
             description: 'Rules on grades, attendance, registration and more',
@@ -155,12 +175,14 @@ abstract final class AppDestinations {
           ),
         DrawerScreen.bugReport => const AppDestination(
             screen: DrawerScreen.bugReport,
+            slug: 'bug-report',
             icon: Icons.bug_report_outlined,
             label: 'Bug Report',
             description: 'File and track bug reports',
           ),
         DrawerScreen.admin => const AppDestination(
             screen: DrawerScreen.admin,
+            slug: 'admin',
             icon: Icons.admin_panel_settings,
             label: 'Admin',
             description: 'Admin panel',

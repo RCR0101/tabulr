@@ -1,8 +1,14 @@
+import 'dart:math';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:timetable_maker/constants/app_constants.dart';
+import 'package:timetable_maker/models/campus.dart';
 import 'package:timetable_maker/models/timetable.dart';
 import 'package:timetable_maker/services/core/undo_redo_service.dart';
 import 'package:timetable_maker/services/data/campus_service.dart';
+
 import '../helpers/test_data.dart';
+import '../helpers/test_reporter.dart';
 
 void main() {
   late UndoRedoService service;
@@ -10,20 +16,6 @@ void main() {
   setUp(() {
     service = UndoRedoService();
   });
-
-  Timetable makeTimetable({List<SelectedSection>? sections}) {
-    final courses = twoCourseNoClash();
-    return Timetable(
-      id: 'tt-1',
-      name: 'Test',
-      createdAt: DateTime(2026, 1, 1),
-      updatedAt: DateTime(2026, 1, 1),
-      campus: Campus.hyderabad,
-      availableCourses: courses,
-      selectedSections: sections ?? [],
-      clashWarnings: [],
-    );
-  }
 
   group('initial state', () {
     test('canUndo is false', () {
@@ -45,7 +37,7 @@ void main() {
 
   group('pushState', () {
     test('enables undo after push', () {
-      final tt = makeTimetable();
+      final tt = makeTimetable(courses: twoCourseNoClash(), selectedSections: const []);
       service.pushState(tt, 'Added section');
 
       expect(service.canUndo, isTrue);
@@ -53,7 +45,7 @@ void main() {
     });
 
     test('clears redo stack on push', () {
-      final tt = makeTimetable();
+      final tt = makeTimetable(courses: twoCourseNoClash(), selectedSections: const []);
       service.pushState(tt, 'Step 1');
       service.undo(tt);
       expect(service.canRedo, isTrue);
@@ -63,7 +55,7 @@ void main() {
     });
 
     test('enforces max stack size of 50', () {
-      final tt = makeTimetable();
+      final tt = makeTimetable(courses: twoCourseNoClash(), selectedSections: const []);
       for (var i = 0; i < 55; i++) {
         service.pushState(tt, 'Step $i');
       }
@@ -79,7 +71,7 @@ void main() {
 
   group('undo', () {
     test('returns null when nothing to undo', () {
-      final tt = makeTimetable();
+      final tt = makeTimetable(courses: twoCourseNoClash(), selectedSections: const []);
       expect(service.undo(tt), isNull);
     });
 
@@ -90,10 +82,10 @@ void main() {
         sectionId: courses[0].sections[0].sectionId,
         section: courses[0].sections[0],
       );
-      final tt = makeTimetable(sections: [section]);
+      final tt = makeTimetable(courses: twoCourseNoClash(), selectedSections: [section]);
       service.pushState(tt, 'Added L1');
 
-      final emptyTt = makeTimetable();
+      final emptyTt = makeTimetable(courses: twoCourseNoClash(), selectedSections: const []);
       final snapshot = service.undo(emptyTt);
 
       expect(snapshot, isNotNull);
@@ -102,7 +94,7 @@ void main() {
     });
 
     test('enables redo after undo', () {
-      final tt = makeTimetable();
+      final tt = makeTimetable(courses: twoCourseNoClash(), selectedSections: const []);
       service.pushState(tt, 'Step 1');
       service.undo(tt);
 
@@ -113,12 +105,12 @@ void main() {
 
   group('redo', () {
     test('returns null when nothing to redo', () {
-      final tt = makeTimetable();
+      final tt = makeTimetable(courses: twoCourseNoClash(), selectedSections: const []);
       expect(service.redo(tt), isNull);
     });
 
     test('restores undone state', () {
-      final tt = makeTimetable();
+      final tt = makeTimetable(courses: twoCourseNoClash(), selectedSections: const []);
       service.pushState(tt, 'Step 1');
       service.undo(tt);
       final snapshot = service.redo(tt);
@@ -131,7 +123,7 @@ void main() {
 
   group('clear', () {
     test('empties both stacks', () {
-      final tt = makeTimetable();
+      final tt = makeTimetable(courses: twoCourseNoClash(), selectedSections: const []);
       service.pushState(tt, 'Step 1');
       service.pushState(tt, 'Step 2');
       service.undo(tt);
@@ -148,13 +140,13 @@ void main() {
       var notified = false;
       service.addListener(() => notified = true);
 
-      final tt = makeTimetable();
+      final tt = makeTimetable(courses: twoCourseNoClash(), selectedSections: const []);
       service.pushState(tt, 'Step');
       expect(notified, isTrue);
     });
 
     test('fires on undo', () {
-      final tt = makeTimetable();
+      final tt = makeTimetable(courses: twoCourseNoClash(), selectedSections: const []);
       service.pushState(tt, 'Step');
       var notified = false;
       service.addListener(() => notified = true);
@@ -169,4 +161,173 @@ void main() {
       expect(notified, isTrue);
     });
   });
+
+  // ── Soak ─────────────────────────────────────────────────────────────
+  //
+  // The groups above cover specific behaviours. This drives thousands of
+  // random push/undo/redo sequences against an independent two-stack
+  // reference model and asserts the observable state (canUndo/canRedo,
+  // descriptions, every restored snapshot) matches at each step — while
+  // proving the undo stack stays bounded and redo is dropped on a new edit.
+
+  final results = <Map<String, dynamic>>[];
+  void record(String name, bool passed, int ms, [String? error]) {
+    results.add({
+      'name': name,
+      'status': passed ? 'pass' : 'fail',
+      'duration_ms': ms,
+      if (error != null) 'error': error,
+    });
+  }
+
+  tearDownAll(() async {
+    await TestReporter.reportTestResults('undo_redo_soak', results);
+  });
+
+  test('random push/undo/redo sequences match a reference model', () {
+    final sw = Stopwatch()..start();
+    const trials = 200;
+    const opsPerTrial = 80;
+    try {
+      for (var t = 0; t < trials; t++) {
+        _runTrial(Random(0xBEEF + t), opsPerTrial, t);
+      }
+      sw.stop();
+      record('random sequences vs reference', true, sw.elapsedMilliseconds);
+    } catch (e) {
+      sw.stop();
+      record('random sequences vs reference', false, sw.elapsedMilliseconds,
+          e.toString());
+      rethrow;
+    }
+  });
+
+  test('undo stack never exceeds maxUndoStackSize', () {
+    final sw = Stopwatch()..start();
+    final service = UndoRedoService();
+    for (var i = 0; i < AppLimits.maxUndoStackSize + 37; i++) {
+      service.pushSections(const [], 'edit$i');
+    }
+    var undos = 0;
+    while (service.canUndo && undos <= AppLimits.maxUndoStackSize + 100) {
+      service.undo(_tt(const []));
+      undos++;
+    }
+    expect(undos, AppLimits.maxUndoStackSize);
+    sw.stop();
+    record('bounded stack', true, sw.elapsedMilliseconds);
+  });
+
+  test('undo then redo restores the same state (round-trip)', () {
+    final service = UndoRedoService();
+    var current = <SelectedSection>[];
+    final history = <List<String>>[];
+
+    for (var i = 0; i < 20; i++) {
+      history.add(_keys(current));
+      service.pushSections(current, 'e$i');
+      current = [...current, _sec(i, 0)];
+    }
+    final atEnd = _keys(current);
+
+    // Undo everything, then redo everything.
+    while (service.canUndo) {
+      current = service.undo(_tt(current))!.sections;
+    }
+    while (service.canRedo) {
+      current = service.redo(_tt(current))!.sections;
+    }
+    expect(_keys(current), atEnd);
+  });
 }
+
+
+
+void _runTrial(Random r, int ops, int trial) {
+  final service = UndoRedoService();
+  var current = <SelectedSection>[];
+
+  // Reference model: parallel undo/redo stacks of (sectionKeys, description).
+  final refUndo = <({List<String> keys, String desc})>[];
+  final refRedo = <({List<String> keys, String desc})>[];
+
+  for (var step = 0; step < ops; step++) {
+    final choice = r.nextInt(10);
+    if (choice < 6) {
+      // ── Edit: capture the pre-edit state, push it, then mutate.
+      final desc = 'op$step';
+      service.pushSections(current, desc);
+      refUndo.add((keys: _keys(current), desc: desc));
+      if (refUndo.length > AppLimits.maxUndoStackSize) refUndo.removeAt(0);
+      refRedo.clear();
+      current = _mutate(current, r);
+    } else if (choice < 8) {
+      // ── Undo.
+      if (service.canUndo) {
+        final snap = service.undo(_tt(current))!;
+        refRedo.add((keys: _keys(current), desc: refUndo.last.desc));
+        final expected = refUndo.removeLast();
+        expect(_keys(snap.sections), expected.keys,
+            reason: 'trial=$trial step=$step undo sections');
+        expect(snap.description, expected.desc,
+            reason: 'trial=$trial step=$step undo desc');
+        current = snap.sections;
+      } else {
+        expect(refUndo, isEmpty, reason: 'trial=$trial step=$step');
+        expect(service.undo(_tt(current)), isNull);
+      }
+    } else {
+      // ── Redo.
+      if (service.canRedo) {
+        final snap = service.redo(_tt(current))!;
+        refUndo.add((keys: _keys(current), desc: refRedo.last.desc));
+        final expected = refRedo.removeLast();
+        expect(_keys(snap.sections), expected.keys,
+            reason: 'trial=$trial step=$step redo sections');
+        expect(snap.description, expected.desc,
+            reason: 'trial=$trial step=$step redo desc');
+        current = snap.sections;
+      } else {
+        expect(refRedo, isEmpty, reason: 'trial=$trial step=$step');
+        expect(service.redo(_tt(current)), isNull);
+      }
+    }
+
+    // Observable state must track the reference after every operation.
+    expect(service.canUndo, refUndo.isNotEmpty,
+        reason: 'trial=$trial step=$step canUndo');
+    expect(service.canRedo, refRedo.isNotEmpty,
+        reason: 'trial=$trial step=$step canRedo');
+    expect(service.undoDescription, refUndo.isEmpty ? null : refUndo.last.desc,
+        reason: 'trial=$trial step=$step undoDescription');
+    expect(service.redoDescription, refRedo.isEmpty ? null : refRedo.last.desc,
+        reason: 'trial=$trial step=$step redoDescription');
+  }
+}
+
+List<SelectedSection> _mutate(List<SelectedSection> cur, Random r) {
+  final next = [...cur];
+  if (next.isNotEmpty && r.nextBool()) {
+    next.removeAt(r.nextInt(next.length));
+  } else {
+    next.add(_sec(r.nextInt(20), r.nextInt(5)));
+  }
+  return next;
+}
+
+SelectedSection _sec(int c, int s) =>
+    makeSelectedSection(courseCode: 'C$c', sectionId: 'S$s');
+
+List<String> _keys(List<SelectedSection> s) =>
+    s.map((e) => '${e.courseCode}-${e.sectionId}').toList();
+
+Timetable _tt(List<SelectedSection> sel) => Timetable(
+      id: 't',
+      name: 't',
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+      campus: Campus.values.first,
+      availableCourses: const [],
+      selectedSections: sel,
+      clashWarnings: const [],
+    );

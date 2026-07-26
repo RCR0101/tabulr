@@ -2,15 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timetable_maker/constants/app_constants.dart';
 import 'package:timetable_maker/services/ui/theme_service.dart';
+import 'package:flutter/material.dart';
 
-/// Migration idempotency / robustness for [ThemeService.initialize].
-///
-/// The theme used to be persisted as an enum *index*; it is now a stable enum
-/// *name*. `initialize()` migrates the old integer to the new name key, drops
-/// the old key, and — crucially — must be a no-op on every subsequent launch
-/// and must never throw on an out-of-range or unknown stored value. These are
-/// the properties a migration has to guarantee: run-once, run-again-safe, and
-/// junk-tolerant.
+/// [ThemeService]: what it restores at launch, and what it hands to Material.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final service = ThemeService();
@@ -20,6 +14,12 @@ void main() {
     return SharedPreferences.getInstance();
   }
 
+  // Migration idempotency / robustness for initialize(). The theme used to be
+  // persisted as an enum *index*; it is now a stable enum *name*. initialize()
+  // migrates the old integer to the new name key, drops the old key, and —
+  // crucially — must be a no-op on every subsequent launch and must never throw
+  // on an out-of-range or unknown stored value: run-once, run-again-safe, and
+  // junk-tolerant.
   test('old integer index migrates to the new name key and drops the old key',
       () async {
     await prefsWith({StorageKeys.selectedTheme: 1}); // 1 == draculaDark
@@ -78,5 +78,44 @@ void main() {
     await prefsWith({});
     await service.initialize();
     expect(service.currentTheme, AppTheme.githubDark);
+  });
+
+  group('bundled Inter', () {
+    // Guards the swap away from google_fonts: if someone reintroduces a
+    // runtime-fetched family (or a Roboto default slips back in), the text
+    // theme stops reading "Inter" and this fails.
+    test('every text style uses the bundled Inter family', () {
+      final theme = ThemeService().getLightThemeData(AppTheme.githubDark);
+      final t = theme.textTheme;
+
+      final styles = <TextStyle?>[
+        t.displayLarge, t.displayMedium, t.displaySmall,
+        t.headlineLarge, t.headlineMedium, t.headlineSmall,
+        t.titleLarge, t.titleMedium, t.titleSmall,
+        t.bodyLarge, t.bodyMedium, t.bodySmall,
+        t.labelLarge, t.labelMedium, t.labelSmall,
+      ];
+
+      for (final style in styles) {
+        expect(style?.fontFamily, 'Inter');
+      }
+    });
+
+    test('the explicit dialog title style is Inter too', () {
+      // The one style built as a bare TextStyle rather than via the text theme
+      // — it has to name the family itself.
+      final theme = ThemeService().getDarkThemeData(AppTheme.githubDark);
+      expect(theme.dialogTheme.titleTextStyle?.fontFamily, 'Inter');
+    });
+
+    test('weights survive the variable-font mapping', () {
+      // The variable file carries the weight axis; a heading must stay heavier
+      // than body text rather than collapsing to one rendered weight.
+      final t = ThemeService().getLightThemeData(AppTheme.githubDark).textTheme;
+      expect(
+        t.headlineMedium!.fontWeight!.value,
+        greaterThanOrEqualTo(t.bodyMedium!.fontWeight!.value),
+      );
+    });
   });
 }

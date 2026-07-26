@@ -1,7 +1,7 @@
 {
-    "name": "Tabulr - Timetable Creator",
+    "name": "Tabulr - BITS Pilani Timetable Maker",
     "short_name": "Tabulr",
-    "description": "Create and manage your personalized timetables with ease. A powerful, intuitive timetable creator for BITS Pilani students.",
+    "description": "Free timetable maker for BITS Pilani, Goa and Hyderabad. Generate clash-free schedules from the course booklet, calculate your CGPA, and browse past papers and notes in the academic drives.",
     "start_url": ".",
     "scope": ".",
     "id": "/",

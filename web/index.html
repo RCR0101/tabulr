@@ -18,10 +18,10 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Create and manage your personalized timetables with ease. A powerful, intuitive timetable creator for BITS Pilani students.">
-  <meta name="keywords" content="timetable, schedule, planner, academic, education, BITS Pilani, tabulr">
+  <meta name="description" content="Free timetable maker for BITS Pilani, Goa and Hyderabad. Generate clash-free schedules from the course booklet, calculate your CGPA, and browse past papers and notes in the academic drives.">
   <meta name="author" content="Tabulr">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="canonical" href="https://tabulr.net/">
 
   <!-- PWA theme color -->
   <meta name="theme-color" content="#58A6FF">
@@ -37,8 +37,89 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>Tabulr</title>
+  <title>Tabulr — BITS Pilani Timetable Maker, CGPA Calculator &amp; Academic Drives</title>
   <link rel="manifest" href="manifest.json">
+
+  <!--
+    Link previews. This app spreads by people pasting the URL into WhatsApp and
+    Discord groups, so these tags are the single highest-traffic piece of HTML
+    in the repo — without them a share renders as a bare grey URL.
+
+    Absolute URLs are mandatory: scrapers do not resolve relative paths against
+    <base>. og:image must stay a real 1200x630 file (web/og-image.png) rather
+    than the favicon, or WhatsApp falls back to a thumbnail-sized card.
+  -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Tabulr">
+  <meta property="og:url" content="https://tabulr.net/">
+  <meta property="og:title" content="Tabulr — BITS Pilani Timetable Maker">
+  <meta property="og:description" content="Generate clash-free timetables from the course booklet, calculate your CGPA, and browse past papers and notes in the academic drives. Free, open source, built by BITS students.">
+  <meta property="og:image" content="https://tabulr.net/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Tabulr — timetable maker, CGPA calculator and academic drives for BITS Pilani students">
+  <meta property="og:locale" content="en_IN">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Tabulr — BITS Pilani Timetable Maker">
+  <meta name="twitter:description" content="Generate clash-free timetables from the course booklet, calculate your CGPA, and browse past papers and notes in the academic drives.">
+  <meta name="twitter:image" content="https://tabulr.net/og-image.png">
+
+  <!--
+    CanvasKit paints the whole UI into a <canvas>, so a crawler executing this
+    page finds no readable text. This block is the only structured description
+    of the app that search engines can actually parse.
+  -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Tabulr",
+    "url": "https://tabulr.net/",
+    "applicationCategory": "EducationalApplication",
+    "operatingSystem": "Web, Android, iOS, Windows, macOS, Linux",
+    "description": "Free timetable maker for BITS Pilani, Goa and Hyderabad. Generates clash-free schedules from the course booklet, calculates CGPA, and hosts per-course academic drives of past papers and notes.",
+    "image": "https://tabulr.net/og-image.png",
+    "inLanguage": "en",
+    "isAccessibleForFree": true,
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "INR" },
+    "license": "https://opensource.org/licenses/MIT",
+    "audience": {
+      "@type": "EducationalAudience",
+      "educationalRole": "student",
+      "audienceType": "BITS Pilani students"
+    },
+    "featureList": [
+      "Clash-free timetable generation from the official course booklet",
+      "CGPA and SGPA calculator with grade projection",
+      "Academic drives: past papers, notes and slides per course",
+      "Exam seating and midsem/compre schedule lookup",
+      "Course prerequisite checker",
+      "Humanities and open elective browser",
+      "Academic calendar",
+      "Calendar export (ICS) with reminders"
+    ]
+  }
+  </script>
+
+  <!--
+    Google Analytics 4. Inert until GA_MEASUREMENT_ID is filled in — the app
+    has exactly one URL today, so this measures sessions, referrers and
+    retention, not per-screen behaviour. googletagmanager/google-analytics are
+    already allowed by the CSP in firebase.json.
+  -->
+  <script>
+    window.GA_MEASUREMENT_ID = 'G-GPWCL83NSD';
+    if (window.GA_MEASUREMENT_ID) {
+      var ga = document.createElement('script');
+      ga.async = true;
+      ga.src = 'https://www.googletagmanager.com/gtag/js?id=' + window.GA_MEASUREMENT_ID;
+      document.head.appendChild(ga);
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function () { window.dataLayer.push(arguments); };
+      gtag('js', new Date());
+      gtag('config', window.GA_MEASUREMENT_ID);
+    }
+  </script>
 
   <style>
     body { margin: 0; background: #0d1117; overscroll-behavior-x: none; }

@@ -28,6 +28,23 @@ jobs:
       - run: flutter build web --release --pwa-strategy=none --dart-define=LOGGER_API_KEY=${{ secrets.LOGGER_API_KEY }}
       - run: rm -f build/web/flutter_service_worker.js
 
+      # Node is pinned rather than taken from the runner image because the
+      # generator relies on global fetch (18+) and nothing else.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Crawlable HTML for the course catalogue. The Flutter UI renders to a
+      # <canvas>, so these pages are the only thing a search engine can read.
+      # Runs after the build (it writes into build/web) and before the deploy.
+      # No credentials: it reads the public Firestore REST API with the web key
+      # out of lib/firebase_options.dart, written a few steps above.
+      #
+      # Deliberately allowed to fail the job. A Hosting deploy replaces the
+      # whole site, so shipping without these would 404 every course URL Google
+      # has already indexed — better to block and re-run than to un-publish them.
+      - run: node scripts/generate-static-pages.js
+
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}

@@ -4,9 +4,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
-import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:timetable_maker/repositories/prerequisites_repository.dart';
 import 'package:timetable_maker/services/data/local_cache_service.dart';
+
+import '../helpers/fake_path_provider.dart';
 
 /// The prerequisites load path, and specifically whether its cache works.
 ///
@@ -26,21 +27,6 @@ import 'package:timetable_maker/services/data/local_cache_service.dart';
 /// through to the persistent tier — constructing a second instance no longer
 /// gives an empty in-memory cache.
 
-class _FakePathProvider extends PathProviderPlatform
-    with MockPlatformInterfaceMixin {
-  _FakePathProvider(this.path);
-  final String path;
-
-  @override
-  Future<String?> getApplicationDocumentsPath() async => path;
-
-  @override
-  Future<String?> getApplicationSupportPath() async => path;
-
-  @override
-  Future<String?> getTemporaryPath() async => path;
-}
-
 void main() {
   late Directory tempDir;
 
@@ -50,7 +36,7 @@ void main() {
   // every cache read silently missed.
   setUpAll(() async {
     tempDir = await Directory.systemTemp.createTemp('prereq_cache_test');
-    PathProviderPlatform.instance = _FakePathProvider(tempDir.path);
+    PathProviderPlatform.instance = FakePathProvider(tempDir.path);
   });
 
   tearDownAll(() async {

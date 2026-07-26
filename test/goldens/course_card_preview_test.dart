@@ -1,11 +1,10 @@
-import 'dart:io';
-import 'dart:ui' as ui;
-import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:timetable_maker/models/course.dart';
 import 'package:timetable_maker/models/timetable.dart';
 import 'package:timetable_maker/widgets/course_list_widget.dart';
+
+import '../helpers/preview_harness.dart';
 import '../helpers/test_data.dart';
 
 /// Renders the course card to a PNG so the design can be looked at rather than
@@ -14,26 +13,11 @@ import '../helpers/test_data.dart';
 ///   flutter test test/goldens/course_card_preview_test.dart
 ///   open test/goldens/course_card.png
 void main() {
-  setUpAll(() async {
-    // flutter test ships a placeholder font that draws every glyph as a filled
-    // box, which makes a design preview useless. Load the real bundled Inter.
-    final data = File('assets/fonts/Inter.ttf').readAsBytesSync();
-    final loader = FontLoader('Inter')
-      ..addFont(Future.value(ByteData.view(data.buffer)));
-    await loader.load();
-  });
+  setUpAll(loadPreviewFont);
 
-  for (final (name, brightness) in [
-    ('light', Brightness.light),
-    ('dark', Brightness.dark),
-  ]) {
-  testWidgets('render the card - \$name', (tester) async {
-    tester.view.physicalSize = const Size(820, 1500);
-    tester.view.devicePixelRatio = 2.0;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
+  for (final (name, brightness) in previewBrightnesses) {
+  testWidgets('render the card - $name', (tester) async {
+    usePreviewSurface(tester, const Size(820, 1500));
 
     final cs = makeCourse(
       courseCode: 'CS F301',
@@ -99,12 +83,7 @@ void main() {
     ];
 
     await tester.pumpWidget(MaterialApp(
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: 'Inter',
-        brightness: brightness,
-        colorSchemeSeed: const Color(0xFF58A6FF),
-      ),
+      theme: previewTheme(brightness),
       home: Scaffold(
         body: CourseListWidget(
           courses: [cs, math, bio],
@@ -120,13 +99,7 @@ void main() {
     await tester.tap(find.text('CS F301'));
     await tester.pumpAndSettle();
 
-    await tester.runAsync(() async {
-      final boundary = tester.firstRenderObject(find.byType(RepaintBoundary));
-      final image = await (boundary as dynamic).toImage(pixelRatio: 2.0);
-      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-      File('test/goldens/course_card_$name.png')
-          .writeAsBytesSync(bytes!.buffer.asUint8List());
-    });
+    await capturePreview(tester, 'course_card_$name');
   });
   }
 }

@@ -1,23 +1,17 @@
-import 'dart:io';
-import 'dart:ui' as ui;
-import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:timetable_maker/models/campus.dart';
 import 'package:timetable_maker/models/course.dart';
 import 'package:timetable_maker/models/timetable.dart';
 import 'package:timetable_maker/widgets/timetable_stats_panel.dart';
+
+import '../helpers/preview_harness.dart';
 import '../helpers/test_data.dart';
 
 /// Renders the TT Stats panel so the design can be looked at. Writing the PNG
 /// is the point; there is nothing asserted here.
 void main() {
-  setUpAll(() async {
-    final data = File('assets/fonts/Inter.ttf').readAsBytesSync();
-    final loader = FontLoader('Inter')
-      ..addFont(Future.value(ByteData.view(data.buffer)));
-    await loader.load();
-  });
+  setUpAll(loadPreviewFont);
 
   // A deliberately awkward week: 8 AM starts, a lab that eats lunch, a long
   // back-to-back run, a Saturday tutorial, and a gap on Tuesday.
@@ -113,37 +107,18 @@ void main() {
     clashWarnings: [],
   );
 
-  for (final (name, brightness) in [
-    ('light', Brightness.light),
-    ('dark', Brightness.dark),
-  ]) {
+  for (final (name, brightness) in previewBrightnesses) {
     testWidgets('render tt stats - $name', (tester) async {
       // 820 physical at 2.0 is 410 logical — a phone, the tightest case.
-      tester.view.physicalSize = const Size(820, 1900);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
+      usePreviewSurface(tester, const Size(820, 1900));
 
       await tester.pumpWidget(MaterialApp(
-        theme: ThemeData(
-          useMaterial3: true,
-          fontFamily: 'Inter',
-          brightness: brightness,
-          colorSchemeSeed: const Color(0xFF58A6FF),
-        ),
+        theme: previewTheme(brightness),
         home: Scaffold(body: TimetableStatsPanel(timetable: timetable)),
       ));
       await tester.pumpAndSettle();
 
-      await tester.runAsync(() async {
-        final boundary = tester.firstRenderObject(find.byType(RepaintBoundary));
-        final image = await (boundary as dynamic).toImage(pixelRatio: 2.0);
-        final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-        File('test/goldens/tt_stats_$name.png')
-            .writeAsBytesSync(bytes!.buffer.asUint8List());
-      });
+      await capturePreview(tester, 'tt_stats_$name');
     });
   }
 }

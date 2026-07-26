@@ -23,6 +23,7 @@ import 'services/ui/secure_logger.dart';
 import 'services/ui/performance_monitor.dart';
 import 'services/ui/remote_log_sink.dart';
 import 'widgets/theme_transition_overlay.dart';
+import 'utils/app_routes.dart';
 import 'utils/app_scroll_behavior.dart';
 import 'constants/app_constants.dart';
 
@@ -125,6 +126,12 @@ void main() async {
 
   if (kIsWeb) {
     web_utils.usePathUrlStrategy();
+    // Before runApp: the binding stops at the first observer that claims a
+    // pushed route, and WidgetsApp registers itself the moment MaterialApp
+    // builds. See [AppRouteObserver].
+    WidgetsBinding.instance.addObserver(AppRouteObserver());
+    // Read once, here, while Uri.base is still the URL the user arrived on.
+    AppRoutes.pendingShareCode = AppRoutes.shareCodeIn(Uri.base);
     _setupWebCacheClearOnClose();
   }
 

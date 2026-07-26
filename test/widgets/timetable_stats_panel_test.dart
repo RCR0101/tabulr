@@ -1,26 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:timetable_maker/models/campus.dart';
 import 'package:timetable_maker/models/course.dart';
-import 'package:timetable_maker/models/timetable.dart';
 import 'package:timetable_maker/widgets/timetable_stats_panel.dart';
 
 import '../helpers/test_data.dart';
-
-Timetable _tt(List<Course> courses) => Timetable(
-      id: 't1',
-      name: 'T',
-      createdAt: DateTime(2026, 1, 1),
-      updatedAt: DateTime(2026, 1, 1),
-      campus: Campus.hyderabad,
-      availableCourses: courses,
-      selectedSections: [
-        for (final c in courses)
-          makeSelectedSection(
-              courseCode: c.courseCode, section: c.sections.first),
-      ],
-      clashWarnings: [],
-    );
 
 Future<void> _pump(WidgetTester tester, List<Course> courses) async {
   tester.view.physicalSize = const Size(820, 1800);
@@ -30,7 +13,7 @@ Future<void> _pump(WidgetTester tester, List<Course> courses) async {
     tester.view.resetDevicePixelRatio();
   });
   await tester.pumpWidget(MaterialApp(
-    home: Scaffold(body: TimetableStatsPanel(timetable: _tt(courses))),
+    home: Scaffold(body: TimetableStatsPanel(timetable: makeTimetable(courses: courses))),
   ));
   await tester.pumpAndSettle();
 }

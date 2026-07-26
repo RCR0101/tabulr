@@ -1,3 +1,4 @@
+import 'package:timetable_maker/models/campus.dart';
 import 'package:timetable_maker/models/course.dart';
 import 'package:timetable_maker/models/timetable.dart';
 
@@ -48,6 +49,37 @@ SelectedSection makeSelectedSection({
     courseCode: courseCode,
     sectionId: sectionId,
     section: section ?? makeSection(sectionId: sectionId),
+  );
+}
+
+/// A timetable over [courses]. With no [selectedSections] it picks the first
+/// section of every course, which is what most suites want — six of them each
+/// declared their own near-identical builder before this existed.
+Timetable makeTimetable({
+  List<Course> courses = const [],
+  List<SelectedSection>? selectedSections,
+  String id = 'tt-1',
+  String name = 'Test',
+  Campus campus = Campus.hyderabad,
+}) {
+  return Timetable(
+    id: id,
+    name: name,
+    createdAt: DateTime(2026, 1, 1),
+    updatedAt: DateTime(2026, 1, 1),
+    campus: campus,
+    availableCourses: courses,
+    selectedSections: selectedSections ??
+        [
+          for (final c in courses)
+            if (c.sections.isNotEmpty)
+              makeSelectedSection(
+                courseCode: c.courseCode,
+                sectionId: c.sections.first.sectionId,
+                section: c.sections.first,
+              ),
+        ],
+    clashWarnings: [],
   );
 }
 

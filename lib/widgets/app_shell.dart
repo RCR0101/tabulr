@@ -24,18 +24,46 @@ import '../screens/free_slot_finder_screen.dart';
 import '../screens/credits_screen.dart';
 import '../screens/profile_screen.dart';
 import '../services/data/admin_service.dart';
+import '../utils/app_routes.dart';
 import 'common/deferred_screen.dart';
 import 'app_destinations.dart';
 import 'app_sidebar.dart';
 import 'command_palette.dart';
 import 'theme_selector_widget.dart';
 
+/// Turns browser back/forward into a screen switch.
+///
+/// Must be registered on [WidgetsBinding] *before* `runApp`. The binding hands
+/// a pushed route to each observer in registration order and stops at the first
+/// one that returns true; `WidgetsApp` registers itself when it builds and, on
+/// an app with no `routes:` table, answers by calling `pushNamed('/cgpa')` — a
+/// route nothing generates. Getting in first is what keeps that from happening,
+/// and is why this is a free-standing observer rather than the shell's own
+/// State, which the framework would always reach second.
+class AppRouteObserver with WidgetsBindingObserver {
+  @override
+  Future<bool> didPushRouteInformation(RouteInformation routeInformation) async {
+    // Falls back rather than doing nothing: this only fires for URLs already in
+    // this app's own history, so an unrecognised one means Back has landed on
+    // `/` or on a share link. Ignoring it would leave the address bar saying
+    // `/` while the CGPA screen is still showing, and the back button looking
+    // broken — which is half of what routing was meant to fix.
+    AppShell.goTo(
+      AppRoutes.screenIn(routeInformation.uri) ?? AppRoutes.defaultScreen,
+      updateUrl: false,
+    );
+    // Always handled: on web this app owns its whole URL space, and letting a
+    // path fall through to WidgetsApp is precisely the pushNamed crash above.
+    return true;
+  }
+}
+
 class AppShell extends StatefulWidget {
   final DrawerScreen initialScreen;
 
   const AppShell({
     super.key,
-    this.initialScreen = DrawerScreen.timetables,
+    this.initialScreen = AppRoutes.defaultScreen,
   });
 
   /// The mounted shell, if there is one.
@@ -50,7 +78,12 @@ class AppShell extends StatefulWidget {
   ///
   /// This only changes what sits *underneath* the current route; callers on a
   /// pushed route are responsible for leaving it themselves.
-  static void goTo(DrawerScreen screen) => _active?._onScreenSelected(screen);
+  ///
+  /// [updateUrl] is false when the browser is the one that moved (back button)
+  /// — writing the URL back would push a second history entry for a navigation
+  /// that already has one, and Back would then need two presses.
+  static void goTo(DrawerScreen screen, {bool updateUrl = true}) =>
+      _active?._onScreenSelected(screen, updateUrl: updateUrl);
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -66,7 +99,10 @@ class _AppShellState extends State<AppShell> {
   @override
   void initState() {
     super.initState();
-    _currentScreen = widget.initialScreen;
+    // A deep link wins over the default, but only once: [Uri.base] keeps
+    // returning the landing URL for the life of the page on web, so re-reading
+    // it later would drag the user back to where they arrived.
+    _currentScreen = AppRoutes.screenIn(Uri.base) ?? widget.initialScreen;
     _visitedScreens.add(_currentScreen);
     AppShell._active = this;
     // Handle Cmd/Ctrl+K at the keyboard level so it works regardless of where
@@ -106,12 +142,13 @@ class _AppShellState extends State<AppShell> {
     return true;
   }
 
-  void _onScreenSelected(DrawerScreen screen) {
+  void _onScreenSelected(DrawerScreen screen, {bool updateUrl = true}) {
     if (screen == _currentScreen) return;
     setState(() {
       _currentScreen = screen;
       _visitedScreens.add(screen);
     });
+    if (updateUrl) AppRoutes.show(screen);
   }
 
   void _showCommandPalette() {

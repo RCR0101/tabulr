@@ -43,6 +43,7 @@ import 'timetable_comparison_screen.dart';
 import 'prerequisites_screen.dart';
 import 'archived_timetables_screen.dart';
 import 'electives_screen.dart';
+import '../utils/app_routes.dart';
 
 class TimetablesScreen extends StatefulWidget {
   const TimetablesScreen({super.key});
@@ -80,6 +81,23 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     });
     _initializeAndLoadData();
     _registerPaletteActions();
+    _consumePendingShareLink();
+  }
+
+  /// Opens the import flow when the app was launched on a `/s/<code>` link.
+  ///
+  /// Consumed here rather than in the shell because this screen already owns
+  /// the whole import path — creating the timetable, replaying the sections,
+  /// reporting what clashed. Cleared on read so a later rebuild of this screen
+  /// (a campus switch, a sign-out and back in) doesn't re-offer the same
+  /// import.
+  void _consumePendingShareLink() {
+    final code = AppRoutes.pendingShareCode;
+    if (code == null) return;
+    AppRoutes.pendingShareCode = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _importFromShareCode(initialCode: code);
+    });
   }
 
   Future<void> _initializeAndLoadData() async {
@@ -205,8 +223,8 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     }
   }
 
-  Future<void> _importFromShareCode() async {
-    final result = await ImportTimetableDialog.show(context);
+  Future<void> _importFromShareCode({String? initialCode}) async {
+    final result = await ImportTimetableDialog.show(context, initialCode: initialCode);
     if (result == null || !mounted) return;
     try {
       final newTimetable = await _timetableService.createNewTimetable(result.name);

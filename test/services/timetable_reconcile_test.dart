@@ -1,36 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:timetable_maker/models/campus.dart';
 import 'package:timetable_maker/models/course.dart';
-import 'package:timetable_maker/models/timetable.dart';
 import 'package:timetable_maker/services/core/timetable_service.dart';
 
 import '../helpers/test_data.dart';
 
-/// Builds a timetable whose [availableCourses] is the "fresh catalogue" and
-/// whose [selectedSections] are what the student had saved.
-Timetable _timetable({
-  required List<Course> catalogue,
-  required List<SelectedSection> selections,
-}) {
-  return Timetable(
-    id: 't1',
-    name: 'T',
-    createdAt: DateTime(2026, 1, 1),
-    updatedAt: DateTime(2026, 1, 1),
-    campus: Campus.pilani,
-    availableCourses: catalogue,
-    selectedSections: selections,
-    clashWarnings: [],
-  );
-}
-
+/// Throughout: `courses` is the "fresh catalogue" and `selectedSections` is
+/// what the student had saved.
 void main() {
   group('reconcileSelections', () {
     test('no changes when saved section matches the catalogue', () {
       final section = makeSection(sectionId: 'L1', room: 'F101');
-      final tt = _timetable(
-        catalogue: [makeCourse(sections: [section])],
-        selections: [
+      final tt = makeTimetable(
+        courses: [makeCourse(sections: [section])],
+        selectedSections: [
           makeSelectedSection(sectionId: 'L1', section: section),
         ],
       );
@@ -44,9 +26,9 @@ void main() {
     test('detects a room change and rewrites the embedded section in place', () {
       final saved = makeSection(sectionId: 'L1', room: 'F101');
       final fresh = makeSection(sectionId: 'L1', room: 'G201');
-      final tt = _timetable(
-        catalogue: [makeCourse(sections: [fresh])],
-        selections: [
+      final tt = makeTimetable(
+        courses: [makeCourse(sections: [fresh])],
+        selectedSections: [
           makeSelectedSection(sectionId: 'L1', section: saved),
         ],
       );
@@ -73,9 +55,9 @@ void main() {
         days: [DayOfWeek.T],
         hours: [3],
       );
-      final tt = _timetable(
-        catalogue: [makeCourse(sections: [fresh])],
-        selections: [
+      final tt = makeTimetable(
+        courses: [makeCourse(sections: [fresh])],
+        selectedSections: [
           makeSelectedSection(sectionId: 'L1', section: saved),
         ],
       );
@@ -108,9 +90,9 @@ void main() {
           ScheduleEntry(days: [DayOfWeek.M], hours: [1]),
         ],
       );
-      final tt = _timetable(
-        catalogue: [makeCourse(sections: [fresh])],
-        selections: [
+      final tt = makeTimetable(
+        courses: [makeCourse(sections: [fresh])],
+        selectedSections: [
           makeSelectedSection(sectionId: 'L1', section: saved),
         ],
       );
@@ -121,11 +103,11 @@ void main() {
     test('flags a removed section but keeps the selection', () {
       final saved = makeSection(sectionId: 'L1');
       // Catalogue now only offers L2 for this course.
-      final tt = _timetable(
-        catalogue: [
+      final tt = makeTimetable(
+        courses: [
           makeCourse(sections: [makeSection(sectionId: 'L2')]),
         ],
-        selections: [
+        selectedSections: [
           makeSelectedSection(sectionId: 'L1', section: saved),
         ],
       );
@@ -139,9 +121,9 @@ void main() {
     });
 
     test('flags a section whose whole course is gone from the catalogue', () {
-      final tt = _timetable(
-        catalogue: [makeCourse(courseCode: 'MATH F111')],
-        selections: [
+      final tt = makeTimetable(
+        courses: [makeCourse(courseCode: 'MATH F111')],
+        selectedSections: [
           makeSelectedSection(courseCode: 'CS F111', sectionId: 'L1'),
         ],
       );

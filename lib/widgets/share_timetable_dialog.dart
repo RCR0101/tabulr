@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/timetable.dart';
 import '../services/data/timetable_sharing_service.dart';
+import '../utils/app_routes.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../services/ui/responsive_service.dart';
@@ -93,8 +94,8 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
   Future<void> _revoke() async {
     final confirmed = await AppDialog.confirm(
       context: context,
-      title: 'Revoke share code?',
-      message: 'The current code will stop working. A new code will be generated.',
+      title: 'Revoke share link?',
+      message: 'The current link will stop working. A new one will be generated.',
       confirmLabel: 'Revoke',
       isDangerous: true,
     );
@@ -111,7 +112,7 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
           _code = newCode;
           _isRevoking = false;
         });
-        ToastService.showSuccess('Share code revoked. New code generated.');
+        ToastService.showSuccess('Share link revoked. A new one has been generated.');
       }
     } catch (e) {
       if (mounted) {
@@ -141,8 +142,8 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
       children: [
         Text(
           alreadyShared
-              ? 'Your timetable is shared with the code below.'
-              : 'Share this code with friends so they can view or import your timetable.',
+              ? 'Your timetable is shared at the link below.'
+              : 'Send this link to friends — it opens Tabulr with your timetable ready to import.',
           style: TextStyle(fontSize: 13, color: scheme.onSurface.withValues(alpha: 0.7)),
         ),
         const SizedBox(height: 20),
@@ -154,8 +155,12 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
             borderRadius: AppDesign.borderRadiusMd,
             border: Border.all(color: scheme.primary.withValues(alpha: 0.3)),
           ),
+          // The link, not the raw code: a code has to be explained, pasted into
+          // the right dialog and typed correctly, while a link is one tap in
+          // the WhatsApp group it arrived in. The code is still what's stored,
+          // and the import dialog still accepts one.
           child: SelectableText(
-            _code ?? '',
+            _code == null ? '' : AppRoutes.shareUrl(_code!),
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -173,7 +178,7 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
                 ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
                 : Icon(Icons.link_off, size: 16, color: scheme.error),
             label: Text(
-              'Revoke & generate new code',
+              'Revoke & generate new link',
               style: TextStyle(fontSize: 12, color: scheme.error),
             ),
           ),
@@ -190,11 +195,11 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
       if (_code != null)
         FilledButton.icon(
           onPressed: () {
-            Clipboard.setData(ClipboardData(text: _code!));
-            ToastService.showSuccess('Code copied to clipboard');
+            Clipboard.setData(ClipboardData(text: AppRoutes.shareUrl(_code!)));
+            ToastService.showSuccess('Link copied to clipboard');
           },
           icon: const Icon(Icons.copy, size: 16),
-          label: const Text('Copy Code'),
+          label: const Text('Copy Link'),
         ),
     ];
   }
@@ -252,12 +257,17 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
 }
 
 class ImportTimetableDialog extends StatefulWidget {
-  const ImportTimetableDialog({super.key});
+  /// Pre-fills the field and looks it up straight away. Set when the app was
+  /// opened on a `/s/<code>` link, so arriving from a friend's message costs
+  /// no typing at all.
+  final String? initialCode;
 
-  static Future<SharedTimetableData?> show(BuildContext context) {
+  const ImportTimetableDialog({super.key, this.initialCode});
+
+  static Future<SharedTimetableData?> show(BuildContext context, {String? initialCode}) {
     return showDialog<SharedTimetableData>(
       context: context,
-      builder: (_) => const ImportTimetableDialog(),
+      builder: (_) => ImportTimetableDialog(initialCode: initialCode),
     );
   }
 
@@ -272,14 +282,24 @@ class _ImportTimetableDialogState extends State<ImportTimetableDialog> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.initialCode != null) {
+      _controller.text = widget.initialCode!;
+      _lookup();
+    }
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
 
   Future<void> _lookup() async {
-    final code = _controller.text.trim();
-    if (code.isEmpty) return;
+    // People paste the whole link, because that is what they were given.
+    final code = AppRoutes.shareCodeInText(_controller.text);
+    if (code == null) return;
 
     setState(() {
       _isLoading = true;
@@ -292,7 +312,7 @@ class _ImportTimetableDialogState extends State<ImportTimetableDialog> {
       if (!mounted) return;
       if (data == null) {
         setState(() {
-          _error = 'No timetable found for this code';
+          _error = 'No timetable found for this link';
           _isLoading = false;
         });
       } else {
@@ -304,7 +324,7 @@ class _ImportTimetableDialogState extends State<ImportTimetableDialog> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = 'Error looking up code';
+          _error = 'Error looking up that link';
           _isLoading = false;
         });
       }
@@ -330,7 +350,7 @@ class _ImportTimetableDialogState extends State<ImportTimetableDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Paste a share code from a friend to view their timetable.',
+              'Paste a share link (or code) from a friend to view their timetable.',
               style: TextStyle(fontSize: 13, color: scheme.onSurface.withValues(alpha: 0.7)),
             ),
             const SizedBox(height: 16),
@@ -338,8 +358,8 @@ class _ImportTimetableDialogState extends State<ImportTimetableDialog> {
               controller: _controller,
               decoration: AppDesign.inputDecoration(
                 context,
-                label: 'Share Code',
-                hint: 'Paste code here',
+                label: 'Share Link',
+                hint: 'Paste link here',
                 suffixIcon: IconButton(
                   icon: _isLoading
                       ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))

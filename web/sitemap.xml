@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The fallback sitemap: only the app's public routes, the ones a signed-out
+  visitor can actually open. scripts/generate-static-pages.js overwrites this
+  in build/web with the same list plus every generated course page, so this
+  file is what ships if that script was not run.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://tabulr.net/</loc><priority>1.0</priority></url>
+  <url><loc>https://tabulr.net/timetables</loc><priority>0.8</priority></url>
+  <url><loc>https://tabulr.net/exam-seating</loc><priority>0.8</priority></url>
+  <url><loc>https://tabulr.net/minors</loc><priority>0.8</priority></url>
+  <url><loc>https://tabulr.net/faq</loc><priority>0.8</priority></url>
+</urlset>
