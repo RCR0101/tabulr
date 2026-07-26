@@ -192,7 +192,7 @@ function collate({ catalogues, offerings, prereqs }) {
   const courses = new Map();
   const ensure = (code) => {
     if (!courses.has(code)) {
-      courses.set(code, { code, title: '', credits: 0, type: '', campuses: [], groups: prereqs.get(code) ?? [] });
+      courses.set(code, { code, title: '', credits: 0, type: '', campuses: [] });
     }
     return courses.get(code);
   };
@@ -284,7 +284,6 @@ function coursePage(course, cssHref) {
     `${course.code}${course.title ? ` (${course.title})` : ''} at BITS Pilani`,
     course.credits ? `${course.credits} units` : null,
     campusNames.length ? `offered at ${campusNames.join(', ')}` : null,
-    course.groups.length ? `${course.groups.length} prerequisite ${plural(course.groups.length, 'requirement')}` : null,
   ].filter(Boolean).join(' · ');
 
   const facts = [
@@ -292,18 +291,6 @@ function coursePage(course, cssHref) {
     course.type ? `<dt>Type</dt><dd>${esc(course.type)}</dd>` : '',
     campusNames.length ? `<dt>Offered at</dt><dd>${esc(campusNames.join(', '))}</dd>` : '',
   ].join('');
-
-  const prereqs = course.groups.length
-    ? `<section><h2>Prerequisites for ${esc(course.code)}</h2>
-<p>All of the following must be satisfied. Where a requirement lists several courses, any one of them counts.</p>
-<ul class="prereqs">
-${course.groups.map((g) => {
-    const opts = g.options.map((o) => `<a href="/courses/${slugify(o.course_code)}/">${esc(o.course_code)}</a>`);
-    const type = g.options.some((o) => o.type === 'pre') ? 'prerequisite' : 'co-requisite';
-    return `<li>${opts.join(' <em>or</em> ')} <span class="tag">${type}</span></li>`;
-  }).join('\n')}
-</ul></section>`
-    : '';
 
   // One line per campus. Exam dates earn their place — "MATH F211 compre date"
   // is a query people actually run — but they are also the only thing on this
@@ -331,9 +318,6 @@ ${offered.map((campus) => {
     description,
     url: `${ORIGIN}/courses/${slugify(course.code)}/`,
     provider: { '@type': 'CollegeOrUniversity', name: 'Birla Institute of Technology and Science, Pilani' },
-    ...(course.groups.length
-      ? { coursePrerequisites: course.groups.map((g) => g.options.map((o) => o.course_code).join(' or ')) }
-      : {}),
   };
 
   return page({
@@ -344,11 +328,10 @@ ${offered.map((campus) => {
     body: `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
 <h1>${esc(heading)}</h1>
 ${facts ? `<dl class="facts">${facts}</dl>` : ''}
-${prereqs}
 ${thisSemester}
 <section class="cta-block">
 <h2>Plan ${esc(course.code)} into your timetable</h2>
-<p>Tabulr builds a clash-free timetable around every section of ${esc(course.code)}, checks these prerequisites against your grade sheet, and exports the whole semester to your calendar.</p>
+<p>Tabulr builds a clash-free timetable around every section of ${esc(course.code)} and exports the whole semester to your calendar.</p>
 <p><a class="cta" href="/timetables">Open Tabulr</a></p>
 </section>`,
   });
@@ -475,13 +458,13 @@ function writeSample(outDir) {
     '3 sections',
     `<link rel="canonical" href="${ORIGIN}/courses/cs-f211/">`,
     '<h1>CS F211 Data Structures and Algorithms</h1>',
-    'href="/courses/math-f213/"', // prerequisite options link on to their own pages
     'Midsem 5 March 2026 (FN) · Compre 11 May 2026 (AN)',
     '<strong>BITS Goa</strong> <span class="tag">1 section</span>', // singular, no exam line
     '"@type":"Course"',
   ]) {
     if (!html.includes(needle)) throw new Error(`sample page is missing: ${needle}`);
   }
+  if (/Prerequisites for CS F211/.test(html)) throw new Error('sample page still renders prerequisites');
   // The whole point of the shrink: no per-section table survives. Matches
   // markup only — the page still says the word "instructors" in the sentence
   // explaining why they are not listed here.
@@ -519,7 +502,7 @@ async function main() {
 
   const collated = collate({ catalogues, offerings, prereqs });
   const worthAPage = [...collated.values()].filter(
-    (c) => c.campuses.some((x) => x.sectionCount > 0) || c.groups.length > 0,
+    (c) => c.campuses.some((x) => x.sectionCount > 0),
   );
   console.log(`\n${collated.size} distinct courses, ${worthAPage.length} with enough content to publish`);
 
