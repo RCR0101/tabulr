@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/app_constants.dart';
 import '../widgets/common/app_tappable.dart';
 import '../widgets/common/empty_state_widget.dart';
 import '../models/timetable.dart';
@@ -225,14 +226,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
     );
   }
 
-  static String _dayLabel(DayOfWeek day) => switch (day) {
-    DayOfWeek.M => 'Mon',
-    DayOfWeek.T => 'Tue',
-    DayOfWeek.W => 'Wed',
-    DayOfWeek.Th => 'Thu',
-    DayOfWeek.F => 'Fri',
-    DayOfWeek.S => 'Sat',
-  };
+  static String _dayLabel(DayOfWeek day) => DayConstants.shortLabels[day.index];
 
   Widget _buildStatsRow(TimetableStats stats) {
     final scheme = Theme.of(context).colorScheme;

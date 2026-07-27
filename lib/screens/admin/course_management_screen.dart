@@ -272,6 +272,10 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
     );
   }
 
+  /// Whole units stay ints ("3", not "3.0") so Firestore data and every
+  /// existing reader keep their shape; only true fractions store as doubles.
+  static num _unitsValue(double v) => v == v.roundToDouble() ? v.toInt() : v;
+
   Future<void> _showCourseDialog({Map<String, dynamic>? existing}) async {
     final isNew = existing == null;
     final codeCtrl = TextEditingController(
@@ -649,25 +653,28 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                             children: [
                               Expanded(
                                   child: field('L', lecCtrl,
-                                      keyboardType: TextInputType.number,
+                                      keyboardType: const TextInputType
+                                          .numberWithOptions(decimal: true),
                                       onChanged: (_) {
-                                        final l = int.tryParse(lecCtrl.text) ?? 0;
-                                        final p = int.tryParse(pracCtrl.text) ?? 0;
-                                        totalCtrl.text = '${l + p}';
+                                        final l = double.tryParse(lecCtrl.text) ?? 0;
+                                        final p = double.tryParse(pracCtrl.text) ?? 0;
+                                        totalCtrl.text = '${_unitsValue(l + p)}';
                                       })),
                               const SizedBox(width: 8),
                               Expanded(
                                   child: field('P', pracCtrl,
-                                      keyboardType: TextInputType.number,
+                                      keyboardType: const TextInputType
+                                          .numberWithOptions(decimal: true),
                                       onChanged: (_) {
-                                        final l = int.tryParse(lecCtrl.text) ?? 0;
-                                        final p = int.tryParse(pracCtrl.text) ?? 0;
-                                        totalCtrl.text = '${l + p}';
+                                        final l = double.tryParse(lecCtrl.text) ?? 0;
+                                        final p = double.tryParse(pracCtrl.text) ?? 0;
+                                        totalCtrl.text = '${_unitsValue(l + p)}';
                                       })),
                               const SizedBox(width: 8),
                               Expanded(
                                   child: field('Total', totalCtrl,
-                                      keyboardType: TextInputType.number)),
+                                      keyboardType: const TextInputType
+                                          .numberWithOptions(decimal: true))),
                             ],
                           ),
                           examPicker('Mid-Sem Exam', midSem, (v) {
@@ -770,11 +777,11 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                                     final docId =
                                         isNew ? _docId(code) : existing['docId'];
                                     final lec =
-                                        int.tryParse(lecCtrl.text) ?? 0;
+                                        double.tryParse(lecCtrl.text) ?? 0;
                                     final prac =
-                                        int.tryParse(pracCtrl.text) ?? 0;
+                                        double.tryParse(pracCtrl.text) ?? 0;
                                     final total =
-                                        int.tryParse(totalCtrl.text) ?? (lec + prac);
+                                        double.tryParse(totalCtrl.text) ?? (lec + prac);
                                     final ic = icCtrl.text.trim();
                                     await _crud.saveCourse(_campusId,
                                       docId: docId,
@@ -782,18 +789,18 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                                         'sections': sections,
                                         'mid_sem_exam': midSem?.toJson(),
                                         'end_sem_exam': endSem?.toJson(),
-                                        'lecture_credits': lec,
-                                        'practical_credits': prac,
+                                        'lecture_credits': _unitsValue(lec),
+                                        'practical_credits': _unitsValue(prac),
                                         // Persist U so the client shows the real
                                         // unit count, not a recomputed L + P.
-                                        'total_credits': total,
+                                        'total_credits': _unitsValue(total),
                                         if (ic.isNotEmpty)
                                           'instructor_in_charge': ic,
                                       },
                                       masterData: {
                                         'course_code': code,
                                         'title': titleCtrl.text.trim(),
-                                        'credits': total,
+                                        'credits': _unitsValue(total),
                                         'type': 'Normal',
                                         if (ic.isNotEmpty)
                                           'instructor_in_charge': ic,
@@ -898,7 +905,8 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                   final tSec = secsList.where((s) => s['type']?.toString().contains('.T') ?? false).length;
                   final lec = c['lecture_credits'] ?? 0;
                   final prac = c['practical_credits'] ?? 0;
-                  final total = c['credits'] ?? (lec + prac);
+                  final total =
+                      c['total_credits'] ?? c['credits'] ?? (lec + prac);
 
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),

@@ -502,21 +502,10 @@ class ExportService {
       final timetableData = ttData['timetable'];
 
       // Parse campus
-      Campus campus = Campus.hyderabad;
       final campusString = timetableData['campus'] as String?;
-      if (campusString != null) {
-        switch (campusString.toLowerCase()) {
-          case 'pilani':
-            campus = Campus.pilani;
-            break;
-          case 'hyderabad':
-            campus = Campus.hyderabad;
-            break;
-          case 'goa':
-            campus = Campus.goa;
-            break;
-        }
-      }
+      final Campus campus = campusString != null
+          ? Campus.fromCode(campusString.toLowerCase())
+          : Campus.hyderabad;
 
       // Parse courses
       final courses =

@@ -235,12 +235,17 @@ class _InstructorRankingDialogState extends State<InstructorRankingDialog>
             ),
             const SizedBox(height: 12),
             Container(
+              clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
               ),
-              child: ReorderableListView.builder(
+              // ListTiles paint ink/background on the nearest Material; provide a
+              // transparent one above the decorated box so they stay visible.
+              child: Material(
+                color: Colors.transparent,
+                child: ReorderableListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: rankedInstructors.length,
@@ -338,6 +343,7 @@ class _InstructorRankingDialogState extends State<InstructorRankingDialog>
                     ),
                   );
                 },
+              ),
               ),
             ),
           ],

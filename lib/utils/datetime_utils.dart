@@ -23,13 +23,14 @@ DateTime parseDateTime(dynamic value) {
 }
 
 String getDayName(DayOfWeek day, {bool abbreviated = false}) {
+  if (abbreviated) return DayConstants.shortLabels[day.index];
   switch (day) {
-    case DayOfWeek.M: return abbreviated ? 'Mon' : 'Monday';
-    case DayOfWeek.T: return abbreviated ? 'Tue' : 'Tuesday';
-    case DayOfWeek.W: return abbreviated ? 'Wed' : 'Wednesday';
-    case DayOfWeek.Th: return abbreviated ? 'Thu' : 'Thursday';
-    case DayOfWeek.F: return abbreviated ? 'Fri' : 'Friday';
-    case DayOfWeek.S: return abbreviated ? 'Sat' : 'Saturday';
+    case DayOfWeek.M: return 'Monday';
+    case DayOfWeek.T: return 'Tuesday';
+    case DayOfWeek.W: return 'Wednesday';
+    case DayOfWeek.Th: return 'Thursday';
+    case DayOfWeek.F: return 'Friday';
+    case DayOfWeek.S: return 'Saturday';
   }
 }
 

@@ -460,8 +460,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         orElse: () => null,
       );
       final addedCredits = course?.totalCredits ?? 0;
-      if (_currentTotalCredits() + addedCredits > 25) {
-        ToastService.showError('Adding this course would exceed the 25 credit limit');
+      if (_currentTotalCredits() + addedCredits > AppLimits.semesterCreditCap) {
+        ToastService.showError('Adding this course would exceed the ${AppLimits.semesterCreditCap.toInt()} credit limit');
         return;
       }
     }

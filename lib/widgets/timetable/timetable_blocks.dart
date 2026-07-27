@@ -1,3 +1,4 @@
+import '../../constants/app_constants.dart';
 import '../../models/course.dart';
 import '../../models/timetable.dart';
 
@@ -50,7 +51,7 @@ class TimetableBlockMap {
   /// Days that hold at least one class.
   final Set<DayOfWeek> occupiedDays;
 
-  static const int firstHour = 1;
+  static const int firstHour = ScheduleConstants.firstHour;
   static const int lastHour = 12;
 
   factory TimetableBlockMap.fromSlots(List<TimetableSlot> slots) {

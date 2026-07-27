@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/app_constants.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
 import '../services/data/campus_service.dart';
@@ -37,14 +38,9 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
   SortColumn _sortColumn = SortColumn.course;
   SortDirection _sortDirection = SortDirection.ascending;
 
-  static const _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
-
   /// "10 Mar" reads unambiguously; "10/3" is a date-format coin toss.
   static String _formatDate(DateTime d) =>
-      '${d.day} ${(d.month >= 1 && d.month <= 12) ? _months[d.month - 1] : d.month}';
+      '${d.day} ${(d.month >= 1 && d.month <= 12) ? DayConstants.monthNames[d.month] : d.month}';
 
   /// Booklet slots arrive as "9:30AM-11:00AM"; give the meridiem its space.
   static String _formatSlot(String raw) => raw

@@ -293,9 +293,7 @@ class _CourseGuideManagementScreenState
     }
   }
 
-  static final _semesters = SemesterConstants.all
-      .where((s) => !s.startsWith('ST') && s != '5-1' && s != '5-2')
-      .toList();
+  static final _semesters = SemesterConstants.yearsOneToFour;
 
   @override
   Widget build(BuildContext context) {

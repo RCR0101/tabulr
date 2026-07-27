@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/app_constants.dart';
 import '../models/course.dart' show DayOfWeek;
 import '../models/timetable.dart';
 import '../models/timetable_stats.dart';
@@ -149,12 +150,5 @@ class TimetableInsightsSheet extends StatelessWidget {
     );
   }
 
-  static String _dayName(DayOfWeek d) => switch (d) {
-        DayOfWeek.M => 'Mon',
-        DayOfWeek.T => 'Tue',
-        DayOfWeek.W => 'Wed',
-        DayOfWeek.Th => 'Thu',
-        DayOfWeek.F => 'Fri',
-        DayOfWeek.S => 'Sat',
-      };
+  static String _dayName(DayOfWeek d) => DayConstants.shortLabels[d.index];
 }

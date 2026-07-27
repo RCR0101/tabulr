@@ -407,8 +407,13 @@ class _AdminScreenState extends State<AdminScreen> {
     return Container(
       key: key,
       margin: const EdgeInsets.only(bottom: AppDesign.spacingMd),
+      clipBehavior: Clip.antiAlias,
       decoration: AppDesign.cardDecoration(context),
-      child: Column(
+      // ListTiles paint ink/background on the nearest Material; provide a
+      // transparent one above the decorated box so they stay visible.
+      child: Material(
+        color: Colors.transparent,
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
@@ -448,6 +453,7 @@ class _AdminScreenState extends State<AdminScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

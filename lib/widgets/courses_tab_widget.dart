@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../constants/app_constants.dart';
 import '../models/academic_record.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
@@ -63,8 +64,8 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
     final projectCredits = widget.projectCount * 3;
     final totalCredits = courseCredits + projectCredits;
     final scheme = Theme.of(context).colorScheme;
-    final isOver = totalCredits > 25;
-    final canAddProject = totalCredits + 3 <= 25 && widget.projectCount < 8;
+    final isOver = totalCredits > AppLimits.semesterCreditCap;
+    final canAddProject = totalCredits + 3 <= AppLimits.semesterCreditCap && widget.projectCount < 8;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -77,7 +78,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
           Icon(Icons.school, size: 16, color: isOver ? scheme.error : scheme.primary),
           const SizedBox(width: 6),
           Text(
-            '${totalCredits % 1 == 0 ? totalCredits.toInt() : totalCredits.toStringAsFixed(1)}/25 credits',
+            '${totalCredits % 1 == 0 ? totalCredits.toInt() : totalCredits.toStringAsFixed(1)}/${AppLimits.semesterCreditCap.toInt()} credits',
             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isOver ? scheme.error : scheme.primary),
           ),
           if (selectedCoursesCodes.isNotEmpty) ...[
@@ -101,7 +102,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
           InkWell(
             onTap: canAddProject
                 ? () { widget.onProjectCountChanged(widget.projectCount + 1); }
-                : () { if (totalCredits + 3 > 25) ToastService.showError('Cannot add project — would exceed 25 credit limit'); },
+                : () { if (totalCredits + 3 > AppLimits.semesterCreditCap) ToastService.showError('Cannot add project — would exceed ${AppLimits.semesterCreditCap.toInt()} credit limit'); },
             child: Icon(Icons.add_circle_outline, size: 16, color: canAddProject ? scheme.primary : scheme.onSurface.withValues(alpha: AppDesign.opacityLow)),
           ),
           if (widget.projectCount > 0) ...[

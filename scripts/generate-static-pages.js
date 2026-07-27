@@ -412,71 +412,80 @@ img{max-width:100%}
 `;
 
 /**
- * Public app routes worth listing: the `everyone` destinations in
- * lib/widgets/app_destinations.dart plus the pushed screens in
- * lib/widgets/app_tools.dart that are not `signedInOnly`.
+ * Landing pages must NOT be named after an app route.
  *
- * Signed-in-only screens are left out — `/electives` and `/prerequisites`
+ * Hosting matches a real file before the `** -> /index.html` rewrite, so a
+ * directory called `timetables/` takes `/timetables` away from the app: the
+ * tab becomes unreachable by URL and the CTA below redirects to itself. Hence
+ * `timetable-maker` for the page and `/timetables` for the link out of it.
+ *
+ * Signed-in-only screens have no page here — `/electives` and `/prerequisites`
  * among them. Both would be strong landing pages, and their Firestore data is
  * world-readable, but the app currently shows a crawler (and a first-time
  * visitor) the sign-in wall, and an indexed URL nobody can open is worse than
  * no URL. Opening those two to guests is the change that would earn them a
  * place here.
  */
-const PUBLIC_ROUTES = ['/', '/timetables', '/exam-seating', '/minors', '/faq', '/credits', '/courses/'];
-
 const LANDING_PAGES = [
   {
-    path: 'timetables',
+    path: 'timetable-maker',
     title: 'Timetable maker for BITS Pilani | Tabulr',
     description: 'Build clash-free timetables from the official course booklet, compare schedules and export your semester.',
     heading: 'Timetable builder',
     body: '<p>Tabulr helps you assemble a semester timetable from live course offerings, then compare and save the result without clashes.</p><ul><li>Pick courses from the current catalogue</li><li>Compare multiple timetable options</li><li>Export to your calendar</li></ul>',
-    canonical: `${ORIGIN}/timetables/`,
+    canonical: `${ORIGIN}/timetable-maker/`,
     ctaHref: '/timetables',
     ctaLabel: 'Start building a timetable',
   },
   {
-    path: 'cgpa',
+    path: 'cgpa-calculator',
     title: 'CGPA calculator for BITS Pilani | Tabulr',
     description: 'Calculate, plan and project your CGPA with semester-by-semester grade tracking.',
     heading: 'CGPA calculator',
     body: '<p>Use Tabulr to track your semester grades, project future CGPA outcomes and import marks from a performance sheet when you have one.</p><ul><li>Calculate CGPA and SGPA</li><li>Project future grades</li><li>Import past results from PDF</li></ul>',
-    canonical: `${ORIGIN}/cgpa/`,
+    canonical: `${ORIGIN}/cgpa-calculator/`,
     ctaHref: '/cgpa',
     ctaLabel: 'Open the CGPA calculator',
   },
   {
-    path: 'exam-seating',
+    path: 'exam-seating-lookup',
     title: 'Exam seating lookup for BITS Pilani | Tabulr',
     description: 'Find your exam seat and room by student ID, or import courses from a timetable.',
     heading: 'Exam seating',
     body: '<p>Tabulr looks up official exam seating details, helps you import the right courses and keeps the room and seat lookup in one place.</p><ul><li>Search by ID number</li><li>Import courses from a timetable</li><li>See exam room and seating details</li></ul>',
-    canonical: `${ORIGIN}/exam-seating/`,
+    canonical: `${ORIGIN}/exam-seating-lookup/`,
     ctaHref: '/exam-seating',
     ctaLabel: 'Look up exam seating',
   },
   {
-    path: 'minors',
+    path: 'minor-programmes',
     title: 'BITS Pilani minor programmes | Tabulr',
     description: 'Browse minor programmes and track progress toward each one.',
     heading: 'Minor programmes',
     body: '<p>Browse the available minors, search by course code and keep an eye on progress when you have a CGPA record loaded.</p><ul><li>Search minors and course codes</li><li>Track cleared courses</li><li>See how far along you are</li></ul>',
-    canonical: `${ORIGIN}/minors/`,
+    canonical: `${ORIGIN}/minor-programmes/`,
     ctaHref: '/minors',
     ctaLabel: 'Browse minors',
   },
   {
-    path: 'faq',
+    path: 'academic-faq',
     title: 'BITS academic FAQ | Tabulr',
     description: 'Straight answers on grades, attendance, registration and other academic rules.',
     heading: 'Academic FAQ',
     body: '<p>Tabulr keeps the most commonly searched academic rules in one searchable place, with answers distilled from the regulations and bulletin.</p><ul><li>Search by keyword</li><li>Filter by topic</li><li>Read concise answers fast</li></ul>',
-    canonical: `${ORIGIN}/faq/`,
+    canonical: `${ORIGIN}/academic-faq/`,
     ctaHref: '/faq',
     ctaLabel: 'Read the academic FAQ',
   },
 ];
+
+/**
+ * Only URLs that serve their own HTML. Every in-app route returns the same
+ * index.html, so listing `/timetables`, `/cgpa` and friends would offer the
+ * crawler five copies of one shell — the landing pages are what they were
+ * meant to point at.
+ */
+const PUBLIC_ROUTES = ['/', ...LANDING_PAGES.map((l) => `/${l.path}/`), '/courses/'];
 
 const sitemap = (courses) => `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -544,6 +553,25 @@ function writeSample(outDir) {
   // markup only — the page still says the word "instructors" in the sentence
   // explaining why they are not listed here.
   if (/<table[\s>]/.test(html)) throw new Error('sample page still renders a section table');
+  // A landing page named after an app route steals that route: Hosting serves
+  // the directory and never reaches the SPA rewrite. This shipped once, taking
+  // out five tabs at the same time, and is invisible until someone opens the
+  // deployed URL — so read the slugs back out of the app and refuse to build.
+  const destinations = fs.readFileSync(
+    path.join(__dirname, '..', 'lib', 'widgets', 'app_destinations.dart'), 'utf8');
+  const tabSlugs = new Set([...destinations.matchAll(/slug: '([^']+)'/g)].map((m) => m[1]));
+  for (const landing of LANDING_PAGES) {
+    if (tabSlugs.has(landing.path)) {
+      throw new Error(
+        `landing page "${landing.path}" collides with the app tab /${landing.path} — ` +
+        'rename the page (its ctaHref is what should point at the app)');
+    }
+    const dir = path.join(outDir, landing.path);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'index.html'),
+      landingPage({ ...landing, cssHref: '../static-pages.css' }));
+  }
+
   console.log(`sample ok — open ${path.join(outDir, 'courses', slugify(course.code), 'index.html')}`);
 }
 

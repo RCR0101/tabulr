@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../constants/app_constants.dart';
 import '../../models/course.dart' show DayOfWeek;
 
 /// A compact bar per weekday (Mon–Sat) showing contact hours, so the *shape* of
@@ -17,7 +18,7 @@ class WeeklyLoadChart extends StatelessWidget {
   static const _days = [
     DayOfWeek.M, DayOfWeek.T, DayOfWeek.W, DayOfWeek.Th, DayOfWeek.F, DayOfWeek.S,
   ];
-  static const _labels = ['M', 'T', 'W', 'Th', 'F', 'S'];
+  static const _labels = DayConstants.singleChar;
 
   @override
   Widget build(BuildContext context) {

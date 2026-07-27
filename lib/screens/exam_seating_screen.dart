@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+import '../constants/app_constants.dart';
 import '../services/data/exam_seating_service.dart';
 import '../widgets/common/empty_state_widget.dart';
 import '../widgets/common/shimmer_loading.dart';
@@ -598,16 +599,11 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
     }
   }
 
-  static const _monthAbbr = [
-    '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
-
   /// "24 Nov" from a parseable exam date, else null.
   String? _examDayLabel(String raw) {
     final dt = _parseExamDateTime(raw);
     if (dt == null) return null;
-    return '${dt.day} ${_monthAbbr[dt.month]}';
+    return '${dt.day} ${DayConstants.monthNames[dt.month]}';
   }
 
   /// The session token — AN/FN, or a start time like "9:30 AM" — else null.

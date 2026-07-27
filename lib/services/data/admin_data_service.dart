@@ -11,7 +11,7 @@ class AdminDataService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> _timetableRef(String campusId) =>
-      _db.collection(FirestoreCollections.campuses).doc(campusId).collection('timetable');
+      _db.collection(FirestoreCollections.campuses).doc(campusId).collection(FirestoreCollections.timetable);
 
   CollectionReference<Map<String, dynamic>> _masterRef(String campusId) =>
       _db.collection(FirestoreCollections.campuses).doc(campusId).collection(FirestoreCollections.coursesMaster);

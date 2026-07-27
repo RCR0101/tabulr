@@ -108,6 +108,17 @@ class Section {
     };
   }
 
+  static String dedupeInstructors(String field) {
+    final seen = <String>{};
+    final kept = <String>[];
+    for (final name in field.split(',')) {
+      final trimmed = name.trim();
+      if (trimmed.isEmpty) continue;
+      if (seen.add(trimmed.toLowerCase())) kept.add(trimmed);
+    }
+    return kept.join(', ');
+  }
+
   factory Section.fromJson(Map<String, dynamic> json) {
     return Section(
       sectionId: json['sectionId'],
@@ -115,7 +126,7 @@ class Section {
         (e) => e.toString() == json['type'],
         orElse: () => SectionType.L,
       ),
-      instructor: json['instructor'],
+      instructor: dedupeInstructors(json['instructor'] as String? ?? ''),
       room: json['room'],
       schedule: (json['schedule'] as List? ?? const [])
           .map((entry) => ScheduleEntry.fromJson(entry))

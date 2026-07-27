@@ -69,30 +69,15 @@ class ProfessorScheduleEntry {
   String get hourRangeString {
     if (hours.isEmpty) return '';
 
-    const hourSlotNames = {
-      1: '8:00-8:50 AM',
-      2: '9:00-9:50 AM',
-      3: '10:00-10:50 AM',
-      4: '11:00-11:50 AM',
-      5: '12:00-12:50 PM',
-      6: '1:00-1:50 PM',
-      7: '2:00-2:50 PM',
-      8: '3:00-3:50 PM',
-      9: '4:00-4:50 PM',
-      10: '5:00-5:50 PM',
-      11: '6:00-6:50 PM',
-      12: '7:00-7:50 PM',
-    };
-
     if (hours.length == 1) {
-      return hourSlotNames[hours.first] ?? '';
+      return ScheduleConstants.hourSlotNames[hours.first] ?? '';
     }
 
     final sortedHours = List<int>.from(hours)..sort();
     final startHour = sortedHours.first;
     final endHour = sortedHours.last;
-    final startTime = hourSlotNames[startHour]?.split('-')[0] ?? '';
-    final endTime = hourSlotNames[endHour]?.split('-')[1] ?? '';
+    final startTime = ScheduleConstants.hourSlotNames[startHour]?.split('-')[0] ?? '';
+    final endTime = ScheduleConstants.hourSlotNames[endHour]?.split('-')[1] ?? '';
     return '$startTime-$endTime';
   }
 
@@ -215,39 +200,21 @@ class Professor {
 
   /// Convert weekday (1=Monday) to day abbreviation
   static String? _getDayAbbreviation(int weekday) {
-    const dayMap = {
-      1: 'M',
-      2: 'T',
-      3: 'W',
-      4: 'Th',
-      5: 'F',
-      6: 'S',
-    };
-    return dayMap[weekday];
+    if (weekday < 1 || weekday > DayConstants.singleChar.length) return null;
+    return DayConstants.singleChar[weekday - 1];
   }
 
   /// Get the current hour slot based on time
   static int? _getCurrentHourSlot(DateTime time) {
-    final hour = time.hour;
-    final minute = time.minute;
-    final totalMinutes = hour * 60 + minute;
+    final totalMinutes = time.hour * 60 + time.minute;
 
     // Maps a wall-clock time to a BITS hour slot (1 = 8:00, … 12 = 19:00).
     // Slot boundaries are the single source of truth in
     // ScheduleConstants.hourSlotNames.
-
-    if (totalMinutes >= 8 * 60 && totalMinutes < 8 * 60 + 50) return 1;
-    if (totalMinutes >= 9 * 60 && totalMinutes < 9 * 60 + 50) return 2;
-    if (totalMinutes >= 10 * 60 && totalMinutes < 10 * 60 + 50) return 3;
-    if (totalMinutes >= 11 * 60 && totalMinutes < 11 * 60 + 50) return 4;
-    if (totalMinutes >= 12 * 60 && totalMinutes < 12 * 60 + 50) return 5;
-    if (totalMinutes >= 13 * 60 && totalMinutes < 13 * 60 + 50) return 6;
-    if (totalMinutes >= 14 * 60 && totalMinutes < 14 * 60 + 50) return 7;
-    if (totalMinutes >= 15 * 60 && totalMinutes < 15 * 60 + 50) return 8;
-    if (totalMinutes >= 16 * 60 && totalMinutes < 16 * 60 + 50) return 9;
-    if (totalMinutes >= 17 * 60 && totalMinutes < 17 * 60 + 50) return 10;
-    if (totalMinutes >= 18 * 60 && totalMinutes < 18 * 60 + 50) return 11;
-    if (totalMinutes >= 19 * 60 && totalMinutes < 19 * 60 + 50) return 12;
+    for (final entry in ScheduleConstants.hourToTime.entries) {
+      final start = entry.value[0] * 60 + entry.value[1];
+      if (totalMinutes >= start && totalMinutes < start + 50) return entry.key;
+    }
 
     return null;
   }

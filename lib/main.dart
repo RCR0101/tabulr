@@ -144,7 +144,7 @@ void _setupWebCacheClearOnClose() {
         try {
           final authService = AuthService();
           if (!authService.isAuthenticated) {
-            web_utils.clearLocalStorageItem('user_timetable_data');
+            web_utils.clearLocalStorageItem(StorageKeys.userTimetableData);
           }
         } catch (e) {
           // Silently ignore localStorage errors

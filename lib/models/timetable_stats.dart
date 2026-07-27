@@ -262,14 +262,7 @@ class TimetableStats {
     return parts.join(' · ');
   }
 
-  static String _shortDay(DayOfWeek day) => switch (day) {
-    DayOfWeek.M => 'Mon',
-    DayOfWeek.T => 'Tue',
-    DayOfWeek.W => 'Wed',
-    DayOfWeek.Th => 'Thu',
-    DayOfWeek.F => 'Fri',
-    DayOfWeek.S => 'Sat',
-  };
+  static String _shortDay(DayOfWeek day) => DayConstants.shortLabels[day.index];
 }
 
 class ExamEntry {

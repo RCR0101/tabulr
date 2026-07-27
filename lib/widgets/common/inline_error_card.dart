@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../constants/app_constants.dart';
 import '../../utils/design_constants.dart';
 
 class InlineErrorCard extends StatelessWidget {
@@ -36,7 +37,10 @@ class InlineErrorCard extends StatelessWidget {
                 icon: const Icon(Icons.close, size: 18),
                 onPressed: onDismiss,
                 tooltip: 'Dismiss error',
-                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                constraints: const BoxConstraints(
+                  minWidth: ResponsiveConstants.minTouchTarget,
+                  minHeight: ResponsiveConstants.minTouchTarget,
+                ),
               ),
           ],
         ),

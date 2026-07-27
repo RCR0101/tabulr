@@ -87,6 +87,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
       child: Container(
       margin: const EdgeInsets.all(8),
       padding: const EdgeInsets.all(16),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
@@ -98,7 +99,11 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
           ),
         ],
       ),
-      child: Column(
+      // ListTiles paint ink/background on the nearest Material; provide a
+      // transparent one above the decorated box so they stay visible.
+      child: Material(
+        color: Colors.transparent,
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
             ResponsiveService.buildResponsive(
@@ -513,6 +518,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
               ),
             ),
         ],
+      ),
       ),
     ),
     ),

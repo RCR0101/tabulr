@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:url_launcher/url_launcher.dart';
 
+import '../constants/app_constants.dart';
 import '../models/academic_record.dart';
 import '../models/timetable_selection_link.dart';
 import '../services/data/campus_service.dart';
@@ -661,7 +662,7 @@ class _ProfessorDetailDialog extends StatelessWidget {
 
   Widget _buildScheduleTab(BuildContext context) {
     final scheduleByDay = professor.getScheduleByDay();
-    final dayOrder = ['M', 'T', 'W', 'Th', 'F', 'S'];
+    final dayOrder = DayConstants.singleChar;
 
     if (scheduleByDay.isEmpty) {
       return Center(

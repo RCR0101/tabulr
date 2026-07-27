@@ -340,20 +340,9 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
   }
 
   TimeOfDay _hourToTimeOfDay(int hour) {
-    const mapping = {
-      1: TimeOfDay(hour: 8, minute: 0),
-      2: TimeOfDay(hour: 9, minute: 0),
-      3: TimeOfDay(hour: 10, minute: 0),
-      4: TimeOfDay(hour: 11, minute: 0),
-      5: TimeOfDay(hour: 12, minute: 0),
-      6: TimeOfDay(hour: 13, minute: 0),
-      7: TimeOfDay(hour: 14, minute: 0),
-      8: TimeOfDay(hour: 15, minute: 0),
-      9: TimeOfDay(hour: 16, minute: 0),
-      10: TimeOfDay(hour: 17, minute: 0),
-      11: TimeOfDay(hour: 18, minute: 0),
-    };
-    return mapping[hour] ?? TimeOfDay(hour: 7 + hour, minute: 0);
+    final time = ScheduleConstants.hourToTime[hour];
+    if (time != null) return TimeOfDay(hour: time[0], minute: time[1]);
+    return TimeOfDay(hour: 7 + hour, minute: 0);
   }
 
   Future<void> _saveEventToCalendar(CalendarEvent event) async {

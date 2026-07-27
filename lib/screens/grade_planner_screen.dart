@@ -651,6 +651,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
     return Container(
       key: ValueKey(course.courseCode),
       margin: const EdgeInsets.only(bottom: 8),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
@@ -658,7 +659,11 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
         ),
       ),
-      child: ListTile(
+      // ListTiles paint ink/background on the nearest Material; provide a
+      // transparent one above the decorated box so they stay visible.
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
         leading: Container(
           width: 36,
           height: 36,
@@ -722,6 +727,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
               ),
             ),
           ],
+        ),
         ),
       ),
     );

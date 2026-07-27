@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
+import '../constants/app_constants.dart';
 import '../models/academic_record.dart';
 import '../models/course.dart';
 import '../models/timetable.dart';
@@ -784,14 +785,9 @@ class _CourseCard extends StatelessWidget {
     }).join('  ·  ');
   }
 
-  static const _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
-
   /// "10 Mar" reads unambiguously; "10/3" is a date-format coin toss.
   static String _month(int m) =>
-      (m >= 1 && m <= 12) ? _months[m - 1] : '$m';
+      (m >= 1 && m <= 12) ? DayConstants.monthNames[m] : '$m';
 
   static String _typeName(SectionType type) => switch (type) {
         SectionType.L => 'lecture',

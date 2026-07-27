@@ -206,4 +206,35 @@ void main() {
       expect(input, hasLength(2));
     });
   });
+
+  _dedupeInstructorsTests();
+}
+
+void _dedupeInstructorsTests() {
+  group('Section.dedupeInstructors', () {
+    test('drops a repeat that differs only in case', () {
+      expect(Section.dedupeInstructors('R N Sharma, R N SHARMA'), 'R N Sharma');
+    });
+
+    test('keeps the first spelling verbatim', () {
+      expect(Section.dedupeInstructors('r n sharma, R N SHARMA'), 'r n sharma');
+    });
+
+    test('keeps genuinely different people, in order', () {
+      expect(Section.dedupeInstructors('A KUMAR, B SINGH, a kumar'),
+          'A KUMAR, B SINGH');
+    });
+
+    test('trims and drops empties', () {
+      expect(Section.dedupeInstructors('  A KUMAR , , A kumar '), 'A KUMAR');
+      expect(Section.dedupeInstructors(''), '');
+    });
+
+    test('only the outer spaces are ignored, never the inner ones', () {
+      // Anything past case is a guess, and a wrong guess hides a real
+      // co-instructor rather than merely showing a name twice.
+      expect(Section.dedupeInstructors('RN Sharma, R N Sharma, R.N. Sharma'),
+          'RN Sharma, R N Sharma, R.N. Sharma');
+    });
+  });
 }

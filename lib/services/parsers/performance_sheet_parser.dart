@@ -414,7 +414,9 @@ class PerformanceSheetParser {
 
       for (final entry in semester.courses) {
         final lookup = courseMap[entry.courseCode.toUpperCase()];
-        final isATC = entry.grade == 'GD' || entry.grade == 'PR' || entry.grade == 'SA' || entry.grade == 'US';
+        // ATCs minus NC — an NC report doesn't mark a course as ATC.
+        final isATC = GradeConstants.atc.contains(entry.grade) &&
+            entry.grade != 'NC';
 
         courses.add(CourseEntry(
           courseCode: entry.courseCode,

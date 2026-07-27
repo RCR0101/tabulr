@@ -4,6 +4,7 @@ import 'package:flutter/painting.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../constants/app_constants.dart';
 import 'config_service.dart';
 import '../ui/secure_logger.dart';
 import '../ui/remote_log_sink.dart';
@@ -68,8 +69,8 @@ class AuthService {
             SecureLogger.authEvent('Google Sign-In redirect successful');
             // Store auth preference
             final prefs = await SharedPreferences.getInstance();
-            await prefs.setBool('is_authenticated', true);
-            await prefs.remove('is_guest');
+            await prefs.setBool(StorageKeys.isAuthenticated, true);
+            await prefs.remove(StorageKeys.isGuest);
           } else {
             SecureLogger.debug('AUTH', 'No redirect result found');
           }
@@ -83,7 +84,7 @@ class AuthService {
 
       if (currentUser != null) {
         SecureLogger.info('AUTH', 'Current user found during initialization');
-        await prefs.setBool('is_authenticated', true);
+        await prefs.setBool(StorageKeys.isAuthenticated, true);
       } else {
         SecureLogger.debug('AUTH', 'No current user found during initialization');
         // Don't clear is_authenticated here — on web, Firebase restores the
@@ -133,8 +134,8 @@ class AuthService {
           
           // Store auth preference
           final prefs = await SharedPreferences.getInstance();
-          await prefs.setBool('is_authenticated', true);
-          await prefs.remove('is_guest');
+          await prefs.setBool(StorageKeys.isAuthenticated, true);
+          await prefs.remove(StorageKeys.isGuest);
           
           return userCredential;
         } catch (popupError) {
@@ -170,8 +171,8 @@ class AuthService {
         
         // Store auth preference
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('is_authenticated', true);
-        await prefs.remove('is_guest');
+        await prefs.setBool(StorageKeys.isAuthenticated, true);
+        await prefs.remove(StorageKeys.isGuest);
         
         return userCredential;
       }
@@ -195,8 +196,8 @@ class AuthService {
       
       // Clear any existing auth preferences
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('is_authenticated');
-      await prefs.remove('is_guest');
+      await prefs.remove(StorageKeys.isAuthenticated);
+      await prefs.remove(StorageKeys.isGuest);
       
       // Notify listeners that auth method has been chosen
       _authStateController.add(true);
@@ -225,8 +226,8 @@ class AuthService {
       
       // Clear preferences
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('is_authenticated');
-      await prefs.remove('is_guest');
+      await prefs.remove(StorageKeys.isAuthenticated);
+      await prefs.remove(StorageKeys.isGuest);
       
       // Small delay to ensure Firebase auth state change propagates
       await Future.delayed(const Duration(milliseconds: 100));
@@ -287,8 +288,8 @@ class AuthService {
   Future<bool> isValidAuthState() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final isAuthenticated = prefs.getBool('is_authenticated') ?? false;
-      final isGuest = prefs.getBool('is_guest') ?? false;
+      final isAuthenticated = prefs.getBool(StorageKeys.isAuthenticated) ?? false;
+      final isGuest = prefs.getBool(StorageKeys.isGuest) ?? false;
       
       return isAuthenticated || isGuest;
     } catch (e) {
@@ -301,8 +302,8 @@ class AuthService {
   Future<void> clearAuthData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('is_authenticated');
-      await prefs.remove('is_guest');
+      await prefs.remove(StorageKeys.isAuthenticated);
+      await prefs.remove(StorageKeys.isGuest);
     } catch (e) {
       SecureLogger.error('AUTH', 'Failed to clear auth data', e);
     }
