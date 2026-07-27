@@ -43,6 +43,61 @@ void main() {
     });
   });
 
+  group('AppRoutes.currentUri', () {
+    // What the Router reads to decide what the address bar should say, and
+    // whether the move deserves a history entry.
+    final history = AppRoutes.history;
+    final shell = _FakeRoute(const RouteSettings(name: '/'), isFirst: true);
+
+    setUp(() => history.didPush(shell, null));
+    tearDown(() => history.didPop(shell, null));
+
+    Route<dynamic> route(String? name) =>
+        _FakeRoute(RouteSettings(name: name), isFirst: false);
+
+    test('names the pushed screen the user is looking at', () {
+      final credits = route('/credits');
+      history.didPush(credits, shell);
+      expect(AppRoutes.currentUri.path, '/credits');
+      history.didPop(credits, shell);
+    });
+
+    test('a dialog over a screen does not change the URL', () {
+      // The trap in reporting only the topmost route: a menu, sheet or dialog
+      // is pushed without settings, and answering `/` for it would rewrite the
+      // address bar the moment the user opened one.
+      final credits = route('/credits');
+      final dialog = route(null);
+      history.didPush(credits, shell);
+      history.didPush(dialog, credits);
+
+      expect(AppRoutes.currentUri.path, '/credits');
+      // …while Back still belongs to the dialog, which may refuse to close.
+      expect(history.isShowingPage, isFalse);
+
+      history.didPop(dialog, credits);
+      history.didPop(credits, shell);
+    });
+
+    test('stops naming a screen once it closes', () {
+      final credits = route('/credits');
+      history.didPush(credits, shell);
+      history.didPop(credits, shell);
+      // No shell mounted in a unit test, and not web, so this is the root.
+      expect(AppRoutes.currentUri.path, '/');
+    });
+
+    test('a screen replaced by another names the newcomer', () {
+      final credits = route('/credits');
+      final profile = route('/profile');
+      history.didPush(credits, shell);
+      history.didReplace(newRoute: profile, oldRoute: credits);
+      expect(AppRoutes.currentUri.path, '/profile');
+      history.didRemove(profile, shell);
+      expect(AppRoutes.currentUri.path, '/');
+    });
+  });
+
   group('AppRoutes pushed-screen routes', () {
     // No Firebase in a unit test, so `isSignedIn()` fails closed and every
     // signedInOnly screen is unreachable — the same path a signed-out visitor
@@ -97,7 +152,7 @@ void main() {
     });
 
     test('the generated route keeps its name, so Back can identify it', () {
-      // AppRouteObserver tells "a registered screen is open" from "the editor
+      // AppRoutes.applyUrl tells "a registered screen is open" from "the editor
       // is open" by this name alone, and pops the second one only through its
       // guard.
       final route =
@@ -150,40 +205,12 @@ void main() {
     });
   });
 
-  group('AppRouteHistory url restore', () {
-    Route<dynamic> route(String? name, {bool isFirst = false}) =>
-        _FakeRoute(RouteSettings(name: name), isFirst: isFirst);
-
-    final shell = route('/', isFirst: true);
-
-    test('restores the tab URL when an addressable screen closes', () {
-      // /credits announced itself on the way in, and the Navigator announces
-      // the shell's own `/` on the way out. Without the correction the address
-      // bar reads `/` while some other tab is showing.
-      expect(AppRouteHistory.needsUrlRestore(route('/credits'), shell), isTrue);
-    });
-
-    test('does not restore for a menu, dialog or sheet', () {
-      // The regression: picking an item from the Tools PopupMenuButton pops the
-      // menu route *before* running onSelected, so a correction scheduled here
-      // landed after the pushed screen and put the URL back on /timetables.
-      expect(AppRouteHistory.needsUrlRestore(route(null), shell), isFalse);
-    });
-
-    test('does not restore for the timetable editor', () {
-      // Pushed anonymously and deliberately unaddressable, so it never wrote a
-      // URL there is anything to restore.
-      expect(AppRouteHistory.needsUrlRestore(route(null), shell), isFalse);
+  group('AppRouteHistory', () {
+    test('the editor, menus and dialogs own no address', () {
+      // Pushed anonymously and deliberately unaddressable: a URL that could
+      // push or pop the editor would be a way around its unsaved-changes guard.
       expect(AppRouteHistory.isAddressable(null), isFalse);
       expect(AppRouteHistory.isAddressable('/not-a-screen'), isFalse);
-    });
-
-    test('does not restore when another pushed screen is uncovered', () {
-      // The Navigator announces the uncovered route's own name, which is right.
-      expect(
-        AppRouteHistory.needsUrlRestore(route('/profile'), route('/credits')),
-        isFalse,
-      );
     });
 
     test('an addressable path stays addressable when its gate closes', () {
@@ -215,51 +242,26 @@ void main() {
     });
   });
 
-  // The reason AppShell must NOT push the launch URL's page itself. Uses a stub
-  // route table rather than the real one because the claim under test is
-  // Flutter's, not ours: a MaterialApp generates the initial route from the
-  // launch path, so anything that also pushes it stacks the page twice and the
-  // user has to close it twice.
-  testWidgets('Flutter pushes the launch URL page without any help', (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      initialRoute: '/credits',
-      onGenerateRoute: (settings) => settings.name == '/credits'
-          ? MaterialPageRoute<void>(
-              settings: settings,
-              builder: (_) => const Text('page'),
-            )
-          : null,
-      home: const Text('shell'),
+  // A launch path this app generates no route for must leave the user on the
+  // shell rather than on nothing. Covers a signed-out `/profile` and every tab
+  // URL (`/cgpa`) alike, since tabs are not routes at all.
+  testWidgets('an unopenable launch path lands on the shell', (tester) async {
+    await tester.pumpWidget(MaterialApp.router(
+      routeInformationParser: const AppRouteInformationParser(),
+      routerDelegate: AppRouterDelegate(home: const Text('shell')),
+      routeInformationProvider: PlatformRouteInformationProvider(
+        initialRouteInformation: RouteInformation(uri: Uri.parse('/profile')),
+      ),
     ));
     await tester.pumpAndSettle();
 
-    expect(find.text('page'), findsOneWidget);
-    expect(tester.state<NavigatorState>(find.byType(Navigator)).canPop(), isTrue,
-        reason: 'the page is stacked over the shell, not replacing it');
-  });
-
-  // The other half: a launch path this app does not generate a route for must
-  // leave the user on the shell. That covers both a signed-out `/profile` and
-  // every tab URL (`/cgpa`), since tabs are not routes at all.
-  testWidgets('an ungenerated launch route falls back to the shell', (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      initialRoute: '/profile',
-      onGenerateRoute: AppRoutes.onGenerateRoute, // signed out -> null
-      home: const Text('shell'),
-    ));
-    await tester.pumpAndSettle();
-
-    // Flutter reports "Could not navigate to initial route" and falls back to
-    // `/`. The report is debug-only (it sits inside an assert), so it is
-    // console noise for a developer deep-linking locally and absent from
-    // release builds — the fallback itself is the behaviour we want.
-    expect(tester.takeException(), contains('Could not navigate to initial route'));
+    expect(tester.takeException(), isNull);
     expect(find.text('shell'), findsOneWidget);
     expect(tester.state<NavigatorState>(find.byType(Navigator)).canPop(), isFalse);
   });
 }
 
-/// Minimal stand-in: [needsUrlRestore] reads only `settings.name` and `isFirst`.
+/// Minimal stand-in: the history stack reads only `settings.name`.
 class _FakeRoute extends Route<dynamic> {
   _FakeRoute(this._settings, {required this.isFirst});
 

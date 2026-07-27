@@ -126,10 +126,6 @@ void main() async {
 
   if (kIsWeb) {
     web_utils.usePathUrlStrategy();
-    // Before runApp: the binding stops at the first observer that claims a
-    // pushed route, and WidgetsApp registers itself the moment MaterialApp
-    // builds. See [AppRouteObserver].
-    WidgetsBinding.instance.addObserver(AppRouteObserver());
     // Read once, here, while Uri.base is still the URL the user arrived on.
     AppRoutes.pendingShareCode = AppRoutes.shareCodeIn(Uri.base);
     _setupWebCacheClearOnClose();
@@ -179,6 +175,17 @@ class _TimetableMakerAppState extends State<TimetableMakerApp> {
   final _screenshotKey = GlobalKey();
   final _themeTransition = ThemeTransitionController();
 
+  /// Built once and handed to the router delegate, which outlives the theme
+  /// rebuilds this widget goes through.
+  late final Widget _home = ThemeTransitionOverlay(
+    controller: _themeTransition,
+    screenshotKey: _screenshotKey,
+    child: RepaintBoundary(
+      key: _screenshotKey,
+      child: const MaintenanceGate(child: AuthWrapper()),
+    ),
+  );
+
   @override
   void initState() {
     super.initState();
@@ -191,24 +198,18 @@ class _TimetableMakerAppState extends State<TimetableMakerApp> {
       listenable: theme_service.ThemeService(),
       builder: (context, child) {
         final themeService = theme_service.ThemeService();
-        return MaterialApp(
+        // .router, not the plain constructor: it is what puts the web engine in
+        // multi-entry history mode, without which the back button leaves the
+        // site instead of walking back through the app. See [AppRouterDelegate].
+        return MaterialApp.router(
           title: 'Tabulr',
           theme: themeService.getLightThemeData(themeService.currentTheme),
           darkTheme: themeService.getDarkThemeData(themeService.currentTheme),
           themeMode: themeService.currentThemeMode,
-          navigatorKey: AppRoutes.navigatorKey,
-          navigatorObservers: [AppRoutes.history],
-          onGenerateRoute: AppRoutes.onGenerateRoute,
+          routeInformationParser: const AppRouteInformationParser(),
+          routerDelegate: AppRoutes.delegateFor(_home),
           scrollBehavior: const AppScrollBehavior(),
           debugShowCheckedModeBanner: false,
-          home: ThemeTransitionOverlay(
-            controller: _themeTransition,
-            screenshotKey: _screenshotKey,
-            child: RepaintBoundary(
-              key: _screenshotKey,
-              child: const MaintenanceGate(child: AuthWrapper()),
-            ),
-          ),
         );
       },
     );

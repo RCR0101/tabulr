@@ -4,22 +4,22 @@ import { waitForFirstFrame } from './_helpers';
 /**
  * URL routing in a real browser.
  *
- * What is NOT covered here: switching tabs with the back button — because the
- * app does not do it. A plain `Navigator` keeps the web engine in single-entry
- * history mode, where a URL update replaces the current entry instead of adding
- * one, so Back leaves the site. `AppRoutes.show` documents why the obvious fix
- * (calling `selectMultiEntryHistory` later) makes things worse; the cold-load
- * test below is the one that caught it.
+ * Every test here cold-loads its path, because that is the only way a visitor
+ * arrives at one: from a search result, a pasted link, or the address bar. An
+ * earlier version drove navigation with `pushState` + a synthetic `popstate`,
+ * which tested nothing — in single-entry history mode the Flutter engine owns
+ * `popstate` and reads it as a back press, so the app never saw the new path.
  *
- * What IS covered: everything a signed-out visitor arriving from a search
- * result or a pasted link actually experiences.
+ * What is NOT covered: watching the back button switch tabs. The shell only
+ * exists for a signed-in user, and this harness has no session. The mode that
+ * makes it work is asserted instead — see the multi-entry test below.
  *
  *   flutter build web && python3 e2e/serve.py
  *   npx playwright test routing --project=chromium
  *
  * `serve.py` adds the SPA fallback that Firebase Hosting provides; a plain
  * `http.server` 404s on `/credits` and cannot exercise a cold-loaded deep link
- * at all. The cold-load tests detect the fallback and skip without it.
+ * at all. Without it every test here skips.
  */
 
 const path = (page: Page) => page.evaluate(() => window.location.pathname);
@@ -30,25 +30,17 @@ async function hasSpaFallback(page: Page): Promise<boolean> {
   return response.status() === 200;
 }
 
-/** Turns on Flutter's semantics tree so the canvas has readable DOM nodes. */
-async function enableSemantics(page: Page) {
+/**
+ * Loads `to` the way a visitor does, and turns on Flutter's semantics tree so
+ * the canvas has readable DOM nodes.
+ */
+async function coldLoad(page: Page, to: string) {
+  await page.goto(to, { waitUntil: 'commit' });
+  await waitForFirstFrame(page);
   await page.evaluate(() =>
     (document.querySelector('flt-semantics-placeholder') as HTMLElement | null)?.click(),
   );
   await page.waitForTimeout(1000);
-}
-
-/**
- * Navigates within the loaded app the way the browser does, without a reload:
- * a static file server has no SPA rewrite, so `page.goto('/faq')` would 404 on
- * the harness rather than exercise the app.
- */
-async function navigateInPlace(page: Page, to: string) {
-  await page.evaluate((p) => {
-    window.history.pushState(null, '', p);
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  }, to);
-  await page.waitForTimeout(2000);
 }
 
 async function labels(page: Page): Promise<string[]> {
@@ -61,13 +53,13 @@ async function labels(page: Page): Promise<string[]> {
 
 test.describe('routing', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/', { waitUntil: 'commit' });
-    await waitForFirstFrame(page);
+    test.skip(!(await hasSpaFallback(page)), 'needs e2e/serve.py or a deployed BASE_URL');
   });
 
   test('the landing page keeps a clean, fragment-free URL', async ({ page }) => {
     // usePathUrlStrategy. Without it every path carries a `#`, and neither the
     // static course pages nor a pasted share link would resolve.
+    await coldLoad(page, '/');
     expect(await path(page)).toBe('/');
     expect(page.url()).not.toContain('#');
   });
@@ -78,8 +70,7 @@ test.describe('routing', () => {
     // URL alone, because AppShell reads it when it finally mounts. If anything
     // wrote the URL back here, the visitor would sign in and land on the
     // default tab, and the link would have been for nothing.
-    await enableSemantics(page);
-    await navigateInPlace(page, '/exam-seating');
+    await coldLoad(page, '/exam-seating');
 
     expect(await path(page)).toBe('/exam-seating');
     expect(await labels(page)).toContain('Sign in with Google');
@@ -89,8 +80,7 @@ test.describe('routing', () => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
 
-    await enableSemantics(page);
-    await navigateInPlace(page, '/not-a-real-screen');
+    await coldLoad(page, '/not-a-real-screen');
 
     expect(errors, errors.join('\n')).toEqual([]);
     // Still interactive, not a blank canvas.
@@ -104,8 +94,7 @@ test.describe('routing', () => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
 
-    await enableSemantics(page);
-    await navigateInPlace(page, '/profile');
+    await coldLoad(page, '/profile');
 
     expect(errors, errors.join('\n')).toEqual([]);
     expect(await labels(page)).toContain('Continue as Guest');
@@ -117,11 +106,7 @@ test.describe('routing', () => {
     // /credits because it is the one pushed screen a signed-out visitor may
     // open; the gated ones (/prerequisites, /electives, /profile) take the same
     // route table but need a session this harness has not got.
-    test.skip(!(await hasSpaFallback(page)), 'needs e2e/serve.py or a deployed BASE_URL');
-
-    await page.goto('/credits', { waitUntil: 'commit' });
-    await waitForFirstFrame(page);
-    await enableSemantics(page);
+    await coldLoad(page, '/credits');
 
     expect(await path(page)).toBe('/credits');
     const found = await labels(page);
@@ -131,28 +116,28 @@ test.describe('routing', () => {
     ).toBe(true);
   });
 
-  test('closing a cold-loaded screen leaves a sane URL, not /', async ({ page }) => {
-    // The Navigator announces the route it uncovers — `home`, named `/` — so
-    // without AppRouteHistory's correction the address bar reads `/` while a
-    // tab is showing.
-    test.skip(!(await hasSpaFallback(page)), 'needs e2e/serve.py or a deployed BASE_URL');
+  test('the browser is in multi-entry history mode', async ({ page }) => {
+    // The precondition for the back button doing anything useful. In
+    // single-entry mode — which a plain `MaterialApp(home:)` selects — every URL
+    // update replaces the current entry, so Back leaves the site instead of
+    // walking back through the app. `MaterialApp.router` is what avoids it.
+    //
+    // Read off the engine's own history state, whose shape differs between the
+    // two modes: multi-entry stores `{serialCount, state}`, single-entry a
+    // `{flutter: true}` sentinel entry over an `{origin: true}` one. Watching
+    // the back button switch tabs would be better, but the shell only exists
+    // for a signed-in user and this harness has no session.
+    await coldLoad(page, '/');
+    const state = await page.evaluate(() => window.history.state);
 
-    await page.goto('/credits', { waitUntil: 'commit' });
-    await waitForFirstFrame(page);
-    await page.goBack();
-    await page.waitForTimeout(2000);
-
-    expect(await path(page)).not.toBe('/credits');
+    expect(state, 'engine history state').not.toBeNull();
+    expect(state).toHaveProperty('serialCount');
   });
 
   test('cold-loading a deep link works through the hosting rewrite', async ({ page }) => {
     // Only meaningful against Firebase Hosting, where `** -> /index.html`
-    // serves the app for an arbitrary path. A static file server 404s instead,
-    // which is a property of the harness, not of the app.
-    test.skip(
-      !process.env.BASE_URL || process.env.BASE_URL.includes('localhost'),
-      'needs a deployed BASE_URL with the SPA rewrite',
-    );
+    // serves the app for an arbitrary path. serve.py mimics it; this asserts
+    // the status code the real thing returns.
     const response = await page.goto('/exam-seating', { waitUntil: 'commit' });
     expect(response?.status()).toBe(200);
     await waitForFirstFrame(page);

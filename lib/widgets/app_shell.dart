@@ -30,76 +30,6 @@ import 'app_sidebar.dart';
 import 'command_palette.dart';
 import 'theme_selector_widget.dart';
 
-/// Turns browser back/forward into a screen switch.
-///
-/// Must be registered on [WidgetsBinding] *before* `runApp`. The binding hands
-/// a pushed route to each observer in registration order and stops at the first
-/// one that returns true; `WidgetsApp` registers itself when it builds and, on
-/// an app with no `routes:` table, answers by calling `pushNamed('/cgpa')` — a
-/// route nothing generates. Getting in first is what keeps that from happening,
-/// and is why this is a free-standing observer rather than the shell's own
-/// State, which the framework would always reach second.
-class AppRouteObserver with WidgetsBindingObserver {
-  @override
-  Future<bool> didPushRouteInformation(RouteInformation routeInformation) async {
-    await _applyUrl(routeInformation.uri);
-    // Always handled: on web this app owns its whole URL space, and letting a
-    // path fall through to WidgetsApp is precisely the pushNamed crash above.
-    return true;
-  }
-
-  /// Makes the app match [uri] — the tab underneath and whatever is stacked on
-  /// top of it. Called when the *browser* moved, so it must never write the URL
-  /// back; the entry it would push is the one we just navigated to.
-  Future<void> _applyUrl(Uri uri) async {
-    final navigator = AppRoutes.navigatorKey.currentState;
-    final page = AppRoutes.pageIn(uri);
-    final history = AppRoutes.history;
-
-    if (navigator != null &&
-        navigator.canPop() &&
-        history.topRouteName != page?.path) {
-      // Something is stacked over the shell and the URL has stopped naming it,
-      // so this Back is about closing that — never also about switching the tab
-      // underneath. Doing both made one Back press do two navigations: the
-      // Electives screen closed *and* the shell jumped to whatever tab the
-      // consumed history entry happened to name.
-      //
-      // Screens pushed anonymously (the timetable editor, an Electives opened
-      // from the editor with a selection link) never wrote a history entry, so
-      // the entry being spent here belongs to something else. AppRouteHistory
-      // .didPop puts the address bar back on the tab that is actually showing.
-      if (history.isShowingPage) {
-        navigator.pop();
-      } else {
-        // maybePop, so a `PopScope` — the editor's unsaved-changes prompt —
-        // still gets to ask and refuse. A plain pop here would be a
-        // back-button-shaped hole in that guard.
-        await navigator.maybePop();
-      }
-      return;
-    }
-
-    if (page != null) {
-      final path = page.path;
-      if (path != null && history.topRouteName != path) {
-        navigator?.pushNamed(path);
-      }
-      // The URL names a pushed screen, not a tab: leave the shell on whatever
-      // it was showing, so closing that screen reveals where the user came from.
-      return;
-    }
-
-    // Falls back rather than doing nothing: an unrecognised path means Back has
-    // landed on `/` or on a share link. Ignoring it would leave the address bar
-    // saying `/` while the CGPA screen is still showing.
-    AppShell.goTo(
-      AppRoutes.screenIn(uri) ?? AppRoutes.defaultScreen,
-      updateUrl: false,
-    );
-  }
-}
-
 class AppShell extends StatefulWidget {
   final DrawerScreen initialScreen;
 
@@ -121,11 +51,9 @@ class AppShell extends StatefulWidget {
   /// This only changes what sits *underneath* the current route; callers on a
   /// pushed route are responsible for leaving it themselves.
   ///
-  /// [updateUrl] is false when the browser is the one that moved (back button)
-  /// — writing the URL back would push a second history entry for a navigation
-  /// that already has one, and Back would then need two presses.
-  static void goTo(DrawerScreen screen, {bool updateUrl = true}) =>
-      _active?._onScreenSelected(screen, updateUrl: updateUrl);
+  /// Safe to call when the browser is the one that moved: the URL the Router
+  /// then writes is the one it just read, so it replaces rather than stacks.
+  static void goTo(DrawerScreen screen) => _active?._onScreenSelected(screen);
 
   /// The tab the mounted shell is showing, or null when none is mounted.
   static DrawerScreen? get currentScreen => _active?._currentScreen;
@@ -144,12 +72,15 @@ class _AppShellState extends State<AppShell> {
   @override
   void initState() {
     super.initState();
-    // A deep link picks the opening tab. [Uri.base] tracks the live URL on web
-    // rather than the landing one, so a shell rebuilt later (a sign-out and
-    // back in) reopens wherever the user actually is.
+    // A deep link picks the opening tab. [Uri.base] rather than a value
+    // captured at startup: it tracks the live URL on web, so a shell rebuilt
+    // later — a sign-out and back in — reopens wherever the user actually is.
     _currentScreen = AppRoutes.screenIn(Uri.base) ?? widget.initialScreen;
     _visitedScreens.add(_currentScreen);
     AppShell._active = this;
+    // The address bar may name a tab this user cannot open, or nothing at all;
+    // either way it should now say what this shell actually opened.
+    AppRoutes.refresh();
     _openLaunchUrlPage();
     // Handle Cmd/Ctrl+K at the keyboard level so it works regardless of where
     // focus currently sits — a focused CallbackShortcuts stops firing once focus
@@ -167,18 +98,18 @@ class _AppShellState extends State<AppShell> {
 
   /// Opens the pushed screen the launch URL names, if it is not already open.
   ///
-  /// Flutter generates the initial route from the browser path itself, so a
-  /// *public* screen like `/credits` is already stacked over this shell by the
-  /// time we get here — pushing it again put two copies on the stack and made
-  /// the user close it twice. Hence the check rather than an unconditional
+  /// [AppRouterDelegate.setInitialRoutePath] already tried, after the first
+  /// frame, so a *public* screen like `/credits` is stacked over this shell by
+  /// the time we get here — pushing it again put two copies on the stack and
+  /// made the user close it twice. Hence the check rather than an unconditional
   /// push.
   ///
   /// The rest need this. Their routes are gated on being signed in, and that
-  /// gate is read while `MaterialApp` builds its first frame — before Firebase
-  /// Auth has restored the persisted web session, so `currentUser` is still
-  /// null and Flutter drops the route. Cold-loading `/prerequisites` landed on
-  /// the default tab even for a signed-in user. This shell only exists once
-  /// auth has resolved, which makes it the first honest place to ask.
+  /// first attempt runs before Firebase Auth has restored the persisted web
+  /// session, so `currentUser` is still null and the route is refused.
+  /// Cold-loading `/prerequisites` landed on the default tab even for a
+  /// signed-in user. This shell only exists once auth has resolved, which makes
+  /// it the first honest place to ask.
   void _openLaunchUrlPage() {
     final path =
         AppRoutes.launchPageToOpen(Uri.base, AppRoutes.history.topRouteName);
@@ -212,13 +143,13 @@ class _AppShellState extends State<AppShell> {
     return true;
   }
 
-  void _onScreenSelected(DrawerScreen screen, {bool updateUrl = true}) {
+  void _onScreenSelected(DrawerScreen screen) {
     if (screen == _currentScreen) return;
     setState(() {
       _currentScreen = screen;
       _visitedScreens.add(screen);
     });
-    if (updateUrl) AppRoutes.show(screen);
+    AppRoutes.refresh();
   }
 
   void _showCommandPalette() {

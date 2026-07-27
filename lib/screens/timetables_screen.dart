@@ -1107,44 +1107,67 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                     const SizedBox(height: 6),
                                     Builder(builder: (context) {
                                       final stats = TimetableStats.fromTimetable(timetable);
-                                      // Tapping the stats line opens the visual
-                                      // insights (weekly load + exam timeline).
-                                      return InkWell(
-                                        onTap: () => TimetableInsightsSheet.show(context, timetable),
-                                        borderRadius: BorderRadius.circular(6),
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(vertical: 2),
-                                          child: Row(
-                                            children: [
-                                              Icon(Icons.schedule, size: 13, color: scheme.onSurface.withValues(alpha: 0.4)),
-                                              const SizedBox(width: 4),
-                                              Expanded(
-                                                child: Text(
-                                                  stats.summaryLine,
-                                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                                    color: scheme.onSurface.withValues(alpha: 0.5),
+                                      // Only the summary text and the chart icon open
+                                      // the insights sheet. A row-wide tap target would
+                                      // cover the blank space beside them and swallow
+                                      // taps meant for the card itself.
+                                      void openInsights() =>
+                                          TimetableInsightsSheet.show(context, timetable);
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 2),
+                                        child: Row(
+                                          children: [
+                                            // Align lets the row keep its width while
+                                            // the ink target hugs the text.
+                                            Expanded(
+                                              child: Align(
+                                                alignment: Alignment.centerLeft,
+                                                child: InkWell(
+                                                  onTap: openInsights,
+                                                  borderRadius: BorderRadius.circular(6),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Icon(Icons.schedule, size: 13, color: scheme.onSurface.withValues(alpha: 0.4)),
+                                                      const SizedBox(width: 4),
+                                                      Flexible(
+                                                        child: Text(
+                                                          stats.summaryLine,
+                                                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                                            color: scheme.onSurface.withValues(alpha: 0.5),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
                                                 ),
                                               ),
-                                              if (stats.hasExamClusters)
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                                  decoration: BoxDecoration(
-                                                    color: scheme.error.withValues(alpha: 0.1),
-                                                    borderRadius: BorderRadius.circular(6),
-                                                  ),
-                                                  child: Text(
-                                                    '${stats.worstClusterSize} exams clustered',
-                                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                                      color: scheme.error,
-                                                      fontSize: 10,
-                                                    ),
+                                            ),
+                                            if (stats.hasExamClusters)
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                                decoration: BoxDecoration(
+                                                  color: scheme.error.withValues(alpha: 0.1),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  '${stats.worstClusterSize} exams clustered',
+                                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                                    color: scheme.error,
+                                                    fontSize: 10,
                                                   ),
                                                 ),
-                                              const SizedBox(width: 4),
-                                              Icon(Icons.bar_chart_rounded, size: 15, color: scheme.primary.withValues(alpha: 0.7)),
-                                            ],
-                                          ),
+                                              ),
+                                            const SizedBox(width: 4),
+                                            InkWell(
+                                              onTap: openInsights,
+                                              borderRadius: BorderRadius.circular(6),
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(4),
+                                                child: Icon(Icons.bar_chart_rounded, size: 15, color: scheme.primary.withValues(alpha: 0.7)),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       );
                                     }),
