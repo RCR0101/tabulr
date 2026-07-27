@@ -73,9 +73,11 @@ class TimetableGrid extends StatefulWidget {
     required List<TimetableSlot> slots,
     required TimetableSize size,
   }) {
-    final days = TimetableBlockMap.fromSlots(slots).visibleDays(showAll: false);
+    final blocks = TimetableBlockMap.fromSlots(slots);
+    final days = blocks.visibleDays(showAll: false);
     final rowExtent = (size.fixedRowHeight ?? 84.0).clamp(34.0, 132.0);
-    return _verticalLeadWidth + exportColumnExtent(rowExtent) * days.length;
+    return _verticalLeadWidth +
+        exportColumnExtent(rowExtent) * blocks.maxLaneCount * days.length;
   }
 
   @override
@@ -199,6 +201,15 @@ class _TimetableGridState extends State<TimetableGrid> {
     }
     row = row.clamp(34.0, maxRow);
 
+    // A clash splits a cell between two cards, so a cell that was merely small
+    // becomes an illegible sliver. Sizing against the widest split keeps each
+    // lane as big as an unsplit cell would have been; on a narrow viewport that
+    // trades into horizontal scrolling, which beats blank coloured bars.
+    // Only the cross axis of a block is split: the day column in the vertical
+    // layout, the day row in the horizontal one.
+    final lanes = blocks.maxLaneCount;
+    if (!vertical) row = (row * lanes).clamp(34.0, maxRow * lanes);
+
     // Export sizes to content instead of dividing a viewport. Filling a fixed
     // capture width would hand a three-day timetable three 600 px columns; a
     // column proportional to the row keeps cards the same shape whatever the
@@ -210,14 +221,16 @@ class _TimetableGridState extends State<TimetableGrid> {
         days: days,
         leadWidth: leadWidth,
         headerHeight: headerHeight,
-        columnExtent: TimetableGrid.exportColumnExtent(row),
+        columnExtent:
+            TimetableGrid.exportColumnExtent(row) * (vertical ? lanes : 1),
         rowExtent: row,
         needsHorizontalScroll: false,
       );
     }
 
     final available = (constraints.maxWidth.isFinite ? constraints.maxWidth : 1200.0) - leadWidth;
-    final minColumn = vertical ? (_isTouch ? 84.0 : 96.0) : 62.0 * scale;
+    final minColumn =
+        (vertical ? (_isTouch ? 84.0 : 96.0) * lanes : 62.0 * scale);
 
     var column = columnCount == 0 ? minColumn : available / columnCount;
     var needsHorizontalScroll = false;
@@ -474,7 +487,7 @@ class _TimetableGridState extends State<TimetableGrid> {
                 for (final day in geo.days)
                   SizedBox(
                     width: geo.columnExtent,
-                    child: _dayColumn(context, blocks, geo, day),
+                    child: _dayBlocks(context, blocks, geo, day),
                   ),
               ],
             )
@@ -484,7 +497,7 @@ class _TimetableGridState extends State<TimetableGrid> {
                 for (final day in geo.days)
                   SizedBox(
                     height: geo.rowExtent,
-                    child: _dayRow(context, blocks, geo, day),
+                    child: _dayBlocks(context, blocks, geo, day),
                   ),
               ],
             ),
@@ -498,73 +511,57 @@ class _TimetableGridState extends State<TimetableGrid> {
     );
   }
 
-  /// Vertical layout: one column per day, walking the visible hours and
-  /// emitting a single sized child per block.
-  Widget _dayColumn(
+  /// One day's cards, positioned along the hour axis and across the lanes
+  /// [TimetableBlockMap.layOut] assigned. Both layouts share this: vertical
+  /// runs hours down and lanes across the column, horizontal swaps the two.
+  ///
+  /// Positioning rather than laying children out in sequence is what lets two
+  /// clashing sections sit side by side in the same cell — each still a normal
+  /// card, just narrower.
+  Widget _dayBlocks(
     BuildContext context,
     TimetableBlockMap blocks,
     _GridGeometry geo,
     DayOfWeek day,
   ) {
+    final firstHour = geo.hours.first;
+    final lastHour = geo.hours.last;
     final children = <Widget>[];
-    int index = 0;
-    while (index < geo.hours.length) {
-      final hour = geo.hours[index];
-      final block = blocks.blockStartingAt(day, hour);
-      if (block == null) {
-        children.add(SizedBox(height: geo.rowExtent));
-        index++;
-        continue;
-      }
-      // Clamp against the visible tail so a cropped grid cannot overflow.
-      final span = (block.endHour.clamp(hour, geo.hours.last) - hour + 1)
-          .clamp(1, geo.hours.length - index);
-      children.add(
-        SizedBox(
-          height: geo.rowExtent * span,
-          child: _buildBlock(context, block, geo.columnExtent, geo.rowExtent * span),
-        ),
-      );
-      index += span;
-    }
-    return Column(children: children);
-  }
 
-  /// Horizontal layout: one row per day, walking the visible hours. Mirrors
-  /// [_dayColumn] with the axes swapped, so a multi-hour block is one wide card
-  /// rather than several adjacent ones.
-  Widget _dayRow(
-    BuildContext context,
-    TimetableBlockMap blocks,
-    _GridGeometry geo,
-    DayOfWeek day,
-  ) {
-    final children = <Widget>[];
-    int index = 0;
-    while (index < geo.hours.length) {
-      final hour = geo.hours[index];
-      final block = blocks.blockStartingAt(day, hour);
-      if (block == null) {
-        children.add(SizedBox(width: geo.columnExtent));
-        index++;
-        continue;
+    for (final laid in blocks.laidOutFor(day)) {
+      final block = laid.block;
+      if (block.startHour < firstHour || block.startHour > lastHour) continue;
+      // Clamp against the visible tail so a cropped grid cannot overflow.
+      final span = block.endHour.clamp(block.startHour, lastHour) -
+          block.startHour +
+          1;
+      final along = (block.startHour - firstHour).toDouble();
+      final share = 1.0 / laid.laneCount;
+
+      if (geo.vertical) {
+        final width = geo.columnExtent * share;
+        final height = geo.rowExtent * span;
+        children.add(Positioned(
+          top: along * geo.rowExtent,
+          left: laid.lane * width,
+          width: width,
+          height: height,
+          child: _buildBlock(context, block, width, height),
+        ));
+      } else {
+        final width = geo.columnExtent * span;
+        final height = geo.rowExtent * share;
+        children.add(Positioned(
+          left: along * geo.columnExtent,
+          top: laid.lane * height,
+          width: width,
+          height: height,
+          child: _buildBlock(context, block, width, height),
+        ));
       }
-      final span = (block.endHour.clamp(hour, geo.hours.last) - hour + 1)
-          .clamp(1, geo.hours.length - index);
-      children.add(
-        SizedBox(
-          width: geo.columnExtent * span,
-          child: _buildBlock(
-            context,
-            block,
-            geo.columnExtent * span,
-            geo.rowExtent,
-          ),
-        ),
-      );
-      index += span;
     }
-    return Row(children: children);
+
+    return Stack(children: children);
   }
 
   // ── Block card ────────────────────────────────────────────────────────────

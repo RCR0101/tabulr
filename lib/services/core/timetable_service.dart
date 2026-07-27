@@ -418,6 +418,7 @@ class TimetableService {
     String sectionId,
     Timetable timetable, {
     bool allowExamClash = false,
+    bool allowSectionClash = false,
   }) {
     try {
       final course = timetable.availableCourses.firstWhere(
@@ -441,6 +442,7 @@ class TimetableService {
         timetable.selectedSections,
         timetable.availableCourses,
         allowExamClash: allowExamClash,
+        allowSectionClash: allowSectionClash,
       );
 
       if (check.isAllowed) {

@@ -35,6 +35,12 @@ class CourseListWidget extends StatelessWidget {
   /// nothing. Browsing is still the point of the screen; only the action goes.
   final bool selectable;
 
+  /// The editor's "allow section clashes" bypass. When on, a schedule
+  /// conflict no longer disables the Add button — the reason line stays, so
+  /// the student still sees what they're colliding with. Duplicate section
+  /// types stay blocked either way.
+  final bool allowSectionClash;
+
   CourseListWidget({
     super.key,
     required this.courses,
@@ -44,6 +50,7 @@ class CourseListWidget extends StatelessWidget {
     this.catalog,
     this.record = AcademicRecord.empty,
     this.selectable = true,
+    this.allowSectionClash = false,
   });
 
   late final Set<String> _selectedKeys = {
@@ -260,6 +267,7 @@ class CourseListWidget extends StatelessWidget {
                   conflict: isSelected
                       ? null
                       : _getSectionConflict(section, course.courseCode),
+                  clashAllowed: allowSectionClash,
                 );
               }(),
           ],
@@ -279,6 +287,7 @@ class _SectionState {
     required this.isSelected,
     required this.typeTaken,
     required this.conflict,
+    this.clashAllowed = false,
   });
 
   final Section section;
@@ -288,10 +297,14 @@ class _SectionState {
   /// Distinct from [conflict]: nothing clashes, you have simply already chosen.
   final bool typeTaken;
 
+  /// The editor's section-clash bypass: a conflict informs but no longer
+  /// blocks.
+  final bool clashAllowed;
+
   /// Human-readable schedule collision with the current timetable, or null.
   final String? conflict;
 
-  bool get blocked => typeTaken || conflict != null;
+  bool get blocked => typeTaken || (conflict != null && !clashAllowed);
 }
 
 /// A course, its metadata and its sections.

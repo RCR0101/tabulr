@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../constants/app_constants.dart';
 import '../models/course.dart';
+import '../services/core/clash_detector.dart';
 import '../services/data/campus_service.dart';
 import '../models/timetable.dart';
 import '../models/export_options.dart';
@@ -15,6 +17,22 @@ import 'timetable/timetable_blocks.dart';
 import 'timetable/timetable_grid.dart';
 
 export '../models/timetable_display.dart';
+
+/// The editor's opt-in overrides for rules that normally refuse a section add.
+///
+/// All three are session-only switches in the timetable toolbar's settings
+/// menu. The editor refuses to turn one off while the violation it allowed is
+/// still on the grid.
+enum TimetableBypass {
+  /// Two courses whose midsem/compre fall in the same slot.
+  examClash,
+
+  /// Two sections meeting in the same grid cell.
+  sectionClash,
+
+  /// Semester load above [AppLimits.semesterCreditCap].
+  creditLimit,
+}
 
 class TimetableWidget extends StatefulWidget {
   final List<TimetableSlot> timetableSlots;
@@ -48,6 +66,21 @@ class TimetableWidget extends StatefulWidget {
   final bool canRedo;
   final VoidCallback? onShowStats;
 
+  /// The editor's clash/credit bypass state, shown in the toolbar's settings
+  /// menu. All default off — consumers without an editor (comparison, export)
+  /// never see the menu.
+  final bool allowExamClash;
+  final bool allowSectionClash;
+  final bool allowCreditBypass;
+
+  /// Current credit load, for the credit row's "over limit" status line.
+  final double? currentCredits;
+
+  /// Called when a bypass switch flips; returns true when the editor accepted
+  /// the change. The editor refuses to turn a bypass off while its violation
+  /// is still on the grid — the switch then stays where it was.
+  final bool Function(TimetableBypass bypass, bool allowed)? onBypassChanged;
+
   const TimetableWidget({
     super.key,
     required this.timetableSlots,
@@ -75,6 +108,11 @@ class TimetableWidget extends StatefulWidget {
     this.canUndo = false,
     this.canRedo = false,
     this.onShowStats,
+    this.allowExamClash = false,
+    this.allowSectionClash = false,
+    this.allowCreditBypass = false,
+    this.currentCredits,
+    this.onBypassChanged,
   });
 
   @override
@@ -233,6 +271,144 @@ class _TimetableWidgetState extends State<TimetableWidget> {
         compact: compact,
         icon: _sizeIcon(widget.size),
         trailing: Icons.arrow_drop_down,
+      ),
+    );
+  }
+
+  // ── Bypass menu ───────────────────────────────────────────────────────────
+
+  /// Clashes among the current selection, however they got there (an active
+  /// bypass or a timetable loaded with one). Empty when the caller didn't
+  /// supply the data to compute them.
+  List<ClashWarning> get _currentWarnings {
+    final sections = widget.selectedSections;
+    final courses = widget.availableCourses;
+    if (sections == null || courses == null || sections.length < 2) {
+      return const [];
+    }
+    return ClashDetector.detectClashes(sections, courses);
+  }
+
+  /// "N courses clashing" for the menu's status line, or null when clean.
+  String? _clashStatus(bool Function(ClashWarning) matches) {
+    final count = _currentWarnings
+        .where(matches)
+        .expand((w) => w.conflictingCourses)
+        .toSet()
+        .length;
+    return count == 0
+        ? null
+        : '$count course${count != 1 ? 's' : ''} clashing';
+  }
+
+  String? get _examClashStatus => _clashStatus((w) =>
+      w.type == ClashType.midSemExam || w.type == ClashType.endSemExam);
+  String? get _sectionClashStatus =>
+      _clashStatus((w) => w.type == ClashType.regularClass);
+
+  /// The credit row's status line, shown only while over the cap.
+  String? get _creditStatus {
+    final credits = widget.currentCredits;
+    if (credits == null || credits <= AppLimits.semesterCreditCap) return null;
+    final fmt = credits == credits.roundToDouble()
+        ? credits.toInt()
+        : credits.toStringAsFixed(1);
+    return '$fmt/${AppLimits.semesterCreditCap.toInt()} credits — over limit';
+  }
+
+  /// The clash/credit bypass switches. They live in a popup so the toolbar
+  /// stays one icon wide; while any bypass is on, a dot on the icon keeps the
+  /// risky state visible without opening the menu.
+  Widget _buildBypassMenu(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final anyActive = widget.allowExamClash ||
+        widget.allowSectionClash ||
+        widget.allowCreditBypass;
+
+    return PopupMenuButton<String>(
+      tooltip: 'Clash & credit bypasses',
+      itemBuilder: (context) => [
+        _bypassItem(context, TimetableBypass.examClash, 'Allow exam clashes'),
+        _bypassItem(context, TimetableBypass.sectionClash, 'Allow section clashes'),
+        _bypassItem(context, TimetableBypass.creditLimit, 'Bypass credit limit'),
+      ],
+      icon: Badge(
+        isLabelVisible: anyActive,
+        smallSize: 8,
+        backgroundColor: scheme.error,
+        child: Icon(
+          Icons.tune,
+          size: ResponsiveService.getAdaptiveIconSize(context, 20),
+        ),
+      ),
+    );
+  }
+
+  PopupMenuItem<String> _bypassItem(
+    BuildContext context,
+    TimetableBypass bypass,
+    String title,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    // Optimistic copy of the switch position, kept for the lifetime of this
+    // open menu. The editor's setState only reaches State.widget on the next
+    // build pass, so reading the prop alone would keep showing the pre-toggle
+    // value until the menu was dismissed and reopened.
+    bool? optimistic;
+    return PopupMenuItem<String>(
+      // Disabled so tapping the row never dismisses the menu — the switch is
+      // the only control. Text styles below are explicit so the disabled
+      // state doesn't dim them.
+      enabled: false,
+      child: StatefulBuilder(
+        builder: (context, setMenuState) {
+          final propValue = switch (bypass) {
+            TimetableBypass.examClash => widget.allowExamClash,
+            TimetableBypass.sectionClash => widget.allowSectionClash,
+            TimetableBypass.creditLimit => widget.allowCreditBypass,
+          };
+          final value = optimistic ?? propValue;
+          final status = switch (bypass) {
+            TimetableBypass.examClash => _examClashStatus,
+            TimetableBypass.sectionClash => _sectionClashStatus,
+            TimetableBypass.creditLimit => _creditStatus,
+          };
+          return Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                    if (status != null)
+                      Text(
+                        status,
+                        style: TextStyle(fontSize: 11, color: scheme.error),
+                      ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: value,
+                onChanged: (v) {
+                  final accepted =
+                      widget.onBypassChanged?.call(bypass, v) ?? false;
+                  if (accepted) setMenuState(() => optimistic = v);
+                  // A refused toggle (the violation is still on the grid)
+                  // leaves optimistic unset, so the switch stays put; the
+                  // editor's toast says why.
+                },
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -574,6 +750,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               const SizedBox(width: 6),
               _buildDensityMenu(context, compact: true),
             ],
+            if (widget.onBypassChanged != null) ...[
+              const SizedBox(width: 6),
+              _buildBypassMenu(context),
+            ],
             _buildOverflowMenu(),
           ],
         ),
@@ -652,6 +832,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
             if (!_isAgenda) ...[
               const SizedBox(width: 8),
               _buildDensityMenu(context, compact: compactChips),
+            ],
+            if (widget.onBypassChanged != null) ...[
+              const SizedBox(width: 8),
+              _buildBypassMenu(context),
             ],
           ],
         ),

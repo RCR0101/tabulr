@@ -92,6 +92,74 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   // mobile uses tabs instead, so it's ignored there.
   bool _coursesCollapsed = false;
 
+  // -- Clash / credit bypasses --
+  // Switches from the grid toolbar's settings menu. Each turns on freely;
+  // turning one off is refused while the grid still carries the violation it
+  // allowed, so the menu can never claim "no clashes" over a grid that visibly
+  // has one.
+  //
+  // Only the user's explicit "on" is session state. Whether a bypass *reads* as
+  // on is derived below, because the timetable is the real record: a clash
+  // saved to one is still there after a reload, and a switch that reset itself
+  // to off would claim otherwise — and then refuse the next matching add.
+  bool _allowExamClash = false;
+  bool _allowSectionClash = false;
+  bool _allowCreditBypass = false;
+
+  bool get allowExamClash => _allowExamClash || _hasExamClash;
+  bool get allowSectionClash => _allowSectionClash || _hasSectionClash;
+  bool get allowCreditBypass => _allowCreditBypass || _isOverCreditCap;
+
+  /// Clashes currently on the grid, however they got there (an active bypass
+  /// or a timetable loaded with one already in it).
+  List<ClashWarning> _currentClashes() {
+    final tt = currentTimetable;
+    if (tt == null) return const [];
+    return ClashDetector.detectClashes(tt.selectedSections, tt.availableCourses);
+  }
+
+  bool get _hasExamClash => _currentClashes().any((w) =>
+      w.type == ClashType.midSemExam || w.type == ClashType.endSemExam);
+  bool get _hasSectionClash =>
+      _currentClashes().any((w) => w.type == ClashType.regularClass);
+  bool get _isOverCreditCap =>
+      _currentTotalCredits() > AppLimits.semesterCreditCap;
+
+  /// Sets a bypass, refusing to turn it off while the violation it allowed is
+  /// still on the grid — it stays on until the clash (or credit overage) is
+  /// removed. Returns whether the change was accepted, so the menu's switch
+  /// only moves when it was.
+  bool setBypassAllowed(TimetableBypass bypass, bool allowed) {
+    if (!allowed) {
+      final String? refusal = switch (bypass) {
+        TimetableBypass.examClash => _hasExamClash
+            ? 'An exam clash is still on the grid — remove one of the clashing courses first.'
+            : null,
+        TimetableBypass.sectionClash => _hasSectionClash
+            ? 'A section clash is still on the grid — remove one of the clashing sections first.'
+            : null,
+        TimetableBypass.creditLimit => _isOverCreditCap
+            ? 'Still over the ${AppLimits.semesterCreditCap.toInt()} credit limit — remove a course first.'
+            : null,
+      };
+      if (refusal != null) {
+        ToastService.showError(refusal);
+        return false;
+      }
+    }
+    setState(() {
+      switch (bypass) {
+        case TimetableBypass.examClash:
+          _allowExamClash = allowed;
+        case TimetableBypass.sectionClash:
+          _allowSectionClash = allowed;
+        case TimetableBypass.creditLimit:
+          _allowCreditBypass = allowed;
+      }
+    });
+    return true;
+  }
+
   // -- Selection broadcast --
   // Screens pushed on top of the editor (the elective browsers) hold the live
   // selectedSections list, so they only need a ping to know it changed. While
@@ -447,14 +515,22 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   /// Adds a section, explaining any refusal.
   ///
   /// When the only obstacle is an exam clash the toast offers an Override,
-  /// which re-runs the add with [allowExamClash] set. Class-time clashes and
-  /// duplicate section types are never overridable.
-  void addSection(String courseCode, String sectionId, {bool allowExamClash = false}) {
+  /// which re-runs the add with [overrideExamClash] set for that one add. The
+  /// toolbar's bypass switches ([allowExamClash], [allowSectionClash],
+  /// [allowCreditBypass]) pre-authorize the same obstacles for every add.
+  /// Duplicate section types are never overridable.
+  void addSection(String courseCode, String sectionId, {bool overrideExamClash = false}) {
     final tt = currentTimetable;
     if (tt == null) return;
 
+    // Read the bypasses once, before the add: they derive partly from the
+    // clashes already on the grid, so re-reading them afterwards would report
+    // this add's own clash as having pre-authorized it.
+    final examClashAllowed = overrideExamClash || allowExamClash;
+    final sectionClashAllowed = allowSectionClash;
+
     final isNewCourse = !tt.selectedSections.any((s) => s.courseCode == courseCode);
-    if (isNewCourse) {
+    if (isNewCourse && !allowCreditBypass) {
       final course = tt.availableCourses.cast<Course?>().firstWhere(
         (c) => c!.courseCode == courseCode,
         orElse: () => null,
@@ -474,15 +550,18 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         courseCode,
         sectionId,
         tt,
-        allowExamClash: allowExamClash,
+        allowExamClash: examClashAllowed,
+        allowSectionClash: sectionClashAllowed,
       );
 
       if (result.isAllowed) {
         undoRedoService.pushSections(
           sectionsBefore,
-          allowExamClash
+          overrideExamClash
               ? 'Add $courseCode $sectionId (exam clash overridden)'
-              : 'Add $courseCode $sectionId',
+              : (examClashAllowed || sectionClashAllowed)
+                  ? 'Add $courseCode $sectionId (clash bypassed)'
+                  : 'Add $courseCode $sectionId',
         );
         setState(() {
           hasUnsavedChanges = true;
@@ -490,16 +569,25 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         markUnsaved(true);
         _selectionRevision.value++;
         if (isNewCourse) _warnAboutPrerequisites(courseCode);
-        if (allowExamClash) {
-          ToastService.showWarning(
-            'Added $courseCode-$sectionId with an exam clash — you cannot sit both exams.',
-          );
+        // Warn only when the add actually produced a clash — a bypass that is
+        // on but unused shouldn't cry wolf on every add.
+        if (examClashAllowed || sectionClashAllowed) {
+          final clashes = ClashDetector.detectClashes(
+                  tt.selectedSections, tt.availableCourses)
+              .where((w) => w.conflictingCourses.contains(courseCode))
+              .toList();
+          if (clashes.isNotEmpty) {
+            ToastService.showWarning(
+              'Added $courseCode-$sectionId with a clash: ${clashes.first.message}',
+            );
+          }
         }
       } else if (result.isOverridable) {
         ToastService.showError(
           result.message,
           actionLabel: 'Override',
-          onAction: () => addSection(courseCode, sectionId, allowExamClash: true),
+          onAction: () =>
+              addSection(courseCode, sectionId, overrideExamClash: true),
         );
       } else {
         ToastService.showError(result.message);
@@ -1186,6 +1274,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
               selectedSections: tt.selectedSections,
               record: _academicRecord,
               projectCount: tt.projectCount,
+              allowSectionClash: allowSectionClash,
               onProjectCountChanged: (count) {
                 setState(() {
                   tt.projectCount = count;
@@ -1263,6 +1352,13 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         if (tt.clashWarnings.isNotEmpty)
           Card(
             margin: EdgeInsets.all(isMobile ? 4 : 8),
+            // The banner expands and collapses on tap, and the themed card
+            // outline around it read as a control's border rather than as the
+            // edge of a surface. Keeps the theme's radius, drops the stroke.
+            shape: switch (Theme.of(context).cardTheme.shape) {
+              final RoundedRectangleBorder s => s.copyWith(side: BorderSide.none),
+              _ => null,
+            },
             child: ClashWarningsWidget(warnings: tt.clashWarnings),
           ),
         Expanded(
@@ -1312,6 +1408,11 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
                 canUndo: undoRedoService.canUndo,
                 canRedo: undoRedoService.canRedo,
                 onShowStats: () => _showStatsSheet(context),
+                allowExamClash: allowExamClash,
+                allowSectionClash: allowSectionClash,
+                allowCreditBypass: allowCreditBypass,
+                currentCredits: _currentTotalCredits(),
+                onBypassChanged: setBypassAllowed,
               ),
             ),
           ),

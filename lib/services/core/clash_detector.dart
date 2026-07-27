@@ -176,11 +176,16 @@ class ClashDetector {
   ///
   /// Set [allowExamClash] to let the user knowingly keep two courses whose exams
   /// collide (they may intend to drop one, or sit a makeup).
+  ///
+  /// Set [allowSectionClash] to let the user place two sections in the same
+  /// grid cell (the editor's "allow section clashes" bypass). Duplicate section
+  /// types are never bypassed — one course cannot attend two lectures.
   static AddSectionCheck evaluateAdd(
     SelectedSection newSection,
     List<SelectedSection> currentSections,
     List<Course> courses, {
     bool allowExamClash = false,
+    bool allowSectionClash = false,
   }) {
     // One L, one P and one T per course.
     final duplicates = currentSections.where(
@@ -198,15 +203,17 @@ class ClashDetector {
 
     // Only conflicts the new section itself causes — a pre-existing clash
     // elsewhere in the timetable must not block unrelated additions.
-    final classConflicts = checkScheduleConflicts(newSection.section, currentSections);
-    if (classConflicts.isNotEmpty) {
-      final first = classConflicts.first;
-      return AddSectionCheck.blocked(
-        AddBlockReason.classClash,
-        '${newSection.courseCode}-${newSection.sectionId} meets ${getDayName(first.day)} '
-        '${first.time}, when ${first.conflictingCourse}-${first.conflictingSectionId} already meets.',
-        conflictingCourses: classConflicts.map((c) => c.conflictingCourse).toSet().toList(),
-      );
+    if (!allowSectionClash) {
+      final classConflicts = checkScheduleConflicts(newSection.section, currentSections);
+      if (classConflicts.isNotEmpty) {
+        final first = classConflicts.first;
+        return AddSectionCheck.blocked(
+          AddBlockReason.classClash,
+          '${newSection.courseCode}-${newSection.sectionId} meets ${getDayName(first.day)} '
+          '${first.time}, when ${first.conflictingCourse}-${first.conflictingSectionId} already meets.',
+          conflictingCourses: classConflicts.map((c) => c.conflictingCourse).toSet().toList(),
+        );
+      }
     }
 
     if (!allowExamClash) {

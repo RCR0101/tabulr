@@ -19,6 +19,10 @@ class CoursesTabWidget extends StatefulWidget {
   /// Marks courses the student has already cleared.
   final AcademicRecord record;
 
+  /// The editor's "allow section clashes" bypass — forwarded so a conflicting
+  /// section's Add button stays tappable.
+  final bool allowSectionClash;
+
   const CoursesTabWidget({
     super.key,
     required this.courses,
@@ -27,6 +31,7 @@ class CoursesTabWidget extends StatefulWidget {
     required this.projectCount,
     required this.onProjectCountChanged,
     this.record = AcademicRecord.empty,
+    this.allowSectionClash = false,
   });
 
   @override
@@ -244,6 +249,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                 onSectionToggle: widget.onSectionToggle,
                 record: widget.record,
                 showOnlySelected: false,
+                allowSectionClash: widget.allowSectionClash,
               ),
               // My Courses tab - shows only selected courses
               CourseListWidget(
@@ -251,6 +257,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                 selectedSections: widget.selectedSections,
                 onSectionToggle: widget.onSectionToggle,
                 showOnlySelected: true,
+                allowSectionClash: widget.allowSectionClash,
               ),
               // Exam schedule tab
               widget.selectedSections.isEmpty

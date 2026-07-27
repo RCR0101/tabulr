@@ -264,6 +264,88 @@ void main() {
       expect(result.blockedBy, AddBlockReason.classClash);
     });
 
+    /// Two courses sharing a grid cell but sitting different midsems — a pure
+    /// class clash with no exam component.
+    List<Course> classClashOnly() => [
+          makeCourse(
+            courseCode: 'CS F111',
+            sections: [makeSection(sectionId: 'L1', days: [DayOfWeek.M], hours: [1])],
+            midSemExam: makeExam(date: DateTime(2026, 3, 10), timeSlot: TimeSlot.MS1),
+          ),
+          makeCourse(
+            courseCode: 'CS F211',
+            courseTitle: 'Data Structures',
+            sections: [makeSection(sectionId: 'L1', days: [DayOfWeek.M], hours: [1])],
+            midSemExam: makeExam(date: DateTime(2026, 3, 11), timeSlot: TimeSlot.MS2),
+          ),
+        ];
+
+    test('allowSectionClash lets a class clash through', () {
+      final sw = Stopwatch()..start();
+      final sharedSlot = makeSection(days: [DayOfWeek.M], hours: [1]);
+      final result = ClashDetector.evaluateAdd(
+        makeSelectedSection(courseCode: 'CS F211', section: sharedSlot),
+        [makeSelectedSection(courseCode: 'CS F111', section: sharedSlot)],
+        classClashOnly(),
+        allowSectionClash: true,
+      );
+      sw.stop();
+      _record('evaluateAdd bypass admits class clash', true, sw.elapsedMilliseconds);
+
+      expect(result.isAllowed, isTrue);
+      expect(result.blockedBy, isNull);
+    });
+
+    test('allowSectionClash does not bypass an exam clash', () {
+      final sw = Stopwatch()..start();
+      final result = ClashDetector.evaluateAdd(
+        mathAtFreeSlot(), csF111Selected(), examClashOnly(),
+        allowSectionClash: true,
+      );
+      sw.stop();
+      _record('evaluateAdd section bypass cannot bypass exam clash', true, sw.elapsedMilliseconds);
+
+      expect(result.isAllowed, isFalse);
+      expect(result.blockedBy, AddBlockReason.examClash);
+    });
+
+    test('allowSectionClash still refuses a duplicate section type', () {
+      final sw = Stopwatch()..start();
+      final result = ClashDetector.evaluateAdd(
+        makeSelectedSection(
+          courseCode: 'CS F111',
+          sectionId: 'L2',
+          section: makeSection(sectionId: 'L2', days: [DayOfWeek.T], hours: [7]),
+        ),
+        csF111Selected(),
+        examClashOnly(),
+        allowSectionClash: true,
+      );
+      sw.stop();
+      _record('evaluateAdd section bypass keeps duplicate refusal', true, sw.elapsedMilliseconds);
+
+      expect(result.blockedBy, AddBlockReason.duplicateSectionType);
+      expect(result.isOverridable, isFalse);
+    });
+
+    test('both bypasses admit a section clashing on time and exams', () {
+      final sw = Stopwatch()..start();
+      // twoCourseSameSlot() shares both a grid cell and a midsem slot, so only
+      // the two flags together let the add through.
+      final sharedSlot = makeSection(days: [DayOfWeek.M], hours: [1]);
+      final result = ClashDetector.evaluateAdd(
+        makeSelectedSection(courseCode: 'CS F211', section: sharedSlot),
+        [makeSelectedSection(courseCode: 'CS F111', section: sharedSlot)],
+        twoCourseSameSlot(),
+        allowExamClash: true,
+        allowSectionClash: true,
+      );
+      sw.stop();
+      _record('evaluateAdd both bypasses admit double clash', true, sw.elapsedMilliseconds);
+
+      expect(result.isAllowed, isTrue);
+    });
+
     test('reports a duplicate section type as not overridable', () {
       final sw = Stopwatch()..start();
       final result = ClashDetector.evaluateAdd(

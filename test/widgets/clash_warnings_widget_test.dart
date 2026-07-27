@@ -38,43 +38,26 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('names the clashing courses and the exam date', (tester) async {
+    testWidgets('starts collapsed to the summary alone', (tester) async {
       await tester.pumpWidget(wrapAsInEditor([examClash()]));
 
       expect(find.text('This timetable has 1 exam clash'), findsOneWidget);
-      expect(
-        find.text('Exam Clash (CS F214, ECE F211) on 15 Dec'),
-        findsOneWidget,
-      );
+      expect(find.text('EndSem exam clash on 15 Dec FN'), findsNothing);
     });
 
-    testWidgets('lists one line per exam clash', (tester) async {
-      await tester.pumpWidget(wrapAsInEditor([
-        examClash(),
-        examClash(date: DateTime(2026, 10, 6)),
-      ]));
+    testWidgets('expanding lists every clash', (tester) async {
+      await tester.pumpWidget(wrapAsInEditor([examClash(), classClash()]));
 
+      await tester.tap(find.text('This timetable has 1 exam clash '
+          'and 1 class clash'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('EndSem exam clash on 15 Dec FN'), findsOneWidget);
       expect(
-        find.text('Exam Clash (CS F214, ECE F211) on 15 Dec'),
+        find.text('Class time clash on Tuesday at 11:00-11:50 AM'),
         findsOneWidget,
       );
-      expect(
-        find.text('Exam Clash (CS F214, ECE F211) on 6 Oct'),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets('omits the date when the warning has none', (tester) async {
-      await tester.pumpWidget(wrapAsInEditor([
-        ClashWarning(
-          type: ClashType.midSemExam,
-          message: 'MidSem exam clash',
-          conflictingCourses: const ['CS F214', 'ECE F211'],
-          severity: ClashSeverity.error,
-        ),
-      ]));
-
-      expect(find.text('Exam Clash (CS F214, ECE F211)'), findsOneWidget);
+      expect(find.text('Courses: CS F214, ECE F211'), findsOneWidget);
     });
 
     testWidgets('summarises mixed clash types with plurals', (tester) async {
@@ -88,14 +71,6 @@ void main() {
       );
     });
 
-    testWidgets('shows no exam line when only class clashes exist',
-        (tester) async {
-      await tester.pumpWidget(wrapAsInEditor([classClash()]));
-
-      expect(find.text('This timetable has 1 class clash'), findsOneWidget);
-      expect(find.textContaining('Exam Clash ('), findsNothing);
-    });
-
     testWidgets('renders nothing when there are no warnings', (tester) async {
       await tester.pumpWidget(wrapAsInEditor(const []));
 
@@ -107,6 +82,8 @@ void main() {
       await tester.pumpWidget(
         wrapAsInEditor(List.generate(20, (_) => examClash())),
       );
+      await tester.tap(find.text('This timetable has 20 exam clashes'));
+      await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
 
       final size = tester.getSize(find.byType(ClashWarningsWidget));

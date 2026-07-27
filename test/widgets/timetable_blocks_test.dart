@@ -78,17 +78,31 @@ void main() {
       expect(map.blocksFor(DayOfWeek.T), isEmpty);
     });
 
-    test('resolves overlapping slots instead of producing colliding blocks', () {
-      // Clash detection should prevent this, but a hand-edited import can still
-      // land two sections on one cell; the grid must stay renderable.
+    test('keeps both sections of an overlapping cell', () {
+      // With the editor's section-clash bypass this is a normal state, and the
+      // grid has to show the clash rather than hide one of the two courses.
       final map = TimetableBlockMap.fromSlots([
         slot(day: DayOfWeek.F, hours: [5], code: 'CS F111'),
         slot(day: DayOfWeek.F, hours: [5], code: 'PHY F110'),
       ]);
 
       final blocks = map.blocksFor(DayOfWeek.F);
+      expect(blocks, hasLength(2));
+      expect(
+        blocks.map((b) => b.slot.courseCode),
+        containsAll(['CS F111', 'PHY F110']),
+      );
+    });
+
+    test('merges a section split across several slots', () {
+      final map = TimetableBlockMap.fromSlots([
+        slot(day: DayOfWeek.M, hours: [2]),
+        slot(day: DayOfWeek.M, hours: [3]),
+      ]);
+
+      final blocks = map.blocksFor(DayOfWeek.M);
       expect(blocks, hasLength(1));
-      expect(blocks.single.slot.courseCode, 'PHY F110'); // last write wins
+      expect(blocks.single.span, 2);
     });
 
     test('ignores hours outside the 1-12 grid', () {
@@ -210,6 +224,60 @@ void main() {
       expect(map.isEmpty, isTrue);
       expect(map.visibleHours(showAll: false), hasLength(12));
       expect(map.visibleDays(showAll: false), hasLength(5));
+    });
+  });
+
+  group('lane layout', () {
+    List<LaidOutBlock> layOutDay(List<TimetableSlot> slots) =>
+        TimetableBlockMap.layOut(
+          TimetableBlockMap.fromSlots(slots).blocksFor(DayOfWeek.M),
+        );
+
+    test('gives a lone block the whole cell', () {
+      final laid = layOutDay([slot(day: DayOfWeek.M, hours: [2])]);
+
+      expect(laid.single.lane, 0);
+      expect(laid.single.laneCount, 1);
+    });
+
+    test('splits a cell between two clashing sections', () {
+      final laid = layOutDay([
+        slot(day: DayOfWeek.M, hours: [2], code: 'CS F111'),
+        slot(day: DayOfWeek.M, hours: [2], code: 'PHY F110'),
+      ]);
+
+      expect(laid, hasLength(2));
+      expect(laid.every((b) => b.laneCount == 2), isTrue);
+      expect(laid.map((b) => b.lane).toSet(), {0, 1});
+    });
+
+    test('keeps blocks that do not overlap at full width', () {
+      final laid = layOutDay([
+        slot(day: DayOfWeek.M, hours: [2], code: 'CS F111'),
+        slot(day: DayOfWeek.M, hours: [5], code: 'PHY F110'),
+      ]);
+
+      expect(laid.every((b) => b.laneCount == 1), isTrue);
+    });
+
+    test('shares one lane count across a chain of overlaps', () {
+      // A 3-hour lab overlapped by two different one-hour lectures: all three
+      // sit in one cluster, so the cards line up instead of each block picking
+      // its own width.
+      final laid = layOutDay([
+        slot(day: DayOfWeek.M, hours: [2, 3, 4], code: 'CS F111'),
+        slot(day: DayOfWeek.M, hours: [2], code: 'PHY F110'),
+        slot(day: DayOfWeek.M, hours: [4], code: 'MATH F112'),
+      ]);
+
+      expect(laid.every((b) => b.laneCount == 2), isTrue);
+      // The two lectures never overlap each other, so they reuse one lane.
+      expect(
+        laid.where((b) => b.block.slot.courseCode != 'CS F111')
+            .map((b) => b.lane)
+            .toSet(),
+        hasLength(1),
+      );
     });
   });
 
