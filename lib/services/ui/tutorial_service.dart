@@ -619,24 +619,25 @@ class TutorialService {
     _isShowing = false;
   }
 
-  /// Whether [key]'s widget is currently laid out and on-screen. Guards the
-  /// tour against targets that exist in the tree but aren't visible — offstage
-  /// tab pages (translated off to the side), closed drawers/menus, or anything
-  /// scrolled fully out of view.
-  bool _isTargetOnScreen(GlobalKey key) {
+  /// Where [key]'s widget sits and how big the screen under it is, or null when
+  /// it isn't laid out and visible. Guards the tour against targets that exist
+  /// in the tree but aren't visible — offstage tab pages (translated off to the
+  /// side), closed drawers/menus, or anything scrolled fully out of view.
+  ({Rect rect, Size screen})? _targetGeometry(GlobalKey key) {
     final context = key.currentContext;
-    if (context == null) return false;
+    if (context == null) return null;
     final render = context.findRenderObject();
     // `attached` must hold before localToGlobal (it walks the ancestor chain).
-    if (render is! RenderBox || !render.attached || !render.hasSize) return false;
+    if (render is! RenderBox || !render.attached || !render.hasSize) return null;
     final size = render.size;
-    if (size.shortestSide <= 0) return false;
-    final screenSize = MediaQuery.maybeOf(context)?.size;
-    if (screenSize == null) return false;
-    final topLeft = render.localToGlobal(Offset.zero);
+    if (size.shortestSide <= 0) return null;
+    final screen = MediaQuery.maybeOf(context)?.size;
+    if (screen == null) return null;
+    final rect = render.localToGlobal(Offset.zero) & size;
     // Require a real overlap with the screen — an offstage page sits at a large
     // negative/positive x and won't intersect.
-    return (topLeft & size).overlaps(Offset.zero & screenSize);
+    if (!rect.overlaps(Offset.zero & screen)) return null;
+    return (rect: rect, screen: screen);
   }
 
   void _addTarget(
@@ -653,25 +654,75 @@ class TutorialService {
     // context, or a widget that's built but off-screen (a closed drawer, an
     // inactive tab, a collapsed menu). Spotlighting those produces a dark
     // screen with the highlight in empty space and no way forward on mobile.
-    if (!_isTargetOnScreen(key)) return;
+    final geometry = _targetGeometry(key);
+    if (geometry == null) return;
+
+    // tutorial_coach_mark places a left/right-aligned card at
+    // `targetTop - height * 0.6 - padding`, a halo that grows with the target.
+    // For a tall target — the full-height sidebar — that lands hundreds of
+    // pixels above the viewport, so the tour opens with no card and no visible
+    // way forward, and only recovers once the user taps the spotlight to
+    // advance. Position those ourselves, beside the target and on screen.
+    var effectiveAlign = align;
+    var position = customPosition;
+    var contentWidth = maxContentWidth;
+    if (align == ContentAlign.left || align == ContentAlign.right) {
+      const gap = 24.0;
+      final left = align == ContentAlign.right ? geometry.rect.right + gap : gap;
+      // The card sits inside this position's own `gap` of horizontal padding
+      // (see the builder below), so what's left for it is the room to the far
+      // edge less that padding and one more gap of margin.
+      final available = (align == ContentAlign.right
+              ? geometry.screen.width - left
+              : geometry.rect.left) -
+          gap * 2;
+      // Too little room beside the target to bother; the package's own
+      // placement is no worse than a card squeezed into nothing.
+      if (available >= 240) {
+        effectiveAlign = ContentAlign.custom;
+        position = CustomTargetContentPosition(
+          left: left,
+          // Anchored to the target's top, but never so far down a tall target
+          // that the card itself runs off the bottom.
+          top: geometry.rect.top.clamp(gap, geometry.screen.height / 2),
+        );
+        contentWidth = contentWidth == null || contentWidth > available
+            ? available
+            : contentWidth;
+      }
+    }
+
+    // The package's painter returns without drawing anything when the target
+    // sits at exactly `Offset.zero` (LightPaintRect.paint, first line), which
+    // is where a widget flush against the window origin lands — the desktop
+    // sidebar. The backdrop then never dims, so the page looks completely
+    // untouched while the tour's full-screen InkWell (opaque regardless of
+    // whether it has an onTap) swallows every tap except the one over the
+    // spotlight. That is the "nothing is clickable but the sidebar" freeze.
+    // Hand the package a measured position nudged off the origin instead;
+    // half a pixel is invisible under the 8px focus padding.
+    final atOrigin = geometry.rect.topLeft == Offset.zero;
 
     targets.add(
       TargetFocus(
         identify: key.toString(),
-        keyTarget: key,
+        keyTarget: atOrigin ? null : key,
+        targetPosition: atOrigin
+            ? TargetPosition(geometry.rect.size, const Offset(0.5, 0.5))
+            : null,
         shape: shape,
         radius: 12,
         contents: [
           TargetContent(
-            align: align,
-            customPosition: customPosition,
+            align: effectiveAlign,
+            customPosition: position,
             builder: (context, controller) {
               final scheme = Theme.of(context).colorScheme;
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 child: Container(
-                  constraints: maxContentWidth != null
-                      ? BoxConstraints(maxWidth: maxContentWidth)
+                  constraints: contentWidth != null
+                      ? BoxConstraints(maxWidth: contentWidth)
                       : null,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(

@@ -1,3 +1,4 @@
+import '../../models/cdc_slot.dart';
 import '../../models/course.dart';
 import '../../models/timetable.dart';
 import 'branch_structure_service.dart';
@@ -15,19 +16,26 @@ class AutoLoadCDCService {
   /// [secondaryBranch] makes this dual-degree aware: the combination's own CDC
   /// list is used rather than the union of the two branches, which would be
   /// wrong for both content and year (BE courses shift two years later).
+  ///
+  /// [chosen] answers the optional CDCs — the slots offering a choice of course
+  /// (see [CdcSlot]). An unanswered choice loads nothing, because loading one
+  /// alternative on the student's behalf puts a course they may not be taking
+  /// on their timetable.
   Future<List<SelectedSection>> loadCDCsForDegree({
     required String primaryBranch,
     String? secondaryBranch,
     required String semester,
     required List<Course> availableCourses,
+    Set<String> chosen = const {},
   }) async {
     try {
-      final cdcCodes = await _branchService.getCoreCourseCodes(
+      final slots = await _branchService.getCoreCourseSlots(
         semester,
         primaryBranch,
         null,
         secondaryBranch,
       );
+      final cdcCodes = CdcSlot.resolveSlots(slots, chosen);
 
       final selectedSections = <SelectedSection>[];
 

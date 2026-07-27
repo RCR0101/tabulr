@@ -280,6 +280,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
         secondaryBranch: result.secondaryBranch,
         semester: result.semester,
         targetSemester: semesterName,
+        chosen: result.chosen,
       );
 
       if (mounted) {

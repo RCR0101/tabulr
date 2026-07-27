@@ -24,7 +24,7 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
   String? _selectedSecondaryBranch;
   String? _selectedSemester;
 
-  Map<String, List<CourseGuideEntry>> _cdcData = {};
+  Map<String, List<CourseGuideSlot>> _cdcData = {};
   bool _isLoading = true;
   bool _isSearching = false;
   String? _error;
@@ -106,7 +106,7 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
     });
 
     try {
-      Map<String, List<CourseGuideEntry>> data;
+      Map<String, List<CourseGuideSlot>> data;
 
       if (_hasDualBranch) {
         data = await _courseGuideService.getMergedCDCs(
@@ -384,7 +384,7 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
     );
   }
 
-  Widget _buildSemesterCard(String semester, List<CourseGuideEntry> courses) {
+  Widget _buildSemesterCard(String semester, List<CourseGuideSlot> slots) {
     final scheme = Theme.of(context).colorScheme;
     final parts = semester.split('-');
     final label = parts.length == 2 ? 'Year ${parts[0]} · Semester ${parts[1]}' : semester;
@@ -421,20 +421,21 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
         ),
         title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
         subtitle: Text(
-          '${courses.length} course${courses.length != 1 ? 's' : ''}',
+          // A choice is one course to take, not two, so it counts once.
+          '${slots.length} course${slots.length != 1 ? 's' : ''}',
           style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.5), fontSize: 12),
         ),
         children: [
           Padding(
             padding: const EdgeInsets.all(16),
-            child: _buildCoursesTable(courses),
+            child: _buildCoursesTable(slots),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCoursesTable(List<CourseGuideEntry> courses) {
+  Widget _buildCoursesTable(List<CourseGuideSlot> slots) {
     return Table(
       defaultColumnWidth: const IntrinsicColumnWidth(),
       columnWidths: const {
@@ -456,21 +457,52 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
                 _buildTableHeader('Type'),
               ],
             ),
-            ...courses.map((course) {
-              final resolvedName = course.name.isNotEmpty
-                  ? course.name
-                  : CoursesMasterService().getTitle(course.code);
+            ...slots.map((slot) {
+              // A choice keeps one row — it is one course the student takes —
+              // and stacks its alternatives inside the cells, so the guide can
+              // never be read as "take both".
+              final codes = [
+                for (var i = 0; i < slot.options.length; i++)
+                  i == 0 ? slot.options[i].code : 'or ${slot.options[i].code}',
+              ];
+              final names = [for (final o in slot.options) _nameOf(o)];
               return TableRow(
+                decoration: slot.isChoice
+                    ? BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .tertiary
+                            .withValues(alpha: 0.06),
+                      )
+                    : null,
                 children: [
-                  _buildTableCell(course.code, isCode: true),
-                  _buildTableCell(resolvedName),
-                  _buildTableCell(course.credits % 1 == 0 ? course.credits.toInt().toString() : course.credits.toString(), isCenter: true),
-                  _buildTableCell(course.type, isType: true),
+                  _buildTableCell(codes.join('\n'), isCode: true),
+                  _buildTableCell(names.join('\n')),
+                  _buildTableCell(_creditsLabel(slot), isCenter: true),
+                  _buildTableCell(
+                      slot.isChoice ? 'Choose one' : slot.first.type,
+                      isType: true),
                 ],
               );
             }),
           ],
         );
+  }
+
+  String _nameOf(CourseGuideEntry entry) => entry.name.isNotEmpty
+      ? entry.name
+      : CoursesMasterService().getTitle(entry.code);
+
+  static String _credits(double value) =>
+      value % 1 == 0 ? value.toInt().toString() : value.toString();
+
+  /// Alternatives usually carry the same credit, but nothing guarantees it —
+  /// show the range rather than picking one and being wrong half the time.
+  String _creditsLabel(CourseGuideSlot slot) {
+    final values = slot.options.map((o) => o.credits).toList()..sort();
+    return values.first == values.last
+        ? _credits(values.first)
+        : '${_credits(values.first)}–${_credits(values.last)}';
   }
 
   Widget _buildTableHeader(String text) {

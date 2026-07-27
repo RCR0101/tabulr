@@ -3,7 +3,9 @@ import '../../services/ui/secure_logger.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
+import '../../models/cdc_slot.dart';
 import '../../services/data/admin_service.dart';
+import '../../services/data/branch_structure_service.dart';
 import '../../services/data/courses_master_service.dart';
 import '../../services/ui/toast_service.dart';
 import '../../services/ui/page_leave_warning_service.dart';
@@ -128,12 +130,29 @@ class _CourseGuideManagementScreenState
     if (_selectedBranch == null) return;
     setState(() => _saving = true);
     try {
-      await _branchesRef.doc(_selectedBranch!).set({
-        'branch_code': _selectedBranch,
-        'cdcs': _cdcs,
-        'dels': _dels,
-        'huels': _huels,
-      }, SetOptions(merge: true));
+      final batch = _db.batch();
+      batch.set(
+        _branchesRef.doc(_selectedBranch!),
+        {
+          'branch_code': _selectedBranch,
+          'cdcs': _cdcs,
+          'dels': _dels,
+          'huels': _huels,
+        },
+        SetOptions(merge: true),
+      );
+      // Bump the freshness marker, or every client — including this one — keeps
+      // serving branch data from its local cache for up to 72 hours and the
+      // edit simply does not appear (LocalCacheService.readIfFresh). Branch
+      // Groups has always done this on save; this screen never did, so any
+      // course added here was invisible until the cache aged out.
+      batch.set(
+        _branchesRef.doc('_metadata'),
+        {'lastUpdated': DateTime.now().toIso8601String()},
+        SetOptions(merge: true),
+      );
+      await batch.commit();
+      BranchStructureService().clearCache();
       _setDirty(false);
       ToastService.showSuccess('Saved ${constants.branchCodeToName[_selectedBranch] ?? _selectedBranch}');
     } catch (e) {
@@ -142,25 +161,52 @@ class _CourseGuideManagementScreenState
     if (mounted) setState(() => _saving = false);
   }
 
+  /// Course codes already spoken for at [semester], alternatives included, so
+  /// the picker doesn't offer a course that is already required there.
+  Set<String> _codesAt(String semester) =>
+      CdcSlot.expandAll(_cdcs[semester] ?? const []).toSet();
+
   Future<void> _addCourse(String semester) async {
-    final existing = _cdcs[semester] ?? const <String>[];
     final picked = await showCoursePicker(
       context,
-      alreadyChosen: existing.toSet(),
+      alreadyChosen: _codesAt(semester),
       title: 'Add courses to $semester',
     );
     if (picked == null || picked.isEmpty) return;
     var changed = false;
     setState(() {
       final list = _cdcs.putIfAbsent(semester, () => []);
+      final existing = _codesAt(semester);
       for (final course in picked) {
-        if (!list.contains(course.courseCode)) {
+        if (existing.add(course.courseCode)) {
           list.add(course.courseCode);
           changed = true;
         }
       }
     });
     if (changed) _setDirty(true);
+  }
+
+  /// Adds the picked courses as a single optional CDC: the student takes
+  /// exactly one of them. Stored as one `A|B` entry — see [CdcSlot].
+  Future<void> _addChoice(String semester) async {
+    final picked = await showCoursePicker(
+      context,
+      alreadyChosen: _codesAt(semester),
+      title: 'Optional CDC for $semester — pick the alternatives',
+    );
+    if (picked == null) return;
+    if (picked.length < 2) {
+      ToastService.showInfo(
+          'Pick at least two courses — an optional CDC is a choice between them');
+      return;
+    }
+    setState(() {
+      _cdcs
+          .putIfAbsent(semester, () => [])
+          .add(CdcSlot([for (final c in picked) c.courseCode]).encode());
+    });
+    _setDirty(true);
   }
 
   void _removeCourse(String semester, int index) {
@@ -486,7 +532,7 @@ class _CourseGuideManagementScreenState
                       ),
                     ),
                   )
-                else
+                else ...[
                   InkWell(
                     borderRadius: BorderRadius.circular(4),
                     onTap: () => _addCourse(semester),
@@ -505,6 +551,26 @@ class _CourseGuideManagementScreenState
                       ),
                     ),
                   ),
+                  const SizedBox(width: 4),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(4),
+                    onTap: () => _addChoice(semester),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.alt_route_rounded,
+                              size: 16, color: scheme.tertiary),
+                          const SizedBox(width: 2),
+                          Text('Optional',
+                              style: TextStyle(
+                                  fontSize: 12, color: scheme.tertiary)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -663,20 +729,67 @@ class _CourseGuideManagementScreenState
     );
   }
 
+  /// One stored entry: a required course, or an optional CDC listing the
+  /// alternatives the student picks one of. Removal takes the whole entry —
+  /// editing an alternative means deleting it and adding it back, which is
+  /// rare enough not to earn its own affordance.
   Widget _courseRow(
-      String semester, int index, String code, ColorScheme scheme,
+      String semester, int index, String entry, ColorScheme scheme,
       {bool locked = false}) {
-    final master = _masterService.get(code);
-    final title = master?.title ?? '';
+    final slot = CdcSlot.tryParse(entry);
+    if (slot == null) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
+        color: slot.isChoice
+            ? scheme.tertiary.withValues(alpha: 0.06)
+            : null,
         border: Border(
           bottom: BorderSide(
               color: scheme.outline.withValues(alpha: AppDesign.opacityDivider)),
         ),
       ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (slot.isChoice)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text('Optional — student takes one',
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: scheme.tertiary)),
+                  ),
+                for (final code in slot.options)
+                  _optionLine(code, scheme),
+              ],
+            ),
+          ),
+          if (!locked)
+            InkWell(
+              borderRadius: BorderRadius.circular(4),
+              onTap: () => _removeCourse(semester, index),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(Icons.close_rounded,
+                    size: 16, color: scheme.error.withValues(alpha: 0.7)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _optionLine(String code, ColorScheme scheme) {
+    final master = _masterService.get(code);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1),
       child: Row(
         children: [
           SizedBox(
@@ -689,7 +802,7 @@ class _CourseGuideManagementScreenState
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(title,
+            child: Text(master?.title ?? '',
                 style: TextStyle(
                     fontSize: 12,
                     color: scheme.onSurface
@@ -704,16 +817,6 @@ class _CourseGuideManagementScreenState
                       fontSize: 11,
                       color: scheme.onSurface
                           .withValues(alpha: AppDesign.opacityLow))),
-            ),
-          if (!locked)
-            InkWell(
-              borderRadius: BorderRadius.circular(4),
-              onTap: () => _removeCourse(semester, index),
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Icon(Icons.close_rounded,
-                    size: 16, color: scheme.error.withValues(alpha: 0.7)),
-              ),
             ),
         ],
       ),

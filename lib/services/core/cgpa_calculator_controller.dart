@@ -270,11 +270,16 @@ class CGPACalculatorController extends ChangeNotifier {
 
   /// Imports the CDCs of [primaryBranch] (plus [secondaryBranch] for a dual
   /// degree) at [semester] into [targetSemester]. Returns how many were added.
+  /// [chosen] answers the optional CDCs — slots offering a choice of course.
+  /// An unanswered choice is skipped rather than imported as one of its
+  /// alternatives, which would put a course the student may not be taking into
+  /// their grade sheet.
   Future<int> loadCDCs({
     required String primaryBranch,
     String? secondaryBranch,
     required String semester,
     required String targetSemester,
+    Set<String> chosen = const {},
   }) async {
     final courseGuideService = CourseGuideService();
     final cdcData = await courseGuideService.getCDCsForDegree(
@@ -283,8 +288,23 @@ class CGPACalculatorController extends ChangeNotifier {
       semester: semester,
     );
 
-    final cdcCourses = cdcData[semester] ?? <CourseGuideEntry>[];
-    if (cdcCourses.isEmpty) return 0;
+    final cdcSlots = cdcData[semester] ?? <CourseGuideSlot>[];
+    if (cdcSlots.isEmpty) return 0;
+
+    final unused = {...chosen};
+    final cdcCourses = <CourseGuideEntry>[];
+    for (final slot in cdcSlots) {
+      if (!slot.isChoice) {
+        cdcCourses.add(slot.first);
+        continue;
+      }
+      for (final option in slot.options) {
+        if (unused.remove(option.code)) {
+          cdcCourses.add(option);
+          break;
+        }
+      }
+    }
 
     int importedCount = 0;
     for (final cdcCourse in cdcCourses) {

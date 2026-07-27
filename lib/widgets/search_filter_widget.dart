@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../utils/debouncer.dart';
 import 'common/app_search_field.dart';
 import '../models/course.dart';
+import '../services/data/config_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../utils/design_constants.dart';
 
@@ -58,6 +59,41 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
     };
 
     widget.onSearchChanged(_searchController.text, filters);
+  }
+
+  /// Picks a mid-sem or compre date, restricted to that exam window.
+  ///
+  /// No exam is scheduled outside its window, so opening on the whole calendar
+  /// year meant paging past ten empty months to reach the one week that can
+  /// match. Cancelling still clears the filter, which is how it has always
+  /// worked. [ConfigService] dates are admin-set, so this follows a rescheduled
+  /// exam week without a release.
+  Future<void> _pickExamDate({required bool midSem}) async {
+    final config = ConfigService();
+    final first = midSem ? config.midsemStart : config.endsemStart;
+    final last = midSem ? config.midsemEnd : config.endsemEnd;
+    final current = midSem ? _selectedMidSemDate : _selectedEndSemDate;
+    final date = await showDatePicker(
+      context: context,
+      // A previously picked date can fall outside the window if the admin has
+      // moved it since; showDatePicker asserts on that, so fall back.
+      initialDate: (current != null &&
+              !current.isBefore(first) &&
+              !current.isAfter(last))
+          ? current
+          : first,
+      firstDate: first,
+      lastDate: last,
+    );
+    if (!mounted) return;
+    setState(() {
+      if (midSem) {
+        _selectedMidSemDate = date;
+      } else {
+        _selectedEndSemDate = date;
+      }
+    });
+    _updateSearch();
   }
 
   void _clearFilters() {
@@ -235,7 +271,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                 title: const Text('Show courses with no sections',
                     style: TextStyle(fontSize: 14)),
                 subtitle: const Text(
-                  'Listed for the year but not running this semester',
+                  'Listed for the year but no sections found',
                   style: TextStyle(fontSize: 11.5),
                 ),
               ),
@@ -341,19 +377,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
-                        onPressed: () async {
-                          final date = await showDatePicker(
-                            context: context,
-                            initialDate: DateTime.now(),
-                            firstDate: DateTime(2026, 1, 1),
-                            lastDate: DateTime(2026, 12, 31),
-                          );
-                          if (!mounted) return;
-                          setState(() {
-                            _selectedMidSemDate = date;
-                          });
-                          _updateSearch();
-                        },
+                        onPressed: () => _pickExamDate(midSem: true),
                         icon: const Icon(Icons.calendar_today),
                         label: Text(_selectedMidSemDate == null
                             ? 'Select MidSem Date'
@@ -364,19 +388,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
-                        onPressed: () async {
-                          final date = await showDatePicker(
-                            context: context,
-                            initialDate: DateTime.now(),
-                            firstDate: DateTime(2026, 1, 1),
-                            lastDate: DateTime(2026, 12, 31),
-                          );
-                          if (!mounted) return;
-                          setState(() {
-                            _selectedEndSemDate = date;
-                          });
-                          _updateSearch();
-                        },
+                        onPressed: () => _pickExamDate(midSem: false),
                         icon: const Icon(Icons.calendar_today),
                         label: Text(_selectedEndSemDate == null
                             ? 'Select EndSem Date'
@@ -389,19 +401,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                   children: [
                     Expanded(
                       child: FilledButton(
-                        onPressed: () async {
-                          final date = await showDatePicker(
-                            context: context,
-                            initialDate: DateTime.now(),
-                            firstDate: DateTime(2026, 1, 1),
-                            lastDate: DateTime(2026, 12, 31),
-                          );
-                          if (!mounted) return;
-                          setState(() {
-                            _selectedMidSemDate = date;
-                          });
-                          _updateSearch();
-                        },
+                        onPressed: () => _pickExamDate(midSem: true),
                         child: Text(_selectedMidSemDate == null
                             ? 'MidSem Date'
                             : 'MidSem: ${_selectedMidSemDate!.day}/${_selectedMidSemDate!.month}'),
@@ -410,19 +410,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: FilledButton(
-                        onPressed: () async {
-                          final date = await showDatePicker(
-                            context: context,
-                            initialDate: DateTime.now(),
-                            firstDate: DateTime(2026, 1, 1),
-                            lastDate: DateTime(2026, 12, 31),
-                          );
-                          if (!mounted) return;
-                          setState(() {
-                            _selectedEndSemDate = date;
-                          });
-                          _updateSearch();
-                        },
+                        onPressed: () => _pickExamDate(midSem: false),
                         child: Text(_selectedEndSemDate == null
                             ? 'EndSem Date'
                             : 'EndSem: ${_selectedEndSemDate!.day}/${_selectedEndSemDate!.month}'),

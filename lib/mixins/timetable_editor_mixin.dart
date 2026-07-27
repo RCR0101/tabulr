@@ -744,6 +744,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
           secondaryBranch: result.secondaryBranch,
           semester: result.semester,
           availableCourses: tt.availableCourses,
+          chosen: result.chosen,
         );
 
         if (!mounted) return;

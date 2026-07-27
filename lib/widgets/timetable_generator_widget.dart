@@ -445,6 +445,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         secondaryBranch: result.secondaryBranch,
         semester: result.semester,
         availableCourses: widget.availableCourses,
+        chosen: result.chosen,
       );
       if (!mounted) return;
 

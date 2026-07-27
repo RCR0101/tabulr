@@ -1,11 +1,16 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../models/cdc_slot.dart';
 import '../../utils/branch_constants.dart' as constants;
 import '../../constants/app_constants.dart';
 import 'local_cache_service.dart';
 
 class BranchStructure {
   final String branchCode;
+
+  /// Raw per-semester entries. An entry may be a single course code or an
+  /// encoded [CdcSlot] choice, so read it through [slotsForSemester] or
+  /// [cdcsForSemester] rather than treating elements as course codes.
   final Map<String, List<String>> cdcs;
   final List<String> dels;
   final List<String> huels;
@@ -32,7 +37,16 @@ class BranchStructure {
     );
   }
 
-  List<String> cdcsForSemester(String semester) => cdcs[semester] ?? [];
+  /// Every course code required at [semester], with any choice flattened to all
+  /// of its alternatives — the right answer for "is this a core course?", which
+  /// is what every caller of this asks.
+  List<String> cdcsForSemester(String semester) =>
+      CdcSlot.expandAll(cdcs[semester] ?? const []);
+
+  /// The requirements at [semester], choices intact. For anything that has to
+  /// show or resolve a choice rather than just recognise its courses.
+  List<CdcSlot> slotsForSemester(String semester) =>
+      CdcSlot.parseAll(cdcs[semester] ?? const []);
 }
 
 class BranchStructureService {
@@ -114,7 +128,7 @@ class BranchStructureService {
   Future<List<String>> getCDCs(String branchCode, String? semester) async {
     final data = await getBranchData(branchCode);
     if (semester != null) return data.cdcsForSemester(semester);
-    return data.cdcs.values.expand((v) => v).toList();
+    return CdcSlot.expandAll(data.cdcs.values.expand((v) => v));
   }
 
   Future<List<String>> getDELs(String branchCode) async {
@@ -163,33 +177,59 @@ class BranchStructureService {
     return merged;
   }
 
+  /// Every course that counts as core for this degree at these semesters.
+  ///
+  /// A choice contributes *all* of its alternatives: the callers are elective
+  /// pools and clash filters, which must not offer — or ignore — a course just
+  /// because the student might end up taking the other half of the choice. Use
+  /// [getCoreCourseSlots] where the choice itself matters.
   Future<Set<String>> getCoreCourseCodes(
     String primarySemester,
     String primaryBranch,
     String? secondarySemester,
     String? secondaryBranch,
   ) async {
+    final slots = await getCoreCourseSlots(
+      primarySemester,
+      primaryBranch,
+      secondarySemester,
+      secondaryBranch,
+    );
+    return {for (final slot in slots) ...slot.options};
+  }
+
+  /// [getCoreCourseCodes] with choices intact, in listed order.
+  Future<List<CdcSlot>> getCoreCourseSlots(
+    String primarySemester,
+    String primaryBranch,
+    String? secondarySemester,
+    String? secondaryBranch,
+  ) async {
+    final raw = <String>[];
     final pair = constants.dualDegreePair(primaryBranch, secondaryBranch);
     if (pair != null) {
       final merged = await getMergedCDCs(pair.msc, pair.be);
-      final codes = <String>{};
-      codes.addAll(merged[primarySemester] ?? []);
-      if (secondarySemester != null) {
-        codes.addAll(merged[secondarySemester] ?? []);
+      raw.addAll(merged[primarySemester] ?? const []);
+      if (secondarySemester != null && secondarySemester != primarySemester) {
+        raw.addAll(merged[secondarySemester] ?? const []);
       }
-      return codes;
+    } else {
+      final primaryData = await getBranchData(primaryBranch);
+      raw.addAll(primaryData.cdcs[primarySemester] ?? const []);
+
+      if (secondaryBranch != null && secondarySemester != null) {
+        final secondaryData = await getBranchData(secondaryBranch);
+        raw.addAll(secondaryData.cdcs[secondarySemester] ?? const []);
+      }
     }
 
-    final codes = <String>{};
-    final primaryData = await getBranchData(primaryBranch);
-    codes.addAll(primaryData.cdcsForSemester(primarySemester));
-
-    if (secondaryBranch != null && secondarySemester != null) {
-      final secondaryData = await getBranchData(secondaryBranch);
-      codes.addAll(secondaryData.cdcsForSemester(secondarySemester));
-    }
-
-    return codes;
+    // Two branches can require the same course, and the same choice can appear
+    // in both halves of a dual degree; either way the student takes it once.
+    final seen = <String>{};
+    return [
+      for (final slot in CdcSlot.parseAll(raw))
+        if (seen.add(slot.encode())) slot,
+    ];
   }
 
   void clearCache() {
