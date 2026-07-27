@@ -43,17 +43,14 @@ class CreditsScreen extends StatefulWidget {
 class _CreditsScreenState extends State<CreditsScreen> {
   // ── Configure these ───────────────────────────────────────────────────────
 
-  /// "owner/repo" on GitHub. When set, the Contributors section is fetched
-  /// live from the GitHub API. Leave empty to fall back to [_manualContributors].
-  static const String _githubRepoSlug = 'RCR0101/tabulr';
+  /// "owner/repo", read off the one place the repo is named.
+  static final String _githubRepoSlug =
+      Uri.parse(AppUrls.githubRepo).path.substring(1);
 
   static const _creator = _Person(
     name: 'Aryan Dalmia',
     subtitle: 'Creator & Maintainer',
   );
-
-  /// Used when [_githubRepoSlug] is empty or the GitHub fetch fails.
-  static const List<_Person> _manualContributors = [];
 
   // ── Caching ───────────────────────────────────────────────────────────────
   //
@@ -76,8 +73,8 @@ class _CreditsScreenState extends State<CreditsScreen> {
 
   // ──────────────────────────────────────────────────────────────────────────
 
-  List<_Person> _contributors = _manualContributors;
-  bool _loadingContributors = _githubRepoSlug.isNotEmpty;
+  List<_Person> _contributors = const [];
+  bool _loadingContributors = true;
 
   List<_Person> _admins = const [];
   bool _loadingAdmins = true;
@@ -85,7 +82,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
   @override
   void initState() {
     super.initState();
-    if (_githubRepoSlug.isNotEmpty) _loadContributors();
+    _loadContributors();
     _loadAdmins();
   }
 
@@ -167,7 +164,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
         }
       }
     } catch (_) {
-      // Keep the manual fallback on any error.
+      // Leave empty on failure; the section shows a friendly note.
     }
     if (mounted) setState(() => _loadingContributors = false);
   }
@@ -234,11 +231,9 @@ class _CreditsScreenState extends State<CreditsScreen> {
       ];
     }
     if (_contributors.isEmpty) {
-      return [
-        _emptyNote(
-            'Contributors will appear here once the repository is linked.',
-            scheme),
-      ];
+      // Reached when GitHub is unreachable or rate-limited (60/hr per IP,
+      // unauthenticated), not when the repo is unset — that is configured above.
+      return [_emptyNote("Couldn't load contributors from GitHub.", scheme)];
     }
     // Contributor names are GitHub handles — show them verbatim.
     return [
