@@ -1050,43 +1050,51 @@ class _TimetableWidgetState extends State<TimetableWidget> {
           size: effectiveSize,
         ) +
         (gridPadding + borderWidth) * 2;
-    return Container(
-      width: surfaceWidth,
-      margin: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
+    // The boundary sits outside the frame, over an opaque fill: a boundary
+    // *inside* the coloured Container captured only the grid's own painting and
+    // wrote a transparent-background PNG. The fill also covers the margin and
+    // the rounded corners, which the Container's own colour does not reach.
+    return RepaintBoundary(
+      key: widget.tableKey,
+      child: ColoredBox(
         color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.outline, width: borderWidth),
-      ),
-      child: RepaintBoundary(
-        key: widget.tableKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(gridPadding),
-              child: TimetableGrid(
-                slots: widget.timetableSlots,
-                // The agenda is a screen view; a captured PNG is always a grid.
-                layout: widget.layout == TimetableLayout.agenda
-                    ? TimetableLayout.vertical
-                    : widget.layout,
-                size: effectiveSize,
-                palette: palette,
-                isForExport: true,
-                // The PNG crops the same way the grid on screen does, so what
-                // is shared matches what was designed. "Show full week" is a
-                // viewing preference and does not reach this instance, which
-                // the export builds fresh in an overlay.
-                showAllHours: false,
-                visibleFields: _visibleFields,
-                incompleteSelectionWarnings: widget.incompleteSelectionWarnings,
+        child: Container(
+          width: surfaceWidth,
+          margin: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: scheme.outline, width: borderWidth),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(gridPadding),
+                child: TimetableGrid(
+                  slots: widget.timetableSlots,
+                  // The agenda is a screen view; a captured PNG is always a grid.
+                  layout: widget.layout == TimetableLayout.agenda
+                      ? TimetableLayout.vertical
+                      : widget.layout,
+                  size: effectiveSize,
+                  palette: palette,
+                  isForExport: true,
+                  // The PNG crops the same way the grid on screen does, so what
+                  // is shared matches what was designed. "Show full week" is a
+                  // viewing preference and does not reach this instance, which
+                  // the export builds fresh in an overlay.
+                  showAllHours: false,
+                  visibleFields: _visibleFields,
+                  incompleteSelectionWarnings:
+                      widget.incompleteSelectionWarnings,
+                ),
               ),
-            ),
-            if (widget.exportOptions?.showExamDates == true)
-              _buildExamDatesForExport(context, palette),
-          ],
+              if (widget.exportOptions?.showExamDates == true)
+                _buildExamDatesForExport(context, palette),
+            ],
+          ),
         ),
       ),
     );

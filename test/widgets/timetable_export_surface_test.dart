@@ -1,4 +1,7 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:timetable_maker/models/course.dart';
 import 'package:timetable_maker/models/export_options.dart';
@@ -169,5 +172,52 @@ void main() {
     expect(boundary, isA<RenderBox>());
     expect((boundary as RenderBox).hasSize, isTrue);
     expect(boundary.size.isFinite, isTrue);
+  });
+
+  testWidgets('captured image has an opaque background', (tester) async {
+    final key = GlobalKey();
+    addTearDown(() => tester.pumpWidget(const SizedBox()));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(scaffoldBackgroundColor: const Color(0xFF101418)),
+        home: Stack(
+          children: [
+            Positioned(
+              left: 0,
+              top: 0,
+              child: Material(
+                child: UnconstrainedBox(
+                  child: TimetableWidget(
+                    timetableSlots: [slot('CS F111', DayOfWeek.M, const [2])],
+                    availableCourses: [courseWithExams('CS F111')],
+                    selectedSections: [selected('CS F111')],
+                    size: TimetableSize.extraLarge,
+                    isForExport: true,
+                    tableKey: key,
+                    exportOptions: const ExportOptions(),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final boundary =
+        key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+    // toImage/toByteData are real async work, so they need runAsync — awaiting
+    // them directly trips the test framework's "guarded function leaked" check.
+    final bytes = (await tester.runAsync(() async {
+      final image = await boundary.toImage();
+      return image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    }))!;
+    // Top-left pixel: outside the rounded frame, so it is the fill added for
+    // export. Transparent there is the bug this guards (RGBA, alpha last).
+    expect(bytes.getUint8(3), 255);
+    // And it is the theme's background colour, not an accidental white.
+    expect(bytes.getUint8(0), 0x10);
+    expect(bytes.getUint8(1), 0x14);
+    expect(bytes.getUint8(2), 0x18);
   });
 }

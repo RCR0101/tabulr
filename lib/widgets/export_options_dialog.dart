@@ -5,9 +5,14 @@ import '../services/ui/responsive_service.dart';
 class ExportOptionsDialog extends StatefulWidget {
   final ExportOptions initialOptions;
 
+  /// The background choice only means something for the PNG capture; the ICS
+  /// export shares this dialog and hides it.
+  final bool showBackgroundOption;
+
   const ExportOptionsDialog({
     super.key,
     this.initialOptions = const ExportOptions(),
+    this.showBackgroundOption = true,
   });
 
   @override
@@ -114,7 +119,47 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
               }),
               icon: Icons.event,
             ),
+            if (widget.showBackgroundOption) ...[
             SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 8)),
+            Row(
+              children: [
+                Icon(
+                  Icons.contrast,
+                  size: ResponsiveService.getAdaptiveIconSize(context, 18.0),
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
+                Expanded(
+                  child: Text(
+                    'Background',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize:
+                          ResponsiveService.getAdaptiveFontSize(context, 16),
+                    ),
+                  ),
+                ),
+                SegmentedButton<bool>(
+                  // No segment icons: the dialog is only ~290 px wide on a
+                  // phone, and icon + label overflows the row there.
+                  segments: const [
+                    ButtonSegment(value: true, label: Text('Dark')),
+                    ButtonSegment(value: false, label: Text('Light')),
+                  ],
+                  selected: {_options.darkBackground},
+                  showSelectedIcon: false,
+                  onSelectionChanged: (selection) {
+                    ResponsiveService.triggerSelectionFeedback(context);
+                    setState(() {
+                      _options =
+                          _options.copyWith(darkBackground: selection.first);
+                    });
+                  },
+                ),
+              ],
+            ),
+            SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
+            ],
             Container(
               padding: ResponsiveService.getAdaptivePadding(context, const EdgeInsets.all(12)),
               decoration: BoxDecoration(

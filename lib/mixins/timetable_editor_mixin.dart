@@ -23,6 +23,7 @@ import '../services/data/timetable_sharing_service.dart';
 import '../services/core/undo_redo_service.dart';
 import '../services/core/clash_detector.dart';
 import '../services/ui/responsive_service.dart';
+import '../services/ui/theme_service.dart';
 import '../services/data/user_settings_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/error_dialog.dart';
@@ -893,7 +894,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     // carries only the fields the user wants.
     final ExportOptions? exportOptions = await showDialog<ExportOptions>(
       context: context,
-      builder: (context) => const ExportOptionsDialog(),
+      builder: (context) =>
+          const ExportOptionsDialog(showBackgroundOption: false),
     );
     if (exportOptions == null) return; // User cancelled.
     if (!mounted) return;
@@ -963,34 +965,43 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       final overlay = Overlay.of(context);
       late OverlayEntry overlayEntry;
 
+      // The capture follows the option, not the app's current brightness, so a
+      // user in light mode can still export the dark PNG (the default).
+      final themeService = ThemeService();
+      final exportTheme = exportOptions.darkBackground
+          ? themeService.getDarkThemeData(themeService.currentTheme)
+          : themeService.getLightThemeData(themeService.currentTheme);
+
       overlayEntry = OverlayEntry(
         builder: (context) => Positioned(
           left: -10000,
           top: -10000,
-          child: Material(
-            // Both axes are left unbounded so the grid, and the exam schedule
-            // under it, size to content. A fixed capture width used to be
-            // needed because the old grid's columns were a fixed size; now that
-            // columns divide the available width, pinning it to 2000 px would
-            // stretch a three-day timetable into three 600 px columns.
-            child: UnconstrainedBox(
-              child: TimetableWidget(
-                timetableSlots: timetableService.generateTimetableSlots(
-                  tt.selectedSections,
-                  tt.availableCourses,
+          child: Theme(
+            data: exportTheme,
+            child: Material(
+              // Both axes are left unbounded so the grid, and the exam schedule
+              // under it, size to content. A fixed capture width used to be
+              // needed because the old grid's columns were a fixed size; now
+              // that columns divide the available width, pinning it to 2000 px
+              // would stretch a three-day timetable into three 600 px columns.
+              child: UnconstrainedBox(
+                child: TimetableWidget(
+                  timetableSlots: timetableService.generateTimetableSlots(
+                    tt.selectedSections,
+                    tt.availableCourses,
+                  ),
+                  incompleteSelectionWarnings:
+                      timetableService.getIncompleteSelectionWarnings(
+                    tt.selectedSections,
+                    tt.availableCourses,
+                  ),
+                  selectedSections: tt.selectedSections,
+                  availableCourses: tt.availableCourses,
+                  size: TimetableSize.extraLarge,
+                  isForExport: true,
+                  tableKey: tableExportKey,
+                  exportOptions: exportOptions,
                 ),
-                incompleteSelectionWarnings:
-                    timetableService.getIncompleteSelectionWarnings(
-                  tt.selectedSections,
-                  tt.availableCourses,
-                ),
-                selectedSections: tt.selectedSections,
-                availableCourses: tt.availableCourses,
-                size: TimetableSize
-                    .extraLarge,
-                isForExport: true,
-                tableKey: tableExportKey,
-                exportOptions: exportOptions,
               ),
             ),
           ),
