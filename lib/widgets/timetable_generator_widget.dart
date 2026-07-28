@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import '../models/course.dart';
+import '../utils/course_utils.dart';
 import '../utils/datetime_utils.dart';
 import 'common/app_tappable.dart';
 import '../models/timetable_constraints.dart';
@@ -665,14 +666,15 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         );
       },
       suggestionsCallback: (pattern) {
-        if (pattern.isEmpty) return <Course>[];
+        if (pattern.trim().isEmpty) return <Course>[];
 
-        return widget.availableCourses.where((course) {
-          if (course.totalCredits == 0) return false;
-          final searchLower = pattern.toLowerCase();
-          return course.courseCode.toLowerCase().contains(searchLower) ||
-                 course.courseTitle.toLowerCase().contains(searchLower);
-        }).take(10).toList();
+        final schedulable = widget.availableCourses
+            .where((course) => course.totalCredits != 0);
+        // Ranked by CourseUtils, so the cap trims the least relevant tail
+        // rather than whatever sorted first alphabetically.
+        return CourseUtils.searchCourses(schedulable.toList(), pattern)
+            .take(25)
+            .toList();
       },
       itemBuilder: (context, course) {
         final inTarget = targetList.contains(course.courseCode);

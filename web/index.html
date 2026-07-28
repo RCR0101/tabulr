@@ -216,6 +216,49 @@
       } catch (e) {}
     }
 
+    // One-shot repair for browsers that cached assets/ under the old
+    // `immutable, max-age=1y` header (see firebase.json). Those files sit at
+    // stable URLs but are rebuilt every deploy — MaterialIcons-Regular.otf is
+    // tree-shaken to whichever icons the code references — so a stale copy
+    // renders newly added icons as nothing. Nothing on the page can evict an
+    // HTTP cache entry, but `cache: 'reload'` fetches unconditionally AND
+    // overwrites the entry, so Flutter's own request lands on fresh bytes.
+    //
+    // Runs once per browser, ever. Bump the key to re-arm it. Every path below
+    // must really exist in the deploy: hosting rewrites unknown paths to
+    // index.html with a 200, so a typo would cache an HTML body at an asset URL.
+    var CACHE_BUST_KEY = 'asset_cache_bust_v1';
+    var STALE_ASSETS = [
+      'assets/fonts/MaterialIcons-Regular.otf',
+      // Tree-shaken the same way (down to ~1 KB), same stale-subset failure.
+      'assets/packages/cupertino_icons/assets/CupertinoIcons.ttf',
+      'assets/FontManifest.json',
+      'assets/AssetManifest.bin',
+      'assets/AssetManifest.bin.json'
+    ];
+
+    async function refreshStaleAssets() {
+      try {
+        if (localStorage.getItem(CACHE_BUST_KEY) === '1') return;
+      } catch (e) { return; }
+
+      // ~45 KB total, and it blocks the bootstrap because the point is to win
+      // the race against Flutter's own asset load. Capped so a dead network
+      // delays boot rather than hanging it; an incomplete pass just leaves the
+      // flag unset and retries next launch.
+      var controller = new AbortController();
+      var timer = setTimeout(function () { controller.abort(); }, 5000);
+      try {
+        await Promise.all(STALE_ASSETS.map(function (url) {
+          return fetch(url, { cache: 'reload', signal: controller.signal });
+        }));
+        localStorage.setItem(CACHE_BUST_KEY, '1');
+      } catch (e) {
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
     (async function() {
       // Recover from / count a stuck boot before doing anything else.
       var bootFails = 0;
@@ -270,6 +313,8 @@
         // version so the engine still boots (and reuses the preloaded bytes).
         try { version = localStorage.getItem('app_version') || ''; } catch(_) {}
       }
+
+      await refreshStaleAssets();
 
       // Load Flutter bootstrap with version query param for cache busting
       var s = document.createElement('script');

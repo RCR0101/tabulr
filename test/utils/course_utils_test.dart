@@ -81,6 +81,47 @@ void main() {
       expect(CourseUtils.searchCourses(courses, 'MATH').length, 1);
       expect(CourseUtils.searchCourses(courses, 'math').length, 1);
     });
+
+    test('terms may appear out of order', () {
+      final results = CourseUtils.searchCourses(courses, 'programming computer');
+      expect(results.single.courseCode, 'CS F111');
+    });
+
+    test('a code typed without its space still matches', () {
+      final results = CourseUtils.searchCourses(courses, 'csf111');
+      expect(results.single.courseCode, 'CS F111');
+    });
+
+    test('every term has to match, not just one', () {
+      expect(CourseUtils.searchCourses(courses, 'computer biology'), isEmpty);
+    });
+
+    // Callers cap the suggestion list, so an exact code has to survive the cut
+    // even when other courses match earlier in the input order.
+    test('an exact code match leads the results', () {
+      final results = CourseUtils.searchCourses(courses, 'F111');
+      expect(results.length, 2);
+      final exact = CourseUtils.searchCourses(courses, 'BIO F111');
+      expect(exact.first.courseCode, 'BIO F111');
+    });
+
+    test('code matches outrank title and instructor matches', () {
+      final withDecoy = [
+        makeCourse(
+          courseCode: 'ZZ F999',
+          courseTitle: 'Advanced MATH Topics',
+          sections: [makeSection(sectionId: 'L1', instructor: 'X', days: [DayOfWeek.M], hours: [1])],
+        ),
+        ...courses,
+      ];
+      final results = CourseUtils.searchCourses(withDecoy, 'math');
+      expect(results.first.courseCode, 'MATH F112');
+      expect(results.length, 2);
+    });
+
+    test('whitespace-only query returns all courses', () {
+      expect(CourseUtils.searchCourses(courses, '   '), courses);
+    });
   });
 
   group('filterByInstructor', () {

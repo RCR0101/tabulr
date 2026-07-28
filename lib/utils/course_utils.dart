@@ -32,31 +32,50 @@ class CourseUtils {
     return 'Unknown';
   }
 
+  /// Matches every whitespace-separated term independently rather than the
+  /// query as one contiguous substring, so "programming computer" finds
+  /// "Computer Programming" and "csf111" finds "CS F111".
+  ///
+  /// Results lead with code matches because callers cap the list — an
+  /// unranked cap can drop the exact code the user typed off the end.
   static List<Course> searchCourses(List<Course> courses, String query) {
-    if (query.isEmpty) return courses;
-    
-    final lowercaseQuery = query.toLowerCase();
-    
-    return courses.where((course) {
-      // Search in course code
-      if (course.courseCode.toLowerCase().contains(lowercaseQuery)) {
-        return true;
-      }
-      
-      // Search in course title
-      if (course.courseTitle.toLowerCase().contains(lowercaseQuery)) {
-        return true;
-      }
-      
-      // Search in instructor names
-      for (var section in course.sections) {
-        if (section.instructor.toLowerCase().contains(lowercaseQuery)) {
-          return true;
-        }
-      }
-      
-      return false;
-    }).toList();
+    final terms = query
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
+        .where((t) => t.isNotEmpty)
+        .toList();
+    if (terms.isEmpty) return courses;
+
+    final flatQuery = terms.join();
+    final hits = <({int rank, int order, Course course})>[];
+
+    for (var i = 0; i < courses.length; i++) {
+      final course = courses[i];
+      final code = course.courseCode.toLowerCase();
+      // The despaced code goes in the haystack too so a term can straddle the
+      // space in "CS F111"; instructors are searchable alongside code + title.
+      final flatCode = code.replaceAll(' ', '');
+      final haystack = '$code $flatCode ${course.courseTitle.toLowerCase()} '
+          '${course.sections.map((s) => s.instructor.toLowerCase()).join(' ')}';
+
+      if (!terms.every(haystack.contains)) continue;
+
+      hits.add((
+        rank: flatCode == flatQuery
+            ? 0
+            : flatCode.startsWith(flatQuery)
+                ? 1
+                : 2,
+        order: i,
+        course: course,
+      ));
+    }
+
+    // List.sort isn't stable, so `order` carries the caller's ordering
+    // (alphabetical by code) through as the tie-break within a rank.
+    hits.sort((a, b) =>
+        a.rank != b.rank ? a.rank.compareTo(b.rank) : a.order.compareTo(b.order));
+    return [for (final h in hits) h.course];
   }
 
   static List<Course> filterByInstructor(List<Course> courses, String instructorName) {
