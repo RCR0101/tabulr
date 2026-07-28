@@ -7,6 +7,7 @@ import '../services/data/branch_structure_service.dart';
 import '../services/data/profile_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../utils/branch_constants.dart' as constants;
+import '../utils/design_constants.dart';
 
 class CourseGuideWidget extends StatefulWidget {
   const CourseGuideWidget({super.key});
@@ -24,11 +25,20 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
   String? _selectedSecondaryBranch;
   String? _selectedSemester;
 
+  /// Whether the second-branch picker is on screen. Hidden by default because
+  /// most students are single degree, and a dropdown they must ignore is one
+  /// more thing between them and their courses.
+  bool _dualDegree = false;
+
   Map<String, List<CourseGuideSlot>> _cdcData = {};
   bool _isLoading = true;
   bool _isSearching = false;
   String? _error;
   String? _validationError;
+
+  /// Guards against an earlier, slower load overwriting a later one when the
+  /// student changes branch or semester twice in quick succession.
+  int _loadSeq = 0;
 
   final List<String> _semesterOptions = SemesterConstants.yearsOneToFour;
 
@@ -39,7 +49,7 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
   }
 
   /// Pre-selects the student's saved defaults where they're valid options, so
-  /// the form opens ready to search. Everything stays editable.
+  /// the guide opens on their own courses. Everything stays editable.
   void _prefillFromProfile(List<String> branches) {
     final profile = ProfileService().cached;
     if (profile.primaryBranch != null &&
@@ -52,6 +62,7 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
         profile.secondaryBranch != _selectedPrimaryBranch &&
         branches.contains(profile.secondaryBranch)) {
       _selectedSecondaryBranch = profile.secondaryBranch;
+      _dualDegree = true;
     }
     if (profile.currentSemester != null &&
         _semesterOptions.contains(profile.currentSemester)) {
@@ -68,6 +79,9 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
         _isLoading = false;
         _prefillFromProfile(branches);
       });
+      // A prefilled branch is an answerable question — don't make them press a
+      // button to ask it.
+      if (_selectedPrimaryBranch != null) _loadCDCs();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -88,48 +102,45 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
 
   Future<void> _loadCDCs() async {
     if (_selectedPrimaryBranch == null) {
-      setState(() => _validationError = 'Please select a branch');
+      setState(() {
+        _cdcData = {};
+        _validationError = null;
+      });
       return;
     }
 
     if (_hasDualBranch && !_isValidDualBranch) {
-      setState(() => _validationError =
-          'For dual degree, primary must be MSc (B*) and secondary must be BE (A*)');
+      setState(() {
+        _cdcData = {};
+        _validationError =
+            'A dual degree is an MSc (B-codes) plus a BE (A-codes). Swap the two, or clear the second branch.';
+      });
       return;
     }
 
+    final seq = ++_loadSeq;
     setState(() {
       _isSearching = true;
       _validationError = null;
       _error = null;
-      _cdcData = {};
     });
 
     try {
-      Map<String, List<CourseGuideSlot>> data;
-
-      if (_hasDualBranch) {
-        data = await _courseGuideService.getMergedCDCs(
-          _selectedPrimaryBranch!,
-          _selectedSecondaryBranch!,
-          semester: _selectedSemester,
-        );
-      } else {
-        data = await _courseGuideService.getCDCsForBranch(
-          _selectedPrimaryBranch!,
-          semester: _selectedSemester,
-        );
-      }
-
-      if (!mounted) return;
+      final data = await _courseGuideService.getCDCsForDegree(
+        _selectedPrimaryBranch!,
+        _selectedSecondaryBranch,
+        semester: _selectedSemester,
+      );
+      if (!mounted || seq != _loadSeq) return;
       setState(() {
         _cdcData = data;
         _isSearching = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || seq != _loadSeq) return;
       setState(() {
         _error = 'Failed to load CDCs: $e';
+        _cdcData = {};
         _isSearching = false;
       });
     }
@@ -138,398 +149,476 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Card(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Loading Course Guide...'),
-              ],
-            ),
-          ),
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null && _availableBranches.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.wifi_off_rounded,
+                size: 48, color: AppDesign.muted(context)),
+            const SizedBox(height: AppDesign.spacingMd),
+            Text(_error!, textAlign: TextAlign.center),
+            const SizedBox(height: AppDesign.spacingMd),
+            FilledButton(onPressed: _loadBranches, child: const Text('Retry')),
+          ],
         ),
       );
     }
 
-    if (_error != null && _cdcData.isEmpty && _availableBranches.isEmpty) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
-              const SizedBox(height: 16),
-              Text(_error!, textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              FilledButton(onPressed: _loadBranches, child: const Text('Retry')),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(),
-          _buildBranchSelector(),
-          if (_error != null && _cdcData.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-            ),
-          Expanded(child: _buildResults()),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildFilters(),
+        const SizedBox(height: AppDesign.spacingSm),
+        Expanded(child: _buildResults()),
+      ],
     );
   }
 
-  Widget _buildHeader() {
+  // ── Filters ────────────────────────────────────────────────────────────────
+
+  Widget _buildFilters() {
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(12),
-          topRight: Radius.circular(12),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.menu_book, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 8),
-          Text(
-            'Course Guide',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBranchSelector() {
-    final isMobile = ResponsiveService.isMobile(context);
-    final labelFontSize = ResponsiveService.getAdaptiveFontSize(context, 14);
-    final iconSize = ResponsiveService.getAdaptiveIconSize(context, 16);
-    final touchTarget = ResponsiveService.getTouchTargetSize(context);
-
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(AppDesign.spacingMd),
+      decoration: AppDesign.cardDecoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Semester (optional)
-          Text('Semester (optional)',
-              style: TextStyle(fontSize: labelFontSize, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            initialValue: _selectedSemester,
-            decoration: const InputDecoration(
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-            ),
-            items: [
-              const DropdownMenuItem<String>(value: null, child: Text('All Semesters')),
-              ..._semesterOptions.map((s) => DropdownMenuItem(value: s, child: Text('Semester $s'))),
-            ],
-            onChanged: (v) => setState(() => _selectedSemester = v),
-            isExpanded: true,
-          ),
-          const SizedBox(height: 16),
-
-          // Primary branch
-          Text('Branch *',
-              style: TextStyle(fontSize: labelFontSize, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 8),
           DropdownButtonFormField<String>(
             initialValue: _selectedPrimaryBranch,
-            decoration: const InputDecoration(
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            isExpanded: true,
+            decoration: AppDesign.inputDecoration(
+              context,
+              label: 'Your branch',
+              hint: 'Select a branch',
+              prefixIcon:
+                  const Icon(Icons.school_rounded, size: AppDesign.iconSizeMd),
             ),
-            items: _availableBranches.map((code) {
-              final name = constants.branchCodeToName[code] ?? code;
-              return DropdownMenuItem(value: code, child: Text('$code - $name'));
-            }).toList(),
+            items: _availableBranches
+                .map((code) => DropdownMenuItem(
+                      value: code,
+                      child: Text(
+                        '$code · ${constants.branchCodeToName[code] ?? code}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ))
+                .toList(),
             onChanged: (v) {
               setState(() {
                 _selectedPrimaryBranch = v;
-                _validationError = null;
-                if (_selectedSecondaryBranch == v) _selectedSecondaryBranch = null;
+                if (_selectedSecondaryBranch == v) {
+                  _selectedSecondaryBranch = null;
+                }
               });
+              _loadCDCs();
             },
-            isExpanded: true,
-            hint: const Text('Select branch'),
           ),
-          const SizedBox(height: 16),
-
-          // Secondary branch (optional)
-          Row(
-            children: [
-              Text('Secondary Branch (optional)',
-                  style: TextStyle(fontSize: labelFontSize, fontWeight: FontWeight.w500)),
-              const Spacer(),
-              if (_selectedSecondaryBranch != null)
-                TextButton.icon(
-                  onPressed: () => setState(() {
-                    _selectedSecondaryBranch = null;
-                    _validationError = null;
-                  }),
-                  icon: Icon(Icons.clear, size: iconSize),
-                  label: const Text('Clear'),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    minimumSize: Size(0, touchTarget),
-                  ),
+          if (_dualDegree) ...[
+            const SizedBox(height: AppDesign.spacingSm + 4),
+            DropdownButtonFormField<String>(
+              initialValue: _selectedSecondaryBranch,
+              isExpanded: true,
+              decoration: AppDesign.inputDecoration(
+                context,
+                label: 'Second branch',
+                hint: 'Select a branch',
+                prefixIcon: const Icon(Icons.school_outlined,
+                    size: AppDesign.iconSizeMd),
+                suffixIcon: IconButton(
+                  tooltip: 'Not a dual degree',
+                  icon: const Icon(Icons.close_rounded,
+                      size: AppDesign.iconSizeSm),
+                  onPressed: () {
+                    setState(() {
+                      _dualDegree = false;
+                      _selectedSecondaryBranch = null;
+                      _validationError = null;
+                    });
+                    _loadCDCs();
+                  },
                 ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            initialValue: _selectedSecondaryBranch,
-            decoration: const InputDecoration(
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+              ),
+              items: _availableBranches
+                  .where((c) => c != _selectedPrimaryBranch)
+                  .map((code) => DropdownMenuItem(
+                        value: code,
+                        child: Text(
+                          '$code · ${constants.branchCodeToName[code] ?? code}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ))
+                  .toList(),
+              onChanged: (v) {
+                setState(() => _selectedSecondaryBranch = v);
+                _loadCDCs();
+              },
             ),
-            items: _availableBranches
-                .where((c) => c != _selectedPrimaryBranch)
-                .map((code) {
-              final name = constants.branchCodeToName[code] ?? code;
-              return DropdownMenuItem(value: code, child: Text('$code - $name'));
-            }).toList(),
-            onChanged: (v) {
-              setState(() {
-                _selectedSecondaryBranch = v;
-                _validationError = null;
-              });
-            },
-            isExpanded: true,
-            hint: const Text('Select secondary branch'),
-          ),
-
+          ] else
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => setState(() => _dualDegree = true),
+                icon: const Icon(Icons.add_rounded, size: AppDesign.iconSizeSm),
+                label: const Text('I have a second branch (dual degree)'),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppDesign.spacingSm),
+                  minimumSize: Size(0, ResponsiveService.getTouchTargetSize(context)),
+                ),
+              ),
+            ),
           if (_validationError != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              _validationError!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 13),
-            ),
-          ],
-
-          const SizedBox(height: 16),
-
-          // Search button
-          SizedBox(
-            width: isMobile ? double.infinity : null,
-            child: FilledButton.icon(
-              onPressed: (_selectedPrimaryBranch == null || _isSearching) ? null : _loadCDCs,
-              style: FilledButton.styleFrom(
-                minimumSize: Size(isMobile ? double.infinity : 160, touchTarget),
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              ),
-              icon: _isSearching
-                  ? SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Theme.of(context).colorScheme.onPrimary,
-                      ),
-                    )
-                  : const Icon(Icons.search, size: 18),
-              label: Text(_isSearching ? 'Loading...' : 'View CDCs'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildResults() {
-    if (_cdcData.isEmpty) {
-      return EmptyStateWidget(
-        icon: _selectedPrimaryBranch == null
-            ? Icons.school_outlined
-            : Icons.playlist_add,
-        title: _selectedPrimaryBranch == null
-            ? 'Select a branch to view CDCs'
-            : 'Press "View CDCs" to load data',
-      );
-    }
-
-    final sortedSemesters = _cdcData.keys.toList()..sort();
-
-    if (sortedSemesters.isEmpty) {
-      return const EmptyStateWidget(
-        icon: Icons.search_off,
-        title: 'No CDCs found for the selected criteria',
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: sortedSemesters.length,
-      itemBuilder: (context, index) {
-        final semester = sortedSemesters[index];
-        final courses = _cdcData[semester]!;
-        return _buildSemesterCard(semester, courses);
-      },
-    );
-  }
-
-  Widget _buildSemesterCard(String semester, List<CourseGuideSlot> slots) {
-    final scheme = Theme.of(context).colorScheme;
-    final parts = semester.split('-');
-    final label = parts.length == 2 ? 'Year ${parts[0]} · Semester ${parts[1]}' : semester;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: scheme.outline.withValues(alpha: 0.15)),
-      ),
-      child: ExpansionTile(
-        initiallyExpanded: _selectedSemester != null,
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [scheme.primary, scheme.secondary],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            semester,
-            style: TextStyle(
-              color: scheme.onPrimary,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
-        ),
-        title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-        subtitle: Text(
-          // A choice is one course to take, not two, so it counts once.
-          '${slots.length} course${slots.length != 1 ? 's' : ''}',
-          style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.5), fontSize: 12),
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: _buildCoursesTable(slots),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCoursesTable(List<CourseGuideSlot> slots) {
-    return Table(
-      defaultColumnWidth: const IntrinsicColumnWidth(),
-      columnWidths: const {
-        0: IntrinsicColumnWidth(),
-        1: IntrinsicColumnWidth(),
-        2: IntrinsicColumnWidth(),
-        3: IntrinsicColumnWidth(),
-      },
-          children: [
-            TableRow(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-              ),
+            const SizedBox(height: AppDesign.spacingSm),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildTableHeader('Code'),
-                _buildTableHeader('Course Name'),
-                _buildTableHeader('Cr'),
-                _buildTableHeader('Type'),
+                Icon(Icons.error_outline_rounded,
+                    size: AppDesign.iconSizeSm, color: scheme.error),
+                const SizedBox(width: AppDesign.spacingSm),
+                Expanded(
+                  child: Text(_validationError!,
+                      style: TextStyle(color: scheme.error, fontSize: 13)),
+                ),
               ],
             ),
-            ...slots.map((slot) {
-              // A choice keeps one row — it is one course the student takes —
-              // and stacks its alternatives inside the cells, so the guide can
-              // never be read as "take both".
-              final codes = [
-                for (var i = 0; i < slot.options.length; i++)
-                  i == 0 ? slot.options[i].code : 'or ${slot.options[i].code}',
-              ];
-              final names = [for (final o in slot.options) _nameOf(o)];
-              return TableRow(
-                decoration: slot.isChoice
-                    ? BoxDecoration(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .tertiary
-                            .withValues(alpha: 0.06),
-                      )
-                    : null,
-                children: [
-                  _buildTableCell(codes.join('\n'), isCode: true),
-                  _buildTableCell(names.join('\n')),
-                  _buildTableCell(_creditsLabel(slot), isCenter: true),
-                  _buildTableCell(
-                      slot.isChoice ? 'Choose one' : slot.first.type,
-                      isType: true),
-                ],
-              );
-            }),
           ],
-        );
+          const SizedBox(height: AppDesign.spacingSm + 4),
+          _buildSemesterChips(),
+        ],
+      ),
+    );
   }
 
-  String _nameOf(CourseGuideEntry entry) => entry.name.isNotEmpty
-      ? entry.name
-      : CoursesMasterService().getTitle(entry.code);
+  /// Year/semester as a chip row rather than a dropdown: there are only nine
+  /// choices, and this way the whole degree is visible and one tap away.
+  Widget _buildSemesterChips() {
+    final scheme = Theme.of(context).colorScheme;
+
+    Widget chip(String? value, String label) {
+      final selected = _selectedSemester == value;
+      return Padding(
+        padding: const EdgeInsets.only(right: AppDesign.spacingSm),
+        child: ChoiceChip(
+          label: Text(label),
+          selected: selected,
+          showCheckmark: false,
+          labelStyle: TextStyle(
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+            color: selected ? scheme.onPrimary : scheme.onSurface,
+          ),
+          selectedColor: scheme.primary,
+          side: BorderSide(
+            color: selected
+                ? Colors.transparent
+                : scheme.outline.withValues(alpha: 0.4),
+          ),
+          onSelected: (_) {
+            if (selected) return;
+            setState(() => _selectedSemester = value);
+            _loadCDCs();
+          },
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 40,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          chip(null, 'All years'),
+          for (final sem in _semesterOptions)
+            chip(sem, 'Year ${sem.split('-')[0]}-${sem.split('-')[1]}'),
+        ],
+      ),
+    );
+  }
+
+  // ── Results ────────────────────────────────────────────────────────────────
+
+  Widget _buildResults() {
+    if (_isSearching && _cdcData.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return EmptyStateWidget(
+        icon: Icons.error_outline_rounded,
+        title: _error!,
+      );
+    }
+
+    if (_selectedPrimaryBranch == null) {
+      return const EmptyStateWidget(
+        icon: Icons.school_outlined,
+        title: 'Pick your branch',
+        subtitle:
+            'The guide lists the core courses (CDCs) your degree requires, year by year.',
+      );
+    }
+
+    final semesters = _cdcData.keys.where((k) => _cdcData[k]!.isNotEmpty).toList()
+      ..sort();
+    if (semesters.isEmpty) {
+      return EmptyStateWidget(
+        icon: Icons.search_off_rounded,
+        title: _selectedSemester == null
+            ? 'No core courses listed for this branch yet'
+            : 'Nothing listed for year $_selectedSemester',
+        subtitle: _selectedSemester == null
+            ? null
+            : 'Try another year, or "All years" to see the whole degree.',
+      );
+    }
+
+    return Opacity(
+      // A reload keeps the old list on screen rather than flashing a spinner —
+      // dimmed so it's clear the numbers are about to change.
+      opacity: _isSearching ? 0.5 : 1,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: AppDesign.spacingSm),
+        itemCount: semesters.length,
+        itemBuilder: (context, i) => CourseGuideSemesterCard(
+          semester: semesters[i],
+          slots: _cdcData[semesters[i]]!,
+          // One semester on screen is the answer itself; eight is a menu.
+          initiallyExpanded: semesters.length == 1,
+        ),
+      ),
+    );
+  }
+}
+
+/// One year-semester of the guide: a header that summarises the term, and its
+/// courses.
+///
+/// Split out from [CourseGuideWidget] so the layout can be rendered from a
+/// preview test without Firestore — see `test/goldens/course_guide_preview_test.dart`.
+class CourseGuideSemesterCard extends StatelessWidget {
+  const CourseGuideSemesterCard({
+    super.key,
+    required this.semester,
+    required this.slots,
+    this.initiallyExpanded = false,
+  });
+
+  final String semester;
+  final List<CourseGuideSlot> slots;
+  final bool initiallyExpanded;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = semester.split('-');
+    final label = parts.length == 2
+        ? 'Year ${parts[0]} · Semester ${parts[1]}'
+        : semester;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppDesign.spacingSm + 4),
+      decoration: AppDesign.cardDecoration(context),
+      clipBehavior: Clip.antiAlias,
+      child: Theme(
+        // The tile's own divider draws a second line over the header border.
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        // ExpansionTile's header is a ListTile, which paints its ink splash on
+        // the nearest Material — without this the card's own decoration is that
+        // ancestor and swallows the tap feedback (Flutter asserts on it).
+        child: Material(
+          type: MaterialType.transparency,
+          child: ExpansionTile(
+          initiallyExpanded: initiallyExpanded,
+          tilePadding: const EdgeInsets.symmetric(
+              horizontal: AppDesign.spacingMd, vertical: AppDesign.spacingXs),
+          childrenPadding: EdgeInsets.zero,
+          expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+          title: Text(label,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              // A choice is one course to take, not two, so it counts once.
+              '${slots.length} course${slots.length == 1 ? '' : 's'} · ${_unitsLabel(slots)} units',
+              style: TextStyle(
+                  fontSize: 12.5, color: AppDesign.muted(context)),
+            ),
+          ),
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: AppDesign.dividerColor(context)),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    for (var i = 0; i < slots.length; i++)
+                      _SlotRow(
+                        slot: slots[i],
+                        banded: i.isOdd,
+                        isLast: i == slots.length - 1,
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Total units for the term. A choice contributes the one course the student
+  /// will take — usually a fixed number, but shown as a range when the
+  /// alternatives don't carry the same credit.
+  static String _unitsLabel(List<CourseGuideSlot> slots) {
+    var low = 0.0;
+    var high = 0.0;
+    for (final slot in slots) {
+      final values = slot.options.map((o) => o.credits).toList()..sort();
+      low += values.first;
+      high += values.last;
+    }
+    return low == high
+        ? _credits(low)
+        : '${_credits(low)}–${_credits(high)}';
+  }
 
   static String _credits(double value) =>
       value % 1 == 0 ? value.toInt().toString() : value.toString();
+}
 
-  /// Alternatives usually carry the same credit, but nothing guarantees it —
-  /// show the range rather than picking one and being wrong half the time.
-  String _creditsLabel(CourseGuideSlot slot) {
-    final values = slot.options.map((o) => o.credits).toList()..sort();
-    return values.first == values.last
-        ? _credits(values.first)
-        : '${_credits(values.first)}–${_credits(values.last)}';
-  }
+/// One requirement. A plain course is a single line; a choice is the same line
+/// repeated under a "take one of these" banner, so the block can never be read
+/// as "take both".
+class _SlotRow extends StatelessWidget {
+  const _SlotRow({
+    required this.slot,
+    required this.banded,
+    required this.isLast,
+  });
 
-  Widget _buildTableHeader(String text) {
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Text(
-        text,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.primary,
+  final CourseGuideSlot slot;
+  final bool banded;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        // Choices get a hue of their own, not just a lighter grey — the
+        // difference has to survive both themes and colour blindness, and the
+        // banner carries the actual meaning.
+        color: slot.isChoice
+            ? scheme.tertiary.withValues(alpha: 0.11)
+            : banded
+                ? scheme.onSurface.withValues(alpha: 0.03)
+                : null,
+        border: isLast
+            ? null
+            : Border(bottom: BorderSide(color: AppDesign.dividerColor(context))),
+      ),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppDesign.spacingMd, vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (slot.isChoice) ...[
+            Row(
+              children: [
+                Icon(Icons.alt_route_rounded,
+                    size: 15, color: scheme.tertiary),
+                const SizedBox(width: AppDesign.spacingXs + 2),
+                Text(
+                  'Take any one of these',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                    color: scheme.tertiary,
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: AppDesign.spacingSm),
+          ],
+          for (var i = 0; i < slot.options.length; i++) ...[
+            if (i > 0)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Text('or',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontStyle: FontStyle.italic,
+                      color: AppDesign.muted(context),
+                    )),
+              ),
+            _optionLine(context, slot.options[i]),
+          ],
+        ],
       ),
     );
   }
 
-  Widget _buildTableCell(String text, {bool isCode = false, bool isCenter = false, bool isType = false}) {
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Text(
-        text,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              fontFamily: isCode ? 'monospace' : null,
-              fontWeight: isCode ? FontWeight.w500 : null,
-              color: isType ? Theme.of(context).colorScheme.tertiary : null,
+  Widget _optionLine(BuildContext context, CourseGuideEntry entry) {
+    final scheme = Theme.of(context).colorScheme;
+    final name = entry.name.isNotEmpty
+        ? entry.name
+        : CoursesMasterService().getTitle(entry.code);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          // Fixed so codes line up down the column — that is how a student
+          // scans for one. Every code is `XXX Fnnn`-shaped, so it fits.
+          width: 92,
+          child: Text(
+            entry.code,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurface,
             ),
-        textAlign: isCenter ? TextAlign.center : TextAlign.start,
-      ),
+          ),
+        ),
+        const SizedBox(width: AppDesign.spacingSm),
+        Expanded(
+          // Wrapped, never ellipsised: the title is how a student recognises
+          // the course.
+          child: Text(
+            name.isEmpty ? '—' : name,
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.3,
+              color: scheme.onSurface.withValues(alpha: AppDesign.opacityHigh),
+            ),
+          ),
+        ),
+        const SizedBox(width: AppDesign.spacingSm),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+          decoration: BoxDecoration(
+            color: scheme.primary.withValues(alpha: 0.1),
+            borderRadius: AppDesign.borderRadiusXs,
+          ),
+          child: Text(
+            '${CourseGuideSemesterCard._credits(entry.credits)}U',
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              color: scheme.primary,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

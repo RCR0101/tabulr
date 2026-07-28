@@ -6,7 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../constants/app_constants.dart';
 import 'config_service.dart';
+import 'user_settings_service.dart';
 import '../ui/secure_logger.dart';
+import '../ui/tutorial_service.dart';
 import '../ui/remote_log_sink.dart';
 
 class AuthService {
@@ -228,7 +230,14 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(StorageKeys.isAuthenticated);
       await prefs.remove(StorageKeys.isGuest);
-      
+
+      // Everything keyed to the account that just left. Both are process-wide
+      // singletons, so anything left behind is read as the *next* account's —
+      // an in-progress tour keeps running over the login screen, and the new
+      // user inherits the old one's completed-tutorial and theme settings.
+      TutorialService().reset();
+      await UserSettingsService().clearSettings();
+
       // Small delay to ensure Firebase auth state change propagates
       await Future.delayed(const Duration(milliseconds: 100));
       

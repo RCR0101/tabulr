@@ -430,7 +430,11 @@ class UserSettingsService extends ChangeNotifier {
   // Clear all settings (useful for logout)
   Future<void> clearSettings() async {
     _userSettings = null;
-    
+    // Without this every later initializeSettings() returns early on the stale
+    // flag and leaves _userSettings null — so the next account reads defaults
+    // (no tutorials completed, default theme) instead of its own settings.
+    _initialized = false;
+
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(StorageKeys.userSettings);

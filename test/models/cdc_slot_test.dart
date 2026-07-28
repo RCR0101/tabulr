@@ -17,6 +17,17 @@ void main() {
       expect(CdcSlot.tryParse(slot.encode()), slot);
     });
 
+    test('a choice is not limited to two alternatives', () {
+      final slot = CdcSlot.tryParse('CS F211|CS F213|CS F214')!;
+      expect(slot.options.length, 3);
+      expect(slot.isChoice, isTrue);
+      expect(slot.resolve({'CS F214'}), 'CS F214');
+      expect(
+        CdcSlot.resolveAll(['CS F211|CS F213|CS F214'], {'CS F213'}),
+        ['CS F213'],
+      );
+    });
+
     test('drops entries that name no course', () {
       expect(CdcSlot.tryParse(''), isNull);
       expect(CdcSlot.tryParse(' | '), isNull);

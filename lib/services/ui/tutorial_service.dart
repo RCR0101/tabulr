@@ -619,6 +619,26 @@ class TutorialService {
     _isShowing = false;
   }
 
+  /// Tears everything down on sign-out.
+  ///
+  /// The coach mark lives in the root overlay, so it survives the swap to the
+  /// login screen and keeps running over it. And every "seen it" answer this
+  /// service holds belongs to the account that just left — carrying
+  /// [_dismissedThisSession] into the next sign-in is what makes a tour skip
+  /// (or repeat) for the wrong person.
+  ///
+  /// Removes the overlay directly rather than via [dismiss]: `skip()` would
+  /// fire `onSkip` and write a completion flag for whoever is signed in by the
+  /// time it lands.
+  void reset() {
+    _currentTutorial?.removeOverlayEntry();
+    _currentTutorial = null;
+    _isShowing = false;
+    _currentSection = null;
+    _currentIsSpotlight = false;
+    _dismissedThisSession.clear();
+  }
+
   /// Where [key]'s widget sits and how big the screen under it is, or null when
   /// it isn't laid out and visible. Guards the tour against targets that exist
   /// in the tree but aren't visible — offstage tab pages (translated off to the

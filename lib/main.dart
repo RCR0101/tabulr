@@ -258,7 +258,11 @@ class _AuthWrapperState extends State<AuthWrapper> {
   late StreamSubscription<bool> _authMethodSubscription;
   late StreamSubscription<dynamic> _authSub;
   bool _authReady = false;
-  bool _themeSynced = false;
+
+  /// Whose settings are currently loaded. Per-uid rather than a one-shot bool:
+  /// signing out and back in as someone else re-emits with a different uid, and
+  /// that account has its own theme and its own completed tutorials to load.
+  String? _syncedUid;
   bool _wasPreviouslyAuthenticated = false;
 
   @override
@@ -279,12 +283,15 @@ class _AuthWrapperState extends State<AuthWrapper> {
     _authSub = _authService.authStateChanges.listen((user) {
       if (user != null) {
         _authReady = true;
-        if (!_themeSynced) {
-          _themeSynced = true;
+        if (_syncedUid != user.uid) {
+          _syncedUid = user.uid;
           _syncThemeFromFirestore();
         }
         if (mounted) setState(() {});
       } else if (!_wasPreviouslyAuthenticated) {
+        // Signing out drops the cached settings, so the next sign-in has to
+        // reload them even when it is the same account coming back.
+        _syncedUid = null;
         _authReady = true;
         if (mounted) setState(() {});
       } else {
