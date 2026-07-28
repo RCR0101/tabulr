@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:timetable_maker/models/course.dart';
 import 'package:timetable_maker/models/timetable_constraints.dart';
@@ -151,6 +153,171 @@ void main() {
       _record('includes optionals', anyHasOptional, sw.elapsedMilliseconds);
 
       expect(anyHasOptional, isTrue);
+    });
+
+    // The fixture above has no gaps anywhere, so its fitness is ~0 and any
+    // sentinel would let the optional through. A real week has gaps — and the
+    // greedy insertion compares the *whole* timetable's fitness against its
+    // starting best, so a negative-fitness week used to reject every optional
+    // that fit perfectly well.
+    test('includes optionals even when the week already scores badly', () async {
+      final sw = Stopwatch()..start();
+      final courses = [
+        makeCourse(
+          courseCode: 'CS F111',
+          lectureCredits: 3,
+          practicalCredits: 0,
+          sections: [
+            makeSection(sectionId: 'L1', days: [DayOfWeek.M], hours: [1, 5]),
+          ],
+        ),
+        makeCourse(
+          courseCode: 'OPT F100',
+          courseTitle: 'Optional Course',
+          lectureCredits: 3,
+          practicalCredits: 0,
+          sections: [
+            makeSection(sectionId: 'L1', days: [DayOfWeek.T], hours: [2]),
+          ],
+        ),
+      ];
+
+      final constraints = TimetableConstraints(
+        mandatoryCourses: ['CS F111'],
+        optionalCourses: ['OPT F100'],
+        maxCredits: 25,
+      );
+
+      final results = await TimetableGenerator.generateTimetables(courses, constraints);
+      sw.stop();
+
+      final anyHasOptional = results.any((tt) => tt.optionalCourseCodes.contains('OPT F100'));
+      _record('optionals survive a low-fitness week', anyHasOptional, sw.elapsedMilliseconds);
+
+      expect(anyHasOptional, isTrue,
+          reason: 'the optional clashes with nothing and fits under maxCredits');
+    });
+
+    // The pruner scores on day shape alone, where every extra course can only
+    // cost more — so a single global sort would hand the ranker nothing but
+    // timetables that fitted no optionals at all.
+    test('the pruned pool keeps optional-rich candidates', () async {
+      final sw = Stopwatch()..start();
+      final courses = [
+        makeCourse(
+          courseCode: 'CS F111',
+          lectureCredits: 3,
+          practicalCredits: 0,
+          sections: [
+            for (var i = 1; i <= 4; i++)
+              makeSection(sectionId: 'L$i', days: [DayOfWeek.M], hours: [i]),
+          ],
+        ),
+        for (var i = 0; i < 3; i++)
+          makeCourse(
+            courseCode: 'OPT F10$i',
+            courseTitle: 'Optional $i',
+            lectureCredits: 3,
+            practicalCredits: 0,
+            sections: [
+              makeSection(sectionId: 'L1', days: [DayOfWeek.T], hours: [2 + i * 2]),
+            ],
+          ),
+      ];
+
+      final constraints = TimetableConstraints(
+        mandatoryCourses: ['CS F111'],
+        optionalCourses: ['OPT F100', 'OPT F101', 'OPT F102'],
+        maxCredits: 25,
+      );
+
+      final results = await TimetableGenerator.generateTimetables(
+        courses,
+        constraints,
+        maxTimetables: 6,
+      );
+      sw.stop();
+
+      final best = results.fold(0, (m, tt) => max(m, tt.optionalCourseCodes.length));
+      _record('pool keeps optional-rich options', best == 3, sw.elapsedMilliseconds);
+
+      expect(best, 3, reason: 'all three optionals fit clash-free');
+    });
+
+    // Section shuffles of one elective pair are not variety. When the credit
+    // cap only allows some of the shortlist, the results should show different
+    // combinations of it, not thirty versions of whichever pair scored best.
+    test('results offer different elective combinations, not just sections', () async {
+      final sw = Stopwatch()..start();
+      final courses = [
+        makeCourse(
+          courseCode: 'CS F111',
+          lectureCredits: 3,
+          practicalCredits: 0,
+          sections: [
+            for (var i = 1; i <= 3; i++)
+              makeSection(sectionId: 'L$i', days: [DayOfWeek.M], hours: [i]),
+          ],
+        ),
+        for (var i = 0; i < 4; i++)
+          makeCourse(
+            courseCode: 'OPT F10$i',
+            courseTitle: 'Optional $i',
+            lectureCredits: 3,
+            practicalCredits: 0,
+            sections: [
+              makeSection(sectionId: 'L1', days: [DayOfWeek.T], hours: [1 + i]),
+            ],
+          ),
+      ];
+
+      final constraints = TimetableConstraints(
+        mandatoryCourses: ['CS F111'],
+        optionalCourses: ['OPT F100', 'OPT F101', 'OPT F102', 'OPT F103'],
+        // Room for the core plus two electives, so which two is a real choice.
+        maxCredits: 9,
+      );
+
+      final results = await TimetableGenerator.generateTimetables(courses, constraints);
+      sw.stop();
+
+      final sets = results
+          .map((tt) => (tt.optionalCourseCodes.toList()..sort()).join('|'))
+          .toSet();
+      _record('varied elective combinations', sets.length >= 3, sw.elapsedMilliseconds);
+
+      expect(sets.length, greaterThanOrEqualTo(3),
+          reason: 'four electives competing for two slots should surface '
+              'several different pairs, not one pair over and over');
+    });
+
+    test('a lone elective is offered both ways', () async {
+      final courses = [
+        makeCourse(
+          courseCode: 'CS F111',
+          lectureCredits: 3,
+          practicalCredits: 0,
+          sections: [makeSection(sectionId: 'L1', days: [DayOfWeek.M], hours: [1])],
+        ),
+        makeCourse(
+          courseCode: 'OPT F100',
+          lectureCredits: 3,
+          practicalCredits: 0,
+          sections: [makeSection(sectionId: 'L1', days: [DayOfWeek.T], hours: [2])],
+        ),
+      ];
+      final results = await TimetableGenerator.generateTimetables(
+        courses,
+        TimetableConstraints(
+          mandatoryCourses: ['CS F111'],
+          optionalCourses: ['OPT F100'],
+          maxCredits: 25,
+        ),
+      );
+
+      // Dropping it frees Tuesday entirely — a trade worth showing.
+      expect(results.any((tt) => tt.optionalCourseCodes.isNotEmpty), isTrue);
+      expect(results.any((tt) => tt.optionalCourseCodes.isEmpty), isTrue);
     });
 
     test('optionalTarget caps how many optionals are included', () async {

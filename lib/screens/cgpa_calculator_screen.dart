@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:file_picker/file_picker.dart';
+import '../constants/app_constants.dart';
 import '../services/data/cgpa_service.dart';
 import '../utils/page_transitions.dart';
 import '../widgets/common/shimmer_loading.dart';
@@ -804,6 +805,22 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     }
   }
 
+  /// Plain English for a semester label, plus a note when it's one the record
+  /// is missing rather than the next one along — otherwise being offered "1-2"
+  /// while sitting in year 3 just looks like a bug.
+  String _describeSemester(String name) {
+    final order = SemesterConstants.all.indexOf(name);
+    final fillsGap = order >= 0 &&
+        _controller.semesters
+            .any((s) => SemesterConstants.all.indexOf(s) > order);
+
+    final parts = name.split('-');
+    final what = parts.length == 2
+        ? 'Year ${parts[0]}, semester ${parts[1]}'
+        : 'Summer term';
+    return fillsGap ? '$what — missing from your record' : what;
+  }
+
   void _addCustomSemester() {
     final nextNormal = _controller.nextNormalSemester();
     final nextSummer = _controller.nextSummerTerm();
@@ -818,7 +835,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             leading: Icon(Icons.school_rounded, color: Theme.of(context).colorScheme.primary),
             title: Text('Semester $nextNormal'),
-            subtitle: const Text('Regular semester'),
+            subtitle: Text(_describeSemester(nextNormal)),
             tileColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.06),
             onTap: () {
               Navigator.pop(context);
@@ -832,7 +849,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             leading: Icon(Icons.wb_sunny_rounded, color: Theme.of(context).colorScheme.tertiary),
             title: Text(nextSummer),
-            subtitle: const Text('Summer term'),
+            subtitle: Text(_describeSemester(nextSummer)),
             tileColor: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.06),
             onTap: () {
               Navigator.pop(context);

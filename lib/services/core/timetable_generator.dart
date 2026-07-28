@@ -17,12 +17,15 @@ import 'clash_detector.dart';
 ///    (delegates to [ClashDetector.detectClashes]). See [_isValidCombination].
 /// 3. **Greedy optional insertion** — for each surviving mandatory combo, try
 ///    adding optional courses one at a time (best [_comboFitness] section combo
-///    wins), respecting maxCredits. Multiple orderings of optionals are tried
-///    for variety. See [_addOptionalCourses], [_generateOptionalOrderings].
+///    wins), respecting maxCredits. Several shortlists (priority, reverse,
+///    leave-one-out) are tried so the results differ in *which* optionals they
+///    fit. See [_addOptionalCourses], [_generateOptionalOrderings].
 /// 4. **Deduplicate** — a section-key string set prevents identical timetables
 ///    generated via different orderings.
 /// 5. **Prune** — the pool is trimmed to [maxTimetables] by [_comboFitness], a
-///    cheap internal day-shape heuristic (not user-facing).
+///    cheap internal day-shape heuristic (not user-facing), bucketed by how
+///    many optionals were fitted so the emptiest weeks can't crowd out the
+///    fuller ones. See [_prune].
 /// 6. **Name** — each survivor gets a descriptive name. Ordering the user sees
 ///    is decided later by `TimetableRanker` (Pareto tiers + TOPSIS), not here.
 ///
@@ -123,10 +126,7 @@ class TimetableGenerator {
     // Prune the pool with a cheap internal fitness (day-shape, avoided slots /
     // instructors). This is *not* the ranking the user sees — it only decides
     // which candidates advance to the intent-based ranker.
-    final scored = [
-      for (final t in validTimetables) (t, _comboFitness(t.sections, constraints)),
-    ]..sort((a, b) => b.$2.compareTo(a.$2));
-    final results = scored.take(maxTimetables).map((e) => e.$1).toList();
+    final results = _prune(validTimetables, constraints, maxTimetables);
 
     // Descriptive names, assigned together so collisions can be resolved for a
     // whole group at once (see _assignNames).
@@ -147,24 +147,98 @@ class TimetableGenerator {
     return results;
   }
 
-  static List<List<Course>> _generateOptionalOrderings(List<Course> optionals) {
-    if (optionals.length <= 1) return [optionals];
+  /// Trims the candidate pool to [limit], keeping options that fitted more
+  /// optionals in the running.
+  ///
+  /// [_comboFitness] measures day shape only, where every extra course can just
+  /// cost more — more hours, more gaps. Sorting the whole pool by it therefore
+  /// puts the *emptiest* week on top every time, and a plain `take(limit)`
+  /// handed the ranker nothing but timetables that fitted no optionals at all.
+  /// That is not a preference the user expressed; it is an artefact of scoring
+  /// fewer courses against more.
+  ///
+  /// So bucket by *which* electives made it in and round-robin across the
+  /// buckets, each internally ordered by fitness. Bucketing on the set rather
+  /// than the count is what makes the results list offer genuinely different
+  /// electives instead of thirty section-shuffles of the same two: within one
+  /// count, fitness alone would keep whichever pair happened to sit best and
+  /// discard every alternative pair outright.
+  ///
+  /// Buckets are visited largest-set-first, so the options that honour more of
+  /// the request lead — but every set keeps a slot, because dropping an
+  /// elective for a much better week is a trade the user is allowed to see.
+  /// `TimetableRanker` decides the order actually shown.
+  static List<GeneratedTimetable> _prune(
+    List<GeneratedTimetable> candidates,
+    TimetableConstraints constraints,
+    int limit,
+  ) {
+    if (candidates.length <= limit) return candidates;
 
-    final orderings = <List<Course>>[List.from(optionals)];
-
-    // Add reverse order
-    orderings.add(optionals.reversed.toList());
-
-    // Add orderings that skip each optional (to force different subsets)
-    for (int skip = 0; skip < optionals.length && skip < 4; skip++) {
-      final reordered = <Course>[
-        ...optionals.sublist(skip + 1),
-        ...optionals.sublist(0, skip + 1),
-      ];
-      orderings.add(reordered);
+    final buckets = <String, List<GeneratedTimetable>>{};
+    final fitness = <GeneratedTimetable, double>{};
+    for (final t in candidates) {
+      fitness[t] = _comboFitness(t.sections, constraints);
+      final key = (t.optionalCourseCodes.toList()..sort()).join('|');
+      buckets.putIfAbsent(key, () => []).add(t);
+    }
+    for (final bucket in buckets.values) {
+      bucket.sort((a, b) => fitness[b]!.compareTo(fitness[a]!));
     }
 
-    return orderings;
+    final order = buckets.keys.toList()
+      ..sort((a, b) {
+        final byCount = buckets[b]!.first.optionalCourseCodes.length
+            .compareTo(buckets[a]!.first.optionalCourseCodes.length);
+        if (byCount != 0) return byCount;
+        return fitness[buckets[b]!.first]!.compareTo(fitness[buckets[a]!.first]!);
+      });
+
+    final results = <GeneratedTimetable>[];
+    for (var depth = 0; results.length < limit; depth++) {
+      var tookAny = false;
+      for (final key in order) {
+        final bucket = buckets[key]!;
+        if (depth >= bucket.length) continue;
+        results.add(bucket[depth]);
+        tookAny = true;
+        if (results.length >= limit) break;
+      }
+      if (!tookAny) break; // every bucket exhausted
+    }
+    return results;
+  }
+
+  /// The optional shortlists to try, each producing one candidate per mandatory
+  /// combo. Their job is *subset* variety — different electives, not just
+  /// different sections of the same ones.
+  ///
+  /// This used to rotate the list and call it "skip each optional". A rotation
+  /// only changes priority, and priority only decides anything when something
+  /// is blocked: greedy insertion adds every elective that fits whatever order
+  /// it sees them in. So whenever they all fitted, all six orderings produced
+  /// the identical set and dedupe collapsed them to one — every result offering
+  /// the same electives.
+  ///
+  /// Leave-one-out is what actually varies the set. Capped at 6 (8 orderings
+  /// total, near the old count) because the candidate pool is bounded: more
+  /// orderings per mandatory combo means fewer distinct combos reach the pool,
+  /// which trades away the section variety this is meant to complement.
+  static List<List<Course>> _generateOptionalOrderings(List<Course> optionals) {
+    if (optionals.isEmpty) return [optionals];
+    // Even a single elective has two honest answers — with it, and the week you
+    // get by dropping it.
+    if (optionals.length == 1) return [optionals, const []];
+
+    return [
+      List.of(optionals), // the user's own priority order
+      optionals.reversed.toList(),
+      for (var skip = 0; skip < optionals.length && skip < 6; skip++)
+        [
+          for (var i = 0; i < optionals.length; i++)
+            if (i != skip) optionals[i],
+        ],
+    ];
   }
 
   // Saturday is off for virtually every BITS timetable, so "Sat off" describes
@@ -352,7 +426,12 @@ class TimetableGenerator {
 
       final sectionCombos = _generateAllCombinations([optCourse]);
       List<ConstraintSelectedSection>? bestCombo;
-      double bestScore = -1;
+      // Must be -infinity, not -1. [_comboFitness] scores the *whole* timetable
+      // and is almost always negative (one gap hour already costs 1), so a -1
+      // sentinel silently rejected every section of every optional on any week
+      // that wasn't perfectly packed — the generator looked like it was
+      // "choosing" not to fit optionals when it had never considered them.
+      double bestScore = double.negativeInfinity;
 
       for (final combo in sectionCombos) {
         final candidate = [...current, ...combo];

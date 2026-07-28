@@ -142,44 +142,62 @@ class CGPACalculatorController extends ChangeNotifier {
     await _cgpa.deleteSemesterData(semesterName);
   }
 
+  /// The regular semester to offer next: the first **gap** in the progression,
+  /// not one past the highest.
+  ///
+  /// Semesters run a fixed sequence (1-1, 1-2, 2-1, …), so a missing one is
+  /// always unambiguous. Offering max + 1 meant deleting 1-2 from a year-3
+  /// record left it permanently unreachable — the dialog just kept offering
+  /// 4-1. Now the deleted one is exactly what comes back.
   String nextNormalSemester() {
-    int maxYear = 0;
-    int maxSem = 0;
-    final normalPattern = RegExp(r'^(\d+)-(\d+)$');
-    for (final s in _semesters) {
-      final m = normalPattern.firstMatch(s);
-      if (m != null) {
-        final y = int.parse(m.group(1)!);
-        final sem = int.parse(m.group(2)!);
-        if (y > maxYear || (y == maxYear && sem > maxSem)) {
-          maxYear = y;
-          maxSem = sem;
-        }
-      }
+    for (final s in SemesterConstants.regular) {
+      if (!_semesters.contains(s)) return s;
     }
-    if (maxYear == 0) return '1-1';
-    if (maxSem >= 2) return '${maxYear + 1}-1';
-    return '$maxYear-${maxSem + 1}';
+    // Past the catalogue's last year (a long degree) — keep the pattern going.
+    final last = SemesterConstants.regular.last.split('-');
+    return '${int.parse(last[0]) + 1}-1';
   }
 
+  /// Likewise for summer terms. ST *n* presupposes ST *n−1*, so they always
+  /// form a run from 1 — the first missing number both continues the run and
+  /// repairs it when a middle term was deleted.
   String nextSummerTerm() {
-    int maxNum = 0;
-    final stPattern = RegExp(r'^ST (\d+)$');
-    for (final s in _semesters) {
-      final m = stPattern.firstMatch(s);
-      if (m != null) {
-        final n = int.parse(m.group(1)!);
-        if (n > maxNum) maxNum = n;
-      }
+    var n = 1;
+    while (_semesters.contains('ST $n')) {
+      n++;
     }
-    return 'ST ${maxNum + 1}';
+    return 'ST $n';
   }
 
   bool addSemester(String name) {
     if (name.isEmpty || _semesters.contains(name)) return false;
-    _semesters.add(name);
+    _insertSemester(name);
     notifyListeners();
     return true;
+  }
+
+  /// Puts [name] at its place in the progression instead of at the end.
+  ///
+  /// [loadData] orders the list by [SemesterConstants.all], but every later
+  /// append ignored that — so a semester added after load (re-adding a deleted
+  /// one, a performance-sheet import, a timetable import) landed last whatever
+  /// its name. That reordered the tabs and, worse, made [cumulativeCgpa] treat
+  /// it as the newest semester. Names outside the catalogue still sort last,
+  /// matching the load rule.
+  void _insertSemester(String name) {
+    final order = SemesterConstants.all.indexOf(name);
+    if (order < 0) {
+      _semesters.add(name);
+      return;
+    }
+    // An unknown name indexes to -1, which never displaces a known one.
+    final at = _semesters
+        .indexWhere((s) => SemesterConstants.all.indexOf(s) > order);
+    if (at < 0) {
+      _semesters.add(name);
+    } else {
+      _semesters.insert(at, name);
+    }
   }
 
   double cumulativeCgpa(String upToSemester) {
@@ -218,7 +236,7 @@ class CGPACalculatorController extends ChangeNotifier {
       final courses = entry.value;
 
       if (!_semesters.contains(semesterName)) {
-        _semesters.add(semesterName);
+        _insertSemester(semesterName);
       }
 
       for (final course in courses) {
@@ -243,7 +261,7 @@ class CGPACalculatorController extends ChangeNotifier {
       final semData = entry.value;
 
       if (!_semesters.contains(semName)) {
-        _semesters.add(semName);
+        _insertSemester(semName);
       }
 
       _cgpaData = _cgpaData.copyWith(

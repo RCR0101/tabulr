@@ -138,6 +138,97 @@ void main() {
     expect(freeFirst.timetable.id, isNot(lightFirst.timetable.id));
   });
 
+  group('fitting the electives you asked for', () {
+    /// A candidate with [sections], tagged as having fitted [optionals].
+    GeneratedTimetable candidate(
+      String id,
+      List<(String, Section)> sections, {
+      Set<String> optionals = const {},
+    }) {
+      final secs = [
+        for (final (code, s) in sections)
+          ConstraintSelectedSection(courseCode: code, sectionId: s.sectionId, section: s),
+      ];
+      final hpd = {for (final d in DayOfWeek.values) d: 0};
+      for (final s in secs) {
+        for (final e in s.section.schedule) {
+          for (final d in e.days) {
+            hpd[d] = hpd[d]! + e.hours.length;
+          }
+        }
+      }
+      return GeneratedTimetable(
+        id: id,
+        sections: secs,
+        pros: const [],
+        cons: const [],
+        hoursPerDay: hpd,
+        optionalCourseCodes: optionals,
+      );
+    }
+
+    // The elective can only ever cost day shape: an extra course means an extra
+    // busy day, more hours, another exam. Every other axis therefore prefers
+    // the week that dropped it, and without an axis of its own the option that
+    // actually did what the student asked is dominated on all fronts.
+    final withElective = candidate(
+      'with elective',
+      [
+        ('CS F111', makeSection(sectionId: 'L1', days: [DayOfWeek.M], hours: [1])),
+        ('OPT F100', makeSection(sectionId: 'L1', days: [DayOfWeek.W], hours: [4])),
+      ],
+      optionals: {'OPT F100'},
+    );
+    final withoutElective = candidate('bare', [
+      ('CS F111', makeSection(sectionId: 'L1', days: [DayOfWeek.M], hours: [1])),
+    ]);
+
+    final constraints = TimetableConstraints(
+      mandatoryCourses: ['CS F111'],
+      optionalCourses: ['OPT F100'],
+    );
+    final pool = [withElective, withoutElective];
+
+    test('fitting an elective is not dominated by dropping it', () {
+      final result = TimetableRanker.rank(pool, constraints, const []);
+      final fitted = result.ranked.firstWhere((r) => r.timetable.id == 'with elective');
+      expect(fitted.tier, 1,
+          reason: 'an option that fits the requested elective is a best trade-off, '
+              'not something the emptier week dominates');
+    });
+
+    test('caring about electives puts the fuller week first', () {
+      final result = TimetableRanker.rank(pool, constraints, const [],
+          importance: {RankAxis.coursesFitted: AxisImportance.high});
+      expect(result.ranked.first.timetable.id, 'with elective');
+    });
+
+    test('the axis drops out when there are no electives to fit', () {
+      // Busier day, so the shape axes still have something to separate.
+      final other = candidate('other', [
+        ('CS F111', makeSection(sectionId: 'L2', days: [DayOfWeek.W], hours: [1, 2, 3])),
+      ]);
+      final result = TimetableRanker.rank(
+        [withoutElective, other],
+        TimetableConstraints(mandatoryCourses: ['CS F111']),
+        const [],
+      );
+      // The two still differ on shape, so ranking happens — but nothing is
+      // judged on an intent the student never expressed.
+      expect(result.activeAxes, isNot(contains(RankAxis.coursesFitted)));
+      expect(result.activeAxes, isNotEmpty);
+    });
+
+    test('an elective that never fits is named in the diagnosis', () {
+      final result = TimetableRanker.rank(
+        [withoutElective],
+        constraints,
+        const [],
+      );
+      expect(result.unmetIntents.join(' '), contains('OPT F100'));
+    });
+  });
+
   group('hard constraints', () {
     GeneratedTimetable ttWith(List<Section> sections) {
       final secs = [

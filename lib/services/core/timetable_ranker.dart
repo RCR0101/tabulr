@@ -5,10 +5,16 @@ import '../../models/course.dart';
 import '../../models/timetable_constraints.dart';
 import '../../utils/datetime_utils.dart';
 
-/// The intent dimensions a timetable is judged on. Kept deliberately small (5)
+/// The intent dimensions a timetable is judged on. Kept deliberately small (6)
 /// so Pareto tiering stays meaningful — with many objectives almost everything
 /// becomes non-dominated ("many-objective" collapse).
-enum RankAxis { freeDays, lightLoad, timeFit, instructors, examComfort }
+///
+/// [coursesFitted] is not a shape preference like the others: the student asked
+/// for those electives. Without it every other axis rewards *dropping* one — a
+/// course you don't take can't crowd a day, sit in a gap, or clash with an exam
+/// — so the emptiest week won by construction. It reads as a constant and drops
+/// out of the ranking entirely when no optionals were requested.
+enum RankAxis { freeDays, lightLoad, timeFit, instructors, examComfort, coursesFitted }
 
 /// How much a given axis matters to the user — the ranker-native replacement
 /// for the old per-penalty weight sliders. Feeds the TOPSIS axis weights.
@@ -41,6 +47,8 @@ extension RankAxisLabel on RankAxis {
         return 'Preferred instructors';
       case RankAxis.examComfort:
         return 'Exam spread';
+      case RankAxis.coursesFitted:
+        return 'Fitting your electives in';
     }
   }
 
@@ -57,6 +65,8 @@ extension RankAxisLabel on RankAxis {
         return 'instructors';
       case RankAxis.examComfort:
         return 'exam spread';
+      case RankAxis.coursesFitted:
+        return 'electives fitted';
     }
   }
 }
@@ -333,7 +343,9 @@ class TimetableRanker {
   // ── Axis measurement ──────────────────────────────────────────────────────
 
   static bool _isBenefit(RankAxis axis) =>
-      axis == RankAxis.freeDays || axis == RankAxis.instructors;
+      axis == RankAxis.freeDays ||
+      axis == RankAxis.instructors ||
+      axis == RankAxis.coursesFitted;
 
   static double _rawValue(RankAxis axis, GeneratedTimetable tt, TimetableConstraints c, List<Course> courses) {
     switch (axis) {
@@ -347,6 +359,8 @@ class TimetableRanker {
         return _instructorBenefit(tt, c);
       case RankAxis.examComfort:
         return _examCost(tt, courses);
+      case RankAxis.coursesFitted:
+        return tt.optionalCourseCodes.length.toDouble();
     }
   }
 
@@ -452,6 +466,25 @@ class TimetableRanker {
     for (final instr in c.preferredInstructors) {
       final everPresent = candidates.any((tt) => tt.sections.any((s) => s.section.instructor == instr));
       if (!everPresent) notes.add('$instr isn\'t available in any clash-free option.');
+    }
+
+    // Electives the student asked for that nothing could fit. Named
+    // individually, because "which one is the problem" is exactly what they
+    // need to decide what to swap.
+    if (c.optionalCourses.isNotEmpty) {
+      final wanted = c.optionalTarget ?? c.optionalCourses.length;
+      final bestFitted =
+          candidates.map((tt) => tt.optionalCourseCodes.length).reduce(max);
+      if (bestFitted < wanted) {
+        final neverFitted = [
+          for (final code in c.optionalCourses)
+            if (!candidates.any((tt) => tt.optionalCourseCodes.contains(code)))
+              code,
+        ];
+        notes.add(neverFitted.isEmpty
+            ? 'No option fits all $wanted of your electives — the best manages $bestFitted.'
+            : '${neverFitted.join(', ')} ${neverFitted.length == 1 ? "doesn't" : "don't"} fit alongside your core courses in any clash-free option.');
+      }
     }
 
     return notes;

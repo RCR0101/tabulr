@@ -54,6 +54,52 @@ void main() {
         controller.addSemester('ST 1');
         expect(controller.nextSummerTerm(), 'ST 2');
       });
+
+      // The progression is fixed, so a hole in it is unambiguous. Offering
+      // max + 1 instead left a deleted semester with no way back.
+      test('a deleted semester is what gets offered next', () async {
+        final mock = MockCGPAService();
+        when(() => mock.deleteSemesterData(any())).thenAnswer((_) async => true);
+        final c = CGPACalculatorController(cgpaService: mock);
+        addTearDown(c.dispose);
+
+        for (final s in ['1-1', '1-2', '2-1', '2-2']) {
+          c.addSemester(s);
+        }
+        expect(c.nextNormalSemester(), '3-1');
+
+        await c.removeSemester('1-2');
+        expect(c.nextNormalSemester(), '1-2');
+      });
+
+      test('a deleted summer term is what gets offered next', () async {
+        final mock = MockCGPAService();
+        when(() => mock.deleteSemesterData(any())).thenAnswer((_) async => true);
+        final c = CGPACalculatorController(cgpaService: mock);
+        addTearDown(c.dispose);
+
+        c.addSemester('ST 1');
+        c.addSemester('ST 2');
+        await c.removeSemester('ST 1');
+        // ST 2 without ST 1 isn't a state the progression allows — repair it
+        // rather than offering ST 3 on top.
+        expect(c.nextSummerTerm(), 'ST 1');
+      });
+
+      test('a re-added semester lands in order, not at the end', () {
+        for (final s in ['1-1', '1-2', '2-1', 'ST 1', '3-1']) {
+          controller.addSemester(s);
+        }
+        controller.addSemester('2-2');
+        expect(controller.semesters, ['1-1', '1-2', '2-1', '2-2', 'ST 1', '3-1']);
+      });
+
+      test('an unrecognised semester name still sorts last', () {
+        controller.addSemester('2-1');
+        controller.addSemester('Exchange term');
+        controller.addSemester('1-1');
+        expect(controller.semesters, ['1-1', '2-1', 'Exchange term']);
+      });
     });
 
     group('course operations', () {

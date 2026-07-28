@@ -3,7 +3,7 @@ import '../../services/core/timetable_ranker.dart';
 import '../common/app_tappable.dart';
 
 /// How much each intent axis counts when ordering results, feeding the ranker's
-/// TOPSIS weights. Five Low/Normal/High segmented controls, one per axis.
+/// TOPSIS weights. One Low/Normal/High segmented control per [RankAxis].
 class RankingImportancePanel extends StatelessWidget {
   const RankingImportancePanel({
     super.key,
