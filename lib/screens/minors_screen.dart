@@ -510,8 +510,13 @@ class _MinorsScreenState extends State<MinorsScreen> {
     final scheme = Theme.of(context).colorScheme;
     final required = group.required;
 
+    // Never blank: a group with no stated minimum used to render nothing on the
+    // right, which reads exactly like a group whose minimum happens to be met.
+    // English Studies really has no per-pool minimum (one total across both);
+    // elsewhere it means the Bulletin split is still unconfirmed. Either way the
+    // student needs to know the number is missing, not absent-because-zero.
     final demand = switch (required) {
-      null => null,
+      null => 'no stated minimum',
       _ when group.isMandatory => 'all $required required',
       _ => 'pick $required of ${group.courses.length}',
     };
@@ -528,20 +533,22 @@ class _MinorsScreenState extends State<MinorsScreen> {
                 ),
           ),
         ),
-        if (demand != null)
-          Text(
-            _record.isEmpty || done == null
-                ? demand
-                : '${done.cleared}/$required  ·  $demand',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: done?.isSatisfied == true
-                      ? Colors.green.shade600
-                      : scheme.onSurface.withValues(alpha: 0.5),
-                  fontWeight: done?.isSatisfied == true
-                      ? FontWeight.w600
-                      : FontWeight.w400,
-                ),
-          ),
+        Text(
+          _record.isEmpty || done == null
+              ? demand
+              // "2/3" needs a denominator; without one, say what is known.
+              : required == null
+                  ? '${done.cleared} done  ·  $demand'
+                  : '${done.cleared}/$required  ·  $demand',
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: done?.isSatisfied == true
+                    ? Colors.green.shade600
+                    : scheme.onSurface.withValues(alpha: 0.5),
+                fontWeight: done?.isSatisfied == true
+                    ? FontWeight.w600
+                    : FontWeight.w400,
+              ),
+        ),
       ],
     );
   }
