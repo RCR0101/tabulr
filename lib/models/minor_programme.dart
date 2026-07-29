@@ -6,9 +6,19 @@ class MinorCourse {
     required this.code,
     this.title = '',
     this.units,
+    this.alternatives = const [],
   });
 
   final String code;
+
+  /// Equally acceptable substitutes, from Bulletin rows that read
+  /// "PHY F212 or ECE F212 / EEE F212 / INSTR F212". Clearing any one of them
+  /// satisfies the requirement, so progress must match on [codes], never on
+  /// [code] alone.
+  final List<String> alternatives;
+
+  /// Every code that satisfies this requirement, preferred one first.
+  List<String> get codes => [code, ...alternatives];
 
   /// Filled in from the course master when the catalogue loads, not persisted
   /// — see [toMap]. Empty for a code the catalogue doesn't carry.
@@ -28,6 +38,9 @@ class MinorCourse {
         code: (map['code'] ?? '').toString(),
         title: (map['title'] ?? '').toString(),
         units: (map['units'] as num?)?.toInt(),
+        alternatives: ((map['alternatives'] as List<dynamic>?) ?? [])
+            .map((a) => a.toString())
+            .toList(),
       );
 
   /// No title: it belongs to the course master, which carries the same ~2,800
@@ -36,13 +49,20 @@ class MinorCourse {
   Map<String, dynamic> toMap() => {
         'code': code,
         if (units != null) 'units': units,
+        if (alternatives.isNotEmpty) 'alternatives': alternatives,
       };
 
-  MinorCourse copyWith({String? code, String? title, int? units}) =>
+  MinorCourse copyWith({
+    String? code,
+    String? title,
+    int? units,
+    List<String>? alternatives,
+  }) =>
       MinorCourse(
         code: code ?? this.code,
         title: title ?? this.title,
         units: units ?? this.units,
+        alternatives: alternatives ?? this.alternatives,
       );
 }
 
@@ -50,10 +70,27 @@ class MinorCourse {
 /// or a discipline-specific pool. The Bulletin varies the naming per minor, so
 /// this is a free-form label rather than an enum.
 class MinorCourseGroup {
-  const MinorCourseGroup({required this.name, required this.courses});
+  const MinorCourseGroup({
+    required this.name,
+    required this.courses,
+    this.required,
+  });
 
   final String name;
   final List<MinorCourse> courses;
+
+  /// How many of [courses] must be cleared. Equal to `courses.length` for a
+  /// core group, where every listed course is mandatory; smaller for an
+  /// elective group, where you pick from the pool.
+  ///
+  /// Null where the Bulletin states only a combined figure — English Studies
+  /// gives two elective pools and one total across both, so neither pool has a
+  /// minimum of its own. Callers must treat null as "unknown", not zero.
+  final int? required;
+
+  /// True for a group you must clear outright, which is what "core" means in
+  /// practice regardless of the label the Bulletin used.
+  bool get isMandatory => required != null && required! >= courses.length;
 
   factory MinorCourseGroup.fromMap(Map<String, dynamic> map) =>
       MinorCourseGroup(
@@ -61,17 +98,24 @@ class MinorCourseGroup {
         courses: ((map['courses'] as List<dynamic>?) ?? [])
             .map((c) => MinorCourse.fromMap(Map<String, dynamic>.from(c as Map)))
             .toList(),
+        required: (map['required'] as num?)?.toInt(),
       );
 
   Map<String, dynamic> toMap() => {
         'name': name,
         'courses': courses.map((c) => c.toMap()).toList(),
+        if (required != null) 'required': required,
       };
 
-  MinorCourseGroup copyWith({String? name, List<MinorCourse>? courses}) =>
+  MinorCourseGroup copyWith({
+    String? name,
+    List<MinorCourse>? courses,
+    int? required,
+  }) =>
       MinorCourseGroup(
         name: name ?? this.name,
         courses: courses ?? this.courses,
+        required: required ?? this.required,
       );
 }
 
@@ -145,6 +189,21 @@ class MinorProgramme {
 
   int get courseCount =>
       groups.fold<int>(0, (total, g) => total + g.courses.length);
+
+  /// Courses you have no choice about — the core groups, summed.
+  int get mandatoryCourses => groups
+      .where((g) => g.isMandatory)
+      .fold<int>(0, (total, g) => total + g.courses.length);
+
+  /// Courses you pick yourself: whatever the minimum leaves over once the
+  /// mandatory ones are counted. Null when the split can't be worked out,
+  /// which is the case until an admin has marked the core groups — the UI
+  /// then falls back to the plain course minimum.
+  int? get electiveCourses {
+    if (minCourses == null || !groups.any((g) => g.isMandatory)) return null;
+    final remaining = minCourses! - mandatoryCourses;
+    return remaining < 0 ? null : remaining;
+  }
 
   bool offeredAt(String? campusCode) =>
       campuses.isEmpty || campusCode == null || campuses.contains(campusCode);

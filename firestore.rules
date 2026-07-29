@@ -123,6 +123,9 @@ service cloud.firestore {
         && request.resource.data.courseCode.size() <= 50
         && request.resource.data.sectionId is string
         && request.resource.data.sectionId.size() <= 30
+        // Campus scopes the feed — a free-text value here would make a post
+        // invisible (no reader queries it) or leak into another campus's feed.
+        && request.resource.data.campus in ['hyderabad', 'pilani', 'goa']
         && request.resource.data.authorName is string
         && request.resource.data.authorName.size() <= 120
         && request.resource.data.confidence is string

@@ -156,6 +156,97 @@ class _AdminScreenState extends State<AdminScreen> {
     if (mounted) setState(fn);
   }
 
+  /// Shows what each campus upload would change and asks for confirmation.
+  ///
+  /// Returns true only on an explicit confirm; dismissing counts as cancel, so
+  /// the collection is never replaced by a stray tap.
+  Future<bool?> _showTimetableDiff(Map<String, TimetablePreview> previews) {
+    final theme = Theme.of(context);
+    final blocked = previews.values.any((p) => p.problems.isNotEmpty);
+
+    Widget line(String label, int n, Color? colour, List<String> sample) {
+      if (n == 0) return const SizedBox.shrink();
+      return Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Text(
+          '$label: $n${sample.isEmpty ? '' : '  —  ${sample.join(', ')}'
+              '${n > sample.length ? ', …' : ''}'}',
+          style: theme.textTheme.bodySmall?.copyWith(color: colour),
+        ),
+      );
+    }
+
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(blocked ? 'Parse looks wrong' : 'Confirm timetable upload'),
+        content: SizedBox(
+          width: 520,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final e in previews.entries) ...[
+                  Text(_campusLabels[e.key] ?? e.key,
+                      style: theme.textTheme.titleSmall),
+                  Text(
+                    e.value.isFirstUpload
+                        ? '${e.value.parsed} courses parsed — first upload for this campus'
+                        : '${e.value.parsed} parsed vs ${e.value.live} live '
+                            '· ${e.value.unchanged} unchanged',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  line('Added', e.value.added, theme.colorScheme.primary,
+                      e.value.addedSample),
+                  line('Removed', e.value.removed, theme.colorScheme.error,
+                      e.value.removedSample),
+                  line('Changed', e.value.changed, theme.colorScheme.tertiary,
+                      e.value.changedSample),
+                  if (e.value.isDisruptive && e.value.problems.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        'This replaces more than half of the live collection — '
+                        'usually a wrong page range.',
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(color: theme.colorScheme.error),
+                      ),
+                    ),
+                  for (final p in e.value.problems)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text('⚠ $p',
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: theme.colorScheme.error)),
+                    ),
+                  Text('parser ${e.value.parserVersion}',
+                      style: theme.textTheme.labelSmall),
+                  const SizedBox(height: 12),
+                ],
+                if (blocked)
+                  Text(
+                    'The upload will be refused unless you tick "Force" and try '
+                    'again. Check the page range first.',
+                    style: theme.textTheme.bodySmall,
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(blocked ? 'Upload anyway' : 'Upload'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _uploadTimetables() async {
     final toUpload = <String, PlatformFile>{};
     for (final campus in _campuses) {
@@ -174,6 +265,37 @@ class _AdminScreenState extends State<AdminScreen> {
     final total = toUpload.length;
     var done = 0;
     try {
+      // Dry run first: parse and diff against live without writing, so the
+      // upload is confirmed against the actual change rather than a total.
+      // A column shift keeps the count healthy and rewrites every row.
+      final previews = <String, TimetablePreview>{};
+      for (final entry in toUpload.entries) {
+        final campus = entry.key;
+        _setStateIfMounted(() => _timetableProgress =
+            'Checking ${_campusLabels[campus]} (${previews.length + 1}/$total)...');
+        final from = int.tryParse(_pageFromControllers[campus]!.text.trim());
+        final to = int.tryParse(_pageToControllers[campus]!.text.trim());
+        previews[campus] = await _adminService.previewTimetable(
+          campusCode: campus,
+          fileBytes: entry.value.bytes!,
+          fileName: entry.value.name,
+          excludeHeaders: _getHeaders(_timetableHeaders[campus]!),
+          pageRange: (from != null && to != null) ? [from, to] : null,
+          examYear: int.tryParse(_examYearController.text.trim()) ?? 2026,
+        );
+      }
+
+      _setStateIfMounted(() => _timetableProgress = null);
+      if (!mounted) return;
+      final confirmed = await _showTimetableDiff(previews);
+      if (confirmed != true) {
+        _setStateIfMounted(() {
+          _timetableResult = 'Upload cancelled — nothing was written.';
+          _timetableProgress = null;
+        });
+        return;
+      }
+
       for (final entry in toUpload.entries) {
         final campus = entry.key;
         final label = _campusLabels[campus]!;

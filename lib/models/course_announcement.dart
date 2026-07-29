@@ -8,6 +8,11 @@ class CourseAnnouncement {
   final String description;
   final String courseCode;
   final String sectionId;
+
+  /// Campus code (`hyderabad`/`pilani`/`goa`) of the timetable this was posted
+  /// from. Course codes repeat across campuses — CS F211 at Goa is a different
+  /// class from CS F211 at Hyderabad — so the feed filters on this too.
+  final String campus;
   final DateTime eventDate;
   final TimeOfDay? startTime;
   final TimeOfDay? endTime;
@@ -39,6 +44,7 @@ class CourseAnnouncement {
     this.description = '',
     required this.courseCode,
     this.sectionId = '',
+    required this.campus,
     required this.eventDate,
     this.startTime,
     this.endTime,
@@ -71,6 +77,7 @@ class CourseAnnouncement {
       description: data['description'] ?? '',
       courseCode: data['courseCode'] ?? '',
       sectionId: data['sectionId'] ?? '',
+      campus: data['campus'] ?? '',
       eventDate: _parseTimestamp(data['eventDate']),
       startTime: _parseTimeOfDay(data['startTime']),
       endTime: _parseTimeOfDay(data['endTime']),
@@ -102,6 +109,7 @@ class CourseAnnouncement {
       'description': description,
       'courseCode': courseCode,
       'sectionId': sectionId,
+      'campus': campus,
       'eventDate': Timestamp.fromDate(eventDate),
       'startTime': startTime != null
           ? {'hour': startTime!.hour, 'minute': startTime!.minute}

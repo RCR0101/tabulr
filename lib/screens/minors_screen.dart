@@ -8,6 +8,7 @@ import '../services/data/academic_record_service.dart';
 import '../services/data/minor_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../utils/design_constants.dart';
+import 'faq_screen.dart';
 import '../widgets/common/app_search_field.dart';
 import '../widgets/common/app_tappable.dart';
 import '../widgets/common/course_record_badge.dart';
@@ -204,29 +205,42 @@ class _MinorsScreenState extends State<MinorsScreen> {
             onChanged: (v) => setState(() => _query = v.trim()),
           ),
           const SizedBox(height: AppDesign.spacingSm),
-          Container(
-            padding: const EdgeInsets.all(AppDesign.spacingSm),
-            decoration: BoxDecoration(
-              color: scheme.primary.withValues(alpha: 0.07),
-              borderRadius: AppDesign.borderRadiusSm,
+          // Tappable: the banner only has room for the three rules students
+          // trip over first, and the rest (fees, the overlap cap, planning
+          // around prerequisites) is already written up in the FAQ.
+          AppTappable(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const FaqScreen(initialCategory: 'Minors'),
+              ),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.info_outline, size: 16, color: scheme.primary),
-                const SizedBox(width: AppDesign.spacingSm),
-                Expanded(
-                  child: Text(
-                    'Declare a minor at the end of your 2nd year. It needs at least '
-                    '5 courses and 15 units, with a CGPA of 4.5 in them. No course '
-                    'can count toward two minors.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurface.withValues(alpha: 0.75),
-                          height: 1.4,
-                        ),
+            child: Container(
+              padding: const EdgeInsets.all(AppDesign.spacingSm),
+              decoration: BoxDecoration(
+                color: scheme.primary.withValues(alpha: 0.07),
+                borderRadius: AppDesign.borderRadiusSm,
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: scheme.primary),
+                  const SizedBox(width: AppDesign.spacingSm),
+                  Expanded(
+                    child: Text(
+                      'Declare a minor at the end of your 2nd year. It needs at least '
+                      '5 courses and 15 units, with a CGPA of 4.5 in them, and at most '
+                      '2 of them can be courses your degree already makes compulsory. '
+                      'Tap for fees, cut-offs and how to plan the sequence.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurface.withValues(alpha: 0.75),
+                            height: 1.4,
+                          ),
+                    ),
                   ),
-                ),
-              ],
+                  Icon(Icons.chevron_right,
+                      size: 16, color: scheme.primary.withValues(alpha: 0.7)),
+                ],
+              ),
             ),
           ),
         ],
@@ -269,7 +283,14 @@ class _MinorsScreenState extends State<MinorsScreen> {
                         const SizedBox(height: 3),
                         Text(
                           [
-                            if (minor.minCourses != null)
+                            // The split is the thing students choose on: a
+                            // minor that is 3 fixed courses plus 2 you pick is
+                            // a different commitment from one that is 5 fixed,
+                            // and "5 courses min" hides that entirely.
+                            if (minor.electiveCourses != null)
+                              '${minor.mandatoryCourses} core + '
+                                  '${minor.electiveCourses} electives'
+                            else if (minor.minCourses != null)
                               '${minor.minCourses} courses min',
                             if (minor.minUnits != null)
                               '${minor.minUnits} units min',
@@ -319,7 +340,9 @@ class _MinorsScreenState extends State<MinorsScreen> {
   /// competing with the minor's name.
   Widget _progressPill(BuildContext context, MinorProgress progress) {
     final scheme = Theme.of(context).colorScheme;
-    final done = progress.meetsCourseCount;
+    // Not meetsCourseCount: enough courses with a core group still missing is
+    // not done, and a tick there would be a lie.
+    final done = progress.meetsCoursework;
     final color = done ? Colors.green.shade600 : scheme.primary;
 
     return Container(
@@ -400,6 +423,18 @@ class _MinorsScreenState extends State<MinorsScreen> {
                   color: scheme.onSurface.withValues(alpha: 0.85),
                 ),
           ),
+          // The pill can read "5/5" with no tick when the courses cleared were
+          // all electives; without this the missing core group is invisible.
+          if (progress.meetsCourseCount && !progress.meetsGroups) ...[
+            const SizedBox(height: 3),
+            Text(
+              'Enough courses, but a required group is still short — see the '
+              'counts below.',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: scheme.error,
+                  ),
+            ),
+          ],
           if (progress.cgpaInMinor != null) ...[
             const SizedBox(height: 3),
             Text(
@@ -439,15 +474,12 @@ class _MinorsScreenState extends State<MinorsScreen> {
                   ),
             ),
           ],
-          for (final group in minor.groups) ...[
+          for (final (i, group) in minor.groups.indexed) ...[
             const SizedBox(height: AppDesign.spacingMd),
-            Text(
-              group.name.toUpperCase(),
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
-                    color: scheme.primary,
-                  ),
+            _groupHeader(
+              context,
+              group,
+              i < progress.groups.length ? progress.groups[i] : null,
             ),
             const SizedBox(height: AppDesign.spacingXs),
             for (final course in group.courses) _courseRow(context, course),
@@ -462,6 +494,55 @@ class _MinorsScreenState extends State<MinorsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Group label plus what it demands — "all 3 required" reads very differently
+  /// from "pick 2 of 14", and that is the choice the student is making.
+  ///
+  /// [done] is null when the student has no record, which keeps the counts off
+  /// the screen entirely rather than showing 0s.
+  Widget _groupHeader(
+    BuildContext context,
+    MinorCourseGroup group,
+    MinorGroupProgress? done,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    final required = group.required;
+
+    final demand = switch (required) {
+      null => null,
+      _ when group.isMandatory => 'all $required required',
+      _ => 'pick $required of ${group.courses.length}',
+    };
+
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            group.name.toUpperCase(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
+                  color: scheme.primary,
+                ),
+          ),
+        ),
+        if (demand != null)
+          Text(
+            _record.isEmpty || done == null
+                ? demand
+                : '${done.cleared}/$required  ·  $demand',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: done?.isSatisfied == true
+                      ? Colors.green.shade600
+                      : scheme.onSurface.withValues(alpha: 0.5),
+                  fontWeight: done?.isSatisfied == true
+                      ? FontWeight.w600
+                      : FontWeight.w400,
+                ),
+          ),
+      ],
     );
   }
 
@@ -489,8 +570,14 @@ class _MinorsScreenState extends State<MinorsScreen> {
           ),
     );
 
+    // Alternatives ride on the title rather than the code column, which is a
+    // fixed 96px and cannot grow. Any one of them satisfies the requirement.
     final title = Text(
-      course.title,
+      [
+        course.title,
+        if (course.alternatives.isNotEmpty)
+          'or ${course.alternatives.join(' / ')}',
+      ].where((s) => s.isNotEmpty).join('  ·  '),
       maxLines: narrow ? 2 : 1,
       overflow: TextOverflow.ellipsis,
       style: Theme.of(context).textTheme.bodySmall?.copyWith(

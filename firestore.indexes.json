@@ -5,6 +5,10 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "campus",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "courseCode",
           "order": "ASCENDING"
         },

@@ -20,6 +20,7 @@ CourseAnnouncement _makeAnnouncement({
     description: description,
     courseCode: 'CS F111',
     sectionId: sectionId,
+    campus: 'hyderabad',
     eventDate: eventDate ?? DateTime(2026, 3, 15),
     startTime: startTime,
     endTime: endTime,

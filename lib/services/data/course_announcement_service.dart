@@ -49,15 +49,16 @@ class CourseAnnouncementService {
   static const int announcementFetchLimit = 200;
 
   Stream<List<CourseAnnouncement>> watchAnnouncements(
-      List<String> courseCodes) {
+      List<String> courseCodes, String campus) {
     if (courseCodes.isEmpty) return Stream.value([]);
 
     final cutoff = DateTime.now().subtract(announcementRetention);
 
     // The range filter is on the same field as the orderBy, so this is served
-    // by the existing (courseCode ASC, eventDate DESC) composite index.
+    // by the (campus ASC, courseCode ASC, eventDate DESC) composite index.
     return _firestore
         .collection(FirestoreCollections.announcements)
+        .where('campus', isEqualTo: campus)
         .where('courseCode', whereIn: courseCodes)
         .where('eventDate', isGreaterThanOrEqualTo: Timestamp.fromDate(cutoff))
         .orderBy('eventDate', descending: true)
@@ -73,6 +74,7 @@ class CourseAnnouncementService {
     String description = '',
     required String courseCode,
     String sectionId = '',
+    required String campus,
     required DateTime eventDate,
     TimeOfDay? startTime,
     TimeOfDay? endTime,
@@ -89,6 +91,7 @@ class CourseAnnouncementService {
       description: description,
       courseCode: courseCode,
       sectionId: sectionId,
+      campus: campus,
       eventDate: eventDate,
       startTime: startTime,
       endTime: endTime,

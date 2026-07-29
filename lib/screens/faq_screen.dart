@@ -13,7 +13,11 @@ import '../widgets/common/empty_state_widget.dart';
 /// collapsed answer still surfaces the card — so a term like "compre" finds the
 /// evaluation entry even though the word is only in its keywords.
 class FaqScreen extends StatefulWidget {
-  const FaqScreen({super.key});
+  /// Opens with one category already selected — used when another screen sends
+  /// the student here for a specific topic. Must match a [FaqCategory.title].
+  final String? initialCategory;
+
+  const FaqScreen({super.key, this.initialCategory});
 
   @override
   State<FaqScreen> createState() => _FaqScreenState();
@@ -22,7 +26,7 @@ class FaqScreen extends StatefulWidget {
 class _FaqScreenState extends State<FaqScreen> {
   final TextEditingController _search = TextEditingController();
   String _query = '';
-  String? _category; // null = all
+  late String? _category = widget.initialCategory; // null = all
 
   /// Identified by "category · question" so the same question text in two
   /// categories can't share expansion state.

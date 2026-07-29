@@ -139,4 +139,143 @@ void main() {
       expect(progress.meetsCgpa, isNull);
     });
   });
+
+  group('alternative courses', () {
+    // "PHY F212 or ECE F212 / EEE F212 / INSTR F212" is one Bulletin row: an
+    // ECE student clearing their own EMT has met it.
+    final emt = MinorCourse(
+      code: 'PHY F212',
+      title: 'Electromagnetic Theory-1',
+      units: 3,
+      alternatives: const ['ECE F212', 'EEE F212', 'INSTR F212'],
+    );
+    final minor = minorOf([emt, course('PHY F242')], minCourses: 2);
+
+    test('clearing an alternative satisfies the requirement', () {
+      final progress = MinorProgress.of(
+        minor,
+        recordOf({'ECE F212': (grade: 'A', credits: 3)}),
+      );
+      expect(progress.clearedCount, 1);
+      expect(progress.clearedUnits, 3);
+    });
+
+    test('the CGPA uses the code actually taken', () {
+      // Averaging over PHY F212 — which this student never took — would find
+      // no attempt and silently drop the course from the CGPA.
+      final progress = MinorProgress.of(
+        minor,
+        recordOf({'ECE F212': (grade: 'B', credits: 3)}),
+      );
+      expect(progress.cgpaInMinor, closeTo(8.0, 0.001));
+    });
+
+    test('an unrelated course still does not count', () {
+      final progress = MinorProgress.of(
+        minor,
+        recordOf({'PHY F111': (grade: 'A', credits: 3)}),
+      );
+      expect(progress.clearedCount, 0);
+    });
+
+    test('passing one alternative outweighs failing another', () {
+      final progress = MinorProgress.of(
+        minor,
+        recordOf({
+          'PHY F212': (grade: 'E', credits: 3),
+          'EEE F212': (grade: 'B', credits: 3),
+        }),
+      );
+      expect(progress.clearedCount, 1);
+      expect(progress.failed, isEmpty);
+    });
+  });
+
+  group('group requirements', () {
+    MinorProgramme split({int? coreRequired, int? electiveRequired}) =>
+        MinorProgramme(
+          id: 'ds',
+          name: 'Data Science',
+          minCourses: 5,
+          groups: [
+            MinorCourseGroup(
+              name: 'Core Courses',
+              courses: [course('BITS F464'), course('CS F320'), course('MATH F432')],
+              required: coreRequired,
+            ),
+            MinorCourseGroup(
+              name: 'Electives',
+              courses: [course('CS F415'), course('CS F425'), course('CS F429')],
+              required: electiveRequired,
+            ),
+          ],
+        );
+
+    test('a group requiring all its courses is mandatory', () {
+      final minor = split(coreRequired: 3, electiveRequired: 2);
+      expect(minor.groups.first.isMandatory, isTrue);
+      expect(minor.groups.last.isMandatory, isFalse);
+    });
+
+    test('the core/elective split comes off the mandatory groups', () {
+      final minor = split(coreRequired: 3, electiveRequired: 2);
+      expect(minor.mandatoryCourses, 3);
+      expect(minor.electiveCourses, 2);
+    });
+
+    test('the split is null while no group is marked mandatory', () {
+      // The card falls back to "5 courses min" rather than inventing a split.
+      expect(split().electiveCourses, isNull);
+      expect(split().mandatoryCourses, 0);
+    });
+
+    test('enough courses but no core is not complete', () {
+      // The failure the group counts exist to catch: three electives clears
+      // the 5-course bar on nothing but pool courses.
+      final progress = MinorProgress.of(
+        split(coreRequired: 3, electiveRequired: 2),
+        recordOf({
+          'CS F415': (grade: 'A', credits: 3),
+          'CS F425': (grade: 'A', credits: 3),
+          'CS F429': (grade: 'A', credits: 3),
+        }),
+      );
+      expect(progress.meetsGroups, isFalse);
+      expect(progress.meetsCoursework, isFalse);
+      expect(progress.groups.first.cleared, 0);
+      expect(progress.groups.first.isSatisfied, isFalse);
+      expect(progress.groups.last.isSatisfied, isTrue);
+    });
+
+    test('clearing the minimum in every group completes the minor', () {
+      final progress = MinorProgress.of(
+        split(coreRequired: 3, electiveRequired: 2),
+        recordOf({
+          'BITS F464': (grade: 'A', credits: 3),
+          'CS F320': (grade: 'A', credits: 3),
+          'MATH F432': (grade: 'A', credits: 3),
+          'CS F415': (grade: 'A', credits: 3),
+          'CS F425': (grade: 'A', credits: 3),
+        }),
+      );
+      expect(progress.meetsCoursework, isTrue);
+    });
+
+    test('a group with no stated minimum never blocks completion', () {
+      // English Studies states one total across two pools, so neither pool
+      // has a figure of its own — unknown must not read as unmet.
+      final progress = MinorProgress.of(
+        split(coreRequired: 3),
+        recordOf({
+          'BITS F464': (grade: 'A', credits: 3),
+          'CS F320': (grade: 'A', credits: 3),
+          'MATH F432': (grade: 'A', credits: 3),
+          'CS F415': (grade: 'A', credits: 3),
+          'CS F425': (grade: 'A', credits: 3),
+        }),
+      );
+      expect(progress.groups.last.isSatisfied, isNull);
+      expect(progress.meetsGroups, isTrue);
+    });
+  });
 }

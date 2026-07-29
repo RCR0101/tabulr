@@ -107,8 +107,12 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
       return;
     }
 
-    _announcementsSub =
-        _announcementService.watchAnnouncements(courseCodes).listen(
+    // Campus comes from the timetable itself, not CampusService: picking a
+    // timetable here does not switch the app's campus, and course codes repeat
+    // across campuses.
+    _announcementsSub = _announcementService
+        .watchAnnouncements(courseCodes, timetable.campus.code)
+        .listen(
       (announcements) {
         setState(() {
           _allAnnouncements = announcements;
@@ -214,6 +218,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
               description: description,
               courseCode: courseCode,
               sectionId: sectionId,
+              campus: _selectedTimetable!.campus.code,
               eventDate: eventDate,
               startTime: startTime,
               endTime: endTime,

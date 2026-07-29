@@ -76,24 +76,24 @@ def test_every_parsed_row_is_a_course():
 
 
 def test_suffixed_codes_are_kept():
-    """Hyderabad prints BITS F101-2 / BITS K101-2 as real, distinct rows.
+    """Hyderabad prints BITS F101-1 / BITS K101-1 as real, distinct rows.
 
     They carry their own titles, credits and instructors, so a filter anchored
     to the end of the course code would silently delete real courses — the same
     class of failure the filter exists to prevent, in the other direction.
     """
     hyd = parse("hyd")
-    social = find(hyd, "BITS F101-2")
-    assert social, "BITS F101-2 was dropped"
+    social = find(hyd, "BITS F101-1")
+    assert social, "BITS F101-1 was dropped"
     assert "SOCIAL" in social["courseTitle"].upper(), social["courseTitle"]
-    assert find(hyd, "BITS K101-2"), "BITS K101-2 was dropped"
+    assert find(hyd, "BITS K101-1"), "BITS K101-1 was dropped"
 
 
 # ── Per-campus totals (the tripwire) ────────────────────────────────────────
 
 
 def test_course_counts_are_stable():
-    expected = {"hyd": 788, "pilani": 407, "goa": 350}
+    expected = {"hyd": 855, "pilani": 407, "goa": 377}
     for campus, want in expected.items():
         got = len(parse(campus))
         assert got == want, f"{campus}: parsed {got}, expected {want}"
@@ -123,8 +123,8 @@ def test_dedupe_keeps_the_populated_row_not_the_blank_one():
     for every course offered in only one semester.
     """
     deduped = main.dedupe_by_doc_id(parse("hyd"))
-    c = find(deduped, "AN F312")
-    assert c, "AN F312 missing after dedupe"
+    c = find(deduped, "BIO F212")
+    assert c, "BIO F212 missing after dedupe"
     assert c["totalCredits"] > 0, "kept the blank row"
     assert c["sections"], "kept the row with no sections"
 
@@ -148,8 +148,8 @@ def test_dedupe_is_order_independent():
 
 
 def test_hyderabad_parses_a_known_course():
-    c = find(parse("hyd"), "CS F111")
-    assert c, "CS F111 missing from the Hyderabad booklet"
+    c = find(parse("hyd"), "CS F213")
+    assert c, "CS F213 missing from the Hyderabad booklet"
     assert c["totalCredits"] > 0
     assert c["sections"], "no sections"
     assert any(s["schedule"] for s in c["sections"]), "no section carries a schedule"
@@ -163,10 +163,48 @@ def test_pilani_parses_a_known_course():
 
 
 def test_goa_parses_a_known_course():
-    c = find(parse("goa"), "BIO F101")
-    assert c, "BIO F101 missing from the Goa booklet"
-    assert "BIOLOG" in c["courseTitle"].upper(), c["courseTitle"]
+    c = find(parse("goa"), "BIO F212")
+    assert c, "BIO F212 missing from the Goa booklet"
+    assert "MICROBIOLOGY" in c["courseTitle"].upper(), c["courseTitle"]
     assert len(c["sections"]) > 1, "expected multiple sections"
+
+
+def test_goa_finds_the_course_code_column():
+    """The 2026-27 booklet dropped COM CODE, sliding the code from column 1 to 0.
+
+    STAT/SEC onwards did not move (a blank CREDIT HOUR column took up the slack),
+    so every section, room, schedule and exam still parsed perfectly while the
+    code, title and credits were each read one column to the left. Nothing
+    downstream could tell: the 2026-07-29 upload wrote 274 documents keyed by
+    course TITLE, with the "L P U" string stored as the title, and
+    sync_courses_master inserted all of them into the master catalogue.
+    """
+    old = [["1234", "CS F111", "COMPUTER PROGRAMMING", "3 0 3", "L", "1"]]
+    new = [["CS F111", "COMPUTER PROGRAMMING", "3 0 3", "", "L", "1"]]
+    assert main.goa_code_col(old) == 1
+    assert main.goa_code_col(new) == 0
+    for rows in (old, new):
+        c = main.parse_timetable_rows(rows, "goa")[0]
+        assert c["courseCode"] == "CS F111", c
+        assert c["courseTitle"] == "COMPUTER PROGRAMMING", c
+        assert c["totalCredits"] == 3, c
+
+
+def test_goa_credit_cell_variants():
+    """Every shape the booklet's "L P U" cell actually takes."""
+    assert main.parse_lpu("3 1 4") == {"L": 3, "P": 1, "U": 4}
+    assert main.parse_lpu("2 2") == {"L": 0, "P": 2, "U": 2}   # PHY F214, lab
+    assert main.parse_lpu("40") == {"L": 0, "P": 0, "U": 40}   # BITS C799T thesis
+    assert main.parse_lpu("3*") == {"L": 0, "P": 0, "U": 3}    # footnote marker
+    assert main.parse_lpu("") == {"L": 0, "P": 0, "U": 0}      # U-series: absent
+
+
+def test_goa_instructor_newlines_are_line_wraps():
+    """pdfplumber reports a wrapped cell with a newline mid-name."""
+    rows = [["CS F111", "COMPUTER PROGRAMMING", "3 0 3", "", "L", "1",
+             "RAVIPRASAD ADURI/ Rajesh\nMehrotra", "M W F 4", "C404"]]
+    c = main.parse_timetable_rows(rows, "goa")[0]
+    assert c["sections"][0]["instructor"] == "RAVIPRASAD ADURI, Rajesh Mehrotra"
 
 
 # ── Structural invariants across every campus ───────────────────────────────
@@ -212,7 +250,8 @@ def test_most_courses_carry_a_schedule():
 def test_credits_are_plausible():
     for campus in CAMPUS_CODES:
         for c in parse(campus):
-            assert 0 <= c["totalCredits"] <= 25, \
+            # 40 is the ceiling because Goa's BITS C799T (PH D THESIS) is 40 units.
+            assert 0 <= c["totalCredits"] <= 40, \
                 f"{campus}: {c['courseCode']}: {c['totalCredits']} credits"
 
 
@@ -232,7 +271,7 @@ def test_exam_dates_are_iso_and_in_range():
 
 
 TIMETABLE_MARKER = {
-    "hyd": "TIMETABLE II SEMESTER",
+    "hyd": "TIMETABLE I SEM 2026 -27",
     "pilani": "COURSEWISE TIMETABLE",
 }
 
@@ -285,6 +324,153 @@ class _FakeRef:
 
     def list_documents(self):
         return [object()] * self._count
+
+
+def test_real_booklets_pass_the_sanity_guard():
+    """The guard must be silent on all three real parses, or it is unusable.
+
+    This is the half that thresholds get wrong: a check that fires on good data
+    gets force-ticked every upload and then protects nothing.
+    """
+    for campus in CAMPUS_CODES:
+        courses = main.dedupe_by_doc_id(parse(campus))
+        assert main.sanity_problems(courses) == [], campus
+
+
+def test_sanity_guard_catches_the_goa_column_shift():
+    """The exact shape of the 2026-07-29 write: title holds the L P U string.
+
+    Every one of those 274 rows had correct sections, rooms, schedules and exam
+    dates — only the code, title and credits were a column off. Row counts saw
+    nothing wrong, which is why this checks content instead.
+    """
+    shifted = [
+        {"courseCode": "MICROBIOLOGY", "courseTitle": "3 1 4", "totalCredits": 0,
+         "sections": [{"sectionId": "L1", "schedule": [{"days": ["DayOfWeek.M"], "hours": [4]}]}]},
+        {"courseCode": "CELL BIOLOGY", "courseTitle": "3 0 3", "totalCredits": 0,
+         "sections": [{"sectionId": "L1", "schedule": [{"days": ["DayOfWeek.T"], "hours": [5]}]}]},
+    ]
+    problems = main.sanity_problems(shifted)
+    assert problems, "the column shift passed the sanity guard"
+    assert any("credit string as their title" in p for p in problems), problems
+
+    try:
+        main._guard_course_sanity(shifted)
+    except main.CourseSanityError as e:
+        assert "refusing" in str(e)
+    else:
+        raise AssertionError("expected the guard to refuse the shifted parse")
+
+    # Force still has to work, or a genuine oddity becomes unuploadable.
+    main._guard_course_sanity(shifted, force=True)
+
+
+def test_sanity_guard_catches_a_code_title_swap():
+    swapped = [{"courseCode": "MATH", "courseTitle": "MATH F211",
+                "totalCredits": 3, "sections": []}]
+    assert any("swapped" in p for p in main.sanity_problems(swapped))
+
+
+def test_sanity_guard_catches_a_credits_column_that_moved():
+    """Titles fine, credits all zero — the L P U column moved on its own."""
+    courses = [{"courseCode": f"CS F{200 + i}", "courseTitle": f"COURSE {i}",
+                "totalCredits": 0,
+                "sections": [{"sectionId": "L1",
+                              "schedule": [{"days": ["DayOfWeek.M"], "hours": [1]}]}]}
+               for i in range(10)]
+    assert any("zero credits" in p for p in main.sanity_problems(courses))
+
+
+def test_sanity_guard_is_quiet_on_an_empty_parse():
+    """Empty is upload_timetable's own error ("No courses found"), not this
+    guard's — and 0/0 must not raise ZeroDivisionError on the way there."""
+    assert main.sanity_problems([]) == []
+
+
+# ── The upload preview ──────────────────────────────────────────────────────
+
+
+class _FakeDoc:
+    def __init__(self, doc_id, data):
+        self.id = doc_id
+        self._data = data
+
+    def to_dict(self):
+        return self._data
+
+
+class _FakeDb:
+    def __init__(self, docs):
+        self._docs = docs
+
+    def collection(self, _path):
+        return self
+
+    def get(self):
+        return self._docs
+
+
+def _live(doc_id, room, hours, credits=4, instructor="A"):
+    return _FakeDoc(doc_id, {
+        "sections": [{"sectionId": "L1", "room": room, "instructor": instructor,
+                      "schedule": [{"days": ["DayOfWeek.M"], "hours": hours}]}],
+        "total_credits": credits, "mid_sem_exam": None, "end_sem_exam": None,
+    })
+
+
+def _incoming(code, room, hours, credits=4, instructor="A"):
+    return {"courseCode": code, "courseTitle": f"TITLE {code}",
+            "totalCredits": credits,
+            "sections": [{"sectionId": "L1", "room": room, "instructor": instructor,
+                          "schedule": [{"days": ["DayOfWeek.M"], "hours": hours}]}],
+            "midSemExam": None, "endSemExam": None}
+
+
+def _preview(live_docs, incoming):
+    real = main.get_db
+    main.get_db = lambda: _FakeDb(live_docs)
+    try:
+        return main.build_timetable_preview(incoming, "goa")
+    finally:
+        main.get_db = real
+
+
+def test_preview_reports_the_actual_diff():
+    p = _preview(
+        [_live("CS_F213", "D101", [1]), _live("CS_F214", "D102", [2]),
+         _live("CS_F215", "D103", [3])],
+        [_incoming("CS F213", "D101", [1]),        # untouched
+         _incoming("CS F215", "D103", [9]),        # moved to a different hour
+         _incoming("CS F301", "D104", [4])],       # new
+    )
+    assert (p["added"], p["removed"], p["changed"], p["unchanged"]) == (1, 1, 1, 1), p
+    assert p["addedSample"] == ["CS_F301"], p
+    assert p["removedSample"] == ["CS_F214"], p
+    assert p["changedSample"] == ["CS_F215"], p
+
+
+def test_preview_ignores_instructor_churn():
+    """Instructor spelling changes between booklet revisions constantly. If that
+    counted as a change the diff would read "417 changed" every upload and stop
+    meaning anything."""
+    p = _preview([_live("CS_F213", "D101", [1], instructor="R Aduri")],
+                 [_incoming("CS F213", "D101", [1], instructor="RAVIPRASAD ADURI")])
+    assert p["changed"] == 0, p
+
+
+def test_preview_flags_a_room_change():
+    p = _preview([_live("CS_F213", "D101", [1])],
+                 [_incoming("CS F213", "D999", [1])])
+    assert p["changed"] == 1, p
+
+
+def test_preview_carries_the_sanity_problems():
+    """The preview must show WHY an upload is about to be refused, not just
+    that it will be."""
+    p = _preview([_live("CS_F213", "D101", [1])],
+                 [{"courseCode": "MICROBIOLOGY", "courseTitle": "3 1 4",
+                   "totalCredits": 0, "sections": []}])
+    assert p["problems"], p
 
 
 def test_guard_refuses_an_implausible_drop():

@@ -200,8 +200,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     if (codes.isEmpty) return;
 
-    _announcementSub =
-        _announcementService.watchAnnouncements(codes).listen((announcements) {
+    _announcementSub = _announcementService
+        .watchAnnouncements(codes, _selectedTimetable!.campus.code)
+        .listen((announcements) {
       if (mounted) {
         setState(() => _announcements = announcements);
       }

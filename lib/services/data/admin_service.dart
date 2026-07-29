@@ -7,6 +7,66 @@ import '../../constants/app_constants.dart';
 import 'auth_service.dart';
 import 'admin_audit_logger.dart';
 
+/// What an upload would change, from a dry run that wrote nothing.
+class TimetablePreview {
+  const TimetablePreview({
+    required this.parsed,
+    required this.live,
+    required this.added,
+    required this.removed,
+    required this.changed,
+    required this.unchanged,
+    required this.addedSample,
+    required this.removedSample,
+    required this.changedSample,
+    required this.problems,
+    required this.parserVersion,
+  });
+
+  final int parsed;
+  final int live;
+  final int added;
+  final int removed;
+  final int changed;
+  final int unchanged;
+  final List<String> addedSample;
+  final List<String> removedSample;
+  final List<String> changedSample;
+
+  /// Structural defects that mean the columns were misread — a credit string
+  /// parsed as a title, and so on. Non-empty here means the real upload will
+  /// be refused unless forced.
+  final List<String> problems;
+
+  /// Git sha of the deployed parser, so the diff can be attributed to code.
+  final String parserVersion;
+
+  static List<String> _strings(dynamic v) =>
+      (v as List?)?.map((e) => e.toString()).toList() ?? const [];
+
+  factory TimetablePreview.fromMap(Map<String, dynamic> m) => TimetablePreview(
+        parsed: (m['parsed'] as num?)?.toInt() ?? 0,
+        live: (m['live'] as num?)?.toInt() ?? 0,
+        added: (m['added'] as num?)?.toInt() ?? 0,
+        removed: (m['removed'] as num?)?.toInt() ?? 0,
+        changed: (m['changed'] as num?)?.toInt() ?? 0,
+        unchanged: (m['unchanged'] as num?)?.toInt() ?? 0,
+        addedSample: _strings(m['addedSample']),
+        removedSample: _strings(m['removedSample']),
+        changedSample: _strings(m['changedSample']),
+        problems: _strings(m['problems']),
+        parserVersion: (m['parserVersion'] ?? 'unknown').toString(),
+      );
+
+  /// A first upload has nothing to compare against, so a big diff is expected.
+  bool get isFirstUpload => live == 0;
+
+  /// Worth a second look even when nothing is structurally broken: replacing
+  /// most of the collection is what a bad page range looks like.
+  bool get isDisruptive =>
+      !isFirstUpload && (removed + changed) > (live * 0.5);
+}
+
 class AdminService extends ChangeNotifier {
   static final AdminService _instance = AdminService._internal();
   factory AdminService() => _instance;
@@ -100,6 +160,50 @@ class AdminService extends ChangeNotifier {
     final ref = _storage.ref(path);
     await ref.putData(bytes);
     return path;
+  }
+
+  /// Parses the PDF and reports what an upload would change, writing nothing.
+  ///
+  /// A course total cannot tell "the registrar moved two labs" apart from "the
+  /// columns shifted and every row is subtly wrong" — both come back 377. This
+  /// is what puts the actual diff in front of the admin before they commit it.
+  Future<TimetablePreview> previewTimetable({
+    required String campusCode,
+    required Uint8List fileBytes,
+    required String fileName,
+    List<String> excludeHeaders = const [],
+    List<int>? pageRange,
+    int examYear = 2026,
+  }) async {
+    const action = 'preview_timetable';
+    _validatePdf(fileBytes, action);
+    final storagePath =
+        await _uploadToStorage(fileBytes, 'timetable/$campusCode', fileName);
+    try {
+      final payload = <String, dynamic>{
+        'campusCode': campusCode,
+        'storagePath': storagePath,
+        'excludeHeaders': excludeHeaders,
+        'examYear': examYear,
+        'dryRun': true,
+      };
+      if (pageRange != null && pageRange.length == 2) {
+        payload['pageRange'] = pageRange;
+      }
+      final result = await _functions
+          .httpsCallable('upload_timetable',
+              options: HttpsCallableOptions(
+                  timeout: AppDurations.uploadTimetableTimeout))
+          .call(payload);
+      return TimetablePreview.fromMap(
+          Map<String, dynamic>.from(result.data as Map));
+    } catch (e) {
+      _audit.error(action, 'Preview failed for $campusCode', e,
+          {'campusCode': campusCode});
+      rethrow;
+    } finally {
+      _storage.ref(storagePath).delete().ignore();
+    }
   }
 
   Future<int> uploadTimetable({

@@ -18,6 +18,12 @@ void main() {
       expect(titles.toSet().length, titles.length);
     });
 
+    test('the Minors category exists — the minors screen deep-links to it', () {
+      // MinorsScreen pushes FaqScreen(initialCategory: 'Minors'); a rename
+      // here silently opens an unfiltered FAQ instead.
+      expect(faqCategories.map((c) => c.title), contains('Minors'));
+    });
+
     test('questions are unique within a category', () {
       for (final c in faqCategories) {
         final questions = c.entries.map((e) => e.question).toList();
@@ -105,6 +111,11 @@ void main() {
         'attendance',
         'psc',
         'units',
+        'fee',
+        'cutoff',
+        'certificate',
+        'overlap',
+        'priority',
       ]) {
         expect(allEntries.any((e) => e.matches(term)), isTrue,
             reason: 'no FAQ answers "$term"');

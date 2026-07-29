@@ -137,8 +137,11 @@ class ExamSeatingService {
 
   String get _cacheKey => 'exam_seating_${CampusService.campusId}';
 
+  /// Per-campus, like professors_{campusId}: one shared stamp meant a Goa
+  /// upload invalidated every campus's cached seating, and the doc's own
+  /// `campus`/`totalCourses` fields described whichever campus uploaded last.
   DocumentReference<Map<String, dynamic>> get _metadataRef =>
-      _firestore.doc('admin_metadata/exam_seating');
+      _firestore.doc('admin_metadata/exam_seating_${CampusService.campusId}');
 
   void invalidateCache() {
     _cachedExams = null;

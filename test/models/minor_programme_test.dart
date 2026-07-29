@@ -94,6 +94,36 @@ void main() {
       expect(groups.first.courses.first.units, 3);
     });
 
+    test('alternatives and the group minimum survive a round trip', () {
+      // Both are written by the Bulletin import and read back by the admin
+      // editor; dropping either silently loosens the requirement.
+      const group = MinorCourseGroup(
+        name: 'Core Courses',
+        required: 3,
+        courses: [
+          MinorCourse(
+            code: 'PHY F212',
+            units: 3,
+            alternatives: ['ECE F212', 'EEE F212'],
+          ),
+        ],
+      );
+      final back = MinorCourseGroup.fromMap(group.toMap());
+
+      expect(back.required, 3);
+      expect(back.courses.first.alternatives, ['ECE F212', 'EEE F212']);
+      expect(back.courses.first.codes,
+          ['PHY F212', 'ECE F212', 'EEE F212']);
+    });
+
+    test('omits empty alternatives and an absent group minimum', () {
+      const c = MinorCourse(code: 'CS F320', units: 3);
+      expect(c.toMap().containsKey('alternatives'), isFalse);
+      const g = MinorCourseGroup(name: 'Electives', courses: []);
+      expect(g.toMap().containsKey('required'), isFalse);
+      expect(MinorCourseGroup.fromMap(g.toMap()).required, isNull);
+    });
+
     test('omits null units rather than writing a null field', () {
       const c = MinorCourse(code: 'BIO F266', title: 'Study Project');
       expect(c.toMap().containsKey('units'), isFalse);

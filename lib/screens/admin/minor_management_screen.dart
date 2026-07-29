@@ -388,6 +388,7 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
             MinorCourseGroup(
               name: g.nameController.text.trim(),
               courses: List.of(g.courses),
+              required: int.tryParse(g.requiredController.text.trim()),
             ),
       ],
       campuses: widget.minor?.campuses ?? const [],
@@ -528,6 +529,25 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
                   controller: g.nameController,
                   decoration: AppDesign.inputDecoration(context,
                       label: 'Group name', dense: true),
+                ),
+              ),
+              const SizedBox(width: AppDesign.spacingSm),
+              SizedBox(
+                width: 92,
+                child: TextFormField(
+                  controller: g.requiredController,
+                  keyboardType: TextInputType.number,
+                  decoration: AppDesign.inputDecoration(context,
+                      label: 'Required', dense: true),
+                  // Blank is meaningful (no per-group figure in the Bulletin),
+                  // so only a nonsensical number is rejected.
+                  validator: (v) {
+                    final raw = (v ?? '').trim();
+                    if (raw.isEmpty) return null;
+                    final n = int.tryParse(raw);
+                    if (n == null || n < 0) return '?';
+                    return n > g.courses.length ? '>list' : null;
+                  },
                 ),
               ),
               IconButton(
@@ -722,15 +742,28 @@ Color statusColor(BuildContext context, MinorStatus status) => switch (status) {
 /// master via the picker, so there is nothing to parse and no way to mistype a
 /// code, title or unit count.
 class _GroupEditor {
-  _GroupEditor({required String name, List<MinorCourse>? courses})
+  _GroupEditor({required String name, List<MinorCourse>? courses, int? required})
       : nameController = TextEditingController(text: name),
+        requiredController =
+            TextEditingController(text: required?.toString() ?? ''),
         courses = [...?courses];
 
-  factory _GroupEditor.from(MinorCourseGroup group) =>
-      _GroupEditor(name: group.name, courses: group.courses);
+  factory _GroupEditor.from(MinorCourseGroup group) => _GroupEditor(
+        name: group.name,
+        courses: group.courses,
+        required: group.required,
+      );
 
   final TextEditingController nameController;
+
+  /// How many of the group's courses must be cleared. Blank means the Bulletin
+  /// gives no figure for this group alone — see [MinorCourseGroup.required].
+  final TextEditingController requiredController;
+
   final List<MinorCourse> courses;
 
-  void dispose() => nameController.dispose();
+  void dispose() {
+    nameController.dispose();
+    requiredController.dispose();
+  }
 }

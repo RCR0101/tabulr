@@ -6,7 +6,8 @@
       "codebase": "python",
       "runtime": "python312",
       "//": "venv is a local build artifact; Cloud Functions installs from requirements.txt server-side, so shipping it just bloats every deploy.",
-      "ignore": ["venv", "venv/**", "__pycache__", "**/__pycache__/**", ".git", ".gitignore"]
+      "ignore": ["venv", "venv/**", "__pycache__", "**/__pycache__/**", ".git", ".gitignore"],
+      "predeploy": ["bash scripts/predeploy-python.sh"]
     }
   ],
   "hosting": {

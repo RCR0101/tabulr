@@ -63,3 +63,6 @@ courses.txt
 
 data.txt
 storage.rules
+
+# Generated at deploy time by scripts/predeploy-python.sh
+functions-python/parser_version.py

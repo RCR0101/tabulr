@@ -407,18 +407,6 @@ const List<FaqCategory> faqCategories = [
         keywords: ['electives', 'huel', 'del', 'open elective'],
       ),
       FaqEntry(
-        question: 'What is a minor, and which ones exist?',
-        answer:
-            'A minor lets you build focused depth outside your major, certified separately on completion.',
-        bullets: [
-          'Offered in areas including Finance, Data Science, Robotics and Automation, Entrepreneurship, Physics, Philosophy Economics and Politics, Public Policy, Materials Science, Supply Chain Analytics and more.',
-          'Availability varies by campus.',
-          'Needs the core courses, the stipulated electives, and at least 4.50 in those courses.',
-        ],
-        source: 'Bulletin 2025-26, Part II · Regulations 9.01a',
-        keywords: ['minor', 'specialisation', 'specialization'],
-      ),
-      FaqEntry(
         question: 'What does a prerequisite actually stop me doing?',
         answer:
             'Courses are meant to be taken in the sequence given in the Bulletin. Falling out of that order builds a backlog, which the regulations treat as something to correct quickly rather than carry.',
@@ -428,6 +416,125 @@ const List<FaqCategory> faqCategories = [
         ],
         source: 'Academic Regulations 1.10, 3.25',
         keywords: ['prerequisite', 'prereq', 'backlog', 'sequence'],
+      ),
+    ],
+  ),
+  FaqCategory(
+    title: 'Minors',
+    icon: Icons.workspace_premium_outlined,
+    entries: [
+      FaqEntry(
+        question: 'What is a minor, and which ones exist?',
+        answer:
+            'A minor lets you build focused depth outside your major, certified separately on completion.',
+        bullets: [
+          'Sixteen exist: Aeronautics, Computational Economics, Computing and Intelligence, Data Science, English Studies, Entrepreneurship, Film and Media, Finance, Management, Materials Science and Engineering, Philosophy Economics and Politics, Physics, Public Policy, Robotics and Automation, Supply Chain Analytics, Water and Sanitation.',
+          'Which ones actually run varies by campus, but a new minor or a rule change applies to all three campuses alike.',
+          'Needs the core courses, the stipulated electives, and at least 4.50 in those courses.',
+        ],
+        source: 'Bulletin 2025-26, Part II · Regulations 9.01a',
+        keywords: ['minor', 'specialisation', 'specialization', 'list'],
+      ),
+      FaqEntry(
+        question: 'How do I actually get a minor, start to finish?',
+        answer:
+            'You declare at the end of your 2nd year, pay for it, complete the coursework, then apply for the certificate.',
+        bullets: [
+          'Declare a specific minor at the end of the 2nd academic year — that is when the decision is made, so plan for it in your 2nd year.',
+          'A fee is charged for the logistics, in two instalments.',
+          'Once the requirements are met you apply for a minor certificate; it is verified before being awarded.',
+          'The certificate is issued only when you complete your degree — it never arrives ahead of the major.',
+        ],
+        source: 'Minor Programmes handbook, Students\' Academic Cell',
+        keywords: ['declare', 'apply', 'certificate', 'process', 'when'],
+      ),
+      FaqEntry(
+        question: 'How many courses and units does a minor need?',
+        answer:
+            'The institute-wide floor is 5 courses and 15 units, split between core and electives. Individual minors may demand more.',
+        bullets: [
+          'Minor Core — at most 4 courses, at most 12 units.',
+          'Minor Electives — at least 2 courses, at least 6 units.',
+          'Total — at least 5 courses and 15 units.',
+          'Several minors set a higher bar: Aeronautics, Computing and Intelligence, Film and Media and PEP each ask for 6 courses and 18 units.',
+          'At most one project or seminar type course may be used toward a minor.',
+        ],
+        source: 'Minor Programmes handbook · Bulletin 2025-26, Part IV',
+        keywords: ['units', 'how many', 'core', 'electives', '15', 'minimum'],
+      ),
+      FaqEntry(
+        question: 'Can courses I already take for my degree count toward a minor?',
+        answer:
+            'Some of them, up to a hard cap — the rest of the minor has to be extra coursework.',
+        bullets: [
+          'At most 2 courses and at most 6 units may come from your degree\'s mandatory courses.',
+          'Those may be from the General Institutional Requirement (Humanities excluded) or your discipline Core.',
+          'No course may count toward two different minors.',
+          'No course may count toward two majors and a minor at the same time.',
+        ],
+        source: 'Minor Programmes handbook',
+        keywords: ['overlap', 'double count', 'cdc', 'gir', 'reuse', 'counts'],
+      ),
+      FaqEntry(
+        question: 'What does a minor cost?',
+        answer:
+            'A fee on top of your normal semester fees, paid in two halves — one on admission to the minor, one on completion.',
+        bullets: [
+          'The certificate instalment is 6% of the semester tuition fee of the corresponding academic year.',
+          'International students pay 3% at the start and 3% on completion instead.',
+          'For AY 2022-23 the total was ₹26,000, paid as ₹13,000 + ₹13,000. It is revised each year per Institute norms, so treat that as a ballpark.',
+        ],
+        source: 'Minor Programmes handbook',
+        keywords: ['fee', 'cost', 'price', 'money', 'payment', 'rupees'],
+      ),
+      FaqEntry(
+        question: 'Is there a cut-off to get into a minor?',
+        answer:
+            'For the popular ones, yes. CG cut-offs exist to stop a department being overwhelmed, not to rank you.',
+        bullets: [
+          'They are applied selectively — a Finance intake took 270 of over 300 applicants.',
+          'Less crowded minors have effectively no barrier.',
+          'If a minor you want is not being offered because too few students signed up, you can approach the head of that department — programmes have run for very small groups before.',
+        ],
+        source: 'Minor Programmes handbook, interview with Dean AUGSD',
+        keywords: ['cutoff', 'cut-off', 'cg', 'selection', 'admission', 'competitive'],
+      ),
+      FaqEntry(
+        question: 'Does being in a minor help me get its courses?',
+        answer:
+            'Yes — students pursuing a minor get priority in registration for the courses that minor requires.',
+        bullets: [
+          'That matters most for courses which fill up fast, where an ordinary elective registration would miss out.',
+          'It applies to the courses the minor needs, not to your registration generally.',
+        ],
+        source: 'Minor Programmes handbook, student accounts',
+        keywords: ['priority', 'registration', 'seats', 'full', 'allotment'],
+      ),
+      FaqEntry(
+        question: 'How do I fit minor courses into my schedule?',
+        answer:
+            'This is the part that goes wrong. Minor courses are ordinary courses — they run in fixed semesters and carry their own prerequisites, so the sequence has to be planned years ahead.',
+        bullets: [
+          'Many courses run only in odd or only in even semesters; a prerequisite chain across them can cost you a whole year if taken in the wrong order.',
+          'Worked example: Statistical Mechanics needs Quantum Mechanics-1, which runs in even semesters — miss QM-1 in 2-2 and Stat Mech slips to 4-1, colliding with PS-1.',
+          'Dual degree students usually clear minor courses in the summer term, but not every course is offered then.',
+          'Without a summer term you can finish in 5-1 or 5-2 (the semester with no PS), but only with a shorter thesis and at most three more courses — which rules out a double PS.',
+          'On a single degree a minor eats into your Open Elective freedom and adds surplus discipline courses on top of your normal load.',
+        ],
+        source: 'Minor Programmes handbook, student accounts',
+        keywords: ['plan', 'planning', 'prerequisite', 'summer', 'clash', 'odd', 'even', 'workload'],
+      ),
+      FaqEntry(
+        question: 'Why take a minor instead of just taking the same courses as OpEls?',
+        answer:
+            'The coursework can look identical — the difference is that a minor is structured and certified, so it demonstrates a deliberate specialisation rather than a scatter of electives.',
+        bullets: [
+          'It is worth something at placements, particularly for reaching roles outside your own branch.',
+          'It does not compensate for weak performance in your own discipline — a good CGPA in the major still comes first.',
+          'Minors are meant to be chosen out of genuine interest; the ones taken for the label tend to become dead weight.',
+        ],
+        source: 'Minor Programmes handbook, interview with Dean AUGSD',
+        keywords: ['opel', 'open elective', 'worth it', 'placement', 'why', 'benefit'],
       ),
     ],
   ),
