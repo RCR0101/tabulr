@@ -19,11 +19,13 @@ import 'admin/course_guide_management_screen.dart';
 import 'admin/prerequisites_management_screen.dart';
 import 'admin/duplicate_courses_management_screen.dart';
 import 'admin/course_management_screen.dart';
+import 'admin/courses_master_management_screen.dart';
 import 'admin/minor_management_screen.dart';
 import 'admin/exam_seating_management_screen.dart';
 import 'admin/professor_management_screen.dart';
 import 'admin/bug_tracker_screen.dart';
 import '../services/ui/tutorial_service.dart';
+import '../widgets/common/app_dropdown.dart';
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
@@ -62,6 +64,13 @@ class _AdminScreenState extends State<AdminScreen> {
   };
   final TextEditingController _examYearController =
       TextEditingController(text: '2026');
+
+  /// Which semester of the booklet is being uploaded. Files the upload under a
+  /// term in the course-history record, and tells the calendar parser which
+  /// semester's dates to keep. Not read off the PDF: across the five real
+  /// Hyderabad booklets the heading is ambiguous or absent in two of them, and
+  /// the resulting term is shown in the confirmation dialog to be checked.
+  int _uploadSemester = 1;
 
   @override
   void initState() {
@@ -197,6 +206,21 @@ class _AdminScreenState extends State<AdminScreen> {
                             '· ${e.value.unchanged} unchanged',
                     style: theme.textTheme.bodySmall,
                   ),
+                  // Derived from the exam year and the semester dropdown, not
+                  // from the PDF, so it is confirmed here — filing a booklet
+                  // under the wrong term mislabels a semester of history.
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      e.value.term == null
+                          ? 'Course history: not recorded (no semester given)'
+                          : 'Course history: filed as ${e.value.term}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                          color: e.value.term == null
+                              ? theme.colorScheme.error
+                              : theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ),
                   line('Added', e.value.added, theme.colorScheme.primary,
                       e.value.addedSample),
                   line('Removed', e.value.removed, theme.colorScheme.error,
@@ -282,6 +306,7 @@ class _AdminScreenState extends State<AdminScreen> {
           excludeHeaders: _getHeaders(_timetableHeaders[campus]!),
           pageRange: (from != null && to != null) ? [from, to] : null,
           examYear: int.tryParse(_examYearController.text.trim()) ?? 2026,
+          semester: _uploadSemester,
         );
       }
 
@@ -315,6 +340,7 @@ class _AdminScreenState extends State<AdminScreen> {
           calendarPageRange:
               (calFrom != null && calTo != null) ? [calFrom, calTo] : null,
           examYear: year,
+          semester: _uploadSemester,
           force: _forceTimetableUpload,
         );
         done++;
@@ -685,6 +711,7 @@ class _AdminScreenState extends State<AdminScreen> {
               controller: _examYearController,
               keyboardType: TextInputType.number,
               style: const TextStyle(fontSize: 13),
+              onChanged: (_) => setState(() {}), // keeps the term preview honest
               decoration: InputDecoration(
                 hintText: '2026',
                 isDense: true,
@@ -712,9 +739,51 @@ class _AdminScreenState extends State<AdminScreen> {
               ),
             ),
           ),
+          const SizedBox(width: AppDesign.spacingMd),
+          Text(
+            'Semester',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: scheme.onSurface.withValues(alpha: AppDesign.opacityHigh),
+            ),
+          ),
+          const SizedBox(width: AppDesign.spacingSm + 4),
+          AppDropdown<int>(
+            value: _uploadSemester,
+            items: const [
+              DropdownMenuItem(value: 1, child: Text('1')),
+              DropdownMenuItem(value: 2, child: Text('2')),
+            ],
+            onChanged: (value) {
+              if (value != null) setState(() => _uploadSemester = value);
+            },
+          ),
+          const SizedBox(width: AppDesign.spacingSm + 4),
+          // The term the exam year and semester resolve to, spelled out before
+          // the upload rather than only in the confirmation dialog.
+          Flexible(
+            child: Text(
+              'files as ${_derivedTerm()}',
+              style: TextStyle(
+                fontSize: 12,
+                color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  /// Mirrors `term_id` in `functions-python/main.py`: a second semester's exams
+  /// fall in the calendar year AFTER the session it belongs to opened.
+  String _derivedTerm() {
+    final year = int.tryParse(_examYearController.text.trim()) ?? 2026;
+    final start = _uploadSemester == 1 ? year : year - 1;
+    final end = ((start + 1) % 100).toString().padLeft(2, '0');
+    return '$start-$end Sem $_uploadSemester';
   }
 
   Widget _buildCampusSubheading(String campus) {
@@ -1111,6 +1180,16 @@ class _AdminScreenState extends State<AdminScreen> {
         color: accent,
         onTap: () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => const CourseManagementScreen())),
+      ),
+      _managementCard(
+        icon: Icons.inventory_2_outlined,
+        title: 'Courses Master',
+        subtitle: 'The whole catalogue, offered or not',
+        color: accent,
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => const CoursesMasterManagementScreen())),
       ),
       _managementCard(
         icon: Icons.workspace_premium_outlined,

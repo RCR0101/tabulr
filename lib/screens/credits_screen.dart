@@ -7,6 +7,7 @@ import '../constants/app_constants.dart';
 import '../services/data/config_service.dart';
 import '../services/data/local_cache_service.dart';
 import '../utils/design_constants.dart';
+import '../utils/name_utils.dart';
 
 /// A person shown in the credits (creator, contributor, or admin).
 class _Person {
@@ -332,7 +333,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
                     color: scheme.primary))
             : null,
       ),
-      title: Text(titleCase ? _titleCase(person.name) : person.name,
+      title: Text(titleCase ? titleCaseName(person.name) : person.name,
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
       subtitle: person.subtitle == null
           ? null
@@ -343,14 +344,6 @@ class _CreditsScreenState extends State<CreditsScreen> {
               size: 16, color: AppDesign.muted(context)),
     );
   }
-
-  /// Capitalises the first letter of each word, lowercasing the rest, so names
-  /// like "ARYAN DALMIA" or "aryan dalmia" render consistently.
-  String _titleCase(String s) => s
-      .split(RegExp(r'\s+'))
-      .where((w) => w.isNotEmpty)
-      .map((w) => w[0].toUpperCase() + w.substring(1).toLowerCase())
-      .join(' ');
 
   Widget _emptyNote(String text, ColorScheme scheme) {
     return Padding(

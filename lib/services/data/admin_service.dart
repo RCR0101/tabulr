@@ -21,6 +21,7 @@ class TimetablePreview {
     required this.changedSample,
     required this.problems,
     required this.parserVersion,
+    required this.term,
   });
 
   final int parsed;
@@ -41,6 +42,12 @@ class TimetablePreview {
   /// Git sha of the deployed parser, so the diff can be attributed to code.
   final String parserVersion;
 
+  /// The term this booklet will be filed under in the course-history record,
+  /// e.g. `2026-27-1`. Shown in the confirmation because it is derived from the
+  /// exam year and semester rather than read off the PDF, and a wrong term
+  /// mislabels a whole semester of history with nothing else to catch it.
+  final String? term;
+
   static List<String> _strings(dynamic v) =>
       (v as List?)?.map((e) => e.toString()).toList() ?? const [];
 
@@ -56,6 +63,7 @@ class TimetablePreview {
         changedSample: _strings(m['changedSample']),
         problems: _strings(m['problems']),
         parserVersion: (m['parserVersion'] ?? 'unknown').toString(),
+        term: m['term'] as String?,
       );
 
   /// A first upload has nothing to compare against, so a big diff is expected.
@@ -174,6 +182,7 @@ class AdminService extends ChangeNotifier {
     List<String> excludeHeaders = const [],
     List<int>? pageRange,
     int examYear = 2026,
+    required int semester,
   }) async {
     const action = 'preview_timetable';
     _validatePdf(fileBytes, action);
@@ -185,6 +194,7 @@ class AdminService extends ChangeNotifier {
         'storagePath': storagePath,
         'excludeHeaders': excludeHeaders,
         'examYear': examYear,
+        'semester': semester,
         'dryRun': true,
       };
       if (pageRange != null && pageRange.length == 2) {
@@ -214,6 +224,7 @@ class AdminService extends ChangeNotifier {
     List<int>? pageRange,
     List<int>? calendarPageRange,
     int examYear = 2026,
+    required int semester,
     bool force = false,
   }) async {
     const action = 'upload_timetable';
@@ -235,6 +246,11 @@ class AdminService extends ChangeNotifier {
         payload['calendarPageRange'] = calendarPageRange;
       }
       payload['examYear'] = examYear;
+      // Files this booklet's term in the course-history record, and picks the
+      // semester for the calendar parse instead of leaving it to be guessed
+      // from the page heading.
+      payload['semester'] = semester;
+      payload['calendarSemester'] = semester;
       // The backend refuses an upload that would drop most of the collection —
       // usually a bad page range rather than a real change. This is the
       // acknowledged override; without it the refusal is a dead end.
@@ -243,8 +259,13 @@ class AdminService extends ChangeNotifier {
           await _functions.httpsCallable('upload_timetable', options: HttpsCallableOptions(timeout: AppDurations.uploadTimetableTimeout)).call(payload);
       final uploaded = result.data['coursesUploaded'] as int;
       final calendarUploaded = (result.data['calendarEventsUploaded'] as int?) ?? 0;
-      _audit.success(action, 'Uploaded $uploaded courses for $campusCode',
-          {'campusCode': campusCode, 'examYear': examYear, 'calendarEvents': calendarUploaded});
+      _audit.success(action, 'Uploaded $uploaded courses for $campusCode', {
+        'campusCode': campusCode,
+        'examYear': examYear,
+        'term': result.data['term'],
+        'historyRecorded': result.data['historyRecorded'],
+        'calendarEvents': calendarUploaded,
+      });
       return uploaded;
     } catch (e) {
       _audit.error(action, 'Upload failed for $campusCode', e,

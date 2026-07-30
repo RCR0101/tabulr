@@ -1694,6 +1694,246 @@ def _write_catalog_bundle(db, campus_id, entries_by_id, force):
     print(f"[courses_master] bundle written: {len(entries)} entries, {size / 1024:.1f} KB")
 
 
+# ─── Course history ───
+
+# Measured across eleven real Hyderabad booklets: ~38 KB per term, 422 KB for
+# all eleven, so the 1 MiB document ceiling is about a dozen semesters away.
+# ponytail: one document holds every term. If it ever fills, indexing the
+# instructor names roughly halves it before sharding becomes necessary.
+HISTORY_BUNDLE_MAX_BYTES = 900 * 1024
+
+
+def term_id(exam_year, semester):
+    """The academic session plus semester within it, e.g. `2026-27-1`.
+
+    exam_year is the calendar year this semester's exams fall in — what the
+    admin types, and what the calendar parser already keys off — so a second
+    semester belongs to the session that started the previous July.
+
+    Sorts chronologically as a plain string, which is how the client orders
+    terms without parsing them.
+    """
+    semester = int(semester)
+    start = int(exam_year) if semester == 1 else int(exam_year) - 1
+    return f"{start}-{(start + 1) % 100:02d}-{semester}"
+
+
+# A placeholder, not a person. The booklets write it eighteen different ways —
+# "TBA", "Tba. Mech", "TBA-ECON", "Tba.mech" — so the separators are optional and
+# a trailing department tag is normal.
+#
+# Anchored, and \b-terminated, on purpose: an unanchored "TBA" also matches
+# "Harshal Vasan(t Ba)rkale", and without the boundary "T. B. Anand" would be
+# thrown away as a placeholder.
+TBA_RE = re.compile(r"T\.?\s*B\.?\s*A\b", re.I)
+
+
+def _ascii_name(name):
+    """Drops the non-ASCII debris the booklets carry in instructor names.
+
+    Every occurrence across all five Hyderabad booklets is the same character,
+    U+00C2 "Â", and it is never a letter: it is the orphaned first byte of a
+    UTF-8 non-breaking space (\\xc2\\xa0) read as Latin-1. "VijayÂ Angadi" has it
+    exactly where the space belongs; the rest are trailing ("Pranay SharmaÂ").
+
+    So it is replaced with a space, NOT transliterated. Unicode folding (NFKD +
+    drop combining marks) is the usual answer for accents and is wrong here — it
+    decomposes Â to "A" and yields "HANS KRUPAKARA" and "VIJAYA ANGADI", which
+    invent a letter and read as perfectly plausible names, so nothing downstream
+    would ever catch it. A genuinely accented name would come out shortened
+    instead, which is at least visible; there are none in 1,169 names.
+    """
+    return re.sub(r"\s+", " ", "".join(
+        ch if ord(ch) < 128 else " " for ch in name)).strip()
+
+
+def _is_real_instructor(name):
+    """Whether a name fragment names a person at all.
+
+    Single characters are split artefacts and stray initials ("N" and "a", the
+    only two across all five booklets); a fragment with no letters is a dash or
+    footnote marker.
+    """
+    if len(name.strip()) <= 1 or not any(ch.isalpha() for ch in name):
+        return False
+    return not TBA_RE.match(name.strip())
+
+
+def _term_instructors(course):
+    """A course's distinct instructors for one term, and which of them ran it.
+
+    Returns (instructors, in_charge). Splitting on comma/slash and upper-casing
+    mirrors normalizeInstructorNames in functions/admin.js, so a name recorded
+    here is the same key Prof Chambers matches professors on.
+
+    The booklet prints the instructor-in-charge in CAPITALS and each section's
+    instructors in title case, all in one INSTRUCTOR-IN-CHARGE/INSTRUCTOR column
+    — the rule CourseUtils.getInstructorInCharge already reads. Case is therefore
+    meaning, and it has to be read BEFORE normalising, or upper-casing for
+    identity flattens the distinction away.
+
+    Measured on two real booklets: 363/383 and 321/333 courses print exactly one
+    capitalised name, a handful print two, and 3/383 and 10/333 print none — so
+    in_charge is 0-2 long and every caller must render an empty one.
+    """
+    names, seen = [], set()
+    in_charge = []
+    for section in course.get("sections", []):
+        for raw in re.split(r"[,/]", str(section.get("instructor") or "")):
+            name = _ascii_name(sanitize(raw))
+            if not _is_real_instructor(name):
+                continue
+            key = name.upper()
+            # The in-charge is usually ALSO listed in title case as their own
+            # section's instructor, so this cannot be a first-appearance
+            # tie-break — it has to test the case of each spelling.
+            if name == key and key not in in_charge:
+                in_charge.append(key)
+            if key not in seen:
+                seen.add(key)
+                names.append(key)
+    return names, in_charge
+
+
+def build_term_offerings(courses):
+    """What one term's booklet says actually ran, keyed by document id.
+
+    Courses with no sections are dropped. The Hyderabad booklet prints every
+    course in both semesters' tables and the copy for the semester it is not
+    offered in carries no sections — and that absence is the entire point here,
+    since "last offered" is read off which terms a course is missing from.
+
+    Neither the title nor the credits are stored. courses_master is the app's
+    only source of both, and the client resolves them through it — the credits a
+    course carries are a property of the course, not of the semester it ran in.
+    The parsed title is not even fit to display: a wrapped title cell yields only
+    its first line ("PRINCIPLES OF" for AN F311) and sometimes interleaves two
+    cells outright. It is good enough to seed a MISSING master row, which is all
+    sync_courses_master uses it for, and not for anything a student reads.
+    """
+    offerings = {}
+    for course in dedupe_by_doc_id(courses):
+        if not course.get("sections"):
+            continue
+        doc_id = course_code_to_doc_id(course.get("courseCode", ""))
+        if not doc_id:
+            continue
+        instructors, in_charge = _term_instructors(course)
+        offerings[doc_id] = {
+            "instructors": instructors,
+            "ic": in_charge,
+            "sections": len(course["sections"]),
+        }
+    return offerings
+
+
+def history_sanity_problems(courses):
+    """Structural problems that would corrupt a term's HISTORY, specifically.
+
+    A narrower check than sanity_problems on purpose. That one guards a timetable
+    upload and rightly refuses a booklet whose room/schedule columns moved — but
+    the history bundle stores none of that. Hyderabad's 2020-21 and 2021-22 Sem 1
+    booklets were online semesters printed with no room column, so every row
+    parses with an empty schedule and days landing in `room`: 100% no-schedule,
+    which sanity_problems refuses, while the code, title, sections and instructor
+    columns are all intact and 0% of courses come out with no instructor.
+
+    So this keeps only the checks about fields history actually keys on: whether
+    the course CODE column is really the code, and whether instructors survived.
+    """
+    problems = []
+    offerings = build_term_offerings(courses)
+    if not offerings:
+        return ["no offered courses parsed"]
+
+    bad_codes = [c["courseCode"] for c in courses
+                 if not COURSE_CODE_RE.match(sanitize(c.get("courseCode", "")))]
+    if bad_codes:
+        problems.append(
+            f"{len(bad_codes)} rows have something that is not a course code in "
+            f"the code column ({', '.join(sanitize(c) for c in bad_codes[:5])})")
+
+    # Reuse the code/title structural checks; both mean the columns slid.
+    for course in courses:
+        title = sanitize(str(course.get("courseTitle", "")))
+        if CREDITS_LIKE_TITLE.match(title) or COURSE_CODE_RE.match(title):
+            problems.append(
+                "the code/title columns look off by one "
+                f"(e.g. {sanitize(course['courseCode'])} titled {title!r})")
+            break
+
+    # Measured 0% on all eleven real Hyderabad booklets, so this is a defect
+    # rather than a threshold to tune — but left as a share because one course
+    # genuinely missing an instructor should not refuse a whole semester.
+    no_instructor = sum(1 for v in offerings.values() if not v["instructors"])
+    share = no_instructor / len(offerings)
+    if share > 0.10:
+        problems.append(
+            f"{no_instructor}/{len(offerings)} offered courses ({share:.0%}) have "
+            f"no instructor — the instructor column may have moved")
+
+    return problems
+
+
+def record_term_offerings(campus_id, term, courses):
+    """Folds this upload's term into the campus's course-history bundle.
+
+    Runs on every timetable upload so a new semester reaches the history page
+    without a separate step. Re-uploading a term REPLACES its entry rather than
+    appending one, which is what makes a corrected booklet correct the history.
+    """
+    offerings = build_term_offerings(courses)
+    if not offerings:
+        print(f"[history] {term}: nothing offered in this parse — history left alone")
+        return False
+
+    db = get_db()
+    ref = db.document(f"campuses/{campus_id}/catalog/course_history")
+    snap = ref.get()
+    by_term = {}
+    if snap.exists:
+        try:
+            by_term = {
+                t["term"]: t["courses"]
+                for t in json.loads((snap.to_dict() or {}).get("entriesJson") or "[]")
+            }
+        except (ValueError, KeyError, TypeError):
+            # Refuse rather than start over. This document has no other writer,
+            # so unreadable means something unexpected — and rewriting it would
+            # silently drop every term already recorded.
+            print("[history] existing bundle is unreadable — refusing to overwrite it")
+            return False
+
+    by_term[term] = offerings
+    entries = [{"term": t, "courses": by_term[t]} for t in sorted(by_term)]
+    entries_json = json.dumps(entries, separators=(",", ":"))
+    size = len(entries_json.encode("utf-8"))
+    if size > HISTORY_BUNDLE_MAX_BYTES:
+        print(f"[history] bundle too large ({size} bytes) — leaving previous bundle in place")
+        return False
+
+    stamp = datetime.utcnow()
+    ref.set({
+        "version": stamp.isoformat() + "Z",
+        "terms": len(entries),
+        "entriesJson": entries_json,
+    })
+    # Bumped here rather than left to the caller. CourseHistoryService judges its
+    # cached copy against this marker, not against the bundle's own version, so
+    # writing the bundle without touching it leaves every client serving a stale
+    # history for up to the 72h cache TTL. upload_timetable happens to bump it a
+    # moment later too, which made this look unnecessary — but anything else that
+    # records a term (the backfill, a correction) would silently go unseen.
+    db.document(f"campuses/{campus_id}/metadata/current").set(
+        {"lastUpdated": stamp.isoformat() + "Z",
+         "version": str(int(stamp.timestamp() * 1000))},
+        merge=True,
+    )
+    print(f"[history] {term}: {len(offerings)} courses offered, "
+          f"{len(entries)} terms total, {size / 1024:.1f} KB")
+    return True
+
+
 # ─── Cloud Functions ───
 
 
@@ -1730,6 +1970,15 @@ def upload_timetable(req: https_fn.CallableRequest):
     if calendar_semester not in (1, 2):
         calendar_semester = None
 
+    # Which term this booklet describes, which is what the course-history bundle
+    # is keyed on. Taken from the admin's inputs, not the PDF heading: across the
+    # five real Hyderabad booklets the heading is ambiguous or absent in two of
+    # them, and a wrong term silently mislabels a whole semester of history.
+    semester = req.data.get("semester")
+    if semester not in (1, 2):
+        semester = calendar_semester
+    term = term_id(EXAM_YEAR, semester) if semester in (1, 2) else None
+
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
         tmp_path = tmp.name
         blob = bucket.blob(storage_path)
@@ -1754,7 +2003,7 @@ def upload_timetable(req: https_fn.CallableRequest):
     # Preview: parse and diff against live, write nothing. The calendar is
     # skipped too — a dry run must have no side effects at all.
     if bool(req.data.get("dryRun")):
-        return {"success": True, "dryRun": True,
+        return {"success": True, "dryRun": True, "term": term,
                 **build_timetable_preview(courses, campus_code)}
 
     # `force` lets an admin push through a genuine large drop (a campus really
@@ -1772,6 +2021,17 @@ def upload_timetable(req: https_fn.CallableRequest):
         calendar_uploaded = len(calendar_events)
 
     campus_id = CAMPUS_IDS.get(campus_code.lower(), "hyderabad")
+
+    # Derived data, and re-derivable by re-uploading, so a failure here must not
+    # report a timetable that did land as failed. Reported instead.
+    history_recorded = False
+    if term:
+        try:
+            history_recorded = record_term_offerings(campus_id, term, courses)
+        except Exception as e:  # noqa: BLE001 — never fail a committed upload
+            print(f"[history] {term}: failed to record — {e}")
+    else:
+        print("[history] no semester supplied — this term was not recorded")
 
     # upload_courses_to_firestore(clear_first=True) replaced the collection with
     # exactly `courses`, so that's the total. Re-reading the whole collection
@@ -1792,6 +2052,8 @@ def upload_timetable(req: https_fn.CallableRequest):
         "coursesUploaded": len(courses),
         "calendarEventsUploaded": calendar_uploaded,
         "parserVersion": PARSER_VERSION,
+        "term": term,
+        "historyRecorded": history_recorded,
     }
 
 

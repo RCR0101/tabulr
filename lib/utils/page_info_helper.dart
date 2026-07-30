@@ -185,6 +185,24 @@ class PageInfoHelper {
     ],
   );
 
+  static final courseHistory = PageInfo(
+    title: 'Course History',
+    purpose: 'Every semester on record for this campus — which courses ran, who '
+        'taught them, and how long it has been since one was last offered.',
+    features: [
+      FeatureInfo(Icons.menu_book_outlined, 'Courses',
+          'see the semesters a course ran in and who taught each one'),
+      FeatureInfo(Icons.person_search_outlined, 'Professors',
+          'see what a professor has taught, semester by semester'),
+      FeatureInfo(Icons.workspace_premium_outlined, 'IC badge',
+          'marks the instructor-in-charge — who ran the course, not just taught a section'),
+      FeatureInfo(Icons.filter_alt_outlined, 'Filter',
+          'narrow to what is offered now, on pause, or new this semester'),
+      FeatureInfo(Icons.touch_app_outlined, 'Cross-link',
+          'tap a name or a course code to jump straight to its record'),
+    ],
+  );
+
   static final announcements = PageInfo(
     title: 'Announcements',
     purpose: 'Course-specific announcements posted by students — schedule changes, extra classes, exam updates.',

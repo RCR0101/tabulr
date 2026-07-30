@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../../constants/app_constants.dart';
 import '../../utils/course_code.dart';
 
@@ -8,7 +9,15 @@ class AdminDataService {
   factory AdminDataService() => _instance;
   AdminDataService._internal();
 
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  /// Test seam: substitute an in-memory Firestore. Never set from app code.
+  @visibleForTesting
+  FirebaseFirestore? firestoreForTest;
+
+  /// Resolved on use, not held as a field. This is a singleton, so an eager
+  /// initializer demanded Firebase be up merely to *construct* the service —
+  /// which threw before any `try` could catch it, and made every widget test
+  /// that transitively reached an admin screen impossible.
+  FirebaseFirestore get _db => firestoreForTest ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> _timetableRef(String campusId) =>
       _db.collection(FirestoreCollections.campuses).doc(campusId).collection(FirestoreCollections.timetable);
@@ -116,7 +125,8 @@ class AdminDataService {
     batch.delete(_masterRef(campusId).doc(docId));
     await batch.commit();
     _invalidate('courses', campusId);
-    await _syncCatalogBundle(campusId, removeDocId: docId);
+    _invalidate('master', campusId);
+    await _syncCatalogBundle(campusId, removeCode: docIdToCourseCode(docId));
   }
 
   DocumentReference<Map<String, dynamic>> _bundleRef(String campusId) => _db
@@ -124,9 +134,6 @@ class AdminDataService {
       .doc(campusId)
       .collection(FirestoreCollections.catalog)
       .doc(FirestoreCollections.coursesMasterBundle);
-
-  static String _normalizeCode(String code) =>
-      code.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
 
   /// Keeps the single-document catalogue bundle in sync after an in-app course
   /// edit.
@@ -136,10 +143,16 @@ class AdminDataService {
   /// the bundle is *missing* — a **stale** bundle would silently hide this
   /// edit, so failures here deliberately propagate rather than being swallowed.
   /// Patching costs 1 read + 1 write instead of rebuilding from scratch.
+  /// [removeCode] is the course *code*, not the document id. It used to be the
+  /// doc id, compared against a locally re-derived `[^a-zA-Z0-9] -> _` form —
+  /// which disagrees with `courseCodeToDocId` (spaces only) for any code
+  /// containing a hyphen. `BITS F101-2` and `BITS K101-2` are real Hyderabad
+  /// courses, so deleting either left it in the bundle and therefore still
+  /// visible everywhere in the app.
   Future<void> _syncCatalogBundle(
     String campusId, {
     Map<String, dynamic>? upsert,
-    String? removeDocId,
+    String? removeCode,
   }) async {
     final ref = _bundleRef(campusId);
     final snap = await ref.get();
@@ -152,9 +165,8 @@ class AdminDataService {
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
 
-    if (removeDocId != null) {
-      entries.removeWhere(
-          (e) => _normalizeCode(e['course_code'] as String? ?? '') == removeDocId);
+    if (removeCode != null) {
+      entries.removeWhere((e) => e['course_code'] == removeCode);
     }
 
     if (upsert != null) {
@@ -194,6 +206,189 @@ class AdminDataService {
       'lastUpdated': stamp.toIso8601String(),
       'version': stamp.millisecondsSinceEpoch.toString(),
     }, SetOptions(merge: true));
+  }
+
+  // ── Courses master (the catalogue itself) ──
+  //
+  // Deliberately separate from the course CRUD above, which is a *timetable*
+  // editor that happens to write the master row alongside. These touch
+  // courses_master and nothing else:
+  //
+  //  - fetchCourses joins from the timetable side, so it can only reach the
+  //    ~420 courses offered this semester. 2,429 of the 2,852 catalogue rows
+  //    have no timetable document and were unreachable.
+  //  - saveCourse always writes a timetable document too, so editing a
+  //    catalogue-only row through it would invent a course with no sections.
+
+  static const List<String> courseTypes = ['Normal', 'ATC', 'Lab', 'Project'];
+
+  /// The whole catalogue for [campusId], newest state first from the bundle.
+  ///
+  /// Reads the single bundle document (1 read) rather than scanning ~2,852
+  /// documents, and falls back to the scan only when it is missing — the same
+  /// order [CoursesMasterService] uses, and safe because every writer
+  /// (this service, and the uploader's `_write_catalog_bundle`) keeps the bundle
+  /// in step with the collection.
+  Future<List<Map<String, dynamic>>> fetchMasterCourses(
+    String campusId, {
+    String? query,
+    bool forceRefresh = false,
+  }) async {
+    final rows = await _rows('master', campusId, forceRefresh, () async {
+      final snap = await _bundleRef(campusId).get();
+      final raw = snap.data()?['entriesJson'] as String?;
+      final List<Map<String, dynamic>> all;
+      if (raw != null && raw.isNotEmpty) {
+        all = [
+          for (final e in (jsonDecode(raw) as List).cast<Map>())
+            {
+              ...Map<String, dynamic>.from(e),
+              'docId': courseCodeToDocId(e['course_code'] as String? ?? ''),
+            }
+        ];
+      } else {
+        final collection = await _masterRef(campusId).get();
+        all = [
+          for (final doc in collection.docs) {'docId': doc.id, ...doc.data()}
+        ];
+      }
+      all.sort((a, b) => (a['course_code'] as String? ?? '')
+          .compareTo(b['course_code'] as String? ?? ''));
+      return all;
+    });
+
+    if (query == null || query.isEmpty) return _copy(rows);
+    final q = query.toLowerCase();
+    return _copy(rows.where((row) {
+      final code = (row['course_code'] as String? ?? '').toLowerCase();
+      final title = (row['title'] as String? ?? '').toLowerCase();
+      return code.contains(q) || title.contains(q);
+    }));
+  }
+
+  /// Writes one catalogue row, and nothing else.
+  ///
+  /// [campusIds] is every campus to write it to. The catalogue is stored per
+  /// campus and has genuinely drifted — 21 rows differ between Hyderabad and
+  /// Pilani, some of it deliberate curation (`BITS F101-2` is type `ATC` only on
+  /// Hyderabad) and some of it plainly wrong (`BITS U104` carries 2 credits on
+  /// Hyderabad and 0 elsewhere) — so which campuses an edit reaches has to be
+  /// the caller's decision rather than a guess made here.
+  Future<void> saveMasterCourse({
+    required List<String> campusIds,
+    required String courseCode,
+    required String title,
+    required double credits,
+    required String type,
+  }) async {
+    final docId = courseCodeToDocId(courseCode);
+    final data = <String, dynamic>{
+      'course_code': courseCode,
+      'title': title,
+      'credits': credits,
+      'type': type,
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+    for (final campusId in campusIds) {
+      await _masterRef(campusId).doc(docId).set(data, SetOptions(merge: true));
+      _invalidate('master', campusId);
+      // Also drops the joined timetable view, which embeds title/credits/type.
+      _invalidate('courses', campusId);
+      await _syncCatalogBundle(campusId, upsert: data);
+    }
+  }
+
+  /// Removes one catalogue row from each of [campusIds]. Leaves the timetable
+  /// document alone — a course can be offered this semester and still be a
+  /// catalogue mistake, and removing the offering is the other screen's job.
+  Future<void> deleteMasterCourse({
+    required List<String> campusIds,
+    required String courseCode,
+  }) async {
+    final docId = courseCodeToDocId(courseCode);
+    for (final campusId in campusIds) {
+      await _masterRef(campusId).doc(docId).delete();
+      _invalidate('master', campusId);
+      _invalidate('courses', campusId);
+      await _syncCatalogBundle(campusId, removeCode: courseCode);
+    }
+  }
+
+  /// Where else [courseCode] is referred to, as lines an admin can read.
+  ///
+  /// Deleting a catalogue row does not delete what points at it: a prerequisite
+  /// chain, a minor's course group or a branch's CDC slot keeps the code and
+  /// renders it as a bare code with no title. `sync_courses_master` never
+  /// deletes a row for exactly this reason, so a manual delete has to show what
+  /// it is about to orphan.
+  ///
+  /// Matches the serialised document rather than each schema's own shape. Four
+  /// collections with four nested layouts would each need their own walker, and
+  /// a missed nesting level here reads as "no references" — the one wrong answer
+  /// this must not give. Word-bounded so `CS F21` cannot match `CS F211`.
+  Future<List<String>> findCourseCodeReferences(
+    String campusId,
+    String courseCode,
+  ) async {
+    final docId = courseCodeToDocId(courseCode);
+    final pattern = RegExp(
+        r'\b('
+        '${RegExp.escape(courseCode)}|${RegExp.escape(docId)}'
+        r')\b',
+        caseSensitive: false);
+    bool mentions(Map<String, dynamic>? data) =>
+        data != null && pattern.hasMatch(jsonEncode(data));
+
+    final references = <String>[];
+
+    final timetable = await _timetableRef(campusId).doc(docId).get();
+    if (timetable.exists) {
+      references.add('Offered in this semester\'s timetable');
+    }
+
+    final prereqs = await _db
+        .collection(FirestoreCollections.reference)
+        .doc(FirestoreCollections.prerequisites)
+        .collection(FirestoreCollections.courses)
+        .get();
+    final prereqHits = [
+      for (final doc in prereqs.docs)
+        if (doc.id == docId || mentions(doc.data())) docIdToCourseCode(doc.id)
+    ];
+    if (prereqHits.isNotEmpty) {
+      references.add('Prerequisites: ${_sample(prereqHits)}');
+    }
+
+    final minors = await _db.collection(FirestoreCollections.minors).get();
+    final minorHits = [
+      for (final doc in minors.docs)
+        if (mentions(doc.data()))
+          (doc.data()['name'] as String? ?? doc.id)
+    ];
+    if (minorHits.isNotEmpty) {
+      references.add('Minor programmes: ${_sample(minorHits)}');
+    }
+
+    final branches = await _db
+        .collection(FirestoreCollections.reference)
+        .doc(FirestoreCollections.branches)
+        .collection(FirestoreCollections.data)
+        .get();
+    final branchHits = [
+      for (final doc in branches.docs)
+        if (!doc.id.startsWith('_') && mentions(doc.data())) doc.id
+    ];
+    if (branchHits.isNotEmpty) {
+      references.add('Branch CDC plans: ${_sample(branchHits)}');
+    }
+
+    return references;
+  }
+
+  static String _sample(List<String> items) {
+    const shown = 6;
+    if (items.length <= shown) return items.join(', ');
+    return '${items.take(shown).join(', ')} (+${items.length - shown} more)';
   }
 
   // ── Exam Seating ──

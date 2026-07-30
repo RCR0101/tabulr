@@ -89,8 +89,14 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
           focusColor: Colors.transparent,
           // Rounds the popup menu to match the control it opens from.
           borderRadius: BorderRadius.circular(10),
+          // Derived from the text theme, not a bare TextStyle: a TextStyle with
+          // no fontFamily falls back to the platform default rather than the
+          // app's typeface, so every dropdown was rendering in the wrong font.
           style: widget.textStyle ??
-              TextStyle(fontSize: 13, color: scheme.onSurface),
+              Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(fontSize: 13, color: scheme.onSurface),
           items: widget.items,
           onChanged: widget.onChanged,
         ),

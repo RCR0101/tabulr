@@ -494,6 +494,162 @@ def test_guard_can_be_forced():
     main._guard_course_count(_FakeRef(800), [{}] * 10, force=True)
 
 
+# ── Course history ──────────────────────────────────────────────────────────
+
+
+def test_term_id_maps_exam_year_and_semester_to_a_session():
+    # A first semester's exams fall in the session's opening calendar year; a
+    # second semester's fall in the NEXT one, so it belongs to the prior session.
+    assert main.term_id(2026, 1) == "2026-27-1"
+    assert main.term_id(2026, 2) == "2025-26-2"
+    assert main.term_id(1999, 1) == "1999-00-1"  # two-digit wrap keeps its zero
+
+
+def test_term_ids_sort_chronologically_as_strings():
+    """The client orders terms by plain string sort rather than parsing them."""
+    ids = [main.term_id(2025, 1), main.term_id(2026, 2), main.term_id(2026, 1)]
+    assert sorted(ids) == ["2025-26-1", "2025-26-2", "2026-27-1"], sorted(ids)
+
+
+def test_offerings_exclude_courses_that_did_not_run():
+    """A course printed with no sections was not offered that semester, and its
+    absence is what "last offered" is computed from."""
+    offerings = main.build_term_offerings([
+        _incoming("CS F213", "D101", [1], instructor="R ADURI"),
+        {"courseCode": "CS F407", "courseTitle": "AI", "totalCredits": 3,
+         "sections": []},
+    ])
+    assert set(offerings) == {"CS_F213"}, offerings
+
+
+def test_offerings_record_distinct_canonical_instructors():
+    """Same person, three spellings across two sections: one canonical name.
+
+    The booklet lists the instructor-in-charge again as an instructor, in a
+    different case, and wraps long names across lines.
+    """
+    offerings = main.build_term_offerings([{
+        "courseCode": "BIO F110",
+        "courseTitle": "BIOLOGY LABORATORY",
+        "totalCredits": 1,
+        "sections": [
+            {"sectionId": "P1", "instructor": "AMARTYA SANYAL, Amartya Sanyal"},
+            {"sectionId": "P2", "instructor": "PARDHA SARADHI\nGURUGUBELLI"},
+        ],
+    }])
+    entry = offerings["BIO_F110"]
+    assert entry["instructors"] == ["AMARTYA SANYAL", "PARDHA SARADHI GURUGUBELLI"], entry
+    assert entry["sections"] == 2, entry
+    # A property of the course, not of the term it ran in: resolved from
+    # courses_master by the client, so it is deliberately absent here.
+    assert "credits" not in entry and "title" not in entry, entry
+
+
+def test_capitalised_instructors_are_the_ones_in_charge():
+    """The booklet marks the instructor-in-charge by CAPITALISING them.
+
+    Case therefore has to be read before names are upper-cased for identity —
+    and the in-charge is normally listed a SECOND time in title case as their own
+    section's instructor, so "first name seen" is not the rule.
+    """
+    offerings = main.build_term_offerings([{
+        "courseCode": "BIO F110",
+        "sections": [
+            {"sectionId": "P1", "instructor": "Kirtimaan Syal, Piyush Khandelia"},
+            {"sectionId": "P2", "instructor": "AMARTYA SANYAL, Amartya Sanyal"},
+        ],
+    }])
+    entry = offerings["BIO_F110"]
+    assert entry["ic"] == ["AMARTYA SANYAL"], entry
+    # Still present in the full list, once.
+    assert entry["instructors"] == [
+        "KIRTIMAAN SYAL", "PIYUSH KHANDELIA", "AMARTYA SANYAL"], entry
+
+
+def test_a_course_with_no_capitalised_name_has_no_one_in_charge():
+    """10 of 333 courses in the 2026-27 booklet print none. Empty, not guessed."""
+    offerings = main.build_term_offerings([{
+        "courseCode": "ECE F216",
+        "sections": [{"sectionId": "L1", "instructor": "Sanket Goel"}],
+    }])
+    assert offerings["ECE_F216"]["ic"] == [], offerings
+    assert offerings["ECE_F216"]["instructors"] == ["SANKET GOEL"]
+
+
+def test_non_ascii_debris_is_treated_as_whitespace_not_a_letter():
+    """The booklets carry U+00C2 "Â" in five names — an orphaned UTF-8
+    non-breaking space, not an accent.
+
+    Unicode folding would decompose it to "A" and silently produce
+    "HANS KRUPAKARA" / "VIJAYA ANGADI": plausible names that are wrong. It has to
+    collapse to a space instead, mid-name and trailing alike.
+    """
+    offerings = main.build_term_offerings([{
+        "courseCode": "CS G526",
+        "sections": [
+            {"sectionId": "L1", "instructor": "Hans KrupakarÂ, VijayÂ Angadi"},
+            {"sectionId": "L2", "instructor": "Hanamkonda Sai SharanyaÂ"},
+        ],
+    }])
+    assert offerings["CS_G526"]["instructors"] == [
+        "HANS KRUPAKAR", "VIJAY ANGADI", "HANAMKONDA SAI SHARANYA"], offerings
+
+
+def test_cleaning_a_name_merges_it_with_its_clean_spelling():
+    """The same person written both ways is one instructor, not two.
+
+    This is the point of cleaning at the source rather than at display: the
+    upper-cased name is the identity key, so debris forked one professor into two
+    rows in the history and two entries in the professors list.
+    """
+    offerings = main.build_term_offerings([{
+        "courseCode": "CS F342",
+        "sections": [
+            {"sectionId": "L1", "instructor": "Pranay SharmaÂ"},
+            {"sectionId": "L2", "instructor": "Pranay Sharma"},
+        ],
+    }])
+    assert offerings["CS_F342"]["instructors"] == ["PRANAY SHARMA"], offerings
+
+
+def test_placeholder_and_stray_instructors_are_dropped():
+    """"TBA" is not a person, and a single character is a split artefact.
+
+    All eighteen spellings the booklets use are covered; the anchoring matters
+    because an unanchored match also hits "Harshal Vasan(t Ba)rkale".
+    """
+    offerings = main.build_term_offerings([{
+        "courseCode": "ME F341",
+        "sections": [
+            {"sectionId": "L1", "instructor": "TBA, Tba. Mech, TBA-ECON, Tba.mech"},
+            {"sectionId": "L2", "instructor": "N, a, -, Harshal Vasant Barkale"},
+            # A real name that an unanchored or unbounded rule would eat.
+            {"sectionId": "L3", "instructor": "T. B. Anand"},
+        ],
+    }])
+    assert offerings["ME_F341"]["instructors"] == [
+        "HARSHAL VASANT BARKALE", "T. B. ANAND"], offerings
+    assert offerings["ME_F341"]["ic"] == [], offerings
+
+
+def test_offerings_keep_the_richer_of_two_duplicate_rows():
+    """Two rows collapsing onto one document id — a cross-listed code — must
+    resolve to the fuller row, not to whichever the registrar printed last.
+
+    Both rows carry sections, so the section filter above cannot decide this
+    one; and the fuller row comes FIRST, so last-write-wins would lose it.
+    """
+    full = _incoming("EEE F211 / ECE F211", "D101", [1], instructor="R ADURI")
+    full["sections"].append({"sectionId": "L2", "room": "D102",
+                             "instructor": "A NAIR", "schedule": []})
+    offerings = main.build_term_offerings([
+        full,
+        _incoming("EEE F211", "D999", [5], instructor="SOMEONE ELSE"),
+    ])
+    assert list(offerings) == ["EEE_F211"], offerings
+    assert offerings["EEE_F211"]["sections"] == 2, offerings
+
+
 if __name__ == "__main__":
     if not have_pdfs():
         missing = [c for c in CAMPUS_CODES if not os.path.exists(pdf_path(c))]

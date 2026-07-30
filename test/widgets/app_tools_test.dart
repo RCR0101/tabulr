@@ -44,6 +44,9 @@ void main() {
           // the same branch and semester before showing anything.
           AppTool.electives,
           AppTool.minors,
+          // Deciding whether to take a course now turns on whether it will run
+          // again, so the past-offerings record belongs beside the browsers.
+          AppTool.courseHistory,
           AppTool.profChambers,
         ],
       );

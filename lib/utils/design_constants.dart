@@ -206,16 +206,26 @@ class AppDesign {
           child: Icon(icon, color: scheme.primary, size: 24),
         ),
         const SizedBox(width: spacingSm + 4),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(title, style: text.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-            if (subtitle != null)
-              Text(subtitle,
-                  style: text.bodySmall?.copyWith(
-                      color: scheme.onSurface.withValues(alpha: 0.7))),
-          ],
+        // Flexible: an app bar with several actions leaves the title well under
+        // 200px on a phone, and an unconstrained Column there overflows the
+        // toolbar rather than shortening the text.
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(title,
+                  style: text.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
+              if (subtitle != null)
+                Text(subtitle,
+                    style: text.bodySmall?.copyWith(
+                        color: scheme.onSurface.withValues(alpha: 0.7)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+            ],
+          ),
         ),
       ],
     );

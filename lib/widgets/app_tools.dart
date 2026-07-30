@@ -4,6 +4,7 @@ import '../screens/profile_screen.dart';
 import '../utils/page_transitions.dart';
 import '../screens/electives_screen.dart';
 import '../screens/course_guide_screen.dart';
+import '../screens/course_history_screen.dart';
 import '../screens/credits_screen.dart';
 import '../screens/minors_screen.dart';
 import '../screens/prerequisites_screen.dart';
@@ -17,6 +18,7 @@ enum AppTool {
   prerequisites,
   electives,
   minors,
+  courseHistory,
   profChambers,
   compareTimetables,
   credits,
@@ -125,6 +127,20 @@ abstract final class AppTools {
             inEditorMenu: true,
             screen: DrawerScreen.minors,
             build: (link) => MinorsScreen(selectionLink: link),
+          ),
+        // Open to guests: it is registrar data, and someone deciding whether a
+        // course is worth waiting for benefits from it before signing up.
+        AppTool.courseHistory => AppToolInfo(
+            tool: tool,
+            icon: Icons.history_toggle_off,
+            label: 'Course History',
+            description:
+                'Which courses ran in past semesters, who taught them, and when '
+                'one was last offered',
+            inEditorMenu: true,
+            segment: 'course-history',
+            signedInOnly: false,
+            build: (_) => const CourseHistoryScreen(),
           ),
         AppTool.profChambers => AppToolInfo(
             tool: tool,

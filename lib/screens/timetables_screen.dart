@@ -750,6 +750,9 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                 case 'electives':
                   AppTools.of(AppTool.electives).pushOn(Navigator.of(context));
                   break;
+                case 'course_history':
+                  AppTools.of(AppTool.courseHistory).pushOn(Navigator.of(context));
+                  break;
                 case 'import_code':
                   _importFromShareCode();
                   break;
@@ -812,6 +815,10 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
               const PopupMenuItem(
                 value: 'electives',
                 child: ListTile(leading: Icon(Icons.school), title: Text('Electives'), contentPadding: EdgeInsets.zero),
+              ),
+              const PopupMenuItem(
+                value: 'course_history',
+                child: ListTile(leading: Icon(Icons.history_toggle_off), title: Text('Course History'), contentPadding: EdgeInsets.zero),
               ),
               const PopupMenuDivider(),
               const PopupMenuItem(

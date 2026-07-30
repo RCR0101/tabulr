@@ -32,6 +32,9 @@ abstract final class FirestoreCollections {
   /// so a cold load costs 1 read instead of ~2.8k.
   static const String catalog = 'catalog';
   static const String coursesMasterBundle = 'courses_master';
+  /// Per-term offering history: which courses ran when, and who taught them.
+  /// One document per campus, appended to by every timetable upload.
+  static const String courseHistoryBundle = 'course_history';
   static const String prerequisites = 'prerequisites';
   static const String courses = 'courses';
   static const String acadDrivesIndex = 'acad_drives_index';
