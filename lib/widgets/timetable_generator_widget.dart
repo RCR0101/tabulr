@@ -467,25 +467,73 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     }
   }
 
+  /// Which kind of timetable to generate. Explicit, because the generator can
+  /// only produce one basis at a time and inferring it from whatever is
+  /// selected leaves a student with no courses picked no way to say.
+  ///
+  /// Switching clears the selection: those courses cannot be part of a run on
+  /// the other basis, and silently dropping them at generate time would look
+  /// like the generator ignoring the request.
+  Widget _buildBasisToggle() {
+    final hasHoursCourses = widget.availableCourses.any(
+        (c) => c.offersBasis(CreditBasis.hours));
+    // Hidden where no course is offered that way — every campus but Pilani,
+    // and Pilani before 2026-27.
+    if (!hasHoursCourses) return const SizedBox.shrink();
+
+    return Row(
+      children: [
+        const Text('Count in:', style: TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(width: 10),
+        SegmentedButton<CreditBasis>(
+          segments: const [
+            ButtonSegment(value: CreditBasis.units, label: Text('Credits')),
+            ButtonSegment(
+                value: CreditBasis.hours, label: Text('Credit hours')),
+          ],
+          selected: {_ctrl.creditBasis},
+          showSelectedIcon: false,
+          onSelectionChanged: (s) async {
+            final basis = s.first;
+            if (_ctrl.mandatoryCourses.isNotEmpty ||
+                _ctrl.optionalCourses.isNotEmpty) {
+              final ok = await AppDialog.confirm(
+                context: context,
+                title: 'Switch to ${basis.label}?',
+                message: 'The courses you have picked are counted in '
+                    '${_ctrl.creditBasis.label} and cannot be part of a '
+                    '${basis.label} timetable, so they will be cleared.',
+                confirmLabel: 'Switch',
+              );
+              if (!ok || !mounted) return;
+            }
+            setState(() => _ctrl.setCreditBasis(basis));
+          },
+          style: const ButtonStyle(visualDensity: VisualDensity.compact),
+        ),
+      ],
+    );
+  }
+
   Widget _buildCourseSelection() {
-    final mandatoryCredits = _ctrl.mandatoryCourses.fold(0.0, (sum, code) {
+    double sumOn(List<String> codes) => codes.fold(0.0, (sum, code) {
       final c = widget.availableCourses.firstWhere((c) => c.courseCode == code,
         orElse: () => Course(courseCode: code, courseTitle: '', lectureCredits: 0, practicalCredits: 0, totalCredits: 0, sections: []));
-      return sum + c.totalCredits;
+      return sum + (c.variantOn(_ctrl.creditBasis)?.amount ?? 0);
     });
-    final optionalCredits = _ctrl.optionalCourses.fold(0.0, (sum, code) {
-      final c = widget.availableCourses.firstWhere((c) => c.courseCode == code,
-        orElse: () => Course(courseCode: code, courseTitle: '', lectureCredits: 0, practicalCredits: 0, totalCredits: 0, sections: []));
-      return sum + c.totalCredits;
-    });
+    final mandatoryCredits = sumOn(_ctrl.mandatoryCourses);
+    final optionalCredits = sumOn(_ctrl.optionalCourses);
+    final unit = _ctrl.creditBasis == CreditBasis.hours ? 'credit hours' : 'credits';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildBasisToggle(),
+        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
-              child: Text('Mandatory Courses (${mandatoryCredits.toStringAsFixed(1)} credits):', style: const TextStyle(fontWeight: FontWeight.bold)),
+              child: Text('Mandatory Courses (${mandatoryCredits.toStringAsFixed(1)} $unit):', style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
             ValueListenableBuilder<bool>(
               valueListenable: _isAutoLoadingCDCs,
@@ -668,8 +716,12 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       suggestionsCallback: (pattern) {
         if (pattern.trim().isEmpty) return <Course>[];
 
-        final schedulable = widget.availableCourses
-            .where((course) => course.totalCredits != 0);
+        // "Has a credit value at all, on this run's basis" — the old test was
+        // totalCredits != 0, which is true of no credit-hours course, so none
+        // of them could be searched for here.
+        final schedulable = widget.availableCourses.where((course) =>
+            course.offersBasis(_ctrl.creditBasis) &&
+            (course.variantOn(_ctrl.creditBasis)?.amount ?? 0) != 0);
         // Ranked by CourseUtils, so the cap trims the least relevant tail
         // rather than whatever sorted first alphabetically.
         return CourseUtils.searchCourses(schedulable.toList(), pattern)

@@ -408,6 +408,9 @@ def parse_course_group(data, start_row, inherited_comp=None):
             "lectureCredits": lec_credits,
             "practicalCredits": prac_credits,
             "totalCredits": total_credits,
+            # Hyderabad prints units only — no CREDIT HOUR column exists here.
+            "creditHours": 0,
+            "comCodes": [int(comp_code)] if comp_code.isdigit() else [],
             "sections": sections,
             "midSemExam": mid,
             "endSemExam": end,
@@ -565,6 +568,18 @@ def parse_pilani_section(data, start_row):
     }
 
 
+# Pilani's 2026-27 booklet prints the same course twice: once normally, and
+# once under a com cod >= 5000 whose CREDIT column is CREDIT HOURS, not units.
+# The footnote on every page says who that row is for — "Courses with com cod
+# >=5000 are meant only for 2026 admissions into FD, HD and PHD and not for
+# others" — and the two are otherwise identical, same sections, same rooms.
+#
+# Pilani-only on purpose. Hyderabad's com codes run to 12662 and 48 of its rows
+# sit above 5000 carrying ordinary units (CS F321 at 12624 is 3 units), so a
+# campus-agnostic rule would restate 48 real courses as hours.
+PILANI_CREDIT_HOUR_COM_CODE = 5000
+
+
 def parse_pilani_course_group(data, start_row):
     main_row = data[start_row]
     comp_code = get_cell_str(main_row, 0)
@@ -576,6 +591,13 @@ def parse_pilani_course_group(data, start_row):
 
     if not comp_code or not course_no or not course_title:
         return None
+
+    # The column is headed "U/CH" and really does hold either. Which one is
+    # decided by the com cod, so it has to be read before the number is stored.
+    com_codes = [int(comp_code)] if comp_code.isdigit() else []
+    credit_hours = 0
+    if com_codes and com_codes[0] >= PILANI_CREDIT_HOUR_COM_CODE:
+        credit_hours, total_credits = total_credits, 0
 
     sections = []
     current_row = start_row
@@ -617,6 +639,8 @@ def parse_pilani_course_group(data, start_row):
             "lectureCredits": lec_credits,
             "practicalCredits": prac_credits,
             "totalCredits": total_credits,
+            "creditHours": credit_hours,
+            "comCodes": com_codes,
             "sections": sections,
             "midSemExam": mid,
             "endSemExam": end,
@@ -815,6 +839,17 @@ def parse_goa_course_group(data, start_row, code_col):
     if not course_no or not course_title or course_no == "#N/A" or course_title == "#N/A":
         return None
 
+    com_code = get_cell_str(main_row, code_col - 1) if code_col > 0 else ""
+    com_codes = [int(com_code)] if com_code.isdigit() else []
+    # Goa states hours in its own CREDIT HOUR column, right after L-P-U — no
+    # com cod rule here, and no second row: the U-series courses print an empty
+    # L-P-U cell and the hours instead, which is why all 14 of them stored zero
+    # credits and lost the only number the booklet gave for them.
+    #
+    # In the 2025-26 layout this index lands on STAT ("L", "P", "T") instead,
+    # which is why only a plain number counts.
+    credit_hours_str = get_cell_str(main_row, code_col + 3)
+    credit_hours = int(credit_hours_str) if credit_hours_str.isdigit() else 0
     lpu = parse_lpu(lpu_str)
     mid = parse_goa_midsem(
         get_cell(main_row, 10) if len(main_row) > 10 else None,
@@ -865,6 +900,10 @@ def parse_goa_course_group(data, start_row, code_col):
             "lectureCredits": lpu["L"],
             "practicalCredits": lpu["P"],
             "totalCredits": lpu["U"],
+            "creditHours": credit_hours,
+            # Goa's COM CODE column only exists when the code sits at column 1
+            # — see goa_code_col for the year the layout shifted.
+            "comCodes": com_codes,
             "sections": sections,
             "midSemExam": mid,
             "endSemExam": end,
@@ -1306,14 +1345,64 @@ def dedupe_by_doc_id(courses):
             best[doc_id] = course
             order.append(doc_id)
             continue
-        # Richer = more sections, then more credits. Ties keep the first seen,
-        # so the result does not depend on page order.
-        current = best[doc_id]
-        candidate = (len(course.get("sections", [])), course.get("totalCredits", 0))
-        incumbent = (len(current.get("sections", [])), current.get("totalCredits", 0))
-        if candidate > incumbent:
-            best[doc_id] = course
+        best[doc_id] = _merge_duplicates(best[doc_id], course)
     return [best[d] for d in order]
+
+
+def _richness(course):
+    """Ordering for "which row survives". Ties keep the incumbent, so the
+    result does not depend on page order."""
+    return (len(course.get("sections", [])), course.get("totalCredits", 0))
+
+
+def _is_hours_row(course):
+    """A row stating contact hours instead of units — Pilani's 2026-batch twin."""
+    return bool(course.get("creditHours")) and not course.get("totalCredits")
+
+
+def _variants(a, b):
+    """The two ways this course is on offer, oldest com cod first.
+
+    Only for a units row paired with an hours row. Hyderabad's duplicates are a
+    course printed in both semester tables with one copy blank, and a
+    cross-listed code collapses two names for one offering — neither is a
+    choice a student makes, so neither gets variants.
+    """
+    if not ((_is_hours_row(a) and b.get("totalCredits"))
+            or (_is_hours_row(b) and a.get("totalCredits"))):
+        return []
+    return sorted(
+        ({"comCode": (c.get("comCodes") or [0])[0],
+          "credits": c.get("totalCredits", 0),
+          "creditHours": c.get("creditHours", 0)} for c in (a, b)),
+        key=lambda v: v["comCode"])
+
+
+def _merge_duplicates(incumbent, candidate):
+    """One course from two rows: the richer row, plus what only the other has.
+
+    Pilani prints its 2026-batch twin with the units column blank and CREDIT
+    HOURS in its place, so neither row alone carries both numbers — and the
+    twin would win a plain "more credits" contest with hours it does not have.
+
+    The document stays keyed on the bare course code, because that code is what
+    every saved timetable stores. The twin is a `variants` entry rather than a
+    second document: same sections, same rooms, same times, so what differs is
+    which com cod a student is registered under, not what they attend.
+    """
+    base, other = ((incumbent, candidate)
+                   if _richness(incumbent) >= _richness(candidate)
+                   else (candidate, incumbent))
+    merged = dict(base)
+    for key in ("totalCredits", "creditHours"):
+        if not merged.get(key):
+            merged[key] = other.get(key, 0)
+    merged["comCodes"] = sorted(
+        set(incumbent.get("comCodes") or []) | set(candidate.get("comCodes") or []))
+    variants = _variants(incumbent, candidate)
+    if variants:
+        merged["variants"] = variants
+    return merged
 
 
 # A title that is nothing but digits is the fingerprint of a column offset: the
@@ -1487,6 +1576,21 @@ def upload_courses_to_firestore(courses, campus_code, clear_first=True, force=Fa
                 # L + P — projects/theses/labs are e.g. "- - 3" — and the client
                 # would otherwise recompute it as L + P and report 0.
                 "total_credits": course.get("totalCredits", lec + prac),
+                # Contact hours, and a separate number from units: Pilani's
+                # CHEM U101 is 3 units but 7 credit hours, so this is not
+                # units x 3 and must never be used to derive one from the other.
+                # 0 where the booklet does not print it.
+                "total_credit_hours": course.get("creditHours", 0),
+                # Every com cod this course was printed under. Two for a Pilani
+                # course that also has a 2026-batch row.
+                "com_codes": course.get("comCodes", []),
+                # Present only when the course is on offer two ways, so the
+                # other ~400 documents do not carry a list restating the two
+                # fields above. The client synthesises the single-variant case.
+                **({"variants": [
+                    {"com_code": v["comCode"], "credits": v["credits"],
+                     "credit_hours": v["creditHours"]}
+                    for v in course["variants"]]} if course.get("variants") else {}),
             })
         batch.commit()
 
@@ -1498,14 +1602,15 @@ def upload_courses_to_firestore(courses, campus_code, clear_first=True, force=Fa
 PREVIEW_SAMPLE = 25
 
 
-def _fingerprint(sections, mid, end, credits):
+def _fingerprint(sections, mid, end, credit_pair):
     """What counts as "changed" for an admin deciding whether to commit.
 
     Instructor spelling churns between booklet revisions and is not worth
-    flagging; where and when a student has to be is.
+    flagging; where and when a student has to be is. [credit_pair] is
+    (units, hours) — a course gaining hours is a change worth showing.
     """
     return (
-        credits,
+        credit_pair,
         bool(mid) and (mid.get("date"), mid.get("timeSlot")),
         bool(end) and (end.get("date"), end.get("timeSlot")),
         sorted(
@@ -1540,10 +1645,12 @@ def build_timetable_preview(courses, campus_code):
         new, old = incoming[doc_id], live[doc_id]
         new_fp = _fingerprint(
             new.get("sections", []), new.get("midSemExam"), new.get("endSemExam"),
-            new.get("totalCredits", 0))
+            (new.get("totalCredits", 0), new.get("creditHours", 0),
+             len(new.get("variants", []))))
         old_fp = _fingerprint(
             old.get("sections", []), old.get("mid_sem_exam"), old.get("end_sem_exam"),
-            old.get("total_credits", 0))
+            (old.get("total_credits", 0), old.get("total_credit_hours", 0),
+             len(old.get("variants", []))))
         if new_fp != old_fp:
             changed.append(doc_id)
 
@@ -1593,6 +1700,7 @@ def sync_courses_master(courses, campus_id):
             "course_code": data.get("course_code") or doc.id.replace("_", " "),
             "title": data.get("title", ""),
             "credits": data.get("credits", 0),
+            "credit_hours": data.get("credit_hours", 0),
             "type": data.get("type", "Normal"),
         }
 
@@ -1619,9 +1727,12 @@ def sync_courses_master(courses, campus_id):
             "course_code": doc_id.replace("_", " "),
             "title": title,
             # The unit count (U), not L + P — see upload_courses_to_firestore.
+            # 0 for a course the booklet only prints credit hours for; the
+            # hours ride alongside rather than being converted into units.
             "credits": course.get(
                 "totalCredits",
                 course.get("lectureCredits", 0) + course.get("practicalCredits", 0)),
+            "credit_hours": course.get("creditHours", 0),
             # The PDF carries no course type; curated rows (e.g. ATC) keep
             # theirs because existing documents are never touched.
             "type": "Normal",
@@ -1655,6 +1766,7 @@ def _write_catalog_bundle(db, campus_id, entries_by_id, force):
                 "course_code": e["course_code"],
                 "title": e.get("title", ""),
                 "credits": e.get("credits", 0) or 0,
+                "credit_hours": e.get("credit_hours", 0) or 0,
                 "type": e.get("type") or "Normal",
             }
             for e in entries_by_id.values()

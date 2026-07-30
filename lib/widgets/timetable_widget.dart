@@ -41,6 +41,11 @@ class TimetableWidget extends StatefulWidget {
   final Function(String courseCode, String sectionId)? onRemoveSection;
   final TimetableSize size;
   final Function(TimetableSize)? onSizeChanged;
+
+  /// What the timetable counts in, and the callback for switching it. Null in
+  /// read-only and export renders, where the control is hidden.
+  final CreditBasis? creditBasis;
+  final Function(CreditBasis)? onCreditBasisChanged;
   final TimetableLayout layout;
   final Function(TimetableLayout)? onLayoutChanged;
   final bool isForExport;
@@ -89,6 +94,8 @@ class TimetableWidget extends StatefulWidget {
     this.onRemoveSection,
     this.size = TimetableSize.medium,
     this.onSizeChanged,
+    this.creditBasis,
+    this.onCreditBasisChanged,
     this.layout = TimetableLayout.vertical,
     this.onLayoutChanged,
     this.isForExport = false,
@@ -202,6 +209,57 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     ResponsiveService.triggerSelectionFeedback(context);
     onSizeChanged(
       widget.size == TimetableSize.fit ? _lastFixedSize : TimetableSize.fit,
+    );
+  }
+
+  /// Units or contact hours, for the whole timetable.
+  ///
+  /// A toggle rather than a menu: there are exactly two, and which one is on
+  /// changes what the course list contains — that is worth showing at a glance
+  /// instead of hiding one tap deep.
+  Widget _buildBasisToggle(BuildContext context, {bool compact = false}) {
+    final scheme = Theme.of(context).colorScheme;
+    final current = widget.creditBasis ?? CreditBasis.units;
+
+    // Per segment, not around the whole control: a tooltip on the wrapper
+    // describes the current selection wherever the pointer is, so hovering
+    // "Credit hours" while on credits explained credits. Each segment says what
+    // IT is, which is the question hovering asks.
+    return SegmentedButton<CreditBasis>(
+      // Compact drops the words, not a segment: both stay reachable, and the
+      // icons are the same ones the labels sit beside at full width. Worth
+      // roughly 110px, which is a whole action kept out of the overflow menu
+      // at laptop widths — and it is why the tooltips have to carry the
+      // meaning once the labels are gone.
+      segments: [
+        ButtonSegment(
+          value: CreditBasis.units,
+          label: compact ? null : const Text('Credits'),
+          icon: const Icon(Icons.workspace_premium_outlined, size: 15),
+          tooltip: 'Credits — 2025 batch and earlier',
+        ),
+        ButtonSegment(
+          value: CreditBasis.hours,
+          label: compact ? null : const Text('Credit hours'),
+          icon: const Icon(Icons.schedule_outlined, size: 15),
+          tooltip: 'Credit hours — 2026 batch onwards',
+        ),
+      ],
+      selected: {current},
+      showSelectedIcon: false,
+      onSelectionChanged: (s) {
+        ResponsiveService.triggerSelectionFeedback(context);
+        widget.onCreditBasisChanged?.call(s.first);
+      },
+      style: ButtonStyle(
+        visualDensity: VisualDensity.compact,
+        padding: WidgetStateProperty.all(
+            EdgeInsets.symmetric(horizontal: compact ? 6 : 10)),
+        textStyle: WidgetStateProperty.all(
+            const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+        side: WidgetStateProperty.all(
+            BorderSide(color: scheme.outline.withValues(alpha: 0.5))),
+      ),
     );
   }
 
@@ -750,6 +808,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               const SizedBox(width: 6),
               _buildDensityMenu(context, compact: true),
             ],
+            if (widget.onCreditBasisChanged != null) ...[
+              const SizedBox(width: 6),
+              _buildBasisToggle(context, compact: true),
+            ],
             if (widget.onBypassChanged != null) ...[
               const SizedBox(width: 6),
               _buildBypassMenu(context),
@@ -765,7 +827,14 @@ class _TimetableWidgetState extends State<TimetableWidget> {
     return _candidates([
       _desktopRow(showTitle: true),
       _desktopRow(showTitle: false),
-      _desktopRow(showTitle: false, expandActions: false),
+      // Shrink before hiding. `expandActions: false` drops Auto Load CDCs,
+      // Quick Replace and Stats all at once, and it used to come third — so a
+      // laptop-width window lost three actions to the overflow menu while the
+      // chips were still carrying their full labels. Trying the compact chips
+      // first buys ~110px per chip, which is enough to keep those actions on
+      // the bar at the widths people actually use.
+      _desktopRow(showTitle: false, compactChips: true),
+      _desktopRow(showTitle: false, compactChips: true, iconOnlySave: true),
       _desktopRow(showTitle: false, expandActions: false, compactChips: true),
       _desktopRow(
         showTitle: false,
@@ -832,6 +901,10 @@ class _TimetableWidgetState extends State<TimetableWidget> {
             if (!_isAgenda) ...[
               const SizedBox(width: 8),
               _buildDensityMenu(context, compact: compactChips),
+            ],
+            if (widget.onCreditBasisChanged != null) ...[
+              const SizedBox(width: 8),
+              _buildBasisToggle(context, compact: compactChips),
             ],
             if (widget.onBypassChanged != null) ...[
               const SizedBox(width: 8),

@@ -6,6 +6,8 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../utils/web_utils.dart' as web_utils;
 import '../models/timetable.dart';
+import '../models/credit_mix.dart';
+import '../models/course.dart';
 import '../models/timetable_stats.dart';
 import '../utils/page_transitions.dart';
 import '../widgets/common/shimmer_loading.dart';
@@ -951,12 +953,14 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                             _userSettingsService.sortOrder ==
                             TimetableListSortOrder.custom;
                         final courseCodes = timetable.selectedSections.map((s) => s.courseCode).toSet().toList();
-                        double totalCredits = 0;
-                        for (final code in courseCodes) {
-                          final course = timetable.availableCourses.where((c) => c.courseCode == code).firstOrNull;
-                          if (course != null) totalCredits += course.totalCredits;
-                        }
-                        totalCredits += timetable.projectCount * 3;
+                        // On the timetable's own basis: summing totalCredits
+                        // reports 0 for a credit-hours timetable, whose courses
+                        // have no unit count.
+                        final mix = CreditMix.of(
+                            timetable.selectedSections, timetable.availableCourses);
+                        final basis = mix.basis ?? timetable.creditBasis;
+                        final totalCredits =
+                            mix.amountFor(basis) + timetable.projectCount * 3;
                         final scheme = Theme.of(context).colorScheme;
                         return KeyedSubtree(
                           key: ValueKey(timetable.id),
@@ -1052,7 +1056,8 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                                             borderRadius: BorderRadius.circular(10),
                                           ),
                                           child: Text(
-                                            '${totalCredits % 1 == 0 ? totalCredits.toInt() : totalCredits.toStringAsFixed(1)} cr',
+                                            '${totalCredits % 1 == 0 ? totalCredits.toInt() : totalCredits.toStringAsFixed(1)}'
+                                            '${basis == CreditBasis.hours ? ' ch' : ' cr'}',
                                             style: Theme.of(context).textTheme.labelMedium?.copyWith(color: scheme.onPrimaryContainer),
                                           ),
                                         ),

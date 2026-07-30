@@ -13,6 +13,11 @@ import 'course_catalog_service.dart';
 /// save from "there was nothing to persist" so the UI can give honest feedback.
 enum SemesterSaveResult { saved, nothingToSave, failed }
 
+/// Outcome of [CGPACalculatorController.addCourseToSemester]. A bool could not
+/// say WHY an add was refused, and "already added" and "wrong credit basis"
+/// need different things from the student.
+enum AddCourseResult { added, duplicate, basisMismatch }
+
 class CGPACalculatorController extends ChangeNotifier {
   final CGPAService? _cgpaService;
   final CourseCatalogService? _coursesService;
@@ -88,18 +93,28 @@ class CGPACalculatorController extends ChangeNotifier {
     return success ? SemesterSaveResult.saved : SemesterSaveResult.failed;
   }
 
-  bool addCourseToSemester(String semesterName, AllCourse course) {
+  AddCourseResult addCourseToSemester(String semesterName, AllCourse course) {
     final semester = _cgpaData.semesters[semesterName] ??
         SemesterData(semesterName: semesterName);
 
     if (semester.courses.any((c) => c.courseCode == course.courseCode)) {
-      return false;
+      return AddCourseResult.duplicate;
+    }
+
+    // One basis per record. A student registers as one batch, so a record
+    // holding both a 4-credit course and a 12-credit-hour one is not a load
+    // anyone can have — and its CGPA would be an average of two different
+    // quantities, weighted 1:3 against each other by accident.
+    final existing = _cgpaData.isInCreditHours;
+    if (existing != null && existing != course.isInCreditHours) {
+      return AddCourseResult.basisMismatch;
     }
 
     final courseEntry = CourseEntry(
       courseCode: course.courseCode,
       courseTitle: course.courseTitle,
       credits: course.credits,
+      isInCreditHours: course.isInCreditHours,
       courseType: CourseType.fromJson(course.type),
     );
 
@@ -107,7 +122,7 @@ class CGPACalculatorController extends ChangeNotifier {
     _cgpaData.semesters[semesterName] = semester;
     _dirtySemesters.add(semesterName);
     notifyListeners();
-    return true;
+    return AddCourseResult.added;
   }
 
   void removeCourseFromSemester(String semesterName, int index) {
@@ -240,7 +255,7 @@ class CGPACalculatorController extends ChangeNotifier {
       }
 
       for (final course in courses) {
-        if (addCourseToSemester(semesterName, course)) {
+        if (addCourseToSemester(semesterName, course) == AddCourseResult.added) {
           importedCount++;
         }
       }
@@ -342,7 +357,10 @@ class CGPACalculatorController extends ChangeNotifier {
           creditValue: cdcCourse.credits,
           type: 'Normal',
         );
-        addCourseToSemester(targetSemester, allCourse);
+        if (addCourseToSemester(targetSemester, allCourse) !=
+            AddCourseResult.added) {
+          continue;
+        }
         importedCount++;
       }
     }

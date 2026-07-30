@@ -19,7 +19,12 @@ void main() {
   ];
 
   /// Every action wired up — the widest the toolbar ever gets.
-  Widget editorHarness({required double panelWidth}) => MaterialApp(
+  Widget editorHarness({
+    required double panelWidth,
+    bool showBasisToggle = false,
+    CreditBasis creditBasis = CreditBasis.units,
+  }) =>
+      MaterialApp(
         home: Scaffold(
           body: Align(
             alignment: Alignment.topLeft,
@@ -42,6 +47,8 @@ void main() {
                 hasUnsavedChanges: true,
                 onSizeChanged: (_) {},
                 onLayoutChanged: (_) {},
+                creditBasis: creditBasis,
+                onCreditBasisChanged: showBasisToggle ? (_) {} : null,
               ),
             ),
           ),
@@ -109,9 +116,13 @@ void main() {
 
   group('progressive collapse', () {
     // Desktop candidates, widest first, as built by _buildDesktopAppBar:
-    //   0 title + every action        3 compact chips
-    //   1 no title                    4 icon-only Save
-    //   2 actions folded into a menu  5 no undo/redo
+    //   0 title + every action           4 actions folded into a menu
+    //   1 no title                       5 + icon-only Save
+    //   2 compact chips, actions kept    6 no undo/redo
+    //   3 + icon-only Save
+    //
+    // 2 and 3 exist so a laptop-width window shrinks the chips before it hides
+    // three actions behind the overflow menu.
     testWidgets('a wide panel shows the title and every action', (tester) async {
       await pumpAt(tester, window: const Size(1600, 900), panelWidth: 1500);
 
@@ -127,11 +138,23 @@ void main() {
     testWidgets('secondary actions fold into a menu next', (tester) async {
       await pumpAt(tester, window: const Size(1440, 900), panelWidth: 760);
 
-      expect(selectedVariant(tester), 2);
+      expect(selectedVariant(tester), 4);
       expect(onScreen(tester, find.byIcon(Icons.more_vert)), findsOneWidget);
       // Save carries state worth seeing without opening a menu.
       expect(onScreen(tester, find.text('Save')), findsOneWidget);
       expect(onScreen(tester, find.text('Auto Load CDCs')), findsNothing);
+    });
+
+    testWidgets('a laptop width shrinks the chips before hiding actions',
+        (tester) async {
+      // The regression this pins: `expandActions: false` used to be tried
+      // before the compact chips, so this width lost Auto Load CDCs, Quick
+      // Replace and Stats while the chips still carried their full labels.
+      await pumpAt(tester, window: const Size(1440, 900), panelWidth: 980);
+
+      expect(selectedVariant(tester), lessThan(4),
+          reason: 'actions were folded away before the chips were shrunk');
+      expect(onScreen(tester, find.text('Auto Load CDCs')), findsOneWidget);
     });
 
     testWidgets('collapsing further never hides a control outright',
@@ -140,7 +163,7 @@ void main() {
 
       // The narrowest variant still keeps the view controls and the menu; only
       // undo/redo go, and those are in the command palette.
-      expect(selectedVariant(tester), 5);
+      expect(selectedVariant(tester), 6);
       expect(onScreen(tester, find.byIcon(Icons.more_vert)), findsOneWidget);
       expect(onScreen(tester, find.byIcon(Icons.view_module)), findsOneWidget);
     });
@@ -165,6 +188,41 @@ void main() {
 
       await tester.pumpWidget(editorHarness(panelWidth: 1500));
       expect(selectedVariant(tester), 0);
+    });
+  });
+
+  group('credit basis toggle', () {
+    /// Each segment carries its own tooltip.
+    ///
+    /// One Tooltip around the whole control described the CURRENT selection
+    /// wherever the pointer went, so hovering "Credit hours" while counting in
+    /// credits explained credits — the opposite of what hovering asks.
+    testWidgets('each option explains itself, not the current selection',
+        (tester) async {
+      tester.view.physicalSize = const Size(1600, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(() => tester.pumpWidget(const SizedBox()));
+
+      for (final basis in CreditBasis.values) {
+        await tester.pumpWidget(editorHarness(
+          panelWidth: 1500,
+          showBasisToggle: true,
+          creditBasis: basis,
+        ));
+
+        // Both messages are present whichever side is selected, so the one the
+        // pointer lands on is the one that answers.
+        final messages = tester
+            .widgetList<Tooltip>(find.byType(Tooltip))
+            .map((t) => t.message)
+            .toList();
+        expect(messages, contains('Credits — 2025 batch and earlier'),
+            reason: 'selected: $basis');
+        expect(messages, contains('Credit hours — 2026 batch onwards'),
+            reason: 'selected: $basis');
+      }
     });
   });
 }

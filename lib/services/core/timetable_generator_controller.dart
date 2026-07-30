@@ -219,8 +219,21 @@ class TimetableGeneratorController extends ChangeNotifier {
   List<RankedTimetable> get rankedTimetables => rankingResult?.ranked ?? const [];
   bool isGenerating = false;
 
+  /// What generated timetables are counted in. Set from the screen's toggle.
+  CreditBasis creditBasis = CreditBasis.units;
+
+  void setCreditBasis(CreditBasis basis) {
+    if (creditBasis == basis) return;
+    creditBasis = basis;
+    // Courses of the other basis can no longer be part of this run.
+    mandatoryCourses.clear();
+    optionalCourses.clear();
+    _changed([courses, constraints]);
+  }
+
   TimetableConstraints buildConstraints() {
     return TimetableConstraints(
+      creditBasis: creditBasis,
       mandatoryCourses: mandatoryCourses,
       optionalCourses: optionalCourses,
       optionalTarget: optionalTarget,

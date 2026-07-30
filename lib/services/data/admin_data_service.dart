@@ -172,13 +172,18 @@ class AdminDataService {
     if (upsert != null) {
       final code = upsert['course_code'] as String? ?? '';
       if (code.isEmpty) return;
+      final index = entries.indexWhere((e) => e['course_code'] == code);
       final entry = <String, dynamic>{
         'course_code': code,
         'title': upsert['title'] ?? '',
         'credits': (upsert['credits'] as num?) ?? 0,
+        // Carried over, not rebuilt: the editor above sets units and never
+        // touches hours, so composing the entry from the upsert alone would
+        // silently drop the hours out of the bundle on every catalogue edit.
+        'credit_hours': (upsert['credit_hours'] as num?) ??
+            (index >= 0 ? entries[index]['credit_hours'] ?? 0 : 0),
         'type': upsert['type'] ?? 'Normal',
       };
-      final index = entries.indexWhere((e) => e['course_code'] == code);
       if (index >= 0) {
         entries[index] = entry;
       } else {
@@ -279,6 +284,10 @@ class AdminDataService {
     required String courseCode,
     required String title,
     required double credits,
+    /// Contact hours where the booklet publishes no units — a separate number,
+    /// never units x 3. Null leaves whatever is stored alone; 0 clears it. A
+    /// caller that does not know about hours must not blank them by omission.
+    double? creditHours,
     required String type,
   }) async {
     final docId = courseCodeToDocId(courseCode);
@@ -286,6 +295,7 @@ class AdminDataService {
       'course_code': courseCode,
       'title': title,
       'credits': credits,
+      if (creditHours != null) 'credit_hours': creditHours,
       'type': type,
       'updated_at': DateTime.now().toIso8601String(),
     };

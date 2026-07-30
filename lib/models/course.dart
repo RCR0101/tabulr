@@ -1,6 +1,60 @@
 import '../constants/app_constants.dart';
 export '../constants/app_constants.dart' show TimeSlot, ExamSlotConstants;
 
+/// What a course counts in. The two cannot be added together — 4 units and 12
+/// credit hours are the same course, described for different batches.
+enum CreditBasis {
+  units('credits'),
+  hours('credit hours');
+
+  const CreditBasis(this.label);
+
+  /// For prose: "12 credit hours", "over the credit limit".
+  final String label;
+}
+
+/// One way a course is on offer: a com cod, and the credits that go with it.
+///
+/// From 2026-27 Pilani prints some courses twice — once normally, once under a
+/// com cod >= 5000 for the 2026 batch, stated in contact hours rather than
+/// units. Same sections, same rooms, same times; what differs is which row a
+/// student registers under. Both are offered simultaneously, so this is a
+/// choice to show rather than a duplicate to hide.
+class CourseVariant {
+  const CourseVariant({
+    required this.comCode,
+    required this.credits,
+    required this.creditHours,
+  });
+
+  /// 0 when the booklet prints no com cod (Goa 2026-27 dropped the column).
+  final int comCode;
+  final double credits;
+  final double creditHours;
+
+  /// Whether this row states contact hours instead of units.
+  bool get isInHours => creditHours > 0 && credits == 0;
+
+  CreditBasis get basis => isInHours ? CreditBasis.hours : CreditBasis.units;
+
+  /// The number this variant contributes to a timetable's total.
+  double get amount => isInHours ? creditHours : credits;
+
+  factory CourseVariant.fromJson(Map<String, dynamic> json) => CourseVariant(
+        comCode: (json['com_code'] ?? json['comCode'] as num?)?.toInt() ?? 0,
+        credits: ((json['credits'] ?? 0) as num).toDouble(),
+        creditHours:
+            ((json['credit_hours'] ?? json['creditHours'] ?? 0) as num)
+                .toDouble(),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'com_code': comCode,
+        'credits': credits,
+        'credit_hours': creditHours,
+      };
+}
+
 /// A BITS course offering for a particular semester and campus.
 ///
 /// Contains the full catalog entry: credits, all available sections
@@ -14,6 +68,58 @@ class Course {
   final double practicalCredits;
   final double totalCredits;
 
+  /// Contact hours, for the batches whose booklet row is printed in them.
+  ///
+  /// A separate number from [totalCredits], not a multiple of it: Pilani's
+  /// CHEM U101 is 3 units and 7 credit hours. 0 where the booklet prints none,
+  /// which is every Hyderabad and Goa course today.
+  final double totalCreditHours;
+
+  /// Every com cod this course was printed under. Two for a Pilani course that
+  /// also has a 2026-batch row, empty for booklets with no com code column.
+  final List<int> comCodes;
+
+  /// Stored only when the course is on offer more than one way; [variants] is
+  /// what callers should read, so the ordinary case needs no special handling.
+  final List<CourseVariant> _storedVariants;
+
+  /// The ways this course can be taken, always at least one.
+  ///
+  /// Synthesised from the course's own credits when the booklet offers it a
+  /// single way, which is every course outside Pilani's 2026-batch pairs — so
+  /// a caller can render or choose without asking which case it is in.
+  List<CourseVariant> get variants => _storedVariants.isNotEmpty
+      ? _storedVariants
+      : [
+          CourseVariant(
+            comCode: comCodes.isNotEmpty ? comCodes.first : 0,
+            credits: totalCredits,
+            creditHours: totalCreditHours,
+          )
+        ];
+
+  /// Whether a student has to pick which way to take this course.
+  bool get hasVariantChoice => _storedVariants.length > 1;
+
+  /// The variant a selection means. Falls back to the first, which is what an
+  /// older saved timetable — stored before com cods existed — resolves to.
+  CourseVariant variantFor(int? comCode) => variants.firstWhere(
+        (v) => v.comCode == comCode,
+        orElse: () => variants.first,
+      );
+
+  /// Whether this course can be taken on [basis] at all.
+  ///
+  /// Most courses offer exactly one, which is what makes this a filter: a
+  /// credit-hours timetable cannot hold a course the booklet only prints units
+  /// for, so showing it in the list would only lead to a refusal later.
+  bool offersBasis(CreditBasis basis) => variants.any((v) => v.basis == basis);
+
+  /// The variant to use on [basis], or null when the course is not offered
+  /// that way.
+  CourseVariant? variantOn(CreditBasis basis) =>
+      variants.where((v) => v.basis == basis).firstOrNull;
+
   /// Every section offered for this course (L, P, and T combined).
   final List<Section> sections;
   final ExamSchedule? midSemExam;
@@ -25,10 +131,13 @@ class Course {
     required this.lectureCredits,
     required this.practicalCredits,
     required this.totalCredits,
+    this.totalCreditHours = 0,
+    this.comCodes = const [],
+    List<CourseVariant> variants = const [],
     required this.sections,
     this.midSemExam,
     this.endSemExam,
-  });
+  }) : _storedVariants = variants;
 
   Map<String, dynamic> toJson() {
     return {
@@ -37,6 +146,10 @@ class Course {
       'lectureCredits': lectureCredits,
       'practicalCredits': practicalCredits,
       'totalCredits': totalCredits,
+      'totalCreditHours': totalCreditHours,
+      'comCodes': comCodes,
+      if (_storedVariants.isNotEmpty)
+        'variants': [for (final v in _storedVariants) v.toJson()],
       'sections': sections.map((s) => s.toJson()).toList(),
       'midSemExam': midSemExam?.toJson(),
       'endSemExam': endSemExam?.toJson(),
@@ -60,6 +173,22 @@ class Course {
       totalCredits: storedTotal != null
           ? (storedTotal as num).toDouble()
           : lecture + practical,
+      // Never falls back to units or to L + P: an absent value means the
+      // booklet printed no hours for this course, not that they equal
+      // something else. Rendering must say "not published", not guess.
+      totalCreditHours:
+          ((json['total_credit_hours'] ?? json['totalCreditHours']) as num?)
+                  ?.toDouble() ??
+              0,
+      comCodes: [
+        for (final c in (json['com_codes'] ?? json['comCodes']) as List? ??
+            const [])
+          (c as num).toInt()
+      ],
+      variants: [
+        for (final v in json['variants'] as List? ?? const [])
+          CourseVariant.fromJson(Map<String, dynamic>.from(v as Map))
+      ],
       sections: (json['sections'] as List?)
               ?.map((s) => Section.fromJson(s))
               .toList() ??

@@ -241,7 +241,8 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
         alignment: WrapAlignment.center,
         children: [
           Text('${stats.totalHoursPerWeek} hrs/wk', style: style),
-          Text('${stats.totalCredits % 1 == 0 ? stats.totalCredits.toInt() : stats.totalCredits.toStringAsFixed(1)} cr', style: style),
+          Text('${stats.totalCredits % 1 == 0 ? stats.totalCredits.toInt() : stats.totalCredits.toStringAsFixed(1)}'
+              '${stats.creditBasis == CreditBasis.hours ? ' ch' : ' cr'}', style: style),
           Text('Busiest: ${_dayLabel(stats.busiestDay)} (${stats.busiestDayHours}h)', style: style),
           if (stats.freeDayCount > 0)
             Text('${stats.freeDayCount} free day${stats.freeDayCount > 1 ? 's' : ''}', style: style),
@@ -468,7 +469,11 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                   ),
                   const SizedBox(height: 8),
                   _buildStatCompare('Hours/week', '${leftStats.totalHoursPerWeek}', '${rightStats.totalHoursPerWeek}'),
-                  _buildStatCompare('Credits', '${leftStats.totalCredits % 1 == 0 ? leftStats.totalCredits.toInt() : leftStats.totalCredits.toStringAsFixed(1)}', '${rightStats.totalCredits % 1 == 0 ? rightStats.totalCredits.toInt() : rightStats.totalCredits.toStringAsFixed(1)}'),
+                  _buildStatCompare(
+                      leftStats.creditBasis == rightStats.creditBasis &&
+                              leftStats.creditBasis == CreditBasis.hours
+                          ? 'Credit hours'
+                          : 'Credits', '${leftStats.totalCredits % 1 == 0 ? leftStats.totalCredits.toInt() : leftStats.totalCredits.toStringAsFixed(1)}', '${rightStats.totalCredits % 1 == 0 ? rightStats.totalCredits.toInt() : rightStats.totalCredits.toStringAsFixed(1)}'),
                   _buildStatCompare('Busiest day', '${_dayLabel(leftStats.busiestDay)} (${leftStats.busiestDayHours}h)', '${_dayLabel(rightStats.busiestDay)} (${rightStats.busiestDayHours}h)'),
                   _buildStatCompare('Free days', '${leftStats.freeDayCount}', '${rightStats.freeDayCount}'),
                   if (leftStats.longestGapHours > 0 || rightStats.longestGapHours > 0)

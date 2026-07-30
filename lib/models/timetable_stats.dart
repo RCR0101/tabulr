@@ -1,10 +1,19 @@
 import '../constants/app_constants.dart';
 import 'course.dart';
+import 'credit_mix.dart';
 import 'timetable.dart';
 
 class TimetableStats {
   final int totalHoursPerWeek;
+
+  /// The timetable's load in whatever it counts in — units for almost every
+  /// timetable, contact hours for a 2026-batch Pilani one. Read [creditBasis]
+  /// before labelling it; the two are not the same quantity and a bare number
+  /// captioned "credits" would be wrong for half the students who see it.
   final double totalCredits;
+
+  /// What [totalCredits] is measured in.
+  final CreditBasis creditBasis;
   final int courseCount;
   final DayOfWeek busiestDay;
   final int busiestDayHours;
@@ -34,6 +43,7 @@ class TimetableStats {
   const TimetableStats({
     required this.totalHoursPerWeek,
     required this.totalCredits,
+    this.creditBasis = CreditBasis.units,
     required this.courseCount,
     required this.busiestDay,
     required this.busiestDayHours,
@@ -70,15 +80,14 @@ class TimetableStats {
 
     final dayHours = <DayOfWeek, Set<int>>{};
     final uniqueCourses = <String>{};
-    double totalCredits = 0;
+    // Counted on the timetable's own basis, so a credit-hours timetable does
+    // not report 0 — its courses have no unit count to sum.
+    final mix = CreditMix.of(timetable.selectedSections, timetable.availableCourses);
+    final basis = mix.basis ?? timetable.creditBasis;
+    final totalCredits = mix.amountFor(basis);
 
     for (final sel in timetable.selectedSections) {
-      if (uniqueCourses.add(sel.courseCode)) {
-        final course = timetable.availableCourses.where(
-          (c) => c.courseCode == sel.courseCode,
-        ).firstOrNull;
-        if (course != null) totalCredits += course.totalCredits;
-      }
+      uniqueCourses.add(sel.courseCode);
 
       for (final entry in sel.section.schedule) {
         for (final day in entry.days) {
@@ -157,6 +166,7 @@ class TimetableStats {
     return TimetableStats(
       totalHoursPerWeek: totalHours,
       totalCredits: totalCredits,
+      creditBasis: basis,
       courseCount: uniqueCourses.length,
       busiestDay: busiestDay,
       busiestDayHours: busiestHours,
@@ -247,7 +257,14 @@ class TimetableStats {
   /// Days that have at least one class.
   int get classDayCount => hoursPerDay.values.where((h) => h > 0).length;
 
-  bool get isOverCreditCap => totalCredits > AppLimits.semesterCreditCap;
+  /// The ceiling for this timetable's basis, or null when there is none —
+  /// credit hours have no published cap yet.
+  double? get creditCap => capFor(creditBasis);
+
+  bool get isOverCreditCap {
+    final cap = creditCap;
+    return cap != null && totalCredits > cap;
+  }
 
   int get worstClusterSize =>
       examClusters.isEmpty ? 0 : examClusters.map((c) => c.exams.length).reduce((a, b) => a > b ? a : b);

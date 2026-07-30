@@ -81,6 +81,64 @@ void main() {
       expect(course.practicalCredits, 1.0);
     });
 
+    test('credit hours are read, and never derived from units', () {
+      // Pilani CHEM U101: 7 contact hours, and its unit count is not published.
+      // 7 is not 3 x anything — deriving either number from the other is wrong.
+      final course = Course.fromJson({
+        'courseCode': 'CHEM U101',
+        'total_credits': 0,
+        'total_credit_hours': 7,
+        'com_codes': [5236],
+        'sections': [],
+      });
+      expect(course.totalCreditHours, 7.0);
+      expect(course.totalCredits, 0.0);
+      expect(course.comCodes, [5236]);
+    });
+
+    test('a course with no published hours reports 0, not its units', () {
+      final course = Course.fromJson({
+        'courseCode': 'CS F211',
+        'total_credits': 4,
+        'sections': [],
+      });
+      expect(course.totalCreditHours, 0.0);
+    });
+
+    test('variants expose both ways a two-com-cod course is offered', () {
+      final course = Course.fromJson({
+        'courseCode': 'CS G569',
+        'total_credits': 4,
+        'total_credit_hours': 12,
+        'com_codes': [2986, 6221],
+        'variants': [
+          {'com_code': 2986, 'credits': 4, 'credit_hours': 0},
+          {'com_code': 6221, 'credits': 0, 'credit_hours': 12},
+        ],
+        'sections': [],
+      });
+      expect(course.hasVariantChoice, isTrue);
+      expect(course.variants.map((v) => v.comCode), [2986, 6221]);
+      expect(course.variants.first.isInHours, isFalse);
+      expect(course.variants.last.isInHours, isTrue);
+      // Survives a round trip, so an in-app copy of a course keeps the choice.
+      expect(Course.fromJson(course.toJson()).variants.length, 2);
+    });
+
+    test('an ordinary course still has exactly one variant', () {
+      // So nothing has to branch on "does this course have variants".
+      final course = Course.fromJson({
+        'courseCode': 'CS F211',
+        'total_credits': 4,
+        'com_codes': [2423],
+        'sections': [],
+      });
+      expect(course.hasVariantChoice, isFalse);
+      expect(course.variants.length, 1);
+      expect(course.variants.single.credits, 4.0);
+      expect(course.variants.single.comCode, 2423);
+    });
+
     test('fromJson with missing optional fields', () {
       final json = {
         'courseCode': 'CS F111',

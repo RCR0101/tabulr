@@ -16,6 +16,11 @@ class TimetableConstraints {
   /// fit as many as credits and clashes allow.
   final int? optionalTarget;
   final double maxCredits;
+
+  /// What this run counts in. Explicit rather than inferred from the mandatory
+  /// courses: with none selected there is nothing to infer from, and a student
+  /// who picks only optionals would silently get a credits run.
+  final CreditBasis creditBasis;
   final List<TimeAvoidance> avoidTimes;
   final List<LabAvoidance> avoidLabs;
   final int maxHoursPerDay;
@@ -50,6 +55,7 @@ class TimetableConstraints {
     this.optionalCourses = const [],
     this.optionalTarget,
     this.maxCredits = AppLimits.semesterCreditCap,
+    this.creditBasis = CreditBasis.units,
     this.avoidTimes = const [],
     this.avoidLabs = const [],
     this.maxHoursPerDay = 8,

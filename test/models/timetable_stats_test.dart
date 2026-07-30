@@ -128,6 +128,30 @@ void main() {
       expect(heavy.isOverCreditCap, isTrue);
     });
 
+    test('a credit-hours timetable reports hours, not zero credits', () {
+      // Summing totalCredits reported 0 for these: their courses have no unit
+      // count at all, so the stats sheet, the comparison screen and the
+      // timetable list card all showed an empty load.
+      final chem = Course.fromJson({
+        'courseCode': 'CHEM U101',
+        'courseTitle': 'Atomic Structure',
+        'total_credits': 0,
+        'total_credit_hours': 7,
+        'com_codes': [5236],
+        'sections': [
+          makeSection(sectionId: 'L1', days: [DayOfWeek.M], hours: [2]).toJson(),
+        ],
+      });
+      final stats = TimetableStats.fromTimetable(makeTimetable(courses: [chem]));
+
+      expect(stats.totalCredits, 7);
+      expect(stats.creditBasis, CreditBasis.hours);
+      // No published ceiling for hours, so nothing can be "over" one — and the
+      // 25-unit cap must not be borrowed to invent one.
+      expect(stats.creditCap, isNull);
+      expect(stats.isOverCreditCap, isFalse);
+    });
+
     test('a day with one class is a one-hour run, not zero', () {
       final stats = TimetableStats.fromTimetable(makeTimetable(courses: [
         makeCourse(

@@ -486,9 +486,16 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                                   ),
                                 ),
                                 Text(
-                                  'SGPA',
+                                  // Named for what it is, or flagged when the
+                                  // weights are not comparable — an average of
+                                  // units and contact hours is not an SGPA.
+                                  semesterData.mixesCreditBasis
+                                      ? 'SGPA ⚠'
+                                      : 'SGPA',
                                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: _getSGPAColor(sgpa),
+                                    color: semesterData.mixesCreditBasis
+                                        ? Theme.of(context).colorScheme.error
+                                        : _getSGPAColor(sgpa),
                                     fontSize: 10,
                                   ),
                                 ),
@@ -1575,7 +1582,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '${course.credits} cr',
+                      '${course.credits} ${course.isInCreditHours ? 'ch' : 'cr'}',
                       style: TextStyle(
                         fontSize: 11,
                         color: scheme.onSecondaryContainer,
@@ -1634,7 +1641,8 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          '${course.gradePoints.toStringAsFixed(1)} × ${course.credits} = ${course.totalGradePoints.toStringAsFixed(2)} pts',
+                          '${course.gradePoints.toStringAsFixed(1)} × ${course.credits}'
+                          '${course.isInCreditHours ? ' ch' : ''} = ${course.totalGradePoints.toStringAsFixed(2)} pts',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             fontSize: 10,
                             color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
@@ -1931,9 +1939,18 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                     );
                   },
                   onSelected: (course) {
-                    final added = _controller.addCourseToSemester(semesterName, course);
-                    if (!added) {
+                    final result =
+                        _controller.addCourseToSemester(semesterName, course);
+                    if (result == AddCourseResult.duplicate) {
                       ToastService.showError('${course.courseCode} is already in $semesterName');
+                    } else if (result == AddCourseResult.basisMismatch) {
+                      final inHours = _controller.cgpaData.isInCreditHours ?? false;
+                      ToastService.showError(
+                        '${course.courseCode} is counted in '
+                        '${course.isInCreditHours ? 'credit hours' : 'credits'}, '
+                        'and your record is in ${inHours ? 'credit hours' : 'credits'}. '
+                        'A record uses one or the other, never both.',
+                      );
                     }
                     Navigator.pop(context);
                   },

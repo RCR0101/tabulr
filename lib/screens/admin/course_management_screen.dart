@@ -153,6 +153,140 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
     );
   }
 
+  /// The ways a course is on offer, when the booklet prints more than one.
+  ///
+  /// Pilani's 2026-27 booklet lists some courses twice: the ordinary row in
+  /// units, and a second under a com cod >= 5000 in contact hours. Same
+  /// sections either way — only the registration and the number differ.
+  ///
+  /// Editing a variant rewrites the two totals above rather than letting them
+  /// drift: whichever variant is in units sets Total, whichever is in hours
+  /// sets CH, which is exactly what the uploader derives them from.
+  Widget _variantEditor(
+    BuildContext context,
+    StateSetter setDialogState,
+    List<Map<String, dynamic>> variants,
+    List<int> comCodes,
+    TextEditingController totalCtrl,
+    TextEditingController hoursCtrl,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+
+    void syncTotals() {
+      for (final v in variants) {
+        final credits = (v['credits'] as num?)?.toDouble() ?? 0;
+        final hours = (v['credit_hours'] as num?)?.toDouble() ?? 0;
+        if (credits > 0) totalCtrl.text = '${_unitsValue(credits)}';
+        if (hours > 0) hoursCtrl.text = '${_unitsValue(hours)}';
+      }
+      comCodes
+        ..clear()
+        ..addAll([
+          for (final v in variants) ((v['com_code'] as num?)?.toInt() ?? 0)
+        ]..sort());
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Text('Offered as',
+                style: TextStyle(
+                    fontWeight: FontWeight.w600, color: scheme.onSurface)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                variants.isEmpty
+                    ? 'one way — the totals above'
+                    : '${variants.length} rows in the booklet',
+                style: TextStyle(
+                    fontSize: 11,
+                    color: scheme.onSurface.withValues(alpha: 0.6)),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: () => setDialogState(() {
+                variants.add({'com_code': 0, 'credits': 0, 'credit_hours': 0});
+                syncTotals();
+              }),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Add row'),
+              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+            ),
+          ],
+        ),
+        for (var i = 0; i < variants.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    initialValue: '${variants[i]['com_code'] ?? 0}',
+                    decoration: const InputDecoration(
+                        labelText: 'com cod', isDense: true),
+                    keyboardType: TextInputType.number,
+                    onChanged: (v) {
+                      variants[i]['com_code'] = int.tryParse(v.trim()) ?? 0;
+                      syncTotals();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextFormField(
+                    initialValue: '${variants[i]['credits'] ?? 0}',
+                    decoration: const InputDecoration(
+                        labelText: 'units', isDense: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (v) {
+                      variants[i]['credits'] = double.tryParse(v.trim()) ?? 0;
+                      syncTotals();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextFormField(
+                    initialValue: '${variants[i]['credit_hours'] ?? 0}',
+                    decoration: const InputDecoration(
+                        labelText: 'credit hours', isDense: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (v) {
+                      variants[i]['credit_hours'] = double.tryParse(v.trim()) ?? 0;
+                      syncTotals();
+                    },
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Remove this row',
+                  icon: Icon(Icons.close, size: 16, color: scheme.error),
+                  onPressed: () => setDialogState(() {
+                    variants.removeAt(i);
+                    syncTotals();
+                  }),
+                ),
+              ],
+            ),
+          ),
+        if (variants.length == 1)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(
+              'One row is the same as none — the client reads the totals above. '
+              'Add the second way it is printed, or remove this.',
+              style: TextStyle(fontSize: 11, color: scheme.error),
+            ),
+          ),
+        const Divider(),
+      ],
+    );
+  }
+
   Widget _scheduleEntryRow(
       List<dynamic> schedule, int ei, StateSetter setDialogState) {
     final entry = schedule[ei] as Map<String, dynamic>;
@@ -290,6 +424,20 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
         text: (existing?['practical_credits'] ?? 0).toString());
     final totalCtrl = TextEditingController(
         text: (existing?['total_credits'] ?? existing?['credits'] ?? ((existing?['lecture_credits'] ?? 0) + (existing?['practical_credits'] ?? 0))).toString());
+
+    final hoursCtrl = TextEditingController(
+        text: (existing?['total_credit_hours'] ?? 0).toString());
+    // Both ways the registrar prints this course. Empty means the ordinary
+    // single-row case, where the two totals above say everything.
+    final variants = <Map<String, dynamic>>[
+      if (existing != null && existing['variants'] is List)
+        for (final v in existing['variants'] as List)
+          Map<String, dynamic>.from(v as Map),
+    ];
+    final comCodes = <int>[
+      if (existing != null && existing['com_codes'] is List)
+        for (final c in existing['com_codes'] as List) (c as num).toInt(),
+    ];
 
     final sections = <Map<String, dynamic>>[];
     if (existing != null && existing['sections'] is List) {
@@ -672,11 +820,21 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                                       })),
                               const SizedBox(width: 8),
                               Expanded(
-                                  child: field('Total', totalCtrl,
+                                  child: field('Total (U)', totalCtrl,
+                                      keyboardType: const TextInputType
+                                          .numberWithOptions(decimal: true))),
+                              const SizedBox(width: 8),
+                              // Contact hours, and a separate number from
+                              // units — never units x 3. 0 where the booklet
+                              // publishes none, which is most courses.
+                              Expanded(
+                                  child: field('CH', hoursCtrl,
                                       keyboardType: const TextInputType
                                           .numberWithOptions(decimal: true))),
                             ],
                           ),
+                          _variantEditor(ctx, setDialogState, variants,
+                              comCodes, totalCtrl, hoursCtrl),
                           examPicker('Mid-Sem Exam', midSem, (v) {
                             midSem = v;
                           }, true),
@@ -782,6 +940,8 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                                         double.tryParse(pracCtrl.text) ?? 0;
                                     final total =
                                         double.tryParse(totalCtrl.text) ?? (lec + prac);
+                                    final hours =
+                                        double.tryParse(hoursCtrl.text) ?? 0;
                                     final ic = icCtrl.text.trim();
                                     await _crud.saveCourse(_campusId,
                                       docId: docId,
@@ -794,6 +954,14 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                                         // Persist U so the client shows the real
                                         // unit count, not a recomputed L + P.
                                         'total_credits': _unitsValue(total),
+                                        'total_credit_hours': _unitsValue(hours),
+                                        'com_codes': comCodes,
+                                        // Absent rather than empty for the
+                                        // ordinary case, matching the uploader:
+                                        // the client synthesises the single
+                                        // variant from the totals above.
+                                        if (variants.isNotEmpty)
+                                          'variants': variants,
                                         if (ic.isNotEmpty)
                                           'instructor_in_charge': ic,
                                       },
@@ -801,6 +969,7 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                                         'course_code': code,
                                         'title': titleCtrl.text.trim(),
                                         'credits': _unitsValue(total),
+                                        'credit_hours': _unitsValue(hours),
                                         'type': 'Normal',
                                         if (ic.isNotEmpty)
                                           'instructor_in_charge': ic,
@@ -835,6 +1004,7 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
     lecCtrl.dispose();
     pracCtrl.dispose();
     totalCtrl.dispose();
+    hoursCtrl.dispose();
   }
 
   @override

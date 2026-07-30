@@ -32,6 +32,13 @@ class Timetable {
   /// Null on timetables created before term tracking existed.
   String? term;
 
+  /// What this timetable counts in. A student registers on one basis, so the
+  /// whole timetable is units or contact hours — never both.
+  ///
+  /// Defaults to units, which is what every timetable saved before 2026-27 is
+  /// and what every campus outside Pilani still offers.
+  CreditBasis creditBasis;
+
   /// Set transiently by the load-time reconcile when the freshly loaded
   /// catalogue differs from the student's saved selections (e.g. after an admin
   /// re-upload). Read once by the editor to surface a "what changed" notice;
@@ -50,6 +57,7 @@ class Timetable {
     this.shareId,
     this.projectCount = 0,
     this.term,
+    this.creditBasis = CreditBasis.units,
   });
 
   /// Local/guest storage form. The catalog is deliberately NOT embedded: it is
@@ -72,6 +80,7 @@ class Timetable {
       if (shareId != null) 'shareId': shareId,
       if (projectCount > 0) 'projectCount': projectCount,
       if (term != null) 'term': term,
+      if (creditBasis != CreditBasis.units) 'creditBasis': creditBasis.name,
     };
   }
 
@@ -87,6 +96,7 @@ class Timetable {
       if (shareId != null) 'shareId': shareId,
       if (projectCount > 0) 'projectCount': projectCount,
       if (term != null) 'term': term,
+      if (creditBasis != CreditBasis.units) 'creditBasis': creditBasis.name,
     };
   }
 
@@ -111,6 +121,8 @@ class Timetable {
       shareId: json['shareId'] as String?,
       projectCount: json['projectCount'] as int? ?? 0,
       term: json['term'] as String?,
+      creditBasis: CreditBasis.values.asNameMap()[json['creditBasis']] ??
+          CreditBasis.units,
     );
   }
 
@@ -126,6 +138,7 @@ class Timetable {
     String? Function()? shareId,
     int? projectCount,
     String? term,
+    CreditBasis? creditBasis,
   }) {
     return Timetable(
       id: id ?? this.id,
@@ -139,6 +152,7 @@ class Timetable {
       shareId: shareId != null ? shareId() : this.shareId,
       projectCount: projectCount ?? this.projectCount,
       term: term ?? this.term,
+      creditBasis: creditBasis ?? this.creditBasis,
     );
   }
 }
@@ -150,17 +164,33 @@ class SelectedSection {
   final String sectionId;
   final Section section;
 
+  /// Which com cod this was taken under, for a course offered two ways.
+  ///
+  /// Null on every timetable saved before 2026-27 and on every course with a
+  /// single variant, which is why nothing may require it — [Course.variantFor]
+  /// resolves null to the course's first variant.
+  final int? comCode;
+
   SelectedSection({
     required this.courseCode,
     required this.sectionId,
     required this.section,
+    this.comCode,
   });
+
+  SelectedSection withComCode(int? code) => SelectedSection(
+        courseCode: courseCode,
+        sectionId: sectionId,
+        section: section,
+        comCode: code,
+      );
 
   Map<String, dynamic> toJson() {
     return {
       'courseCode': courseCode,
       'sectionId': sectionId,
       'section': section.toJson(),
+      if (comCode != null) 'comCode': comCode,
     };
   }
 
@@ -169,6 +199,7 @@ class SelectedSection {
       courseCode: json['courseCode'],
       sectionId: json['sectionId'],
       section: Section.fromJson(json['section']),
+      comCode: (json['comCode'] as num?)?.toInt(),
     );
   }
 }

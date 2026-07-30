@@ -112,7 +112,8 @@ void main() {
           type: 'Normal',
         );
 
-        expect(controller.addCourseToSemester('1-1', course), isTrue);
+        expect(controller.addCourseToSemester('1-1', course),
+            AddCourseResult.added);
         expect(controller.cgpaData.semesters['1-1']!.courses.length, 1);
         expect(controller.cgpaData.semesters['1-1']!.courses[0].courseCode, 'CS F111');
       });
@@ -127,7 +128,65 @@ void main() {
         );
 
         controller.addCourseToSemester('1-1', course);
-        expect(controller.addCourseToSemester('1-1', course), isFalse);
+        expect(controller.addCourseToSemester('1-1', course),
+            AddCourseResult.duplicate);
+      });
+
+      test('a record counts one way: credits or credit hours, never both', () {
+        controller.addSemester('1-1');
+        expect(
+          controller.addCourseToSemester(
+              '1-1',
+              AllCourse(
+                courseCode: 'CS F211',
+                courseTitle: 'Data Structures',
+                creditValue: 4,
+                type: 'Normal',
+              )),
+          AddCourseResult.added,
+        );
+
+        // Pilani's CHEM U101: 7 contact hours, no published unit count. Nobody
+        // registers for both kinds, so this cannot join the record.
+        expect(
+          controller.addCourseToSemester(
+              '1-1',
+              AllCourse(
+                courseCode: 'CHEM U101',
+                courseTitle: 'Atomic Structure',
+                creditValue: 0,
+                creditHours: 7,
+                type: 'Normal',
+              )),
+          AddCourseResult.basisMismatch,
+        );
+        expect(controller.cgpaData.semesters['1-1']!.courses.length, 1);
+      });
+
+      test('the check spans the record, not just one semester', () {
+        controller.addSemester('1-1');
+        controller.addSemester('1-2');
+        controller.addCourseToSemester(
+            '1-1',
+            AllCourse(
+              courseCode: 'CHEM U101',
+              courseTitle: 'Atomic Structure',
+              creditValue: 0,
+              creditHours: 7,
+              type: 'Normal',
+            ));
+
+        expect(
+          controller.addCourseToSemester(
+              '1-2',
+              AllCourse(
+                courseCode: 'CS F211',
+                courseTitle: 'Data Structures',
+                creditValue: 4,
+                type: 'Normal',
+              )),
+          AddCourseResult.basisMismatch,
+        );
       });
 
       test('removeCourseFromSemester removes course', () {

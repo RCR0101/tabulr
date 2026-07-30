@@ -41,6 +41,14 @@ class CourseListWidget extends StatelessWidget {
   /// types stay blocked either way.
   final bool allowSectionClash;
 
+  /// What the host timetable counts in. A course offered both ways is shown on
+  /// this basis — the timetable-level toggle decides, so a card cannot put a
+  /// course on the grid counted differently from the timetable holding it.
+  ///
+  /// Null in the browsers with no timetable behind them, where the course's own
+  /// first variant is all there is to show.
+  final CreditBasis? creditBasis;
+
   CourseListWidget({
     super.key,
     required this.courses,
@@ -51,6 +59,7 @@ class CourseListWidget extends StatelessWidget {
     this.record = AcademicRecord.empty,
     this.selectable = true,
     this.allowSectionClash = false,
+    this.creditBasis,
   });
 
   late final Set<String> _selectedKeys = {
@@ -273,6 +282,7 @@ class CourseListWidget extends StatelessWidget {
           ],
           onToggle: (sectionId, isSelected) =>
               onSectionToggle(course.courseCode, sectionId, isSelected),
+          creditBasis: creditBasis,
         );
       },
     );
@@ -326,6 +336,7 @@ class _CourseCard extends StatelessWidget {
     required this.selectable,
     required this.sectionStates,
     required this.onToggle,
+    this.creditBasis,
   });
 
   final Course course;
@@ -337,6 +348,18 @@ class _CourseCard extends StatelessWidget {
   final bool selectable;
   final List<_SectionState> sectionStates;
   final void Function(String sectionId, bool isSelected) onToggle;
+  final CreditBasis? creditBasis;
+
+  /// The variant in force for this card: the one matching the timetable's
+  /// basis, or the course's own when there is no timetable to answer to.
+  CourseVariant get _variant =>
+      (creditBasis == null ? null : course.variantOn(creditBasis!)) ??
+      course.variants.first;
+
+  /// Whether to spell out which com cod this is — only worth the line when the
+  /// course is printed more than one way and the student has to register under
+  /// the right one.
+  bool get _showsComCode => course.hasVariantChoice && _variant.comCode > 0;
 
   bool get _hasClashes => clashes.isNotEmpty;
   bool get _highlight => isSelectedCourse && !showOnlySelected;
@@ -493,7 +516,12 @@ class _CourseCard extends StatelessWidget {
       runSpacing: 7,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        _fact(context, Icons.workspace_premium_outlined, _creditLabel(course)),
+        _fact(
+            context,
+            Icons.workspace_premium_outlined,
+            _showsComCode
+                ? '${_creditLabel(course, _variant)}  ·  com ${_variant.comCode}'
+                : _creditLabel(course, _variant)),
         if (course.midSemExam != null)
           _fact(context, Icons.event_outlined,
               'Midsem ${examLabel(course.midSemExam!)}'),
@@ -520,12 +548,16 @@ class _CourseCard extends StatelessWidget {
   /// so the breakdown alone would be wrong as often as it is confusing. A
   /// course with no lecture or lab component shows the units and nothing else,
   /// rather than a row of zeroes.
-  static String _creditLabel(Course course) {
+  ///
+  /// A course stated only in contact hours has no unit count to lead with, so
+  /// it says so instead of printing "0U".
+  static String _creditLabel(Course course, CourseVariant variant) {
+    if (variant.isInHours) return '${_num(variant.creditHours)} credit hours';
     final parts = <String>[
       if (course.lectureCredits > 0) '${_num(course.lectureCredits)}L',
       if (course.practicalCredits > 0) '${_num(course.practicalCredits)}P',
     ];
-    final units = '${_num(course.totalCredits)}U';
+    final units = '${_num(variant.credits)}U';
     return parts.isEmpty ? units : '$units · ${parts.join(' ')}';
   }
 

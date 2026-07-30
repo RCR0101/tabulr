@@ -18,6 +18,7 @@ class CourseCatalogService {
       courseCode: e.courseCode,
       courseTitle: e.title,
       creditValue: e.credits,
+      creditHours: e.creditHours,
       type: e.type,
     )).toList();
 

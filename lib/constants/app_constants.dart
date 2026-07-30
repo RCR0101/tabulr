@@ -317,6 +317,14 @@ abstract final class AppLimits {
   /// and what the stats sheet measures a timetable's load against.
   static const double semesterCreditCap = 25;
 
+  /// The cap for a timetable counted in contact hours, or null for none.
+  ///
+  /// Null on purpose: the 2026-batch regulation has not been confirmed, and a
+  /// guessed limit refuses real course choices, which is worse than not
+  /// checking. The count is still shown — only the ceiling is absent. Set this
+  /// to the published figure and every check below starts enforcing it.
+  static const double? semesterCreditHourCap = null;
+
   static const int maxUndoStackSize = 50;
   static const int combinationCap = 10000;
   /// Sized to exceed a campus catalogue (~400 courses) so CourseDataService's

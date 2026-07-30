@@ -114,8 +114,12 @@ class CourseUtils {
 
   static List<Course> filterByCredits(List<Course> courses, int? minCredits, int? maxCredits) {
     return courses.where((course) {
-      if (minCredits != null && course.totalCredits < minCredits) return false;
-      if (maxCredits != null && course.totalCredits > maxCredits) return false;
+      // The course's own number, not its unit count: a credit-hours course has
+      // no units, so comparing totalCredits hid every one of them behind any
+      // "at least 1 credit" filter.
+      final amount = course.variants.first.amount;
+      if (minCredits != null && amount < minCredits) return false;
+      if (maxCredits != null && amount > maxCredits) return false;
       return true;
     }).toList();
   }

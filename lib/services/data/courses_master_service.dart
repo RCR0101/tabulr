@@ -10,12 +10,17 @@ class CourseMasterEntry {
   final String courseCode;
   final String title;
   final double credits;
+
+  /// Contact hours where the booklet publishes them instead of units — see
+  /// [Course.totalCreditHours]. 0 means not published, never "same as credits".
+  final double creditHours;
   final String type;
 
   CourseMasterEntry({
     required this.courseCode,
     required this.title,
     required this.credits,
+    this.creditHours = 0,
     required this.type,
   });
 
@@ -24,6 +29,7 @@ class CourseMasterEntry {
       courseCode: map['course_code'] ?? '',
       title: map['title'] ?? '',
       credits: (map['credits'] as num?)?.toDouble() ?? 0,
+      creditHours: (map['credit_hours'] as num?)?.toDouble() ?? 0,
       type: map['type'] ?? 'Normal',
     );
   }

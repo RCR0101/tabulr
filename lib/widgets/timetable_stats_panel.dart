@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../constants/app_constants.dart';
-import '../models/course.dart' show DayOfWeek;
+import '../models/course.dart';
 import '../models/timetable.dart';
 import '../models/timetable_stats.dart';
 import '../utils/datetime_utils.dart';
@@ -58,7 +57,12 @@ class _Tiles extends StatelessWidget {
       _Tile(
         icon: Icons.workspace_premium_outlined,
         value: _credits(stats.totalCredits),
-        label: 'Credits (/${_credits(AppLimits.semesterCreditCap)})',
+        // Named after what it actually counts, and the "/cap" only appears
+        // when there is a cap — credit hours have none published yet, and
+        // "/25" beside a credit-hours load would be a limit nobody set.
+        label: stats.creditCap == null
+            ? _basisLabel(stats.creditBasis)
+            : '${_basisLabel(stats.creditBasis)} (/${_credits(stats.creditCap!)})',
         // Over the cap is a real problem, not a decoration — say it in colour
         // and in the caption below.
         accent: over ? scheme.error : null,
@@ -110,6 +114,9 @@ class _Tiles extends StatelessWidget {
   }
 
   /// Credits are whole numbers in practice; don't print "18.0".
+  static String _basisLabel(CreditBasis b) =>
+      b == CreditBasis.hours ? 'Credit hours' : 'Credits';
+
   static String _credits(double c) =>
       c == c.roundToDouble() ? c.toInt().toString() : c.toStringAsFixed(1);
 }

@@ -1,6 +1,7 @@
 import 'dart:math';
 import '../../models/course.dart';
 import '../../models/timetable_constraints.dart';
+import '../../models/credit_mix.dart';
 import '../../models/timetable.dart' as timetable;
 import '../../constants/app_constants.dart';
 import '../../utils/datetime_utils.dart';
@@ -61,17 +62,26 @@ class TimetableGenerator {
       throw Exception('Some mandatory courses not found in available courses');
     }
 
+    // Chosen on the generator screen, not inferred from what happens to be
+    // selected — see TimetableConstraints.creditBasis.
+    final basis = constraints.creditBasis;
+
     // Preserve user ranking order for optionals
     final optionalCourses = constraints.optionalCourses
         .map((code) => availableCourses.firstWhere((c) => c.courseCode == code,
             orElse: () => Course(courseCode: code, courseTitle: '', lectureCredits: 0, practicalCredits: 0, totalCredits: 0, sections: [])))
         .where((c) => c.sections.isNotEmpty)
+        // A generated timetable a student cannot register for is not a result.
+        // Optionals of the other basis are dropped rather than offered and
+        // then refused when they try to open one.
+        .where((c) => c.offersBasis(basis))
         .toList();
 
     final mandatoryCombos = _generateAllCombinations(mandatoryCourses);
     final allCourses = [...mandatoryCourses, ...optionalCourses];
 
-    final mandatoryCredits = mandatoryCourses.fold(0.0, (sum, c) => sum + c.totalCredits);
+    final mandatoryCredits = mandatoryCourses.fold(
+        0.0, (sum, c) => sum + (c.variantOn(basis)?.amount ?? 0));
 
     // Generate multiple optional orderings for variety
     final optionalOrderings = _generateOptionalOrderings(optionalCourses);
@@ -94,7 +104,7 @@ class TimetableGenerator {
         }
 
         final result = _addOptionalCourses(
-          base, ordering, allCourses, constraints, mandatoryCredits,
+          base, ordering, allCourses, constraints, mandatoryCredits, basis,
         );
 
         final key = (result.sections.map((s) => '${s.courseCode}:${s.sectionId}').toList()..sort()).join('|');
@@ -414,6 +424,7 @@ class TimetableGenerator {
     List<Course> allCourses,
     TimetableConstraints constraints,
     double mandatoryCredits,
+    CreditBasis basis,
   ) {
     var current = List<ConstraintSelectedSection>.from(base);
     double currentCredits = mandatoryCredits;
@@ -422,7 +433,11 @@ class TimetableGenerator {
     for (final optCourse in optionalCourses) {
       // "Any N of M": stop once the requested number of optionals is in.
       if (constraints.optionalTarget != null && addedCodes.length >= constraints.optionalTarget!) break;
-      if (currentCredits + optCourse.totalCredits > constraints.maxCredits) continue;
+      // Measured on the run's own basis: an hours course has no unit count, so
+      // reading totalCredits here would score every one of them as free.
+      final optAmount = optCourse.variantOn(basis)?.amount ?? 0;
+      final cap = capFor(basis) ?? constraints.maxCredits;
+      if (basis == CreditBasis.units && currentCredits + optAmount > cap) continue;
 
       final sectionCombos = _generateAllCombinations([optCourse]);
       List<ConstraintSelectedSection>? bestCombo;
@@ -446,7 +461,7 @@ class TimetableGenerator {
 
       if (bestCombo != null) {
         current = [...current, ...bestCombo];
-        currentCredits += optCourse.totalCredits;
+        currentCredits += optAmount;
         addedCodes.add(optCourse.courseCode);
       }
     }

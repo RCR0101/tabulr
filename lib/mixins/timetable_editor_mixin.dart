@@ -8,6 +8,7 @@ import '../utils/web_utils.dart' as web_utils;
 import '../models/course.dart';
 import '../utils/page_transitions.dart';
 import '../models/timetable.dart';
+import '../models/credit_mix.dart';
 import '../models/export_options.dart';
 import '../services/core/timetable_service.dart';
 import '../utils/course_utils.dart';
@@ -123,8 +124,10 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       w.type == ClashType.midSemExam || w.type == ClashType.endSemExam);
   bool get _hasSectionClash =>
       _currentClashes().any((w) => w.type == ClashType.regularClass);
-  bool get _isOverCreditCap =>
-      _currentTotalCredits() > AppLimits.semesterCreditCap;
+  bool get _isOverCreditCap {
+    final cap = capFor(creditBasis);
+    return cap != null && _currentTotalCredits() > cap;
+  }
 
   /// Sets a bypass, refusing to turn it off while the violation it allowed is
   /// still on the grid — it stays on until the clash (or credit overage) is
@@ -140,7 +143,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
             ? 'A section clash is still on the grid — remove one of the clashing sections first.'
             : null,
         TimetableBypass.creditLimit => _isOverCreditCap
-            ? 'Still over the ${AppLimits.semesterCreditCap.toInt()} credit limit — remove a course first.'
+            ? 'Still over the ${(capFor(creditBasis) ?? AppLimits.semesterCreditCap).toInt()} ${creditBasis.label} limit — remove a course first.'
             : null,
       };
       if (refusal != null) {
@@ -497,20 +500,107 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     });
   }
 
+  /// What this timetable counts in — units unless it was switched.
+  CreditBasis get creditBasis =>
+      currentTimetable?.creditBasis ?? CreditBasis.units;
+
+  /// Only the courses that can be taken on this timetable's basis.
+  ///
+  /// Filtering the list rather than refusing at Add: a credit-hours student
+  /// scrolling past courses they cannot register for is a worse experience
+  /// than a shorter list, and the refusal below only exists for the paths that
+  /// bypass this list (deep links, quick replace, imports).
+  List<Course> get coursesInBasis =>
+      filteredCourses.where((c) => c.offersBasis(creditBasis)).toList();
+
+  /// Switches the whole timetable between units and contact hours.
+  ///
+  /// Refuses while courses of the other basis are still on the grid — silently
+  /// dropping a student's work to satisfy a toggle is not a trade this makes.
+  void setCreditBasis(CreditBasis basis) {
+    final tt = currentTimetable;
+    if (tt == null || tt.creditBasis == basis) return;
+
+    // A course printed both ways just changes which row it is registered under;
+    // one printed only the other way cannot come along, and dropping it
+    // silently to satisfy a toggle is not a trade this makes.
+    final byCode = {for (final c in tt.availableCourses) c.courseCode: c};
+    final stranded = <String>{
+      for (final s in tt.selectedSections)
+        if (!(byCode[s.courseCode]?.offersBasis(basis) ?? false)) s.courseCode
+    };
+    if (stranded.isNotEmpty) {
+      ToastService.showError(
+        'Remove ${stranded.length} course${stranded.length == 1 ? '' : 's'} first — '
+        '${stranded.take(3).join(', ')}${stranded.length > 3 ? '…' : ''} '
+        '${stranded.length == 1 ? 'is' : 'are'} not offered in ${basis.label}.',
+      );
+      return;
+    }
+
+    _pushUndo('Switch to ${basis.label}');
+    setState(() {
+      tt.creditBasis = basis;
+      // Re-register everything on the new basis, so the grid and the credits
+      // bar agree with the toggle rather than keeping their old com cods.
+      for (var i = 0; i < tt.selectedSections.length; i++) {
+        final sel = tt.selectedSections[i];
+        final comCode = byCode[sel.courseCode]?.variantOn(basis)?.comCode;
+        tt.selectedSections[i] = sel.withComCode(comCode);
+      }
+      hasUnsavedChanges = true;
+    });
+    markUnsaved(true);
+    _selectionRevision.value++;
+  }
+
+  /// What this timetable currently counts in, and whether it is coherent.
+  CreditMix get creditMix {
+    final tt = currentTimetable;
+    if (tt == null) return CreditMix.empty;
+    return CreditMix.of(tt.selectedSections, tt.availableCourses);
+  }
+
   double _currentTotalCredits() {
     final tt = currentTimetable;
     if (tt == null) return 0;
-    final selectedCodes = tt.selectedSections.map((s) => s.courseCode).toSet();
-    double credits = 0;
-    for (final code in selectedCodes) {
-      final course = tt.availableCourses.cast<Course?>().firstWhere(
-        (c) => c!.courseCode == code,
-        orElse: () => null,
-      );
-      if (course != null) credits += course.totalCredits;
-    }
-    credits += tt.projectCount * 3;
-    return credits;
+    // Units only. A credit-hours timetable is measured in a different unit and
+    // is not what the semester cap is expressed in, so folding its 12s into
+    // this total would refuse adds against a limit that does not apply.
+    final credits = creditMix.amountFor(CreditBasis.units);
+    return credits + tt.projectCount * 3;
+  }
+
+  /// Drops every course counted in [basis] — the escape hatch from a timetable
+  /// holding both units and credit hours.
+  Future<void> removeAllInBasis(CreditBasis basis) async {
+    final tt = currentTimetable;
+    if (tt == null) return;
+    final codes = creditMix.coursesFor(basis).toSet();
+    if (codes.isEmpty) return;
+
+    final confirmed = await AppDialog.confirm(
+      context: context,
+      title: 'Remove ${basis.label} courses',
+      message: codes.length == 1
+          ? 'Remove ${codes.first} from this timetable?'
+          : 'Remove all ${codes.length} courses counted in ${basis.label}?\n\n'
+              '${codes.join(', ')}',
+      confirmLabel: 'Remove',
+      isDangerous: true,
+    );
+    if (!mounted || !confirmed) return;
+
+    _pushUndo('Remove all ${basis.label} courses');
+    tt.selectedSections.removeWhere((s) => codes.contains(s.courseCode));
+    tt.clashWarnings.clear();
+    setState(() {
+      hasUnsavedChanges = true;
+    });
+    markUnsaved(true);
+    _selectionRevision.value++;
+    ToastService.showSuccess(
+        'Removed ${codes.length} ${basis.label} course${codes.length == 1 ? '' : 's'}');
   }
 
   /// Adds a section, explaining any refusal.
@@ -520,7 +610,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   /// toolbar's bypass switches ([allowExamClash], [allowSectionClash],
   /// [allowCreditBypass]) pre-authorize the same obstacles for every add.
   /// Duplicate section types are never overridable.
-  void addSection(String courseCode, String sectionId, {bool overrideExamClash = false}) {
+  void addSection(String courseCode, String sectionId,
+      {bool overrideExamClash = false, int? comCode}) {
     final tt = currentTimetable;
     if (tt == null) return;
 
@@ -531,14 +622,43 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     final sectionClashAllowed = allowSectionClash;
 
     final isNewCourse = !tt.selectedSections.any((s) => s.courseCode == courseCode);
-    if (isNewCourse && !allowCreditBypass) {
-      final course = tt.availableCourses.cast<Course?>().firstWhere(
-        (c) => c!.courseCode == courseCode,
-        orElse: () => null,
+    final course = tt.availableCourses.cast<Course?>().firstWhere(
+      (c) => c!.courseCode == courseCode,
+      orElse: () => null,
+    );
+    // A course already on the grid keeps the basis it was added under, so a
+    // second section of it cannot silently switch the course to the other one.
+    // The timetable's basis picks the row to register under, so a course
+    // offered both ways lands on the same footing as everything else on the
+    // grid without the student choosing twice.
+    final basisCode = isNewCourse
+        ? (comCode ?? course?.variantOn(creditBasis)?.comCode)
+        : tt.selectedSections
+            .firstWhere((s) => s.courseCode == courseCode)
+            .comCode;
+    final variant = course?.variantFor(basisCode);
+
+    // A course the student cannot register for on this timetable's basis is
+    // refused here rather than silently counted as zero. The course list is
+    // already filtered, so this catches the ways in that bypass it: quick
+    // replace, a shared link, an import, a deep link from the professor screen.
+    if (isNewCourse && course != null && !course.offersBasis(creditBasis)) {
+      ToastService.showError(
+        '$courseCode is not offered in ${creditBasis.label} — '
+        'this timetable counts in ${creditBasis.label}.',
       );
-      final addedCredits = course?.totalCredits ?? 0;
-      if (_currentTotalCredits() + addedCredits > AppLimits.semesterCreditCap) {
-        ToastService.showError('Adding this course would exceed the ${AppLimits.semesterCreditCap.toInt()} credit limit');
+      return;
+    }
+
+    // Each basis is checked against its own ceiling, and credit hours have
+    // none yet (see AppLimits.semesterCreditHourCap) — so this skips rather
+    // than measuring 12 hours against a 25-unit cap and refusing a second
+    // course for the whole 2026 batch.
+    final cap = capFor(creditBasis);
+    if (isNewCourse && !allowCreditBypass && cap != null) {
+      final addedCredits = variant?.amount ?? 0;
+      if (_currentTotalCredits() + addedCredits > cap) {
+        ToastService.showError('Adding this course would exceed the ${cap.toInt()} ${creditBasis.label} limit');
         return;
       }
     }
@@ -556,6 +676,17 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       );
 
       if (result.isAllowed) {
+        // Stamp the basis onto what was just added. The service builds the
+        // SelectedSection and knows nothing about com cods, so this is the one
+        // place the choice can be recorded without threading it through it.
+        if (basisCode != null) {
+          for (var i = 0; i < tt.selectedSections.length; i++) {
+            final s = tt.selectedSections[i];
+            if (s.courseCode == courseCode && s.comCode == null) {
+              tt.selectedSections[i] = s.withComCode(basisCode);
+            }
+          }
+        }
         undoRedoService.pushSections(
           sectionsBefore,
           overrideExamClash
@@ -650,6 +781,16 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   void quickReplaceCourse(Course selectedCourse, Course replacementCourse) {
     final tt = currentTimetable;
     if (tt == null) return;
+
+    // Same rule as Add: a swap must not be the way a course of the other basis
+    // gets onto the grid.
+    if (!replacementCourse.offersBasis(creditBasis)) {
+      ToastService.showError(
+        '${replacementCourse.courseCode} is not offered in ${creditBasis.label} — '
+        'this timetable counts in ${creditBasis.label}.',
+      );
+      return;
+    }
 
     try {
       _pushUndo('Replace ${selectedCourse.courseCode}');
@@ -1282,11 +1423,13 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
           child: Card(
             margin: const EdgeInsets.all(8),
             child: CoursesTabWidget(
-              courses: filteredCourses,
+              courses: coursesInBasis,
               selectedSections: tt.selectedSections,
               record: _academicRecord,
               projectCount: tt.projectCount,
               allowSectionClash: allowSectionClash,
+              creditBasis: creditBasis,
+              onRemoveBasis: removeAllInBasis,
               onProjectCountChanged: (count) {
                 setState(() {
                   tt.projectCount = count;
@@ -1413,6 +1556,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
                 },
                 availableCourses: tt.availableCourses,
                 selectedSections: tt.selectedSections,
+                creditBasis: tt.creditBasis,
+                onCreditBasisChanged: setCreditBasis,
                 onQuickReplace: quickReplaceCourse,
                 onSectionShuffle: sectionShuffle,
                 onUndo: undo,

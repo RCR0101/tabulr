@@ -18,6 +18,62 @@ CourseEntry _entry(String code, double credits, String grade, {CourseType type =
 }
 
 void main() {
+  group('credit hours', () {
+    test('an hours course weights the grade, instead of vanishing', () {
+      // The leak this closes: courses_master has no unit count for these, so
+      // the entry arrived with 0 credits — which does not merely display
+      // wrong, it drops the course out of the CGPA denominator entirely.
+      final sem = SemesterData(semesterName: 'Sem 1', courses: [
+        CourseEntry(
+          courseCode: 'CHEM U101',
+          courseTitle: 'Atomic Structure',
+          credits: 7,
+          isInCreditHours: true,
+          courseType: CourseType.normal,
+          grade: 'A',
+        ),
+      ]);
+
+      expect(sem.totalCredits, 7);
+      expect(sem.sgpa, 10.0);
+    });
+
+    test('a semester mixing units and hours is flagged, not silently averaged', () {
+      final mixed = SemesterData(semesterName: 'Sem 1', courses: [
+        _entry('CS F211', 4, 'A'),
+        CourseEntry(
+          courseCode: 'CHEM U101',
+          courseTitle: 'Atomic Structure',
+          credits: 7,
+          isInCreditHours: true,
+          courseType: CourseType.normal,
+          grade: 'C',
+        ),
+      ]);
+      expect(mixed.mixesCreditBasis, isTrue);
+
+      final consistent = SemesterData(semesterName: 'Sem 1', courses: [
+        _entry('CS F211', 4, 'A'),
+        _entry('MATH F211', 3, 'B'),
+      ]);
+      expect(consistent.mixesCreditBasis, isFalse);
+    });
+
+    test('the flag survives a round trip through storage', () {
+      final entry = CourseEntry(
+        courseCode: 'CHEM U101',
+        courseTitle: 'Atomic Structure',
+        credits: 7,
+        isInCreditHours: true,
+        courseType: CourseType.normal,
+        grade: 'A',
+      );
+      expect(CourseEntry.fromJson(entry.toJson()).isInCreditHours, isTrue);
+      // And an entry saved before this existed reads as units, not as null.
+      expect(_entry('CS F211', 4, 'A').isInCreditHours, isFalse);
+    });
+  });
+
   group('CourseEntry', () {
     test('gradePoints maps all normal grades correctly', () {
       expect(_entry('X', 3, 'A').gradePoints, 10.0);

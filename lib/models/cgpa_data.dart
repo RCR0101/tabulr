@@ -4,7 +4,15 @@ import 'course_type.dart';
 class CourseEntry {
   final String courseCode;
   final String courseTitle;
+
+  /// What the grade is weighted by — units, or contact hours where the booklet
+  /// publishes no units. [isInCreditHours] says which.
   final double credits;
+
+  /// Whether [credits] is contact hours. Persisted so a record does not change
+  /// meaning when the catalogue does, and false on everything saved before
+  /// 2026-27.
+  final bool isInCreditHours;
   final CourseType courseType;
   String? grade;
 
@@ -12,6 +20,7 @@ class CourseEntry {
     required this.courseCode,
     required this.courseTitle,
     required this.credits,
+    this.isInCreditHours = false,
     required this.courseType,
     this.grade,
   });
@@ -36,6 +45,7 @@ class CourseEntry {
       'courseCode': courseCode,
       'courseTitle': courseTitle,
       'credits': credits,
+      if (isInCreditHours) 'isInCreditHours': true,
       'courseType': courseType.toJson(),
       'grade': grade,
     };
@@ -46,6 +56,7 @@ class CourseEntry {
       courseCode: json['courseCode'] as String,
       courseTitle: json['courseTitle'] as String,
       credits: (json['credits'] as num).toDouble(),
+      isInCreditHours: json['isInCreditHours'] as bool? ?? false,
       courseType: CourseType.fromJson(json['courseType'] as String),
       grade: json['grade'] as String?,
     );
@@ -55,6 +66,7 @@ class CourseEntry {
     String? courseCode,
     String? courseTitle,
     double? credits,
+    bool? isInCreditHours,
     CourseType? courseType,
     String? grade,
   }) {
@@ -62,6 +74,7 @@ class CourseEntry {
       courseCode: courseCode ?? this.courseCode,
       courseTitle: courseTitle ?? this.courseTitle,
       credits: credits ?? this.credits,
+      isInCreditHours: isInCreditHours ?? this.isInCreditHours,
       courseType: courseType ?? this.courseType,
       grade: grade ?? this.grade,
     );
@@ -96,6 +109,21 @@ class SemesterData {
   // Get total grade points for this semester (only Normal courses)
   double get totalGradePoints => _gradedCourses.fold<double>(
       0.0, (sum, course) => sum + course.totalGradePoints);
+
+  /// True when this semester weights some grades by units and others by contact
+  /// hours.
+  ///
+  /// SGPA is a weighted average, so the two weights have to be the same
+  /// quantity for it to mean anything: a 3-unit course and a 9-hour one are
+  /// comparable loads that would count 1:3 against each other. Nothing here
+  /// refuses the mix — a student may legitimately be mid-transition — but the
+  /// screen has to say the number is unreliable rather than print it plainly.
+  bool get mixesCreditBasis {
+    final graded = _gradedCourses.toList();
+    if (graded.length < 2) return false;
+    final first = graded.first.isInCreditHours;
+    return graded.any((c) => c.isInCreditHours != first);
+  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -142,6 +170,21 @@ class CGPAData {
   CGPAData({Map<String, SemesterData>? semesters, DateTime? lastUpdated})
     : semesters = semesters ?? {},
       lastUpdated = lastUpdated ?? DateTime.now();
+
+  /// What this whole record is counted in, or null while it is empty.
+  ///
+  /// A student is in one batch and registers one way, so a record is units or
+  /// contact hours throughout — never both. Read from the first entry found;
+  /// [SemesterData.mixesCreditBasis] is what catches a record that predates the
+  /// check and already holds both.
+  bool? get isInCreditHours {
+    for (final semester in semesters.values) {
+      if (semester.courses.isNotEmpty) {
+        return semester.courses.first.isInCreditHours;
+      }
+    }
+    return null;
+  }
 
   // Calculate overall CGPA (only counts the latest attempt for repeated courses)
   double get cgpa {

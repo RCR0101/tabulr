@@ -155,6 +155,53 @@ void main() {
       expect(meta.data()!['version'], isNotNull);
     });
 
+    test('credit hours are stored and reach the bundle', () async {
+      // The catalogue could hold units only, so a course the booklet publishes
+      // in contact hours had nowhere to put its number and read as 0 credits —
+      // which drops it out of the CGPA denominator entirely.
+      await seedBundle('hyderabad', [entry('CHEM U101', title: 'Old')]);
+
+      await service.saveMasterCourse(
+        campusIds: ['hyderabad'],
+        courseCode: 'CHEM U101',
+        title: 'Atomic Structure',
+        credits: 0,
+        creditHours: 7,
+        type: 'Normal',
+      );
+
+      final doc = await db
+          .collection('campuses')
+          .doc('hyderabad')
+          .collection('courses_master')
+          .doc('CHEM_U101')
+          .get();
+      expect(doc.data()!['credit_hours'], 7);
+
+      final bundle = await readBundle('hyderabad');
+      expect(bundle.single['credit_hours'], 7);
+    });
+
+    test('an edit that sets only the title keeps the hours', () async {
+      // The editor writes both fields, but the bundle entry is composed from
+      // the upsert — so a save that carried no hours used to blank them there
+      // while the document still had them.
+      await seedBundle('hyderabad',
+          [{...entry('CHEM U101'), 'credit_hours': 7}]);
+
+      await service.saveMasterCourse(
+        campusIds: ['hyderabad'],
+        courseCode: 'CHEM U101',
+        title: 'Renamed',
+        credits: 0,
+        type: 'Normal',
+      );
+
+      final bundle = await readBundle('hyderabad');
+      expect(bundle.single['title'], 'Renamed');
+      expect(bundle.single['credit_hours'], 7);
+    });
+
     test('never touches the timetable document', () async {
       // The distinction from saveCourse: editing the catalogue must not invent a
       // course offering with no sections.

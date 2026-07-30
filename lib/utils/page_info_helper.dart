@@ -105,6 +105,10 @@ class PageInfoHelper {
       FeatureInfo(Icons.menu_book, 'Tools', 'course guide, prerequisites, discipline & humanities electives'),
       FeatureInfo(Icons.more_vert, 'More', 'import/export .tt files, export to .ics calendar or .png image'),
       FeatureInfo(Icons.keyboard, 'Ctrl+K / Cmd+K', 'command palette to quickly jump to any feature or action'),
+      // Which number a student is looking at depends on when they joined, and
+      // nothing else on the screen says so.
+      FeatureInfo(Icons.schedule_outlined, 'Credits vs credit hours',
+          '2026 batch onwards registers in credit hours; 2025 batch and earlier in credits. Pick yours with the toggle — a timetable counts one way or the other, never both'),
     ],
   );
 
@@ -154,6 +158,8 @@ class PageInfoHelper {
       FeatureInfo(Icons.school_outlined, 'Load CDCs', 'auto-load compulsory courses for your branch'),
       FeatureInfo(Icons.calculate_outlined, 'Grade Planner', 'plan what grades you need to reach a target CG'),
       FeatureInfo(Icons.bolt_outlined, 'CG Booster', 'find which courses have the biggest CG impact'),
+      FeatureInfo(Icons.schedule_outlined, 'Credits vs credit hours',
+          '2026 batch onwards is graded in credit hours; 2025 batch and earlier in credits. A record uses one or the other, so courses of the other kind are not accepted'),
     ],
   );
 

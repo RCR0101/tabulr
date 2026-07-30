@@ -237,7 +237,9 @@ class _CoursesMasterManagementScreenState
             SizedBox(
               width: 52,
               child: Text(
-                '${credits == credits.roundToDouble() ? credits.toInt() : credits}U',
+                credits == 0 && (row['credit_hours'] as num? ?? 0) > 0
+                    ? '${row['credit_hours']} CH'
+                    : '${credits == credits.roundToDouble() ? credits.toInt() : credits}U',
                 textAlign: TextAlign.right,
                 style: TextStyle(
                     fontSize: 12,
@@ -281,6 +283,8 @@ class _CoursesMasterManagementScreenState
         TextEditingController(text: row?['title'] as String? ?? '');
     final creditsController = TextEditingController(
         text: ((row?['credits'] as num?) ?? 0).toString());
+    final creditHoursController = TextEditingController(
+        text: ((row?['credit_hours'] as num?) ?? 0).toString());
     var type = row?['type'] as String? ?? 'Normal';
     var allCampuses = false;
 
@@ -314,13 +318,27 @@ class _CoursesMasterManagementScreenState
               Row(
                 children: [
                   SizedBox(
-                    width: 110,
+                    width: 100,
                     child: TextField(
                       controller: creditsController,
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
                       decoration: AppDesign.inputDecoration(context,
                           label: 'Units'),
+                    ),
+                  ),
+                  const SizedBox(width: AppDesign.spacingSm),
+                  // Contact hours, for the courses the booklet publishes no
+                  // unit count for. Its own number: CHEM U101 is 3 units and 7
+                  // credit hours, so this is never units x 3.
+                  SizedBox(
+                    width: 110,
+                    child: TextField(
+                      controller: creditHoursController,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: AppDesign.inputDecoration(context,
+                          label: 'Credit hrs'),
                     ),
                   ),
                   const SizedBox(width: AppDesign.spacingMd),
@@ -416,6 +434,8 @@ class _CoursesMasterManagementScreenState
         courseCode: code,
         title: title,
         credits: double.tryParse(creditsController.text.trim()) ?? 0,
+        creditHours:
+            double.tryParse(creditHoursController.text.trim()) ?? 0,
         type: type,
       );
       // The app-wide catalogue is now stale in memory; drop it so titles and
