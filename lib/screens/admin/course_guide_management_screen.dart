@@ -812,7 +812,8 @@ class _CourseGuideManagementScreenState
           if (master != null)
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: Text('${master.credits.toInt()}U',
+              child: Text(
+                  '${master.effectiveCredits.toInt()}${master.isInCreditHours ? 'CH' : 'U'}',
                   style: TextStyle(
                       fontSize: 11,
                       color: scheme.onSurface

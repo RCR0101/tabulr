@@ -272,4 +272,31 @@ void main() {
       expect(service.getTitle('HYD_ONLY'), 'HYD_ONLY');
     });
   });
+
+  group('credit hours', () {
+    test('a course published only in hours reports them, not 0U', () {
+      // credits alone is 0 for these, which rendered as "0U" in the course
+      // guide and the CGPA picker, and weighted the course as nothing wherever
+      // it was summed.
+      final chem = CourseMasterEntry.fromMap({
+        'course_code': 'CHEM U101',
+        'title': 'Atomic Structure',
+        'credits': 0,
+        'credit_hours': 7,
+        'type': 'Normal',
+      });
+      expect(chem.isInCreditHours, isTrue);
+      expect(chem.effectiveCredits, 7);
+
+      final cs = CourseMasterEntry.fromMap({
+        'course_code': 'CS F211',
+        'title': 'Data Structures',
+        'credits': 4,
+        'type': 'Normal',
+      });
+      expect(cs.isInCreditHours, isFalse);
+      expect(cs.effectiveCredits, 4);
+      expect(cs.creditHours, 0);
+    });
+  });
 }

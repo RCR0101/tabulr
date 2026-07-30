@@ -125,6 +125,7 @@ class TimetableGenerator {
           cons: analysis['cons'] as List<String>,
           hoursPerDay: _calculateHoursPerDay(result.sections),
           totalCredits: result.totalCredits,
+          creditBasis: basis,
           optionalCourseCodes: result.optionalCodes,
         ));
 
@@ -150,6 +151,7 @@ class TimetableGenerator {
         cons: tt.cons,
         hoursPerDay: tt.hoursPerDay,
         totalCredits: tt.totalCredits,
+        creditBasis: tt.creditBasis,
         optionalCourseCodes: tt.optionalCourseCodes,
       );
     }

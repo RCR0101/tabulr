@@ -179,7 +179,8 @@ class _CoursePickerSheetState extends State<_CoursePickerSheet> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               secondary: Text(
-                                '${course.credits.round()}u',
+                                '${course.effectiveCredits.round()}'
+                                '${course.isInCreditHours ? 'ch' : 'u'}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: scheme.onSurface

@@ -411,6 +411,23 @@ class UserSettingsService extends ChangeNotifier {
   }
 
   // Get timetable size for specific timetable
+  /// Whether the credit-basis notice still needs showing on [timetableId].
+  bool showsCreditBasisNotice(String timetableId) =>
+      !getTimetableSettings(timetableId).creditBasisNoticeDismissed;
+
+  Future<void> dismissCreditBasisNotice(String timetableId) async {
+    if (_userSettings == null) return;
+    final updated = getTimetableSettings(timetableId)
+        .copyWith(creditBasisNoticeDismissed: true);
+    _userSettings = _userSettings!.updateTimetableSettings(timetableId, updated);
+    notifyListeners();
+    if (_authService.isAuthenticated) {
+      await _saveToFirestore();
+    } else {
+      await _saveToLocalStorage();
+    }
+  }
+
   TimetableSize getTimetableSize(String timetableId) {
     return getTimetableSettings(timetableId).size;
   }

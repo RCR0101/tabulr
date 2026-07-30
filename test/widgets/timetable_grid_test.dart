@@ -102,6 +102,21 @@ void main() {
       expect(find.byKey(const ValueKey('block-CS F111-L1-2')), findsOneWidget);
     });
 
+    testWidgets('a phone-width card still names the course', (tester) async {
+      // The failing case: on a phone the day columns are narrow enough that the
+      // title was dropped from most cards, so whether a course showed its name
+      // depended on how wide its column happened to be. The code alone is what
+      // a first-year cannot decode.
+      await tester.pumpWidget(harness(
+        fullWeek(),
+        panel: const Size(400, 700),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Computer Programming', findRichText: true),
+          findsWidgets);
+    });
+
     testWidgets('a merged block spans the height of its hours', (tester) async {
       await pumpDesktop(
         tester,

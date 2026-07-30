@@ -468,7 +468,8 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
               SizedBox(
                 width: 40,
                 child: Text(
-                  '${candidate.credits.toStringAsFixed(0)} cr',
+                  '${candidate.credits.toStringAsFixed(0)}'
+                  '${widget.cgpaData.isInCreditHours == true ? ' ch' : ' cr'}',
                   style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.5)),
                   textAlign: TextAlign.center,
                 ),

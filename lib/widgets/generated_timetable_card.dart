@@ -73,7 +73,8 @@ class GeneratedTimetableCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            '${timetable.totalCredits.toStringAsFixed(1)} cr',
+                            '${timetable.totalCredits.toStringAsFixed(1)}'
+                            '${timetable.creditBasis == CreditBasis.hours ? ' ch' : ' cr'}',
                             style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSecondaryContainer),
                           ),
                         ),

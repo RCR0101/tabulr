@@ -610,7 +610,8 @@ class _SlotRow extends StatelessWidget {
             borderRadius: AppDesign.borderRadiusXs,
           ),
           child: Text(
-            '${CourseGuideSemesterCard._credits(entry.credits)}U',
+            '${CourseGuideSemesterCard._credits(entry.credits)}'
+            '${entry.isInCreditHours ? 'CH' : 'U'}',
             style: TextStyle(
               fontSize: 11.5,
               fontWeight: FontWeight.w600,

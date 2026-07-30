@@ -1147,12 +1147,17 @@ class _ContentPlan {
       return true;
     }
 
+    // The title goes first now, ahead of section/room and the instructor. On a
+    // phone the cards are narrow enough that the old order dropped the name
+    // from most of them, so which courses showed one depended on how wide the
+    // day column happened to be — the code alone is exactly what a first-year
+    // cannot decode. An ellipsised name still says more than "CS F211".
+    final showsTitle = !veryNarrow && take(metrics.metaLine);
     final showsMeta = !veryNarrow && take(metrics.metaLine);
-    final showsTitle = !narrow && take(metrics.metaLine);
     // The instructor is offered a line before the title is allowed a second
     // one, so a long title never crowds out who is teaching.
     final showsInstructor = !narrow && take(metrics.metaLine);
-    final titleMaxLines = showsTitle && take(metrics.metaLine) ? 2 : 1;
+    final titleMaxLines = showsTitle && !narrow && take(metrics.metaLine) ? 2 : 1;
 
     return _ContentPlan(
       showsTitle: showsTitle,

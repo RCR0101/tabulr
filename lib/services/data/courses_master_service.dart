@@ -24,6 +24,16 @@ class CourseMasterEntry {
     required this.type,
   });
 
+  /// Whether this course is published in contact hours rather than units.
+  bool get isInCreditHours => credits <= 0 && creditHours > 0;
+
+  /// The number to show and to weight a grade by.
+  ///
+  /// [credits] alone is 0 for a course the booklet publishes no unit count for,
+  /// which renders as "0U" and — worse — weights the course as nothing wherever
+  /// it is summed. Pair this with [isInCreditHours] to label it.
+  double get effectiveCredits => credits > 0 ? credits : creditHours;
+
   factory CourseMasterEntry.fromMap(Map<String, dynamic> map) {
     return CourseMasterEntry(
       courseCode: map['course_code'] ?? '',

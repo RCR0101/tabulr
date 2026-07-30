@@ -111,6 +111,10 @@ class GeneratedTimetable {
   final List<String> cons;
   final Map<DayOfWeek, int> hoursPerDay;
   final double totalCredits;
+
+  /// What [totalCredits] counts — the run's basis, so the card can label the
+  /// number instead of assuming units.
+  final CreditBasis creditBasis;
   final Set<String> optionalCourseCodes;
 
   GeneratedTimetable({
@@ -120,6 +124,7 @@ class GeneratedTimetable {
     required this.cons,
     required this.hoursPerDay,
     this.totalCredits = 0,
+    this.creditBasis = CreditBasis.units,
     this.optionalCourseCodes = const {},
   });
 }

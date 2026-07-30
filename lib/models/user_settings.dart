@@ -18,15 +18,24 @@ class TimetableSettings {
   final TimetableSize size;
   final TimetableLayout layout;
 
+  /// Whether the credits-vs-credit-hours notice has been dismissed for this
+  /// timetable. Per timetable rather than per account: the choice it prompts
+  /// for is made per timetable, so a new one asks again.
+  final bool creditBasisNoticeDismissed;
+
   const TimetableSettings({
     required this.size,
     required this.layout,
+    this.creditBasisNoticeDismissed = false,
   });
 
   Map<String, dynamic> toJson() {
     return {
       'size': size.toString(),
       'layout': layout.toString(),
+      // Written only once dismissed, so the default costs nothing in every
+      // settings document that predates it.
+      if (creditBasisNoticeDismissed) 'creditBasisNoticeDismissed': true,
     };
   }
 
@@ -40,6 +49,8 @@ class TimetableSettings {
         (e) => e.toString() == json['layout'],
         orElse: () => TimetableLayout.vertical,
       ),
+      creditBasisNoticeDismissed:
+          json['creditBasisNoticeDismissed'] as bool? ?? false,
     );
   }
 
@@ -53,10 +64,13 @@ class TimetableSettings {
   TimetableSettings copyWith({
     TimetableSize? size,
     TimetableLayout? layout,
+    bool? creditBasisNoticeDismissed,
   }) {
     return TimetableSettings(
       size: size ?? this.size,
       layout: layout ?? this.layout,
+      creditBasisNoticeDismissed:
+          creditBasisNoticeDismissed ?? this.creditBasisNoticeDismissed,
     );
   }
 }

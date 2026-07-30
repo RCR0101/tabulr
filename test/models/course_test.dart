@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:timetable_maker/models/course.dart';
+import 'package:timetable_maker/models/timetable_constraints.dart';
 import '../helpers/test_data.dart';
 
 void main() {
@@ -137,6 +138,34 @@ void main() {
       expect(course.variants.length, 1);
       expect(course.variants.single.credits, 4.0);
       expect(course.variants.single.comCode, 2423);
+    });
+
+    test('a generated timetable says what its number counts', () {
+      // The card renders totalCredits with a "cr" suffix, so a credit-hours run
+      // used to read "48.0 cr" — the right number under the wrong name.
+      final hours = GeneratedTimetable(
+        id: 'x',
+        sections: const [],
+        pros: const [],
+        cons: const [],
+        hoursPerDay: const {},
+        totalCredits: 48,
+        creditBasis: CreditBasis.hours,
+      );
+      expect(hours.creditBasis, CreditBasis.hours);
+
+      // And the default is units, so nothing existing changes meaning.
+      expect(
+        GeneratedTimetable(
+          id: 'x',
+          sections: const [],
+          pros: const [],
+          cons: const [],
+          hoursPerDay: const {},
+          totalCredits: 20,
+        ).creditBasis,
+        CreditBasis.units,
+      );
     });
 
     test('fromJson with missing optional fields', () {

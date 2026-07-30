@@ -31,7 +31,10 @@ class CourseGuideService {
     return CourseGuideEntry(
       code: code,
       name: master?.title ?? '',
-      credits: master?.credits ?? 0,
+      // Contact hours where no unit count is published — otherwise every
+      // U-series course in a guide renders as "0U".
+      credits: master?.effectiveCredits ?? 0,
+      isInCreditHours: master?.isInCreditHours ?? false,
       type: master?.type ?? 'Normal',
     );
   }
@@ -109,12 +112,17 @@ class CourseGuideEntry {
   final String code;
   final String name;
   final double credits;
+
+  /// Whether [credits] is contact hours, so the guide can suffix it correctly
+  /// rather than printing every U-series course as "9U".
+  final bool isInCreditHours;
   final String type;
 
   CourseGuideEntry({
     required this.code,
     required this.name,
     required this.credits,
+    this.isInCreditHours = false,
     required this.type,
   });
 }
