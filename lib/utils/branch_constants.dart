@@ -1,12 +1,19 @@
+/// A BITS-RMIT student's ERP branch is the plain A3 or AA, but their first-year
+/// package is not their branchmates' — it drops BITS U103 and adds PHY U101,
+/// PHY U110 and BITS F234. The Course Guide keys everything on a branch code
+/// and a dual degree is a union of two lists, which cannot express a removal,
+/// so the programme gets codes of its own.
 const Map<String, String> branchCodeToName = {
   'A1': 'Chemical',
   'A2': 'Civil',
   'A3': 'Electrical and Electronics',
+  'A3RMIT': 'Electrical and Electronics (BITS-RMIT)',
   'A4': 'Mechanical',
   'A5': 'Pharma',
   'A7': 'Computer Science',
   'A8': 'Electronics and Instrumentation',
   'AA': 'Electronics and Communication',
+  'AARMIT': 'Electronics and Communication (BITS-RMIT)',
   'AB': 'Manufacturing',
   'AC': 'Electronics and Computer',
   'AD': 'Math and Computing',
