@@ -18,6 +18,7 @@ const Map<String, String> branchCodeToName = {
   'AC': 'Electronics and Computer',
   'AD': 'Math and Computing',
   'AJ': 'Environmental and Sustainability Engineering',
+  'AL': 'Pharmaceutical Engineering',
   'B1': 'MSc Biology',
   'B2': 'MSc Chemistry',
   'B3': 'MSc Economics',
