@@ -182,6 +182,11 @@ abstract final class SemesterConstants {
   /// Years 1–4 — where the 5th year isn't offered (CDCs, course guide).
   static List<String> get yearsOneToFour => _range(1, 4);
 
+  /// The first semester of each year — the only ones sample timetables cover,
+  /// there being no published second-semester package to build one from.
+  static List<String> get firstSemesters =>
+      _range(1, 4).where((s) => s.endsWith('-1')).toList();
+
   /// Years 1–3 — Quick Replace's simplified range.
   static List<String> get yearsOneToThree => _range(1, 3);
 

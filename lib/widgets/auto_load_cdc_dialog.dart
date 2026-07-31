@@ -35,7 +35,11 @@ class AutoLoadCDCResult {
 }
 
 class AutoLoadCDCDialog extends StatefulWidget {
-  const AutoLoadCDCDialog({super.key});
+  const AutoLoadCDCDialog({super.key, this.semesters});
+
+  /// The year-semesters on offer. Defaults to years 1–4; sample timetables
+  /// narrow it to the first semester of each year, the only ones they cover.
+  final List<String>? semesters;
 
   @override
   State<AutoLoadCDCDialog> createState() => _AutoLoadCDCDialogState();
@@ -46,7 +50,8 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
       constants.branchCodeToName.keys.toList()..sort();
 
   // Dual-degree students run to 4-2; a single degree simply never selects those.
-  final List<String> _semesters = SemesterConstants.yearsOneToFour;
+  late final List<String> _semesters =
+      widget.semesters ?? SemesterConstants.yearsOneToFour;
 
   String? _selectedBranch;
   String? _selectedSecondaryBranch;

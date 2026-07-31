@@ -743,6 +743,9 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
             tooltip: 'Tools',
             onSelected: (value) {
               switch (value) {
+                case 'sample_timetables':
+                  AppTools.of(AppTool.sampleTimetables).pushOn(Navigator.of(context));
+                  break;
                 case 'course_guide':
                   AppTools.of(AppTool.courseGuide).pushOn(Navigator.of(context));
                   break;
@@ -768,29 +771,12 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
             },
             itemBuilder: (context) => [
               if (ResponsiveService.isMobile(context)) ...[
-                PopupMenuItem(
-                  enabled: false,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('Campus', style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
-                          fontWeight: FontWeight.w600,
-                        )),
-                        const SizedBox(height: AppDesign.spacingXs),
-                        CampusSelectorWidget(
-                          onCampusChanged: (campus) {
-                            Navigator.pop(context);
-                            CourseDataService().clearCache();
-                            ToastService.showInfo('Switched to ${CampusService.getCampusDisplayName(campus)} campus');
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
+                CampusSelectorWidget.menuEntry<String>(
+                  context,
+                  onCampusChanged: (campus) {
+                    CourseDataService().clearCache();
+                    ToastService.showInfo('Switched to ${CampusService.getCampusDisplayName(campus)} campus');
+                  },
                 ),
                 const PopupMenuDivider(),
               ],
@@ -806,6 +792,10 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                 ),
                 const PopupMenuDivider(),
               ],
+              const PopupMenuItem(
+                value: 'sample_timetables',
+                child: ListTile(leading: Icon(Icons.calendar_view_week), title: Text('Sample Timetables'), contentPadding: EdgeInsets.zero),
+              ),
               const PopupMenuItem(
                 value: 'course_guide',
                 child: ListTile(leading: Icon(Icons.menu_book), title: Text('Course Guide'), contentPadding: EdgeInsets.zero),

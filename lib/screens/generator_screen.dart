@@ -6,7 +6,7 @@ import '../models/timetable_constraints.dart';
 import '../models/timetable.dart' as timetable;
 import '../services/data/course_data_service.dart';
 import '../services/data/campus_service.dart';
-import '../services/core/timetable_service.dart';
+import '../services/core/sample_timetable_service.dart';
 import '../services/ui/toast_service.dart';
 import '../widgets/timetable_generator_widget.dart';
 import '../widgets/error_dialog.dart';
@@ -172,16 +172,10 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
     List<timetable.SelectedSection> sections,
     String suggestedName,
   ) async {
-    final service = TimetableService();
     try {
-      final name = suggestedName.isEmpty ? 'Generated timetable' : suggestedName;
-      final tt = await service.createNewTimetable(name);
-      for (final section in sections) {
-        await service.addSection(section.courseCode, section.sectionId, tt);
-      }
-      await service.saveTimetable(tt);
+      final tt = await SampleTimetableService.saveAsNew(sections, suggestedName);
       if (!mounted) return;
-      ToastService.showSuccess('Saved as new timetable "$name"');
+      ToastService.showSuccess('Saved as new timetable "${tt.name}"');
     } catch (e) {
       if (mounted) ErrorDialog.show(context, 'Error saving new timetable: $e');
     }

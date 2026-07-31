@@ -38,6 +38,9 @@ void main() {
       expect(
         AppTools.editorMenu.map((i) => i.tool),
         [
+          // First: a student with nothing on the grid yet gets a whole
+          // timetable from it in one tap.
+          AppTool.sampleTimetables,
           AppTool.courseGuide,
           AppTool.prerequisites,
           // One Electives entry, tabbed: the three separate browsers asked for

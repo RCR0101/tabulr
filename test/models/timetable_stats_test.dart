@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:timetable_maker/constants/app_constants.dart';
 import 'package:timetable_maker/models/course.dart';
 import 'package:timetable_maker/models/timetable_stats.dart';
 
@@ -146,9 +147,9 @@ void main() {
 
       expect(stats.totalCredits, 7);
       expect(stats.creditBasis, CreditBasis.hours);
-      // No published ceiling for hours, so nothing can be "over" one — and the
-      // 25-unit cap must not be borrowed to invent one.
-      expect(stats.creditCap, isNull);
+      // Hours have their own ceiling, and the 25-unit cap must never be
+      // borrowed to stand in for it.
+      expect(stats.creditCap, AppLimits.semesterCreditHourCap);
       expect(stats.isOverCreditCap, isFalse);
     });
 

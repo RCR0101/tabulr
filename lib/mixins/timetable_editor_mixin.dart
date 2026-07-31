@@ -664,10 +664,39 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       }
     }
 
+    // Adding a second L (or T, or P) of a course already on the grid means
+    // switching to it — the course card offers exactly that button. Handled
+    // here rather than in the card so every other way in (the elective
+    // browsers, the command palette) means the same thing instead of being
+    // refused for a duplicate section type.
+    final incoming = course?.sections
+        .cast<Section?>()
+        .firstWhere((s) => s!.sectionId == sectionId, orElse: () => null);
+    final replaced = incoming == null
+        ? null
+        : tt.selectedSections.cast<SelectedSection?>().firstWhere(
+            (s) =>
+                s!.courseCode == courseCode &&
+                s.section.type == incoming.type &&
+                s.sectionId != sectionId,
+            orElse: () => null,
+          );
+
     try {
       // Snapshot before the attempt, commit to the undo stack only on success —
       // a refused add must not leave a no-op entry for the user to undo.
       final sectionsBefore = List<SelectedSection>.of(tt.selectedSections);
+      // The section being switched out has to go first, or the add is refused
+      // for the duplicate type it is replacing. Restored below if the add is
+      // refused for any other reason, so a rejected switch cannot leave the
+      // student with neither section.
+      if (replaced != null) {
+        timetableService.removeSectionWithoutSaving(
+          courseCode,
+          replaced.sectionId,
+          tt,
+        );
+      }
       final result = timetableService.addSectionWithoutSaving(
         courseCode,
         sectionId,
@@ -675,6 +704,11 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         allowExamClash: examClashAllowed,
         allowSectionClash: sectionClashAllowed,
       );
+      if (!result.isAllowed && replaced != null) {
+        tt.selectedSections
+          ..clear()
+          ..addAll(sectionsBefore);
+      }
 
       if (result.isAllowed) {
         // Stamp the basis onto what was just added. The service builds the
@@ -688,13 +722,17 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
             }
           }
         }
+        // One entry for a switch, so undo puts the old section back in a step.
+        final what = replaced == null
+            ? 'Add $courseCode $sectionId'
+            : 'Switch $courseCode ${replaced.sectionId} to $sectionId';
         undoRedoService.pushSections(
           sectionsBefore,
           overrideExamClash
-              ? 'Add $courseCode $sectionId (exam clash overridden)'
+              ? '$what (exam clash overridden)'
               : (examClashAllowed || sectionClashAllowed)
-                  ? 'Add $courseCode $sectionId (clash bypassed)'
-                  : 'Add $courseCode $sectionId',
+                  ? '$what (clash bypassed)'
+                  : what,
         );
         setState(() {
           hasUnsavedChanges = true;
@@ -1742,6 +1780,12 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         },
         itemBuilder: (context) => [
           if (isMobileLayout) ...[
+            CampusSelectorWidget.menuEntry<String>(
+              context,
+              confirmSwitch: () => confirmCampusSwitch(),
+              onCampusChanged: onCampusChanged,
+            ),
+            const PopupMenuDivider(),
             for (final info in AppTools.editorMenu)
               PopupMenuItem(
                 value: info.tool.name,

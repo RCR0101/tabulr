@@ -288,9 +288,10 @@ void main() {
       expect(find.textContaining('Clashes with'), findsWidgets);
     });
 
-    testWidgets('choosing a section explains why its siblings are unavailable',
+    testWidgets('a sibling of the chosen section offers to switch',
         (tester) async {
-      // Two lectures for one course: taking one must not read as a clash.
+      // Two lectures for one course: taking one must not read as a clash, and
+      // the other stays pressable — it replaces the one already taken.
       final course = makeCourse(
         courseCode: 'CS F211',
         sections: [
@@ -308,9 +309,85 @@ void main() {
       await tester.tap(find.widgetWithText(TextButton, 'Add').first);
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('lecture section is on your timetable'),
-          findsOneWidget);
+      expect(find.text('Replaces L1 on your timetable'), findsOneWidget);
       expect(find.textContaining('Clashes with'), findsNothing);
+
+      final switchButton = find.widgetWithText(TextButton, 'Switch');
+      expect(switchButton, findsOneWidget);
+      expect(tester.widget<TextButton>(switchButton).onPressed, isNotNull);
+
+      await tester.tap(switchButton);
+      await tester.pumpAndSettle();
+      // The stub link only adds; the editor's addSection is what drops L1. All
+      // this asks is that the press reached it asking for L2.
+      expect(l.sections.map((s) => s.sectionId), contains('L2'));
+    });
+
+    testWidgets('a lab over the course\'s own lecture is blocked, not offered',
+        (tester) async {
+      // The card used to check only *other* courses, so this row rendered a
+      // live Add that the service then refused with a toast.
+      final course = makeCourse(
+        courseCode: 'CS F111',
+        sections: [
+          makeSection(sectionId: 'L1', days: [DayOfWeek.M], hours: [1]),
+          makeSection(
+              sectionId: 'P1',
+              type: SectionType.P,
+              days: [DayOfWeek.M],
+              hours: [1]),
+        ],
+      );
+      final l = makeLink(availableCourses: [course]);
+      l.sections.add(makeSelectedSection(
+          courseCode: 'CS F111',
+          sectionId: 'L1',
+          section: course.sections.first));
+      await pumpList(tester, courses: [course], link: l.link);
+
+      await tester.tap(find.text('CS F111'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Clashes with CS F111 L1'), findsOneWidget);
+      final add = find.widgetWithText(TextButton, 'Add');
+      expect(add, findsOneWidget);
+      expect(tester.widget<TextButton>(add).onPressed, isNull);
+    });
+
+    testWidgets('a sibling that clashes elsewhere cannot be switched to',
+        (tester) async {
+      final course = makeCourse(
+        courseCode: 'CS F211',
+        sections: [
+          makeSection(sectionId: 'L1', days: [DayOfWeek.M], hours: [1]),
+          makeSection(sectionId: 'L2', days: [DayOfWeek.T], hours: [2]),
+        ],
+      );
+      final other = makeCourse(
+        courseCode: 'MATH F112',
+        sections: [makeSection(sectionId: 'L1', days: [DayOfWeek.T], hours: [2])],
+      );
+      final l = makeLink(availableCourses: [course, other]);
+      l.sections.addAll([
+        makeSelectedSection(
+            courseCode: 'CS F211',
+            sectionId: 'L1',
+            section: course.sections.first),
+        makeSelectedSection(
+            courseCode: 'MATH F112',
+            sectionId: 'L1',
+            section: other.sections.first),
+      ]);
+      await pumpList(tester, courses: [course, other], link: l.link);
+
+      await tester.tap(find.text('CS F211'));
+      await tester.pumpAndSettle();
+
+      // Labelled Switch, but the clash it would land on still blocks it.
+      final switchButton = find.widgetWithText(TextButton, 'Switch');
+      expect(switchButton, findsOneWidget);
+      expect(tester.widget<TextButton>(switchButton).onPressed, isNull);
+      expect(find.textContaining('Clashes with MATH F112'), findsOneWidget);
     });
   });
 }

@@ -9,11 +9,13 @@ import '../screens/credits_screen.dart';
 import '../screens/minors_screen.dart';
 import '../screens/prerequisites_screen.dart';
 import '../screens/professors_screen.dart';
+import '../screens/sample_timetables_screen.dart';
 import '../screens/timetable_comparison_screen.dart';
 import 'app_destinations.dart';
 
 /// Screens reached by pushing a route rather than switching the shell.
 enum AppTool {
+  sampleTimetables,
   courseGuide,
   prerequisites,
   electives,
@@ -91,6 +93,16 @@ class AppToolInfo {
 abstract final class AppTools {
   /// Exhaustive: a new [AppTool] stops the build until it is described here.
   static AppToolInfo of(AppTool tool) => switch (tool) {
+        AppTool.sampleTimetables => AppToolInfo(
+            tool: tool,
+            icon: Icons.calendar_view_week,
+            label: 'Sample Timetables',
+            description:
+                'Ready-made timetables for your branch\'s core courses',
+            inEditorMenu: true,
+            segment: 'sample-timetables',
+            build: (link) => SampleTimetablesScreen(selectionLink: link),
+          ),
         AppTool.courseGuide => AppToolInfo(
             tool: tool,
             icon: Icons.menu_book,

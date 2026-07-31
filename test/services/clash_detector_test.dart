@@ -280,6 +280,39 @@ void main() {
           ),
         ];
 
+    test('a lab that runs over its own course lecture is a class clash', () {
+      // Same course, different component: the duplicate-type rule does not
+      // cover it, so it has to fall out of the schedule check.
+      final sw = Stopwatch()..start();
+      final lecture =
+          makeSection(sectionId: 'L1', days: [DayOfWeek.M], hours: [1]);
+      final lab = makeSection(
+          sectionId: 'P1',
+          type: SectionType.P,
+          days: [DayOfWeek.M],
+          hours: [1]);
+      final course = makeCourse(
+        courseCode: 'CS F111',
+        sections: [lecture, lab],
+      );
+      final result = ClashDetector.evaluateAdd(
+        makeSelectedSection(
+            courseCode: 'CS F111', sectionId: 'P1', section: lab),
+        [
+          makeSelectedSection(
+              courseCode: 'CS F111', sectionId: 'L1', section: lecture)
+        ],
+        [course],
+      );
+      sw.stop();
+      _record('evaluateAdd blocks a same-course component clash', true,
+          sw.elapsedMilliseconds);
+
+      expect(result.isAllowed, isFalse);
+      expect(result.blockedBy, AddBlockReason.classClash);
+      expect(result.message, contains('L1'));
+    });
+
     test('allowSectionClash lets a class clash through', () {
       final sw = Stopwatch()..start();
       final sharedSlot = makeSection(days: [DayOfWeek.M], hours: [1]);

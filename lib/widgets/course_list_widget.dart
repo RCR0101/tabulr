@@ -66,8 +66,12 @@ class CourseListWidget extends StatelessWidget {
     for (final s in selectedSections) '${s.courseCode}|${s.sectionId}',
   };
 
-  late final Set<String> _selectedTypeKeys = {
-    for (final s in selectedSections) '${s.courseCode}|${s.section.type}',
+  /// The section already chosen for each course-and-component, keyed
+  /// `"CS F111|SectionType.L"`. The id is what the row it blocks offers to
+  /// switch out.
+  late final Map<String, String> _selectedTypeKeys = {
+    for (final s in selectedSections)
+      '${s.courseCode}|${s.section.type}': s.sectionId,
   };
 
   // Built once per widget instance rather than per tile. _getCourseClashes runs
@@ -87,16 +91,22 @@ class CourseListWidget extends StatelessWidget {
     return _selectedKeys.contains('$courseCode|$sectionId');
   }
 
-  bool _isSectionTypeAlreadySelected(String courseCode, SectionType type) {
-    return _selectedTypeKeys.contains('$courseCode|$type');
+  String? _sectionTakenForType(String courseCode, SectionType type) {
+    return _selectedTypeKeys['$courseCode|$type'];
   }
 
   /// Returns a human-readable conflict description for this specific section,
   /// or null if no conflict.
   String? _getSectionConflict(Section section, String courseCode) {
     if (selectedSections.isEmpty) return null;
+    // The course's *other* components still count: a lab that runs over its
+    // own course's lecture is a real clash, and the add is refused for it —
+    // the card used to skip the whole course and offer a live Add anyway.
+    // Only the component this row would replace is excluded; that one is
+    // being switched out, not collided with.
     final otherSections = selectedSections
-        .where((s) => s.courseCode != courseCode)
+        .where((s) =>
+            s.courseCode != courseCode || s.section.type != section.type)
         .toList();
     if (otherSections.isEmpty) return null;
 
@@ -267,11 +277,12 @@ class CourseListWidget extends StatelessWidget {
                   section: section,
                   isSelected: isSelected,
                   // Not a clash: you already picked an L (or T/P) for this
-                  // course, so the siblings are unavailable until you swap.
-                  // Rendered differently from a clash, because it means
-                  // something entirely different to the student.
-                  typeTaken: !isSelected &&
-                      _isSectionTypeAlreadySelected(
+                  // course, so this row switches that one out rather than
+                  // adding a second. Rendered differently from a clash,
+                  // because it means something entirely different.
+                  switchesOut: isSelected
+                      ? null
+                      : _sectionTakenForType(
                           course.courseCode, section.type),
                   conflict: isSelected
                       ? null
@@ -295,7 +306,7 @@ class _SectionState {
   const _SectionState({
     required this.section,
     required this.isSelected,
-    required this.typeTaken,
+    required this.switchesOut,
     required this.conflict,
     this.clashAllowed = false,
   });
@@ -303,9 +314,11 @@ class _SectionState {
   final Section section;
   final bool isSelected;
 
-  /// Another section of this same component is already on the timetable.
-  /// Distinct from [conflict]: nothing clashes, you have simply already chosen.
-  final bool typeTaken;
+  /// The section of this same component already on the timetable, which taking
+  /// this row would replace. Null when there is none, so this row is a plain
+  /// Add. Distinct from [conflict]: nothing clashes, you have simply already
+  /// chosen — and choosing again is a switch, not a refusal.
+  final String? switchesOut;
 
   /// The editor's section-clash bypass: a conflict informs but no longer
   /// blocks.
@@ -314,7 +327,7 @@ class _SectionState {
   /// Human-readable schedule collision with the current timetable, or null.
   final String? conflict;
 
-  bool get blocked => typeTaken || (conflict != null && !clashAllowed);
+  bool get blocked => conflict != null && !clashAllowed;
 }
 
 /// A course, its metadata and its sections.
@@ -632,7 +645,7 @@ class _CourseCard extends StatelessWidget {
     } else if (state.conflict != null) {
       rowColor = scheme.errorContainer.withValues(alpha: 0.28);
       rowBorder = scheme.error.withValues(alpha: 0.28);
-    } else if (state.typeTaken) {
+    } else if (state.switchesOut != null) {
       rowColor = scheme.surfaceContainerHighest.withValues(alpha: 0.55);
       rowBorder = scheme.outlineVariant.withValues(alpha: 0.5);
     } else {
@@ -715,11 +728,11 @@ class _CourseCard extends StatelessWidget {
                 if (state.conflict != null)
                   _reason(context, Icons.error_outline, state.conflict!,
                       scheme.error)
-                else if (state.typeTaken)
+                else if (state.switchesOut != null)
                   _reason(
                       context,
-                      Icons.check_circle_outline,
-                      'Another ${_typeName(section.type)} section is on your timetable',
+                      Icons.swap_horiz,
+                      'Replaces ${state.switchesOut} on your timetable',
                       scheme.onSurface.withValues(alpha: 0.55)),
               ],
             ),
@@ -774,7 +787,11 @@ class _CourseCard extends StatelessWidget {
           ),
         ),
         child: Text(
-          state.isSelected ? 'Remove' : 'Add',
+          state.isSelected
+              ? 'Remove'
+              : state.switchesOut != null
+                  ? 'Switch'
+                  : 'Add',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
@@ -833,10 +850,4 @@ class _CourseCard extends StatelessWidget {
   /// "10 Mar" reads unambiguously; "10/3" is a date-format coin toss.
   static String _month(int m) =>
       (m >= 1 && m <= 12) ? DayConstants.monthNames[m] : '$m';
-
-  static String _typeName(SectionType type) => switch (type) {
-        SectionType.L => 'lecture',
-        SectionType.P => 'practical',
-        SectionType.T => 'tutorial',
-      };
 }
