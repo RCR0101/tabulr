@@ -317,7 +317,7 @@ abstract final class AppLimits {
   /// and what the stats sheet measures a timetable's load against.
   static const double semesterCreditCap = 25;
 
-  /// The cap for a timetable counted in contact hours, or null for none.
+  /// The cap for a timetable counted in credit hours, or null for none.
   ///
   /// Null on purpose: the 2026-batch regulation has not been confirmed, and a
   /// guessed limit refuses real course choices, which is worse than not
