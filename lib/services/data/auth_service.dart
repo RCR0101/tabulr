@@ -16,7 +16,11 @@ class AuthService {
   factory AuthService() => _instance;
   AuthService._internal();
 
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  /// Resolved per use, not in a field. This singleton gets constructed by
+  /// whatever touches it first — including a widget mid-build — and
+  /// `FirebaseAuth.instance` throws when no app is initialised, taking that
+  /// widget down with it.
+  FirebaseAuth get _firebaseAuth => FirebaseAuth.instance;
   final ConfigService _config = ConfigService();
   late final GoogleSignIn _googleSignIn;
   

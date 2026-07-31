@@ -15,7 +15,11 @@ class UserSettingsService extends ChangeNotifier {
   UserSettingsService._internal();
 
   final AuthService _authService = AuthService();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  /// Resolved per use, not in a field: this service is a singleton that widgets
+  /// construct while building, and `FirebaseFirestore.instance` throws outright
+  /// when no app is initialised — which took down every widget that touched it.
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
 
   UserSettings? _userSettings;
   bool _isLoading = false;
@@ -23,6 +27,20 @@ class UserSettingsService extends ChangeNotifier {
 
   UserSettings? get userSettings => _userSettings;
   bool get isLoading => _isLoading;
+
+  /// True once the settings in memory belong to whoever is signed in — not the
+  /// guest defaults startup loads while auth is still restoring.
+  ///
+  /// Anything reading a "have they seen this?" flag has to wait for this.
+  /// Treating "not loaded yet" as "not seen" replays the tutorial, and the
+  /// completion it then writes saves those guest defaults over the real
+  /// settings — so it replays again on the next launch, and the launch after.
+  bool get isReady {
+    final settings = _userSettings;
+    if (settings == null) return false;
+    final userId = _authService.userDocId;
+    return userId == null || settings.userId == userId;
+  }
 
   Future<void> initializeSettings({bool force = false}) async {
     if (_initialized && !force) return;
@@ -57,7 +75,10 @@ class UserSettingsService extends ChangeNotifier {
           .collection(FirestoreCollections.users).doc(userId).collection(FirestoreCollections.settings).doc(FirestoreCollections.preferences)
           .get();
       if (doc.exists && doc.data() != null) {
-        _userSettings = UserSettings.fromJson(doc.data()!);
+        // Stamped with the account that just loaded it: a document written
+        // during the guest window carries userId 'guest', and [isReady] would
+        // otherwise read it as somebody else's forever.
+        _userSettings = UserSettings.fromJson(doc.data()!).copyWith(userId: userId);
       } else {
         _userSettings = UserSettings.defaultSettings(userId);
         await _saveToFirestore();
@@ -95,6 +116,15 @@ class UserSettingsService extends ChangeNotifier {
     try {
       final userId = _authService.userDocId;
       if (userId == null) return;
+
+      // Guest defaults loaded before auth restored are not this account's
+      // settings. Writing them here is what silently erased the completed
+      // tutorials, the theme and every other flag mid-session.
+      if (_userSettings!.userId != userId) {
+        SecureLogger.warning('USER_SETTINGS',
+            'Refused to save settings loaded for another user');
+        return;
+      }
 
       await _firestore
           .collection(FirestoreCollections.users).doc(userId).collection(FirestoreCollections.settings).doc(FirestoreCollections.preferences)
@@ -273,7 +303,9 @@ class UserSettingsService extends ChangeNotifier {
   }
 
   Future<void> markTutorialCompleted(String section) async {
-    if (_userSettings == null) {
+    // Not just null: guest defaults would drop every flag already recorded
+    // against the account when this saves.
+    if (!isReady) {
       await initializeSettings(force: true);
     }
     if (_userSettings == null) return;

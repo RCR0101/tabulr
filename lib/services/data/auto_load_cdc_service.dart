@@ -21,6 +21,46 @@ class AutoLoadCDCService {
   /// (see [CdcSlot]). An unanswered choice loads nothing, because loading one
   /// alternative on the student's behalf puts a course they may not be taking
   /// on their timetable.
+  /// The CDC course codes for this degree at [semester] that the campus
+  /// actually offers.
+  ///
+  /// Codes rather than sections, because the generator picks sections itself:
+  /// a course whose every section clashes with one already placed here is
+  /// still a course the student has to take, and dropping it silently
+  /// shortened the package it was asked to load.
+  Future<List<String>> loadCDCCodesForDegree({
+    required String primaryBranch,
+    String? secondaryBranch,
+    required String semester,
+    required List<Course> availableCourses,
+    Set<String> chosen = const {},
+  }) async {
+    final slots = await _branchService.getCoreCourseSlots(
+      semester,
+      primaryBranch,
+      null,
+      secondaryBranch,
+    );
+    final offered = {for (final c in availableCourses) c.courseCode};
+    return [
+      for (final code in CdcSlot.resolveSlots(slots, chosen))
+        if (offered.contains(code)) code,
+    ];
+  }
+
+  /// The component to place for [course]: its lectures, or — for a lab-only
+  /// course like PHY U110 or CHEM U110 — whatever component it does have.
+  ///
+  /// Looking only at [SectionType.L] left every lab-only CDC out of the load,
+  /// which is most of what a first-year credit-hours package is short of.
+  List<Section> _primarySections(Course course) {
+    for (final type in SectionType.values) {
+      final sections = course.sections.where((s) => s.type == type).toList();
+      if (sections.isNotEmpty) return sections;
+    }
+    return const [];
+  }
+
   Future<List<SelectedSection>> loadCDCsForDegree({
     required String primaryBranch,
     String? secondaryBranch,
@@ -29,20 +69,20 @@ class AutoLoadCDCService {
     Set<String> chosen = const {},
   }) async {
     try {
-      final slots = await _branchService.getCoreCourseSlots(
-        semester,
-        primaryBranch,
-        null,
-        secondaryBranch,
+      final cdcCodes = await loadCDCCodesForDegree(
+        primaryBranch: primaryBranch,
+        secondaryBranch: secondaryBranch,
+        semester: semester,
+        availableCourses: availableCourses,
+        chosen: chosen,
       );
-      final cdcCodes = CdcSlot.resolveSlots(slots, chosen);
 
       final selectedSections = <SelectedSection>[];
 
       for (final code in cdcCodes) {
         final course = availableCourses.where((c) => c.courseCode == code).firstOrNull;
         if (course != null) {
-          final lectureSections = course.sections.where((s) => s.type == SectionType.L).toList();
+          final lectureSections = _primarySections(course);
           for (final lectureSection in lectureSections) {
             final tempSection = SelectedSection(
               courseCode: course.courseCode,

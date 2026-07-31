@@ -225,10 +225,20 @@ class TimetableGeneratorController extends ChangeNotifier {
   void setCreditBasis(CreditBasis basis) {
     if (creditBasis == basis) return;
     creditBasis = basis;
-    // Courses of the other basis can no longer be part of this run.
-    mandatoryCourses.clear();
-    optionalCourses.clear();
+    // Courses of the other basis can no longer be part of this run. Cleared
+    // through the private lists: the getters hand out unmodifiable views, so
+    // clearing those threw and the toggle never actually switched.
+    _mandatoryCourses.clear();
+    _optionalCourses.clear();
     _changed([courses, constraints]);
+  }
+
+  /// Empties one of the two course lists.
+  void clearCourses({required bool mandatory}) {
+    final list = mandatory ? _mandatoryCourses : _optionalCourses;
+    if (list.isEmpty) return;
+    list.clear();
+    _changed([courses]);
   }
 
   TimetableConstraints buildConstraints() {

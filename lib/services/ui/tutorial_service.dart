@@ -90,9 +90,13 @@ class TutorialService {
   bool _shouldShow(String section) {
     final auth = AuthService();
     if (!auth.isAuthenticated) return false;
+    final settings = UserSettingsService();
+    // Settings not loaded for this account yet. Every flag below would read
+    // false — "never seen it" — which is how a finished tour came back on the
+    // next launch. [_autoStart] retries, so the tour still runs if it should.
+    if (!settings.isReady) return false;
     if (_onboardingSkipped) return false;
     if (_dismissedThisSession.contains(section)) return false;
-    final settings = UserSettingsService();
     return !settings.isTutorialCompleted(section) &&
         !settings.isTutorialCompleted(_skippedFlag(section));
   }
@@ -436,9 +440,13 @@ class TutorialService {
   /// i.e. there's permanently nothing to auto-show. Distinct from a transient
   /// "auth not ready yet", which [_autoStart] must keep retrying through.
   bool _permanentlyDone(String section) {
+    final settings = UserSettingsService();
+    // Same reason as [_shouldShow]: unloaded settings answer "no" to
+    // everything, and here that would hand the screen to the skipper spotlight
+    // — for a user who never skipped anything.
+    if (!settings.isReady) return false;
     if (_onboardingSkipped) return true;
     if (_dismissedThisSession.contains(section)) return true;
-    final settings = UserSettingsService();
     return settings.isTutorialCompleted(section) ||
         settings.isTutorialCompleted(_skippedFlag(section));
   }
@@ -539,8 +547,9 @@ class TutorialService {
   }) {
     if (_isShowing) return;
     if (!AuthService().isAuthenticated) return;
-    if (_onboardingSkipped) return; // user opted out of onboarding entirely
     final settings = UserSettingsService();
+    if (!settings.isReady) return; // flags not loaded — see [_shouldShow]
+    if (_onboardingSkipped) return; // user opted out of onboarding entirely
     if (settings.isTutorialCompleted(flag)) return; // already seen
     // Only surface to users who skipped the full tour (finishers already saw
     // it); and never in the same session as the skip.

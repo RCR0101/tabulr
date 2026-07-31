@@ -5,6 +5,7 @@ import '../utils/course_utils.dart';
 import '../utils/datetime_utils.dart';
 import 'common/app_tappable.dart';
 import '../models/timetable_constraints.dart';
+import '../services/core/timetable_generator.dart';
 import '../services/core/timetable_generator_controller.dart';
 import '../services/core/timetable_ranker.dart';
 import '../services/core/clash_detector.dart';
@@ -18,6 +19,7 @@ import '../models/academic_record.dart';
 import '../models/prerequisite.dart';
 import '../models/prerequisite_status.dart';
 import 'auto_load_cdc_dialog.dart';
+import 'credit_basis_notice.dart';
 import '../models/timetable.dart' as tt_model;
 import '../screens/timetable_comparison_screen.dart';
 import '../utils/page_transitions.dart';
@@ -441,7 +443,10 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
 
     _isAutoLoadingCDCs.value = true;
     try {
-      final sections = await AutoLoadCDCService().loadCDCsForDegree(
+      // Codes, not sections: the generator chooses sections itself, and asking
+      // for sections dropped every CDC whose lecture clashed with one already
+      // picked — plus the lab-only ones, which have no lecture at all.
+      final codes = await AutoLoadCDCService().loadCDCCodesForDegree(
         primaryBranch: result.primaryBranch,
         secondaryBranch: result.secondaryBranch,
         semester: result.semester,
@@ -450,7 +455,6 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       );
       if (!mounted) return;
 
-      final codes = sections.map((s) => s.courseCode).toSet();
       final added = _ctrl.addMandatoryCourses(codes);
 
       if (added > 0) {
@@ -528,6 +532,16 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Same notice as the timetable editor: the generator is the other place
+        // the basis gets chosen, and its toggle defaults to credits too.
+        CreditBasisNotice(
+          noticeId: 'generator',
+          courses: widget.availableCourses,
+          toggleHint: "Set it with the 'Count in' toggle below",
+          // The notice sits directly above the toggle it points at; without
+          // this they read as one block.
+          margin: const EdgeInsets.fromLTRB(0, 0, 0, 12),
+        ),
         _buildBasisToggle(),
         const SizedBox(height: 12),
         Row(
@@ -535,6 +549,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
             Expanded(
               child: Text('Mandatory Courses (${mandatoryCredits.toStringAsFixed(1)} $unit):', style: const TextStyle(fontWeight: FontWeight.bold)),
             ),
+            _buildClearAllButton(mandatory: true),
             ValueListenableBuilder<bool>(
               valueListenable: _isAutoLoadingCDCs,
               builder: (context, loading, _) => TextButton.icon(
@@ -563,7 +578,14 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           onRemove: _ctrl.removeMandatoryCourse,
         ),
         const SizedBox(height: 16),
-        Text('Optional Courses (${optionalCredits.toStringAsFixed(1)} credits):', style: const TextStyle(fontWeight: FontWeight.bold)),
+        Row(
+          children: [
+            Expanded(
+              child: Text('Optional Courses (${optionalCredits.toStringAsFixed(1)} $unit):', style: const TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            _buildClearAllButton(mandatory: false),
+          ],
+        ),
         const SizedBox(height: 4),
         Text('Generator will fit as many as possible within credit limit', style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6))),
         const SizedBox(height: 8),
@@ -576,6 +598,28 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         const SizedBox(height: 8),
         _buildOptionalCoursesRanking(),
       ],
+    );
+  }
+
+  /// What one course is worth on the basis this run counts in, e.g. "10 credit
+  /// hours" or "3 credits". Whole numbers stay whole.
+  String _amountLabel(Course course) {
+    final amount = course.variantOn(_ctrl.creditBasis)?.amount ?? 0;
+    final n = amount % 1 == 0 ? amount.toInt().toString() : amount.toStringAsFixed(1);
+    return _ctrl.creditBasis == CreditBasis.hours ? '$n credit hours' : '$n credits';
+  }
+
+  /// Empties one course list. Disabled rather than hidden when the list is
+  /// already empty, so the header doesn't reflow every time a course is added.
+  Widget _buildClearAllButton({required bool mandatory}) {
+    final list = mandatory ? _ctrl.mandatoryCourses : _ctrl.optionalCourses;
+    return TextButton.icon(
+      onPressed: list.isEmpty
+          ? null
+          : () => setState(() => _ctrl.clearCourses(mandatory: mandatory)),
+      icon: const Icon(Icons.clear_all, size: 18),
+      label: const Text('Clear'),
+      style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
     );
   }
 
@@ -742,7 +786,10 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          trailing: Text('${course.totalCredits} credits'),
+          // On the run's own basis. Printing totalCredits regardless showed
+          // every credit-hours course as "0 credits" — including the CDCs that
+          // carry no unit count at all, like the first-year labs.
+          trailing: Text(_amountLabel(course)),
         );
       },
       onSelected: (course) => onPick(course.courseCode),
@@ -1867,7 +1914,12 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       if (result.ranked.isEmpty) {
         // A hard-constraint conflict explains itself in the results panel;
         // only the generic "no clash-free combo" case needs the dialog.
-        if (result.unmetIntents.isEmpty) _showNoTimetablesDialog();
+        if (result.unmetIntents.isEmpty) {
+          _showNoTimetablesDialog(
+            TimetableGenerator.blockingPair(
+                widget.availableCourses, _ctrl.buildConstraints()),
+          );
+        }
       }
     } catch (e) {
       ToastService.showError('Error generating timetables: $e');
@@ -2147,7 +2199,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     );
   }
 
-  void _showNoTimetablesDialog() {
+  void _showNoTimetablesDialog([(String, String)? blocking]) {
     AppDialog.adaptive(
       context: context,
       title: 'No Valid Timetables Found',
@@ -2160,6 +2212,20 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
             'No conflict-free timetable combinations could be generated with your selected courses and constraints.',
             style: TextStyle(fontSize: 16),
           ),
+          // Named when the cause is two courses timetabled on top of each
+          // other: no amount of loosening the preferences below can fix that,
+          // and the generic advice sends the student round in circles.
+          if (blocking != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              '${blocking.$1} and ${blocking.$2} clash in every combination of '
+              'their sections, so no timetable can hold both.',
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.error),
+            ),
+          ],
           const SizedBox(height: 16),
           const Text(
             'Try the following:',

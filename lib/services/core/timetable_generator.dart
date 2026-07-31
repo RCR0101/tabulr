@@ -36,6 +36,9 @@ import 'clash_detector.dart';
 /// - New generation-time heuristic: extend [_comboFitness].
 /// - New section type: extend the L/P/T branching in
 ///   [_generateAllCombinations].
+/// A partial timetable and the grid cells it has already taken.
+typedef _Partial = (List<ConstraintSelectedSection>, Set<String>);
+
 class TimetableGenerator {
   /// Entry point. Returns up to [maxTimetables] clash-free, scored timetables.
   /// How many scored candidates to evaluate before handing a frame back to the
@@ -61,6 +64,13 @@ class TimetableGenerator {
     if (mandatoryCourses.length != constraints.mandatoryCourses.length) {
       throw Exception('Some mandatory courses not found in available courses');
     }
+
+    // Two mandatory courses sharing an exam slot can never produce a valid
+    // combination — every candidate is rejected and the run ends in a bare "no
+    // timetables found", which reads as a bug in the generator rather than a
+    // clash in the offering. Name it instead.
+    final examClash = _mandatoryExamClash(mandatoryCourses);
+    if (examClash != null) throw Exception(examClash);
 
     // Chosen on the generator screen, not inferred from what happens to be
     // selected — see TimetableConstraints.creditBasis.
@@ -475,104 +485,154 @@ class TimetableGenerator {
     );
   }
 
+  /// The grid cells a section occupies, as `"day_hour"` keys.
+  static Set<String> _cells(Section section) {
+    final cells = <String>{};
+    for (final entry in section.schedule) {
+      for (final day in entry.days) {
+        for (final hour in entry.hours) {
+          cells.add('${day}_$hour');
+        }
+      }
+    }
+    return cells;
+  }
+
+  /// One course's own L × P × T choices, each with the cells it occupies.
+  ///
+  /// A component whose sections are all unscheduled contributes nothing, which
+  /// leaves the course unplaceable — same outcome as before, when such a
+  /// section made every combination containing it invalid.
+  static List<_Partial> _courseChoices(Course course) {
+    final byType = <SectionType, List<Section>>{};
+    for (final section in course.sections) {
+      (byType[section.type] ??= []).add(section);
+    }
+
+    var combos = <_Partial>[(const [], const {})];
+    for (final type in SectionType.values) {
+      final sections = byType[type];
+      if (sections == null) continue;
+
+      final next = <_Partial>[];
+      for (final (picked, occupied) in combos) {
+        for (final section in sections) {
+          final cells = _cells(section);
+          if (cells.isEmpty) continue; // no scheduled time — nothing to place
+          if (cells.any(occupied.contains)) continue; // L and P of the same course collide
+          next.add((
+            [
+              ...picked,
+              ConstraintSelectedSection(
+                courseCode: course.courseCode,
+                sectionId: section.sectionId,
+                section: section,
+              ),
+            ],
+            {...occupied, ...cells},
+          ));
+        }
+      }
+      if (next.isEmpty) return const [];
+      combos = next;
+    }
+
+    return combos.first.$1.isEmpty ? const [] : combos;
+  }
+
   static List<List<ConstraintSelectedSection>> _generateAllCombinations(List<Course> courses) {
     if (courses.isEmpty) return [];
 
-    List<List<ConstraintSelectedSection>> combinations = [[]];
+    var partials = <_Partial>[(const [], const {})];
 
     for (final course in courses) {
-      final newCombinations = <List<ConstraintSelectedSection>>[];
-      
-      // Group sections by type for this course
-      final lectureSection = course.sections.where((s) => s.type == SectionType.L).toList();
-      final practicalSections = course.sections.where((s) => s.type == SectionType.P).toList();
-      final tutorialSections = course.sections.where((s) => s.type == SectionType.T).toList();
-      
-      
+      final choices = _courseChoices(course);
+      if (choices.isEmpty) return []; // course cannot be placed at all
 
-      for (final combination in combinations) {
-        // Handle courses with lecture sections
-        if (lectureSection.isNotEmpty) {
-          for (final lSection in lectureSection) {
-            final newCombination = [...combination];
-            newCombination.add(ConstraintSelectedSection(
-              courseCode: course.courseCode,
-              sectionId: lSection.sectionId,
-              section: lSection,
-            ));
-
-            // Add practical if available
-            if (practicalSections.isNotEmpty) {
-              for (final pSection in practicalSections) {
-                final withPractical = [...newCombination];
-                withPractical.add(ConstraintSelectedSection(
-                  courseCode: course.courseCode,
-                  sectionId: pSection.sectionId,
-                  section: pSection,
-                ));
-
-                // Add tutorial if available
-                if (tutorialSections.isNotEmpty) {
-                  for (final tSection in tutorialSections) {
-                    final withTutorial = [...withPractical];
-                    withTutorial.add(ConstraintSelectedSection(
-                      courseCode: course.courseCode,
-                      sectionId: tSection.sectionId,
-                      section: tSection,
-                    ));
-                    newCombinations.add(withTutorial);
-                  }
-                } else {
-                  newCombinations.add(withPractical);
-                }
-              }
-            } else if (tutorialSections.isNotEmpty) {
-              // Add tutorial without practical
-              for (final tSection in tutorialSections) {
-                final withTutorial = [...newCombination];
-                withTutorial.add(ConstraintSelectedSection(
-                  courseCode: course.courseCode,
-                  sectionId: tSection.sectionId,
-                  section: tSection,
-                ));
-                newCombinations.add(withTutorial);
-              }
-            } else {
-              // Only lecture
-              newCombinations.add(newCombination);
-            }
-          }
-        } else if (practicalSections.isNotEmpty) {
-          // Handle practical-only courses (no lecture sections)
-          for (final pSection in practicalSections) {
-            final newCombination = [...combination];
-            newCombination.add(ConstraintSelectedSection(
-              courseCode: course.courseCode,
-              sectionId: pSection.sectionId,
-              section: pSection,
-            ));
-            newCombinations.add(newCombination);
-          }
+      final next = <_Partial>[];
+      for (final (sections, occupied) in partials) {
+        for (final (add, cells) in choices) {
+          // Clashing partials are dropped here rather than at the end. The cap
+          // below discards whatever doesn't fit, so a partial that can never
+          // become a timetable would otherwise take a slot from one that can —
+          // which is how a whole first-year package (six courses, ten lab
+          // sections each) came back with nothing: every survivor of the cap
+          // still carried the same clashing lecture from the first course.
+          if (cells.any(occupied.contains)) continue;
+          next.add(([...sections, ...add], {...occupied, ...cells}));
         }
       }
-      
-      combinations = newCombinations;
-      
-      
-      // Limit combinations to prevent exponential explosion
-      if (combinations.length > AppLimits.combinationCap) {
 
-        combinations = combinations.take(AppLimits.combinationCap).toList();
-      }
-      
-      if (combinations.isEmpty) {
-        
-        return []; // Return empty if no combinations possible
-      }
+      if (next.isEmpty) return []; // nothing clash-free left to build on
+      partials = next.length > AppLimits.combinationCap
+          ? _thin(next, AppLimits.combinationCap)
+          : next;
     }
 
-    
-    return combinations;
+    return [for (final (sections, _) in partials) sections];
+  }
+
+  /// [limit] items spread evenly across [items], rather than the first [limit].
+  ///
+  /// The product is built in order, so taking the front pins the courses added
+  /// earliest to their first few sections — the later ones absorb the whole
+  /// cut. A stride keeps every course's choices represented.
+  ///
+  /// ponytail: even sampling, not search. If a package ever needs a specific
+  /// rare combination that the stride misses, this wants a real constraint
+  /// solver, not a bigger cap.
+  static List<T> _thin<T>(List<T> items, int limit) {
+    final step = items.length / limit;
+    return [for (var i = 0; i < limit; i++) items[(i * step).floor()]];
+  }
+
+  /// The first pair of mandatory courses that cannot share a week, whichever
+  /// sections are picked — or null when the block is elsewhere.
+  ///
+  /// Only worth asking once a run has come back empty: it re-places every pair.
+  /// "No valid timetables found" is true but useless when the cause is two
+  /// courses that BITS scheduled on top of each other, which a first-year
+  /// package can genuinely be.
+  static (String, String)? blockingPair(
+    List<Course> availableCourses,
+    TimetableConstraints constraints,
+  ) {
+    final mandatory = availableCourses
+        .where((c) => constraints.mandatoryCourses.contains(c.courseCode))
+        .toList();
+    for (var i = 0; i < mandatory.length; i++) {
+      for (var j = i + 1; j < mandatory.length; j++) {
+        if (_generateAllCombinations([mandatory[i], mandatory[j]]).isEmpty) {
+          return (mandatory[i].courseCode, mandatory[j].courseCode);
+        }
+      }
+    }
+    return null;
+  }
+
+  /// The first pair of [courses] whose midsems or compres collide, phrased for
+  /// the student, or null when the set is examinable as a whole.
+  static String? _mandatoryExamClash(List<Course> courses) {
+    final exams = <String, ExamSchedule? Function(Course)>{
+      'Midsem': (c) => c.midSemExam,
+      'Compre': (c) => c.endSemExam,
+    };
+    for (final kind in exams.entries) {
+      final seen = <String, String>{};
+      for (final course in courses) {
+        final exam = kind.value(course);
+        if (exam == null) continue;
+        final key = '${exam.date.toIso8601String()}_${exam.timeSlot}';
+        final other = seen[key];
+        if (other != null) {
+          return '${kind.key} clash: ${course.courseCode} and $other sit in the '
+              'same exam slot, so no timetable can hold both. Make one optional '
+              'or drop it.';
+        }
+        seen[key] = course.courseCode;
+      }
+    }
+    return null;
   }
 
   static bool _isValidCombination(List<ConstraintSelectedSection> sections, List<Course> courses) {

@@ -398,6 +398,120 @@ void main() {
       expect(ms, lessThan(2000));
     });
 
+    test('finds the one valid combo past the combination cap', () async {
+      // The shape a whole first-year package has: enough sections to blow the
+      // 10,000 cap, and only the last section of the FIRST course avoids the
+      // one course with no choice. Truncating the product to its first 10,000
+      // entries throws away every prefix that could work, so this used to
+      // report "no clash-free timetable" for a package that has one.
+      final blocked = makeSection(
+          sectionId: 'X1', days: [DayOfWeek.M], hours: [1]);
+      final courses = [
+        makeCourse(
+          courseCode: 'FIRST',
+          sections: [
+            for (var i = 0; i < 12; i++)
+              makeSection(
+                sectionId: 'L$i',
+                // Every section but the last sits on top of ONLY's slot.
+                days: const [DayOfWeek.M],
+                hours: i == 11 ? [2] : [1],
+              ),
+          ],
+        ),
+        // Three more of twelve sections each: 12^4 = 20,736 combinations, so
+        // the cap bites before the course that does the blocking is reached.
+        for (final day in [DayOfWeek.T, DayOfWeek.W, DayOfWeek.Th])
+          makeCourse(
+            courseCode: 'FILLER_${day.name}',
+            sections: List.generate(12, (i) => makeSection(
+              sectionId: 'L$i',
+              days: [day],
+              hours: [i + 1],
+            )),
+          ),
+        makeCourse(courseCode: 'ONLY', sections: [blocked]),
+      ];
+
+      final sw = Stopwatch()..start();
+      final results = await TimetableGenerator.generateTimetables(
+        courses,
+        TimetableConstraints(
+          mandatoryCourses: courses.map((c) => c.courseCode).toList(),
+        ),
+      );
+      sw.stop();
+      _record('valid combo past the cap', results.isNotEmpty, sw.elapsedMilliseconds);
+
+      expect(results, isNotEmpty);
+      for (final tt in results) {
+        expect(tt.sections.map((s) => s.courseCode).toSet(),
+            courses.map((c) => c.courseCode).toSet());
+        // The only lecture of FIRST that doesn't sit on ONLY.
+        expect(
+          tt.sections.firstWhere((s) => s.courseCode == 'FIRST').sectionId,
+          'L11',
+        );
+      }
+    });
+
+    test('names the pair of courses that cannot share a week', () async {
+      // The real shape: BITS F234's only lecture sits on MGTS U102's L1, and
+      // its lab sits on L2, so the package has no arrangement at all.
+      final courses = [
+        makeCourse(courseCode: 'BITS F234', sections: [
+          makeSection(sectionId: 'L1', days: [DayOfWeek.M], hours: [4]),
+          makeSection(
+              sectionId: 'P1',
+              type: SectionType.P,
+              days: [DayOfWeek.W],
+              hours: [4, 5]),
+        ]),
+        makeCourse(courseCode: 'MGTS U102', sections: [
+          makeSection(sectionId: 'L1', days: [DayOfWeek.M], hours: [4]),
+          makeSection(sectionId: 'L2', days: [DayOfWeek.W], hours: [4]),
+        ]),
+        makeCourse(courseCode: 'FINE', sections: [
+          makeSection(sectionId: 'L1', days: [DayOfWeek.T], hours: [1]),
+        ]),
+      ];
+      final constraints = TimetableConstraints(
+        mandatoryCourses: courses.map((c) => c.courseCode).toList(),
+      );
+
+      expect(await TimetableGenerator.generateTimetables(courses, constraints),
+          isEmpty);
+      expect(TimetableGenerator.blockingPair(courses, constraints),
+          ('BITS F234', 'MGTS U102'));
+    });
+
+    test('names the exam clash that makes a package impossible', () async {
+      final exam = ExamSchedule(
+          date: DateTime(2026, 12, 11), timeSlot: TimeSlot.FN);
+      final courses = [
+        makeCourse(
+            courseCode: 'PHY U101',
+            endSemExam: exam,
+            sections: [makeSection(days: [DayOfWeek.M], hours: [1])]),
+        makeCourse(
+            courseCode: 'CS U111',
+            endSemExam: exam,
+            sections: [makeSection(days: [DayOfWeek.T], hours: [1])]),
+      ];
+
+      expect(
+        () => TimetableGenerator.generateTimetables(
+          courses,
+          TimetableConstraints(
+              mandatoryCourses: ['PHY U101', 'CS U111']),
+        ),
+        throwsA(predicate((e) =>
+            e.toString().contains('Compre clash') &&
+            e.toString().contains('CS U111') &&
+            e.toString().contains('PHY U101'))),
+      );
+    });
+
     test('handles pathological input without hanging', () async {
       final sw = Stopwatch()..start();
       // 6 courses with 4 sections each = 4^6 = 4096 combos (within 10k cap)
