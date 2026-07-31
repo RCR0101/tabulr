@@ -323,7 +323,7 @@ abstract final class AppLimits {
   /// guessed limit refuses real course choices, which is worse than not
   /// checking. The count is still shown — only the ceiling is absent. Set this
   /// to the published figure and every check below starts enforcing it.
-  static const double? semesterCreditHourCap = null;
+  static const double? semesterCreditHourCap = 70.0;
 
   static const int maxUndoStackSize = 50;
   static const int combinationCap = 10000;
