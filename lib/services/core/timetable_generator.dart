@@ -448,8 +448,11 @@ class TimetableGenerator {
       // Measured on the run's own basis: an hours course has no unit count, so
       // reading totalCredits here would score every one of them as free.
       final optAmount = optCourse.variantOn(basis)?.amount ?? 0;
-      final cap = capFor(basis) ?? constraints.maxCredits;
-      if (basis == CreditBasis.units && currentCredits + optAmount > cap) continue;
+      // The caller's ceiling wins when it set one; otherwise the published cap
+      // for this basis. Applied to both bases — skipping the check on hours let
+      // a 2026 run pack a timetable past 70 contact hours.
+      final cap = constraints.maxCredits ?? capFor(basis);
+      if (currentCredits + optAmount > cap) continue;
 
       final sectionCombos = _generateAllCombinations([optCourse]);
       List<ConstraintSelectedSection>? bestCombo;
@@ -541,7 +544,13 @@ class TimetableGenerator {
   }
 
   static List<List<ConstraintSelectedSection>> _generateAllCombinations(List<Course> courses) {
-    if (courses.isEmpty) return [];
+    // One way to place nothing — the empty combination — not zero ways. The
+    // difference matters only for the mandatory list: returning [] there made
+    // the outer loop skip every ordering, so a run with nothing compulsory and
+    // a pile of optionals (which is what trimming an overloaded timetable is)
+    // came back empty. `choices.isEmpty` below is the genuine "no combinations"
+    // case and still returns [].
+    if (courses.isEmpty) return [const []];
 
     var partials = <_Partial>[(const [], const {})];
 

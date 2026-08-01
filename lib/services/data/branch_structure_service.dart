@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/cdc_slot.dart';
+import '../../models/elective_pool.dart';
 import '../../utils/branch_constants.dart' as constants;
 import '../../constants/app_constants.dart';
 import 'local_cache_service.dart';
@@ -139,6 +140,31 @@ class BranchStructureService {
   Future<List<String>> getHUELs(String branchCode) async {
     final data = await getBranchData(branchCode);
     return data.huels;
+  }
+
+  /// The DEL / HUEL / CDC code sets for a degree, in one pass.
+  ///
+  /// The same three lookups [OpenElectivesService] makes, kept together so a
+  /// caller that wants to ask "which pool is this course in?" for a whole
+  /// catalogue resolves them once instead of per course. All CDC semesters are
+  /// included: none of your cores is an open elective, whichever term it falls
+  /// in.
+  ///
+  /// Returns [ElectivePools.empty] when no branch is known — a filter that
+  /// cannot classify has to pass everything rather than hide the catalogue.
+  Future<ElectivePools> electivePoolsFor(List<String?> branchCodes) async {
+    final codes = branchCodes.whereType<String>().where((b) => b.isNotEmpty);
+    if (codes.isEmpty) return ElectivePools.empty;
+
+    final cdcs = <String>{};
+    final dels = <String>{};
+    final huels = <String>{};
+    for (final branch in codes) {
+      cdcs.addAll(await getCDCs(branch, null));
+      dels.addAll(await getDELs(branch));
+      huels.addAll(await getHUELs(branch));
+    }
+    return ElectivePools(cdcs: cdcs, dels: dels, huels: huels);
   }
 
   Future<Map<String, List<String>>> getMergedCDCs(

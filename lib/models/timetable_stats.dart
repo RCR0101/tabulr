@@ -257,14 +257,10 @@ class TimetableStats {
   /// Days that have at least one class.
   int get classDayCount => hoursPerDay.values.where((h) => h > 0).length;
 
-  /// The ceiling for this timetable's basis, or null when there is none —
-  /// credit hours have no published cap yet.
-  double? get creditCap => capFor(creditBasis);
+  /// The ceiling for this timetable's basis: 25 units, or 70 contact hours.
+  double get creditCap => capFor(creditBasis);
 
-  bool get isOverCreditCap {
-    final cap = creditCap;
-    return cap != null && totalCredits > cap;
-  }
+  bool get isOverCreditCap => totalCredits > creditCap;
 
   int get worstClusterSize =>
       examClusters.isEmpty ? 0 : examClusters.map((c) => c.exams.length).reduce((a, b) => a > b ? a : b);

@@ -55,7 +55,21 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     _loadCourses();
   }
 
+  /// The timetable's own catalog wins over a fresh fetch.
+  ///
+  /// The caller already hands us the list the timetable was built against, and
+  /// a timetable from a past term carries a different one — browsing the live
+  /// catalogue there offers courses that timetable cannot accept, and the
+  /// section ids would not match. Only fetch when nothing was passed.
   Future<void> _loadCourses() async {
+    if (widget.availableCourses.isNotEmpty) {
+      setState(() {
+        _availableCourses = widget.availableCourses;
+        _filteredCourses = widget.availableCourses;
+        _isLoading = false;
+      });
+      return;
+    }
     try {
       final courses = await _courseDataService.fetchCourses();
       setState(() {
@@ -383,6 +397,30 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     );
   }
 
+  /// The column label on desktop, where the two panes sit side by side and
+  /// neither has a tab naming it.
+  Widget _sectionHeader(IconData icon, String title) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        color: Theme.of(context)
+            .colorScheme
+            .surfaceContainerHighest
+            .withValues(alpha: 0.5),
+        child: Row(
+          children: [
+            Icon(icon, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      );
+
   Widget _buildCurrentCoursesSection() {
     // Group selected sections by course code
     final currentCourses = <String, List<SelectedSection>>{};
@@ -393,22 +431,11 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          child: Row(
-            children: [
-              Icon(Icons.schedule, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 8),
-              Text(
-                'Current Timetable',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
+        // Desktop only. The two columns need labelling; on a phone the tab is
+        // already called "Current" and the app bar already says Add/Swap
+        // Courses, so this banner said the same thing a third time and cost a
+        // whole course card of height doing it.
+        if (!ResponsiveService.isMobile(context)) _sectionHeader(Icons.schedule, 'Current Timetable'),
         Expanded(
           child: currentCourses.isEmpty
               ? const EmptyStateWidget(
@@ -483,12 +510,17 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
+                                      // No "Section" prefix: the badge to the
+                                      // left already says which component this
+                                      // is, and the word repeated down every
+                                      // row pushed the instructor off the edge.
                                       child: Text(
-                                        'Section ${selectedSection.sectionId}${selectedSection.section.instructor.isNotEmpty ? ' - ${selectedSection.section.instructor}' : ''}',
+                                        '${selectedSection.sectionId}${selectedSection.section.instructor.isNotEmpty ? ' · ${selectedSection.section.instructor}' : ''}',
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                                         ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   ],
@@ -496,48 +528,26 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                               );
                             }),
                             // Show exam information if available
+                            // A bordered, filled box inside a bordered card,
+                            // captioned "Exams" above two rows that already
+                            // say MS and CE. The rows carry their own labels,
+                            // so a hairline is enough to separate them.
                             if (course.midSemExam != null || course.endSemExam != null) ...[
                               const SizedBox(height: 8),
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
-                                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-                                  ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.schedule_outlined,
-                                          size: 14,
-                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          'Exams',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 11,
-                                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 6),
-                                    if (course.midSemExam != null) ...[
-                                      _buildCompactExamInfo('Mid-Sem', course.midSemExam!),
-                                      if (course.endSemExam != null) const SizedBox(height: 3),
-                                    ],
-                                    if (course.endSemExam != null)
-                                      _buildCompactExamInfo('Comprehensive', course.endSemExam!),
-                                  ],
-                                ),
+                              Divider(
+                                height: 1,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .outline
+                                    .withValues(alpha: 0.2),
                               ),
+                              const SizedBox(height: 8),
+                              if (course.midSemExam != null) ...[
+                                _buildCompactExamInfo('Mid-Sem', course.midSemExam!),
+                                if (course.endSemExam != null) const SizedBox(height: 4),
+                              ],
+                              if (course.endSemExam != null)
+                                _buildCompactExamInfo('Comprehensive', course.endSemExam!),
                             ],
                           ],
                         ),
@@ -563,27 +573,13 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
   }
 
   Widget _buildNewCoursesSection() {
+    final isMobile = ResponsiveService.isMobile(context);
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          child: Row(
-            children: [
-              Icon(Icons.add_circle_outline, color: Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 8),
-              Text(
-                'Add/Swap Courses',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
+        if (!isMobile) _sectionHeader(Icons.add_circle_outline, 'Add/Swap Courses'),
         // Search and filters
         Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(16, isMobile ? 8 : 16, 16, isMobile ? 8 : 16),
           child: Column(
             children: [
               SearchFilterWidget(
@@ -593,7 +589,76 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                   _filterCourses();
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              // One compact row on a phone. These three were stacked
+              // full-width, which put ~340 logical pixels of chrome above the
+              // first course — the list is what the screen is for, and it
+              // started below the fold.
+              if (isMobile)
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _isCheckingAll
+                            ? null
+                            : () {
+                                ResponsiveService.triggerMediumFeedback(context);
+                                _checkAllCourses();
+                              },
+                        icon: _isCheckingAll
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.checklist, size: 16),
+                        label: Text(_isCheckingAll ? 'Checking…' : 'Check all',
+                            style: const TextStyle(fontSize: 13)),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Only worth a slot once there is a selection to clear;
+                    // a permanently greyed button is just a smaller list.
+                    if (_selectedSections.isNotEmpty) ...[
+                      IconButton(
+                        onPressed: () {
+                          ResponsiveService.triggerSelectionFeedback(context);
+                          _clearSelection();
+                        },
+                        icon: const Icon(Icons.clear, size: 18),
+                        tooltip: 'Clear selection',
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _isValidating ? null : () {
+                          ResponsiveService.triggerMediumFeedback(context);
+                          _validateSelection();
+                        },
+                        icon: _isValidating
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.verified_user, size: 16),
+                        label: Text(_isValidating ? 'Checking…' : 'Validate',
+                            style: const TextStyle(fontSize: 13)),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              else ...[
               // Check All button
               SizedBox(
                 width: double.infinity,
@@ -624,53 +689,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
               // Action buttons - responsive layout
               ResponsiveService.buildResponsive(
                 context,
-                mobile: Column(
-                  children: [
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _selectedSections.isEmpty ? null : () {
-                          ResponsiveService.triggerSelectionFeedback(context);
-                          _clearSelection();
-                        },
-                        icon: Icon(Icons.clear, size: ResponsiveService.getAdaptiveIconSize(context, 18)),
-                        label: const Text('Clear Selection'),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: Size(
-                            double.infinity,
-                            ResponsiveService.getTouchTargetSize(context),
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _isValidating ? null : () {
-                          ResponsiveService.triggerMediumFeedback(context);
-                          _validateSelection();
-                        },
-                        icon: _isValidating
-                            ? SizedBox(
-                                width: ResponsiveService.getAdaptiveIconSize(context, 16),
-                                height: ResponsiveService.getAdaptiveIconSize(context, 16),
-                                child: const CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : Icon(Icons.verified_user, size: ResponsiveService.getAdaptiveIconSize(context, 18)),
-                        label: Text(_isValidating ? 'Validating...' : 'Validate Selection'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                          minimumSize: Size(
-                            double.infinity,
-                            ResponsiveService.getTouchTargetSize(context),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                mobile: const SizedBox.shrink(),
                 tablet: Row(
                   children: [
                     Expanded(
@@ -744,6 +763,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                   ],
                 ),
               ),
+              ],
             ],
           ),
         ),

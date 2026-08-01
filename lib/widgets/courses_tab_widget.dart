@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../constants/app_constants.dart';
 import '../models/academic_record.dart';
 import '../models/course.dart';
 import '../models/credit_mix.dart';
@@ -149,24 +148,23 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
 
   Widget _buildStickyCreditsBar(CreditMix mix) {
     final selectedCoursesCodes = widget.selectedSections.map((s) => s.courseCode).toSet();
-    // Units only. Credit hours are counted and shown separately because they
-    // are a different quantity — adding them here would report a number that
-    // matches no rule the registrar has.
+    // The two bases are kept apart because they are different quantities —
+    // adding them would report a number that matches no rule the registrar has.
     final courseCredits = mix.amountFor(CreditBasis.units);
     final creditHours = mix.amountFor(CreditBasis.hours);
 
-    final projectCredits = widget.projectCount * 3;
-    final totalCredits = courseCredits + projectCredits;
     final scheme = Theme.of(context).colorScheme;
     final inHours = widget.creditBasis == CreditBasis.hours;
-    // Credit hours have no published ceiling, so there is nothing to be over
-    // and nothing to print after the slash — "0/25 credits" beside a
-    // credit-hours load is a limit nobody set, against a count it is not even
-    // measuring.
+
+    // Projects are worth 3 units each and have no hours figure, so they only
+    // load a unit total; the counter below is hidden on an hours timetable.
+    final projectCredits = widget.projectCount * 3;
+    // Measured on this timetable's own basis against that basis's ceiling.
+    // Reading units off an hours timetable gives 0, which never trips the cap.
+    final total = inHours ? creditHours : courseCredits + projectCredits;
     final cap = capFor(widget.creditBasis);
-    final isOver = cap != null && totalCredits > cap;
-    final canAddProject =
-        (cap == null || totalCredits + 3 <= cap) && widget.projectCount < 8;
+    final isOver = total > cap;
+    final canAddProject = total + 3 <= cap && widget.projectCount < 8;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -179,10 +177,8 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
           Icon(Icons.school, size: 16, color: isOver ? scheme.error : scheme.primary),
           const SizedBox(width: 6),
           Text(
-            inHours
-                ? '${creditHours % 1 == 0 ? creditHours.toInt() : creditHours.toStringAsFixed(1)} credit hours'
-                : '${totalCredits % 1 == 0 ? totalCredits.toInt() : totalCredits.toStringAsFixed(1)}'
-                    '${cap == null ? '' : '/${cap.toInt()}'} credits',
+            '${total % 1 == 0 ? total.toInt() : total.toStringAsFixed(1)}'
+            '/${cap.toInt()} ${widget.creditBasis.label}',
             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isOver ? scheme.error : scheme.primary),
           ),
           // Only when the timetable is NOT already reporting in hours — this is
@@ -221,7 +217,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
           InkWell(
             onTap: canAddProject
                 ? () { widget.onProjectCountChanged(widget.projectCount + 1); }
-                : () { if (totalCredits + 3 > AppLimits.semesterCreditCap) ToastService.showError('Cannot add project — would exceed ${AppLimits.semesterCreditCap.toInt()} credit limit'); },
+                : () { if (total + 3 > cap) ToastService.showError('Cannot add project — would exceed the ${cap.toInt()} ${widget.creditBasis.label} limit'); },
             child: Icon(Icons.add_circle_outline, size: 16, color: canAddProject ? scheme.primary : scheme.onSurface.withValues(alpha: AppDesign.opacityLow)),
           ),
           if (widget.projectCount > 0) ...[

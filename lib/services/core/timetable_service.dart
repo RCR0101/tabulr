@@ -631,7 +631,15 @@ class TimetableService {
     }
   }
 
-  Future<Timetable> createNewTimetable(String name) async {
+  /// [creditBasis] is what the new timetable counts in. Passed by every caller
+  /// that already knows — a generator run, a sample, an imported share — because
+  /// defaulting to units silently restates a 2026-batch timetable as a
+  /// 2025-batch one, and the editor then refuses to add any more hours courses
+  /// to it.
+  Future<Timetable> createNewTimetable(
+    String name, {
+    CreditBasis creditBasis = CreditBasis.units,
+  }) async {
     invalidateCache();
     final now = DateTime.now();
     final id = now.millisecondsSinceEpoch.toString();
@@ -653,6 +661,7 @@ class TimetableService {
       availableCourses: courses,
       selectedSections: [],
       clashWarnings: [],
+      creditBasis: creditBasis,
       // Stamped at creation so a rollover can later tell this timetable apart
       // from one built against the new catalog.
       term: ConfigService().currentTerm.isEmpty ? null : ConfigService().currentTerm,

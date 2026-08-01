@@ -1,4 +1,3 @@
-import '../constants/app_constants.dart';
 import 'course.dart';
 
 /// User preferences fed to [TimetableGenerator.generateTimetables].
@@ -15,7 +14,13 @@ class TimetableConstraints {
   /// Cap on how many [optionalCourses] to include ("any N of M"). Null means
   /// fit as many as credits and clashes allow.
   final int? optionalTarget;
-  final double maxCredits;
+
+  /// Ceiling on the run's total load, in whatever [creditBasis] counts.
+  ///
+  /// Null means "the published cap for that basis" — which is the right default
+  /// precisely because it differs per basis: hard-coding 25 here measured a
+  /// contact-hours run against the unit cap.
+  final double? maxCredits;
 
   /// What this run counts in. Explicit rather than inferred from the mandatory
   /// courses: with none selected there is nothing to infer from, and a student
@@ -54,7 +59,7 @@ class TimetableConstraints {
     this.mandatoryCourses = const [],
     this.optionalCourses = const [],
     this.optionalTarget,
-    this.maxCredits = AppLimits.semesterCreditCap,
+    this.maxCredits,
     this.creditBasis = CreditBasis.units,
     this.avoidTimes = const [],
     this.avoidLabs = const [],

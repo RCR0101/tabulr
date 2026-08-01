@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_constants.dart';
 import '../models/course.dart';
+import '../models/elective_pool.dart';
 import '../models/timetable_selection_link.dart';
 import '../services/core/clash_detector.dart';
 import '../services/data/campus_service.dart';
@@ -21,39 +22,6 @@ import '../widgets/common/app_search_field.dart';
 import '../widgets/common/inline_error_card.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/elective_course_list.dart';
-
-/// The three elective pools a student picks from.
-enum ElectivePool {
-  discipline('Discipline', 'DEL', Icons.school_outlined),
-  humanities('Humanities', 'HUEL', Icons.library_books_outlined),
-  open('Open', 'OPEL', Icons.explore_outlined);
-
-  const ElectivePool(this.label, this.short, this.icon);
-
-  final String label;
-  final String short;
-  final IconData icon;
-
-  /// Whether the pool's *contents* depend on the semester.
-  ///
-  /// False for Open Electives — the pool is "everything outside your
-  /// requirements", which does not vary by term. The semester control stays
-  /// live for it regardless, because the clash filter needs to know which CDCs
-  /// you are taking, and those very much depend on the semester.
-  bool get membershipVariesBySemester => this != ElectivePool.open;
-
-  String get blurb => switch (this) {
-        ElectivePool.discipline =>
-          'Electives from your own discipline, filtered to what is offered '
-              'this semester and does not clash with your core courses.',
-        ElectivePool.humanities =>
-          'The HUEL pool for your branch and semester.',
-        ElectivePool.open =>
-          'Every offered course outside the CDC, DEL and HUEL requirements of '
-              'your branch. A DEL counts as an OPEL once your DEL requirement '
-              'is met, and a HUEL once your HUEL requirement is met.',
-      };
-}
 
 /// Per-pool results. Each tab loads on first view and then only when the shared
 /// branch/semester selection changes, so switching tabs is instant.

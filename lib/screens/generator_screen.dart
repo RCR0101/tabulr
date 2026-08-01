@@ -23,10 +23,16 @@ class GeneratorSelection {
   final GeneratorApplyMode mode;
   final String suggestedName;
 
+  /// What the run counted in. Carried so the receiving timetable is restated on
+  /// the same basis — applying a contact-hours run onto a units timetable
+  /// otherwise leaves it holding both at once.
+  final CreditBasis creditBasis;
+
   GeneratorSelection({
     required this.sections,
     required this.mode,
     required this.suggestedName,
+    this.creditBasis = CreditBasis.units,
   });
 }
 
@@ -112,7 +118,8 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
       if (mode == GeneratorApplyMode.saveAsNew) {
         // Persist it as its own timetable and stay on the generator so the user
         // can keep saving more options. Only "apply to current" leaves.
-        _saveAsNewTimetable(timetableSections, suggestedName);
+        _saveAsNewTimetable(
+            timetableSections, suggestedName, generated.creditBasis);
       } else {
         Navigator.pop(
           context,
@@ -120,6 +127,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
             sections: timetableSections,
             mode: mode,
             suggestedName: suggestedName,
+            creditBasis: generated.creditBasis,
           ),
         );
       }
@@ -171,9 +179,11 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
   Future<void> _saveAsNewTimetable(
     List<timetable.SelectedSection> sections,
     String suggestedName,
+    CreditBasis basis,
   ) async {
     try {
-      final tt = await SampleTimetableService.saveAsNew(sections, suggestedName);
+      final tt = await SampleTimetableService.saveAsNew(sections, suggestedName,
+          basis: basis);
       if (!mounted) return;
       ToastService.showSuccess('Saved as new timetable "${tt.name}"');
     } catch (e) {

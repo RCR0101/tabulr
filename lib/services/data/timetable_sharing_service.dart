@@ -1,6 +1,7 @@
 import 'dart:math';
 import '../ui/secure_logger.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../models/course.dart';
 import '../../models/timetable.dart';
 import 'auth_service.dart';
 import 'campus_service.dart';
@@ -14,6 +15,10 @@ class SharedTimetableData {
   final List<SelectedSection> sections;
   final DateTime createdAt;
 
+  /// What the shared timetable counts in. Defaults to units for shares written
+  /// before the field existed, which is what they all were.
+  final CreditBasis creditBasis;
+
   SharedTimetableData({
     required this.code,
     required this.name,
@@ -21,6 +26,7 @@ class SharedTimetableData {
     required this.campus,
     required this.sections,
     required this.createdAt,
+    this.creditBasis = CreditBasis.units,
   });
 }
 
@@ -56,6 +62,10 @@ class TimetableSharingService {
       'ownerId': _authService.userDocId,
       'campus': campus,
       'sections': sectionsJson,
+      // Without this the receiver rebuilds a 2026-batch timetable as a units
+      // one: the com cods survive on the sections, but the timetable itself
+      // reopens filtered to the wrong half of the catalogue.
+      'creditBasis': timetable.creditBasis.name,
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
@@ -119,6 +129,8 @@ class TimetableSharingService {
       ownerName: _sanitize(data['ownerName'] as String? ?? 'Unknown'),
       campus: _sanitize(data['campus'] as String? ?? ''),
       sections: sections,
+      creditBasis: CreditBasis.values.asNameMap()[data['creditBasis']] ??
+          CreditBasis.units,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }

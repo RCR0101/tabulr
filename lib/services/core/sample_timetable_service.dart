@@ -20,12 +20,17 @@ class SampleTimetables {
   const SampleTimetables({
     required this.codes,
     required this.samples,
+    this.basis = CreditBasis.units,
     this.blocking,
   });
 
   /// The CDC course codes the package asked for. Empty when the branch has
   /// nothing published for that semester on this campus.
   final List<String> codes;
+
+  /// What the package is counted in, and so what any timetable saved from these
+  /// samples has to be stamped with.
+  final CreditBasis basis;
 
   final List<RankedTimetable> samples;
 
@@ -47,7 +52,7 @@ abstract final class SampleTimetableService {
     required String semester,
     required List<Course> availableCourses,
     Set<String> chosen = const {},
-    int limit = 5,
+    int limit = 20,
   }) async {
     final codes = await AutoLoadCDCService().loadCDCCodesForDegree(
       primaryBranch: primaryBranch,
@@ -60,9 +65,10 @@ abstract final class SampleTimetableService {
       return const SampleTimetables(codes: [], samples: []);
     }
 
+    final basis = _basisFor(codes, availableCourses);
     final constraints = TimetableConstraints(
       mandatoryCourses: codes,
-      creditBasis: _basisFor(codes, availableCourses),
+      creditBasis: basis,
     );
     final generated = await TimetableGenerator.generateTimetables(
       availableCourses,
@@ -77,6 +83,7 @@ abstract final class SampleTimetableService {
     return SampleTimetables(
       codes: codes,
       samples: ranked,
+      basis: basis,
       // Only worth the second search when there is nothing to show: it re-runs
       // the combination builder over every pair of courses.
       blocking: ranked.isEmpty
@@ -101,13 +108,19 @@ abstract final class SampleTimetableService {
 
   /// Saves [sections] as a timetable of their own, leaving anything already
   /// open untouched. Returns the new timetable.
+  ///
+  /// [basis] is what the run counted in, and has to be stamped on the new
+  /// timetable: the sections carry their com cods, but a timetable left on the
+  /// default basis reopens filtered to the wrong half of the catalogue.
   static Future<Timetable> saveAsNew(
     List<SelectedSection> sections,
-    String name,
-  ) async {
+    String name, {
+    CreditBasis basis = CreditBasis.units,
+  }) async {
     final service = TimetableService();
     final tt = await service.createNewTimetable(
-        name.trim().isEmpty ? 'Generated timetable' : name.trim());
+        name.trim().isEmpty ? 'Generated timetable' : name.trim(),
+        creditBasis: basis);
     for (final section in sections) {
       await service.addSection(section.courseCode, section.sectionId, tt);
     }
@@ -129,8 +142,9 @@ abstract final class SampleTimetableService {
   static Future<void> overwrite(
     Timetable target,
     List<SelectedSection> sections,
-    List<Course> catalog,
-  ) async {
+    List<Course> catalog, {
+    CreditBasis basis = CreditBasis.units,
+  }) async {
     final service = TimetableService();
     for (final existing in List<SelectedSection>.of(target.selectedSections)) {
       service.removeSectionWithoutSaving(
@@ -139,6 +153,9 @@ abstract final class SampleTimetableService {
     target.availableCourses
       ..clear()
       ..addAll(catalog);
+    // Everything the target used to hold is gone, so its old basis is gone with
+    // it — it now counts whatever the replacing sections count in.
+    target.creditBasis = basis;
     for (final section in sections) {
       service.addSectionWithoutSaving(
           section.courseCode, section.sectionId, target);

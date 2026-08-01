@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../constants/app_constants.dart';
 import '../models/course.dart';
+import '../models/credit_mix.dart';
 import '../services/core/clash_detector.dart';
 import '../services/data/campus_service.dart';
 import '../models/timetable.dart';
@@ -30,7 +30,7 @@ enum TimetableBypass {
   /// Two sections meeting in the same grid cell.
   sectionClash,
 
-  /// Semester load above [AppLimits.semesterCreditCap].
+  /// Semester load above the ceiling for the timetable's basis — see [capFor].
   creditLimit,
 }
 
@@ -365,13 +365,19 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       _clashStatus((w) => w.type == ClashType.regularClass);
 
   /// The credit row's status line, shown only while over the cap.
+  ///
+  /// Measured against the ceiling for this timetable's own basis: a 2026-batch
+  /// timetable counts contact hours against 70, not units against 25, and the
+  /// noun has to follow the number or half the students read the wrong one.
   String? get _creditStatus {
     final credits = widget.currentCredits;
-    if (credits == null || credits <= AppLimits.semesterCreditCap) return null;
+    final basis = widget.creditBasis ?? CreditBasis.units;
+    final cap = capFor(basis);
+    if (credits == null || credits <= cap) return null;
     final fmt = credits == credits.roundToDouble()
         ? credits.toInt()
         : credits.toStringAsFixed(1);
-    return '$fmt/${AppLimits.semesterCreditCap.toInt()} credits — over limit';
+    return '$fmt/${cap.toInt()} ${basis.label} — over limit';
   }
 
   /// The clash/credit bypass switches. They live in a popup so the toolbar
@@ -1307,18 +1313,38 @@ class _TimetableWidgetState extends State<TimetableWidget> {
 
   // ── Exam schedule (export only) ───────────────────────────────────────────
 
+  /// Date order with "no exam" last rather than first, which is what a null
+  /// sorts as by default and would put the courses with nothing scheduled at
+  /// the top of a list read for what comes next.
+  static int _compareExamDates(DateTime? a, DateTime? b) {
+    if (a == null && b == null) return 0;
+    if (a == null) return 1;
+    if (b == null) return -1;
+    return a.compareTo(b);
+  }
+
   Widget _buildExamDatesForExport(BuildContext context, CoursePalette palette) {
     final courses = widget.availableCourses ?? [];
     final sections = widget.selectedSections ?? [];
     if (courses.isEmpty || sections.isEmpty) return const SizedBox.shrink();
 
     final selectedCodes = sections.map((s) => s.courseCode).toSet();
+    // Chronological by midsem, because the exported image is what a student
+    // pins up during exam week: they read it to find out what is next, and
+    // alphabetical by course code answers a question nobody asks. Courses with
+    // no midsem sort last — they have nothing to be next — and ties break on
+    // the compre date, then the code, so the order is stable across exports.
     final examCourses = courses
         .where((c) =>
             selectedCodes.contains(c.courseCode) &&
             (c.midSemExam != null || c.endSemExam != null))
         .toList()
-      ..sort((a, b) => a.courseCode.compareTo(b.courseCode));
+      ..sort((a, b) {
+        final byMid = _compareExamDates(a.midSemExam?.date, b.midSemExam?.date);
+        if (byMid != 0) return byMid;
+        final byEnd = _compareExamDates(a.endSemExam?.date, b.endSemExam?.date);
+        return byEnd != 0 ? byEnd : a.courseCode.compareTo(b.courseCode);
+      });
 
     if (examCourses.isEmpty) return const SizedBox.shrink();
 

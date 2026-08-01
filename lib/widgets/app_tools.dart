@@ -11,11 +11,13 @@ import '../screens/prerequisites_screen.dart';
 import '../screens/professors_screen.dart';
 import '../screens/sample_timetables_screen.dart';
 import '../screens/timetable_comparison_screen.dart';
+import '../screens/trim_timetable_screen.dart';
 import 'app_destinations.dart';
 
 /// Screens reached by pushing a route rather than switching the shell.
 enum AppTool {
   sampleTimetables,
+  trimTimetable,
   courseGuide,
   prerequisites,
   electives,
@@ -102,6 +104,17 @@ abstract final class AppTools {
             inEditorMenu: true,
             segment: 'sample-timetables',
             build: (link) => SampleTimetablesScreen(selectionLink: link),
+          ),
+        // No segment: a trim is meaningless without the timetable being
+        // trimmed, and that cannot be rebuilt from a URL.
+        AppTool.trimTimetable => AppToolInfo(
+            tool: tool,
+            icon: Icons.content_cut,
+            label: 'Trim to Fit',
+            description:
+                'Pick the best courses to keep from an overloaded timetable',
+            inEditorMenu: true,
+            build: (link) => TrimTimetableScreen(link: link),
           ),
         AppTool.courseGuide => AppToolInfo(
             tool: tool,

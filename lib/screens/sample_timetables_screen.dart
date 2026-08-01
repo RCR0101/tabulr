@@ -14,6 +14,7 @@ import '../utils/design_constants.dart';
 import '../widgets/auto_load_cdc_dialog.dart';
 import '../widgets/common/app_button.dart';
 import '../widgets/common/app_dialog.dart';
+import '../widgets/common/carousel_pager.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/sample_timetable_card.dart';
 
@@ -214,7 +215,8 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
 
   Future<void> _saveAsNew(List<tt.SelectedSection> sections, String name) async {
     try {
-      await SampleTimetableService.saveAsNew(sections, name);
+      await SampleTimetableService.saveAsNew(sections, name,
+          basis: _result?.basis ?? CreditBasis.units);
       if (!mounted) return;
       ToastService.showSuccess('Saved as "$name"');
     } catch (e) {
@@ -280,7 +282,8 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
     if (confirmed != true) return;
 
     try {
-      await SampleTimetableService.overwrite(target, sections, _courses);
+      await SampleTimetableService.overwrite(target, sections, _courses,
+          basis: _result?.basis ?? CreditBasis.units);
       if (!mounted) return;
       ToastService.showSuccess('Replaced "${target.name}"');
     } catch (e) {
@@ -424,39 +427,11 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
 
   /// Swipe position. The cards scroll horizontally, so there is nothing on
   /// screen to say how many there are or where you are in them.
-  Widget _pager(int count) {
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12, top: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          IconButton(
-            onPressed: _page == 0 ? null : () => _goTo(_page - 1),
-            icon: const Icon(Icons.chevron_left),
-            tooltip: 'Previous',
-          ),
-          for (var i = 0; i < count; i++)
-            Container(
-              width: 7,
-              height: 7,
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: i == _page
-                    ? scheme.primary
-                    : scheme.onSurface.withValues(alpha: 0.25),
-              ),
-            ),
-          IconButton(
-            onPressed: _page == count - 1 ? null : () => _goTo(_page + 1),
-            icon: const Icon(Icons.chevron_right),
-            tooltip: 'Next',
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _pager(int count) => CarouselPager(
+        page: _page,
+        count: count,
+        onGoTo: _goTo,
+      );
 
   void _goTo(int page) => _pageController.animateToPage(
         page,

@@ -2,20 +2,24 @@ import '../constants/app_constants.dart';
 import 'course.dart';
 import 'timetable.dart';
 
-/// The per-semester ceiling for [basis], or null when there is none.
-double? capFor(CreditBasis basis) => switch (basis) {
+/// The per-semester ceiling for [basis]. Both bases have one published now, so
+/// every caller measures its own total against this rather than against the
+/// unit cap — an hours load checked against 25 refuses a second course, and a
+/// unit load checked against 70 never refuses anything.
+double capFor(CreditBasis basis) => switch (basis) {
       CreditBasis.units => AppLimits.semesterCreditCap,
       CreditBasis.hours => AppLimits.semesterCreditHourCap,
     };
 
 /// What a set of selected courses counts in, and whether that is coherent.
 ///
-/// From 2026-27 a Pilani course can be taken two ways: under its ordinary com
-/// cod for units, or under the 2026-batch com cod for contact hours. A student
-/// belongs to one batch, so a timetable is one or the other — 4 units and 12
-/// credit hours describe the same course to different people, and adding them
-/// together produces a number that means nothing and a credit cap that cannot
-/// be checked.
+/// From 2026-27 a course can be taken two ways: under its ordinary com cod for
+/// units, or under the 2026-batch com cod for contact hours. Every campus
+/// prints some both ways, each in its own format. A student belongs to one
+/// batch, so a timetable is one or the other — 4 units and 12 credit hours
+/// describe the same course to different people, and adding them together
+/// produces a number that means nothing and a credit cap that cannot be
+/// checked.
 ///
 /// This is deliberately a report rather than a rule that refuses: the editor
 /// shows the mix and offers to drop one side, because which side is wrong is

@@ -8,7 +8,10 @@ void main() {
       final c = TimetableConstraints();
       expect(c.mandatoryCourses, isEmpty);
       expect(c.optionalCourses, isEmpty);
-      expect(c.maxCredits, 25);
+      // Null, not 25: the ceiling depends on what the run counts in, so the
+      // generator resolves it per basis rather than the constructor baking in
+      // the unit cap and measuring a contact-hours run against it.
+      expect(c.maxCredits, isNull);
       expect(c.maxHoursPerDay, 8);
       expect(c.avoidBackToBackClasses, isFalse);
       expect(c.minimizeGaps, isFalse);

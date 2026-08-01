@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:timetable_maker/screens/electives_screen.dart';
 import 'package:timetable_maker/models/course.dart';
+import 'package:timetable_maker/models/elective_pool.dart';
 import 'package:timetable_maker/models/timetable.dart';
 import 'package:timetable_maker/models/timetable_selection_link.dart';
 import 'package:timetable_maker/services/core/clash_detector.dart';

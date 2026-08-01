@@ -9,7 +9,10 @@ import '../models/course.dart';
 import '../utils/page_transitions.dart';
 import '../models/timetable.dart';
 import '../models/credit_mix.dart';
+import '../models/elective_pool.dart';
 import '../models/export_options.dart';
+import '../services/data/branch_structure_service.dart';
+import '../services/data/profile_service.dart';
 import '../services/core/timetable_service.dart';
 import '../utils/course_utils.dart';
 import '../services/ui/export_service.dart';
@@ -125,10 +128,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       w.type == ClashType.midSemExam || w.type == ClashType.endSemExam);
   bool get _hasSectionClash =>
       _currentClashes().any((w) => w.type == ClashType.regularClass);
-  bool get _isOverCreditCap {
-    final cap = capFor(creditBasis);
-    return cap != null && _currentTotalCredits() > cap;
-  }
+  bool get _isOverCreditCap => _currentTotalCredits() > capFor(creditBasis);
 
   /// Sets a bypass, refusing to turn it off while the violation it allowed is
   /// still on the grid — it stays on until the clash (or credit overage) is
@@ -144,7 +144,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
             ? 'A section clash is still on the grid — remove one of the clashing sections first.'
             : null,
         TimetableBypass.creditLimit => _isOverCreditCap
-            ? 'Still over the ${(capFor(creditBasis) ?? AppLimits.semesterCreditCap).toInt()} ${creditBasis.label} limit — remove a course first.'
+            ? 'Still over the ${capFor(creditBasis).toInt()} ${creditBasis.label} limit — remove a course first.'
             : null,
       };
       if (refusal != null) {
@@ -190,6 +190,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       },
       revision: _selectionRevision,
       timetableName: tt.name,
+      creditBasis: tt.creditBasis,
     );
   }
 
@@ -273,6 +274,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     super.initState();
     HardwareKeyboard.instance.addHandler(_handleGlobalCommandPaletteKey);
     _loadAcademicRecord();
+    loadElectivePools();
   }
 
   @override
@@ -434,6 +436,37 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   // Shared methods
   // -----------------------------------------------------------------------
 
+  /// DEL/HUEL/CDC membership for the student's own branch, resolved once.
+  ///
+  /// The search filter runs synchronously on every keystroke, so the async
+  /// lookup happens here instead of inside it — [BranchStructureService] caches,
+  /// but the filter cannot await regardless.
+  ElectivePools _electivePools = ElectivePools.empty;
+
+  /// Whether the elective-type chips are worth offering. Reads the profile
+  /// rather than the pools so the chips appear immediately, before the branch
+  /// data has come back.
+  bool get hasBranchForPools =>
+      (ProfileService().cached.primaryBranch ?? '').isNotEmpty;
+
+  /// Loads the pools in the background. Safe to call more than once; a failure
+  /// leaves [ElectivePools.empty], which the filter reads as "classify nothing"
+  /// and passes every course through.
+  Future<void> loadElectivePools() async {
+    final profile = ProfileService().cached;
+    if (!hasBranchForPools || !_electivePools.isEmpty) return;
+    try {
+      final pools = await BranchStructureService().electivePoolsFor(
+        [profile.primaryBranch, profile.secondaryBranch],
+      );
+      if (mounted) setState(() => _electivePools = pools);
+    } catch (e) {
+      SecureLogger.warning(
+          'EDITOR', 'Could not resolve elective pools (filter stays open)',
+          {'error': e.toString()});
+    }
+  }
+
   void onSearchChanged(String query, Map<String, dynamic> filters) {
     final tt = currentTimetable;
     if (tt == null) return;
@@ -497,6 +530,16 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         );
       }
 
+      // Elective type. Skipped entirely when the pools never resolved, so a
+      // branch lookup that failed narrows the list to nothing rather than
+      // hiding the whole catalogue behind a chip the student did press.
+      final pools = filters['electivePools'] as Set<ElectivePool>? ?? const {};
+      if (pools.isNotEmpty && !_electivePools.isEmpty) {
+        courses = courses
+            .where((c) => _electivePools.matchesAny(pools, c.courseCode))
+            .toList();
+      }
+
       filteredCourses = courses;
     });
   }
@@ -541,18 +584,29 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
 
     _pushUndo('Switch to ${basis.label}');
     setState(() {
-      tt.creditBasis = basis;
-      // Re-register everything on the new basis, so the grid and the credits
-      // bar agree with the toggle rather than keeping their old com cods.
-      for (var i = 0; i < tt.selectedSections.length; i++) {
-        final sel = tt.selectedSections[i];
-        final comCode = byCode[sel.courseCode]?.variantOn(basis)?.comCode;
-        tt.selectedSections[i] = sel.withComCode(comCode);
-      }
+      _restateOn(tt, basis);
       hasUnsavedChanges = true;
     });
     markUnsaved(true);
     _selectionRevision.value++;
+  }
+
+  /// Puts [tt] on [basis] and re-registers every selection under that basis's
+  /// com cod, so the grid, the credits bar and the cap all read the same
+  /// quantity. Leaving the old com cods behind is what makes a timetable report
+  /// one basis while counting in the other.
+  ///
+  /// Assumes the caller has already established that nothing on the grid is
+  /// stranded off [basis] — [setCreditBasis] checks, and the generator apply
+  /// path is replacing the whole selection anyway.
+  void _restateOn(Timetable tt, CreditBasis basis) {
+    final byCode = {for (final c in tt.availableCourses) c.courseCode: c};
+    tt.creditBasis = basis;
+    for (var i = 0; i < tt.selectedSections.length; i++) {
+      final sel = tt.selectedSections[i];
+      final comCode = byCode[sel.courseCode]?.variantOn(basis)?.comCode;
+      tt.selectedSections[i] = sel.withComCode(comCode);
+    }
   }
 
   /// What this timetable currently counts in, and whether it is coherent.
@@ -562,14 +616,21 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     return CreditMix.of(tt.selectedSections, tt.availableCourses);
   }
 
+  /// The timetable's load on its own basis, which is the only figure its cap
+  /// can be checked against.
+  ///
+  /// Reading units off a credit-hours timetable reports 0 — its courses have no
+  /// unit count — so every check downstream compared 0 to the 70-hour ceiling
+  /// and never refused anything.
   double _currentTotalCredits() {
     final tt = currentTimetable;
     if (tt == null) return 0;
-    // Units only. A credit-hours timetable is measured in a different unit and
-    // is not what the semester cap is expressed in, so folding its 12s into
-    // this total would refuse adds against a limit that does not apply.
-    final credits = creditMix.amountFor(CreditBasis.units);
-    return credits + tt.projectCount * 3;
+    final basis = creditBasis;
+    final credits = creditMix.amountFor(basis);
+    // A project is worth 3 units and the booklet prints no hours figure for
+    // one, so it counts toward a unit total only — converting it would be
+    // inventing the number this model exists to avoid inventing.
+    return basis == CreditBasis.units ? credits + tt.projectCount * 3 : credits;
   }
 
   /// Drops every course counted in [basis] — the escape hatch from a timetable
@@ -651,12 +712,11 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       return;
     }
 
-    // Each basis is checked against its own ceiling, and credit hours have
-    // none yet (see AppLimits.semesterCreditHourCap) — so this skips rather
-    // than measuring 12 hours against a 25-unit cap and refusing a second
-    // course for the whole 2026 batch.
+    // Each basis is checked against its own ceiling: 25 units, or 70 contact
+    // hours for a 2026-batch timetable. Measuring one against the other's cap
+    // either refuses a second course for the whole batch or refuses nothing.
     final cap = capFor(creditBasis);
-    if (isNewCourse && !allowCreditBypass && cap != null) {
+    if (isNewCourse && !allowCreditBypass) {
       final addedCredits = variant?.amount ?? 0;
       if (_currentTotalCredits() + addedCredits > cap) {
         ToastService.showError('Adding this course would exceed the ${cap.toInt()} ${creditBasis.label} limit');
@@ -1282,6 +1342,12 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
           tt,
         );
       }
+      // The run's basis replaces the timetable's, along with everything else
+      // that was on it. The service builds selections without com cods, so
+      // without this a contact-hours run lands as untagged sections that fall
+      // back to their unit variant and get counted against the wrong cap.
+      _restateOn(tt, result.creditBasis);
+      await timetableService.saveTimetable(tt);
 
       if (!mounted) return;
       setState(() {});
@@ -1470,7 +1536,10 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     return Column(
       children: [
         _buildCreditBasisNotice(),
-        SearchFilterWidget(key: TutorialKeys.courseSearch, onSearchChanged: onSearchChanged),
+        SearchFilterWidget(
+            key: TutorialKeys.courseSearch,
+            onSearchChanged: onSearchChanged,
+            hasBranch: hasBranchForPools),
         Expanded(
           child: Card(
             margin: const EdgeInsets.all(8),

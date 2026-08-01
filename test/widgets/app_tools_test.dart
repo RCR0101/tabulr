@@ -41,6 +41,9 @@ void main() {
           // First: a student with nothing on the grid yet gets a whole
           // timetable from it in one tap.
           AppTool.sampleTimetables,
+          // Second: the other end of the same problem — too much on the grid
+          // rather than nothing.
+          AppTool.trimTimetable,
           AppTool.courseGuide,
           AppTool.prerequisites,
           // One Electives entry, tabbed: the three separate browsers asked for

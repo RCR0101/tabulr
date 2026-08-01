@@ -57,12 +57,10 @@ class _Tiles extends StatelessWidget {
       _Tile(
         icon: Icons.workspace_premium_outlined,
         value: _credits(stats.totalCredits),
-        // Named after what it actually counts, and the "/cap" only appears
-        // when there is a cap — credit hours have none published yet, and
-        // "/25" beside a credit-hours load would be a limit nobody set.
-        label: stats.creditCap == null
-            ? _basisLabel(stats.creditBasis)
-            : '${_basisLabel(stats.creditBasis)} (/${_credits(stats.creditCap!)})',
+        // Named after what it actually counts, and measured against its own
+        // basis's ceiling — "/25" beside a credit-hours load would be a limit
+        // nobody set.
+        label: '${_basisLabel(stats.creditBasis)} (/${_credits(stats.creditCap)})',
         // Over the cap is a real problem, not a decoration — say it in colour
         // and in the caption below.
         accent: over ? scheme.error : null,

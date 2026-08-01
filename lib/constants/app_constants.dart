@@ -322,7 +322,8 @@ abstract final class AppLimits {
   /// and what the stats sheet measures a timetable's load against.
   static const double semesterCreditCap = 25;
 
-  /// The cap for a timetable counted in credit hours, or null for none.
+  /// The cap for a timetable counted in credit hours — the 2026-batch
+  /// equivalent of [semesterCreditCap], and not convertible to it.
   static const double semesterCreditHourCap = 70.0;
 
   static const int maxUndoStackSize = 50;

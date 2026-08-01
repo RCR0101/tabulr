@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../utils/debouncer.dart';
 import 'common/app_search_field.dart';
 import '../models/course.dart';
+import '../models/elective_pool.dart';
 import '../services/data/config_service.dart';
 import '../services/ui/responsive_service.dart';
 import '../utils/design_constants.dart';
@@ -9,9 +10,15 @@ import '../utils/design_constants.dart';
 class SearchFilterWidget extends StatefulWidget {
   final Function(String query, Map<String, dynamic> filters) onSearchChanged;
 
+  /// Whether the elective-type chips have anything to filter against. The pools
+  /// are derived from the student's branch, so a consumer that cannot resolve
+  /// one leaves them out rather than showing chips that select nothing.
+  final bool hasBranch;
+
   const SearchFilterWidget({
     super.key,
     required this.onSearchChanged,
+    this.hasBranch = false,
   });
 
   @override
@@ -28,6 +35,10 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
   int? _maxCredits;
   final List<DayOfWeek> _selectedDays = [];
   final List<int> _selectedHours = [];
+
+  /// Elective pools to narrow to. Empty means no pool filter; several means
+  /// their union, like the day and hour chips above.
+  final Set<ElectivePool> _selectedPools = {};
   bool _showAdvancedFilters = false;
 
   /// Whether to include courses the timetable lists with no sections at all.
@@ -56,6 +67,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
       'days': _selectedDays,
       'hours': _selectedHours,
       'includeSectionless': _includeSectionless,
+      'electivePools': _selectedPools,
     };
 
     widget.onSearchChanged(_searchController.text, filters);
@@ -96,6 +108,20 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
     _updateSearch();
   }
 
+  /// Whether anything is set that Clear would actually undo.
+  bool get _hasActiveFilters =>
+      _searchController.text.isNotEmpty ||
+      _instructorController.text.isNotEmpty ||
+      _courseCodeController.text.isNotEmpty ||
+      _selectedMidSemDate != null ||
+      _selectedEndSemDate != null ||
+      _minCredits != null ||
+      _maxCredits != null ||
+      _selectedDays.isNotEmpty ||
+      _selectedHours.isNotEmpty ||
+      _selectedPools.isNotEmpty ||
+      _includeSectionless;
+
   void _clearFilters() {
     setState(() {
       _searchController.clear();
@@ -107,6 +133,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
       _maxCredits = null;
       _selectedDays.clear();
       _selectedHours.clear();
+      _selectedPools.clear();
       _includeSectionless = false;
     });
     _updateSearch();
@@ -121,19 +148,25 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
       ),
       child: SingleChildScrollView(
       child: Container(
-      margin: const EdgeInsets.all(8),
-      padding: const EdgeInsets.all(16),
+      // Flat on a phone. The caller already pads this into a column, so the
+      // floating card put a shadowed edge across the screen a few pixels under
+      // the buttons — a box inside a box, reading as a rendering artefact
+      // rather than as structure.
+      margin: isMobile ? EdgeInsets.zero : const EdgeInsets.all(8),
+      padding: isMobile ? EdgeInsets.zero : const EdgeInsets.all(16),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: isMobile ? Colors.transparent : Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).shadowColor.withValues(alpha: 0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: isMobile
+            ? null
+            : [
+                BoxShadow(
+                  color: Theme.of(context).shadowColor.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       // ListTiles paint ink/background on the nearest Material; provide a
       // transparent one above the decorated box so they stay visible.
@@ -161,38 +194,42 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                     ),
                   ),
                   SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 12)),
-                  // Action buttons row for mobile
+                  // Both were filled buttons, which made narrowing a search the
+                  // loudest thing on the screen — louder than the action the
+                  // screen exists for. Text buttons: available, not shouted.
                   Row(
                     children: [
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: () {
-                            setState(() {
-                              _showAdvancedFilters = !_showAdvancedFilters;
-                            });
-                          },
-                          icon: Icon(
-                            _showAdvancedFilters ? Icons.expand_less : Icons.expand_more,
-                            size: ResponsiveService.getAdaptiveIconSize(context, 20),
-                          ),
-                          label: Text(
-                            _showAdvancedFilters ? 'Hide Filters' : 'Show Filters',
-                            style: TextStyle(fontSize: ResponsiveService.getAdaptiveFontSize(context, 14)),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
-                      FilledButton.icon(
-                        onPressed: _clearFilters,
+                      TextButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _showAdvancedFilters = !_showAdvancedFilters;
+                          });
+                        },
                         icon: Icon(
-                          Icons.clear,
-                          size: ResponsiveService.getAdaptiveIconSize(context, 20),
+                          _showAdvancedFilters ? Icons.expand_less : Icons.tune,
+                          size: 18,
                         ),
                         label: Text(
-                          'Clear',
-                          style: TextStyle(fontSize: ResponsiveService.getAdaptiveFontSize(context, 14)),
+                          _showAdvancedFilters ? 'Hide filters' : 'Filters',
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
                         ),
                       ),
+                      const Spacer(),
+                      // Only meaningful once something is set, and a permanent
+                      // Clear beside an untouched form is just noise.
+                      if (_hasActiveFilters)
+                        TextButton.icon(
+                          onPressed: _clearFilters,
+                          icon: const Icon(Icons.clear, size: 16),
+                          label: const Text('Clear',
+                              style: TextStyle(fontSize: 13)),
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
                     ],
                   ),
                 ],
@@ -420,6 +457,58 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
                 ),
               ),
               const SizedBox(height: 12),
+
+              // Elective pool filter. Hidden when the profile names no branch:
+              // the pools are branch-relative, so with nothing to subtract there
+              // is no honest answer and an empty chip row beats a wrong one.
+              if (widget.hasBranch) ...[
+                Text(
+                  'Filter by Elective Type:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
+                  ),
+                ),
+                SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 8)),
+                Wrap(
+                  spacing: ResponsiveService.getAdaptiveSpacing(context, 8),
+                  runSpacing: ResponsiveService.getAdaptiveSpacing(context, 4),
+                  children: ElectivePool.values.map((pool) {
+                    return FilterChip(
+                      avatar: Icon(
+                        pool.icon,
+                        size: ResponsiveService.getAdaptiveFontSize(context, 15),
+                      ),
+                      // Short form, spelt out: "DEL" alone is jargon to a
+                      // first-year, and the row has space for four more words.
+                      label: Text(
+                        '${pool.short} · ${pool.label}',
+                        style: TextStyle(
+                          fontSize:
+                              ResponsiveService.getAdaptiveFontSize(context, 12),
+                        ),
+                      ),
+                      selected: _selectedPools.contains(pool),
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedPools.add(pool);
+                          } else {
+                            _selectedPools.remove(pool);
+                          }
+                        });
+                        _updateSearch();
+                      },
+                      padding: ResponsiveService.getAdaptivePadding(
+                        context,
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                SizedBox(
+                    height: ResponsiveService.getAdaptiveSpacing(context, 12)),
+              ],
 
               // Days filter
               Text(

@@ -22,8 +22,10 @@ class CreditBasisNotice extends StatefulWidget {
   /// Dismissal key: a timetable id, or a fixed name for a screen.
   final String noticeId;
 
-  /// Hidden where none of these is offered in hours — every campus but
-  /// Hyderabad, and before 2026-27.
+  /// Hidden where none of these is offered in hours. Every campus publishes
+  /// some — Pilani as a second row under a com cod ≥5000, Goa in its own CREDIT
+  /// HOUR column, Hyderabad in the separate 2026-27 first-year booklet — so
+  /// this is a per-catalogue test, not a per-campus one.
   final List<Course> courses;
 
   /// Where the reader will find the toggle, in their words.

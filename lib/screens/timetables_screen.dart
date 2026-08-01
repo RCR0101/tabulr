@@ -227,7 +227,9 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     final result = await ImportTimetableDialog.show(context, initialCode: initialCode);
     if (result == null || !mounted) return;
     try {
-      final newTimetable = await _timetableService.createNewTimetable(result.name);
+      final newTimetable = await _timetableService.createNewTimetable(
+          result.name,
+          creditBasis: result.creditBasis);
       // An import reproduces someone else's timetable rather than building a new
       // one, so an exam clash they accepted must survive the round trip instead
       // of being dropped without explanation. Class clashes still cannot be

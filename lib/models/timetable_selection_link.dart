@@ -31,11 +31,18 @@ class TimetableSelectionLink {
   /// Shown in the browser so it's clear which timetable is being edited.
   final String timetableName;
 
+  /// What the timetable counts in. Carried because a screen that re-runs the
+  /// generator over this selection has to run it on the same basis, or it
+  /// measures a contact-hours timetable in units and scores every course as
+  /// weightless.
+  final CreditBasis creditBasis;
+
   const TimetableSelectionLink({
     required this.selectedSections,
     required this.availableCourses,
     required this.onSectionToggle,
     required this.revision,
     required this.timetableName,
+    this.creditBasis = CreditBasis.units,
   });
 }
