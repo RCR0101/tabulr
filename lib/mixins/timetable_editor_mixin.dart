@@ -1135,7 +1135,10 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     final ExportOptions? exportOptions = await showDialog<ExportOptions>(
       context: context,
       builder: (context) =>
-          const ExportOptionsDialog(showBackgroundOption: false),
+          const ExportOptionsDialog(
+            showBackgroundOption: false,
+            formatLabel: 'ICS',
+          ),
     );
     if (exportOptions == null) return; // User cancelled.
     if (!mounted) return;

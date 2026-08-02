@@ -9,10 +9,15 @@ class ExportOptionsDialog extends StatefulWidget {
   /// export shares this dialog and hides it.
   final bool showBackgroundOption;
 
+  /// Names the export format in the title/button (e.g. 'PNG', 'ICS') so the
+  /// shared dialog reads correctly for whichever caller opened it.
+  final String formatLabel;
+
   const ExportOptionsDialog({
     super.key,
     this.initialOptions = const ExportOptions(),
     this.showBackgroundOption = true,
+    this.formatLabel = 'PNG',
   });
 
   @override
@@ -48,7 +53,7 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
             size: ResponsiveService.getAdaptiveIconSize(context, 24),
           ),
           SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
-          const Text('PNG Export Options'),
+          Text('${widget.formatLabel} Export Options'),
         ],
       ),
       content: SizedBox(
@@ -261,7 +266,7 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
                     ),
                   ),
                   icon: Icon(Icons.download, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
-                  label: const Text('Export PNG'),
+                  label: Text('Export ${widget.formatLabel}'),
                 ),
               ),
             ],
@@ -307,7 +312,7 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
                 Navigator.of(context).pop(_options);
               },
               icon: Icon(Icons.download, size: ResponsiveService.getAdaptiveIconSize(context, 16)),
-              label: const Text('Export PNG'),
+              label: Text('Export ${widget.formatLabel}'),
               style: FilledButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Theme.of(context).colorScheme.onPrimary,
