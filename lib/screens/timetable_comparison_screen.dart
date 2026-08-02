@@ -12,6 +12,7 @@ import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/shimmer_loading.dart';
+import '../utils/page_info_helper.dart';
 
 enum ComparisonViewMode { grid, list }
 
@@ -999,6 +1000,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
         context,
         title: 'Compare Timetables',
         actions: [
+          PageInfoHelper.infoButton(context, PageInfoHelper.timetableComparison),
           // Hide grid/list toggle on mobile, show only on tablet/desktop
           if (!ResponsiveService.isMobile(context))
             SegmentedButton<ComparisonViewMode>(

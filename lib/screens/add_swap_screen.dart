@@ -13,6 +13,7 @@ import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/shimmer_loading.dart';
+import '../utils/page_info_helper.dart';
 
 class AddSwapScreen extends StatefulWidget {
   final List<SelectedSection> currentSelectedSections;
@@ -337,7 +338,8 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
     final isMobile = ResponsiveService.isMobile(context);
     
     return Scaffold(
-      appBar: AppDesign.appBar(context, title: 'Add/Swap Courses'),
+      appBar: AppDesign.appBar(context, title: 'Add/Swap Courses',
+          actions: [PageInfoHelper.infoButton(context, PageInfoHelper.addSwap)]),
       body: _isLoading
           ? const CourseListSkeleton()
           : isMobile

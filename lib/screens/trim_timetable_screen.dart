@@ -14,6 +14,7 @@ import '../widgets/common/carousel_pager.dart';
 import '../widgets/generator/constraints_panel.dart';
 import '../widgets/generator/ranking_importance_panel.dart';
 import '../widgets/sample_timetable_card.dart';
+import '../utils/page_info_helper.dart';
 
 /// Cuts an overloaded timetable down to ones that actually work.
 ///
@@ -159,6 +160,7 @@ class _TrimTimetableScreenState extends State<TrimTimetableScreen> {
           title: 'Trim to fit',
           subtitle: 'Which courses to keep',
         ),
+        actions: [PageInfoHelper.infoButton(context, PageInfoHelper.trimTimetable)],
       ),
       body: Column(
         children: [

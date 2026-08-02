@@ -9,6 +9,7 @@ void removeBeforeUnloadListener() {}
 void addPageHideListener(void Function() callback) {}
 
 void clearLocalStorageItem(String key) {}
+void setLocalStorageItem(String key, String value) {}
 
 void usePathUrlStrategy() {}
 

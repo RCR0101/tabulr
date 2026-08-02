@@ -5,6 +5,7 @@ import '../widgets/common/app_dialog.dart';
 import '../services/data/auth_service.dart';
 import '../services/ui/toast_service.dart';
 import '../widgets/theme_selector_widget.dart';
+import '../utils/page_info_helper.dart';
 
 class CourseGuideScreen extends StatefulWidget {
   const CourseGuideScreen({super.key});
@@ -42,6 +43,7 @@ class _CourseGuideScreenState extends State<CourseGuideScreen> {
         context,
         title: 'Course Guide',
         actions: [
+          PageInfoHelper.infoButton(context, PageInfoHelper.courseGuide),
           const ThemeToggleButton(),
           // User info and logout
           if (_authService.isAuthenticated)

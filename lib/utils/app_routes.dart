@@ -83,9 +83,10 @@ abstract final class AppRoutes {
     return FadeSlidePageRoute<void>(page: info.build(null), settings: settings);
   }
 
+  static String get origin => kIsWeb ? Uri.base.origin : _fallbackOrigin;
+
   /// Absolute, because this is meant to be pasted into a chat.
-  static String shareUrl(String code) =>
-      '${kIsWeb ? Uri.base.origin : _fallbackOrigin}/$shareSegment/$code';
+  static String shareUrl(String code) => '$origin/$shareSegment/$code';
 
   /// The screen [uri] names, or null if it names something else.
   ///

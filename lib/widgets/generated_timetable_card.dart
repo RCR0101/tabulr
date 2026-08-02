@@ -102,12 +102,15 @@ class GeneratedTimetableCard extends StatelessWidget {
                   children: [
                     _tierBadge(context),
                     const SizedBox(width: 8),
-                    Text(
-                      'Fit ${(ranked.closeness * 100).round()}%',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75),
+                    Flexible(
+                      child: Text(
+                        'Fit ${(ranked.closeness * 100).round()}%',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.75),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 4),

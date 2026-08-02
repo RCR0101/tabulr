@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import '../models/timetable_selection_link.dart';
-import '../screens/profile_screen.dart';
 import '../utils/page_transitions.dart';
-import '../screens/electives_screen.dart';
-import '../screens/course_guide_screen.dart';
-import '../screens/course_history_screen.dart';
-import '../screens/credits_screen.dart';
+import '../screens/profile_screen.dart' deferred as profile_screen;
+import '../screens/electives_screen.dart' deferred as electives_screen;
+import '../screens/course_guide_screen.dart' deferred as course_guide_screen;
+import '../screens/course_history_screen.dart' deferred as course_history_screen;
+import '../screens/credits_screen.dart' deferred as credits_screen;
+import '../screens/prerequisites_screen.dart' deferred as prerequisites_screen;
+import '../screens/sample_timetables_screen.dart' deferred as sample_timetables_screen;
+import '../screens/trim_timetable_screen.dart' deferred as trim_timetable_screen;
+import '../screens/guide_screen.dart';
 import '../screens/minors_screen.dart';
-import '../screens/prerequisites_screen.dart';
 import '../screens/professors_screen.dart';
-import '../screens/sample_timetables_screen.dart';
 import '../screens/timetable_comparison_screen.dart';
-import '../screens/trim_timetable_screen.dart';
 import 'app_destinations.dart';
+import 'common/deferred_screen.dart';
 
 /// Screens reached by pushing a route rather than switching the shell.
 enum AppTool {
@@ -26,6 +28,7 @@ enum AppTool {
   profChambers,
   compareTimetables,
   credits,
+  guide,
   profile,
 }
 
@@ -103,7 +106,11 @@ abstract final class AppTools {
                 'Ready-made timetables for your branch\'s core courses',
             inEditorMenu: true,
             segment: 'sample-timetables',
-            build: (link) => SampleTimetablesScreen(selectionLink: link),
+            build: (link) => DeferredScreen(
+              load: sample_timetables_screen.loadLibrary,
+              builder: () => sample_timetables_screen.SampleTimetablesScreen(
+                  selectionLink: link),
+            ),
           ),
         // No segment: a trim is meaningless without the timetable being
         // trimmed, and that cannot be rebuilt from a URL.
@@ -114,7 +121,10 @@ abstract final class AppTools {
             description:
                 'Pick the best courses to keep from an overloaded timetable',
             inEditorMenu: true,
-            build: (link) => TrimTimetableScreen(link: link),
+            build: (link) => DeferredScreen(
+              load: trim_timetable_screen.loadLibrary,
+              builder: () => trim_timetable_screen.TrimTimetableScreen(link: link),
+            ),
           ),
         AppTool.courseGuide => AppToolInfo(
             tool: tool,
@@ -123,7 +133,10 @@ abstract final class AppTools {
             description: 'Browse CDCs and electives by branch',
             inEditorMenu: true,
             segment: 'course-guide',
-            build: (_) => const CourseGuideScreen(),
+            build: (_) => DeferredScreen(
+              load: course_guide_screen.loadLibrary,
+              builder: () => course_guide_screen.CourseGuideScreen(),
+            ),
           ),
         AppTool.prerequisites => AppToolInfo(
             tool: tool,
@@ -132,7 +145,10 @@ abstract final class AppTools {
             description: 'View course prerequisite chains',
             inEditorMenu: true,
             segment: 'prerequisites',
-            build: (_) => const PrerequisitesScreen(),
+            build: (_) => DeferredScreen(
+              load: prerequisites_screen.loadLibrary,
+              builder: () => prerequisites_screen.PrerequisitesScreen(),
+            ),
           ),
         AppTool.electives => AppToolInfo(
             tool: tool,
@@ -142,7 +158,11 @@ abstract final class AppTools {
                 'Browse discipline, humanities and open electives in one place',
             inEditorMenu: true,
             segment: 'electives',
-            build: (link) => ElectivesScreen(selectionLink: link),
+            build: (link) => DeferredScreen(
+              load: electives_screen.loadLibrary,
+              builder: () =>
+                  electives_screen.ElectivesScreen(selectionLink: link),
+            ),
           ),
         AppTool.minors => AppToolInfo(
             tool: tool,
@@ -165,7 +185,10 @@ abstract final class AppTools {
             inEditorMenu: true,
             segment: 'course-history',
             signedInOnly: false,
-            build: (_) => const CourseHistoryScreen(),
+            build: (_) => DeferredScreen(
+              load: course_history_screen.loadLibrary,
+              builder: () => course_history_screen.CourseHistoryScreen(),
+            ),
           ),
         AppTool.profChambers => AppToolInfo(
             tool: tool,
@@ -191,7 +214,20 @@ abstract final class AppTools {
             description: 'About Tabulr and the people behind it',
             segment: 'credits',
             signedInOnly: false,
-            build: (_) => const CreditsScreen(),
+            build: (_) => DeferredScreen(
+              load: credits_screen.loadLibrary,
+              builder: () => credits_screen.CreditsScreen(),
+            ),
+          ),
+        AppTool.guide => AppToolInfo(
+            tool: tool,
+            icon: Icons.auto_stories_outlined,
+            label: 'How Tabulr Works',
+            description:
+                'Every feature explained, with the real components on screen',
+            segment: 'guide',
+            signedInOnly: false,
+            build: (_) => const GuideScreen(),
           ),
         AppTool.profile => AppToolInfo(
             tool: tool,
@@ -199,7 +235,10 @@ abstract final class AppTools {
             label: 'Profile',
             description: 'Your ID, branch & semester defaults',
             segment: 'profile',
-            build: (_) => const ProfileScreen(),
+            build: (_) => DeferredScreen(
+              load: profile_screen.loadLibrary,
+              builder: () => profile_screen.ProfileScreen(),
+            ),
           ),
       };
 

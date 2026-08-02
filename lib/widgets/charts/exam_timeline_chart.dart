@@ -91,9 +91,13 @@ class ExamTimelineChart extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600)),
             const SizedBox(width: 8),
-            Text('${blockExams.length} exam${blockExams.length > 1 ? 's' : ''} · ${_rangeLabel(first, last)}',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurface.withValues(alpha: 0.5))),
+            Flexible(
+              child: Text(
+                  '${blockExams.length} exam${blockExams.length > 1 ? 's' : ''} · ${_rangeLabel(first, last)}',
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurface.withValues(alpha: 0.5))),
+            ),
           ],
         ),
         const SizedBox(height: 8),
@@ -181,9 +185,12 @@ class ExamTimelineChart extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 4),
-        Text('Crunch (exams packed together)',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: scheme.onSurface.withValues(alpha: 0.6))),
+        Flexible(
+          child: Text('Crunch (exams packed together)',
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: 0.6))),
+        ),
       ],
     );
   }

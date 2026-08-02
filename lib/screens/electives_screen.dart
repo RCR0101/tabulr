@@ -22,6 +22,7 @@ import '../widgets/common/app_search_field.dart';
 import '../widgets/common/inline_error_card.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/elective_course_list.dart';
+import '../utils/page_info_helper.dart';
 
 /// Per-pool results. Each tab loads on first view and then only when the shared
 /// branch/semester selection changes, so switching tabs is instant.
@@ -833,6 +834,7 @@ class _ElectivesScreenState extends State<ElectivesScreen>
       appBar: AppDesign.appBar(
         context,
         title: 'Electives',
+        actions: [PageInfoHelper.infoButton(context, PageInfoHelper.electives)],
         bottom: TabBar(
           controller: _tabs,
           tabs: [

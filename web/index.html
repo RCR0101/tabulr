@@ -23,6 +23,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="canonical" href="https://tabulr.net/">
 
+  <!--
+    Start the two biggest first-visit downloads immediately, in parallel with
+    the boot-watchdog + version check below (which otherwise delay them by a few
+    hundred ms). main.dart.js (~4.5 MB) is requested by the bootstrap under this
+    exact, un-versioned URL, so the preload lands on the same cache entry.
+    CanvasKit is served from gstatic, so we only warm the connection to it.
+  -->
+  <link rel="preload" href="main.dart.js" as="script" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preload" href="icons/Icon-192.png" as="image">
+
   <!-- PWA theme color -->
   <meta name="theme-color" content="#58A6FF">
   <meta name="color-scheme" content="dark light">
@@ -121,37 +132,96 @@
     }
   </script>
 
+  <script>
+    // Paint the boot screen in the colours of the theme the user last used, so
+    // the hand-off to the Flutter app is a fade between two identical
+    // backgrounds rather than a flash of the wrong one. Written by the app on
+    // every theme change; absent on a first-ever visit, where the CSS falls
+    // back to system light/dark.
+    (function () {
+      try {
+        var root = document.documentElement.style;
+        var bg = localStorage.getItem('tabulr_boot_bg');
+        var fg = localStorage.getItem('tabulr_boot_fg');
+        var accent = localStorage.getItem('tabulr_boot_accent');
+        if (bg) root.setProperty('--boot-bg', bg);
+        if (fg) root.setProperty('--boot-fg', fg);
+        if (accent) root.setProperty('--boot-accent', accent);
+      } catch (e) {}
+    })();
+  </script>
+
   <style>
-    body { margin: 0; background: #0d1117; overscroll-behavior-x: none; }
-    .loading {
-      position: fixed; inset: 0;
+    :root {
+      --boot-bg: #0d1117;
+      --boot-fg: #e6edf3;
+      --boot-accent: #58A6FF;
+    }
+    @media (prefers-color-scheme: light) {
+      :root { --boot-bg: #ffffff; --boot-fg: #1f2328; }
+    }
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--boot-bg); overscroll-behavior-x: none; }
+
+    #loading {
+      position: fixed; inset: 0; z-index: 2147483647;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      gap: 24px;
+      gap: 22px;
+      background: var(--boot-bg);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      opacity: 1;
+      transition: opacity 0.45s ease;
+      will-change: opacity;
     }
-    .loading span {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px; color: #8b949e; letter-spacing: 0.5px;
+    /* Faded out the moment Flutter paints its first frame, revealing the app
+       underneath — no hard cut. */
+    #loading.is-done { opacity: 0; pointer-events: none; }
+
+    .boot__logo {
+      width: 76px; height: 76px;
+      border-radius: 20px;
+      display: block;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.22),
+                  0 0 0 1px color-mix(in srgb, var(--boot-fg) 8%, transparent);
+      animation: bootFloat 2.4s ease-in-out infinite;
     }
-    .spinner {
-      width: 36px; height: 36px;
-      border: 3px solid #21262d;
-      border-top-color: #58A6FF;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+    .boot__word {
+      font-size: 21px; font-weight: 700; letter-spacing: 0.2px;
+      color: var(--boot-fg);
+      margin: 0;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @media (prefers-color-scheme: light) {
-      body { background: #fff; }
-      .spinner { border-color: #d0d7de; border-top-color: #58A6FF; }
-      .loading span { color: #656d76; }
+    .boot__bar {
+      width: 150px; height: 3px; border-radius: 3px;
+      overflow: hidden;
+      background: color-mix(in srgb, var(--boot-fg) 14%, transparent);
+      margin-top: -6px;
+    }
+    .boot__bar::after {
+      content: ''; display: block;
+      width: 40%; height: 100%; border-radius: 3px;
+      background: var(--boot-accent);
+      animation: bootSlide 1.15s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+    @keyframes bootFloat {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-4px) scale(1.03); }
+    }
+    @keyframes bootSlide {
+      0% { transform: translateX(-120%); }
+      100% { transform: translateX(370%); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .boot__logo, .boot__bar::after { animation-duration: 0.01ms; animation-iteration-count: 1; }
+      .boot__bar::after { width: 100%; }
     }
   </style>
 </head>
 <body>
-  <div class="loading" id="loading">
-    <div class="spinner"></div>
-    <span>Loading Tabulr...</span>
+  <div id="loading">
+    <img class="boot__logo" src="icons/Icon-192.png" alt="Tabulr" width="76" height="76">
+    <p class="boot__word">Tabulr</p>
+    <div class="boot__bar" role="progressbar" aria-label="Loading Tabulr"></div>
   </div>
 
   <script>
@@ -328,7 +398,13 @@
       // Boot reached first frame — clear the watchdog's failure counter.
       try { localStorage.removeItem(BOOT_FAIL_KEY); } catch (e) {}
       var el = document.getElementById('loading');
-      if (el) el.remove();
+      if (!el) return;
+      // Fade over the freshly-painted app instead of a hard cut, then remove
+      // once the transition has finished so it can't swallow taps.
+      el.classList.add('is-done');
+      var done = function () { if (el) el.remove(); };
+      el.addEventListener('transitionend', done, { once: true });
+      setTimeout(done, 700); // fallback if transitionend never fires
     });
   </script>
 </body>

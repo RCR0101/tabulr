@@ -8,6 +8,7 @@ import '../services/data/config_service.dart';
 import '../services/data/local_cache_service.dart';
 import '../utils/design_constants.dart';
 import '../utils/name_utils.dart';
+import '../widgets/app_tools.dart';
 
 /// A person shown in the credits (creator, contributor, or admin).
 class _Person {
@@ -196,6 +197,8 @@ class _CreditsScreenState extends State<CreditsScreen> {
         children: [
           _appHeader(scheme),
           const SizedBox(height: AppDesign.spacingLg),
+          _guideCard(scheme),
+          const SizedBox(height: AppDesign.spacingLg),
           _section('Creator', [_personTile(_creator, scheme)]),
           const SizedBox(height: AppDesign.spacingLg),
           _section('GitHub Contributors', _contributorChildren(scheme)),
@@ -280,6 +283,67 @@ class _CreditsScreenState extends State<CreditsScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _guideCard(ColorScheme scheme) {
+    final info = AppTools.of(AppTool.guide);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: AppDesign.borderRadiusLg,
+        onTap: () => info.pushOn(Navigator.of(context)),
+        child: Container(
+          padding: const EdgeInsets.all(AppDesign.spacingMd),
+          decoration: BoxDecoration(
+            borderRadius: AppDesign.borderRadiusLg,
+            border: Border.all(color: scheme.primary.withValues(alpha: 0.35)),
+            gradient: LinearGradient(
+              colors: [
+                scheme.primary.withValues(alpha: 0.10),
+                scheme.secondary.withValues(alpha: 0.06),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: scheme.primary.withValues(alpha: 0.14),
+                  borderRadius: AppDesign.borderRadiusMd,
+                ),
+                child: Icon(info.icon, size: 22, color: scheme.primary),
+              ),
+              const SizedBox(width: AppDesign.spacingMd),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(info.label,
+                        style: const TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text(
+                      info.description,
+                      style: TextStyle(
+                          fontSize: 12,
+                          height: 1.35,
+                          color: AppDesign.muted(context)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppDesign.spacingSm),
+              Icon(Icons.arrow_forward_rounded, size: 18, color: scheme.primary),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

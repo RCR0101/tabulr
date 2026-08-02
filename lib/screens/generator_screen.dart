@@ -12,6 +12,7 @@ import '../widgets/timetable_generator_widget.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
+import '../utils/page_info_helper.dart';
 
 /// How the editor should consume a chosen generated timetable.
 enum GeneratorApplyMode { applyToCurrent, saveAsNew }
@@ -207,6 +208,7 @@ class _GeneratorScreenState extends State<GeneratorScreen> {
           icon: Icon(Icons.arrow_back, color: Theme.of(context).colorScheme.onSurface),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [PageInfoHelper.infoButton(context, PageInfoHelper.generator)],
       ),
       body: _isLoading
           ? Center(

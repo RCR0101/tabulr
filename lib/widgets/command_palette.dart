@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/data/auth_service.dart';
 import '../models/timetable_selection_link.dart';
+import '../screens/guide_screen.dart';
 import '../services/ui/theme_service.dart';
 import '../utils/design_constants.dart';
+import '../utils/guide_content.dart';
+import '../utils/page_transitions.dart';
 import 'app_destinations.dart';
 import 'app_tools.dart';
 
@@ -30,7 +33,8 @@ enum CommandCategory {
   recent('Recent', Icons.history),
   context('This Page', Icons.push_pin_outlined),
   navigation('Navigate', Icons.navigation),
-  action('Actions', Icons.bolt);
+  action('Actions', Icons.bolt),
+  guide('Guide', Icons.auto_stories_outlined);
 
   final String label;
   final IconData icon;
@@ -143,6 +147,11 @@ class _CommandPaletteState extends State<CommandPalette> {
     _focusNode.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  static String _firstSentence(String text) {
+    final stop = text.indexOf('. ');
+    return stop < 0 ? text : text.substring(0, stop + 1);
   }
 
   List<CommandPaletteEntry> _buildEntries() {
@@ -259,6 +268,18 @@ class _CommandPaletteState extends State<CommandPalette> {
         onSelect: widget.onSignOut!,
       ));
     }
+
+    nonRecentEntries.addAll([
+      for (final topic in guideTopics)
+        CommandPaletteEntry(
+          label: topic.title,
+          subtitle: _firstSentence(topic.lead),
+          icon: topic.icon,
+          category: CommandCategory.guide,
+          onSelect: () => nav.push(FadeSlidePageRoute<void>(
+              page: GuideScreen(initialAnchor: topic.anchor))),
+        ),
+    ]);
 
     // Inject recent entries at the top
     final recentLabels = CommandPaletteActions.recentLabels;

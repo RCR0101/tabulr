@@ -46,6 +46,7 @@ class CgpaTrajectoryChart extends StatelessWidget {
           axisTextColor: scheme.onSurface.withValues(alpha: 0.55),
           valueTextColor: scheme.onSurface.withValues(alpha: 0.8),
           targetColor: scheme.error,
+          fontFamily: DefaultTextStyle.of(context).style.fontFamily,
         ),
       ),
     );
@@ -64,6 +65,7 @@ class _TrajectoryPainter extends CustomPainter {
     required this.axisTextColor,
     required this.valueTextColor,
     required this.targetColor,
+    required this.fontFamily,
   });
 
   final List<CgpaTrajectoryPoint> points;
@@ -76,6 +78,8 @@ class _TrajectoryPainter extends CustomPainter {
   final Color axisTextColor;
   final Color valueTextColor;
   final Color targetColor;
+
+  final String? fontFamily;
 
   static const double _maxScale = 10.0;
   static const double _topPad = 18;
@@ -178,7 +182,11 @@ class _TrajectoryPainter extends CustomPainter {
     final tp = TextPainter(
       text: TextSpan(
           text: s,
-          style: TextStyle(color: color, fontSize: size, fontWeight: FontWeight.w500)),
+          style: TextStyle(
+              color: color,
+              fontSize: size,
+              fontWeight: FontWeight.w500,
+              fontFamily: fontFamily)),
       textAlign: align,
       textDirection: TextDirection.ltr,
     )..layout(maxWidth: width);
@@ -192,5 +200,8 @@ class _TrajectoryPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_TrajectoryPainter old) =>
-      old.points != points || old.targetCgpa != targetCgpa;
+      old.points != points ||
+      old.targetCgpa != targetCgpa ||
+      old.fontFamily != fontFamily ||
+      old.axisTextColor != axisTextColor;
 }

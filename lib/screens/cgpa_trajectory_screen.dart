@@ -3,6 +3,7 @@ import '../constants/app_constants.dart';
 import '../models/cgpa_data.dart';
 import '../utils/design_constants.dart';
 import '../widgets/charts/cgpa_trajectory_chart.dart';
+import '../utils/page_info_helper.dart';
 
 /// Visualises the CGPA data the student already entered: SGPA-per-semester bars
 /// with the cumulative CGPA line, a target "what SGPA do I need next" readout,
@@ -46,7 +47,8 @@ class _CgpaTrajectoryScreenState extends State<CgpaTrajectoryScreen> {
     final cgpa = widget.cgpaData.cgpa;
 
     return Scaffold(
-      appBar: AppDesign.appBar(context, title: 'CGPA Trajectory'),
+      appBar: AppDesign.appBar(context, title: 'CGPA Trajectory',
+          actions: [PageInfoHelper.infoButton(context, PageInfoHelper.cgpaTrajectory)]),
       body: ListView(
         padding: const EdgeInsets.all(AppDesign.spacingMd),
         children: [

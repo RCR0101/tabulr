@@ -44,6 +44,12 @@ void clearLocalStorageItem(String key) {
   html.window.localStorage.remove(key);
 }
 
+void setLocalStorageItem(String key, String value) {
+  try {
+    html.window.localStorage[key] = value;
+  } catch (_) {}
+}
+
 void usePathUrlStrategy() {
   setUrlStrategy(PathUrlStrategy());
 }

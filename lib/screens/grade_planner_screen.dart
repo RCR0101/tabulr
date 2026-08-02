@@ -5,6 +5,7 @@ import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../constants/app_constants.dart';
+import '../utils/page_info_helper.dart';
 import '../utils/grade_utils.dart' as grade_utils;
 
 class GradePlannerScreen extends StatefulWidget {
@@ -355,7 +356,8 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
     final isMobile = ResponsiveService.isMobile(context);
 
     return Scaffold(
-      appBar: AppDesign.appBar(context, title: 'Grade Planner'),
+      appBar: AppDesign.appBar(context, title: 'Grade Planner',
+          actions: [PageInfoHelper.infoButton(context, PageInfoHelper.gradePlanner)]),
       body: _semestersWithCourses.isEmpty
           ? _buildEmptyState()
           : SingleChildScrollView(

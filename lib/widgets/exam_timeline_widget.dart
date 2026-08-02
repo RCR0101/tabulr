@@ -118,11 +118,14 @@ class ExamTimelineWidget extends StatelessWidget {
             children: [
               Icon(Icons.warning_amber_rounded, size: 18, color: scheme.error),
               const SizedBox(width: 6),
-              Text(
-                'Exam Density Warnings',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: scheme.error,
-                  fontWeight: FontWeight.w600,
+              Expanded(
+                child: Text(
+                  'Exam Density Warnings',
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: scheme.error,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],

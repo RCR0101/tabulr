@@ -38,8 +38,11 @@ class RankingImportancePanel extends StatelessWidget {
             children: [
               Icon(Icons.tune, size: 18, color: scheme.primary),
               const SizedBox(width: 8),
-              const Text('Ranking importance',
-                  style: TextStyle(fontWeight: FontWeight.w600)),
+              const Flexible(
+                child: Text('Ranking importance',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+              ),
               const Spacer(),
               if (anyChanged)
                 TextButton(

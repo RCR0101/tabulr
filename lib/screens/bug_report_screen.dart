@@ -9,6 +9,7 @@ import '../widgets/bug_status_chip.dart';
 import '../widgets/bug_thread.dart';
 import '../widgets/common/app_button.dart';
 import '../widgets/common/empty_state_widget.dart';
+import '../utils/page_info_helper.dart';
 
 class BugReportScreen extends StatefulWidget {
   const BugReportScreen({super.key});
@@ -100,6 +101,7 @@ class _BugReportScreenState extends State<BugReportScreen> {
           title: 'Report a Bug',
           subtitle: 'Help us make Tabulr better',
         ),
+        actions: [PageInfoHelper.infoButton(context, PageInfoHelper.bugReport)],
         centerTitle: false,
       ),
       body: Center(

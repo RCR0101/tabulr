@@ -4,6 +4,7 @@ import '../utils/design_constants.dart';
 import '../widgets/common/app_search_field.dart';
 import '../widgets/common/app_tappable.dart';
 import '../widgets/common/empty_state_widget.dart';
+import '../utils/page_info_helper.dart';
 
 /// Answers to the academic questions students actually ask, distilled from the
 /// Academic Regulations and the Bulletin.
@@ -71,6 +72,7 @@ class _FaqScreenState extends State<FaqScreen> {
           title: 'Academic FAQ',
           subtitle: 'Straight answers from the regulations',
         ),
+        actions: [PageInfoHelper.infoButton(context, PageInfoHelper.academicFaq)],
         centerTitle: false,
       ),
       body: Center(

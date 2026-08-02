@@ -55,9 +55,8 @@ class PageInfoHelper {
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: RichText(
-                            text: TextSpan(
-                              style: TextStyle(fontSize: 12, color: scheme.onSurface, height: 1.3),
+                          child: Text.rich(
+                            TextSpan(
                               children: [
                                 TextSpan(text: '${f.label}  ', style: const TextStyle(fontWeight: FontWeight.w600)),
                                 TextSpan(
@@ -66,6 +65,7 @@ class PageInfoHelper {
                                 ),
                               ],
                             ),
+                            style: TextStyle(fontSize: 12, color: scheme.onSurface, height: 1.3),
                           ),
                         ),
                       ],
@@ -209,6 +209,174 @@ class PageInfoHelper {
     ],
   );
 
+  static final generator = PageInfo(
+    title: 'Timetable Generator',
+    purpose: 'Give it the courses you need and what a good week looks like to you; it returns clash-free options, ranked.',
+    features: [
+      FeatureInfo(Icons.playlist_add_check, 'Courses', 'mark which courses are required and which are optional'),
+      FeatureInfo(Icons.schedule, 'Time limits', 'cap hours per day and block out mornings, evenings or whole days'),
+      FeatureInfo(Icons.person_off_outlined, 'Avoid', 'rule out instructors, time slots or lab sessions'),
+      FeatureInfo(Icons.tune, 'Ranking importance', 'say which matters more — a free day, light days, or exam spacing'),
+      FeatureInfo(Icons.compare_arrows, 'Compare results', 'shortlist options and put them side by side'),
+    ],
+  );
+
+  static final addSwap = PageInfo(
+    title: 'Add / Swap Courses',
+    purpose: 'The full course catalogue for your campus. Search, open a course, and pick the sections you want.',
+    features: [
+      FeatureInfo(Icons.search, 'Search', 'by course code or any part of the title'),
+      FeatureInfo(Icons.filter_alt_outlined, 'Filter', 'narrow to a department, or to what fits your current week'),
+      FeatureInfo(Icons.warning_amber_rounded, 'Clash marks', 'sections that would collide are flagged before you pick them'),
+      FeatureInfo(Icons.layers_outlined, 'Section types', 'a course may need one lecture, one tutorial and one practical'),
+    ],
+  );
+
+  static final quickReplace = PageInfo(
+    title: 'Quick Replace',
+    purpose: 'Swap one section for another without disturbing the rest of your timetable — for when a section closes.',
+    features: [
+      FeatureInfo(Icons.swap_horiz, 'Alternatives', 'every other section of the same course, in one list'),
+      FeatureInfo(Icons.check_circle_outline, 'Fits first', 'sections that slot into your week are listed before the ones that clash'),
+      FeatureInfo(Icons.undo, 'Undo', 'the swap is undoable like any other edit'),
+    ],
+  );
+
+  static final trimTimetable = PageInfo(
+    title: 'Trim to Fit',
+    purpose: 'Work out which courses to drop from an overloaded timetable to get back under the credit cap.',
+    features: [
+      FeatureInfo(Icons.push_pin_outlined, 'Keep', 'mark the courses you will not drop'),
+      FeatureInfo(Icons.content_cut, 'Suggestions', 'the smallest set of drops that gets you under the cap'),
+      FeatureInfo(Icons.calculate_outlined, 'Running total', 'see the credit count update as you choose'),
+    ],
+  );
+
+  static final sampleTimetables = PageInfo(
+    title: 'Sample Timetables',
+    purpose: 'Ready-made weeks covering your branch\'s compulsory courses, so a first semester does not start from an empty grid.',
+    features: [
+      FeatureInfo(Icons.school_outlined, 'By branch', 'pick your branch and year to see what applies to you'),
+      FeatureInfo(Icons.download_outlined, 'Load', 'copy one into a new timetable and edit from there'),
+    ],
+  );
+
+  static final archivedTimetables = PageInfo(
+    title: 'Archived Timetables',
+    purpose: 'Past semesters, kept out of the way but still readable — and still available to the CGPA calculator.',
+    features: [
+      FeatureInfo(Icons.inventory_2_outlined, 'Archive', 'move a finished semester out of the main list'),
+      FeatureInfo(Icons.unarchive_outlined, 'Restore', 'bring one back if you need to edit it'),
+      FeatureInfo(Icons.file_download_outlined, 'Still importable', 'pull courses from an archived semester into your CGPA record'),
+    ],
+  );
+
+  static final timetableComparison = PageInfo(
+    title: 'Compare Timetables',
+    purpose: 'Two plans side by side, so the difference between them stops being abstract.',
+    features: [
+      FeatureInfo(Icons.compare, 'Side by side', 'both weeks on one screen'),
+      FeatureInfo(Icons.insights_outlined, 'Stats', 'contact hours, free days and exam spread for each'),
+    ],
+  );
+
+  static final electives = PageInfo(
+    title: 'Electives',
+    purpose: 'Discipline, humanities and open electives in one browsable list instead of three documents.',
+    features: [
+      FeatureInfo(Icons.category_outlined, 'Pools', 'switch between discipline, humanities and open electives'),
+      FeatureInfo(Icons.check_circle_outline, 'Already taken', 'courses in your CGPA record are marked so you do not re-pick them'),
+      FeatureInfo(Icons.add_circle_outline, 'Add', 'put a section straight onto the timetable you came from'),
+    ],
+  );
+
+  static final minors = PageInfo(
+    title: 'Minors',
+    purpose: 'Every minor programme, the courses it requires, and how far along you already are.',
+    features: [
+      FeatureInfo(Icons.workspace_premium_outlined, 'Programmes', 'browse the minors on offer at your campus'),
+      FeatureInfo(Icons.donut_large, 'Progress', 'requirements met and left, read from your CGPA record'),
+      FeatureInfo(Icons.playlist_add_check, 'Remaining', 'what you would still have to take to finish'),
+    ],
+  );
+
+  static final prerequisites = PageInfo(
+    title: 'Prerequisites',
+    purpose: 'What a course needs before you can take it, and what taking it opens up.',
+    features: [
+      FeatureInfo(Icons.account_tree, 'Chains', 'follow a course back to its prerequisites, and forward to what it unlocks'),
+      FeatureInfo(Icons.rule, 'All vs any', 'some courses need every prerequisite, some need any one of a set'),
+      FeatureInfo(Icons.check_circle_outline, 'Cleared', 'prerequisites you have already passed are marked'),
+    ],
+  );
+
+  static final courseGuide = PageInfo(
+    title: 'Course Guide',
+    purpose: 'What your branch is meant to take, semester by semester — the compulsory courses and the electives that count.',
+    features: [
+      FeatureInfo(Icons.school_outlined, 'Branch', 'pick your branch, and a second one if you are dual degree'),
+      FeatureInfo(Icons.view_timeline_outlined, 'By semester', 'the expected load for each semester of the programme'),
+    ],
+  );
+
+  static final cgBooster = PageInfo(
+    title: 'CG Booster',
+    purpose: 'Which courses move your CGPA most, so your effort goes where it counts.',
+    features: [
+      FeatureInfo(Icons.bolt_outlined, 'Impact ranking', 'courses ordered by how much one grade step would change your CGPA'),
+      FeatureInfo(Icons.balance, 'Weight', 'a heavier course pulls harder than a lighter one'),
+    ],
+  );
+
+  static final gradePlanner = PageInfo(
+    title: 'Grade Planner',
+    purpose: 'Work backwards from a target CGPA to the grades this semester would have to produce.',
+    features: [
+      FeatureInfo(Icons.flag_outlined, 'Target', 'set the CGPA you are aiming for'),
+      FeatureInfo(Icons.calculate_outlined, 'Required grades', 'what you would need in each course to get there'),
+      FeatureInfo(Icons.report_gmailerrorred_outlined, 'Out of reach', 'says so plainly when a target cannot be hit this semester'),
+    ],
+  );
+
+  static final cgpaTrajectory = PageInfo(
+    title: 'CGPA Trajectory',
+    purpose: 'Your standing semester by semester, with each SGPA against the cumulative CGPA it produced.',
+    features: [
+      FeatureInfo(Icons.trending_up, 'Trend', 'see whether you are climbing, flat or slipping'),
+      FeatureInfo(Icons.flag_outlined, 'Target line', 'your goal drawn across the chart'),
+    ],
+  );
+
+  static final profile = PageInfo(
+    title: 'Profile',
+    purpose: 'Your ID number, branch and default semester — filled in once, used everywhere.',
+    features: [
+      FeatureInfo(Icons.badge_outlined, 'ID number', 'so exam seating can look you up without asking'),
+      FeatureInfo(Icons.school_outlined, 'Branch', 'so CDCs and the course guide open on the right programme'),
+      FeatureInfo(Icons.palette_outlined, 'Theme', 'pick a theme and light, dark or system'),
+    ],
+  );
+
+  static final bugReport = PageInfo(
+    title: 'Bug Report',
+    purpose: 'Report anything broken — a screen that misbehaves, or course data that does not match the booklet.',
+    features: [
+      FeatureInfo(Icons.add, 'Report', 'describe what you did and what happened instead'),
+      FeatureInfo(Icons.forum_outlined, 'Follow up', 'read replies and watch the status change'),
+      FeatureInfo(Icons.military_tech_outlined, 'Reputation', 'reports that turn out to be real build your contributor standing'),
+    ],
+  );
+
+  static final academicFaq = PageInfo(
+    title: 'Academic FAQ',
+    purpose: 'Short answers to the academic rules students actually ask about, each citing the clause it comes from.',
+    features: [
+      FeatureInfo(Icons.search, 'Search', 'across every question, answer and synonym'),
+      FeatureInfo(Icons.category_outlined, 'Categories', 'grades, attendance, registration, Practice School and more'),
+      FeatureInfo(Icons.menu_book_outlined, 'Sources', 'every answer names the regulation it came from'),
+    ],
+  );
+
   static final announcements = PageInfo(
     title: 'Announcements',
     purpose: 'Course-specific announcements posted by students — schedule changes, extra classes, exam updates.',
@@ -219,6 +387,36 @@ class PageInfoHelper {
       FeatureInfo(Icons.check_circle_outline, 'Verify', 'confirm or deny announcements'),
     ],
   );
+
+  static final List<PageInfo> all = [
+    timetableCreator,
+    timetableList,
+    calendar,
+    freeSlotFinder,
+    cgpaCalculator,
+    examSeating,
+    acadDrives,
+    profChambers,
+    courseHistory,
+    announcements,
+    generator,
+    addSwap,
+    quickReplace,
+    trimTimetable,
+    sampleTimetables,
+    archivedTimetables,
+    timetableComparison,
+    electives,
+    minors,
+    prerequisites,
+    courseGuide,
+    cgBooster,
+    gradePlanner,
+    cgpaTrajectory,
+    profile,
+    bugReport,
+    academicFaq,
+  ];
 }
 
 class PageInfo {

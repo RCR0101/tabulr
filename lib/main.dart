@@ -56,73 +56,17 @@ void main() async {
   );
 
 
-  await SecureLogger.measureAsync('campus_init', () => CampusService.initializeCampus());
-
-  final userSettingsService = UserSettingsService();
-  final themeService = theme_service.ThemeService();
-
-  // Each service is wrapped so a single failure (e.g. a Firestore
-  // permission-denied, or a transient network error) doesn't kill the entire
-  // startup.
-  // Bounded by [AppDurations.startupPrefetchTimeout]: a request that stalls
-  // without erroring (seen on Brave, where per-service catchError never fires)
-  // must not keep the first frame from painting. Anything unfinished keeps
-  // running in the background and populates its cache when it resolves; the
-  // UI shows immediately and consumers lazy-load on first use.
-  await SecureLogger.measureAsync('parallel_services', () => Future.wait([
-    CoursesMasterService().loadForCampus().catchError((e) {
-      SecureLogger.error('STARTUP', 'Failed to load courses', e);
-    }),
-    AuthService().initialize().catchError((e) {
-      SecureLogger.error('STARTUP', 'Failed to initialize auth', e);
-    }),
-    userSettingsService.initializeSettings().catchError((e) {
-      SecureLogger.error('STARTUP', 'Failed to load user settings', e);
-    }),
-    themeService.initialize().catchError((e) {
-      SecureLogger.error('STARTUP', 'Failed to initialize theme', e);
-    }),
-    PreferencesService().initialize().catchError((e) {
-      SecureLogger.error('STARTUP', 'Failed to initialize preferences', e);
-    }),
-    // NOTE: the course catalog is deliberately NOT prefetched here. It costs a
-    // full-collection read and most sessions (exam seating, CGPA, calendar)
-    // never need it. Every consumer awaits CourseDataService.fetchCourses()
-    // itself, which loads and caches on first use.
-    ConfigService().loadSemesterDates().catchError((e) {
-      SecureLogger.error('STARTUP', 'Failed to load semester dates', e);
-    }),
-  ]).timeout(AppDurations.startupPrefetchTimeout, onTimeout: () {
-    SecureLogger.warning('STARTUP',
-        'Startup pre-fetch timed out; painting UI with cached/lazy data');
-    return const <void>[];
-  }));
-
-  // Re-load settings if auth won the race (settings may have loaded as guest).
-  // Timed out for the same reason as the pre-fetch above — a stalled read here
-  // would otherwise re-block the first frame.
-  if (AuthService().isAuthenticated) {
-    try {
-      await userSettingsService
-          .initializeSettings(force: true)
-          .timeout(AppDurations.startupPrefetchTimeout);
-    } catch (e) {
-      SecureLogger.error('STARTUP', 'Failed to re-load user settings', e);
-    }
-  }
-  final savedSettings = userSettingsService.userSettings;
-  if (savedSettings != null) {
-    await themeService.setTheme(savedSettings.themeVariant);
-    final flutterMode = switch (savedSettings.themeMode) {
-      user_settings.AppThemeMode.light => ThemeMode.light,
-      user_settings.AppThemeMode.dark => ThemeMode.dark,
-      user_settings.AppThemeMode.system => ThemeMode.system,
-    };
-    await themeService.setThemeMode(flutterMode);
-  }
-
-  // Non-blocking admin check — runs in background after auth is ready
-  AdminService().checkAdminStatus();
+  await SecureLogger.measureAsync('local_init', () => Future.wait([
+        CampusService.initializeCampus().catchError((e) {
+          SecureLogger.error('STARTUP', 'Failed to initialize campus', e);
+        }),
+        theme_service.ThemeService().initialize().catchError((e) {
+          SecureLogger.error('STARTUP', 'Failed to initialize theme', e);
+        }),
+        PreferencesService().initialize().catchError((e) {
+          SecureLogger.error('STARTUP', 'Failed to initialize preferences', e);
+        }),
+      ]));
 
   if (kIsWeb) {
     web_utils.usePathUrlStrategy();
@@ -130,6 +74,14 @@ void main() async {
     AppRoutes.pendingShareCode = AppRoutes.shareCodeIn(Uri.base);
     _setupWebCacheClearOnClose();
   }
+
+  AuthService().initialize().catchError((e) {
+    SecureLogger.error('STARTUP', 'Failed to initialize auth', e);
+  });
+  CoursesMasterService().loadForCampus().catchError((e) {
+    SecureLogger.error('STARTUP', 'Failed to load courses', e);
+  });
+  AdminService().checkAdminStatus();
 
   totalStopwatch.stop();
   SecureLogger.performance('total_startup', totalStopwatch.elapsed);
@@ -192,19 +144,45 @@ class _TimetableMakerAppState extends State<TimetableMakerApp> {
     TimetableMakerApp.themeTransition = _themeTransition;
   }
 
+  String? _lastBootColors;
+
+  void _persistBootColors(ThemeData effective) {
+    if (!kIsWeb) return;
+    String hex(Color c) =>
+        '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
+    final bg = hex(effective.scaffoldBackgroundColor);
+    final fg = hex(effective.colorScheme.onSurface);
+    final accent = hex(effective.colorScheme.primary);
+    final combined = '$bg|$fg|$accent';
+    if (combined == _lastBootColors) return;
+    _lastBootColors = combined;
+    web_utils.setLocalStorageItem('tabulr_boot_bg', bg);
+    web_utils.setLocalStorageItem('tabulr_boot_fg', fg);
+    web_utils.setLocalStorageItem('tabulr_boot_accent', accent);
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: theme_service.ThemeService(),
       builder: (context, child) {
         final themeService = theme_service.ThemeService();
+        final light = themeService.getLightThemeData(themeService.currentTheme);
+        final dark = themeService.getDarkThemeData(themeService.currentTheme);
+        final isDark = switch (themeService.currentThemeMode) {
+          ThemeMode.dark => true,
+          ThemeMode.light => false,
+          ThemeMode.system =>
+            MediaQuery.platformBrightnessOf(context) == Brightness.dark,
+        };
+        _persistBootColors(isDark ? dark : light);
         // .router, not the plain constructor: it is what puts the web engine in
         // multi-entry history mode, without which the back button leaves the
         // site instead of walking back through the app. See [AppRouterDelegate].
         return MaterialApp.router(
           title: 'Tabulr',
-          theme: themeService.getLightThemeData(themeService.currentTheme),
-          darkTheme: themeService.getDarkThemeData(themeService.currentTheme),
+          theme: light,
+          darkTheme: dark,
           themeMode: themeService.currentThemeMode,
           routeInformationParser: const AppRouteInformationParser(),
           routerDelegate: AppRoutes.delegateFor(_home),
@@ -230,6 +208,16 @@ class MaintenanceGate extends StatefulWidget {
 }
 
 class _MaintenanceGateState extends State<MaintenanceGate> {
+  @override
+  void initState() {
+    super.initState();
+    ConfigService().loadSemesterDates().then((_) {
+      if (mounted) setState(() {});
+    }).catchError((e) {
+      SecureLogger.error('STARTUP', 'Failed to load app config', e);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final config = ConfigService();

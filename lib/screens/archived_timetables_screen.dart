@@ -4,6 +4,7 @@ import '../models/timetable.dart';
 import '../services/data/timetable_storage_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/timetable_widget.dart';
+import '../utils/page_info_helper.dart';
 
 class ArchivedTimetablesScreen extends StatefulWidget {
   final ArchivedSemester semester;
@@ -68,7 +69,8 @@ class _ArchivedTimetablesScreenState extends State<ArchivedTimetablesScreen> {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppDesign.appBar(context, title: widget.semester.label),
+      appBar: AppDesign.appBar(context, title: widget.semester.label,
+          actions: [PageInfoHelper.infoButton(context, PageInfoHelper.archivedTimetables)]),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _timetables == null || _timetables!.isEmpty

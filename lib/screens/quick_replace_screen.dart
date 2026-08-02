@@ -15,6 +15,7 @@ import '../services/ui/secure_logger.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
 import '../utils/design_constants.dart';
+import '../utils/page_info_helper.dart';
 
 enum CourseCategory { huel, del, other }
 
@@ -412,6 +413,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        actions: [PageInfoHelper.infoButton(context, PageInfoHelper.quickReplace)],
       ),
       body: SafeArea(
         child: Column(

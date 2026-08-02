@@ -15,6 +15,7 @@ import '../widgets/common/course_record_badge.dart';
 import '../widgets/common/empty_state_widget.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/elective_course_list.dart';
+import '../utils/page_info_helper.dart';
 
 /// Browsable catalogue of minor programmes.
 ///
@@ -132,6 +133,7 @@ class _MinorsScreenState extends State<MinorsScreen> {
         ),
         centerTitle: false,
         actions: [
+          PageInfoHelper.infoButton(context, PageInfoHelper.minors),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',

@@ -4,6 +4,7 @@ import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../constants/app_constants.dart';
+import '../utils/page_info_helper.dart';
 import '../utils/grade_utils.dart' as grade_utils;
 
 class CGBoosterScreen extends StatefulWidget {
@@ -271,7 +272,8 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppDesign.appBar(context, title: 'CG Booster'),
+      appBar: AppDesign.appBar(context, title: 'CG Booster',
+          actions: [PageInfoHelper.infoButton(context, PageInfoHelper.cgBooster)]),
       body: _candidates.isEmpty
           ? _buildEmptyState(scheme)
           : SingleChildScrollView(

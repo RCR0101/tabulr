@@ -6,6 +6,7 @@ import '../services/ui/toast_service.dart';
 import '../utils/branch_constants.dart' as branch_constants;
 import '../utils/design_constants.dart';
 import '../widgets/common/app_button.dart';
+import '../utils/page_info_helper.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -81,6 +82,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           title: 'Profile',
           subtitle: 'Set defaults used across Tabulr',
         ),
+        actions: [PageInfoHelper.infoButton(context, PageInfoHelper.profile)],
         centerTitle: false,
       ),
       body: _loading

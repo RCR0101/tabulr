@@ -251,11 +251,14 @@ class _Facts extends StatelessWidget {
                     color: accent ??
                         scheme.onSurface.withValues(alpha: 0.55)),
                 const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: accent ?? scheme.onSurface.withValues(alpha: 0.8),
-                    fontWeight: accent == null ? null : FontWeight.w600,
+                Flexible(
+                  child: Text(
+                    label,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: accent ?? scheme.onSurface.withValues(alpha: 0.8),
+                      fontWeight: accent == null ? null : FontWeight.w600,
+                    ),
                   ),
                 ),
               ],

@@ -10,6 +10,7 @@ import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/course_record_badge.dart';
 import '../widgets/common/shimmer_loading.dart';
+import '../utils/page_info_helper.dart';
 
 class PrerequisitesScreen extends StatefulWidget {
   const PrerequisitesScreen({super.key});
@@ -128,7 +129,8 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppDesign.appBar(context, title: 'Course Prerequisites'),
+      appBar: AppDesign.appBar(context, title: 'Course Prerequisites',
+          actions: [PageInfoHelper.infoButton(context, PageInfoHelper.prerequisites)]),
       body: Column(
         children: [
           _buildSearchBar(theme, colorScheme),

@@ -17,6 +17,7 @@ import '../widgets/common/app_dialog.dart';
 import '../widgets/common/carousel_pager.dart';
 import '../widgets/error_dialog.dart';
 import '../widgets/sample_timetable_card.dart';
+import '../utils/page_info_helper.dart';
 
 /// Ready-made timetables for a branch's core package.
 ///
@@ -303,6 +304,7 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
           title: 'Sample Timetables',
           subtitle: 'Built from your core courses',
         ),
+        actions: [PageInfoHelper.infoButton(context, PageInfoHelper.sampleTimetables)],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

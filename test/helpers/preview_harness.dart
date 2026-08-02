@@ -13,14 +13,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Loads the bundled typeface. `flutter test`'s placeholder font draws every
-/// glyph as a filled box, which makes a design preview useless. Call from
-/// `setUpAll`.
 Future<void> loadPreviewFont() async {
   final data = File('assets/fonts/Inter.ttf').readAsBytesSync();
   final loader = FontLoader('Inter')
     ..addFont(Future.value(ByteData.view(data.buffer)));
   await loader.load();
+  await _loadMaterialIcons();
+}
+
+Future<void> _loadMaterialIcons() async {
+  const relative = 'bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf';
+  for (var dir = File(Platform.resolvedExecutable).parent;
+      dir.path != dir.parent.path;
+      dir = dir.parent) {
+    final font = File('${dir.path}/$relative');
+    if (!font.existsSync()) continue;
+    final loader = FontLoader('MaterialIcons')
+      ..addFont(Future.value(ByteData.view(font.readAsBytesSync().buffer)));
+    return loader.load();
+  }
 }
 
 /// The light/dark pair every preview renders.
