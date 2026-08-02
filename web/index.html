@@ -32,7 +32,6 @@
   -->
   <link rel="preload" href="main.dart.js" as="script" crossorigin>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-  <link rel="preload" href="icons/Icon-192.png" as="image">
 
   <!-- PWA theme color -->
   <meta name="theme-color" content="#58A6FF">
@@ -177,46 +176,76 @@
     #loading.is-done { opacity: 0; pointer-events: none; }
 
     .boot__brand {
-      display: flex; align-items: center; gap: 14px;
+      display: flex; align-items: center; gap: 16px;
     }
     .boot__logo {
-      width: 72px; height: 72px;
-      border-radius: 19px;
+      width: 84px; height: 84px;
       display: block;
+      border-radius: 20px;
+      overflow: hidden;
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.22),
                   0 0 0 1px color-mix(in srgb, var(--boot-fg) 8%, transparent);
-      animation: bootReceive 2s cubic-bezier(0.5, 0, 0.2, 1) infinite;
     }
     .boot__word {
-      font-size: 26px; font-weight: 700; letter-spacing: 0.2px;
+      font-size: 28px; font-weight: 700; letter-spacing: 0.2px;
       color: var(--boot-fg);
-      transform-origin: left center;
-      /* Slides in beside the logo, holds, then gets drawn into it. */
-      animation: bootAbsorb 2s cubic-bezier(0.5, 0, 0.2, 1) infinite;
+      animation: bootWordIn 0.5s ease both;
     }
-    @keyframes bootAbsorb {
-      0%   { transform: translateX(14px);              opacity: 0; }
-      22%  { transform: translateX(0);                 opacity: 1; }
-      60%  { transform: translateX(0);                 opacity: 1; }
-      88%  { transform: translateX(-48px) scale(0.32); opacity: 0; }
-      100% { transform: translateX(-48px) scale(0.32); opacity: 0; }
+    @keyframes bootWordIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: none; }
     }
-    /* The logo "catches" the wordmark as it arrives. */
-    @keyframes bootReceive {
-      0%, 78% { transform: scale(1); }
-      88%     { transform: scale(1.07); }
-      100%    { transform: scale(1); }
+    /* The calendar frame is static; only the date tiles cycle. Each tile shares
+       one keyframe on a fixed period, offset by a per-tile animation-delay — a
+       positive delay is a permanent phase offset for a looping animation, so the
+       tiles fill in reading order, hold together for a beat, then clear in the
+       same wave and refill. */
+    .boot-tile {
+      transform-box: fill-box; transform-origin: center;
+      animation: bootTile 4s ease infinite;
+    }
+    @keyframes bootTile {
+      0%   { opacity: 0; transform: scale(0.2); }
+      5%   { opacity: 1; transform: scale(1); }
+      66%  { opacity: 1; transform: scale(1); }
+      73%  { opacity: 0; transform: scale(0.2); }
+      100% { opacity: 0; transform: scale(0.2); }
     }
     @media (prefers-reduced-motion: reduce) {
-      .boot__logo, .boot__word { animation: none; }
-      .boot__word { opacity: 1; transform: none; }
+      .boot__word { animation: none; }
+      .boot-tile { animation: none; opacity: 1; }
     }
   </style>
 </head>
 <body>
   <div id="loading" role="progressbar" aria-label="Loading Tabulr">
     <div class="boot__brand">
-      <img class="boot__logo" src="icons/Icon-192.png" alt="Tabulr" width="72" height="72">
+      <svg class="boot__logo" viewBox="0 0 222 222" role="img" aria-label="Tabulr" xmlns="http://www.w3.org/2000/svg">
+        <!-- Frame: verbatim from logo_bg.svg (static). -->
+        <path d="M0 0 C73.26 0 146.52 0 222 0 C222 73.26 222 146.52 222 222 C148.74 222 75.48 222 0 222 C0 148.74 0 75.48 0 0 Z " fill="#D8E0F1"/>
+        <path d="M0 0 C73.26 0 146.52 0 222 0 C222 73.26 222 146.52 222 222 C148.74 222 75.48 222 0 222 C0 148.74 0 75.48 0 0 Z M25 31 C25 87.43 25 143.86 25 202 C79.12 202 133.24 202 189 202 C189 145.57 189 89.14 189 31 C179.1 31 169.2 31 159 31 C158.4506257 40.79865525 158.4506257 40.79865525 162 47 C162.53635899 51.82723092 162.52017901 53.97890786 160.3125 58.3125 C157.30751235 61.80478294 155.30239664 63.69225391 150.6328125 64.31640625 C146.36417629 64.51273818 143.74346463 64.4336877 140 62.25 C136.73602647 58.57802977 135.72034728 55.8524376 135.75 50.9375 C135.74226563 49.65166016 135.74226563 49.65166016 135.734375 48.33984375 C136 46 136 46 138 43 C138 39.04 138 35.08 138 31 C117.54 31 97.08 31 76 31 C74.89059961 41.93682462 74.89059961 41.93682462 78 46 C78.65192402 50.37132214 79.00981874 54.99201428 76.984375 59.01953125 C74.28907806 62.35617896 71.97760696 63.7617341 67.73046875 64.2734375 C60.01763252 64.58147704 60.01763252 64.58147704 56.5 61.75 C52.54226682 57.3964935 51.60891086 54.96337903 51.73046875 48.9296875 C52 47 52 47 53.5 44.6875 C55.89350463 40.91209889 55.89350463 40.91209889 55 31 C45.1 31 35.2 31 25 31 Z " fill="#DDE4F2"/>
+        <path d="M0 0 C9.9 0 19.8 0 30 0 C30 11.375 30 11.375 27 16 C26.45932085 20.86611237 26.45763755 22.97338536 28.75 27.3125 C31.35956914 30.42948536 33.28936548 32.71628501 37.40234375 33.3984375 C44.20853149 33.3571691 44.20853149 33.3571691 50 30 C52.9089335 26.81570629 53.38822734 24.71900723 53.3125 20.4375 C53.30669922 19.01244141 53.30669922 19.01244141 53.30078125 17.55859375 C53.16801095 14.76044095 53.16801095 14.76044095 51 12 C51 8.04 51 4.08 51 0 C71.46 0 91.92 0 113 0 C113 12 113 12 111 15 C110.25573751 20.02809889 110.46458634 23.96609776 112.8125 28.5 C115.10827389 31.12374158 116.74567899 32.81433458 120.26953125 33.3359375 C126.03178724 33.42445142 129.5367405 33.02781955 134 29 C136.98086861 25.42295767 137.45545435 22.40916071 137.3046875 17.89453125 C137.10109401 15.81474118 137.10109401 15.81474118 135.5 13.6875 C134 11 134 11 134 0 C143.9 0 153.8 0 164 0 C164 56.43 164 112.86 164 171 C109.88 171 55.76 171 0 171 C0 114.57 0 58.14 0 0 Z M13 42 C13 80.28 13 118.56 13 158 C58.54 158 104.08 158 151 158 C151 119.72 151 81.44 151 42 C105.46 42 59.92 42 13 42 Z " fill="#1E4DB7" transform="translate(25,31)"/>
+        <path d="M0 0 C1.423125 0.4021875 1.423125 0.4021875 2.875 0.8125 C4.03925183 3.14100367 4.01359876 4.52904379 4.03613281 7.12280273 C4.04574036 8.01390244 4.0553479 8.90500214 4.06524658 9.82310486 C4.06949646 10.78769119 4.07374634 11.75227753 4.078125 12.74609375 C4.08382507 13.73497086 4.08952515 14.72384796 4.09539795 15.74269104 C4.10485377 17.83666918 4.11138423 19.93066225 4.11523438 22.0246582 C4.12495004 25.23349828 4.15597223 28.4417007 4.1875 31.65039062 C4.19402889 33.68228785 4.19927981 35.71418967 4.203125 37.74609375 C4.2154718 38.70865585 4.2278186 39.67121796 4.24053955 40.66294861 C4.23753845 41.55720047 4.23453735 42.45145233 4.23144531 43.37280273 C4.23509094 44.15952866 4.23873657 44.94625458 4.24249268 45.75682068 C3.77657383 48.36307601 3.00426049 49.27152239 0.875 50.8125 C-2.25 50.625 -2.25 50.625 -5.125 49.8125 C-6.28925183 47.48399633 -6.26359876 46.09595621 -6.28613281 43.50219727 C-6.29574036 42.61109756 -6.3053479 41.71999786 -6.31524658 40.80189514 C-6.31949646 39.83730881 -6.32374634 38.87272247 -6.328125 37.87890625 C-6.33382507 36.89002914 -6.33952515 35.90115204 -6.34539795 34.88230896 C-6.35485377 32.78833082 -6.36138423 30.69433775 -6.36523438 28.6003418 C-6.37495004 25.39150172 -6.40597223 22.1832993 -6.4375 18.97460938 C-6.44402889 16.94271215 -6.44927981 14.91081033 -6.453125 12.87890625 C-6.4654718 11.91634415 -6.4778186 10.95378204 -6.49053955 9.96205139 C-6.48753845 9.06779953 -6.48453735 8.17354767 -6.48144531 7.25219727 C-6.48509094 6.46547134 -6.48873657 5.67874542 -6.49249268 4.86817932 C-5.76566983 0.80248009 -3.98424865 -0.23905492 0 0 Z " fill="#2039DC" transform="translate(150.125,6.1875)"/>
+        <path d="M0 0 C2.5 0.25 2.5 0.25 4.5 2.25 C4.75396729 4.26135254 4.75396729 4.26135254 4.75878906 6.75976562 C4.76509338 7.69413452 4.77139771 8.62850342 4.77789307 9.59118652 C4.7738446 10.60265747 4.76979614 11.61412842 4.765625 12.65625 C4.76753845 13.69189087 4.7694519 14.72753174 4.77142334 15.79455566 C4.77278597 17.98690025 4.76908414 20.17925289 4.76074219 22.37158203 C4.75004392 25.73618616 4.76063503 29.10025632 4.7734375 32.46484375 C4.77211592 34.59114702 4.76955356 36.71744995 4.765625 38.84375 C4.76967346 39.85522095 4.77372192 40.86669189 4.77789307 41.90881348 C4.77158875 42.84318237 4.76528442 43.77755127 4.75878906 44.74023438 C4.75640228 45.97694885 4.75640228 45.97694885 4.75396729 47.23864746 C4.5 49.25 4.5 49.25 2.5 51.25 C0 51.5 0 51.5 -2.5 51.25 C-4.95854505 48.79145495 -4.75226948 48.11836987 -4.75878906 44.74023438 C-4.76509338 43.80586548 -4.77139771 42.87149658 -4.77789307 41.90881348 C-4.7738446 40.89734253 -4.76979614 39.88587158 -4.765625 38.84375 C-4.76753845 37.80810913 -4.7694519 36.77246826 -4.77142334 35.70544434 C-4.77278597 33.51309975 -4.76908414 31.32074711 -4.76074219 29.12841797 C-4.75004392 25.76381384 -4.76063503 22.39974368 -4.7734375 19.03515625 C-4.77211592 16.90885298 -4.76955356 14.78255005 -4.765625 12.65625 C-4.76967346 11.64477905 -4.77372192 10.63330811 -4.77789307 9.59118652 C-4.77158875 8.65681763 -4.76528442 7.72244873 -4.75878906 6.75976562 C-4.75719788 5.93528931 -4.75560669 5.11081299 -4.75396729 4.26135254 C-4.34666902 1.03565991 -3.13772549 0.31377255 0 0 Z " fill="#257975" transform="translate(65.5,5.75)"/>
+        <!-- Date tiles: verbatim geometry, wrapped so the pop-in scale keeps its slot. -->
+        <g transform="translate(100,90)"><path class="boot-tile" style="animation-delay:0s"    d="M0 0 C5.28 0 10.56 0 16 0 C16 5.61 16 11.22 16 17 C10.72 17 5.44 17 0 17 C0 11.39 0 5.78 0 0 Z " fill="#1D45C3"/></g>
+        <g transform="translate(123,90)"><path class="boot-tile" style="animation-delay:0.09s" d="M0 0 C5.61 0 11.22 0 17 0 C17 5.61 17 11.22 17 17 C11.39 17 5.78 17 0 17 C0 11.39 0 5.78 0 0 Z " fill="#2137DF"/></g>
+        <g transform="translate(147,90)"><path class="boot-tile" style="animation-delay:0.18s" d="M0 0 C5.61 0 11.22 0 17 0 C17 5.61 17 11.22 17 17 C11.39 17 5.78 17 0 17 C0 11.39 0 5.78 0 0 Z " fill="#1D2AF1"/></g>
+        <g transform="translate(52,114)"><path class="boot-tile" style="animation-delay:0.27s" d="M0 0 C5.28 0 10.56 0 16 0 C16 5.61 16 11.22 16 17 C10.72 17 5.44 17 0 17 C0 11.39 0 5.78 0 0 Z " fill="#236792"/></g>
+        <g transform="translate(76,114)"><path class="boot-tile" style="animation-delay:0.36s" d="M0 0 C5.28 0 10.56 0 16 0 C16 5.61 16 11.22 16 17 C10.72 17 5.44 17 0 17 C0 11.39 0 5.78 0 0 Z " fill="#2154AF"/></g>
+        <g transform="translate(100,114)"><path class="boot-tile" style="animation-delay:0.45s" d="M0 0 C5.28 0 10.56 0 16 0 C16 5.61 16 11.22 16 17 C10.72 17 5.44 17 0 17 C0 11.39 0 5.78 0 0 Z " fill="#1E41CB"/></g>
+        <g transform="translate(123,114)"><path class="boot-tile" style="animation-delay:0.54s" d="M0 0 C5.61 0 11.22 0 17 0 C17 5.61 17 11.22 17 17 C11.39 17 5.78 17 0 17 C0 11.39 0 5.78 0 0 Z " fill="#2133E7"/></g>
+        <g transform="translate(147,114)"><path class="boot-tile" style="animation-delay:0.63s" d="M0 0 C5.61 0 11.22 0 17 0 C17 5.61 17 11.22 17 17 C11.39 17 5.78 17 0 17 C0 11.39 0 5.78 0 0 Z " fill="#1F2CF1"/></g>
+        <g transform="translate(52,137)"><path class="boot-tile" style="animation-delay:0.72s" d="M0 0 C5.28 0 10.56 0 16 0 C16 5.61 16 11.22 16 17 C10.72 17 5.44 17 0 17 C0 11.39 0 5.78 0 0 Z " fill="#25629B"/></g>
+        <g transform="translate(76,138)"><path class="boot-tile" style="animation-delay:0.81s" d="M0 0 C5.28 0 10.56 0 16 0 C16 5.28 16 10.56 16 16 C10.72 16 5.44 16 0 16 C0 10.72 0 5.44 0 0 Z " fill="#1C4BB6"/></g>
+        <g transform="translate(100,138)"><path class="boot-tile" style="animation-delay:0.9s" d="M0 0 C5.28 0 10.56 0 16 0 C16 5.28 16 10.56 16 16 C10.72 16 5.44 16 0 16 C0 10.72 0 5.44 0 0 Z " fill="#1A38D3"/></g>
+        <g transform="translate(124,138)"><path class="boot-tile" style="animation-delay:0.99s" d="M0 0 C5.28 0 10.56 0 16 0 C16 5.28 16 10.56 16 16 C10.72 16 5.44 16 0 16 C0 10.72 0 5.44 0 0 Z " fill="#1625ED"/></g>
+        <g transform="translate(147,137)"><path class="boot-tile" style="animation-delay:1.08s" d="M0 0 C5.61 0 11.22 0 17 0 C17 5.94 17 11.88 17 18 C11.39 18 5.78 18 0 18 C0 12.06 0 6.12 0 0 Z " fill="#2734F1"/></g>
+        <g transform="translate(52,161)"><path class="boot-tile" style="animation-delay:1.17s" d="M0 0 C5.28 0 10.56 0 16 0 C16 5.61 16 11.22 16 17 C10.72 17 5.44 17 0 17 C0 11.39 0 5.78 0 0 Z " fill="#205AA2"/></g>
+        <g transform="translate(76,161)"><path class="boot-tile" style="animation-delay:1.26s" d="M0 0 C5.28 0 10.56 0 16 0 C16 5.61 16 11.22 16 17 C10.72 17 5.44 17 0 17 C0 11.39 0 5.78 0 0 Z " fill="#1B45BF"/></g>
+        <g transform="translate(100,161)"><path class="boot-tile" style="animation-delay:1.35s" d="M0 0 C5.28 0 10.56 0 16 0 C16 5.61 16 11.22 16 17 C10.72 17 5.44 17 0 17 C0 11.39 0 5.78 0 0 Z " fill="#1932DC"/></g>
+        <g transform="translate(123,161)"><path class="boot-tile" style="animation-delay:1.44s" d="M0 0 C5.61 0 11.22 0 17 0 C17 5.61 17 11.22 17 17 C11.39 17 5.78 17 0 17 C0 11.39 0 5.78 0 0 Z " fill="#1C2AF0"/></g>
+      </svg>
       <span class="boot__word">Tabulr</span>
     </div>
   </div>
