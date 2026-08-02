@@ -165,9 +165,7 @@
 
     #loading {
       position: fixed; inset: 0; z-index: 2147483647;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 22px;
+      display: flex; align-items: center; justify-content: center;
       background: var(--boot-bg);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       opacity: 1;
@@ -178,50 +176,49 @@
        underneath — no hard cut. */
     #loading.is-done { opacity: 0; pointer-events: none; }
 
+    .boot__brand {
+      display: flex; align-items: center; gap: 14px;
+    }
     .boot__logo {
-      width: 76px; height: 76px;
-      border-radius: 20px;
+      width: 72px; height: 72px;
+      border-radius: 19px;
       display: block;
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.22),
                   0 0 0 1px color-mix(in srgb, var(--boot-fg) 8%, transparent);
-      animation: bootFloat 2.4s ease-in-out infinite;
+      animation: bootReceive 2s cubic-bezier(0.5, 0, 0.2, 1) infinite;
     }
     .boot__word {
-      font-size: 21px; font-weight: 700; letter-spacing: 0.2px;
+      font-size: 26px; font-weight: 700; letter-spacing: 0.2px;
       color: var(--boot-fg);
-      margin: 0;
+      transform-origin: left center;
+      /* Slides in beside the logo, holds, then gets drawn into it. */
+      animation: bootAbsorb 2s cubic-bezier(0.5, 0, 0.2, 1) infinite;
     }
-    .boot__bar {
-      width: 150px; height: 3px; border-radius: 3px;
-      overflow: hidden;
-      background: color-mix(in srgb, var(--boot-fg) 14%, transparent);
-      margin-top: -6px;
+    @keyframes bootAbsorb {
+      0%   { transform: translateX(14px);              opacity: 0; }
+      22%  { transform: translateX(0);                 opacity: 1; }
+      60%  { transform: translateX(0);                 opacity: 1; }
+      88%  { transform: translateX(-48px) scale(0.32); opacity: 0; }
+      100% { transform: translateX(-48px) scale(0.32); opacity: 0; }
     }
-    .boot__bar::after {
-      content: ''; display: block;
-      width: 40%; height: 100%; border-radius: 3px;
-      background: var(--boot-accent);
-      animation: bootSlide 1.15s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-    }
-    @keyframes bootFloat {
-      0%, 100% { transform: translateY(0) scale(1); }
-      50% { transform: translateY(-4px) scale(1.03); }
-    }
-    @keyframes bootSlide {
-      0% { transform: translateX(-120%); }
-      100% { transform: translateX(370%); }
+    /* The logo "catches" the wordmark as it arrives. */
+    @keyframes bootReceive {
+      0%, 78% { transform: scale(1); }
+      88%     { transform: scale(1.07); }
+      100%    { transform: scale(1); }
     }
     @media (prefers-reduced-motion: reduce) {
-      .boot__logo, .boot__bar::after { animation-duration: 0.01ms; animation-iteration-count: 1; }
-      .boot__bar::after { width: 100%; }
+      .boot__logo, .boot__word { animation: none; }
+      .boot__word { opacity: 1; transform: none; }
     }
   </style>
 </head>
 <body>
-  <div id="loading">
-    <img class="boot__logo" src="icons/Icon-192.png" alt="Tabulr" width="76" height="76">
-    <p class="boot__word">Tabulr</p>
-    <div class="boot__bar" role="progressbar" aria-label="Loading Tabulr"></div>
+  <div id="loading" role="progressbar" aria-label="Loading Tabulr">
+    <div class="boot__brand">
+      <img class="boot__logo" src="icons/Icon-192.png" alt="Tabulr" width="72" height="72">
+      <span class="boot__word">Tabulr</span>
+    </div>
   </div>
 
   <script>

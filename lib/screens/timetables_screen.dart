@@ -1204,7 +1204,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                         ),
                         );
                       },
-                    ),
+                    ).motionEntry(duration: AppDesign.motionFast),
                   ),
                   // Clear All button at bottom
                   if (_sortedTimetables.isNotEmpty)

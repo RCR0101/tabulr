@@ -95,7 +95,7 @@ class _AppSidebarState extends State<AppSidebar> {
                     final isHovered = _hoveredIndex == index;
                     return _buildItem(
                       context, scheme, item, isSelected, isHovered, index, collapsed,
-                    );
+                    ).motionListItem(index, stagger: const Duration(milliseconds: 30));
                   },
                 ),
               ),
