@@ -235,7 +235,8 @@ class AuthWrapper extends StatefulWidget {
 class _AuthWrapperState extends State<AuthWrapper> {
   final AuthService _authService = AuthService();
   late StreamSubscription<bool> _authMethodSubscription;
-  late StreamSubscription<dynamic> _authSub;
+  StreamSubscription<dynamic>? _authSub;
+  Timer? _authRestoreTimer;
   bool _authReady = false;
 
   /// Whose settings are currently loaded. Per-uid rather than a one-shot bool:
@@ -255,12 +256,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   Future<void> _initAuth() async {
     final wasAuth = await _authService.isValidAuthState();
-    if (mounted) {
-      setState(() => _wasPreviouslyAuthenticated = wasAuth);
-    }
+    if (!mounted) return;
+    setState(() => _wasPreviouslyAuthenticated = wasAuth);
 
     _authSub = _authService.authStateChanges.listen((user) {
       if (user != null) {
+        _authRestoreTimer?.cancel();
         _authReady = true;
         if (_syncedUid != user.uid) {
           _syncedUid = user.uid;
@@ -274,12 +275,18 @@ class _AuthWrapperState extends State<AuthWrapper> {
         _authReady = true;
         if (mounted) setState(() {});
       } else {
-        // User was previously authenticated but Firebase emitted null. On web
-        // the persisted session is restored asynchronously, so the first
-        // emission can be null before it lands. Wait for the next one — if the
-        // session is truly gone, Firebase emits null again and we show login.
+        // Give web persistence a short restoration window, but never wait for
+        // a second null event: Firebase may emit only once for an expired or
+        // revoked session, which previously left the skeleton up forever.
         _wasPreviouslyAuthenticated = false;
-        // Don't set _authReady yet — keep showing skeleton
+        _authRestoreTimer?.cancel();
+        _authRestoreTimer = Timer(const Duration(seconds: 1), () {
+          if (!mounted || _authService.isAuthenticated) return;
+          _syncedUid = null;
+          _authReady = true;
+          unawaited(_authService.clearAuthData());
+          setState(() {});
+        });
       }
     });
   }
@@ -302,8 +309,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   @override
   void dispose() {
+    _authRestoreTimer?.cancel();
     _authMethodSubscription.cancel();
-    _authSub.cancel();
+    _authSub?.cancel();
     super.dispose();
   }
 

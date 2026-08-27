@@ -6,70 +6,68 @@ import '../widgets/disclaimer_widget.dart';
 import '../widgets/error_dialog.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  const AuthScreen({super.key, this.signInWithGoogle, this.continueAsGuest});
+
+  final Future<AuthSignInResult> Function()? signInWithGoogle;
+  final Future<void> Function()? continueAsGuest;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
+enum _AuthAction { google, guest }
+
 class _AuthScreenState extends State<AuthScreen> {
   final AuthService _authService = AuthService();
-  bool _isLoading = false;
+  _AuthAction? _activeAction;
+
+  bool get _isLoading => _activeAction != null;
 
   Future<void> _signInWithGoogle() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (_isLoading) return;
+    setState(() => _activeAction = _AuthAction.google);
 
     try {
-      final userCredential = await _authService.signInWithGoogle();
-      if (userCredential != null) {
-        // Authentication successful, AuthWrapper will handle navigation
-      } else {
-        // Cancelling is a benign, deliberate choice — a gentle nudge, not an
-        // error modal.
-        ToastService.showInfo('Sign-in cancelled.');
+      final result =
+          await (widget.signInWithGoogle ?? _authService.signInWithGoogle)();
+      switch (result) {
+        case AuthSignInResult.signedIn:
+          // AuthWrapper completes account setup before showing the app.
+          break;
+        case AuthSignInResult.cancelled:
+          ToastService.showInfo('Sign-in cancelled.');
+          break;
+        case AuthSignInResult.redirecting:
+          // The browser is leaving this page; do not report a cancellation.
+          break;
       }
     } catch (e) {
-      // These are already user-ready, so bypass the error translator (it would
-      // otherwise flatten "popup was blocked" etc. to a generic message).
-      String errorMessage = 'Failed to sign in with Google. Please try again.';
-
-      if (e.toString().contains('popup')) {
-        errorMessage = 'Sign-in popup was blocked. Please allow popups for this site and try again.';
-      } else if (e.toString().contains('network')) {
-        errorMessage = 'Network error. Please check your internet connection and try again.';
-      } else if (e.toString().contains('unauthorized')) {
-        errorMessage = 'This app is not authorized. Please contact support.';
-      }
-
-      _showErrorDialog(errorMessage, translate: false);
+      final message =
+          e is AuthFlowException
+              ? e.message
+              : 'Failed to sign in with Google. Please try again.';
+      _showErrorDialog(message, translate: false);
     } finally {
       // On success AuthWrapper navigates away and disposes this screen before
       // the finally runs, so guard the rebuild.
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _activeAction = null);
       }
     }
   }
 
   Future<void> _continueAsGuest() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (_isLoading) return;
+    setState(() => _activeAction = _AuthAction.guest);
 
     try {
-      await _authService.signInAsGuest();
+      await (widget.continueAsGuest ?? _authService.signInAsGuest)();
       // Guest mode set, AuthWrapper will handle navigation
     } catch (e) {
-      _showErrorDialog('Failed to continue as guest: $e');
+      _showErrorDialog('Could not start guest mode. Please try again.');
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _activeAction = null);
       }
     }
   }
@@ -89,7 +87,10 @@ class _AuthScreenState extends State<AuthScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 200, maxHeight: 200),
+                  constraints: const BoxConstraints(
+                    maxWidth: 200,
+                    maxHeight: 200,
+                  ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Image.asset(
@@ -102,7 +103,9 @@ class _AuthScreenState extends State<AuthScreen> {
                 Text(
                   'Create and manage your class timetables',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                   textAlign: TextAlign.center,
                 ).motionFadeIn(delay: const Duration(milliseconds: 200)),
@@ -114,16 +117,22 @@ class _AuthScreenState extends State<AuthScreen> {
                     width: double.infinity,
                     height: 56,
                     child: FilledButton.icon(
+                      key: const ValueKey('google-sign-in-button'),
                       onPressed: _isLoading ? null : _signInWithGoogle,
-                      icon: _isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.login),
+                      icon:
+                          _activeAction == _AuthAction.google
+                              ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : const Icon(Icons.login),
                       label: Text(
-                        _isLoading ? 'Signing in...' : 'Sign in with Google',
+                        _activeAction == _AuthAction.google
+                            ? 'Signing in...'
+                            : 'Sign in with Google',
                         style: const TextStyle(fontSize: 16),
                       ),
                     ),
@@ -134,9 +143,11 @@ class _AuthScreenState extends State<AuthScreen> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppDesign.cardBorderRadius(context),
                     border: Border.all(
-                      color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.outline.withValues(alpha: 0.5),
                     ),
                   ),
                   child: Column(
@@ -152,7 +163,9 @@ class _AuthScreenState extends State<AuthScreen> {
                           const SizedBox(width: 8),
                           Text(
                             'Why sign in?',
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            style: Theme.of(
+                              context,
+                            ).textTheme.titleSmall?.copyWith(
                               color: Theme.of(context).colorScheme.primary,
                               fontWeight: FontWeight.bold,
                             ),
@@ -165,7 +178,9 @@ class _AuthScreenState extends State<AuthScreen> {
                         '• Find exam seating & professor details\n'
                         '• Share timetables & sync across devices',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.8),
                         ),
                       ),
                     ],
@@ -176,7 +191,9 @@ class _AuthScreenState extends State<AuthScreen> {
                   children: [
                     Expanded(
                       child: Divider(
-                        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outline.withValues(alpha: 0.5),
                       ),
                     ),
                     Padding(
@@ -184,13 +201,17 @@ class _AuthScreenState extends State<AuthScreen> {
                       child: Text(
                         'OR',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
                     ),
                     Expanded(
                       child: Divider(
-                        color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outline.withValues(alpha: 0.5),
                       ),
                     ),
                   ],
@@ -203,11 +224,23 @@ class _AuthScreenState extends State<AuthScreen> {
                     width: double.infinity,
                     height: 56,
                     child: OutlinedButton.icon(
+                      key: const ValueKey('guest-sign-in-button'),
                       onPressed: _isLoading ? null : _continueAsGuest,
-                      icon: const Icon(Icons.person_outline),
-                      label: const Text(
-                        'Continue as Guest',
-                        style: TextStyle(fontSize: 16),
+                      icon:
+                          _activeAction == _AuthAction.guest
+                              ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : const Icon(Icons.person_outline),
+                      label: Text(
+                        _activeAction == _AuthAction.guest
+                            ? 'Opening Tabulr...'
+                            : 'Continue as Guest',
+                        style: const TextStyle(fontSize: 16),
                       ),
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(

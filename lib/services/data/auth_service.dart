@@ -11,6 +11,17 @@ import '../ui/secure_logger.dart';
 import '../ui/tutorial_service.dart';
 import '../ui/remote_log_sink.dart';
 
+enum AuthSignInResult { signedIn, cancelled, redirecting }
+
+class AuthFlowException implements Exception {
+  const AuthFlowException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 class AuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
@@ -23,27 +34,40 @@ class AuthService {
   FirebaseAuth get _firebaseAuth => FirebaseAuth.instance;
   final ConfigService _config = ConfigService();
   late final GoogleSignIn _googleSignIn;
-  
+
   // Session-only guest mode tracker (not persisted)
   bool _isCurrentlyGuest = false;
-  
+
   // Stream controller for auth state changes including guest mode
-  final StreamController<bool> _authStateController = StreamController<bool>.broadcast();
+  final StreamController<bool> _authStateController =
+      StreamController<bool>.broadcast();
 
   // Feeds the current app-user id to the remote log sink; subscribed once in
   // initialize() so login/logout keep shipped logs attributable.
   StreamSubscription<User?>? _authSub;
-  
+  Future<void>? _initialization;
+
   User? get currentUser => _firebaseAuth.currentUser;
   bool get isAuthenticated => _firebaseAuth.currentUser != null;
   bool get isGuest => _isCurrentlyGuest && !isAuthenticated;
   bool get hasChosenAuthMethod => isAuthenticated || _isCurrentlyGuest;
-  
+
   Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
   Stream<bool> get authMethodChosenStream => _authStateController.stream;
 
-  // Initialize the service
+  // Initialization is shared by startup and AuthWrapper. Running it twice can
+  // process a redirect twice or create duplicate auth-state subscriptions.
   Future<void> initialize() async {
+    final initialization = _initialization ??= _initialize();
+    try {
+      await initialization;
+    } catch (_) {
+      if (identical(_initialization, initialization)) _initialization = null;
+      rethrow;
+    }
+  }
+
+  Future<void> _initialize() async {
     try {
       // Validate Google Web Client ID for web
       if (kIsWeb && !_config.isValidConfiguration) {
@@ -57,9 +81,7 @@ class AuthService {
 
       // Initialize GoogleSignIn with web client ID if on web
       if (kIsWeb) {
-        _googleSignIn = GoogleSignIn(
-          clientId: _config.googleWebClientId,
-        );
+        _googleSignIn = GoogleSignIn(clientId: _config.googleWebClientId);
       } else {
         _googleSignIn = GoogleSignIn();
       }
@@ -87,12 +109,16 @@ class AuthService {
 
       // Sync prefs if Firebase already has a user (e.g. restored from persistence)
       final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(StorageKeys.isGuest);
 
       if (currentUser != null) {
         SecureLogger.info('AUTH', 'Current user found during initialization');
         await prefs.setBool(StorageKeys.isAuthenticated, true);
       } else {
-        SecureLogger.debug('AUTH', 'No current user found during initialization');
+        SecureLogger.debug(
+          'AUTH',
+          'No current user found during initialization',
+        );
         // Don't clear is_authenticated here — on web, Firebase restores the
         // persisted session asynchronously, so currentUser can be null for a
         // moment after startup. The pref is only cleared on explicit sign-out.
@@ -109,89 +135,138 @@ class AuthService {
       });
     } catch (e) {
       SecureLogger.error('AUTH', 'Failed to initialize AuthService', e);
+      rethrow;
     }
   }
 
-  Future<UserCredential?> signInWithGoogle() async {
+  static bool isPopupCancellationCode(String code) => const {
+    'popup-closed-by-user',
+    'cancelled-popup-request',
+    'web-context-cancelled',
+  }.contains(code);
+
+  static bool shouldUseRedirectForPopupCode(String code) => const {
+    'popup-blocked',
+    'operation-not-supported-in-this-environment',
+    'web-storage-unsupported',
+  }.contains(code);
+
+  AuthFlowException _friendlyAuthError(Object error) {
+    if (error is AuthFlowException) return error;
+    if (error is FirebaseAuthException) {
+      return switch (error.code) {
+        'network-request-failed' => const AuthFlowException(
+          'Network error. Check your connection and try again.',
+        ),
+        'unauthorized-domain' => const AuthFlowException(
+          'This domain is not authorized for sign-in. Please contact support.',
+        ),
+        'popup-blocked' => const AuthFlowException(
+          'The sign-in popup was blocked. Allow popups and try again.',
+        ),
+        'too-many-requests' => const AuthFlowException(
+          'Too many sign-in attempts. Wait a moment and try again.',
+        ),
+        _ => AuthFlowException(
+          error.message ?? 'Google sign-in failed. Please try again.',
+        ),
+      };
+    }
+    final text = error.toString().toLowerCase();
+    if (text.contains('network')) {
+      return const AuthFlowException(
+        'Network error. Check your connection and try again.',
+      );
+    }
+    return const AuthFlowException('Google sign-in failed. Please try again.');
+  }
+
+  Future<AuthSignInResult> signInWithGoogle() async {
     try {
+      await initialize();
       if (kIsWeb) {
         // Web authentication - use redirect method which is more reliable
         final GoogleAuthProvider googleProvider = GoogleAuthProvider();
-        
+
         // Add scopes
         googleProvider.addScope('email');
         googleProvider.addScope('profile');
-        googleProvider.setCustomParameters({
-          'prompt': 'select_account',
-        });
-        
-        UserCredential? userCredential;
-        
+        googleProvider.setCustomParameters({'prompt': 'select_account'});
+
         try {
-          // Try popup first (more reliable for testing)
           SecureLogger.info('AUTH', 'Starting Google Sign-In popup');
-          userCredential = await _firebaseAuth.signInWithPopup(googleProvider);
-          
+          final userCredential = await _firebaseAuth.signInWithPopup(
+            googleProvider,
+          );
+
           if (userCredential.user == null) {
-            return null;
+            return AuthSignInResult.cancelled;
           }
-          
+
           SecureLogger.authEvent('Google Sign-In popup successful');
-          
+
           // Store auth preference
           final prefs = await SharedPreferences.getInstance();
           await prefs.setBool(StorageKeys.isAuthenticated, true);
           await prefs.remove(StorageKeys.isGuest);
-          
-          return userCredential;
+
+          return AuthSignInResult.signedIn;
         } catch (popupError) {
-          SecureLogger.warning('AUTH', 'Popup sign-in failed', {'method': 'popup'});
-          
-          // If popup fails, try redirect
+          if (popupError is FirebaseAuthException &&
+              isPopupCancellationCode(popupError.code)) {
+            SecureLogger.info('AUTH', 'Google Sign-In popup cancelled');
+            return AuthSignInResult.cancelled;
+          }
+          if (popupError is! FirebaseAuthException ||
+              !shouldUseRedirectForPopupCode(popupError.code)) {
+            rethrow;
+          }
+
+          SecureLogger.warning('AUTH', 'Popup unavailable; using redirect', {
+            'code': popupError.code,
+          });
           try {
-            SecureLogger.info('AUTH', 'Trying redirect fallback method');
             await _firebaseAuth.signInWithRedirect(googleProvider);
-            
-            // The app will reload after redirect, so this won't execute
-            // The redirect result will be handled in the initialize method
-            return null;
+            return AuthSignInResult.redirecting;
           } catch (redirectError) {
-            SecureLogger.error('AUTH', 'Redirect sign-in also failed', redirectError);
-            throw Exception('Google Sign-In failed. Please ensure this domain is authorized in Firebase Console and try again.');
+            SecureLogger.error(
+              'AUTH',
+              'Redirect sign-in also failed',
+              redirectError,
+            );
+            throw _friendlyAuthError(redirectError);
           }
         }
       } else {
         // Mobile authentication
         final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
         if (googleUser == null) {
-          return null; // User cancelled the sign-in
+          return AuthSignInResult.cancelled;
         }
 
-        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final GoogleSignInAuthentication googleAuth =
+            await googleUser.authentication;
         final credential = GoogleAuthProvider.credential(
           accessToken: googleAuth.accessToken,
           idToken: googleAuth.idToken,
         );
 
-        final userCredential = await _firebaseAuth.signInWithCredential(credential);
-        
+        final userCredential = await _firebaseAuth.signInWithCredential(
+          credential,
+        );
+
         // Store auth preference
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool(StorageKeys.isAuthenticated, true);
         await prefs.remove(StorageKeys.isGuest);
-        
-        return userCredential;
+
+        return userCredential.user == null
+            ? AuthSignInResult.cancelled
+            : AuthSignInResult.signedIn;
       }
     } catch (e) {
       SecureLogger.error('AUTH', 'Failed to sign in with Google', e);
-      // Return more specific error information
-      if (e.toString().contains('popup')) {
-        throw Exception('Sign-in popup was blocked. Please allow popups for this site and try again.');
-      } else if (e.toString().contains('network')) {
-        throw Exception('Network error. Please check your internet connection and try again.');
-      } else {
-        throw Exception('Sign-in failed: ${e.toString()}');
-      }
+      throw _friendlyAuthError(e);
     }
   }
 
@@ -199,38 +274,48 @@ class AuthService {
     try {
       // Set session-only guest mode (not persisted across app restarts)
       _isCurrentlyGuest = true;
-      
+
       // Clear any existing auth preferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(StorageKeys.isAuthenticated);
       await prefs.remove(StorageKeys.isGuest);
-      
+
       // Notify listeners that auth method has been chosen
       _authStateController.add(true);
-      
+
       SecureLogger.authEvent('Guest mode activated');
     } catch (e) {
+      _isCurrentlyGuest = false;
       SecureLogger.error('AUTH', 'Failed to set guest mode', e);
+      rethrow;
     }
   }
 
   Future<void> signOut() async {
-    try {
-      // Reset guest mode
-      _isCurrentlyGuest = false;
-      
-      // Sign out from Google (only for mobile)
-      if (!kIsWeb) {
+    _isCurrentlyGuest = false;
+
+    // Google provider cleanup must not prevent the authoritative Firebase
+    // session from being terminated.
+    if (!kIsWeb) {
+      try {
         await _googleSignIn.signOut();
+      } catch (error) {
+        SecureLogger.warning('AUTH', 'Google provider sign-out failed', {
+          'error': error.toString(),
+        });
       }
-      
-      // Sign out from Firebase
+    }
+
+    try {
       await _firebaseAuth.signOut();
-      
-      // Clear session guest mode
-      _isCurrentlyGuest = false;
-      
-      // Clear preferences
+    } catch (error) {
+      SecureLogger.error('AUTH', 'Firebase sign-out failed', error);
+      throw const AuthFlowException(
+        'Could not sign out. Check your connection and try again.',
+      );
+    }
+
+    try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(StorageKeys.isAuthenticated);
       await prefs.remove(StorageKeys.isGuest);
@@ -242,15 +327,14 @@ class AuthService {
       TutorialService().reset();
       await UserSettingsService().clearSettings();
 
-      // Small delay to ensure Firebase auth state change propagates
-      await Future.delayed(const Duration(milliseconds: 100));
-      
       // Notify auth method chosen listeners after clearing guest mode
       _authStateController.add(false);
-      
       SecureLogger.authEvent('User signed out successfully');
-    } catch (e) {
-      SecureLogger.error('AUTH', 'Failed to sign out', e);
+    } catch (error) {
+      // Firebase is already signed out. Cleanup can be retried on next launch,
+      // so do not misreport the completed sign-out as a session failure.
+      SecureLogger.error('AUTH', 'Post-sign-out cleanup failed', error);
+      _authStateController.add(false);
     }
   }
 
@@ -301,10 +385,9 @@ class AuthService {
   Future<bool> isValidAuthState() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final isAuthenticated = prefs.getBool(StorageKeys.isAuthenticated) ?? false;
-      final isGuest = prefs.getBool(StorageKeys.isGuest) ?? false;
-      
-      return isAuthenticated || isGuest;
+      final isAuthenticated =
+          prefs.getBool(StorageKeys.isAuthenticated) ?? false;
+      return isAuthenticated;
     } catch (e) {
       SecureLogger.error('AUTH', 'Failed to check auth state', e);
       return false;
