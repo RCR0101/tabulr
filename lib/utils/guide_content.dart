@@ -54,8 +54,9 @@ class GuideTopic {
         lead.toLowerCase().contains(q) ||
         steps.any((s) => s.toLowerCase().contains(q)) ||
         keywords.any((k) => k.toLowerCase().contains(q)) ||
-        (pageInfo?.features
-                .any((f) => '${f.label} ${f.description}'.toLowerCase().contains(q)) ??
+        (pageInfo?.features.any(
+              (f) => '${f.label} ${f.description}'.toLowerCase().contains(q),
+            ) ??
             false);
   }
 }
@@ -76,8 +77,9 @@ class GuideSection {
   final List<GuideTopic> topics;
 }
 
-List<GuideTopic> get guideTopics =>
-    [for (final section in guideSections) ...section.topics];
+List<GuideTopic> get guideTopics => [
+  for (final section in guideSections) ...section.topics,
+];
 
 GuideTopic? guideTopicAt(String anchor) {
   for (final topic in guideTopics) {
@@ -87,34 +89,35 @@ GuideTopic? guideTopicAt(String anchor) {
 }
 
 String? guideAnchorForScreen(DrawerScreen screen) => switch (screen) {
-      DrawerScreen.timetables => 'your-timetables',
-      DrawerScreen.calendar => 'calendar',
-      DrawerScreen.freeSlotFinder => 'free-slots',
-      DrawerScreen.cgpaCalculator => 'cgpa',
-      DrawerScreen.examSeating => 'exam-seating',
-      DrawerScreen.acadDrives => 'acad-drives',
-      DrawerScreen.profChambers => 'professors',
-      DrawerScreen.announcements => 'announcements',
-      DrawerScreen.minors => 'minors',
-      DrawerScreen.faq => 'academic-faq',
-      DrawerScreen.bugReport => 'bug-reports',
-      DrawerScreen.admin => null,
-    };
+  DrawerScreen.timetables => 'your-timetables',
+  DrawerScreen.calendar => 'calendar',
+  DrawerScreen.freeSlotFinder => 'free-slots',
+  DrawerScreen.cgpaCalculator => 'cgpa',
+  DrawerScreen.examSeating => 'exam-seating',
+  DrawerScreen.acadDrives => 'acad-drives',
+  DrawerScreen.profChambers => 'professors',
+  DrawerScreen.announcements => 'announcements',
+  DrawerScreen.minors => 'minors',
+  DrawerScreen.faq => 'academic-faq',
+  DrawerScreen.bugReport => 'bug-reports',
+  DrawerScreen.admin => null,
+};
 
 String? guideAnchorForTool(AppTool tool) => switch (tool) {
-      AppTool.sampleTimetables => 'sample-timetables',
-      AppTool.trimTimetable => 'trim',
-      AppTool.courseGuide => 'course-guide',
-      AppTool.prerequisites => 'prerequisites',
-      AppTool.electives => 'electives',
-      AppTool.minors => 'minors',
-      AppTool.courseHistory => 'course-history',
-      AppTool.profChambers => 'professors',
-      AppTool.compareTimetables => 'comparing',
-      AppTool.credits => 'credits-page',
-      AppTool.profile => 'profile',
-      AppTool.guide => 'this-guide',
-    };
+  AppTool.sampleTimetables => 'sample-timetables',
+  AppTool.trimTimetable => 'trim',
+  AppTool.courseGuide => 'course-guide',
+  AppTool.prerequisites => 'prerequisites',
+  AppTool.degreeAudit => 'degree-audit',
+  AppTool.electives => 'electives',
+  AppTool.minors => 'minors',
+  AppTool.courseHistory => 'course-history',
+  AppTool.profChambers => 'professors',
+  AppTool.compareTimetables => 'comparing',
+  AppTool.credits => 'credits-page',
+  AppTool.profile => 'profile',
+  AppTool.guide => 'this-guide',
+};
 
 final List<GuideSection> guideSections = [
   GuideSection(
@@ -128,20 +131,12 @@ final List<GuideSection> guideSections = [
         anchor: 'what-is-tabulr',
         icon: Icons.calendar_month_rounded,
         lead:
-            'Tabulr is a free, open-source academic companion for BITS Pilani '
-            'students across Pilani, Goa and Hyderabad, built by students. It '
-            'started as a timetable maker — build a clash-free week from the '
-            'real course booklet, or let it generate the options for you — and '
-            'grew into most of what a degree needs around that: your CGPA and '
-            'where it is heading, which minors and electives are still open, '
-            'what you can register for next, your exam room and seat, and the '
-            'past papers, notes and course updates other students share. It '
-            'runs in a browser and as a desktop app, and works offline.',
+            "Tabulr is a free, open-source academic companion for BITS Pilani students across Pilani, Goa and Hyderabad. Build a clash-free timetable from the course catalogue, plan your academic record, and find exam rooms, resources and course updates. Some previously loaded data is cached locally; signing in, fresh data, sharing, resources and community features need a connection.",
         steps: [
           'Pick your campus, then build a timetable — or auto-generate one — from the course catalogue.',
           'Tabulr checks every clash for you, including exam dates months out.',
           'Plan your CGPA, minors and electives, share and export, all from the same data.',
-          'Look up exam seats, professors, and crowd-sourced notes and announcements for your courses.',
+          'Look up exam rooms, professors, and crowd-sourced notes and announcements for your courses.',
         ],
         keywords: ['about', 'what is this', 'intro', 'overview', 'bits'],
       ),
@@ -150,37 +145,47 @@ final List<GuideSection> guideSections = [
         anchor: 'signing-in',
         icon: Icons.login,
         lead:
-            'You can browse without an account — the course history, minors, '
-            'exam seating and the academic FAQ are all open. Signing in with '
-            'Google is what lets Tabulr save your timetables, remember your '
-            'CGPA record, and sync them to whatever device you open next. '
-            'Your campus decides which course catalogue, exam schedule and '
-            'academic calendar you see, so set it first.',
+            "Public lookups such as Course History, Minors, Exam Seating and Academic Rules are available without an account. Sign in with Google to save and sync your timetables and academic record. Guest timetable work is temporary and can be cleared when the browser session closes, so export anything you want to keep. Choose the correct campus before planning.",
         steps: [
-          'Tap Sign in and choose your Google account.',
-          'Pick your campus from the selector at the top of the timetable list.',
-          'Fill in your ID number and branch on the Profile page so exam seating and CDCs work without asking again.',
+          "Sign in, then choose your campus from the selector on My timetables.",
+          "Set your ID, branch and semester in Profile to prefill planning tools.",
+          "Keep an exported .tt backup of guest work; do not treat the guest editor as cloud storage.",
         ],
-        keywords: ['google', 'log in', 'account', 'guest', 'campus', 'pilani', 'goa', 'hyderabad'],
+        keywords: [
+          'google',
+          'log in',
+          'account',
+          'guest',
+          'campus',
+          'pilani',
+          'goa',
+          'hyderabad',
+        ],
       ),
       const GuideTopic(
         title: 'Finding your way around',
         anchor: 'finding-your-way',
         icon: Icons.explore_outlined,
         lead:
-            'The sidebar on the left is every main screen. If you would rather '
-            'not hunt for things, press Ctrl+K (Cmd+K on a Mac) anywhere in the '
-            'app and start typing — the command palette jumps straight to any '
-            'screen, tool or action, including the sections of this guide. Most '
-            'screens also carry a small info button in the top bar that '
-            'explains what that page can do.',
+            "The app is organised into Timetables, Degree, Calendar, Explore and Exams. The tabs within each workspace keep related tools together, without mixing their data or changing what they do. Help & support lives in the desktop sidebar and the mobile More menu. Search with Ctrl+K or Cmd+K to jump to a feature, action or guide topic.",
         steps: [
-          'Sidebar — the main screens, in order.',
-          'Ctrl+K / Cmd+K — search everything and jump.',
-          'The info button in the top bar — what this page does.',
-          'The first time you open a screen, a short tour points out the buttons that matter.',
+          "Timetables: your saved and archived weeks, plus generated samples. Compare remains a timetable action.",
+          "Degree: Audit, Grades & targets, Curriculum, Electives and Minors.",
+          "Calendar: My week, Availability and, for eligible Hyderabad accounts, Updates.",
+          "Explore: Acad Drives, Prerequisites, Faculty and Course history. Exams has its own workspace.",
+          "Help & support: Using Tabulr, Academic rules, Report a problem and About.",
+          "Page info opens a short explanation and a link to its full guide topic. Guided tours are available on selected screens, not every page.",
         ],
-        keywords: ['navigation', 'command palette', 'shortcut', 'search', 'sidebar', 'menu', 'tutorial', 'onboarding'],
+        keywords: [
+          'navigation',
+          'command palette',
+          'shortcut',
+          'search',
+          'sidebar',
+          'menu',
+          'tutorial',
+          'onboarding',
+        ],
       ),
     ],
   ),
@@ -188,30 +193,36 @@ final List<GuideSection> guideSections = [
     title: 'Building a timetable',
     anchor: 'build',
     icon: Icons.grid_view_rounded,
-    blurb:
-        'From an empty grid to a clash-free week you can share and export.',
+    blurb: 'From an empty grid to a clash-free week you can share and export.',
     topics: [
       GuideTopic(
         title: 'Your timetables',
         anchor: 'your-timetables',
         icon: Icons.schedule,
         lead:
-            'The TT Builder screen holds every timetable you have made. Keep as '
-            'many as you like — one per plan you are weighing up is the normal '
-            'way to use it. Cards can be renamed, duplicated, reordered and '
-            'deleted, and a swipe does the common ones without opening a menu.',
+            "My timetables is your plan library. Each card surfaces its courses, credit load, last update and workload insight before you open the editor. New, Import and Compare sit beside the list heading; campus and sorting stay in the slim toolbar below. Rename, duplicate or delete from a card menu or swipe shortcut. Choose Custom Order to reveal drag handles. Past-semester plans remain grouped under archives.",
         pageInfo: PageInfoHelper.timetableList,
-        keywords: ['home', 'list', 'my timetables', 'duplicate', 'rename', 'delete', 'swipe'],
+        keywords: [
+          'home',
+          'list',
+          'my timetables',
+          'duplicate',
+          'rename',
+          'delete',
+          'swipe',
+        ],
       ),
       GuideTopic(
         title: 'The editor',
         anchor: 'the-editor',
         icon: Icons.edit_calendar_outlined,
         lead:
-            'Open a timetable and you get the week grid, the courses you have '
-            'picked, and your exam dates. Everything you do here is undoable — '
-            'add a course, change your mind, undo. Tabulr will not let you '
-            'leave with unsaved changes without asking first.',
+            'The editor is one scheduling workspace: the course browser sits '
+            'beside the timetable on desktop and opens from the bottom dock on '
+            'mobile. Use Catalog to find sections; My Plan keeps selected '
+            'courses and their exam schedule together. Save state, undo and '
+            'redo live in the editor header, while view controls stay directly '
+            'above the grid. Tabulr asks before leaving with unsaved changes.',
         pageInfo: PageInfoHelper.timetableCreator,
         visuals: [GuideVisual.weekGrid],
         keywords: ['grid', 'week', 'edit', 'undo', 'redo', 'save'],
@@ -233,7 +244,17 @@ final List<GuideSection> guideSections = [
           'Size — compact through extra large, or "fit" to get the whole week on one screen.',
           'Fields — hide the room or the instructor when blocks get crowded.',
         ],
-        keywords: ['layout', 'vertical', 'horizontal', 'agenda', 'size', 'compact', 'fit', 'display', 'mobile'],
+        keywords: [
+          'layout',
+          'vertical',
+          'horizontal',
+          'agenda',
+          'size',
+          'compact',
+          'fit',
+          'display',
+          'mobile',
+        ],
       ),
       GuideTopic(
         title: 'Adding courses',
@@ -253,25 +274,40 @@ final List<GuideSection> guideSections = [
         ],
         visuals: [GuideVisual.courseCards],
         pageInfo: PageInfoHelper.addSwap,
-        keywords: ['add', 'course', 'section', 'catalog', 'catalogue', 'search', 'lecture', 'tutorial', 'practical', 'lab'],
+        keywords: [
+          'add',
+          'course',
+          'section',
+          'catalog',
+          'catalogue',
+          'search',
+          'lecture',
+          'tutorial',
+          'practical',
+          'lab',
+        ],
       ),
       GuideTopic(
         title: 'Swapping a section',
         anchor: 'swapping-sections',
         icon: Icons.swap_horiz,
         lead:
-            'When a section closes during registration you rarely want to '
-            'rebuild the week — you want that one section replaced. Quick '
-            'Replace shows only the alternatives for that course, marks which '
-            'ones fit your current week, and swaps it in place. The rest of '
-            'your timetable is untouched.',
+            "Quick Replace can change a course or find new sections when registration closes your preferred option. A direct swap keeps the other courses unchanged. Repair can instead propose a clash-free plan that moves up to two other courses; protected courses are not moved. Review the complete preview before applying it.",
         steps: [
-          'Tap the block you want to change, then Replace.',
-          'Fitting alternatives are listed first; clashing ones say what they collide with.',
-          'Pick one and it swaps in — undo if it was not what you meant.',
+          "Open Replace for the affected course and review alternatives.",
+          "For a repair, choose what to preserve: timing, instructors or free days, and protect courses you do not want moved.",
+          "Compare the ranked plans and inspect every changed course before applying. Repairs are bounded, so no result is not proof that no possible timetable exists.",
+          "Apply the plan to the editor, then save. Undo is available for the change.",
         ],
         pageInfo: PageInfoHelper.quickReplace,
-        keywords: ['swap', 'replace', 'section full', 'closed', 'change section', 'quick replace'],
+        keywords: [
+          'swap',
+          'replace',
+          'section full',
+          'closed',
+          'change section',
+          'quick replace',
+        ],
       ),
       const GuideTopic(
         title: 'Clashes',
@@ -291,7 +327,17 @@ final List<GuideSection> guideSections = [
           'Amber — worth knowing about, but you can proceed.',
           'The banner stays collapsed to one line so the grid keeps its space; tap it for the detail.',
         ],
-        keywords: ['clash', 'conflict', 'overlap', 'exam clash', 'midsem', 'compre', 'same course', 'error', 'warning'],
+        keywords: [
+          'clash',
+          'conflict',
+          'overlap',
+          'exam clash',
+          'midsem',
+          'compre',
+          'same course',
+          'error',
+          'warning',
+        ],
       ),
       const GuideTopic(
         title: 'Credits and credit hours',
@@ -306,7 +352,15 @@ final List<GuideSection> guideSections = [
             'keeps a running total against the semester cap, so you know when '
             'you are overloaded before registration tells you.',
         visuals: [GuideVisual.coursesTab],
-        keywords: ['credits', 'credit hours', 'units', '2026 batch', 'cap', 'overload', 'contact hours'],
+        keywords: [
+          'credits',
+          'credit hours',
+          'units',
+          '2026 batch',
+          'cap',
+          'overload',
+          'contact hours',
+        ],
       ),
       const GuideTopic(
         title: 'Reading the week at a glance',
@@ -320,7 +374,15 @@ final List<GuideSection> guideSections = [
             'the fastest way to compare two plans that both look fine on the '
             'grid.',
         visuals: [GuideVisual.stats, GuideVisual.weeklyLoad],
-        keywords: ['stats', 'insights', 'load', 'free day', 'contact hours', 'gaps', 'earliest'],
+        keywords: [
+          'stats',
+          'insights',
+          'load',
+          'free day',
+          'contact hours',
+          'gaps',
+          'earliest',
+        ],
       ),
       GuideTopic(
         title: 'Auto-generate',
@@ -337,10 +399,22 @@ final List<GuideSection> guideSections = [
           'Set your constraints: max hours a day, slots to avoid, instructors to prefer or avoid.',
           'Say what matters most — a free day, late starts, short days.',
           'Generate, then flip through the ranked options and keep one.',
+          'Open Why this rank to inspect the explanation, or Protect strength to preserve an advantage while refining.',
+          'If hard constraints produce no matches, review the offered relaxation actions. The app only relaxes what you choose.',
         ],
         visuals: [GuideVisual.generatorResult, GuideVisual.rankingImportance],
         pageInfo: PageInfoHelper.generator,
-        keywords: ['generate', 'auto', 'generator', 'constraints', 'optimise', 'optimize', 'ranking', 'avoid', 'free day'],
+        keywords: [
+          'generate',
+          'auto',
+          'generator',
+          'constraints',
+          'optimise',
+          'optimize',
+          'ranking',
+          'avoid',
+          'free day',
+        ],
       ),
       GuideTopic(
         title: 'Trim to fit',
@@ -352,19 +426,39 @@ final List<GuideSection> guideSections = [
             'drop to get under the cap, keeping the ones you mark as '
             'non-negotiable and losing as little as it can.',
         pageInfo: PageInfoHelper.trimTimetable,
-        keywords: ['trim', 'drop', 'overload', 'too many credits', 'cut', 'fit'],
+        keywords: [
+          'trim',
+          'drop',
+          'overload',
+          'too many credits',
+          'cut',
+          'fit',
+        ],
       ),
       GuideTopic(
         title: 'Sample timetables',
         anchor: 'sample-timetables',
         icon: Icons.calendar_view_week,
         lead:
-            'First semester and not sure what you are supposed to be taking? '
-            'Sample timetables are ready-made weeks covering your branch\'s '
-            'compulsory courses. Load one and edit from there instead of '
-            'starting from an empty grid.',
+            "Sample Timetables starts with CDC selection directly on the page: choose your branch, semester and optional second branch, then answer any core-course choices. Tabulr generates and ranks clash-free options from the published package; these are generated results, not fixed templates. After generation, Change reopens a prefilled dialog so you can try another package without repeating the setup from memory.",
+        steps: [
+          'Choose the branch and semester in the setup card, then generate samples.',
+          'If a CDC slot offers alternatives, select the course you actually take.',
+          'Swipe through the ranked results and open Use this sample on the one you want.',
+          'Add it to the current editor, save it as a new timetable, or explicitly replace a saved plan.',
+          'Use Change after generation to reopen the current CDC selection in a dialog.',
+        ],
         pageInfo: PageInfoHelper.sampleTimetables,
-        keywords: ['sample', 'template', 'first year', 'cdc', 'starter', 'preset'],
+        keywords: [
+          'sample',
+          'template',
+          'first year',
+          'cdc',
+          'starter',
+          'preset',
+          'change branch',
+          'ranked timetable',
+        ],
       ),
       const GuideTopic(
         title: 'Sharing and importing',
@@ -397,7 +491,19 @@ final List<GuideSection> guideSections = [
           'ICS — your classes as real calendar events with reminders.',
           'TT — a backup file, restorable into any Tabulr account.',
         ],
-        keywords: ['export', 'png', 'image', 'ics', 'calendar', 'google calendar', 'outlook', 'backup', 'tt file', 'download', 'print'],
+        keywords: [
+          'export',
+          'png',
+          'image',
+          'ics',
+          'calendar',
+          'google calendar',
+          'outlook',
+          'backup',
+          'tt file',
+          'download',
+          'print',
+        ],
       ),
       GuideTopic(
         title: 'Comparing timetables',
@@ -409,18 +515,29 @@ final List<GuideSection> guideSections = [
             'looks fine on its own and terrible next to the alternative is '
             'obvious immediately.',
         pageInfo: PageInfoHelper.timetableComparison,
-        keywords: ['compare', 'side by side', 'versus', 'difference', 'two timetables'],
+        keywords: [
+          'compare',
+          'side by side',
+          'versus',
+          'difference',
+          'two timetables',
+        ],
       ),
       GuideTopic(
         title: 'Finding free time with friends',
         anchor: 'free-slots',
         icon: Icons.group,
         lead:
-            'Add your timetable and your friends\' — by share code, if they '
-            'are not on your account — and Tabulr shows the hours nobody has '
-            'class. Tap a free slot to turn it into a shared event.',
+            "Availability compares busy slots from saved timetables or imported share codes to find common free time. Choose the relevant sources and a free interval. Saving an event adds it to your own Calendar; it does not send an invitation or create a shared calendar for everyone.",
         pageInfo: PageInfoHelper.freeSlotFinder,
-        keywords: ['free slot', 'common', 'friends', 'group', 'meet', 'free time'],
+        keywords: [
+          'free slot',
+          'common',
+          'friends',
+          'group',
+          'meet',
+          'free time',
+        ],
       ),
       GuideTopic(
         title: 'Archiving old semesters',
@@ -432,7 +549,7 @@ final List<GuideSection> guideSections = [
             'them out of the main list and keeps them readable, which also '
             'means your CGPA record can still pull courses out of them.',
         pageInfo: PageInfoHelper.archivedTimetables,
-        keywords: ['archive', 'old', 'past semester', 'previous', 'restore'],
+        keywords: ['archive', 'old', 'past semester', 'previous', 'read only'],
       ),
     ],
   ),
@@ -442,6 +559,27 @@ final List<GuideSection> guideSections = [
     icon: Icons.school_outlined,
     blurb: 'Grades, electives, minors, and what you are allowed to take next.',
     topics: [
+      GuideTopic(
+        title: 'Degree audit and bottlenecks',
+        anchor: 'degree-audit',
+        icon: Icons.fact_check_outlined,
+        lead:
+            'Degree Audit compares your saved academic record with the core requirements for your profile branch. It also uses prerequisite and historical offering data to highlight potential bottlenecks. Elective completions are counted, but elective graduation targets are not certified; missing reference data limits the analysis.',
+        pageInfo: PageInfoHelper.degreeAudit,
+        steps: [
+          'Set your branch in Profile and save your grades in Grades & targets.',
+          'Open Degree > Audit to review completed and remaining core requirements.',
+          'Review prerequisite bottlenecks and offering gaps as planning signals, then confirm requirements with your department.',
+        ],
+        keywords: [
+          'degree',
+          'audit',
+          'bottleneck',
+          'graduation',
+          'core',
+          'requirements',
+        ],
+      ),
       GuideTopic(
         title: 'CGPA calculator',
         anchor: 'cgpa',
@@ -454,7 +592,16 @@ final List<GuideSection> guideSections = [
             'branch\'s compulsory courses automatically, or import a '
             'performance sheet PDF.',
         pageInfo: PageInfoHelper.cgpaCalculator,
-        keywords: ['cgpa', 'sgpa', 'gpa', 'grades', 'marks', 'performance sheet', 'repeat', 'cdc'],
+        keywords: [
+          'cgpa',
+          'sgpa',
+          'gpa',
+          'grades',
+          'marks',
+          'performance sheet',
+          'repeat',
+          'cdc',
+        ],
       ),
       GuideTopic(
         title: 'Grade planner',
@@ -466,19 +613,33 @@ final List<GuideSection> guideSections = [
             'to get there — and says plainly when the target is out of reach, '
             'which is worth knowing early.',
         pageInfo: PageInfoHelper.gradePlanner,
-        keywords: ['target', 'goal', 'what grades do i need', 'planner', 'required'],
+        keywords: [
+          'target',
+          'goal',
+          'what grades do i need',
+          'planner',
+          'required',
+        ],
       ),
       GuideTopic(
         title: 'CG booster',
         anchor: 'cg-booster',
         icon: Icons.bolt_outlined,
         lead:
-            'Not every course moves your CGPA by the same amount — a 5-unit '
-            'course pulls far harder than a 2-unit one. CG Booster ranks your '
-            'courses by how much one grade step in each would actually change '
-            'your standing, so your effort goes where it counts.',
+            "CG Booster explores retake combinations that could reach your target CGPA within a maximum credit budget. It works from the effective course attempts in your academic record, rather than ranking the effect of a single grade step. Select candidate courses and compare the proposed combinations; it is a planning estimate, not registration approval.",
+        steps: [
+          "Open Grades & targets, then Retakes.",
+          "Set a target CGPA and maximum retake credits, then select candidate courses.",
+          "Compare the ranked combinations and projected CGPA. Confirm retake eligibility separately.",
+        ],
         pageInfo: PageInfoHelper.cgBooster,
-        keywords: ['booster', 'impact', 'improve cgpa', 'which course', 'effort'],
+        keywords: [
+          'booster',
+          'impact',
+          'improve cgpa',
+          'which course',
+          'effort',
+        ],
       ),
       GuideTopic(
         title: 'CGPA trajectory',
@@ -491,7 +652,14 @@ final List<GuideSection> guideSections = [
             'closing the gap or the gap is closing on you.',
         visuals: [GuideVisual.cgpaTrajectory],
         pageInfo: PageInfoHelper.cgpaTrajectory,
-        keywords: ['trajectory', 'chart', 'graph', 'projection', 'history', 'trend'],
+        keywords: [
+          'trajectory',
+          'chart',
+          'graph',
+          'projection',
+          'history',
+          'trend',
+        ],
       ),
       GuideTopic(
         title: 'Course guide',
@@ -503,7 +671,13 @@ final List<GuideSection> guideSections = [
             'Useful when you are deciding what to register for and do not want '
             'to read the bulletin cover to cover.',
         pageInfo: PageInfoHelper.courseGuide,
-        keywords: ['cdc', 'course guide', 'branch', 'curriculum', 'what should i take'],
+        keywords: [
+          'cdc',
+          'course guide',
+          'branch',
+          'curriculum',
+          'what should i take',
+        ],
       ),
       GuideTopic(
         title: 'Electives',
@@ -515,7 +689,15 @@ final List<GuideSection> guideSections = [
             'record, courses you have already taken are marked, so you are not '
             'shortlisting something you passed last year.',
         pageInfo: PageInfoHelper.electives,
-        keywords: ['elective', 'del', 'hel', 'oel', 'humanities', 'open elective', 'discipline elective'],
+        keywords: [
+          'elective',
+          'del',
+          'hel',
+          'oel',
+          'humanities',
+          'open elective',
+          'discipline elective',
+        ],
       ),
       GuideTopic(
         title: 'Minors',
@@ -539,10 +721,17 @@ final List<GuideSection> guideSections = [
             'several — Tabulr shows which, and marks the ones you have already '
             'cleared.',
         pageInfo: PageInfoHelper.prerequisites,
-        keywords: ['prerequisite', 'prereq', 'chain', 'requirement', 'before', 'unlock'],
+        keywords: [
+          'prerequisite',
+          'prereq',
+          'chain',
+          'requirement',
+          'before',
+          'unlock',
+        ],
       ),
       GuideTopic(
-        title: 'Course history',
+        title: 'Course History',
         anchor: 'course-history',
         icon: Icons.history_toggle_off,
         lead:
@@ -551,7 +740,15 @@ final List<GuideSection> guideSections = [
             'to "is this elective coming back?" — a course that has not run in '
             'three semesters probably is not worth waiting for.',
         pageInfo: PageInfoHelper.courseHistory,
-        keywords: ['history', 'past', 'offered', 'last offered', 'who taught', 'instructor in charge', 'ic'],
+        keywords: [
+          'history',
+          'past',
+          'offered',
+          'last offered',
+          'who taught',
+          'instructor in charge',
+          'ic',
+        ],
       ),
     ],
   ),
@@ -572,21 +769,42 @@ final List<GuideSection> guideSections = [
             'semester\'s holidays and deadlines are one tap away.',
         pageInfo: PageInfoHelper.calendar,
         visuals: [GuideVisual.academicCalendar],
-        keywords: ['calendar', 'week', 'events', 'holiday', 'scrap', 'cancel', 'academic calendar'],
+        keywords: [
+          'calendar',
+          'week',
+          'events',
+          'holiday',
+          'scrap',
+          'cancel',
+          'academic calendar',
+        ],
       ),
       GuideTopic(
         title: 'Exam seating',
         anchor: 'exam-seating',
         icon: Icons.event_seat,
         lead:
-            'Your room and seat number for midsems and compres, looked up by '
-            'ID. Pull your courses straight from a timetable rather than '
-            'typing them, save the list, and it is there next exam season. '
-            'Combined-exam codes — where two course codes sit one paper — are '
-            'handled.',
+            'Build a personal exam plan, enter your student ID once, and Tabulr checks every selected course for its assigned room and published ID range. Search for courses or import them from a saved timetable; the plan stays chronological and shows dates, sessions and countdowns. Save the course list and ID for your next visit. Combined-exam codes, where two courses share one paper, are handled.',
+        steps: [
+          'Search by course code or title, or import the relevant courses from a saved timetable.',
+          'Enter your student ID and choose Find rooms to look up every selected exam at once.',
+          'Read the room and ID range on each exam card; No room found means the ID is absent from that course seating list.',
+          'Save to keep the selected courses and ID, and refresh when a newer seating list is published.',
+        ],
         pageInfo: PageInfoHelper.examSeating,
         visuals: [GuideVisual.examDates, GuideVisual.examTimeline],
-        keywords: ['exam', 'seat', 'room', 'seating', 'midsem', 'compre', 'id number', 'venue'],
+        keywords: [
+          'exam',
+          'seat',
+          'room',
+          'seating',
+          'midsem',
+          'compre',
+          'id number',
+          'id range',
+          'venue',
+          'find rooms',
+        ],
       ),
       GuideTopic(
         title: 'Prof chambers',
@@ -597,30 +815,62 @@ final List<GuideSection> guideSections = [
             'in class right now. Worth checking before you walk across campus '
             'to a closed door.',
         pageInfo: PageInfoHelper.profChambers,
-        keywords: ['professor', 'chamber', 'cabin', 'office', 'contact', 'email', 'faculty', 'where'],
+        keywords: [
+          'professor',
+          'chamber',
+          'cabin',
+          'office',
+          'contact',
+          'email',
+          'faculty',
+          'where',
+        ],
       ),
       GuideTopic(
         title: 'Announcements',
         anchor: 'announcements',
         icon: Icons.campaign,
         lead:
-            'The things that never make it to a notice board — an extra class, '
-            'a moved deadline, a cancelled lab — posted by the students in '
-            'your course. Anyone can post, everyone can vote, and wrong '
-            'information gets flagged and falls away.',
+            "Updates is a course-announcement feed shown to eligible signed-in Hyderabad users. Posting and voting have account restrictions, and suspended contributors cannot post. Entries can include sources, confidence and corrections; confirmations and flags help assess them, but an announcement is not automatically an official notice.",
+        steps: [
+          "Choose the timetable whose courses you want to follow; its campus and course codes determine the feed.",
+          "Read the source and verification information before relying on an update.",
+          "Confirm, deny, flag or propose a correction where the available actions allow it. Posting and community actions require an eligible account.",
+        ],
         pageInfo: PageInfoHelper.announcements,
-        keywords: ['announcement', 'notice', 'extra class', 'cancelled', 'update', 'vote', 'flag'],
+        keywords: [
+          'announcement',
+          'notice',
+          'extra class',
+          'cancelled',
+          'update',
+          'vote',
+          'flag',
+        ],
       ),
       GuideTopic(
         title: 'Acad drives',
         anchor: 'acad-drives',
         icon: Icons.folder_shared,
         lead:
-            'Past papers, notes and slides, organised by course and shared by '
-            'students. If you have something useful, submitting it takes a '
-            'file or a link and about ten seconds.',
+            "Acad Drives is a searchable resource library for past papers, slides and notes. Star courses, bookmark individual files and use the enrolled-course section to find material related to saved timetables. On desktop, selecting a course keeps the course navigator beside its drives and folders; phones use a focused drill-down view. Submit a Google Drive link to suggest a resource; there is no direct file-upload form. Downloads and fresh listings require a connection.",
+        steps: [
+          "Search by course code or title, then open a course to browse its source drives and folders.",
+          "Star courses and bookmark files to return to them. Enrolled courses are derived from your saved timetables.",
+          "Open or download individual files. Bulk ZIP download is available on web and can be cancelled.",
+          "Submit a Drive link with the appropriate course information when contributing.",
+        ],
         pageInfo: PageInfoHelper.acadDrives,
-        keywords: ['drive', 'notes', 'past papers', 'resources', 'material', 'slides', 'upload', 'pyq'],
+        keywords: [
+          'drive',
+          'notes',
+          'past papers',
+          'resources',
+          'material',
+          'slides',
+          'upload',
+          'pyq',
+        ],
       ),
       GuideTopic(
         title: 'Academic FAQ',
@@ -633,7 +883,16 @@ final List<GuideSection> guideSections = [
             'answer cites the clause it comes from, so you can check it '
             'yourself when it matters.',
         pageInfo: PageInfoHelper.academicFaq,
-        keywords: ['faq', 'rules', 'regulations', 'attendance', 'practice school', 'ps', 'bulletin', 'clause'],
+        keywords: [
+          'faq',
+          'rules',
+          'regulations',
+          'attendance',
+          'practice school',
+          'ps',
+          'bulletin',
+          'clause',
+        ],
       ),
     ],
   ),
@@ -653,48 +912,81 @@ final List<GuideSection> guideSections = [
             'knows which compulsory courses to load, and the course guide '
             'opens on your branch.',
         pageInfo: PageInfoHelper.profile,
-        keywords: ['profile', 'id number', 'branch', 'settings', 'defaults', 'f number'],
+        keywords: [
+          'profile',
+          'id number',
+          'branch',
+          'settings',
+          'defaults',
+          'f number',
+        ],
       ),
       const GuideTopic(
         title: 'Themes',
         anchor: 'themes',
         icon: Icons.palette_outlined,
         lead:
-            'Nine themes — GitHub Dark, Dracula, Nord, Tokyo Night, Gruvbox, '
+            'Nine themes — GitHub, Dracula, Nord, Tokyo Night, Gruvbox, '
             'Catppuccin, Solarized, Arctic Frost and a true-black AMOLED — '
-            'each in light, dark, or following your system. Every screen, '
-            'chart and timetable colour adapts, including the components on '
-            'this page.',
-        keywords: ['theme', 'dark mode', 'light mode', 'colours', 'colors', 'amoled', 'dracula', 'appearance'],
+            'each in light, dark, or following your system. Preview cards show '
+            'the real surfaces, timetable colours, inputs and actions before '
+            'you choose; component shape and depth adapt with the palette too.',
+        steps: [
+          'Open Appearance from the sidebar or search Change Theme with Cmd/Ctrl K.',
+          'Choose Light, Dark or System at the top. System follows the current device setting.',
+          'Select a preview card to apply and save that palette to your account.',
+        ],
+        keywords: [
+          'theme',
+          'dark mode',
+          'light mode',
+          'colours',
+          'colors',
+          'amoled',
+          'dracula',
+          'appearance',
+        ],
       ),
       const GuideTopic(
         title: 'Where it runs, and offline',
         anchor: 'offline-and-platforms',
         icon: Icons.devices,
         lead:
-            'Tabulr runs in a browser and as a proper app on macOS, Windows '
-            'and Linux, signed in to the same account everywhere. Your '
-            'timetables are cached on the device, so a bad campus connection '
-            'means a slow sync, not a blank screen.',
-        keywords: ['offline', 'desktop', 'mac', 'windows', 'linux', 'pwa', 'install', 'sync', 'cache'],
+            "Previously loaded timetables and some reference data are cached on your device. This can help on a poor connection, but offline availability depends on what has already been loaded and is not a promise that every feature works offline. Authentication, fresh catalogues, sharing, resource downloads and community updates need network access.",
+        keywords: [
+          'offline',
+          'desktop',
+          'mac',
+          'windows',
+          'linux',
+          'pwa',
+          'install',
+          'sync',
+          'cache',
+        ],
       ),
       GuideTopic(
         title: 'Reporting a bug',
         anchor: 'bug-reports',
         icon: Icons.bug_report_outlined,
         lead:
-            'If something is wrong — a broken screen, or course data that does '
-            'not match the booklet — report it in the app. You can follow the '
-            'thread and see when it is fixed, and reporting things that turn '
-            'out to be real builds your contributor standing.',
+            "Report broken screens or course data that does not match the booklet from Help & support. Sign in to submit a report and follow its replies and status in the same place. Bug reports do not award contributor reputation.",
         steps: [
-          'Describe what you did and what happened instead.',
-          'Data problems are worth reporting too — wrong sections, wrong exam dates.',
-          'Track the report in the same screen; you will see replies and the status change.',
+          "Describe what you did, what happened and what you expected; include the relevant campus and course when reporting data.",
+          "Avoid including passwords or other sensitive account information.",
+          "Return to Report a problem to read replies and status changes.",
         ],
         visuals: [GuideVisual.bugStatuses],
         pageInfo: PageInfoHelper.bugReport,
-        keywords: ['bug', 'report', 'broken', 'wrong data', 'issue', 'feedback', 'problem'],
+        keywords: [
+          'bug',
+          'report',
+          'broken',
+          'wrong data',
+          'issue',
+          'feedback',
+          'problem',
+        ],
       ),
       const GuideTopic(
         title: 'Credits',
@@ -704,19 +996,30 @@ final List<GuideSection> guideSections = [
             'Who built and maintains Tabulr, everyone who has contributed on '
             'GitHub, and the admins who keep the course data current. It is '
             'open source — the repository is linked from there.',
-        keywords: ['credits', 'contributors', 'admins', 'github', 'open source', 'who made this', 'license'],
+        keywords: [
+          'credits',
+          'contributors',
+          'admins',
+          'github',
+          'open source',
+          'who made this',
+          'license',
+        ],
       ),
       const GuideTopic(
         title: 'This guide',
         anchor: 'this-guide',
         icon: Icons.auto_stories_outlined,
         lead:
-            'Everything Tabulr does, with the real components rendered inline '
-            'so you are looking at the app rather than a description of it. '
-            'Search the whole thing from the box at the top, jump to any '
-            'section from the list, and copy a link to a section to send '
-            'someone straight to it.',
-        keywords: ['guide', 'help', 'manual', 'documentation', 'how to', 'tutorial'],
+            "Using Tabulr now lives in Help & support, beside Academic rules, Report a problem and About. Search its topics, use the section navigation, or open the matching topic from a page info panel. Existing /guide links and topic anchors remain valid, and each topic can still be copied as a link.",
+        keywords: [
+          'guide',
+          'help',
+          'manual',
+          'documentation',
+          'how to',
+          'tutorial',
+        ],
       ),
     ],
   ),

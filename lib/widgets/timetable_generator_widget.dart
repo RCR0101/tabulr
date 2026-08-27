@@ -413,6 +413,8 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                       child: EmptyResults(
                         isGenerating: _ctrl.isGenerating,
                         result: _ctrl.rankingResult,
+                        relaxations: _ctrl.hardConstraintRelaxations,
+                        onRelax: _applyRelaxation,
                       ),
                     )
                   : KeyedSubtree(
@@ -1109,6 +1111,24 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     }
   }
 
+  Future<void> _applyRelaxation(ConstraintRelaxation relaxation) async {
+    _ctrl.applyRelaxation(relaxation);
+    ToastService.showInfo('${relaxation.label}. Regenerating...');
+    await _generateTimetables();
+  }
+
+  Future<void> _protectStrength(RankAxis axis, RankedTimetable ranked) async {
+    final protected = _ctrl.protectStrength(axis, ranked.timetable);
+    if (!protected) {
+      ToastService.showWarning(
+        '${axis.label} cannot be represented as a required constraint.',
+      );
+      return;
+    }
+    ToastService.showInfo('Protecting ${axis.shortLabel}. Regenerating...');
+    await _generateTimetables();
+  }
+
   Widget _buildGeneratedTimetables() {
     // No Expanded here: the caller already wraps this in one. Nesting a second
     // put a Flex-only ParentDataWidget inside the AnimatedSwitcher's Stack,
@@ -1183,6 +1203,8 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                       selectedForCompare: selection.contains(index),
                       onToggleCompare: () => _toggleCompare(index),
                       onSelect: () => widget.onTimetableSelected(ranked.timetable),
+                      protectableAxes: _ctrl.protectableStrengths(ranked),
+                      onProtectAxis: (axis) => _protectStrength(axis, ranked),
                     ),
                   );
                 },
@@ -1379,6 +1401,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
           tt_model.SelectedSection(courseCode: s.courseCode, sectionId: s.sectionId, section: s.section),
       ],
       clashWarnings: const [],
+      creditBasis: g.creditBasis,
     );
   }
 

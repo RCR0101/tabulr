@@ -35,7 +35,6 @@ class TimetableStorageService {
         'userEmail': user.email,
         'timetableData': timetable.toFirestoreJson(),
         'lastUpdated': FieldValue.serverTimestamp(),
-        'createdAt': FieldValue.serverTimestamp(),
       };
 
       await docRef.set(timetableData, SetOptions(merge: true));
@@ -220,7 +219,6 @@ class TimetableStorageService {
           .collection(FirestoreCollections.users)
           .doc(_userDocId!)
           .collection(FirestoreCollections.timetables)
-          .orderBy('createdAt', descending: false)
           .get();
 
       final timetables = <Timetable>[];
@@ -237,6 +235,7 @@ class TimetableStorageService {
         }
       }
 
+      timetables.sort((a, b) => a.createdAt.compareTo(b.createdAt));
       SecureLogger.dataOperation('load', 'timetables', true, {'count': timetables.length});
       return timetables;
     } catch (e) {

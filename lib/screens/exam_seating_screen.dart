@@ -3,7 +3,6 @@ import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import '../constants/app_constants.dart';
 import '../services/data/exam_seating_service.dart';
-import '../widgets/common/empty_state_widget.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../services/core/timetable_service.dart';
 import '../services/ui/responsive_service.dart';
@@ -41,15 +40,29 @@ bool examCoversCourse(String examCourseCode, String courseCode) {
 String displayExamCode(String code) => code.replaceAll('-', ' / ');
 
 class ExamSeatingScreen extends StatefulWidget {
-  const ExamSeatingScreen({super.key});
+  const ExamSeatingScreen({
+    super.key,
+    this.initialExams,
+    this.initialSelectedCourses = const [],
+    this.initialStudentId,
+  });
+
+  /// Optional local data for previews and deterministic widget tests.
+  final List<ExamSeating>? initialExams;
+  final List<ExamSeating> initialSelectedCourses;
+  final String? initialStudentId;
 
   @override
   State<ExamSeatingScreen> createState() => _ExamSeatingScreenState();
 }
 
 class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
-  final ExamSeatingService _examSeatingService = ExamSeatingService();
-  final TimetableService _timetableService = TimetableService();
+  ExamSeatingService? _examSeatingService;
+  TimetableService? _timetableService;
+
+  ExamSeatingService get _examService =>
+      _examSeatingService ??= ExamSeatingService();
+  TimetableService get _timetables => _timetableService ??= TimetableService();
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _idController = TextEditingController();
 
@@ -59,27 +72,39 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
   bool _isLoading = true;
   bool _isSearching = false;
   bool _isSaving = false;
+  bool _idListenerAttached = false;
 
   @override
   void initState() {
     super.initState();
-    _loadExamData();
-    CommandPaletteActions.register(DrawerScreen.examSeating, () => [
-      CommandPaletteEntry(
-        label: 'Import from Timetable',
-        subtitle: 'Load exam courses from a saved timetable',
-        icon: Icons.file_download,
-        category: CommandCategory.context,
-        onSelect: _importCoursesFromTimetable,
-      ),
-      CommandPaletteEntry(
-        label: 'Search Room',
-        subtitle: 'Find your seat by ID number',
-        icon: Icons.search,
-        category: CommandCategory.context,
-        onSelect: _searchForRoom,
-      ),
-    ]);
+    if (widget.initialExams != null) {
+      _allExams = widget.initialExams!;
+      _selectedCourses.addAll(widget.initialSelectedCourses);
+      _idController.text = widget.initialStudentId ?? '';
+      _isLoading = false;
+      _attachIdListener();
+    } else {
+      _loadExamData();
+    }
+    CommandPaletteActions.register(
+      DrawerScreen.examSeating,
+      () => [
+        CommandPaletteEntry(
+          label: 'Import from Timetable',
+          subtitle: 'Load exam courses from a saved timetable',
+          icon: Icons.file_download,
+          category: CommandCategory.context,
+          onSelect: _importCoursesFromTimetable,
+        ),
+        CommandPaletteEntry(
+          label: 'Search Room',
+          subtitle: 'Find your seat by ID number',
+          icon: Icons.search,
+          category: CommandCategory.context,
+          onSelect: _searchForRoom,
+        ),
+      ],
+    );
   }
 
   @override
@@ -99,14 +124,21 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
 
   void _onIdChanged() => _markDirty();
 
+  void _attachIdListener() {
+    if (_idListenerAttached) return;
+    _idController.addListener(_onIdChanged);
+    _idListenerAttached = true;
+  }
+
   Future<void> _loadExamData() async {
     setState(() => _isLoading = true);
-    final exams = await _examSeatingService.fetchAllExamSeating();
+    final exams = await _examService.fetchAllExamSeating();
 
     // Load saved user data + profile defaults
-    final savedData = await _examSeatingService.loadUserData();
+    final savedData = await _examService.loadUserData();
     final profile = await ProfileService().load();
 
+    if (!mounted) return;
     setState(() {
       _allExams = exams;
       _isLoading = false;
@@ -119,12 +151,13 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
         for (final courseCode in savedData.selectedCourseCodes) {
           final exam = exams.firstWhere(
             (e) => examCoversCourse(e.courseCode, courseCode),
-            orElse: () => ExamSeating(
-              courseCode: courseCode,
-              courseTitle: '',
-              examDate: '',
-              rooms: [],
-            ),
+            orElse:
+                () => ExamSeating(
+                  courseCode: courseCode,
+                  courseTitle: '',
+                  examDate: '',
+                  rooms: [],
+                ),
           );
           if (exam.rooms.isNotEmpty &&
               !_selectedCourses.any((c) => c.courseCode == exam.courseCode)) {
@@ -141,13 +174,12 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
 
     // Attach only after restoring saved state so the initial fill doesn't
     // register as an unsaved edit.
-    if (!mounted) return;
-    _idController.addListener(_onIdChanged);
+    _attachIdListener();
   }
 
   Future<void> _importCoursesFromTimetable() async {
     try {
-      final allTimetables = await _timetableService.getAllTimetables();
+      final allTimetables = await _timetables.getAllTimetables();
 
       if (allTimetables.isEmpty) {
         ToastService.showError(
@@ -160,10 +192,11 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
 
       final selectedCourses = await showDialog<List<String>>(
         context: context,
-        builder: (context) => _TimetableCourseSelectionDialog(
-          timetables: allTimetables,
-          allExams: _allExams,
-        ),
+        builder:
+            (context) => _TimetableCourseSelectionDialog(
+              timetables: allTimetables,
+              allExams: _allExams,
+            ),
       );
 
       if (selectedCourses == null || selectedCourses.isEmpty) {
@@ -175,12 +208,13 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       for (final courseCode in selectedCourses) {
         final exam = _allExams.firstWhere(
           (e) => examCoversCourse(e.courseCode, courseCode),
-          orElse: () => ExamSeating(
-            courseCode: courseCode,
-            courseTitle: '',
-            examDate: '',
-            rooms: [],
-          ),
+          orElse:
+              () => ExamSeating(
+                courseCode: courseCode,
+                courseTitle: '',
+                examDate: '',
+                rooms: [],
+              ),
         );
         if (exam.rooms.isNotEmpty &&
             !_selectedCourses.any((c) => c.courseCode == exam.courseCode)) {
@@ -262,7 +296,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
 
     setState(() => _isSaving = true);
 
-    final success = await _examSeatingService.saveUserData(
+    final success = await _examService.saveUserData(
       selectedCourseCodes: _selectedCourses.map((c) => c.courseCode).toList(),
       studentId: _idController.text.trim(),
     );
@@ -288,13 +322,14 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
 
     final isMobile = ResponsiveService.isMobile(context);
     final saveButton = IconButton(
-      icon: _isSaving
-          ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Icon(Icons.save_outlined),
+      icon:
+          _isSaving
+              ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+              : const Icon(Icons.save_outlined),
       tooltip: 'Save',
       onPressed: _isSaving ? null : _saveUserData,
     );
@@ -305,188 +340,378 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
         title: 'Exam Seating',
         // On mobile keep Save visible and tuck the rest into a ⋮ menu so the
         // bar isn't four icons wide next to the title.
-        actions: isMobile
-            ? [
-                saveButton,
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert),
-                  tooltip: 'More',
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'import':
-                        _importCoursesFromTimetable();
-                        break;
-                      case 'reload':
-                        _loadExamData();
-                        break;
-                      case 'info':
-                        PageInfoHelper.show(context, PageInfoHelper.examSeating);
-                        break;
-                    }
-                  },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(
-                      value: 'import',
-                      child: ListTile(
-                        leading: Icon(Icons.file_download_outlined),
-                        title: Text('Import from Timetable'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'reload',
-                      child: ListTile(
-                        leading: Icon(Icons.refresh),
-                        title: Text('Reload Data'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'info',
-                      child: ListTile(
-                        leading: Icon(Icons.info_outline),
-                        title: Text('About This Page'),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                    ),
-                  ],
-                ),
-              ]
-            : [
-                PageInfoHelper.infoButton(context, PageInfoHelper.examSeating, key: TutorialKeys.infoExamSeating),
-                IconButton(
-                  icon: const Icon(Icons.file_download_outlined),
-                  tooltip: 'Import Courses from Timetable',
-                  onPressed: _importCoursesFromTimetable,
-                ),
-                saveButton,
-                IconButton(
-                  icon: const Icon(Icons.refresh),
-                  tooltip: 'Reload Data',
-                  onPressed: _loadExamData,
-                ),
-              ],
+        actions:
+            isMobile
+                ? [
+                  saveButton,
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert),
+                    tooltip: 'More',
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'import':
+                          _importCoursesFromTimetable();
+                          break;
+                        case 'reload':
+                          _loadExamData();
+                          break;
+                        case 'info':
+                          PageInfoHelper.show(
+                            context,
+                            PageInfoHelper.examSeating,
+                          );
+                          break;
+                      }
+                    },
+                    itemBuilder:
+                        (_) => const [
+                          PopupMenuItem(
+                            value: 'import',
+                            child: ListTile(
+                              leading: Icon(Icons.file_download_outlined),
+                              title: Text('Import from Timetable'),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'reload',
+                            child: ListTile(
+                              leading: Icon(Icons.refresh),
+                              title: Text('Reload Data'),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'info',
+                            child: ListTile(
+                              leading: Icon(Icons.info_outline),
+                              title: Text('About This Page'),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ],
+                  ),
+                ]
+                : [
+                  PageInfoHelper.infoButton(
+                    context,
+                    PageInfoHelper.examSeating,
+                    key: TutorialKeys.infoExamSeating,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.file_download_outlined),
+                    tooltip: 'Import Courses from Timetable',
+                    onPressed: _importCoursesFromTimetable,
+                  ),
+                  saveButton,
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    tooltip: 'Reload Data',
+                    onPressed: _loadExamData,
+                  ),
+                ],
       ),
-      body: Column(
-        children: [
-          _buildSearchSection(),
-          Expanded(child: _buildSelectedCourses()),
-        ],
+      body: _buildDashboard(),
+    );
+  }
+
+  Widget _buildDashboard() {
+    final scheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            scheme.surface,
+            Color.alphaBlend(
+              scheme.primary.withValues(alpha: 0.035),
+              scheme.surface,
+            ),
+          ],
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth >= 980) {
+            return Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    width: 390,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          _buildSearchSection(),
+                          const SizedBox(height: 14),
+                          _buildOverview(),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(child: _buildSelectedCourses()),
+                ],
+              ),
+            );
+          }
+
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: _buildSearchSection(),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: _buildOverview(),
+              ),
+              const SizedBox(height: 4),
+              Expanded(
+                child: _buildSelectedCourses(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
   Widget _buildSearchSection() {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: ResponsiveService.getAdaptivePadding(
-        context,
-        const EdgeInsets.all(16),
-      ),
+      key: const ValueKey('exam-lookup-panel'),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(
-          bottom: BorderSide(
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            scheme.primaryContainer.withValues(alpha: 0.66),
+            scheme.surfaceContainerLow,
+          ],
         ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.14)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Course search
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: scheme.primary,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(Icons.event_seat_rounded, color: scheme.onPrimary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Find your seat',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      'Add courses, then look up every room at once.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
           TypeAheadField<ExamSeating>(
             controller: _searchController,
             suggestionsCallback: (pattern) async {
               if (pattern.isEmpty) return [];
               return _allExams
-                  .where((exam) =>
-                      exam.courseCode
-                          .toUpperCase()
-                          .contains(pattern.toUpperCase()) ||
-                      exam.courseTitle
-                          .toUpperCase()
-                          .contains(pattern.toUpperCase()))
+                  .where(
+                    (exam) =>
+                        exam.courseCode.toUpperCase().contains(
+                          pattern.toUpperCase(),
+                        ) ||
+                        exam.courseTitle.toUpperCase().contains(
+                          pattern.toUpperCase(),
+                        ),
+                  )
                   .take(10)
                   .toList();
             },
-            builder: (context, controller, focusNode) {
-              return Semantics(
-                label: 'Search Exam Seating',
-                textField: true,
-                child: TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  decoration: const InputDecoration(
-                    hintText: 'Search for a course...',
-                    prefixIcon: Icon(Icons.search),
+            builder:
+                (context, controller, focusNode) => Semantics(
+                  label: 'Search Exam Seating',
+                  textField: true,
+                  child: TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: const InputDecoration(
+                      labelText: 'Course',
+                      hintText: 'Search code or title',
+                      prefixIcon: Icon(Icons.search_rounded),
+                    ),
                   ),
                 ),
-              );
-            },
-            itemBuilder: (context, exam) {
-              return ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                title: Text(displayExamCode(exam.courseCode), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                subtitle: Text(
-                  exam.courseTitle.isNotEmpty
-                      ? exam.courseTitle
-                      : 'No title available',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+            itemBuilder:
+                (context, exam) => ListTile(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  title: Text(
+                    displayExamCode(exam.courseCode),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  subtitle: Text(
+                    exam.courseTitle.isNotEmpty
+                        ? exam.courseTitle
+                        : 'No title available',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing:
+                      exam.examDate.isNotEmpty
+                          ? Text(
+                            _examDayLabel(exam.examDate) ?? exam.examDate,
+                            style: TextStyle(
+                              color: scheme.primary,
+                              fontSize: 12,
+                            ),
+                          )
+                          : null,
                 ),
-                trailing: exam.examDate.isNotEmpty
-                    ? Text(
-                        exam.examDate,
-                        style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary),
-                      )
-                    : null,
-              );
-            },
             onSelected: _addCourse,
-            emptyBuilder: (context) => const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('No courses found'),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // ID Number input
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _idController,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter your ID Number (e.g., 2022A7PS0001H)',
-                    prefixIcon: Icon(Icons.badge),
-                  ),
-                  textCapitalization: TextCapitalization.characters,
-                  onSubmitted: (_) => _searchForRoom(),
+            emptyBuilder:
+                (context) => const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text('No courses found'),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Semantics(
+          ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 430;
+              final idField = TextField(
+                controller: _idController,
+                decoration: const InputDecoration(
+                  labelText: 'Student ID',
+                  hintText: '2022A7PS0001H',
+                  prefixIcon: Icon(Icons.badge_outlined),
+                ),
+                textCapitalization: TextCapitalization.characters,
+                onSubmitted: (_) => _searchForRoom(),
+              );
+              final button = Semantics(
                 label: 'Find Room',
                 button: true,
                 child: FilledButton.icon(
                   onPressed: _isSearching ? null : _searchForRoom,
-                  icon: _isSearching
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.search),
-                  label: const Text('Find Room'),
+                  icon:
+                      _isSearching
+                          ? const SizedBox.square(
+                            dimension: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : const Icon(Icons.arrow_forward_rounded),
+                  label: const Text('Find rooms'),
                 ),
-              ),
-            ],
+              );
+              if (compact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [idField, const SizedBox(height: 10), button],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: idField),
+                  const SizedBox(width: 12),
+                  button,
+                ],
+              );
+            },
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildOverview() {
+    final found = _searchResults.values.whereType<ExamRoom>().length;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          _metric('${_selectedCourses.length}', 'Courses'),
+          _metric('$found', 'Rooms found'),
+          _metric(_nextExamLabel(), 'Next exam'),
+        ],
+      ),
+    );
+  }
+
+  Widget _metric(String value, String label) => Expanded(
+    child: Column(
+      children: [
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    ),
+  );
+
+  String _nextExamLabel() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final upcoming =
+        _selectedCourses
+            .map((course) => _parseExamDateTime(course.examDate))
+            .whereType<DateTime>()
+            .where(
+              (date) =>
+                  !DateTime(date.year, date.month, date.day).isBefore(today),
+            )
+            .toList()
+          ..sort();
+    if (upcoming.isEmpty) return '-';
+    final next = upcoming.first;
+    return '${next.day} ${DayConstants.monthNames[next.month]}';
   }
 
   /// Compare two exam date strings for sorting
@@ -524,18 +749,29 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       // Try format: "DD Month YY - HH:MM AM/PM to HH:MM AM/PM"
       // Example: "09 March 26 - 04:00 PM to 05:30 PM"
       final monthNames = {
-        'JANUARY': 1, 'JAN': 1,
-        'FEBRUARY': 2, 'FEB': 2,
-        'MARCH': 3, 'MAR': 3,
-        'APRIL': 4, 'APR': 4,
+        'JANUARY': 1,
+        'JAN': 1,
+        'FEBRUARY': 2,
+        'FEB': 2,
+        'MARCH': 3,
+        'MAR': 3,
+        'APRIL': 4,
+        'APR': 4,
         'MAY': 5,
-        'JUNE': 6, 'JUN': 6,
-        'JULY': 7, 'JUL': 7,
-        'AUGUST': 8, 'AUG': 8,
-        'SEPTEMBER': 9, 'SEP': 9,
-        'OCTOBER': 10, 'OCT': 10,
-        'NOVEMBER': 11, 'NOV': 11,
-        'DECEMBER': 12, 'DEC': 12,
+        'JUNE': 6,
+        'JUN': 6,
+        'JULY': 7,
+        'JUL': 7,
+        'AUGUST': 8,
+        'AUG': 8,
+        'SEPTEMBER': 9,
+        'SEP': 9,
+        'OCTOBER': 10,
+        'OCT': 10,
+        'NOVEMBER': 11,
+        'NOV': 11,
+        'DECEMBER': 12,
+        'DEC': 12,
       };
 
       // Pattern: DD Month YY - HH:MM AM/PM
@@ -553,7 +789,11 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
         final ampm = newMatch.group(6)!.toUpperCase();
         final month = monthNames[monthStr];
 
-        if (day != null && month != null && year != null && hour != null && minute != null) {
+        if (day != null &&
+            month != null &&
+            year != null &&
+            hour != null &&
+            minute != null) {
           // Handle 2-digit year
           if (year < 100) {
             year += 2000;
@@ -573,12 +813,13 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       final isAfternoon = upperNormalized.contains('FN');
 
       // Extract date part (remove AN/FN)
-      final datePart = upperNormalized
-          .replaceAll('AN', '')
-          .replaceAll('FN', '')
-          .replaceAll('(', '')
-          .replaceAll(')', '')
-          .trim();
+      final datePart =
+          upperNormalized
+              .replaceAll('AN', '')
+              .replaceAll('FN', '')
+              .replaceAll('(', '')
+              .replaceAll(')', '')
+              .trim();
 
       // Try DD/MM/YYYY format
       final parts = datePart.split('/');
@@ -611,8 +852,10 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
     final u = raw.toUpperCase();
     if (RegExp(r'\bAN\b').hasMatch(u)) return 'AN';
     if (RegExp(r'\bFN\b').hasMatch(u)) return 'FN';
-    final t = RegExp(r'\d{1,2}:\d{2}\s*(AM|PM)', caseSensitive: false)
-        .firstMatch(raw);
+    final t = RegExp(
+      r'\d{1,2}:\d{2}\s*(AM|PM)',
+      caseSensitive: false,
+    ).firstMatch(raw);
     return t?.group(0)?.replaceAll(RegExp(r'\s+'), ' ').toUpperCase();
   }
 
@@ -621,9 +864,12 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
     final dt = _parseExamDateTime(raw);
     if (dt == null) return null;
     final now = DateTime.now();
-    final days = DateTime(dt.year, dt.month, dt.day)
-        .difference(DateTime(now.year, now.month, now.day))
-        .inDays;
+    final days =
+        DateTime(
+          dt.year,
+          dt.month,
+          dt.day,
+        ).difference(DateTime(now.year, now.month, now.day)).inDays;
     if (days < 0) return null;
     if (days == 0) return (text: 'today', urgent: true);
     if (days == 1) return (text: 'tomorrow', urgent: true);
@@ -685,15 +931,15 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: color,
-                      ),
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
                 ),
                 Text(
                   subtitle,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: color.withValues(alpha: 0.9),
-                      ),
+                    color: color.withValues(alpha: 0.9),
+                  ),
                 ),
               ],
             ),
@@ -703,151 +949,322 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
     );
   }
 
-  Widget _buildSelectedCourses() {
-    if (_selectedCourses.isEmpty) {
-      return const EmptyStateWidget(
-        icon: Icons.event_seat_outlined,
-        title: 'No courses selected',
-        subtitle: 'Search for a course above or import from your timetable',
-      );
-    }
-
-    // Sort courses by exam date
+  Widget _buildSelectedCourses({EdgeInsets padding = EdgeInsets.zero}) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final duration =
+        reduceMotion ? Duration.zero : AppDesign.animDurationNormal;
     final sortedCourses = List<ExamSeating>.from(_selectedCourses)
       ..sort((a, b) => _compareExamDates(a.examDate, b.examDate));
 
-    return RefreshIndicator(
-      onRefresh: _loadExamData,
-      child: ListView.builder(
-      scrollCacheExtent: ScrollCacheExtent.pixels(800),
-      padding: ResponsiveService.getAdaptivePadding(
-        context,
-        const EdgeInsets.all(16),
+    return AnimatedSwitcher(
+      duration: duration,
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      child: RefreshIndicator(
+        key: ValueKey(sortedCourses.isEmpty ? 'empty-exams' : 'exam-plan'),
+        onRefresh: _loadExamData,
+        child: ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          scrollCacheExtent: ScrollCacheExtent.pixels(800),
+          padding: padding,
+          itemCount: sortedCourses.isEmpty ? 2 : sortedCourses.length + 1,
+          itemBuilder: (context, index) {
+            if (index == 0) return _sectionHeader();
+            if (sortedCourses.isEmpty) return _emptyExamPlan();
+            return _examCard(sortedCourses[index - 1], duration);
+          },
+        ),
       ),
-      itemCount: sortedCourses.length,
-      itemBuilder: (context, index) {
-        final course = sortedCourses[index];
-        final room = _searchResults[course.courseCode];
-        final hasSearched = _searchResults.containsKey(course.courseCode);
+    );
+  }
 
-        final scheme = Theme.of(context).colorScheme;
-        final dayLabel = _examDayLabel(course.examDate);
-        final session = _sessionLabel(course.examDate);
-        final countdown = _countdown(course.examDate);
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: scheme.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: scheme.outlineVariant),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
+  Widget _sectionHeader() {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        children: [
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            displayExamCode(course.courseCode),
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                          if (course.courseTitle.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 2),
-                              child: Text(
-                                course.courseTitle,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(color: scheme.onSurfaceVariant),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    // Subtle, compact remove affordance.
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 20),
-                      color: scheme.onSurfaceVariant,
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () => _removeCourse(course),
-                      tooltip: 'Remove course',
-                    ),
-                  ],
-                ),
-
-                // Date / session / countdown chips (fall back to the raw string
-                // when the date can't be parsed into a day + session).
-                if (dayLabel != null || session != null) ...[
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      if (dayLabel != null)
-                        _metaChip(Icons.calendar_today_outlined, dayLabel),
-                      if (session != null)
-                        _metaChip(
-                          null,
-                          session,
-                          fg: scheme.onPrimaryContainer,
-                          bg: scheme.primaryContainer,
-                        ),
-                      if (countdown != null)
-                        _metaChip(
-                          Icons.schedule,
-                          countdown.text,
-                          fg: countdown.urgent
-                              ? AppDesign.warning(context)
-                              : scheme.onSurfaceVariant,
-                          bg: countdown.urgent
-                              ? AppDesign.warning(context).withValues(alpha: 0.12)
-                              : scheme.surfaceContainerHighest,
-                        ),
-                    ],
+                Text(
+                  'Your exam plan',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
-                ] else if (course.examDate.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  _metaChip(Icons.event, course.examDate),
-                ],
-
-                // Room result once the user has searched their ID.
-                if (hasSearched) ...[
-                  const SizedBox(height: 14),
-                  if (room != null)
-                    _resultBox(
-                      icon: Icons.check_circle,
-                      color: AppDesign.success(context),
-                      title: 'Room ${room.roomNo}',
-                      subtitle: 'Seats ${room.idFrom} – ${room.idTo}',
-                    )
-                  else
-                    _resultBox(
-                      icon: Icons.warning_amber_rounded,
-                      color: AppDesign.warning(context),
-                      title: 'No room found',
-                      subtitle: 'Your ID isn\'t in this course\'s seating list',
-                    ),
-                ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _selectedCourses.isEmpty
+                      ? 'Build a focused list of the exams that matter to you.'
+                      : 'Sorted chronologically. Pull down to refresh seating data.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),
-        );
-      },
-    ),
+          if (_selectedCourses.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: scheme.primaryContainer,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '${_selectedCourses.length} course${_selectedCourses.length == 1 ? '' : 's'}',
+                style: TextStyle(
+                  color: scheme.onPrimaryContainer,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _emptyExamPlan() {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      constraints: const BoxConstraints(minHeight: 260),
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: scheme.primaryContainer.withValues(alpha: 0.7),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.calendar_month_outlined,
+              size: 34,
+              color: scheme.primary,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            'Your exam plan is empty',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Search above, or bring in every relevant course from a saved timetable.',
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 18),
+          OutlinedButton.icon(
+            onPressed: _importCoursesFromTimetable,
+            icon: const Icon(Icons.file_download_outlined),
+            label: const Text('Import from timetable'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _examCard(ExamSeating course, Duration duration) {
+    final scheme = Theme.of(context).colorScheme;
+    final room = _searchResults[course.courseCode];
+    final hasSearched = _searchResults.containsKey(course.courseCode);
+    final date = _parseExamDateTime(course.examDate);
+    final dayLabel = _examDayLabel(course.examDate);
+    final session = _sessionLabel(course.examDate);
+    final countdown = _countdown(course.examDate);
+
+    return Container(
+      key: ValueKey(course.courseCode),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            scheme.surface,
+            Color.alphaBlend(
+              scheme.primary.withValues(alpha: 0.028),
+              scheme.surface,
+            ),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: scheme.outlineVariant),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.shadow.withValues(alpha: 0.035),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (date != null) ...[
+                  _dateTile(date),
+                  const SizedBox(width: 14),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayExamCode(course.courseCode),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      if (course.courseTitle.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          course.courseTitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: scheme.onSurfaceVariant),
+                        ),
+                      ],
+                      if (dayLabel != null ||
+                          session != null ||
+                          countdown != null) ...[
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            if (date == null && dayLabel != null)
+                              _metaChip(
+                                Icons.calendar_today_outlined,
+                                dayLabel,
+                              ),
+                            if (session != null)
+                              _metaChip(
+                                null,
+                                session,
+                                fg: scheme.onPrimaryContainer,
+                                bg: scheme.primaryContainer,
+                              ),
+                            if (countdown != null)
+                              _metaChip(
+                                Icons.schedule_rounded,
+                                countdown.text,
+                                fg:
+                                    countdown.urgent
+                                        ? AppDesign.warning(context)
+                                        : scheme.onSurfaceVariant,
+                                bg:
+                                    countdown.urgent
+                                        ? AppDesign.warning(
+                                          context,
+                                        ).withValues(alpha: 0.12)
+                                        : scheme.surfaceContainerHighest,
+                              ),
+                          ],
+                        ),
+                      ] else if (course.examDate.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _metaChip(Icons.event_outlined, course.examDate),
+                      ],
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 20),
+                  color: scheme.onSurfaceVariant,
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => _removeCourse(course),
+                  tooltip: 'Remove course',
+                ),
+              ],
+            ),
+            AnimatedSize(
+              duration: duration,
+              curve: Curves.easeOutCubic,
+              child: AnimatedSwitcher(
+                duration: duration,
+                child:
+                    !hasSearched
+                        ? const SizedBox.shrink(key: ValueKey('not-searched'))
+                        : Padding(
+                          key: ValueKey(
+                            room == null ? 'not-found' : 'room-found',
+                          ),
+                          padding: const EdgeInsets.only(top: 14),
+                          child:
+                              room != null
+                                  ? _resultBox(
+                                    icon: Icons.check_circle_rounded,
+                                    color: AppDesign.success(context),
+                                    title: 'Room ${room.roomNo}',
+                                    subtitle:
+                                        'Seats ${room.idFrom} - ${room.idTo}',
+                                  )
+                                  : _resultBox(
+                                    icon: Icons.warning_amber_rounded,
+                                    color: AppDesign.warning(context),
+                                    title: 'No room found',
+                                    subtitle:
+                                        'Your ID is not in this course\'s seating list',
+                                  ),
+                        ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _dateTile(DateTime date) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: 58,
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        color: scheme.primary,
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        children: [
+          Text(
+            '${date.day}',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: scheme.onPrimary,
+              fontWeight: FontWeight.w800,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            DayConstants.monthNames[date.month].toUpperCase(),
+            style: TextStyle(
+              color: scheme.onPrimary.withValues(alpha: 0.82),
+              fontWeight: FontWeight.w700,
+              fontSize: 9,
+              letterSpacing: 0.7,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -891,7 +1308,9 @@ class _TimetableCourseSelectionDialogState
 
     // Filter to only courses that have exam seating data
     return courseCodes.where((code) {
-      return widget.allExams.any((exam) => examCoversCourse(exam.courseCode, code));
+      return widget.allExams.any(
+        (exam) => examCoversCourse(exam.courseCode, code),
+      );
     }).toList();
   }
 
@@ -900,7 +1319,10 @@ class _TimetableCourseSelectionDialogState
     return AlertDialog(
       title: const Text('Import Courses'),
       content: SizedBox(
-        width: ResponsiveService.isMobile(context) ? MediaQuery.sizeOf(context).width * 0.85 : 400,
+        width:
+            ResponsiveService.isMobile(context)
+                ? MediaQuery.sizeOf(context).width * 0.85
+                : 400,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -908,15 +1330,14 @@ class _TimetableCourseSelectionDialogState
             // Timetable selector
             DropdownButtonFormField<Timetable>(
               initialValue: _selectedTimetable,
-              decoration: const InputDecoration(
-                labelText: 'Select Timetable',
-              ),
-              items: widget.timetables
-                  .map((tt) => DropdownMenuItem(
-                        value: tt,
-                        child: Text(tt.name),
-                      ))
-                  .toList(),
+              decoration: const InputDecoration(labelText: 'Select Timetable'),
+              items:
+                  widget.timetables
+                      .map(
+                        (tt) =>
+                            DropdownMenuItem(value: tt, child: Text(tt.name)),
+                      )
+                      .toList(),
               onChanged: (value) {
                 setState(() {
                   _selectedTimetable = value;
@@ -969,9 +1390,10 @@ class _TimetableCourseSelectionDialogState
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed: _selectedCourses.isEmpty
-              ? null
-              : () => Navigator.pop(context, _selectedCourses.toList()),
+          onPressed:
+              _selectedCourses.isEmpty
+                  ? null
+                  : () => Navigator.pop(context, _selectedCourses.toList()),
           child: const Text('Import'),
         ),
       ],

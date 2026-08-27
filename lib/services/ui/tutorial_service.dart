@@ -16,7 +16,10 @@ class TutorialKeys {
   static final timetableCard = GlobalKey(debugLabel: 'tutorial_tt_card');
 
   // Timetable Editor (HomeScreen)
-  static final commandPalette = GlobalKey(debugLabel: 'tutorial_command_palette');
+  static final commandPalette = GlobalKey(
+    debugLabel: 'tutorial_command_palette',
+  );
+  static final courseBrowser = GlobalKey(debugLabel: 'tutorial_course_browser');
   static final courseSearch = GlobalKey(debugLabel: 'tutorial_search');
   static final timetableGrid = GlobalKey(debugLabel: 'tutorial_grid');
   static final generatorFab = GlobalKey(debugLabel: 'tutorial_generator');
@@ -31,24 +34,36 @@ class TutorialKeys {
   static final cgpaActions = GlobalKey(debugLabel: 'tutorial_cgpa_actions');
 
   // Acad Drives
-  static final acadDrivesYourCourses = GlobalKey(debugLabel: 'tutorial_your_courses');
-  static final acadDrivesSubmit = GlobalKey(debugLabel: 'tutorial_submit_drive');
+  static final acadDrivesYourCourses = GlobalKey(
+    debugLabel: 'tutorial_your_courses',
+  );
+  static final acadDrivesSubmit = GlobalKey(
+    debugLabel: 'tutorial_submit_drive',
+  );
   static final acadDrivesSearch = GlobalKey(debugLabel: 'tutorial_acad_search');
 
   // Admin
   static final adminManagement = GlobalKey(debugLabel: 'tutorial_admin_mgmt');
-  static final adminTimetableUpload = GlobalKey(debugLabel: 'tutorial_admin_tt_upload');
-  static final adminExamUpload = GlobalKey(debugLabel: 'tutorial_admin_exam_upload');
+  static final adminTimetableUpload = GlobalKey(
+    debugLabel: 'tutorial_admin_tt_upload',
+  );
+  static final adminExamUpload = GlobalKey(
+    debugLabel: 'tutorial_admin_exam_upload',
+  );
 
   // Page info buttons (per screen)
-  static final infoTimetableList = GlobalKey(debugLabel: 'tutorial_info_tt_list');
+  static final infoTimetableList = GlobalKey(
+    debugLabel: 'tutorial_info_tt_list',
+  );
   static final infoCalendar = GlobalKey(debugLabel: 'tutorial_info_calendar');
   static final infoFreeSlot = GlobalKey(debugLabel: 'tutorial_info_free_slot');
   static final infoCGPA = GlobalKey(debugLabel: 'tutorial_info_cgpa');
   static final infoExamSeating = GlobalKey(debugLabel: 'tutorial_info_exam');
   static final infoAcadDrives = GlobalKey(debugLabel: 'tutorial_info_acad');
   static final infoProfChambers = GlobalKey(debugLabel: 'tutorial_info_prof');
-  static final infoAnnouncements = GlobalKey(debugLabel: 'tutorial_info_announce');
+  static final infoAnnouncements = GlobalKey(
+    debugLabel: 'tutorial_info_announce',
+  );
 }
 
 enum TutorialSection {
@@ -120,7 +135,8 @@ class TutorialService {
       targets,
       key: TutorialKeys.sidebarNav,
       title: 'Everything lives here',
-      description: 'Your other tools — Free Slot Finder, CGPA, Acad Drives, Prof Chambers, Bug Report and more — are one tap away in this menu.',
+      description:
+          'Choose a workspace: Timetables, Degree, Calendar, Explore or Exams. Related pages live in its tabs; Help & support stays in the footer.',
       shape: ShapeLightFocus.RRect,
       align: ContentAlign.right,
     );
@@ -129,7 +145,8 @@ class TutorialService {
       targets,
       key: TutorialKeys.newTimetableBtn,
       title: 'Create a Timetable',
-      description: 'Tap here to create a new timetable. You can have multiple timetables to compare different course combinations.',
+      description:
+          'Tap here to create a new timetable. You can have multiple timetables to compare different course combinations.',
       shape: ShapeLightFocus.RRect,
       align: ContentAlign.top,
     );
@@ -138,7 +155,8 @@ class TutorialService {
       targets,
       key: TutorialKeys.importCodeBtn,
       title: 'Import from Friends',
-      description: 'Got a share code from a friend? Import their timetable instantly.',
+      description:
+          'Got a share code from a friend? Import their timetable instantly.',
       shape: ShapeLightFocus.RRect,
       align: ContentAlign.top,
     );
@@ -147,7 +165,8 @@ class TutorialService {
       targets,
       key: TutorialKeys.compareBtn,
       title: 'Compare Timetables',
-      description: 'View two timetables side by side to decide which one works best.',
+      description:
+          'View two timetables side by side to decide which one works best.',
       shape: ShapeLightFocus.RRect,
       align: ContentAlign.top,
     );
@@ -175,7 +194,8 @@ class TutorialService {
       targets,
       key: TutorialKeys.commandPalette,
       title: 'Search anything (⌘K)',
-      description: 'Press this — or ⌘K / Ctrl+K — to jump to any feature, action, theme or saved timetable from one search box. The fastest way around Tabulr.',
+      description:
+          'Press this — or ⌘K / Ctrl+K — to jump to any feature, action, theme or saved timetable from one search box. The fastest way around Tabulr.',
       shape: ShapeLightFocus.Circle,
       align: ContentAlign.bottom,
     );
@@ -184,16 +204,18 @@ class TutorialService {
       targets,
       key: TutorialKeys.campusSelector,
       title: 'Select Campus',
-      description: 'Choose your campus — Pilani, Goa, or Hyderabad. This loads the correct course catalog and time slots.',
+      description:
+          'Choose your campus — Pilani, Goa, or Hyderabad. This loads the correct course catalog and time slots.',
       shape: ShapeLightFocus.RRect,
       align: ContentAlign.bottom,
     );
 
     _addTarget(
       targets,
-      key: TutorialKeys.courseSearch,
-      title: 'Search Courses',
-      description: 'Search by course code, name, or instructor. Tap a section to add it to your timetable.',
+      key: TutorialKeys.courseBrowser,
+      title: 'Build your plan',
+      description:
+          'Open the course browser to search the catalog, review My Plan and check exam dates. On desktop it stays beside the timetable; on mobile it opens as a sheet.',
       shape: ShapeLightFocus.RRect,
       align: ContentAlign.bottom,
     );
@@ -201,8 +223,9 @@ class TutorialService {
     _addTarget(
       targets,
       key: TutorialKeys.generatorFab,
-      title: 'Auto-Generate',
-      description: 'Pick your courses and let the generator find the best clash-free timetable for you — or add & swap sections from here too.',
+      title: 'Build your timetable',
+      description:
+          'Generate a clash-free timetable automatically, or use Add / Swap when you want to choose sections yourself.',
       shape: ShapeLightFocus.RRect,
       align: ContentAlign.top,
     );
@@ -211,7 +234,8 @@ class TutorialService {
       targets,
       key: TutorialKeys.toolsMenu,
       title: 'Tools & more',
-      description: 'Course guide, prerequisites, discipline & humanities electives, share, and import/export all live here.',
+      description:
+          'Use samples, Trim to Fit, electives, minors and faculty sections with this timetable. Global planning lives in Degree and Explore; sharing and export stay with the editor.',
       shape: ShapeLightFocus.Circle,
       align: ContentAlign.bottom,
     );
@@ -229,7 +253,8 @@ class TutorialService {
       targets,
       key: key,
       title: 'Page Guide',
-      description: 'Tap this anytime to see what you can do on this page — features, shortcuts, and tips.',
+      description:
+          'Tap this anytime to see what you can do on this page — features, shortcuts, and tips.',
       shape: ShapeLightFocus.Circle,
       align: ContentAlign.bottom,
     );
@@ -248,7 +273,8 @@ class TutorialService {
       targets,
       key: TutorialKeys.cgpaSummary,
       title: 'Your CGPA',
-      description: 'Your overall CGPA and total credits at a glance. Tap to see a semester-by-semester breakdown.',
+      description:
+          'Your overall CGPA and total credits at a glance. Tap to see a semester-by-semester breakdown.',
       shape: ShapeLightFocus.RRect,
       align: ContentAlign.bottom,
     );
@@ -257,7 +283,8 @@ class TutorialService {
       targets,
       key: TutorialKeys.semesterTabs,
       title: 'Semester Tabs',
-      description: 'Switch between semesters to add courses and grades. Long-press a tab to remove it, or tap + to add a new one.',
+      description:
+          'Switch between semesters to add courses and grades. Long-press a tab to remove it, or tap + to add a new one.',
       shape: ShapeLightFocus.RRect,
       align: ContentAlign.bottom,
     );
@@ -266,7 +293,8 @@ class TutorialService {
       targets,
       key: TutorialKeys.cgpaActions,
       title: 'Quick Actions',
-      description: 'Import grades from your performance sheet PDF, load CDCs automatically, or plan future grades with Grade Planner and CG Booster.',
+      description:
+          'Import grades from your performance sheet PDF, load CDCs automatically, or plan future grades with Grade Planner and CG Booster.',
       shape: ShapeLightFocus.RRect,
       align: ContentAlign.bottom,
     );
@@ -294,7 +322,8 @@ class TutorialService {
       targets,
       key: TutorialKeys.acadDrivesYourCourses,
       title: 'Your Courses',
-      description: 'Courses from your timetable appear here first for quick access to their study materials.',
+      description:
+          'Courses from your timetable appear here first for quick access to their study materials.',
       shape: ShapeLightFocus.RRect,
       align: ContentAlign.bottom,
     );
@@ -303,7 +332,8 @@ class TutorialService {
       targets,
       key: TutorialKeys.acadDrivesSearch,
       title: 'Search Resources',
-      description: 'Search across all courses to find notes, slides, past papers, and assignments.',
+      description:
+          'Search across all courses to find notes, slides, past papers, and assignments.',
       shape: ShapeLightFocus.RRect,
       align: ContentAlign.bottom,
     );
@@ -312,7 +342,8 @@ class TutorialService {
       targets,
       key: TutorialKeys.acadDrivesSubmit,
       title: 'Contribute',
-      description: 'Have study materials? Submit a Google Drive link to share resources with everyone.',
+      description:
+          'Have study materials? Submit a Google Drive link to share resources with everyone.',
       shape: ShapeLightFocus.RRect,
       align: ContentAlign.bottom,
     );
@@ -340,7 +371,8 @@ class TutorialService {
       targets,
       key: TutorialKeys.adminManagement,
       title: 'Data Management',
-      description: 'Edit courses, exam seating, professor chambers, and CDC structure. Changes go live immediately.',
+      description:
+          'Edit courses, exam seating, professor chambers, and CDC structure. Changes go live immediately.',
       shape: ShapeLightFocus.RRect,
       align: ContentAlign.bottom,
     );
@@ -349,7 +381,8 @@ class TutorialService {
       targets,
       key: TutorialKeys.adminTimetableUpload,
       title: 'Timetable Upload',
-      description: 'Upload timetable PDFs per campus. Set page ranges and header exclusions, then parse and push to Firestore.',
+      description:
+          'Upload timetable PDFs per campus. Set page ranges and header exclusions, then parse and push to Firestore.',
       shape: ShapeLightFocus.RRect,
       align: ContentAlign.top,
       maxContentWidth: 320,
@@ -359,7 +392,8 @@ class TutorialService {
       targets,
       key: TutorialKeys.adminExamUpload,
       title: 'Exam Seating Upload',
-      description: 'Upload exam seating PDFs to parse room and seat assignments for students.',
+      description:
+          'Upload exam seating PDFs to parse room and seat assignments for students.',
       shape: ShapeLightFocus.RRect,
       align: ContentAlign.top,
       maxContentWidth: 320,
@@ -394,7 +428,10 @@ class TutorialService {
   /// Auto-starts the timetable editor tour (the editor isn't a shell screen, so
   /// it has its own entry point). Falls back to the Tools spotlight for users
   /// who previously skipped the full editor tour.
-  void autoStartEditor(BuildContext context, {required bool Function() isMounted}) {
+  void autoStartEditor(
+    BuildContext context, {
+    required bool Function() isMounted,
+  }) {
     _autoStart(
       context,
       section: _sectionEditor,
@@ -429,7 +466,10 @@ class TutorialService {
       start(context);
       if (_isShowing || remaining <= 1) return; // started, or gave up
       // Not shown yet — auth still restoring or targets not laid out. Retry.
-      Future.delayed(const Duration(milliseconds: 200), () => attempt(remaining - 1));
+      Future.delayed(
+        const Duration(milliseconds: 200),
+        () => attempt(remaining - 1),
+      );
     }
 
     // ~5s window: enough to outlast a slow auth restore without nagging forever.
@@ -452,12 +492,12 @@ class TutorialService {
   }
 
   String? _sectionForScreen(DrawerScreen screen) => switch (screen) {
-        DrawerScreen.timetables => _sectionTimetableList,
-        DrawerScreen.cgpaCalculator => _sectionCGPA,
-        DrawerScreen.acadDrives => _sectionAcadDrives,
-        DrawerScreen.admin => _sectionAdmin,
-        _ => null,
-      };
+    DrawerScreen.timetables => _sectionTimetableList,
+    DrawerScreen.cgpaCalculator => _sectionCGPA,
+    DrawerScreen.acadDrives => _sectionAcadDrives,
+    DrawerScreen.admin => _sectionAdmin,
+    _ => null,
+  };
 
   void Function(BuildContext)? _spotlightForScreen(DrawerScreen screen) =>
       switch (screen) {
@@ -558,12 +598,14 @@ class TutorialService {
     if (_dismissedThisSession.contains(afterSection)) return;
 
     final targets = <TargetFocus>[];
-    _addTarget(targets,
-        key: key,
-        title: title,
-        description: description,
-        shape: shape,
-        align: ContentAlign.bottom);
+    _addTarget(
+      targets,
+      key: key,
+      title: title,
+      description: description,
+      shape: shape,
+      align: ContentAlign.bottom,
+    );
     if (targets.isEmpty) return;
 
     _isShowing = true;
@@ -657,7 +699,9 @@ class TutorialService {
     if (context == null) return null;
     final render = context.findRenderObject();
     // `attached` must hold before localToGlobal (it walks the ancestor chain).
-    if (render is! RenderBox || !render.attached || !render.hasSize) return null;
+    if (render is! RenderBox || !render.attached || !render.hasSize) {
+      return null;
+    }
     final size = render.size;
     if (size.shortestSide <= 0) return null;
     final screen = MediaQuery.maybeOf(context)?.size;
@@ -697,11 +741,13 @@ class TutorialService {
     var contentWidth = maxContentWidth;
     if (align == ContentAlign.left || align == ContentAlign.right) {
       const gap = 24.0;
-      final left = align == ContentAlign.right ? geometry.rect.right + gap : gap;
+      final left =
+          align == ContentAlign.right ? geometry.rect.right + gap : gap;
       // The card sits inside this position's own `gap` of horizontal padding
       // (see the builder below), so what's left for it is the room to the far
       // edge less that padding and one more gap of margin.
-      final available = (align == ContentAlign.right
+      final available =
+          (align == ContentAlign.right
               ? geometry.screen.width - left
               : geometry.rect.left) -
           gap * 2;
@@ -715,9 +761,10 @@ class TutorialService {
           // that the card itself runs off the bottom.
           top: geometry.rect.top.clamp(gap, geometry.screen.height / 2),
         );
-        contentWidth = contentWidth == null || contentWidth > available
-            ? available
-            : contentWidth;
+        contentWidth =
+            contentWidth == null || contentWidth > available
+                ? available
+                : contentWidth;
       }
     }
 
@@ -736,9 +783,10 @@ class TutorialService {
       TargetFocus(
         identify: key.toString(),
         keyTarget: atOrigin ? null : key,
-        targetPosition: atOrigin
-            ? TargetPosition(geometry.rect.size, const Offset(0.5, 0.5))
-            : null,
+        targetPosition:
+            atOrigin
+                ? TargetPosition(geometry.rect.size, const Offset(0.5, 0.5))
+                : null,
         shape: shape,
         radius: 12,
         contents: [
@@ -748,11 +796,15 @@ class TutorialService {
             builder: (context, controller) {
               final scheme = Theme.of(context).colorScheme;
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 child: Container(
-                  constraints: contentWidth != null
-                      ? BoxConstraints(maxWidth: contentWidth)
-                      : null,
+                  constraints:
+                      contentWidth != null
+                          ? BoxConstraints(maxWidth: contentWidth)
+                          : null,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: scheme.surface.withValues(alpha: 0.95),
@@ -798,18 +850,24 @@ class TutorialService {
                             onPressed: () => _currentTutorial?.skip(),
                             child: Text(
                               'Skip',
-                              style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.5)),
+                              style: TextStyle(
+                                color: scheme.onSurface.withValues(alpha: 0.5),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),
                           OutlinedButton(
                             onPressed: () => controller.previous(),
                             style: OutlinedButton.styleFrom(
-                              side: BorderSide(color: scheme.outline.withValues(alpha: 0.3)),
+                              side: BorderSide(
+                                color: scheme.outline.withValues(alpha: 0.3),
+                              ),
                             ),
                             child: Text(
                               'Back',
-                              style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.7)),
+                              style: TextStyle(
+                                color: scheme.onSurface.withValues(alpha: 0.7),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 8),

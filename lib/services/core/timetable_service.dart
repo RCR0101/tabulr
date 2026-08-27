@@ -5,6 +5,7 @@ import '../../constants/app_constants.dart';
 import '../../models/timetable.dart';
 import '../../models/course.dart';
 import '../../models/timetable_reconciliation.dart';
+import 'account_scoped_cache.dart';
 import 'clash_detector.dart';
 import '../data/auth_service.dart';
 import '../data/timetable_storage_service.dart';
@@ -13,6 +14,36 @@ import '../data/campus_service.dart';
 import '../data/config_service.dart';
 import 'course_catalog_service.dart';
 import '../ui/secure_logger.dart';
+
+enum TimetableSaveOutcome {
+  synced,
+  savedLocally,
+  savedLocallyAfterCloudFailure,
+}
+
+/// Merges account-scoped pending saves with cloud data. A local fallback only
+/// wins when it is newer, so successfully synced cloud state remains primary.
+List<Timetable> mergeTimetableCopies(
+  List<Timetable> cloud,
+  List<Timetable> local,
+) {
+  final merged = {for (final timetable in cloud) timetable.id: timetable};
+  for (final timetable in local) {
+    final existing = merged[timetable.id];
+    if (existing == null || timetable.updatedAt.isAfter(existing.updatedAt)) {
+      merged[timetable.id] = timetable;
+    }
+  }
+  final result = merged.values.toList();
+  result.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  return result;
+}
+
+Timetable? newestTimetableCopy(Timetable? cloud, Timetable? local) {
+  if (cloud == null) return local;
+  if (local == null) return cloud;
+  return local.updatedAt.isAfter(cloud.updatedAt) ? local : cloud;
+}
 
 class TimetableService {
   static final TimetableService _instance = TimetableService._internal();
@@ -24,43 +55,77 @@ class TimetableService {
   final CourseDataService _courseDataService = CourseDataService();
   final CourseCatalogService _allCourseService = CourseCatalogService();
 
-  List<Timetable>? _cachedTimetables;
+  final AccountScopedCache<List<Timetable>> _cachedTimetables =
+      AccountScopedCache<List<Timetable>>();
 
-  void invalidateCache() => _cachedTimetables = null;
+  String get _cacheOwner {
+    final uid = _authService.userDocId;
+    return uid == null ? 'guest' : 'user:$uid';
+  }
+
+  String get _localTimetableListKey {
+    final uid = _authService.userDocId;
+    return uid == null
+        ? StorageKeys.userTimetablesList
+        : '${StorageKeys.userTimetablesList}_$uid';
+  }
+
+  String _localTimetableKey(String id) {
+    final uid = _authService.userDocId;
+    return uid == null ? 'timetable_$id' : 'timetable_${uid}_$id';
+  }
+
+  void invalidateCache() => _cachedTimetables.clear();
   
-  // Save timetable using Firestore for authenticated users or local storage for guests
-  Future<void> saveTimetable(Timetable timetable) async {
+  // Save timetable using Firestore for authenticated users or local storage for guests.
+  Future<TimetableSaveOutcome> saveTimetable(Timetable timetable) async {
     invalidateCache();
     final perfSw = Stopwatch()..start();
+    final updatedTimetable = timetable.copyWith(updatedAt: DateTime.now());
     try {
-      // Update the timetable's updatedAt timestamp
-      final updatedTimetable = timetable.copyWith(
-        updatedAt: DateTime.now(),
-      );
-      
-      // If user is authenticated, save to Firestore
       if (_authService.isAuthenticated) {
-        final success = await _firestoreService.saveTimetable(updatedTimetable);
-        if (success) {
-          // saved to Firestore
-        } else {
-          SecureLogger.error('TIMETABLE_SVC', 'Failed to save to Firestore, falling back to local storage');
-          await saveTimetableToStorage(updatedTimetable);
+        var synced = false;
+        try {
+          synced = await _firestoreService.saveTimetable(updatedTimetable);
+        } catch (e) {
+          SecureLogger.error(
+            'TIMETABLE_SVC',
+            'Cloud save threw before local fallback',
+            e,
+          );
         }
-      } else {
-        // Guest user - save to local storage using new format
+        if (synced) {
+          try {
+            await _removeLocalTimetableCopy(updatedTimetable.id);
+          } catch (e) {
+            SecureLogger.warning(
+              'TIMETABLE_SVC',
+              'Cloud save succeeded but pending-copy cleanup failed: $e',
+            );
+          }
+          return TimetableSaveOutcome.synced;
+        }
+
+        SecureLogger.warning(
+          'TIMETABLE_SVC',
+          'Cloud save failed; saving an account-scoped local fallback',
+        );
         await saveTimetableToStorage(updatedTimetable);
+        await _addTimetableToList(updatedTimetable.id);
+        return TimetableSaveOutcome.savedLocallyAfterCloudFailure;
       }
+
+      await saveTimetableToStorage(updatedTimetable);
+      await _addTimetableToList(updatedTimetable.id);
+      return TimetableSaveOutcome.savedLocally;
     } catch (e) {
-      SecureLogger.error('TIMETABLE_SVC', 'Error saving timetable: $e');
-      // Fallback to local storage
-      await saveTimetableToStorage(timetable);
+      SecureLogger.error('TIMETABLE_SVC', 'Failed to persist timetable', e);
+      rethrow;
     } finally {
       perfSw.stop();
       SecureLogger.performance('save_timetable', perfSw.elapsed);
     }
   }
-
 
   // Load timetable using Firestore for authenticated users or local storage for guests
   Future<Timetable> loadTimetable() async {
@@ -558,17 +623,18 @@ class TimetableService {
 
   // Multiple timetables functionality
   Future<List<Timetable>> getAllTimetables() async {
-    if (_cachedTimetables != null) return _cachedTimetables!;
+    final cacheOwner = _cacheOwner;
+    final cached = _cachedTimetables.read(cacheOwner);
+    if (cached != null) return cached;
 
     final perfSw = Stopwatch()..start();
     try {
       List<Timetable> timetables = [];
 
       if (_authService.isAuthenticated) {
-        timetables = await _firestoreService.getAllTimetables();
-        if (timetables.isEmpty) {
-          timetables = await _getAllTimetablesFromLocalStorage();
-        }
+        final cloud = await _firestoreService.getAllTimetables();
+        final pending = await _getAllTimetablesFromLocalStorage();
+        timetables = mergeTimetableCopies(cloud, pending);
       } else {
         timetables = await _getAllTimetablesFromLocalStorage();
       }
@@ -582,7 +648,9 @@ class TimetableService {
       // If no timetables exist, try to migrate from old format or create a default one
       if (timetables.isEmpty) {
         // Try to migrate from old timetable format
-        final oldTimetable = await _migrateFromOldFormat();
+        final oldTimetable = _authService.isAuthenticated
+            ? null
+            : await _migrateFromOldFormat();
         if (oldTimetable != null) {
           timetables.add(oldTimetable);
         } else {
@@ -591,7 +659,7 @@ class TimetableService {
         }
       }
 
-      _cachedTimetables = timetables;
+      _cachedTimetables.write(cacheOwner, timetables);
       return timetables;
     } catch (e) {
       SecureLogger.error('TIMETABLE_SVC', 'Error getting all timetables: $e');
@@ -608,11 +676,11 @@ class TimetableService {
     try {
 
       final prefs = await SharedPreferences.getInstance();
-      final timetableIds = prefs.getStringList(StorageKeys.userTimetablesList) ?? [];
+      final timetableIds = prefs.getStringList(_localTimetableListKey) ?? [];
 
       List<Timetable> timetables = [];
       for (String id in timetableIds) {
-        final data = prefs.getString('timetable_$id');
+        final data = prefs.getString(_localTimetableKey(id));
         if (data != null) {
           try {
             final jsonData = jsonDecode(data);
@@ -699,7 +767,7 @@ class TimetableService {
 
       final prefs = await SharedPreferences.getInstance();
       final data = jsonEncode(timetable.toJson());
-      final key = 'timetable_${timetable.id}';
+      final key = _localTimetableKey(timetable.id);
 
       await prefs.setString(key, data);
 
@@ -718,56 +786,49 @@ class TimetableService {
     try {
 
       final prefs = await SharedPreferences.getInstance();
-      final timetableIds = prefs.getStringList(StorageKeys.userTimetablesList) ?? [];
+      final timetableIds = prefs.getStringList(_localTimetableListKey) ?? [];
 
       if (!timetableIds.contains(id)) {
         timetableIds.add(id);
-        await prefs.setStringList(StorageKeys.userTimetablesList, timetableIds);
+        await prefs.setStringList(_localTimetableListKey, timetableIds);
       }
-    } catch (e) {
-      SecureLogger.error('TIMETABLE_SVC', 'Error adding timetable to list: $e');
+      } catch (e) {
+        SecureLogger.error('TIMETABLE_SVC', 'Error adding timetable to list: $e');
+        rethrow;
+      }
     }
-  }
 
-  Future<Timetable?> getTimetableById(String id) async {
-    try {
-      if (_authService.isAuthenticated) {
-        final timetable = await _firestoreService.getTimetableById(id);
-        if (timetable != null) {
-          // Set the campus to match the timetable's campus
-          if (CampusService.currentCampus != timetable.campus) {
-            await CampusService.setCampus(timetable.campus);
-          }
-
-          // Always check for updated courses from Firestore
-          await _loadCoursesFromFirestore(timetable);
-
-          return timetable;
-        }
-      }
-
-      // Check local storage (for guests or as fallback)
-
+    Future<void> _removeLocalTimetableCopy(String id) async {
       final prefs = await SharedPreferences.getInstance();
-      final key = 'timetable_$id';
-      final data = prefs.getString(key);
+      await prefs.remove(_localTimetableKey(id));
+      final timetableIds = prefs.getStringList(_localTimetableListKey) ?? [];
+      if (timetableIds.remove(id)) {
+        await prefs.setStringList(_localTimetableListKey, timetableIds);
+      }
+    }
 
-      if (data != null) {
-        final jsonData = jsonDecode(data);
-        final timetable = Timetable.fromJson(jsonData);
-
-        // Set the campus to match the timetable's campus
-        if (CampusService.currentCampus != timetable.campus) {
-          await CampusService.setCampus(timetable.campus);
-        }
-
-        // Always check for updated courses from Firestore
-        await _loadCoursesFromFirestore(timetable);
-
-        return timetable;
+      Future<Timetable?> getTimetableById(String id) async {
+    try {
+      Timetable? cloud;
+      if (_authService.isAuthenticated) {
+        cloud = await _firestoreService.getTimetableById(id);
       }
 
-      return null;
+      Timetable? local;
+      final prefs = await SharedPreferences.getInstance();
+      final data = prefs.getString(_localTimetableKey(id));
+      if (data != null) {
+        local = Timetable.fromJson(jsonDecode(data));
+      }
+
+      final timetable = newestTimetableCopy(cloud, local);
+      if (timetable == null) return null;
+
+      if (CampusService.currentCampus != timetable.campus) {
+        await CampusService.setCampus(timetable.campus);
+      }
+      await _loadCoursesFromFirestore(timetable);
+      return timetable;
     } catch (e) {
       SecureLogger.error('TIMETABLE_SVC', 'Error getting timetable by id: $e');
       return null;
@@ -784,17 +845,8 @@ class TimetableService {
         }
       }
 
-      // Also delete from local storage (for guests or as cleanup)
-      
-      final prefs = await SharedPreferences.getInstance();
-      
-      // Remove from storage
-      await prefs.remove('timetable_$id');
-      
-      // Remove from list
-      final timetableIds = prefs.getStringList(StorageKeys.userTimetablesList) ?? [];
-      timetableIds.remove(id);
-      await prefs.setStringList(StorageKeys.userTimetablesList, timetableIds);
+      // Also delete the guest or account-scoped pending copy.
+      await _removeLocalTimetableCopy(id);
     } catch (e) {
       SecureLogger.error('TIMETABLE_SVC', 'Error deleting timetable: $e');
     }
@@ -805,23 +857,10 @@ class TimetableService {
     final now = DateTime.now();
     final newId = now.millisecondsSinceEpoch.toString();
     
-    final duplicatedTimetable = Timetable(
+    final duplicatedTimetable = sourceTimetable.duplicateAs(
       id: newId,
       name: newName,
-      createdAt: now,
-      updatedAt: now,
-      campus: sourceTimetable.campus,
-      // A fresh list (so _loadCoursesFromFirestore clearing one timetable's
-      // catalog can't clear the source's) but sharing the immutable Course
-      // objects. The old JSON round-trip rebuilt all ~2,800 courses only to
-      // throw them away on the next load, since the catalog isn't persisted.
-      availableCourses: List<Course>.from(sourceTimetable.availableCourses),
-      selectedSections: sourceTimetable.selectedSections
-          .map((section) => SelectedSection.fromJson(section.toJson()))
-          .toList(),
-      clashWarnings: sourceTimetable.clashWarnings
-          .map((warning) => ClashWarning.fromJson(warning.toJson()))
-          .toList(),
+      at: now,
     );
     
     try {
@@ -854,15 +893,9 @@ class TimetableService {
   Future<void> updateTimetableName(String id, String newName) async {
     final timetable = await getTimetableById(id);
     if (timetable != null) {
-      final updatedTimetable = Timetable(
-        id: timetable.id,
+      final updatedTimetable = timetable.copyWith(
         name: newName,
-        createdAt: timetable.createdAt,
         updatedAt: DateTime.now(),
-        campus: timetable.campus,
-        availableCourses: timetable.availableCourses,
-        selectedSections: timetable.selectedSections,
-        clashWarnings: timetable.clashWarnings,
       );
       
       await saveTimetable(updatedTimetable);

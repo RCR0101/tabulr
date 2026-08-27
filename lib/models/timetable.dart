@@ -153,11 +153,35 @@ class Timetable {
       projectCount: projectCount ?? this.projectCount,
       term: term ?? this.term,
       creditBasis: creditBasis ?? this.creditBasis,
-    );
-  }
-}
+      );
+    }
 
-/// A user's choice of one section within a course (e.g. CS F111 → L1).
+    Timetable duplicateAs({
+      required String id,
+      required String name,
+      required DateTime at,
+    }) {
+      return Timetable(
+        id: id,
+        name: name,
+        createdAt: at,
+        updatedAt: at,
+        campus: campus,
+        availableCourses: List<Course>.from(availableCourses),
+        selectedSections: selectedSections
+            .map((section) => SelectedSection.fromJson(section.toJson()))
+            .toList(),
+        clashWarnings: clashWarnings
+            .map((warning) => ClashWarning.fromJson(warning.toJson()))
+            .toList(),
+        projectCount: projectCount,
+        term: term,
+        creditBasis: creditBasis,
+      );
+    }
+  }
+
+  /// A user's choice of one section within a course (e.g. CS F111 → L1).
 /// Carries the full [Section] data for display without a catalog lookup.
 class SelectedSection {
   final String courseCode;

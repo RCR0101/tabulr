@@ -7,6 +7,7 @@ import '../services/core/course_comparison_service.dart';
 import '../services/data/humanities_electives_service.dart';
 import '../services/data/discipline_electives_service.dart';
 import '../services/core/clash_detector.dart';
+import '../services/core/timetable_repair_service.dart';
 import '../services/data/campus_service.dart';
 import '../services/data/profile_service.dart';
 import '../services/ui/responsive_service.dart';
@@ -24,6 +25,7 @@ class QuickReplaceScreen extends StatefulWidget {
   final List<SelectedSection> selectedSections;
   final Function(Course selectedCourse, Course replacementCourse) onReplace;
   final Function(List<SelectedSection> newSections)? onSectionShuffle;
+  final CreditBasis creditBasis;
 
   const QuickReplaceScreen({
     super.key,
@@ -31,6 +33,7 @@ class QuickReplaceScreen extends StatefulWidget {
     required this.selectedSections,
     required this.onReplace,
     this.onSectionShuffle,
+    this.creditBasis = CreditBasis.units,
   });
 
   @override
@@ -69,8 +72,14 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
   // Section shuffle state
   Course? _shuffleCourse;
   Set<String> _closedSectionIds = {};
-  List<ShuffleResult> _shuffleResults = [];
+  List<TimetableRepairPlan> _shuffleResults = [];
   bool _isShuffling = false;
+  bool _hasSearchedRepairs = false;
+  bool _preserveFreeDays = true;
+  bool _preserveInstructors = true;
+  final Set<String> _lockedRepairCourses = {};
+  bool _isPlanningReplacement = false;
+  String? _planningReplacementCode;
 
   @override
   void initState() {
@@ -278,7 +287,189 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
         .toList();
   }
 
-  void _performReplace(Course replacementCourse) {
+  Future<void> _performReplace(Course replacementCourse) async {
+    if (widget.onSectionShuffle == null) {
+      _performLegacyReplace(replacementCourse);
+      return;
+    }
+
+    setState(() {
+      _isPlanningReplacement = true;
+      _planningReplacementCode = replacementCourse.courseCode;
+    });
+    final plans = await Future(
+      () => TimetableRepairService.planCourseReplacement(
+        currentSections: widget.selectedSections,
+        availableCourses: widget.availableCourses,
+        sourceCourseCode: _selectedCourse!.courseCode,
+        replacementCourse: replacementCourse,
+        creditBasis: widget.creditBasis,
+        preferences: _repairPreferences,
+      ),
+    );
+    if (!mounted) return;
+    setState(() {
+      _isPlanningReplacement = false;
+      _planningReplacementCode = null;
+    });
+
+    if (plans.isEmpty) {
+      ToastService.showWarning(
+        'No clash-free repair found without moving protected courses.',
+      );
+      return;
+    }
+    _showRepairPlanPicker(
+      title: 'Replace ${_selectedCourse!.courseCode}',
+      subtitle:
+          'Plans are ranked by collateral changes, free days, instructors, and timing drift.',
+      plans: plans,
+    );
+  }
+
+  TimetableRepairPreferences get _repairPreferences =>
+      TimetableRepairPreferences(
+        preserveFreeDays: _preserveFreeDays,
+        preserveInstructors: _preserveInstructors,
+        lockedCourseCodes: _lockedRepairCourses,
+      );
+
+  void _showRepairPlanPicker({
+    required String title,
+    required String subtitle,
+    required List<TimetableRepairPlan> plans,
+  }) {
+    AppDialog.adaptive(
+      context: context,
+      title: title,
+      icon: Icons.auto_fix_high_outlined,
+      content: SizedBox(
+        width: 560,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 12),
+            for (var index = 0; index < plans.take(5).length; index++)
+              Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: CircleAvatar(child: Text('${index + 1}')),
+                  title: Text(
+                    plans[index].isDirect
+                        ? 'Minimum-disruption fit'
+                        : plans[index].impactLabel,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    '${plans[index].changes.length} total '
+                    '${plans[index].changes.length == 1 ? 'change' : 'changes'}',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _showRepairPreview(plans[index]);
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        AppButton(
+          label: 'Continue Browsing',
+          onTap: () => Navigator.of(context).pop(),
+        ),
+      ],
+    );
+  }
+
+  void _showRepairPreview(TimetableRepairPlan plan) {
+    AppDialog.adaptive(
+      context: context,
+      title: 'Preview repair',
+      icon: Icons.fact_check_outlined,
+      content: SizedBox(
+        width: 540,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color:
+                    plan.isDirect
+                        ? AppDesign.success(context).withValues(alpha: 0.1)
+                        : Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer.withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                plan.impactLabel,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+            const SizedBox(height: 12),
+            for (final change in plan.changes)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      change.requested
+                          ? Icons.build_outlined
+                          : Icons.call_split_outlined,
+                      size: 17,
+                      color:
+                          change.requested
+                              ? Theme.of(context).colorScheme.primary
+                              : AppDesign.warning(context),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(change.summary),
+                          if (change.instructorChanged)
+                            Text(
+                              '${change.fromInstructor} -> ${change.toInstructor}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            if (plan.lostFreeDays.isNotEmpty)
+              Text(
+                'Free days lost: ${plan.lostFreeDays.map((day) => day.name).join(', ')}',
+                style: TextStyle(color: AppDesign.warning(context)),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        AppButton(label: 'Cancel', onTap: () => Navigator.of(context).pop()),
+        AppButton(
+          label: 'Apply Repair',
+          onTap: () {
+            Navigator.of(context).pop();
+            widget.onSectionShuffle?.call(plan.newSections);
+            Navigator.of(context).pop();
+          },
+        ),
+      ],
+    );
+  }
+
+  void _performLegacyReplace(Course replacementCourse) {
     // Check if both courses have only lecture sections
     if (!_canReplaceCourses(_selectedCourse!, replacementCourse)) {
       ToastService.showWarning('Can only replace between courses that have only lecture sections');
@@ -921,8 +1112,13 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
   Widget _buildCompactCourseCard(CourseComparison comparison) {
     final course = comparison.course;
     final score = comparison.similarityScore;
-    final canReplace = _canReplaceCourses(_selectedCourse!, course);
-    
+    final canReplace =
+        course.sections.isNotEmpty &&
+        (widget.onSectionShuffle != null ||
+            _canReplaceCourses(_selectedCourse!, course));
+    final isPlanning =
+        _isPlanningReplacement && _planningReplacementCode == course.courseCode;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 1,
@@ -949,29 +1145,46 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
-                                    color: canReplace 
-                                      ? null 
-                                      : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                                    color:
+                                        canReplace
+                                            ? null
+                                            : Theme.of(context)
+                                                .colorScheme
+                                                .onSurface
+                                                .withValues(alpha: 0.6),
                                   ),
                                 ),
                                 const SizedBox(width: 6),
                                 if (!_isLoadingCategories)
-                                  _buildCategoryBadge(_getCourseCategory(course.courseCode)),
+                                  _buildCategoryBadge(
+                                    _getCourseCategory(course.courseCode),
+                                  ),
                               ],
                             ),
                           ),
                           if (!canReplace)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
-                                color: AppDesign.warning(context).withValues(alpha: 0.1),
+                                color: AppDesign.warning(
+                                  context,
+                                ).withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: AppDesign.warning(context), width: 1),
+                                border: Border.all(
+                                  color: AppDesign.warning(context),
+                                  width: 1,
+                                ),
                               ),
                               child: Text(
                                 'Mixed Sections',
                                 style: TextStyle(
-                                  fontSize: ResponsiveService.clampedFontSize(context, 9),
+                                  fontSize: ResponsiveService.clampedFontSize(
+                                    context,
+                                    9,
+                                  ),
                                   fontWeight: FontWeight.w600,
                                   color: AppDesign.warning(context),
                                 ),
@@ -979,9 +1192,14 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                             ),
                           if (canReplace)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
-                                color: _getSimilarityColor(score).withValues(alpha: 0.1),
+                                color: _getSimilarityColor(
+                                  score,
+                                ).withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
                                   color: _getSimilarityColor(score),
@@ -991,7 +1209,10 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                               child: Text(
                                 '${(score * 100).round()}%',
                                 style: TextStyle(
-                                  fontSize: ResponsiveService.clampedFontSize(context, 10),
+                                  fontSize: ResponsiveService.clampedFontSize(
+                                    context,
+                                    10,
+                                  ),
                                   fontWeight: FontWeight.w600,
                                   color: _getSimilarityColor(score),
                                 ),
@@ -1004,9 +1225,13 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                         course.courseTitle,
                         style: TextStyle(
                           fontSize: 12,
-                          color: canReplace 
-                            ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7)
-                            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                          color:
+                              canReplace
+                                  ? Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface.withValues(alpha: 0.7)
+                                  : Theme.of(context).colorScheme.onSurface
+                                      .withValues(alpha: 0.4),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1016,13 +1241,21 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                     ],
                   ),
                 ),
-                Icon(
-                  canReplace ? Icons.arrow_forward : Icons.block,
-                  size: 16,
-                  color: canReplace 
-                    ? Theme.of(context).colorScheme.primary 
-                    : Theme.of(context).colorScheme.error,
-                ),
+                if (isPlanning)
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  Icon(
+                    canReplace ? Icons.arrow_forward : Icons.block,
+                    size: 16,
+                    color:
+                        canReplace
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.error,
+                  ),
               ],
             ),
           ),
@@ -1030,10 +1263,6 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
       ),
     );
   }
-
-
-
-
 
   Color _getSimilarityColor(double score) {
     if (score >= 0.8) return AppDesign.success(context);
@@ -1572,17 +1801,29 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
               label: 'Course to shuffle',
               hint: 'Pick a course from your timetable',
             ),
-            items: coursesInTimetable.map((c) => DropdownMenuItem(
-              value: c.courseCode,
-              child: Text('${c.courseCode} — ${c.courseTitle}', overflow: TextOverflow.ellipsis),
-            )).toList(),
+            items:
+                coursesInTimetable
+                    .map(
+                      (c) => DropdownMenuItem(
+                        value: c.courseCode,
+                        child: Text(
+                          '${c.courseCode} — ${c.courseTitle}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    )
+                    .toList(),
             onChanged: (code) {
               if (code == null) return;
-              final course = coursesInTimetable.firstWhere((c) => c.courseCode == code);
+              final course = coursesInTimetable.firstWhere(
+                (c) => c.courseCode == code,
+              );
               setState(() {
                 _shuffleCourse = course;
                 _closedSectionIds = {};
                 _shuffleResults = [];
+                _lockedRepairCourses.clear();
+                _hasSearchedRepairs = false;
               });
             },
           ),
@@ -1595,6 +1836,11 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: _buildClosedSectionPicker(scheme),
           ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: _buildRepairPriorities(scheme),
+          ),
 
           const SizedBox(height: 12),
           // Find alternatives button
@@ -1603,11 +1849,24 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
             child: SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: _closedSectionIds.isEmpty || _isShuffling ? null : _runShuffle,
-                icon: _isShuffling
-                    ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: scheme.onPrimary))
-                    : const Icon(Icons.shuffle, size: 18),
-                label: Text(_isShuffling ? 'Searching...' : 'Find Alternatives'),
+                onPressed:
+                    _closedSectionIds.isEmpty || _isShuffling
+                        ? null
+                        : _runShuffle,
+                icon:
+                    _isShuffling
+                        ? SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: scheme.onPrimary,
+                          ),
+                        )
+                        : const Icon(Icons.shuffle, size: 18),
+                label: Text(
+                  _isShuffling ? 'Searching...' : 'Find Alternatives',
+                ),
               ),
             ),
           ),
@@ -1616,25 +1875,31 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
         const SizedBox(height: 12),
         // Results
         Expanded(
-          child: _shuffleResults.isEmpty
-              ? EmptyStateWidget(
-                  icon: _shuffleCourse == null
-                      ? Icons.touch_app_outlined
-                      : Icons.find_replace,
-                  title: _shuffleCourse == null
-                      ? 'Select a course to get started'
-                      : _closedSectionIds.isEmpty
-                          ? 'Mark closed sections, then tap Find Alternatives'
-                          : 'No results yet',
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  itemCount: _shuffleResults.length,
-                  itemBuilder: (context, index) => _buildShuffleResultCard(
-                    _shuffleResults[index],
-                    scheme,
+          child:
+              _shuffleResults.isEmpty
+                  ? EmptyStateWidget(
+                    icon:
+                        _shuffleCourse == null
+                            ? Icons.touch_app_outlined
+                            : Icons.find_replace,
+                    title:
+                        _shuffleCourse == null
+                            ? 'Select a course to get started'
+                            : _closedSectionIds.isEmpty
+                            ? 'Mark closed sections, then tap Find Alternatives'
+                            : _hasSearchedRepairs
+                            ? 'No clash-free repair found with these protections'
+                            : 'No results yet',
+                  )
+                  : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: _shuffleResults.length,
+                    itemBuilder:
+                        (context, index) => _buildShuffleResultCard(
+                          _shuffleResults[index],
+                          scheme,
+                        ),
                   ),
-                ),
         ),
       ],
     );
@@ -1649,9 +1914,10 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
 
   Widget _buildClosedSectionPicker(ColorScheme scheme) {
     final course = _shuffleCourse!;
-    final currentSections = widget.selectedSections
-        .where((s) => s.courseCode == course.courseCode)
-        .toList();
+    final currentSections =
+        widget.selectedSections
+            .where((s) => s.courseCode == course.courseCode)
+            .toList();
 
     // Group all sections by type
     final sectionsByType = <SectionType, List<Section>>{};
@@ -1671,7 +1937,11 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
         const SizedBox(height: 8),
         for (final type in sectionsByType.keys) ...[
           Text(
-            type == SectionType.L ? 'Lecture' : type == SectionType.T ? 'Tutorial' : 'Practical',
+            type == SectionType.L
+                ? 'Lecture'
+                : type == SectionType.T
+                ? 'Tutorial'
+                : 'Practical',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: scheme.onSurface.withValues(alpha: 0.5),
             ),
@@ -1680,33 +1950,129 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
           Wrap(
             spacing: 8,
             runSpacing: 4,
-            children: sectionsByType[type]!.map((section) {
-              final isCurrent = currentSections.any((s) => s.sectionId == section.sectionId);
-              final isClosed = _closedSectionIds.contains(section.sectionId);
-              return FilterChip(
-                label: Text(
-                  '${section.sectionId}${isCurrent ? ' (current)' : ''}',
-                  style: TextStyle(fontSize: 12),
-                ),
-                selected: isClosed,
-                selectedColor: scheme.error.withValues(alpha: 0.2),
-                checkmarkColor: scheme.error,
-                onSelected: (selected) {
-                  setState(() {
-                    if (selected) {
-                      _closedSectionIds.add(section.sectionId);
-                    } else {
-                      _closedSectionIds.remove(section.sectionId);
-                    }
-                    _shuffleResults = [];
-                  });
-                },
-              );
-            }).toList(),
+            children:
+                sectionsByType[type]!.map((section) {
+                  final isCurrent = currentSections.any(
+                    (s) => s.sectionId == section.sectionId,
+                  );
+                  final isClosed = _closedSectionIds.contains(
+                    section.sectionId,
+                  );
+                  return FilterChip(
+                    label: Text(
+                      '${section.sectionId}${isCurrent ? ' (current)' : ''}',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    selected: isClosed,
+                    selectedColor: scheme.error.withValues(alpha: 0.2),
+                    checkmarkColor: scheme.error,
+                    onSelected: (selected) {
+                      setState(() {
+                        if (selected) {
+                          _closedSectionIds.add(section.sectionId);
+                        } else {
+                          _closedSectionIds.remove(section.sectionId);
+                        }
+                        _shuffleResults = [];
+                        _hasSearchedRepairs = false;
+                      });
+                    },
+                  );
+                }).toList(),
           ),
           const SizedBox(height: 8),
         ],
       ],
+    );
+  }
+
+  Widget _buildRepairPriorities(ColorScheme scheme) {
+    final movableCourses =
+        _getCoursesInTimetable()
+            .where((course) => course.courseCode != _shuffleCourse?.courseCode)
+            .toList();
+
+    void invalidateResults(VoidCallback update) {
+      setState(() {
+        update();
+        _shuffleResults = [];
+        _hasSearchedRepairs = false;
+      });
+    }
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+        childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 10),
+        leading: const Icon(Icons.shield_outlined, size: 19),
+        title: const Text(
+          'Repair priorities',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          _lockedRepairCourses.isEmpty
+              ? 'Minimise disruption automatically'
+              : '${_lockedRepairCourses.length} protected '
+                  '${_lockedRepairCourses.length == 1 ? 'course' : 'courses'}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        children: [
+          SwitchListTile(
+            dense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+            title: const Text('Prefer preserving free days'),
+            value: _preserveFreeDays,
+            onChanged:
+                (value) => invalidateResults(() => _preserveFreeDays = value),
+          ),
+          SwitchListTile(
+            dense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+            title: const Text('Prefer the same instructors'),
+            value: _preserveInstructors,
+            onChanged:
+                (value) =>
+                    invalidateResults(() => _preserveInstructors = value),
+          ),
+          if (movableCourses.isNotEmpty) ...[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+                child: Text(
+                  'Do not move these courses',
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final course in movableCourses)
+                    FilterChip(
+                      label: Text(course.courseCode),
+                      selected: _lockedRepairCourses.contains(
+                        course.courseCode,
+                      ),
+                      onSelected:
+                          (selected) => invalidateResults(() {
+                            if (selected) {
+                              _lockedRepairCourses.add(course.courseCode);
+                            } else {
+                              _lockedRepairCourses.remove(course.courseCode);
+                            }
+                          }),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -1723,161 +2089,25 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
         setState(() {
           _shuffleResults = results;
           _isShuffling = false;
+          _hasSearchedRepairs = true;
         });
       }
     });
   }
 
-  List<ShuffleResult> _computeShuffleResults() {
-    final course = _shuffleCourse!;
-    final currentSections = List<SelectedSection>.from(widget.selectedSections);
-    final allCourses = widget.availableCourses;
-
-    // Find which section types are affected (have closed sections)
-    final currentForCourse = currentSections
-        .where((s) => s.courseCode == course.courseCode)
-        .toList();
-
-    // For each affected section type, find alternatives
-    final affectedTypes = <SectionType>{};
-    for (final sel in currentForCourse) {
-      if (_closedSectionIds.contains(sel.sectionId)) {
-        affectedTypes.add(sel.section.type);
-      }
-    }
-
-    // Get candidate sections: same type, not closed
-    final candidatesByType = <SectionType, List<Section>>{};
-    for (final type in affectedTypes) {
-      candidatesByType[type] = course.sections
-          .where((s) => s.type == type && !_closedSectionIds.contains(s.sectionId))
-          .toList();
-    }
-
-    // Build all candidate combinations for the affected types
-    List<List<Section>> candidateCombos = [[]];
-    for (final type in affectedTypes) {
-      final candidates = candidatesByType[type] ?? [];
-      if (candidates.isEmpty) return []; // No alternatives for this type
-      final expanded = <List<Section>>[];
-      for (final combo in candidateCombos) {
-        for (final candidate in candidates) {
-          expanded.add([...combo, candidate]);
-        }
-      }
-      candidateCombos = expanded;
-    }
-
-    // Sections from other courses (fixed unless we need to shuffle them)
-    final otherSections = currentSections
-        .where((s) => s.courseCode != course.courseCode)
-        .toList();
-
-    // Sections from this course that are NOT affected (keep as-is)
-    final keptSections = currentForCourse
-        .where((s) => !affectedTypes.contains(s.section.type))
-        .toList();
-
-    final results = <ShuffleResult>[];
-
-    for (final combo in candidateCombos) {
-      // Build new section list for this course
-      final newCourseSections = <SelectedSection>[
-        ...keptSections,
-        ...combo.map((s) => SelectedSection(
-          courseCode: course.courseCode,
-          sectionId: s.sectionId,
-          section: s,
-        )),
-      ];
-
-      // Try direct fit first (no other course changes)
-      final directFit = [...otherSections, ...newCourseSections];
-      final directClashes = ClashDetector.detectClashes(directFit, allCourses);
-      if (directClashes.isEmpty) {
-        results.add(ShuffleResult(
-          newSections: directFit,
-          changedSections: combo.map((s) => s.sectionId).toList(),
-          otherChanges: [],
-          hasClashes: false,
-        ));
-        continue;
-      }
-
-      // Try shuffling other courses to resolve clashes
-      final shuffled = _tryShuffleOthers(
-        newCourseSections, otherSections, allCourses, course.courseCode,
+  List<TimetableRepairPlan> _computeShuffleResults() =>
+      TimetableRepairService.planSectionRepair(
+        currentSections: widget.selectedSections,
+        availableCourses: widget.availableCourses,
+        courseCode: _shuffleCourse!.courseCode,
+        unavailableSectionIds: _closedSectionIds,
+        preferences: _repairPreferences,
       );
-      if (shuffled != null) {
-        results.add(shuffled.copyWithChanged(combo.map((s) => s.sectionId).toList()));
-      }
-    }
 
-    // Sort: direct fits first, then by fewer other changes
-    results.sort((a, b) {
-      if (a.otherChanges.isEmpty != b.otherChanges.isEmpty) {
-        return a.otherChanges.isEmpty ? -1 : 1;
-      }
-      return a.otherChanges.length.compareTo(b.otherChanges.length);
-    });
-
-    return results.take(20).toList();
-  }
-
-  ShuffleResult? _tryShuffleOthers(
-    List<SelectedSection> fixedNewSections,
-    List<SelectedSection> otherSections,
-    List<Course> allCourses,
-    String fixedCourseCode,
+  Widget _buildShuffleResultCard(
+    TimetableRepairPlan result,
+    ColorScheme scheme,
   ) {
-    // Group other sections by course
-    final otherByCourse = <String, List<SelectedSection>>{};
-    for (final s in otherSections) {
-      otherByCourse.putIfAbsent(s.courseCode, () => []).add(s);
-    }
-
-    // Try swapping one other course's sections at a time
-    for (final courseCode in otherByCourse.keys) {
-      final course = allCourses.where((c) => c.courseCode == courseCode).firstOrNull;
-      if (course == null) continue;
-
-      final currentCourseSections = otherByCourse[courseCode]!;
-      final unchangedOthers = otherSections
-          .where((s) => s.courseCode != courseCode)
-          .toList();
-
-      // For each section type of this course, try alternatives
-      for (final currentSel in currentCourseSections) {
-        final alternatives = course.sections
-            .where((s) => s.type == currentSel.section.type && s.sectionId != currentSel.sectionId)
-            .toList();
-
-        for (final alt in alternatives) {
-          final swappedOther = [
-            ...unchangedOthers,
-            ...currentCourseSections.map((s) => s.sectionId == currentSel.sectionId
-                ? SelectedSection(courseCode: courseCode, sectionId: alt.sectionId, section: alt)
-                : s),
-          ];
-          final fullList = [...swappedOther, ...fixedNewSections];
-          final clashes = ClashDetector.detectClashes(fullList, allCourses);
-          if (clashes.isEmpty) {
-            return ShuffleResult(
-              newSections: fullList,
-              changedSections: [],
-              otherChanges: ['$courseCode: ${currentSel.sectionId} → ${alt.sectionId}'],
-              hasClashes: false,
-            );
-          }
-        }
-      }
-    }
-
-    return null;
-  }
-
-  Widget _buildShuffleResultCard(ShuffleResult result, ColorScheme scheme) {
-    final changedLabel = result.changedSections.join(', ');
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
@@ -1888,79 +2118,58 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
             Row(
               children: [
                 Icon(
-                  result.otherChanges.isEmpty ? Icons.check_circle : Icons.swap_horiz,
+                  result.isDirect
+                      ? Icons.check_circle_outline
+                      : Icons.auto_fix_high_outlined,
                   size: 18,
-                  color: result.otherChanges.isEmpty ? Colors.green : scheme.primary,
+                  color:
+                      result.isDirect
+                          ? AppDesign.success(context)
+                          : scheme.primary,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Switch to $changedLabel',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    result.isDirect
+                        ? 'Direct fit — no other courses move'
+                        : result.impactLabel,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ],
             ),
-            if (result.otherChanges.isEmpty)
+            const SizedBox(height: 6),
+            for (final change in result.changes.take(4))
               Padding(
-                padding: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.only(top: 2),
                 child: Text(
-                  'Direct fit — no other changes needed',
-                  style: TextStyle(fontSize: 12, color: Colors.green.shade300),
-                ),
-              ),
-            if (result.otherChanges.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(
-                'Also requires:',
-                style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.6)),
-              ),
-              for (final change in result.otherChanges)
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(
-                    '  • $change',
-                    style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.8)),
+                  '• ${change.summary}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: scheme.onSurface.withValues(alpha: 0.8),
                   ),
                 ),
-            ],
+              ),
+            if (result.changes.length > 4)
+              Text(
+                '+ ${result.changes.length - 4} more',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerRight,
-              child: FilledButton(
-                onPressed: () {
-                  widget.onSectionShuffle?.call(result.newSections);
-                  Navigator.pop(context);
-                },
-                child: const Text('Apply', style: TextStyle(fontSize: 13)),
+              child: FilledButton.tonalIcon(
+                onPressed: () => _showRepairPreview(result),
+                icon: const Icon(Icons.visibility_outlined, size: 16),
+                label: const Text('Preview changes'),
               ),
             ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class ShuffleResult {
-  final List<SelectedSection> newSections;
-  final List<String> changedSections;
-  final List<String> otherChanges;
-  final bool hasClashes;
-
-  ShuffleResult({
-    required this.newSections,
-    required this.changedSections,
-    required this.otherChanges,
-    required this.hasClashes,
-  });
-
-  ShuffleResult copyWithChanged(List<String> changed) {
-    return ShuffleResult(
-      newSections: newSections,
-      changedSections: changed,
-      otherChanges: otherChanges,
-      hasClashes: hasClashes,
     );
   }
 }

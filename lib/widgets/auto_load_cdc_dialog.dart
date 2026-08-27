@@ -1,29 +1,19 @@
 import 'package:flutter/material.dart';
+
 import '../constants/app_constants.dart';
 import '../models/cdc_slot.dart';
-import '../services/ui/responsive_service.dart';
 import '../services/data/branch_structure_service.dart';
 import '../services/data/courses_master_service.dart';
 import '../services/data/profile_service.dart';
+import '../services/ui/responsive_service.dart';
 import '../services/ui/secure_logger.dart';
 import '../utils/branch_constants.dart' as constants;
+import '../utils/design_constants.dart';
 
 class AutoLoadCDCResult {
   final String primaryBranch;
-
-  /// Second branch for dual-degree students, or null for a single degree.
   final String? secondaryBranch;
-
-  /// Year-semester, e.g. `3-1`.
   final String semester;
-
-  /// The course the student picked for each optional CDC — a slot listing two
-  /// or more alternatives of which exactly one is taken. Empty when this
-  /// degree and year has no choices to make.
-  ///
-  /// Everything downstream resolves against this the same way, via
-  /// [CdcSlot.resolveAll]: an unanswered choice contributes nothing rather
-  /// than quietly loading the first alternative.
   final Set<String> chosen;
 
   AutoLoadCDCResult({
@@ -34,84 +24,72 @@ class AutoLoadCDCResult {
   });
 }
 
-class AutoLoadCDCDialog extends StatefulWidget {
-  const AutoLoadCDCDialog({super.key, this.semesters});
+/// Reusable branch and semester picker used inline and inside a dialog.
+class AutoLoadCDCSelector extends StatefulWidget {
+  const AutoLoadCDCSelector({
+    super.key,
+    required this.onSelected,
+    this.semesters,
+    this.initialValue,
+    this.onCancel,
+    this.actionLabel = 'Load CDCs',
+  });
 
-  /// The year-semesters on offer. Defaults to years 1–4; sample timetables
-  /// narrow it to the first semester of each year, the only ones they cover.
   final List<String>? semesters;
+  final AutoLoadCDCResult? initialValue;
+  final ValueChanged<AutoLoadCDCResult> onSelected;
+  final VoidCallback? onCancel;
+  final String actionLabel;
 
   @override
-  State<AutoLoadCDCDialog> createState() => _AutoLoadCDCDialogState();
+  State<AutoLoadCDCSelector> createState() => _AutoLoadCDCSelectorState();
 }
 
-class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
-  final List<String> _branches =
-      constants.branchCodeToName.keys.toList()..sort();
+class _AutoLoadCDCSelectorState extends State<AutoLoadCDCSelector> {
+  final List<String> _branches = constants.branchCodeToName.keys.toList()
+    ..sort();
 
-  // Dual-degree students run to 4-2; a single degree simply never selects those.
   late final List<String> _semesters =
       widget.semesters ?? SemesterConstants.yearsOneToFour;
-
   String? _selectedBranch;
   String? _selectedSecondaryBranch;
   String? _selectedSemester;
-
-  /// The optional CDCs for the chosen degree and year, once the first step has
-  /// been submitted and found some. Null means we are still on the first step.
   List<CdcSlot>? _choices;
-
-  /// Chosen course per entry of [_choices], by index — not by course code,
-  /// because two choices may offer the same alternative.
   final Map<int, String> _picks = {};
-
   bool _resolving = false;
 
   bool get _canSubmit => _selectedBranch != null && _selectedSemester != null;
+  bool get _canAdvance =>
+      !_resolving &&
+      (_choices == null ? _canSubmit : _picks.length == _choices!.length);
 
-  /// The primary button: submits step one, or confirms the picks on step two.
-  /// Every choice must be answered — a half-answered set would silently load
-  /// fewer courses than the student asked for.
-  bool get _canAdvance => _resolving
-      ? false
-      : _choices == null
-          ? _canSubmit
-          : _picks.length == _choices!.length;
-
-  /// Spins while step one is looking up whether there are choices to make —
-  /// that is a Firestore read, and on a cold cache the dialog would otherwise
-  /// just sit there.
-  Widget _primaryIcon(double size) => _resolving
-      ? SizedBox(
-          width: size,
-          height: size,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: Theme.of(context).colorScheme.onPrimary,
-          ),
-        )
-      : Icon(Icons.download, size: size);
-
-  void _advance() {
-    if (_choices == null) {
-      _submit();
-    } else {
-      Navigator.of(context).pop(_result);
-    }
-  }
-
-  /// Cancel on step one, back to it on step two — the picks belong to a
-  /// particular degree and year, so they are dropped rather than carried into
-  /// whatever gets chosen next.
-  void _back() {
-    if (_choices == null) {
-      Navigator.of(context).pop();
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialValue;
+    if (initial != null) {
+      _selectedBranch = initial.primaryBranch;
+      _selectedSecondaryBranch = initial.secondaryBranch;
+      _selectedSemester = initial.semester;
       return;
     }
-    setState(() {
-      _choices = null;
-      _picks.clear();
-    });
+
+    // Profile access is best-effort because previews and tests may not boot Firebase.
+    try {
+      final profile = ProfileService().cached;
+      if (_branches.contains(profile.primaryBranch)) {
+        _selectedBranch = profile.primaryBranch;
+      }
+      if (_branches.contains(profile.secondaryBranch) &&
+          profile.secondaryBranch != _selectedBranch) {
+        _selectedSecondaryBranch = profile.secondaryBranch;
+      }
+      if (_semesters.contains(profile.currentSemester)) {
+        _selectedSemester = profile.currentSemester;
+      }
+    } catch (_) {
+      // Empty fields are valid when no profile service is available.
+    }
   }
 
   AutoLoadCDCResult get _result => AutoLoadCDCResult(
@@ -121,10 +99,6 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
     chosen: _picks.values.toSet(),
   );
 
-  /// Leaves the first step. A degree and year whose CDCs include a choice can't
-  /// be loaded until the student says which course they are taking, so those
-  /// get a second step; everything else closes straight away, exactly as
-  /// before.
   Future<void> _submit() async {
     if (!_canSubmit) return;
     setState(() => _resolving = true);
@@ -137,371 +111,358 @@ class _AutoLoadCDCDialogState extends State<AutoLoadCDCDialog> {
         null,
         _selectedSecondaryBranch,
       );
-    } catch (e) {
-      // The loader that runs next reads the same structure and will report an
-      // empty result properly; blocking here would only hide that.
-      SecureLogger.warning('AUTO_LOAD_CDC', 'Could not resolve optional CDCs',
-          {'error': e.toString()});
+    } catch (error) {
+      SecureLogger.warning('AUTO_LOAD_CDC', 'Could not resolve optional CDCs', {
+        'error': error.toString(),
+      });
       slots = const [];
     }
     if (!mounted) return;
 
-    final choices = [for (final slot in slots) if (slot.isChoice) slot];
+    final choices = [
+      for (final slot in slots)
+        if (slot.isChoice) slot,
+    ];
     if (choices.isEmpty) {
-      Navigator.of(context).pop(_result);
+      setState(() => _resolving = false);
+      widget.onSelected(_result);
       return;
     }
+
+    final previous = widget.initialValue?.chosen ?? const <String>{};
     setState(() {
       _choices = choices;
+      _picks.clear();
+      for (var index = 0; index < choices.length; index++) {
+        for (final option in choices[index].options) {
+          if (previous.contains(option)) {
+            _picks[index] = option;
+            break;
+          }
+        }
+      }
       _resolving = false;
     });
   }
 
-  @override
-  void initState() {
-    super.initState();
-    // Pre-select the user's saved defaults so CDC loading is one tap.
-    final profile = ProfileService().cached;
-    if (profile.primaryBranch != null &&
-        _branches.contains(profile.primaryBranch)) {
-      _selectedBranch = profile.primaryBranch;
-    }
-    if (profile.secondaryBranch != null &&
-        _branches.contains(profile.secondaryBranch) &&
-        profile.secondaryBranch != _selectedBranch) {
-      _selectedSecondaryBranch = profile.secondaryBranch;
-    }
-    if (profile.currentSemester != null &&
-        _semesters.contains(profile.currentSemester)) {
-      _selectedSemester = profile.currentSemester;
+  void _advance() {
+    if (_choices == null) {
+      _submit();
+    } else {
+      widget.onSelected(_result);
     }
   }
 
-
-  /// Step two, shown only when this degree and year has optional CDCs: one
-  /// course has to be picked out of each set of alternatives before anything
-  /// can be loaded.
-  List<Widget> _choiceFields() {
-    final scheme = Theme.of(context).colorScheme;
-    final choices = _choices!;
-    final master = CoursesMasterService();
-
-    return [
-      Text(
-        choices.length == 1
-            ? 'One of your core courses is a choice. Pick the course you are taking.'
-            : '${choices.length} of your core courses are choices. Pick the course you are taking for each.',
-        style: TextStyle(
-          fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
-        ),
-      ),
-      SizedBox(height: ResponsiveService.getAdaptiveSpacing(context, 16)),
-      for (var i = 0; i < choices.length; i++) ...[
-        Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: _picks.containsKey(i)
-                  ? scheme.primary.withValues(alpha: 0.5)
-                  : scheme.outline.withValues(alpha: 0.4),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final option in choices[i].options)
-                RadioListTile<String>(
-                  value: option,
-                  // ignore: deprecated_member_use
-                  groupValue: _picks[i],
-                  // ignore: deprecated_member_use
-                  onChanged: (value) {
-                    ResponsiveService.triggerSelectionFeedback(context);
-                    setState(() => _picks[i] = value!);
-                  },
-                  dense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                  title: Text(
-                    option,
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: Text(
-                    master.getTitle(option),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: scheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    ];
+  void _back() {
+    if (_choices == null) {
+      widget.onCancel?.call();
+      return;
+    }
+    setState(() {
+      _choices = null;
+      _picks.clear();
+    });
   }
 
-  /// Step one: which degree and year to pull CDCs for.
-  List<Widget> _degreeFields() {
-    return [
-      Text(
-        'Select your branch and year to automatically load Core Discipline Courses (CDCs). '
-        'Add a second branch if you are a dual degree student.',
-        style: TextStyle(
-          fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
-        ),
-      ),
-      SizedBox(
-        height: ResponsiveService.getAdaptiveSpacing(context, 20),
-      ),
-
-      Text(
-        'Branch *',
-        style: TextStyle(
-          fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      SizedBox(
-        height: ResponsiveService.getAdaptiveSpacing(context, 8),
-      ),
-      DropdownButtonFormField<String>(
-        initialValue: _selectedBranch,
-        decoration: InputDecoration(
-          border: const OutlineInputBorder(),
-          contentPadding: ResponsiveService.getAdaptivePadding(
-            context,
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-          ),
-        ),
-        items:
-            _branches.map((branch) {
-              final name = constants.branchCodeToName[branch] ?? branch;
-              return DropdownMenuItem<String>(
-                value: branch,
-                child: Text('$branch - $name'),
-              );
-            }).toList(),
-        onChanged: (String? newValue) {
-          ResponsiveService.triggerSelectionFeedback(context);
-          setState(() {
-            _selectedBranch = newValue;
-            // A branch cannot be both halves of a dual degree.
-            if (_selectedSecondaryBranch == newValue) {
-              _selectedSecondaryBranch = null;
-            }
-          });
-        },
-        isExpanded: true,
-        hint: const Text('Select your branch'),
-      ),
-
-      SizedBox(
-        height: ResponsiveService.getAdaptiveSpacing(context, 16),
-      ),
-
-      Text(
-        'Second branch',
-        style: TextStyle(
-          fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      SizedBox(
-        height: ResponsiveService.getAdaptiveSpacing(context, 8),
-      ),
-      DropdownButtonFormField<String?>(
-        initialValue: _selectedSecondaryBranch,
-        decoration: InputDecoration(
-          border: const OutlineInputBorder(),
-          contentPadding: ResponsiveService.getAdaptivePadding(
-            context,
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-          ),
-        ),
-        items: [
-          const DropdownMenuItem<String?>(
-            value: null,
-            child: Text('None (single degree)'),
-          ),
-          ..._branches.where((branch) => branch != _selectedBranch).map(
-            (branch) {
-              final name = constants.branchCodeToName[branch] ?? branch;
-              return DropdownMenuItem<String?>(
-                value: branch,
-                child: Text('$branch - $name'),
-              );
-            },
-          ),
-        ],
-        onChanged: (String? newValue) {
-          ResponsiveService.triggerSelectionFeedback(context);
-          setState(() {
-            _selectedSecondaryBranch = newValue;
-          });
-        },
-        isExpanded: true,
-      ),
-
-      SizedBox(
-        height: ResponsiveService.getAdaptiveSpacing(context, 16),
-      ),
-
-      Text(
-        'Semester *',
-        style: TextStyle(
-          fontSize: ResponsiveService.getAdaptiveFontSize(context, 14),
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      SizedBox(
-        height: ResponsiveService.getAdaptiveSpacing(context, 8),
-      ),
-      DropdownButtonFormField<String>(
-        initialValue: _selectedSemester,
-        decoration: InputDecoration(
-          border: const OutlineInputBorder(),
-          contentPadding: ResponsiveService.getAdaptivePadding(
-            context,
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-          ),
-        ),
-        items:
-            _semesters.map((semester) {
-              return DropdownMenuItem<String>(
-                value: semester,
-                child: Text('Semester $semester'),
-              );
-            }).toList(),
-        onChanged: (String? newValue) {
-          ResponsiveService.triggerSelectionFeedback(context);
-          setState(() {
-            _selectedSemester = newValue;
-          });
-        },
-        isExpanded: true,
-        hint: const Text('Select your semester'),
-      ),
-    ];
+  void _resetChoices() {
+    _choices = null;
+    _picks.clear();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = ResponsiveService.isMobile(context);
-
-    return AlertDialog(
-      title: Row(
-        children: [
-          Icon(
-            Icons.school,
-            color: Theme.of(context).colorScheme.primary,
-            size: ResponsiveService.getAdaptiveIconSize(context, 24),
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AnimatedSwitcher(
+          duration: reduceMotion ? Duration.zero : AppDesign.animDurationNormal,
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: SizeTransition(sizeFactor: animation, child: child),
           ),
-          SizedBox(width: ResponsiveService.getAdaptiveSpacing(context, 8)),
-          Expanded(
-            child: Text(
-              _choices == null ? 'Auto Load CDCs' : 'Pick your courses',
-              style: TextStyle(
-                fontSize: ResponsiveService.getAdaptiveFontSize(context, 20),
-                fontWeight: FontWeight.bold,
+          child: _choices == null
+              ? _degreeStep(key: const ValueKey('degree-step'))
+              : _choiceStep(key: const ValueKey('choice-step')),
+        ),
+        const SizedBox(height: 20),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 360;
+            final backButton = widget.onCancel != null || _choices != null
+                ? OutlinedButton(
+                    onPressed: _back,
+                    child: Text(_choices == null ? 'Cancel' : 'Back'),
+                  )
+                : null;
+            final action = FilledButton.icon(
+              onPressed: _canAdvance ? _advance : null,
+              icon: _resolving
+                  ? const SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.auto_awesome_rounded, size: 18),
+              label: Text(
+                _choices == null ? widget.actionLabel : 'Use choices',
               ),
+            );
+
+            if (compact) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (backButton != null) backButton,
+                  if (backButton != null) const SizedBox(height: 10),
+                  action,
+                ],
+              );
+            }
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (backButton != null) backButton,
+                if (backButton != null) const SizedBox(width: 10),
+                action,
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _degreeStep({required Key key}) => LayoutBuilder(
+    key: key,
+    builder: (context, constraints) {
+      final wide = constraints.maxWidth >= 620;
+      final branch = _field(
+        label: 'Branch',
+        child: DropdownButtonFormField<String>(
+          initialValue: _selectedBranch,
+          decoration: const InputDecoration(
+            hintText: 'Select your branch',
+            prefixIcon: Icon(Icons.account_tree_outlined),
+          ),
+          items: [
+            for (final branch in _branches)
+              DropdownMenuItem(
+                value: branch,
+                child: Text(
+                  '$branch - ${constants.branchCodeToName[branch] ?? branch}',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
+          onChanged: (value) {
+            ResponsiveService.triggerSelectionFeedback(context);
+            setState(() {
+              _selectedBranch = value;
+              if (_selectedSecondaryBranch == value) {
+                _selectedSecondaryBranch = null;
+              }
+              _resetChoices();
+            });
+          },
+          isExpanded: true,
+        ),
+      );
+      final semester = _field(
+        label: 'Semester',
+        child: DropdownButtonFormField<String>(
+          initialValue: _selectedSemester,
+          decoration: const InputDecoration(
+            hintText: 'Select semester',
+            prefixIcon: Icon(Icons.calendar_today_outlined),
+          ),
+          items: [
+            for (final semester in _semesters)
+              DropdownMenuItem(
+                value: semester,
+                child: Text('Semester $semester'),
+              ),
+          ],
+          onChanged: (value) {
+            ResponsiveService.triggerSelectionFeedback(context);
+            setState(() {
+              _selectedSemester = value;
+              _resetChoices();
+            });
+          },
+          isExpanded: true,
+        ),
+      );
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Select your degree and semester. Tabulr will resolve the published Core Discipline Course package for you.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 20),
+          if (wide)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: branch),
+                const SizedBox(width: 16),
+                Expanded(child: semester),
+              ],
+            )
+          else ...[
+            branch,
+            const SizedBox(height: 16),
+            semester,
+          ],
+          const SizedBox(height: 16),
+          _field(
+            label: 'Second branch (optional)',
+            child: DropdownButtonFormField<String?>(
+              initialValue: _selectedSecondaryBranch,
+              decoration: const InputDecoration(
+                prefixIcon: Icon(Icons.call_split_rounded),
+              ),
+              items: [
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('None - single degree'),
+                ),
+                for (final branch in _branches.where(
+                  (item) => item != _selectedBranch,
+                ))
+                  DropdownMenuItem<String?>(
+                    value: branch,
+                    child: Text(
+                      '$branch - ${constants.branchCodeToName[branch] ?? branch}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+              onChanged: (value) {
+                ResponsiveService.triggerSelectionFeedback(context);
+                setState(() {
+                  _selectedSecondaryBranch = value;
+                  _resetChoices();
+                });
+              },
+              isExpanded: true,
             ),
           ),
         ],
-      ),
-      content: SizedBox(
-        width: ResponsiveService.getValue(
-          context,
-          mobile: MediaQuery.sizeOf(context).width - 32,
-          tablet: 400,
-          desktop: 350,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ...(_choices == null ? _degreeFields() : _choiceFields()),
+      );
+    },
+  );
 
-              if (isMobile) ...[
-                SizedBox(
-                  height: ResponsiveService.getAdaptiveSpacing(context, 20),
-                ),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () {
-                      ResponsiveService.triggerSelectionFeedback(context);
-                      _back();
-                    },
-                    style: TextButton.styleFrom(
-                      minimumSize: Size(
-                        double.infinity,
-                        ResponsiveService.getTouchTargetSize(context),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        side: BorderSide(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.outline.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ),
-                    child: Text(_choices == null ? 'Cancel' : 'Back'),
-                  ),
-                ),
-                SizedBox(
-                  height: ResponsiveService.getAdaptiveSpacing(context, 12),
-                ),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed:
-                        _canAdvance
-                            ? () {
-                              ResponsiveService.triggerMediumFeedback(context);
-                              _advance();
-                            }
-                            : null,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                      minimumSize: Size(
-                        double.infinity,
-                        ResponsiveService.getTouchTargetSize(context),
-                      ),
-                    ),
-                    icon: _primaryIcon(
-                      ResponsiveService.getAdaptiveIconSize(context, 16),
-                    ),
-                    label: const Text('Load CDCs'),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
+  Widget _field({required String label, required Widget child}) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(
+        label,
+        style: Theme.of(
+          context,
+        ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
       ),
-      actions:
-          isMobile
-              ? null
-              : [
-                TextButton(
-                  onPressed: _back,
-                  child: Text(_choices == null ? 'Cancel' : 'Back'),
-                ),
-                FilledButton.icon(
-                  onPressed: _canAdvance ? _advance : null,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+      const SizedBox(height: 8),
+      child,
+    ],
+  );
+
+  Widget _choiceStep({required Key key}) {
+    final scheme = Theme.of(context).colorScheme;
+    final choices = _choices!;
+    final master = CoursesMasterService();
+    return Column(
+      key: key,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          choices.length == 1
+              ? 'One CDC has alternatives. Pick the course you are taking.'
+              : '${choices.length} CDCs have alternatives. Pick one course from each group.',
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 16),
+        for (var index = 0; index < choices.length; index++)
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: _picks.containsKey(index)
+                    ? scheme.primary.withValues(alpha: 0.5)
+                    : scheme.outlineVariant,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final option in choices[index].options)
+                  RadioListTile<String>(
+                    value: option,
+                    // ignore: deprecated_member_use
+                    groupValue: _picks[index],
+                    // ignore: deprecated_member_use
+                    onChanged: (value) {
+                      ResponsiveService.triggerSelectionFeedback(context);
+                      setState(() => _picks[index] = value!);
+                    },
+                    dense: true,
+                    title: Text(
+                      option,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(master.getTitle(option)),
                   ),
-                  icon: _primaryIcon(16),
-                  label: const Text('Load CDCs'),
-                ),
               ],
+            ),
+          ),
+      ],
     );
   }
+}
+
+class AutoLoadCDCDialog extends StatelessWidget {
+  const AutoLoadCDCDialog({super.key, this.semesters, this.initialValue});
+
+  final List<String>? semesters;
+  final AutoLoadCDCResult? initialValue;
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Row(
+      children: [
+        Icon(
+          Icons.school_outlined,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        const SizedBox(width: 10),
+        const Expanded(child: Text('Auto Load CDCs')),
+      ],
+    ),
+    content: SizedBox(
+      width: ResponsiveService.getValue(
+        context,
+        mobile: MediaQuery.sizeOf(context).width - 32,
+        tablet: 440,
+        desktop: 460,
+      ),
+      child: SingleChildScrollView(
+        child: AutoLoadCDCSelector(
+          semesters: semesters,
+          initialValue: initialValue,
+          onCancel: () => Navigator.pop(context),
+          onSelected: (result) => Navigator.pop(context, result),
+        ),
+      ),
+    ),
+  );
 }

@@ -18,14 +18,20 @@ Future<void> loadPreviewFont() async {
   final loader = FontLoader('Inter')
     ..addFont(Future.value(ByteData.view(data.buffer)));
   await loader.load();
+  final headingData = File('assets/fonts/SpaceGrotesk.ttf').readAsBytesSync();
+  await (FontLoader('SpaceGrotesk')
+    ..addFont(Future.value(ByteData.view(headingData.buffer)))).load();
   await _loadMaterialIcons();
 }
 
 Future<void> _loadMaterialIcons() async {
-  const relative = 'bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf';
-  for (var dir = File(Platform.resolvedExecutable).parent;
-      dir.path != dir.parent.path;
-      dir = dir.parent) {
+  const relative =
+      'bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf';
+  for (
+    var dir = File(Platform.resolvedExecutable).parent;
+    dir.path != dir.parent.path;
+    dir = dir.parent
+  ) {
     final font = File('${dir.path}/$relative');
     if (!font.existsSync()) continue;
     final loader = FontLoader('MaterialIcons')
@@ -41,11 +47,11 @@ const previewBrightnesses = <(String, Brightness)>[
 ];
 
 ThemeData previewTheme(Brightness brightness) => ThemeData(
-      useMaterial3: true,
-      fontFamily: 'Inter',
-      brightness: brightness,
-      colorSchemeSeed: const Color(0xFF58A6FF),
-    );
+  useMaterial3: true,
+  fontFamily: 'Inter',
+  brightness: brightness,
+  colorSchemeSeed: const Color(0xFF58A6FF),
+);
 
 /// Sizes the surface in *physical* pixels. 820 at a device pixel ratio of 2.0
 /// is 410 logical — a phone, the tightest case worth previewing.
@@ -59,11 +65,19 @@ void usePreviewSurface(WidgetTester tester, Size physicalSize) {
 }
 
 /// Captures the rendered frame to `test/goldens/<name>.png`.
-Future<void> capturePreview(WidgetTester tester, String name) {
+Future<void> capturePreview(
+  WidgetTester tester,
+  String name, {
+  Finder? boundaryFinder,
+}) {
   return tester.runAsync(() async {
-    final boundary = tester.firstRenderObject(find.byType(RepaintBoundary));
+    final boundary = tester.firstRenderObject(
+      boundaryFinder ?? find.byType(RepaintBoundary),
+    );
     final image = await (boundary as dynamic).toImage(pixelRatio: 2.0);
     final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-    File('test/goldens/$name.png').writeAsBytesSync(bytes!.buffer.asUint8List());
+    File(
+      'test/goldens/$name.png',
+    ).writeAsBytesSync(bytes!.buffer.asUint8List());
   });
 }

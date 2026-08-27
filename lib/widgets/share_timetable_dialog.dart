@@ -26,11 +26,16 @@ class ShareTimetableDialog extends StatefulWidget {
           return ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: AppDesign.glassBlur, sigmaY: AppDesign.glassBlur),
+              filter: ImageFilter.blur(
+                sigmaX: AppDesign.glassBlur,
+                sigmaY: AppDesign.glassBlur,
+              ),
               child: Container(
                 color: scheme.surface.withValues(alpha: 0.85),
                 padding: EdgeInsets.only(
-                  left: 20, right: 20, top: 16,
+                  left: 20,
+                  right: 20,
+                  top: 16,
                   bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
                 ),
                 child: Column(
@@ -38,7 +43,8 @@ class ShareTimetableDialog extends StatefulWidget {
                   children: [
                     Center(
                       child: Container(
-                        width: 32, height: 4,
+                        width: 32,
+                        height: 4,
                         decoration: BoxDecoration(
                           color: scheme.onSurface.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(2),
@@ -95,7 +101,8 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
     final confirmed = await AppDialog.confirm(
       context: context,
       title: 'Revoke share link?',
-      message: 'The current link will stop working. A new one will be generated.',
+      message:
+          'The current link will stop working. A new one will be generated.',
       confirmLabel: 'Revoke',
       isDangerous: true,
     );
@@ -106,13 +113,17 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
       _error = null;
     });
     try {
-      final newCode = await TimetableSharingService().revokeAndReshare(widget.timetable);
+      final newCode = await TimetableSharingService().revokeAndReshare(
+        widget.timetable,
+      );
       if (mounted) {
         setState(() {
           _code = newCode;
           _isRevoking = false;
         });
-        ToastService.showSuccess('Share link revoked. A new one has been generated.');
+        ToastService.showSuccess(
+          'Share link revoked. A new one has been generated.',
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -144,7 +155,10 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
           alreadyShared
               ? 'Your timetable is shared at the link below.'
               : 'Send this link to friends — it opens Tabulr with your timetable ready to import.',
-          style: TextStyle(fontSize: 13, color: scheme.onSurface.withValues(alpha: 0.7)),
+          style: TextStyle(
+            fontSize: 13,
+            color: scheme.onSurface.withValues(alpha: 0.7),
+          ),
         ),
         const SizedBox(height: 20),
         Container(
@@ -174,9 +188,14 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
         if (_code != null)
           TextButton.icon(
             onPressed: _isRevoking ? null : _revoke,
-            icon: _isRevoking
-                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                : Icon(Icons.link_off, size: 16, color: scheme.error),
+            icon:
+                _isRevoking
+                    ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                    : Icon(Icons.link_off, size: 16, color: scheme.error),
             label: Text(
               'Revoke & generate new link',
               style: TextStyle(fontSize: 12, color: scheme.error),
@@ -218,7 +237,12 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
             children: [
               Icon(Icons.share, color: scheme.primary),
               const SizedBox(width: 8),
-              const Expanded(child: Text('Share Timetable', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600))),
+              const Expanded(
+                child: Text(
+                  'Share Timetable',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
+              ),
               IconButton(
                 onPressed: () => Navigator.pop(context, _code),
                 icon: const Icon(Icons.close, size: 20),
@@ -238,9 +262,12 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
     }
 
     return BackdropFilter(
-      filter: ImageFilter.blur(sigmaX: AppDesign.glassBlur / 2, sigmaY: AppDesign.glassBlur / 2),
+      filter: ImageFilter.blur(
+        sigmaX: AppDesign.glassBlur / 2,
+        sigmaY: AppDesign.glassBlur / 2,
+      ),
       child: AlertDialog(
-        shape: AppDesign.dialogShape,
+        shape: AppDesign.dialogShape(context),
         backgroundColor: scheme.surface.withValues(alpha: 0.88),
         title: Row(
           children: [
@@ -264,7 +291,10 @@ class ImportTimetableDialog extends StatefulWidget {
 
   const ImportTimetableDialog({super.key, this.initialCode});
 
-  static Future<SharedTimetableData?> show(BuildContext context, {String? initialCode}) {
+  static Future<SharedTimetableData?> show(
+    BuildContext context, {
+    String? initialCode,
+  }) {
     return showDialog<SharedTimetableData>(
       context: context,
       builder: (_) => ImportTimetableDialog(initialCode: initialCode),
@@ -335,7 +365,7 @@ class _ImportTimetableDialogState extends State<ImportTimetableDialog> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return AlertDialog(
-      shape: AppDesign.dialogShape,
+      shape: AppDesign.dialogShape(context),
       title: Row(
         children: [
           Icon(Icons.download, color: scheme.primary),
@@ -351,7 +381,10 @@ class _ImportTimetableDialogState extends State<ImportTimetableDialog> {
           children: [
             Text(
               'Paste a share link (or code) from a friend to view their timetable.',
-              style: TextStyle(fontSize: 13, color: scheme.onSurface.withValues(alpha: 0.7)),
+              style: TextStyle(
+                fontSize: 13,
+                color: scheme.onSurface.withValues(alpha: 0.7),
+              ),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -361,9 +394,14 @@ class _ImportTimetableDialogState extends State<ImportTimetableDialog> {
                 label: 'Share Link',
                 hint: 'Paste link here',
                 suffixIcon: IconButton(
-                  icon: _isLoading
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.search),
+                  icon:
+                      _isLoading
+                          ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : const Icon(Icons.search),
                   onPressed: _isLoading ? null : _lookup,
                 ),
               ),
@@ -371,7 +409,10 @@ class _ImportTimetableDialogState extends State<ImportTimetableDialog> {
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),
-              Text(_error!, style: TextStyle(color: scheme.error, fontSize: 13)),
+              Text(
+                _error!,
+                style: TextStyle(color: scheme.error, fontSize: 13),
+              ),
             ],
             if (_preview != null) ...[
               const SizedBox(height: 16),
@@ -386,17 +427,26 @@ class _ImportTimetableDialogState extends State<ImportTimetableDialog> {
                   children: [
                     Text(
                       _preview!.name,
-                      style: TextStyle(fontWeight: FontWeight.w600, color: scheme.onSurface),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurface,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'By ${_preview!.ownerName} · ${_preview!.campus}',
-                      style: TextStyle(fontSize: 13, color: scheme.onSurface.withValues(alpha: 0.6)),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: scheme.onSurface.withValues(alpha: 0.6),
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '${_preview!.sections.length} sections',
-                      style: TextStyle(fontSize: 13, color: scheme.onSurface.withValues(alpha: 0.5)),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: scheme.onSurface.withValues(alpha: 0.5),
+                      ),
                     ),
                   ],
                 ),

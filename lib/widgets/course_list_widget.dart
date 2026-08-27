@@ -14,7 +14,8 @@ import '../utils/design_constants.dart';
 class CourseListWidget extends StatelessWidget {
   final List<Course> courses;
   final List<SelectedSection> selectedSections;
-  final Function(String courseCode, String sectionId, bool isSelected) onSectionToggle;
+  final Function(String courseCode, String sectionId, bool isSelected)
+  onSectionToggle;
   final bool showOnlySelected;
 
   /// Catalog used to resolve [selectedSections] back to courses for the
@@ -83,9 +84,10 @@ class CourseListWidget extends StatelessWidget {
     for (final c in catalog ?? courses) c.courseCode: c,
   };
 
-  late final List<Course> _selectedCourses = {
-    for (final s in selectedSections) s.courseCode,
-  }.map((code) => _courseIndex[code]).whereType<Course>().toList();
+  late final List<Course> _selectedCourses =
+      {
+        for (final s in selectedSections) s.courseCode,
+      }.map((code) => _courseIndex[code]).whereType<Course>().toList();
 
   bool _isSectionSelected(String courseCode, String sectionId) {
     return _selectedKeys.contains('$courseCode|$sectionId');
@@ -104,13 +106,19 @@ class CourseListWidget extends StatelessWidget {
     // the card used to skip the whole course and offer a live Add anyway.
     // Only the component this row would replace is excluded; that one is
     // being switched out, not collided with.
-    final otherSections = selectedSections
-        .where((s) =>
-            s.courseCode != courseCode || s.section.type != section.type)
-        .toList();
+    final otherSections =
+        selectedSections
+            .where(
+              (s) =>
+                  s.courseCode != courseCode || s.section.type != section.type,
+            )
+            .toList();
     if (otherSections.isEmpty) return null;
 
-    final conflicts = ClashDetector.checkScheduleConflicts(section, otherSections);
+    final conflicts = ClashDetector.checkScheduleConflicts(
+      section,
+      otherSections,
+    );
     if (conflicts.isEmpty) return null;
 
     final first = conflicts.first;
@@ -118,9 +126,8 @@ class CourseListWidget extends StatelessWidget {
   }
 
   String _getSelectedSectionsText(String courseCode) {
-    final courseSections = selectedSections
-        .where((s) => s.courseCode == courseCode)
-        .toList();
+    final courseSections =
+        selectedSections.where((s) => s.courseCode == courseCode).toList();
 
     if (courseSections.isEmpty) return '';
 
@@ -142,7 +149,9 @@ class CourseListWidget extends StatelessWidget {
   /// Check if a course clashes with already-selected courses (exam or schedule).
   List<String> _getCourseClashes(Course course) {
     if (selectedSections.isEmpty) return [];
-    if (selectedSections.any((s) => s.courseCode == course.courseCode)) return [];
+    if (selectedSections.any((s) => s.courseCode == course.courseCode)) {
+      return [];
+    }
 
     final clashes = <String>[];
 
@@ -151,7 +160,10 @@ class CourseListWidget extends StatelessWidget {
       for (final selectedCourse in _selectedCourses) {
         if (selectedCourse.courseCode == course.courseCode) continue;
         if (selectedCourse.midSemExam != null &&
-            ClashDetector.examDatesConflict(course.midSemExam!, selectedCourse.midSemExam!)) {
+            ClashDetector.examDatesConflict(
+              course.midSemExam!,
+              selectedCourse.midSemExam!,
+            )) {
           clashes.add('Midsem exam clashes with ${selectedCourse.courseCode}');
           break;
         }
@@ -163,7 +175,10 @@ class CourseListWidget extends StatelessWidget {
       for (final selectedCourse in _selectedCourses) {
         if (selectedCourse.courseCode == course.courseCode) continue;
         if (selectedCourse.endSemExam != null &&
-            ClashDetector.examDatesConflict(course.endSemExam!, selectedCourse.endSemExam!)) {
+            ClashDetector.examDatesConflict(
+              course.endSemExam!,
+              selectedCourse.endSemExam!,
+            )) {
           clashes.add('Compre exam clashes with ${selectedCourse.courseCode}');
           break;
         }
@@ -180,12 +195,19 @@ class CourseListWidget extends StatelessWidget {
       final type = entry.key;
       final sections = entry.value;
       final allBlocked = sections.every((section) {
-        final conflicts = ClashDetector.checkScheduleConflicts(section, selectedSections);
+        final conflicts = ClashDetector.checkScheduleConflicts(
+          section,
+          selectedSections,
+        );
         return conflicts.isNotEmpty;
       });
       if (allBlocked) {
-        final typeName = type == SectionType.L ? 'lecture' :
-                         type == SectionType.P ? 'lab' : 'tutorial';
+        final typeName =
+            type == SectionType.L
+                ? 'lecture'
+                : type == SectionType.P
+                ? 'lab'
+                : 'tutorial';
         clashes.add('Every $typeName section clashes with your timetable');
       }
     }
@@ -198,10 +220,13 @@ class CourseListWidget extends StatelessWidget {
     List<Course> displayCourses;
 
     if (showOnlySelected) {
-      final selectedCodes = <String>{for (final s in selectedSections) s.courseCode};
-      displayCourses = courses.where((course) =>
-        selectedCodes.contains(course.courseCode)
-      ).toList();
+      final selectedCodes = <String>{
+        for (final s in selectedSections) s.courseCode,
+      };
+      displayCourses =
+          courses
+              .where((course) => selectedCodes.contains(course.courseCode))
+              .toList();
     } else {
       displayCourses = courses;
     }
@@ -219,20 +244,14 @@ class CourseListWidget extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               showOnlySelected ? 'No courses selected' : 'No courses found',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppDesign.muted(context),
-              ),
+              style: TextStyle(fontSize: 16, color: AppDesign.muted(context)),
             ),
             const SizedBox(height: 8),
             Text(
               showOnlySelected
-                ? 'Go to Search tab to add courses'
-                : 'Try adjusting your search criteria',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppDesign.muted(context),
-              ),
+                  ? 'Use Catalog to add courses'
+                  : 'Try adjusting your search criteria',
+              style: TextStyle(fontSize: 12, color: AppDesign.muted(context)),
             ),
           ],
         ),
@@ -249,7 +268,7 @@ class CourseListWidget extends StatelessWidget {
           6,
           10,
           6,
-          ResponsiveService.isMobile(context) ? 100 : 12
+          ResponsiveService.isMobile(context) ? 100 : 12,
         ),
       ),
       itemCount: displayCourses.length,
@@ -271,8 +290,10 @@ class CourseListWidget extends StatelessWidget {
           sectionStates: [
             for (final section in course.sections)
               () {
-                final isSelected =
-                    _isSectionSelected(course.courseCode, section.sectionId);
+                final isSelected = _isSectionSelected(
+                  course.courseCode,
+                  section.sectionId,
+                );
                 return _SectionState(
                   section: section,
                   isSelected: isSelected,
@@ -280,19 +301,24 @@ class CourseListWidget extends StatelessWidget {
                   // course, so this row switches that one out rather than
                   // adding a second. Rendered differently from a clash,
                   // because it means something entirely different.
-                  switchesOut: isSelected
-                      ? null
-                      : _sectionTakenForType(
-                          course.courseCode, section.type),
-                  conflict: isSelected
-                      ? null
-                      : _getSectionConflict(section, course.courseCode),
+                  switchesOut:
+                      isSelected
+                          ? null
+                          : _sectionTakenForType(
+                            course.courseCode,
+                            section.type,
+                          ),
+                  conflict:
+                      isSelected
+                          ? null
+                          : _getSectionConflict(section, course.courseCode),
                   clashAllowed: allowSectionClash,
                 );
               }(),
           ],
-          onToggle: (sectionId, isSelected) =>
-              onSectionToggle(course.courseCode, sectionId, isSelected),
+          onToggle:
+              (sectionId, isSelected) =>
+                  onSectionToggle(course.courseCode, sectionId, isSelected),
           creditBasis: creditBasis,
         );
       },
@@ -457,9 +483,10 @@ class _CourseCard extends StatelessWidget {
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.1,
-                        color: _hasClashes
-                            ? scheme.onSurface.withValues(alpha: 0.55)
-                            : _highlight
+                        color:
+                            _hasClashes
+                                ? scheme.onSurface.withValues(alpha: 0.55)
+                                : _highlight
                                 ? scheme.primary
                                 : scheme.onSurface,
                       ),
@@ -511,8 +538,10 @@ class _CourseCard extends StatelessWidget {
     // shorthand that a first-year has no way to decode; the start time needs
     // no explaining. Only the start is shown — the end adds width, not meaning.
     String examLabel(ExamSchedule e) {
-      final slot = TimeSlotInfo.getTimeSlotName(e.timeSlot,
-          campus: CampusService.campusId);
+      final slot = TimeSlotInfo.getTimeSlotName(
+        e.timeSlot,
+        campus: CampusService.campusId,
+      );
       // Booklet slots come through as "9:30AM-11:00AM"; give the meridiem the
       // space it should have had.
       final start = slot
@@ -530,26 +559,37 @@ class _CourseCard extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         _fact(
-            context,
-            Icons.workspace_premium_outlined,
-            _showsComCode
-                ? '${_creditLabel(course, _variant)}  ·  com ${_variant.comCode}'
-                : _creditLabel(course, _variant)),
+          context,
+          Icons.workspace_premium_outlined,
+          _showsComCode
+              ? '${_creditLabel(course, _variant)}  ·  com ${_variant.comCode}'
+              : _creditLabel(course, _variant),
+        ),
         if (course.midSemExam != null)
-          _fact(context, Icons.event_outlined,
-              'Midsem ${examLabel(course.midSemExam!)}'),
+          _fact(
+            context,
+            Icons.event_outlined,
+            'Midsem ${examLabel(course.midSemExam!)}',
+          ),
         if (course.endSemExam != null)
-          _fact(context, Icons.event_available_outlined,
-              'Compre ${examLabel(course.endSemExam!)}'),
+          _fact(
+            context,
+            Icons.event_available_outlined,
+            'Compre ${examLabel(course.endSemExam!)}',
+          ),
         // Last: the widest value, and the one a student scans for least often.
         // Labelled, because a bare name beside dates and credits reads as
         // unexplained.
         if (ic.isNotEmpty)
           _fact(context, Icons.person_outline, 'In-Charge: $ic', wide: true),
         if (selectedSummary.isNotEmpty)
-          _fact(context, Icons.check_circle_outline,
-              'Selected: $selectedSummary',
-              wide: true, color: Theme.of(context).colorScheme.primary),
+          _fact(
+            context,
+            Icons.check_circle_outline,
+            'Selected: $selectedSummary',
+            wide: true,
+            color: Theme.of(context).colorScheme.primary,
+          ),
       ],
     );
   }
@@ -577,9 +617,15 @@ class _CourseCard extends StatelessWidget {
   static String _num(double v) =>
       v == v.roundToDouble() ? v.toInt().toString() : v.toString();
 
-  Widget _fact(BuildContext context, IconData icon, String text,
-      {bool wide = false, Color? color}) {
-    final tint = color ??
+  Widget _fact(
+    BuildContext context,
+    IconData icon,
+    String text, {
+    bool wide = false,
+    Color? color,
+  }) {
+    final tint =
+        color ??
         Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.68);
     return ConstrainedBox(
       // A wide fact takes the whole row rather than sharing it, so a long list
@@ -611,8 +657,12 @@ class _CourseCard extends StatelessWidget {
     );
   }
 
-  Widget _pill(BuildContext context, String text, Color color,
-      {bool filled = false}) {
+  Widget _pill(
+    BuildContext context,
+    String text,
+    Color color, {
+    bool filled = false,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
@@ -623,7 +673,10 @@ class _CourseCard extends StatelessWidget {
       child: Text(
         text,
         style: TextStyle(
-            fontSize: 10.5, fontWeight: FontWeight.w700, color: color),
+          fontSize: 10.5,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
       ),
     );
   }
@@ -656,9 +709,8 @@ class _CourseCard extends StatelessWidget {
     // Text stays legible even when the row is unavailable: dimming it to 45%
     // made blocked rows genuinely hard to read, which is not the same as
     // marking them unavailable.
-    final textColor = dimmed
-        ? scheme.onSurface.withValues(alpha: 0.7)
-        : scheme.onSurface;
+    final textColor =
+        dimmed ? scheme.onSurface.withValues(alpha: 0.7) : scheme.onSurface;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 4, 12, 4),
@@ -726,14 +778,19 @@ class _CourseCard extends StatelessWidget {
                 // because they are different: one is a collision, the other is
                 // "you already chose".
                 if (state.conflict != null)
-                  _reason(context, Icons.error_outline, state.conflict!,
-                      scheme.error)
+                  _reason(
+                    context,
+                    Icons.error_outline,
+                    state.conflict!,
+                    scheme.error,
+                  )
                 else if (state.switchesOut != null)
                   _reason(
-                      context,
-                      Icons.swap_horiz,
-                      'Replaces ${state.switchesOut} on your timetable',
-                      scheme.onSurface.withValues(alpha: 0.55)),
+                    context,
+                    Icons.swap_horiz,
+                    'Replaces ${state.switchesOut} on your timetable',
+                    scheme.onSurface.withValues(alpha: 0.55),
+                  ),
               ],
             ),
           ),
@@ -747,7 +804,11 @@ class _CourseCard extends StatelessWidget {
   }
 
   Widget _reason(
-      BuildContext context, IconData icon, String text, Color color) {
+    BuildContext context,
+    IconData icon,
+    String text,
+    Color color,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(top: 5),
       child: Row(
@@ -775,23 +836,23 @@ class _CourseCard extends StatelessWidget {
       height: 30,
       child: TextButton(
         onPressed:
-            enabled ? () => onToggle(state.section.sectionId, state.isSelected) : null,
+            enabled
+                ? () => onToggle(state.section.sectionId, state.isSelected)
+                : null,
         style: TextButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           minimumSize: Size.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           backgroundColor:
               enabled ? color.withValues(alpha: 0.11) : Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         child: Text(
           state.isSelected
               ? 'Remove'
               : state.switchesOut != null
-                  ? 'Switch'
-                  : 'Add',
+              ? 'Switch'
+              : 'Add',
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
@@ -840,11 +901,13 @@ class _CourseCard extends StatelessWidget {
   /// it truncated mid-word.
   static String _compactSchedule(List<ScheduleEntry> schedule) {
     if (schedule.isEmpty) return '';
-    return schedule.map((entry) {
-      final days = entry.days.map((d) => d.name).join(' ');
-      final hours = TimeSlotInfo.getHourRangeName(entry.hours);
-      return hours.isEmpty ? days : '$days · $hours';
-    }).join('  ·  ');
+    return schedule
+        .map((entry) {
+          final days = entry.days.map((d) => d.name).join(' ');
+          final hours = TimeSlotInfo.getHourRangeName(entry.hours);
+          return hours.isEmpty ? days : '$days · $hours';
+        })
+        .join('  ·  ');
   }
 
   /// "10 Mar" reads unambiguously; "10/3" is a date-format coin toss.

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../../constants/app_constants.dart';
 import '../../models/user_profile.dart';
+import '../core/account_scoped_cache.dart';
 import '../ui/secure_logger.dart';
 import 'auth_service.dart';
 
@@ -20,16 +21,14 @@ class ProfileService extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AuthService _auth = AuthService();
 
-  UserProfile _cached = UserProfile.empty;
-  bool _loaded = false;
+  final AccountScopedCache<UserProfile> _cache =
+      AccountScopedCache<UserProfile>();
 
   /// Last-known profile. Empty until [load] completes or for guests.
-  UserProfile get cached => _cached;
-  bool get isLoaded => _loaded;
+  UserProfile get cached => _cache.read(_auth.userDocId) ?? UserProfile.empty;
+  bool get isLoaded => _cache.contains(_auth.userDocId);
 
-  DocumentReference<Map<String, dynamic>>? _docRef() {
-    final uid = _auth.userDocId;
-    if (uid == null) return null;
+  DocumentReference<Map<String, dynamic>> _docRef(String uid) {
     return _firestore
         .collection(FirestoreCollections.users)
         .doc(uid)
@@ -40,39 +39,44 @@ class ProfileService extends ChangeNotifier {
   /// Loads the profile from Firestore into [cached]. Safe to call at startup;
   /// idempotent unless [force].
   Future<UserProfile> load({bool force = false}) async {
-    if (_loaded && !force) return _cached;
-    final ref = _docRef();
-    if (ref == null) {
-      _cached = UserProfile.empty;
-      _loaded = true;
-      return _cached;
-    }
+    final uid = _auth.userDocId;
+    if (uid == null) return UserProfile.empty;
+    final cached = _cache.read(uid);
+    if (cached != null && !force) return cached;
+
+    final ref = _docRef(uid);
+    late final UserProfile profile;
     try {
       final snap = await ref.get();
-      _cached = snap.exists && snap.data() != null
+      profile = snap.exists && snap.data() != null
           ? UserProfile.fromMap(snap.data()!)
           : UserProfile.empty;
     } catch (e) {
       SecureLogger.error('PROFILE', 'Failed to load profile', e);
-      _cached = UserProfile.empty;
+      profile = UserProfile.empty;
     }
-    _loaded = true;
+    _cache.write(uid, profile);
     notifyListeners();
-    return _cached;
+    return profile;
+  }
+
+  void invalidateCache() {
+    _cache.clear();
+    notifyListeners();
   }
 
   /// Persists [profile] and updates the cache. Returns false when signed out
   /// or the write fails.
   Future<bool> save(UserProfile profile) async {
-    final ref = _docRef();
-    if (ref == null) return false;
+    final uid = _auth.userDocId;
+    if (uid == null) return false;
+    final ref = _docRef(uid);
     try {
       await ref.set({
         ...profile.toMap(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-      _cached = profile;
-      _loaded = true;
+      _cache.write(uid, profile);
       notifyListeners();
       return true;
     } catch (e) {

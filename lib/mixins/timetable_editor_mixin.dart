@@ -121,31 +121,34 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   List<ClashWarning> _currentClashes() {
     final tt = currentTimetable;
     if (tt == null) return const [];
-    return ClashDetector.detectClashes(tt.selectedSections, tt.availableCourses);
+    return ClashDetector.detectClashes(
+      tt.selectedSections,
+      tt.availableCourses,
+    );
   }
 
-  bool get _hasExamClash => _currentClashes().any((w) =>
-      w.type == ClashType.midSemExam || w.type == ClashType.endSemExam);
+  bool get _hasExamClash => _currentClashes().any(
+    (w) => w.type == ClashType.midSemExam || w.type == ClashType.endSemExam,
+  );
   bool get _hasSectionClash =>
       _currentClashes().any((w) => w.type == ClashType.regularClass);
   bool get _isOverCreditCap => _currentTotalCredits() > capFor(creditBasis);
 
-  /// Sets a bypass, refusing to turn it off while the violation it allowed is
-  /// still on the grid — it stays on until the clash (or credit overage) is
-  /// removed. Returns whether the change was accepted, so the menu's switch
-  /// only moves when it was.
   bool setBypassAllowed(TimetableBypass bypass, bool allowed) {
     if (!allowed) {
       final String? refusal = switch (bypass) {
-        TimetableBypass.examClash => _hasExamClash
-            ? 'An exam clash is still on the grid — remove one of the clashing courses first.'
-            : null,
-        TimetableBypass.sectionClash => _hasSectionClash
-            ? 'A section clash is still on the grid — remove one of the clashing sections first.'
-            : null,
-        TimetableBypass.creditLimit => _isOverCreditCap
-            ? 'Still over the ${capFor(creditBasis).toInt()} ${creditBasis.label} limit — remove a course first.'
-            : null,
+        TimetableBypass.examClash =>
+          _hasExamClash
+              ? 'An exam clash is still on the grid — remove one of the clashing courses first.'
+              : null,
+        TimetableBypass.sectionClash =>
+          _hasSectionClash
+              ? 'A section clash is still on the grid — remove one of the clashing sections first.'
+              : null,
+        TimetableBypass.creditLimit =>
+          _isOverCreditCap
+              ? 'Still over the ${capFor(creditBasis).toInt()} ${creditBasis.label} limit — remove a course first.'
+              : null,
       };
       if (refusal != null) {
         ToastService.showError(refusal);
@@ -245,8 +248,9 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   Future<void> _warnAboutPrerequisites(String courseCode) async {
     try {
       if (_academicRecord.isEmpty) return;
-      final prereqs =
-          await PrerequisitesRepository().getCoursePrerequisites(courseCode);
+      final prereqs = await PrerequisitesRepository().getCoursePrerequisites(
+        courseCode,
+      );
       if (prereqs == null || !mounted) return;
 
       final status = PrerequisiteStatus.of(prereqs, _academicRecord);
@@ -404,7 +408,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       onNavigate: navigateToShellScreen,
       selectionLink: selectionLink,
       onToggleTheme: () => ThemeSelectorDialog.show(context),
-      onReplayTour: () => TutorialService().showEditorTutorial(context, force: true),
+      onReplayTour:
+          () => TutorialService().showEditorTutorial(context, force: true),
       onSignOut: () => authService.signOut(),
     );
   }
@@ -414,8 +419,14 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       bindings: <ShortcutActivator, VoidCallback>{
         const SingleActivator(LogicalKeyboardKey.keyZ, control: true): undo,
         const SingleActivator(LogicalKeyboardKey.keyZ, meta: true): undo,
-        const SingleActivator(LogicalKeyboardKey.keyZ, control: true, shift: true): redo,
-        const SingleActivator(LogicalKeyboardKey.keyZ, meta: true, shift: true): redo,
+        const SingleActivator(
+              LogicalKeyboardKey.keyZ,
+              control: true,
+              shift: true,
+            ):
+            redo,
+        const SingleActivator(LogicalKeyboardKey.keyZ, meta: true, shift: true):
+            redo,
         const SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
           if (hasUnsavedChanges && !isSaving) saveTimetable();
         },
@@ -425,10 +436,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         // Cmd/Ctrl+K is handled globally in _handleGlobalCommandPaletteKey so it
         // survives focus drifting off this subtree.
       },
-      child: Focus(
-        autofocus: true,
-        child: child,
-      ),
+      child: Focus(autofocus: true, child: child),
     );
   }
 
@@ -456,14 +464,17 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     final profile = ProfileService().cached;
     if (!hasBranchForPools || !_electivePools.isEmpty) return;
     try {
-      final pools = await BranchStructureService().electivePoolsFor(
-        [profile.primaryBranch, profile.secondaryBranch],
-      );
+      final pools = await BranchStructureService().electivePoolsFor([
+        profile.primaryBranch,
+        profile.secondaryBranch,
+      ]);
       if (mounted) setState(() => _electivePools = pools);
     } catch (e) {
       SecureLogger.warning(
-          'EDITOR', 'Could not resolve elective pools (filter stays open)',
-          {'error': e.toString()});
+        'EDITOR',
+        'Could not resolve elective pools (filter stays open)',
+        {'error': e.toString()},
+      );
     }
   }
 
@@ -535,9 +546,10 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       // hiding the whole catalogue behind a chip the student did press.
       final pools = filters['electivePools'] as Set<ElectivePool>? ?? const {};
       if (pools.isNotEmpty && !_electivePools.isEmpty) {
-        courses = courses
-            .where((c) => _electivePools.matchesAny(pools, c.courseCode))
-            .toList();
+        courses =
+            courses
+                .where((c) => _electivePools.matchesAny(pools, c.courseCode))
+                .toList();
       }
 
       filteredCourses = courses;
@@ -571,7 +583,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     final byCode = {for (final c in tt.availableCourses) c.courseCode: c};
     final stranded = <String>{
       for (final s in tt.selectedSections)
-        if (!(byCode[s.courseCode]?.offersBasis(basis) ?? false)) s.courseCode
+        if (!(byCode[s.courseCode]?.offersBasis(basis) ?? false)) s.courseCode,
     };
     if (stranded.isNotEmpty) {
       ToastService.showError(
@@ -644,10 +656,11 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     final confirmed = await AppDialog.confirm(
       context: context,
       title: 'Remove ${basis.label} courses',
-      message: codes.length == 1
-          ? 'Remove ${codes.first} from this timetable?'
-          : 'Remove all ${codes.length} courses counted in ${basis.label}?\n\n'
-              '${codes.join(', ')}',
+      message:
+          codes.length == 1
+              ? 'Remove ${codes.first} from this timetable?'
+              : 'Remove all ${codes.length} courses counted in ${basis.label}?\n\n'
+                  '${codes.join(', ')}',
       confirmLabel: 'Remove',
       isDangerous: true,
     );
@@ -662,7 +675,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     markUnsaved(true);
     _selectionRevision.value++;
     ToastService.showSuccess(
-        'Removed ${codes.length} ${basis.label} course${codes.length == 1 ? '' : 's'}');
+      'Removed ${codes.length} ${basis.label} course${codes.length == 1 ? '' : 's'}',
+    );
   }
 
   /// Adds a section, explaining any refusal.
@@ -672,8 +686,12 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   /// toolbar's bypass switches ([allowExamClash], [allowSectionClash],
   /// [allowCreditBypass]) pre-authorize the same obstacles for every add.
   /// Duplicate section types are never overridable.
-  void addSection(String courseCode, String sectionId,
-      {bool overrideExamClash = false, int? comCode}) {
+  void addSection(
+    String courseCode,
+    String sectionId, {
+    bool overrideExamClash = false,
+    int? comCode,
+  }) {
     final tt = currentTimetable;
     if (tt == null) return;
 
@@ -683,7 +701,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     final examClashAllowed = overrideExamClash || allowExamClash;
     final sectionClashAllowed = allowSectionClash;
 
-    final isNewCourse = !tt.selectedSections.any((s) => s.courseCode == courseCode);
+    final isNewCourse =
+        !tt.selectedSections.any((s) => s.courseCode == courseCode);
     final course = tt.availableCourses.cast<Course?>().firstWhere(
       (c) => c!.courseCode == courseCode,
       orElse: () => null,
@@ -693,11 +712,12 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     // The timetable's basis picks the row to register under, so a course
     // offered both ways lands on the same footing as everything else on the
     // grid without the student choosing twice.
-    final basisCode = isNewCourse
-        ? (comCode ?? course?.variantOn(creditBasis)?.comCode)
-        : tt.selectedSections
-            .firstWhere((s) => s.courseCode == courseCode)
-            .comCode;
+    final basisCode =
+        isNewCourse
+            ? (comCode ?? course?.variantOn(creditBasis)?.comCode)
+            : tt.selectedSections
+                .firstWhere((s) => s.courseCode == courseCode)
+                .comCode;
     final variant = course?.variantFor(basisCode);
 
     // A course the student cannot register for on this timetable's basis is
@@ -719,7 +739,9 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     if (isNewCourse && !allowCreditBypass) {
       final addedCredits = variant?.amount ?? 0;
       if (_currentTotalCredits() + addedCredits > cap) {
-        ToastService.showError('Adding this course would exceed the ${cap.toInt()} ${creditBasis.label} limit');
+        ToastService.showError(
+          'Adding this course would exceed the ${cap.toInt()} ${creditBasis.label} limit',
+        );
         return;
       }
     }
@@ -729,18 +751,20 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     // here rather than in the card so every other way in (the elective
     // browsers, the command palette) means the same thing instead of being
     // refused for a duplicate section type.
-    final incoming = course?.sections
-        .cast<Section?>()
-        .firstWhere((s) => s!.sectionId == sectionId, orElse: () => null);
-    final replaced = incoming == null
-        ? null
-        : tt.selectedSections.cast<SelectedSection?>().firstWhere(
-            (s) =>
-                s!.courseCode == courseCode &&
-                s.section.type == incoming.type &&
-                s.sectionId != sectionId,
-            orElse: () => null,
-          );
+    final incoming = course?.sections.cast<Section?>().firstWhere(
+      (s) => s!.sectionId == sectionId,
+      orElse: () => null,
+    );
+    final replaced =
+        incoming == null
+            ? null
+            : tt.selectedSections.cast<SelectedSection?>().firstWhere(
+              (s) =>
+                  s!.courseCode == courseCode &&
+                  s.section.type == incoming.type &&
+                  s.sectionId != sectionId,
+              orElse: () => null,
+            );
 
     try {
       // Snapshot before the attempt, commit to the undo stack only on success —
@@ -783,16 +807,17 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
           }
         }
         // One entry for a switch, so undo puts the old section back in a step.
-        final what = replaced == null
-            ? 'Add $courseCode $sectionId'
-            : 'Switch $courseCode ${replaced.sectionId} to $sectionId';
+        final what =
+            replaced == null
+                ? 'Add $courseCode $sectionId'
+                : 'Switch $courseCode ${replaced.sectionId} to $sectionId';
         undoRedoService.pushSections(
           sectionsBefore,
           overrideExamClash
               ? '$what (exam clash overridden)'
               : (examClashAllowed || sectionClashAllowed)
-                  ? '$what (clash bypassed)'
-                  : what,
+              ? '$what (clash bypassed)'
+              : what,
         );
         setState(() {
           hasUnsavedChanges = true;
@@ -803,10 +828,13 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         // Warn only when the add actually produced a clash — a bypass that is
         // on but unused shouldn't cry wolf on every add.
         if (examClashAllowed || sectionClashAllowed) {
-          final clashes = ClashDetector.detectClashes(
-                  tt.selectedSections, tt.availableCourses)
-              .where((w) => w.conflictingCourses.contains(courseCode))
-              .toList();
+          final clashes =
+              ClashDetector.detectClashes(
+                    tt.selectedSections,
+                    tt.availableCourses,
+                  )
+                  .where((w) => w.conflictingCourses.contains(courseCode))
+                  .toList();
           if (clashes.isNotEmpty) {
             ToastService.showWarning(
               'Added $courseCode-$sectionId with a clash: ${clashes.first.message}',
@@ -817,8 +845,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         ToastService.showError(
           result.message,
           actionLabel: 'Override',
-          onAction: () =>
-              addSection(courseCode, sectionId, overrideExamClash: true),
+          onAction:
+              () => addSection(courseCode, sectionId, overrideExamClash: true),
         );
       } else {
         ToastService.showError(result.message);
@@ -834,11 +862,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
 
     try {
       _pushUndo('Remove $courseCode $sectionId');
-      timetableService.removeSectionWithoutSaving(
-        courseCode,
-        sectionId,
-        tt,
-      );
+      timetableService.removeSectionWithoutSaving(courseCode, sectionId, tt);
       setState(() {
         hasUnsavedChanges = true;
       });
@@ -854,26 +878,26 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     if (tt == null) return;
 
     try {
-      _pushUndo('Section shuffle');
-      // Replace all selected sections with the new set
-      for (final section in tt.selectedSections.toList()) {
-        timetableService.removeSectionWithoutSaving(
-          section.courseCode, section.sectionId, tt,
+      _pushUndo('Apply timetable repair');
+      // Repair plans already contain catalogue-backed, clash-checked selections.
+      // Assign them directly so their com codes survive the apply operation.
+      tt.selectedSections
+        ..clear()
+        ..addAll(newSections);
+      tt.clashWarnings
+        ..clear()
+        ..addAll(
+          ClashDetector.detectClashes(tt.selectedSections, tt.availableCourses),
         );
-      }
-      for (final section in newSections) {
-        timetableService.addSectionWithoutSaving(
-          section.courseCode, section.sectionId, tt,
-        );
-      }
 
       setState(() {
         hasUnsavedChanges = true;
       });
       markUnsaved(true);
-      ToastService.showSuccess('Sections shuffled successfully');
+      _selectionRevision.value++;
+      ToastService.showSuccess('Timetable repair applied');
     } catch (e) {
-      showErrorDialog('Error shuffling sections: $e');
+      showErrorDialog('Error applying timetable repair: $e');
     }
   }
 
@@ -894,9 +918,12 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     try {
       _pushUndo('Replace ${selectedCourse.courseCode}');
       // Remove all sections of the selected course
-      final sectionsToRemove = tt.selectedSections
-          .where((section) => section.courseCode == selectedCourse.courseCode)
-          .toList();
+      final sectionsToRemove =
+          tt.selectedSections
+              .where(
+                (section) => section.courseCode == selectedCourse.courseCode,
+              )
+              .toList();
 
       for (var section in sectionsToRemove) {
         timetableService.removeSectionWithoutSaving(
@@ -908,23 +935,20 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
 
       // Add the replacement course (first available section of each type)
       final replacementSections = replacementCourse.sections;
-      final lectureSection = replacementSections
-              .where((s) => s.type == SectionType.L)
-              .isNotEmpty
-          ? replacementSections.firstWhere((s) => s.type == SectionType.L)
-          : null;
+      final lectureSection =
+          replacementSections.where((s) => s.type == SectionType.L).isNotEmpty
+              ? replacementSections.firstWhere((s) => s.type == SectionType.L)
+              : null;
 
-      final tutorialSection = replacementSections
-              .where((s) => s.type == SectionType.T)
-              .isNotEmpty
-          ? replacementSections.firstWhere((s) => s.type == SectionType.T)
-          : null;
+      final tutorialSection =
+          replacementSections.where((s) => s.type == SectionType.T).isNotEmpty
+              ? replacementSections.firstWhere((s) => s.type == SectionType.T)
+              : null;
 
-      final practicalSection = replacementSections
-              .where((s) => s.type == SectionType.P)
-              .isNotEmpty
-          ? replacementSections.firstWhere((s) => s.type == SectionType.P)
-          : null;
+      final practicalSection =
+          replacementSections.where((s) => s.type == SectionType.P).isNotEmpty
+              ? replacementSections.firstWhere((s) => s.type == SectionType.P)
+              : null;
 
       // Add lecture section (required for most courses)
       if (lectureSection != null) {
@@ -1026,7 +1050,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     final confirmed = await AppDialog.confirm(
       context: context,
       title: 'Clear Timetable',
-      message: 'Are you sure you want to remove all selected courses from your timetable?',
+      message:
+          'Are you sure you want to remove all selected courses from your timetable?',
       confirmLabel: 'Clear All',
       isDangerous: true,
     );
@@ -1059,16 +1084,26 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     });
 
     try {
-      await timetableService.saveTimetable(tt);
+      final outcome = await timetableService.saveTimetable(tt);
       if (!mounted) return;
+      final cloudPending =
+          outcome == TimetableSaveOutcome.savedLocallyAfterCloudFailure;
       setState(() {
-        hasUnsavedChanges = false;
+        hasUnsavedChanges = cloudPending;
         isSaving = false;
       });
-      markUnsaved(false);
-      triggerSavedIndicator();
+      markUnsaved(cloudPending);
+      if (!cloudPending) triggerSavedIndicator();
 
-      ToastService.showSuccess('Timetable saved successfully!');
+      if (cloudPending) {
+        ToastService.showWarning(
+          'Saved on this device only. Cloud sync failed; retry when online.',
+        );
+      } else if (outcome == TimetableSaveOutcome.savedLocally) {
+        ToastService.showSuccess('Timetable saved on this device');
+      } else {
+        ToastService.showSuccess('Timetable saved successfully!');
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -1099,7 +1134,9 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     if (!mounted) return;
     final returnedShareId = await ShareTimetableDialog.show(context, current);
     // If revoked, the dialog returns a new shareId
-    if (returnedShareId != null && returnedShareId != current.shareId && mounted) {
+    if (returnedShareId != null &&
+        returnedShareId != current.shareId &&
+        mounted) {
       final updated = current.copyWith(shareId: () => returnedShareId);
       setCurrentTimetable(updated);
       setState(() {});
@@ -1117,7 +1154,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     return await AppDialog.confirm(
       context: context,
       title: 'Incomplete Course Selections',
-      message: 'Some courses have incomplete selections (missing lab/tutorial/lecture sections). Do you want to continue exporting anyway?',
+      message:
+          'Some courses have incomplete selections (missing lab/tutorial/lecture sections). Do you want to continue exporting anyway?',
       confirmLabel: 'Continue',
       icon: Icons.warning_amber_rounded,
     );
@@ -1126,7 +1164,9 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   Future<void> exportToICS() async {
     final tt = currentTimetable;
     if (tt == null || tt.selectedSections.isEmpty) {
-      ToastService.showWarning('Add courses to your timetable before exporting.');
+      ToastService.showWarning(
+        'Add courses to your timetable before exporting.',
+      );
       return;
     }
 
@@ -1134,8 +1174,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     // carries only the fields the user wants.
     final ExportOptions? exportOptions = await showDialog<ExportOptions>(
       context: context,
-      builder: (context) =>
-          const ExportOptionsDialog(
+      builder:
+          (context) => const ExportOptionsDialog(
             showBackgroundOption: false,
             formatLabel: 'ICS',
           ),
@@ -1160,12 +1200,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         title: 'Export Successful',
         icon: Icons.check_circle_outline,
         content: Text('Timetable exported to: $filePath'),
-        actions: [
-          AppButton(
-            label: 'OK',
-            onTap: () => Navigator.pop(context),
-          ),
-        ],
+        actions: [AppButton(label: 'OK', onTap: () => Navigator.pop(context))],
       );
     } catch (e) {
       showErrorDialog('Export failed: $e');
@@ -1175,7 +1210,9 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   Future<void> exportToPNG() async {
     final tt = currentTimetable;
     if (tt == null || tt.selectedSections.isEmpty) {
-      ToastService.showWarning('Add courses to your timetable before exporting.');
+      ToastService.showWarning(
+        'Add courses to your timetable before exporting.',
+      );
       return;
     }
 
@@ -1211,44 +1248,46 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       // The capture follows the option, not the app's current brightness, so a
       // user in light mode can still export the dark PNG (the default).
       final themeService = ThemeService();
-      final exportTheme = exportOptions.darkBackground
-          ? themeService.getDarkThemeData(themeService.currentTheme)
-          : themeService.getLightThemeData(themeService.currentTheme);
+      final exportTheme =
+          exportOptions.darkBackground
+              ? themeService.getDarkThemeData(themeService.currentTheme)
+              : themeService.getLightThemeData(themeService.currentTheme);
 
       overlayEntry = OverlayEntry(
-        builder: (context) => Positioned(
-          left: -10000,
-          top: -10000,
-          child: Theme(
-            data: exportTheme,
-            child: Material(
-              // Both axes are left unbounded so the grid, and the exam schedule
-              // under it, size to content. A fixed capture width used to be
-              // needed because the old grid's columns were a fixed size; now
-              // that columns divide the available width, pinning it to 2000 px
-              // would stretch a three-day timetable into three 600 px columns.
-              child: UnconstrainedBox(
-                child: TimetableWidget(
-                  timetableSlots: timetableService.generateTimetableSlots(
-                    tt.selectedSections,
-                    tt.availableCourses,
+        builder:
+            (context) => Positioned(
+              left: -10000,
+              top: -10000,
+              child: Theme(
+                data: exportTheme,
+                child: Material(
+                  // Both axes are left unbounded so the grid, and the exam schedule
+                  // under it, size to content. A fixed capture width used to be
+                  // needed because the old grid's columns were a fixed size; now
+                  // that columns divide the available width, pinning it to 2000 px
+                  // would stretch a three-day timetable into three 600 px columns.
+                  child: UnconstrainedBox(
+                    child: TimetableWidget(
+                      timetableSlots: timetableService.generateTimetableSlots(
+                        tt.selectedSections,
+                        tt.availableCourses,
+                      ),
+                      incompleteSelectionWarnings: timetableService
+                          .getIncompleteSelectionWarnings(
+                            tt.selectedSections,
+                            tt.availableCourses,
+                          ),
+                      selectedSections: tt.selectedSections,
+                      availableCourses: tt.availableCourses,
+                      size: TimetableSize.extraLarge,
+                      isForExport: true,
+                      tableKey: tableExportKey,
+                      exportOptions: exportOptions,
+                    ),
                   ),
-                  incompleteSelectionWarnings:
-                      timetableService.getIncompleteSelectionWarnings(
-                    tt.selectedSections,
-                    tt.availableCourses,
-                  ),
-                  selectedSections: tt.selectedSections,
-                  availableCourses: tt.availableCourses,
-                  size: TimetableSize.extraLarge,
-                  isForExport: true,
-                  tableKey: tableExportKey,
-                  exportOptions: exportOptions,
                 ),
               ),
             ),
-          ),
-        ),
       );
 
       overlay.insert(overlayEntry);
@@ -1271,12 +1310,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         title: 'Export Successful',
         icon: Icons.check_circle_outline,
         content: Text('Timetable downloaded as: $filePath'),
-        actions: [
-          AppButton(
-            label: 'OK',
-            onTap: () => Navigator.pop(context),
-          ),
-        ],
+        actions: [AppButton(label: 'OK', onTap: () => Navigator.pop(context))],
       );
     } catch (e) {
       SecureLogger.error('EXPORT', 'PNG export failed', e);
@@ -1298,6 +1332,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
           selectedSections: tt.selectedSections,
           onReplace: quickReplaceCourse,
           onSectionShuffle: sectionShuffle,
+          creditBasis: creditBasis,
         ),
       ),
     );
@@ -1415,12 +1450,12 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   }
 
   Future<bool> confirmCampusSwitch() async {
-    if (!hasUnsavedChanges) return true;
     return await AppDialog.confirm(
       context: context,
-      title: 'Unsaved Changes',
-      message: 'Switching campus will discard your unsaved changes. Continue?',
-      confirmLabel: 'Switch',
+      title: 'Switch campus?',
+      message:
+          'Switching campus will clear all courses and sections from this timetable. Are you sure you want to continue?',
+      confirmLabel: 'Clear and switch',
       isDangerous: true,
     );
   }
@@ -1432,30 +1467,49 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   /// Wraps [buildCoursesPanel] with a slim header carrying the collapse
   /// control, shown only in the wide two-pane layout.
   Widget _buildExpandedCoursesPanel() {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 6, 4, 0),
-          child: Row(
-            children: [
-              Text(
-                'Courses',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      key: TutorialKeys.courseBrowser,
+      color: scheme.surface,
+      child: Column(
+        children: [
+          Container(
+            height: 52,
+            padding: const EdgeInsets.fromLTRB(16, 0, 6, 0),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: scheme.outline.withValues(alpha: 0.12),
+                ),
               ),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.chevron_left),
-                tooltip: 'Collapse courses panel',
-                visualDensity: VisualDensity.compact,
-                onPressed: () => setState(() => _coursesCollapsed = true),
-              ),
-            ],
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.library_books_outlined,
+                  size: 18,
+                  color: scheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 9),
+                Text(
+                  'Course browser',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.chevron_left_rounded),
+                  tooltip: 'Collapse course browser',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => setState(() => _coursesCollapsed = true),
+                ),
+              ],
+            ),
           ),
-        ),
-        Expanded(child: buildCoursesPanel()),
-      ],
+          Expanded(child: buildCoursesPanel()),
+        ],
+      ),
     );
   }
 
@@ -1491,11 +1545,13 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
                       quarterTurns: 3,
                       child: Text(
                         'Courses',
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
-                            ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.labelMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                        ),
                       ),
                     ),
                   ),
@@ -1529,23 +1585,29 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     return CreditBasisNotice(
       noticeId: tt.id,
       courses: tt.availableCourses,
-      toggleHint: 'Set it with the Credits / Credit hours toggle above the '
+      toggleHint:
+          'Set it with the Credits / Credit hours toggle above the '
           'timetable',
     );
   }
 
   Widget buildCoursesPanel() {
     final tt = currentTimetable!;
-    return Column(
-      children: [
-        _buildCreditBasisNotice(),
-        SearchFilterWidget(
-            key: TutorialKeys.courseSearch,
-            onSearchChanged: onSearchChanged,
-            hasBranch: hasBranchForPools),
-        Expanded(
-          child: Card(
-            margin: const EdgeInsets.all(8),
+    final scheme = Theme.of(context).colorScheme;
+    return ColoredBox(
+      color: scheme.surface,
+      child: Column(
+        children: [
+          _buildCreditBasisNotice(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+            child: SearchFilterWidget(
+              key: TutorialKeys.courseSearch,
+              onSearchChanged: onSearchChanged,
+              hasBranch: hasBranchForPools,
+            ),
+          ),
+          Expanded(
             child: CoursesTabWidget(
               courses: coursesInBasis,
               selectedSections: tt.selectedSections,
@@ -1570,9 +1632,9 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
               },
             ),
           ),
-        ),
-        if (ResponsiveService.isDesktop(context)) _buildBuildActionsBar(),
-      ],
+          if (ResponsiveService.isDesktop(context)) _buildBuildActionsBar(),
+        ],
+      ),
     );
   }
 
@@ -1582,25 +1644,29 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   /// They used to be Scaffold FABs, which put them over the bottom-right of the
   /// *grid* — and in fit-to-screen the grid fills its panel exactly, so there
   /// was no scrolling the Friday/Saturday cells out from under them. Docking
-  /// here costs the grid nothing. Mobile keeps its floating button: the panels
-  /// are tabs there, so a bar living in the Courses tab would be unreachable
-  /// from the Timetable one.
+  /// here costs the grid nothing. Compact layouts keep these actions in the bottom dock, where they stay
+  /// reachable while the timetable remains the primary surface.
   Widget _buildBuildActionsBar() {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        border: Border(
+          top: BorderSide(color: scheme.outline.withValues(alpha: 0.12)),
+        ),
+      ),
       child: Row(
         children: [
           Expanded(
-            child: FilledButton.tonalIcon(
+            child: OutlinedButton.icon(
               key: TutorialKeys.addSwapFab,
               onPressed: openAddSwap,
-              icon: const Icon(Icons.swap_horiz, size: 18),
-              label: const Text('Add/Swap'),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(0, 44),
-                backgroundColor: scheme.secondaryContainer,
-                foregroundColor: scheme.onSecondaryContainer,
+              icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+              label: const Text('Add / Swap'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 42),
+                side: BorderSide(color: scheme.outline.withValues(alpha: 0.25)),
               ),
             ),
           ),
@@ -1609,10 +1675,11 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
             child: FilledButton.icon(
               key: TutorialKeys.generatorFab,
               onPressed: openGenerator,
-              icon: const Icon(Icons.auto_awesome_mosaic, size: 18),
-              label: const Text('TT Generator'),
+              icon: const Icon(Icons.auto_awesome_mosaic_outlined, size: 18),
+              label: const Text('Generate'),
               style: FilledButton.styleFrom(
-                minimumSize: const Size(0, 44),
+                minimumSize: const Size(0, 42),
+                elevation: 0,
               ),
             ),
           ),
@@ -1626,24 +1693,22 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     final isMobile =
         ResponsiveService.isMobile(context) ||
         ResponsiveService.isTablet(context);
-    return Column(
-      children: [
-        if (tt.clashWarnings.isNotEmpty)
-          Card(
-            margin: EdgeInsets.all(isMobile ? 4 : 8),
-            // The banner expands and collapses on tap, and the themed card
-            // outline around it read as a control's border rather than as the
-            // edge of a surface. Keeps the theme's radius, drops the stroke.
-            shape: switch (Theme.of(context).cardTheme.shape) {
-              final RoundedRectangleBorder s => s.copyWith(side: BorderSide.none),
-              _ => null,
-            },
-            child: ClashWarningsWidget(warnings: tt.clashWarnings),
-          ),
-        Expanded(
-          child: Card(
-            key: TutorialKeys.timetableGrid,
-            margin: EdgeInsets.all(isMobile ? 4 : 8),
+    final scheme = Theme.of(context).colorScheme;
+    return ColoredBox(
+      color: scheme.surface,
+      child: Column(
+        children: [
+          if (tt.clashWarnings.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                isMobile ? 8 : 12,
+                8,
+                isMobile ? 8 : 12,
+                0,
+              ),
+              child: ClashWarningsWidget(warnings: tt.clashWarnings),
+            ),
+          Expanded(
             child: RepaintBoundary(
               key: timetableKey,
               child: TimetableWidget(
@@ -1659,9 +1724,6 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
                 onClear: clearTimetable,
                 onRemoveSection: removeSection,
                 size: userSettingsService.getTimetableSize(tt.id),
-                hasUnsavedChanges: hasUnsavedChanges,
-                isSaving: isSaving,
-                onSave: authService.isGuest ? null : saveTimetable,
                 onAutoLoadCDCs: autoLoadCDCs,
                 onSizeChanged: (newSize) {
                   userSettingsService.updateTimetableSettings(
@@ -1684,10 +1746,10 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
                 onCreditBasisChanged: setCreditBasis,
                 onQuickReplace: quickReplaceCourse,
                 onSectionShuffle: sectionShuffle,
-                onUndo: undo,
-                onRedo: redo,
-                canUndo: undoRedoService.canUndo,
-                canRedo: undoRedoService.canRedo,
+                onUndo: isMobile ? undo : null,
+                onRedo: isMobile ? redo : null,
+                canUndo: isMobile && undoRedoService.canUndo,
+                canRedo: isMobile && undoRedoService.canRedo,
                 onShowStats: () => _showStatsSheet(context),
                 allowExamClash: allowExamClash,
                 allowSectionClash: allowSectionClash,
@@ -1697,8 +1759,8 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -1714,81 +1776,191 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
-        builder: (ctx) => DraggableScrollableSheet(
-          initialChildSize: 0.7,
-          minChildSize: 0.4,
-          maxChildSize: 0.95,
-          expand: false,
-          builder: (ctx, scrollController) => Column(
-            children: [
-              const SizedBox(height: 8),
-              Container(
-                width: 32, height: 4,
-                decoration: BoxDecoration(
-                  color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text('Timetable Stats', style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
-              ),
-              Expanded(child: statsContent(ctx)),
-            ],
-          ),
-        ),
+        builder:
+            (ctx) => DraggableScrollableSheet(
+              initialChildSize: 0.7,
+              minChildSize: 0.4,
+              maxChildSize: 0.95,
+              expand: false,
+              builder:
+                  (ctx, scrollController) => Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      Container(
+                        width: 32,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            ctx,
+                          ).colorScheme.onSurface.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Text(
+                          'Timetable Stats',
+                          style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Expanded(child: statsContent(ctx)),
+                    ],
+                  ),
+            ),
       );
     } else {
       showDialog(
         context: context,
-        builder: (ctx) => Dialog(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520, maxHeight: 650),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
-                  child: Row(
-                    children: [
-                      Text('Timetable Stats', style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
-                      const Spacer(),
-                      IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
-                    ],
-                  ),
+        builder:
+            (ctx) => Dialog(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 520,
+                  maxHeight: 650,
                 ),
-                Flexible(child: statsContent(ctx)),
-              ],
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Timetable Stats',
+                            style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(ctx),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Flexible(child: statsContent(ctx)),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
       );
     }
   }
 
+  Widget buildEditorTitle({required bool standalone}) {
+    if (standalone) return AppDesign.appLogo(context, height: 32);
+
+    final scheme = Theme.of(context).colorScheme;
+    final compact = !ResponsiveService.isDesktop(context);
+    final status =
+        authService.isGuest
+            ? 'Guest plan'
+            : isSaving
+            ? 'Saving'
+            : hasUnsavedChanges
+            ? 'Unsaved'
+            : 'Saved';
+    final statusColor =
+        authService.isGuest
+            ? scheme.onSurfaceVariant
+            : isSaving || hasUnsavedChanges
+            ? scheme.primary
+            : AppDesign.success(context);
+
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: currentTimetable!.name),
+          if (!compact)
+            WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 10),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      status,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
   List<Widget> buildCommonActions() {
-    final isMobileLayout = ResponsiveService.isMobile(context);
+    final isCompactLayout = !ResponsiveService.isDesktop(context);
     return [
       IconButton(
         key: TutorialKeys.commandPalette,
-        icon: const Icon(Icons.search),
+        icon: const Icon(Icons.search_rounded),
         onPressed: _showCommandPalette,
-        tooltip: isMobileLayout ? 'Search actions' : 'Search actions  ·  ⌘K',
+        tooltip: isCompactLayout ? 'Search actions' : 'Search actions  ·  ⌘K',
       ),
-      if (!isMobileLayout) ...[
-        PageInfoHelper.infoButton(context, PageInfoHelper.timetableCreator),
-        if (_showSavedIndicator)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.check_circle, color: AppDesign.success(context), size: 18),
-                const SizedBox(width: 4),
-                Text('Saved', style: TextStyle(color: AppDesign.success(context), fontSize: 13)),
-              ],
+      if (!isCompactLayout) ...[
+        IconButton(
+          onPressed: undoRedoService.canUndo ? undo : null,
+          icon: const Icon(Icons.undo_rounded),
+          tooltip: undoRedoService.undoDescription ?? 'Undo',
+        ),
+        IconButton(
+          onPressed: undoRedoService.canRedo ? redo : null,
+          icon: const Icon(Icons.redo_rounded),
+          tooltip: undoRedoService.redoDescription ?? 'Redo',
+        ),
+      ],
+      if (!authService.isGuest && !isCompactLayout)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+          child: FilledButton.icon(
+            key: const ValueKey('editor-save'),
+            onPressed: hasUnsavedChanges && !isSaving ? saveTimetable : null,
+            icon:
+                isSaving
+                    ? const SizedBox(
+                      width: 15,
+                      height: 15,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                    : Icon(
+                      hasUnsavedChanges ? Icons.save_outlined : Icons.check,
+                      size: 17,
+                    ),
+            label: Text(
+              isSaving
+                  ? 'Saving'
+                  : hasUnsavedChanges
+                  ? 'Save'
+                  : 'Saved',
+            ),
+            style: FilledButton.styleFrom(
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
             ),
           ),
+        ),
+      if (!isCompactLayout) ...[
         CampusSelectorWidget(
           key: TutorialKeys.campusSelector,
           confirmSwitch: () => confirmCampusSwitch(),
@@ -1796,376 +1968,390 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         ),
         IconButton(
           key: TutorialKeys.shareButton,
-          icon: const Icon(Icons.share),
+          icon: const Icon(Icons.ios_share_rounded),
           onPressed: shareTimetable,
-          tooltip: 'Share Timetable',
+          tooltip: 'Share timetable',
         ),
-        const ThemeToggleButton(),
       ],
-      if (isMobileLayout && _showSavedIndicator)
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Icon(Icons.check_circle, color: AppDesign.success(context), size: 18),
-        ),
-      // On mobile the Tools items are merged into the More (⋮) menu below, so
-      // the app bar shows a single overflow instead of two.
-      if (!isMobileLayout)
-        PopupMenuButton<AppTool>(
-          key: TutorialKeys.toolsMenu,
-          icon: const Icon(Icons.menu_book),
-          tooltip: 'Tools',
-          onSelected: openTool,
-          itemBuilder: (context) => [
-            for (final info in AppTools.editorMenu)
-              PopupMenuItem(
-                value: info.tool,
-                child: ListTile(
-                  leading: Icon(info.icon),
-                  title: Text(info.label),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-          ],
-        ),
       PopupMenuButton<String>(
-        // On mobile this doubles as the Tools menu (see above), so the tour's
-        // Tools spotlight targets it here.
-        key: isMobileLayout ? TutorialKeys.toolsMenu : null,
-        icon: const Icon(Icons.more_vert),
-        tooltip: 'More',
+        key: TutorialKeys.toolsMenu,
+        icon: const Icon(Icons.more_horiz_rounded),
+        tooltip: 'Editor menu',
         onSelected: (value) {
-          // Tools share this menu on mobile; they're keyed by AppTool.name.
           final tool = AppTools.byName(value);
           if (tool != null) {
             openTool(tool);
             return;
           }
           switch (value) {
-            case 'share': shareTimetable(); break;
-            case 'page_info': PageInfoHelper.show(context, PageInfoHelper.timetableCreator); break;
-            case 'import_tt': importFromTT(); break;
-            case 'export_tt': exportToTTWithFilePicker(); break;
-            case 'export_ics': exportToICS(); break;
-            case 'export_png': exportToPNG(); break;
-            case 'github': openGitHub(); break;
+            case 'share':
+              shareTimetable();
+              break;
+            case 'page_info':
+              PageInfoHelper.show(context, PageInfoHelper.timetableCreator);
+              break;
+            case 'appearance':
+              ThemeSelectorDialog.show(context);
+              break;
+            case 'import_tt':
+              importFromTT();
+              break;
+            case 'export_tt':
+              exportToTTWithFilePicker();
+              break;
+            case 'export_ics':
+              exportToICS();
+              break;
+            case 'export_png':
+              exportToPNG();
+              break;
+            case 'logout':
+              logout();
+              break;
+            case 'github':
+              openGitHub();
+              break;
           }
         },
-        itemBuilder: (context) => [
-          if (isMobileLayout) ...[
-            CampusSelectorWidget.menuEntry<String>(
-              context,
-              confirmSwitch: () => confirmCampusSwitch(),
-              onCampusChanged: onCampusChanged,
-            ),
-            const PopupMenuDivider(),
-            for (final info in AppTools.editorMenu)
-              PopupMenuItem(
-                value: info.tool.name,
+        itemBuilder:
+            (context) => [
+              if (isCompactLayout) ...[
+                CampusSelectorWidget.menuEntry<String>(
+                  context,
+                  confirmSwitch: () => confirmCampusSwitch(),
+                  onCampusChanged: onCampusChanged,
+                ),
+                const PopupMenuItem(
+                  value: 'share',
+                  child: ListTile(
+                    leading: Icon(Icons.ios_share_rounded),
+                    title: Text('Share timetable'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+              const PopupMenuItem(
+                value: 'page_info',
                 child: ListTile(
-                  leading: Icon(info.icon),
-                  title: Text(info.label),
+                  leading: Icon(Icons.info_outline_rounded),
+                  title: Text('About this editor'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
-            const PopupMenuDivider(),
-          ],
-          if (isMobileLayout) ...[
-            const PopupMenuItem(
-              value: 'share',
-              child: ListTile(
-                leading: Icon(Icons.share),
-                title: Text('Share Timetable'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'page_info',
-              child: ListTile(
-                leading: Icon(Icons.info_outline),
-                title: Text('About This Page'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            const PopupMenuDivider(),
-          ],
-          const PopupMenuItem(
-            value: 'import_tt',
-            child: ListTile(
-              leading: Icon(Icons.file_download),
-              title: Text('Import Timetable (.tt)'),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-          const PopupMenuItem(
-            value: 'export_tt',
-            child: ListTile(
-              leading: Icon(Icons.file_upload),
-              title: Text('Export Timetable (.tt)'),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-          const PopupMenuItem(
-            value: 'export_ics',
-            child: ListTile(
-              leading: Icon(Icons.calendar_today),
-              title: Text('Export to Calendar (.ics)'),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-          const PopupMenuItem(
-            value: 'export_png',
-            child: ListTile(
-              leading: Icon(Icons.image),
-              title: Text('Export as Image (.png)'),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-          const PopupMenuDivider(),
-          const PopupMenuItem(
-            value: 'github',
-            child: ListTile(
-              leading: Icon(Icons.star_border),
-              title: Text('Star on GitHub'),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-        ],
-      ),
-      if (authService.isAuthenticated)
-        PopupMenuButton<String>(
-          onSelected: (value) {
-            if (value == 'logout') logout();
-          },
-          itemBuilder: (context) => [
-            PopupMenuItem(
-              enabled: false,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    authService.userName ?? 'User',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+              for (final info in AppTools.editorMenu)
+                PopupMenuItem(
+                  value: info.tool.name,
+                  child: ListTile(
+                    leading: Icon(info.icon),
+                    title: Text(info.label),
+                    contentPadding: EdgeInsets.zero,
                   ),
-                  Text(
-                    authService.userEmail ?? '',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).textTheme.bodySmall?.color,
-                    ),
-                  ),
-                  const Divider(),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'logout',
-              child: ListTile(
-                leading: Icon(Icons.logout),
-                title: Text('Sign Out'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ],
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundImage: authService.userPhotoUrl != null
-                      ? authService.userPhotoImage
-                      : null,
-                  child: authService.userPhotoUrl == null
-                      ? const Icon(Icons.person, size: 16)
-                      : null,
                 ),
-                const SizedBox(width: 4),
-                const Icon(Icons.arrow_drop_down),
-              ],
-            ),
-          ),
-        )
-      else
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.person_outline,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'import_tt',
+                child: ListTile(
+                  leading: Icon(Icons.file_download_outlined),
+                  title: Text('Import .tt file'),
+                  contentPadding: EdgeInsets.zero,
+                ),
               ),
-              const SizedBox(width: 4),
-              Text(
-                'Guest',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              const PopupMenuItem(
+                value: 'export_tt',
+                child: ListTile(
+                  leading: Icon(Icons.file_upload_outlined),
+                  title: Text('Export .tt file'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'export_ics',
+                child: ListTile(
+                  leading: Icon(Icons.calendar_today_outlined),
+                  title: Text('Export calendar'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'export_png',
+                child: ListTile(
+                  leading: Icon(Icons.image_outlined),
+                  title: Text('Export image'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'appearance',
+                child: ListTile(
+                  leading: Icon(Icons.palette_outlined),
+                  title: Text('Appearance'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              if (authService.isAuthenticated)
+                const PopupMenuItem(
+                  value: 'logout',
+                  child: ListTile(
+                    leading: Icon(Icons.logout_rounded),
+                    title: Text('Sign out'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              const PopupMenuItem(
+                value: 'github',
+                child: ListTile(
+                  leading: Icon(Icons.star_border_rounded),
+                  title: Text('Star on GitHub'),
+                  contentPadding: EdgeInsets.zero,
                 ),
               ),
             ],
-          ),
-        ),
-      const SizedBox(width: 8),
+      ),
+      const SizedBox(width: 6),
     ];
   }
 
   Widget buildBodyLayout(bool isWideScreen) {
+    final scheme = Theme.of(context).colorScheme;
     if (isWideScreen) {
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          // The open panel keeps its old ~1/3 share (floored so it stays usable
-          // on narrower desktops); folded, it shrinks to a slim rail and the
-          // grid — the only Expanded child — animates out to fill the gap.
-          final third = constraints.maxWidth / 3;
-          final expandedWidth = third < 300 ? 300.0 : third;
-          const railWidth = 60.0;
-          final collapsed = _coursesCollapsed;
-          const duration = Duration(milliseconds: 260);
-          const curve = Curves.easeInOutCubic;
-          return Row(
-            children: [
-              AnimatedContainer(
-                duration: duration,
-                curve: curve,
-                width: collapsed ? railWidth : expandedWidth,
-                // Both the full panel and the rail stay laid out at the open
-                // width and clipped to the animating frame, so nothing reflows
-                // as the width changes. The two cross-fade over the *same*
-                // duration/curve as the width, so the chevron and contents move
-                // in step with the grid reclaiming the space rather than
-                // snapping ahead of it.
-                child: ClipRect(
-                  child: OverflowBox(
-                    alignment: Alignment.centerLeft,
-                    minWidth: expandedWidth,
-                    maxWidth: expandedWidth,
-                    child: Stack(
-                      children: [
-                        AnimatedOpacity(
-                          opacity: collapsed ? 0 : 1,
-                          duration: duration,
-                          curve: curve,
-                          child: IgnorePointer(
-                            ignoring: collapsed,
-                            child: _buildExpandedCoursesPanel(),
-                          ),
-                        ),
-                        Positioned(
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          width: railWidth,
-                          child: AnimatedOpacity(
-                            opacity: collapsed ? 1 : 0,
+      return ColoredBox(
+        color: scheme.surface,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final preferred = constraints.maxWidth * 0.29;
+            final expandedWidth = preferred.clamp(340.0, 410.0);
+            const railWidth = 56.0;
+            final collapsed = _coursesCollapsed;
+            final duration =
+                MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 260);
+            const curve = Curves.easeOutCubic;
+            return Row(
+              children: [
+                AnimatedContainer(
+                  duration: duration,
+                  curve: curve,
+                  width: collapsed ? railWidth : expandedWidth,
+                  child: ClipRect(
+                    child: OverflowBox(
+                      alignment: Alignment.centerLeft,
+                      minWidth: expandedWidth,
+                      maxWidth: expandedWidth,
+                      child: Stack(
+                        children: [
+                          AnimatedOpacity(
+                            opacity: collapsed ? 0 : 1,
                             duration: duration,
                             curve: curve,
                             child: IgnorePointer(
-                              ignoring: !collapsed,
-                              child: _buildCollapsedCoursesRail(),
+                              ignoring: collapsed,
+                              child: _buildExpandedCoursesPanel(),
                             ),
                           ),
-                        ),
-                      ],
+                          Positioned(
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: railWidth,
+                            child: AnimatedOpacity(
+                              opacity: collapsed ? 1 : 0,
+                              duration: duration,
+                              curve: curve,
+                              child: IgnorePointer(
+                                ignoring: !collapsed,
+                                child: _buildCollapsedCoursesRail(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              Expanded(child: buildTimetablePanel()),
-            ],
-          );
-        },
+                VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: scheme.outline.withValues(alpha: 0.14),
+                ),
+                Expanded(child: buildTimetablePanel()),
+              ],
+            );
+          },
+        ),
       );
     }
-    return DefaultTabController(
-      length: 2,
-      child: Column(
-        children: [
-          Material(
-            color: Theme.of(context).colorScheme.surface,
-            child: TabBar(
-              labelColor: Theme.of(context).colorScheme.primary,
-              unselectedLabelColor:
-                  Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-              indicatorColor: Theme.of(context).colorScheme.primary,
-              tabs: const [
-                Tab(icon: Icon(Icons.search), text: 'Courses'),
-                Tab(icon: Icon(Icons.calendar_view_week), text: 'Timetable'),
-              ],
+
+    return Column(
+      children: [
+        Expanded(child: buildTimetablePanel()),
+        _buildMobileEditorDock(),
+      ],
+    );
+  }
+
+  Widget _buildMobileEditorDock() {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surface,
+      child: SafeArea(
+        top: false,
+        child: Container(
+          height: 62,
+          padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(color: scheme.outline.withValues(alpha: 0.14)),
             ),
           ),
-          Expanded(
-            child: TabBarView(
-              children: [
-                buildCoursesPanel(),
-                buildTimetablePanel(),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextButton.icon(
+                  key: TutorialKeys.courseBrowser,
+                  onPressed: _showMobileCourses,
+                  icon: const Icon(Icons.library_books_outlined, size: 19),
+                  label: const Text('Courses'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.icon(
+                  key: TutorialKeys.generatorFab,
+                  onPressed: () => _showMobileBuildActions(context),
+                  icon: const Icon(
+                    Icons.auto_awesome_mosaic_outlined,
+                    size: 19,
+                  ),
+                  label: const Text('Build'),
+                  style: FilledButton.styleFrom(elevation: 0),
+                ),
+              ),
+              if (!authService.isGuest) ...[
+                const SizedBox(width: 8),
+                IconButton.outlined(
+                  key: const ValueKey('mobile-editor-save'),
+                  onPressed:
+                      hasUnsavedChanges && !isSaving ? saveTimetable : null,
+                  icon:
+                      isSaving
+                          ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : Icon(
+                            hasUnsavedChanges
+                                ? Icons.save_outlined
+                                : Icons.check_rounded,
+                          ),
+                  tooltip: hasUnsavedChanges ? 'Save timetable' : 'Saved',
+                ),
               ],
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget? buildFABs(bool isWideScreen) {
-    // Wide layouts dock these under the courses panel instead — see
-    // _buildBuildActionsBar for why they can't float over the grid.
-    if (isWideScreen) return null;
-    // A single FAB that opens a chooser, so two stacked FABs no longer occlude
-    // the grid's bottom-right corner on small screens.
-    return FloatingActionButton(
-      key: TutorialKeys.generatorFab,
-      onPressed: () => _showMobileBuildActions(context),
-      backgroundColor: Theme.of(context).colorScheme.primary,
-      foregroundColor: Theme.of(context).colorScheme.onPrimary,
-      tooltip: 'Build timetable',
-      heroTag: 'build_actions',
-      child: const Icon(Icons.add),
+  void _showMobileCourses() {
+    final scheme = Theme.of(context).colorScheme;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: scheme.surface,
+      builder:
+          (sheetContext) => DraggableScrollableSheet(
+            initialChildSize: 0.94,
+            minChildSize: 0.65,
+            maxChildSize: 0.98,
+            expand: false,
+            builder:
+                (context, scrollController) => Column(
+                  children: [
+                    Container(
+                      height: 52,
+                      padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: scheme.outline.withValues(alpha: 0.12),
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Course browser',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            onPressed: () => Navigator.pop(sheetContext),
+                            icon: const Icon(Icons.close_rounded),
+                            tooltip: 'Close course browser',
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(child: buildCoursesPanel()),
+                  ],
+                ),
+          ),
     );
   }
 
-  /// Mobile chooser for the two primary build actions, replacing the pair of
-  /// stacked FABs.
+  Widget? buildFABs(bool isWideScreen) => null;
+
+  /// Compact-layout chooser for automatic generation or manual section work.
   void _showMobileBuildActions(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     showModalBottomSheet(
       context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 8),
-            Container(
-              width: 32,
-              height: 4,
-              decoration: BoxDecoration(
-                color: scheme.onSurface.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(2),
-              ),
+      builder:
+          (ctx) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 8),
+                Container(
+                  width: 32,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: scheme.onSurface.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  leading: Icon(
+                    Icons.auto_awesome_mosaic,
+                    color: scheme.primary,
+                  ),
+                  title: const Text('TT Generator'),
+                  subtitle: const Text('Auto-generate a clash-free timetable'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    openGenerator();
+                  },
+                ),
+                ListTile(
+                  leading: Icon(Icons.swap_horiz, color: scheme.secondary),
+                  title: const Text('Add / Swap Courses'),
+                  subtitle: const Text('Add a course or swap sections'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    openAddSwap();
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
             ),
-            const SizedBox(height: 8),
-            ListTile(
-              leading: Icon(Icons.auto_awesome_mosaic, color: scheme.primary),
-              title: const Text('TT Generator'),
-              subtitle: const Text('Auto-generate a clash-free timetable'),
-              onTap: () {
-                Navigator.pop(ctx);
-                openGenerator();
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.swap_horiz, color: scheme.secondary),
-              title: const Text('Add / Swap Courses'),
-              subtitle: const Text('Add a course or swap sections'),
-              onTap: () {
-                Navigator.pop(ctx);
-                openAddSwap();
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
@@ -2177,13 +2363,15 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
 
   Future<void> importFromTT() async {
     try {
-      final importedTimetable = await ExportService.importFromTTWithFilePicker();
+      final importedTimetable =
+          await ExportService.importFromTTWithFilePicker();
       if (importedTimetable == null || !mounted) return;
 
       final shouldReplace = await AppDialog.confirm(
         context: context,
         title: 'Import Timetable',
-        message: 'Are you sure you want to import "${importedTimetable.name}"?\n\n'
+        message:
+            'Are you sure you want to import "${importedTimetable.name}"?\n\n'
             'This will replace your current timetable with the imported one.\n\n'
             'Campus: ${importedTimetable.campus.toString().split('.').last}\n'
             'Courses: ${importedTimetable.selectedSections.length} sections',
@@ -2200,15 +2388,11 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
           reloadedTimetable.availableCourses,
         );
 
-        final updatedImportedTimetable = Timetable(
-          id: importedTimetable.id,
-          name: importedTimetable.name,
-          createdAt: importedTimetable.createdAt,
-          updatedAt: importedTimetable.updatedAt,
-          campus: importedTimetable.campus,
+        final updatedImportedTimetable = importedTimetable.copyWith(
           availableCourses: reloadedTimetable.availableCourses,
-          selectedSections: importedTimetable.selectedSections,
           clashWarnings: clashWarnings,
+          // Imported files must not inherit control of another timetable's share.
+          shareId: () => null,
         );
 
         await timetableService.saveTimetable(updatedImportedTimetable);
@@ -2234,7 +2418,9 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
   Future<void> exportToTTWithFilePicker() async {
     final tt = currentTimetable;
     if (tt == null || tt.selectedSections.isEmpty) {
-      ToastService.showWarning('Add courses to your timetable before exporting.');
+      ToastService.showWarning(
+        'Add courses to your timetable before exporting.',
+      );
       return;
     }
 
@@ -2247,10 +2433,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
         icon: Icons.check_circle_outline,
         content: Text('Timetable exported to: $filePath'),
         actions: [
-          AppButton(
-            label: 'OK',
-            onTap: () => Navigator.of(context).pop(),
-          ),
+          AppButton(label: 'OK', onTap: () => Navigator.of(context).pop()),
         ],
       );
     } catch (e) {

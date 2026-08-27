@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/cgpa_data.dart';
 import '../models/course_type.dart';
+import '../services/core/cgpa_target_solver.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
-import '../constants/app_constants.dart';
 import '../utils/page_info_helper.dart';
 import '../utils/grade_utils.dart' as grade_utils;
 
@@ -22,11 +22,8 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
   List<CourseEntry> _rankedCourses = [];
   final TextEditingController _targetCGPAController = TextEditingController();
   List<GradeResult> _results = [];
+  CgpaTargetSolution? _solution;
   bool _isCalculating = false;
-
-  // Grade system
-  static final grades = GradeConstants.normal;
-  static final gradePoints = GradeConstants.points;
 
   List<String> get _semestersWithCourses {
     return widget.cgpaData.semesters.entries
@@ -35,33 +32,33 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
         .toList();
   }
 
-  /// Standing before the semester being planned.
-  ///
-  /// Summing each semester's own totals would count a repeated course twice;
-  /// [CGPAData.latestAttempts] keeps one attempt per course code, matching how
-  /// the headline CGPA is computed.
-  Iterable<CourseEntry> get _priorCourses => widget.cgpaData
-      .latestAttempts(excludingSemester: _selectedSemester)
-      .values
-      .map((a) => a.entry);
+  /// Course codes being graded in the planned semester. Their earlier attempts,
+  /// if any, are superseded (Reg 4.21), so they must not count in the prior
+  /// standing the projection builds on — else a retake double-counts its credits.
+  Set<String> get _plannedCodes =>
+      _rankedCourses.map((c) => c.courseCode).toSet();
 
-  // Calculate CGPA excluding selected semester
+  /// Standing before the planned semester: one attempt per course, with the
+  /// planned semester and any retaken course excluded, matching the headline CGPA.
+  ({double credits, double gradePoints}) get _standing =>
+      widget.cgpaData.standingBefore(
+          semester: _selectedSemester, replacedCodes: _plannedCodes);
+
+  // CGPA as it stands before the planned semester.
   double get _currentCGPA {
     if (_selectedSemester == null) return widget.cgpaData.cgpa;
-    final credits = _priorCredits;
-    return credits > 0 ? _priorGradePoints / credits : 0.0;
+    final s = _standing;
+    return s.credits > 0 ? s.gradePoints / s.credits : 0.0;
   }
 
-  double get _priorCredits =>
-      _priorCourses.fold<double>(0.0, (sum, c) => sum + c.credits);
-
-  double get _priorGradePoints =>
-      _priorCourses.fold<double>(0.0, (sum, c) => sum + c.totalGradePoints);
+  double get _priorCredits => _standing.credits;
+  double get _priorGradePoints => _standing.gradePoints;
 
   void _onSemesterChanged(String? semester) {
     setState(() {
       _selectedSemester = semester;
       _results = [];
+      _solution = null;
       if (semester != null) {
         final semesterData = widget.cgpaData.semesters[semester];
         if (semesterData != null) {
@@ -104,239 +101,23 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
 
     setState(() => _isCalculating = true);
 
-    // Run calculation
-    final results = _findOptimalGrades(
+    final solution = CgpaTargetSolver.solve(
       priorCredits: _priorCredits,
       priorGradePoints: _priorGradePoints,
-      rankedCourses: _rankedCourses,
-      targetCGPA: targetCGPA,
+      courses: [
+        for (final c in _rankedCourses) (code: c.courseCode, credits: c.credits),
+      ],
+      targetCgpa: targetCGPA,
     );
 
     setState(() {
-      _results = results;
+      _solution = solution;
+      _results = [
+        for (final o in solution.options)
+          GradeResult(courseGrades: o.grades, resultingCGPA: o.resultingCgpa),
+      ];
       _isCalculating = false;
     });
-  }
-
-  List<GradeResult> _findOptimalGrades({
-    required double priorCredits,
-    required double priorGradePoints,
-    required List<CourseEntry> rankedCourses,
-    required double targetCGPA,
-  }) {
-    final courseCount = rankedCourses.length;
-    final List<GradeResult> allResults = [];
-
-    // Calculate semester credits
-    final semesterCredits = rankedCourses.fold<double>(
-      0.0,
-      (sum, c) => sum + c.credits,
-    );
-    final totalCredits = priorCredits + semesterCredits;
-
-    if (courseCount <= 6) {
-      // Brute force for small course counts
-      _generateAllCombinations(
-        rankedCourses: rankedCourses,
-        currentIndex: 0,
-        currentGrades: [],
-        priorCredits: priorCredits,
-        priorGradePoints: priorGradePoints,
-        totalCredits: totalCredits,
-        targetCGPA: targetCGPA,
-        results: allResults,
-      );
-    } else {
-      // For larger course counts, use a smarter approach
-      // Generate combinations that respect ranking priority
-      _generateRankedCombinations(
-        rankedCourses: rankedCourses,
-        priorCredits: priorCredits,
-        priorGradePoints: priorGradePoints,
-        totalCredits: totalCredits,
-        targetCGPA: targetCGPA,
-        results: allResults,
-      );
-    }
-
-    // Sort by distance from target, then by total grade points (prefer better grades)
-    allResults.sort((a, b) {
-      final distCompare = a.distanceFromTarget.compareTo(b.distanceFromTarget);
-      if (distCompare != 0) return distCompare;
-      // Prefer higher CGPA when distance is equal
-      return b.resultingCGPA.compareTo(a.resultingCGPA);
-    });
-
-    // Return top 10 unique results
-    final uniqueResults = <String, GradeResult>{};
-    for (final result in allResults) {
-      final key = result.courseGrades.values.join(',');
-      if (!uniqueResults.containsKey(key)) {
-        uniqueResults[key] = result;
-      }
-      if (uniqueResults.length >= 10) break;
-    }
-
-    return uniqueResults.values.toList();
-  }
-
-  void _generateAllCombinations({
-    required List<CourseEntry> rankedCourses,
-    required int currentIndex,
-    required List<int> currentGrades,
-    required double priorCredits,
-    required double priorGradePoints,
-    required double totalCredits,
-    required double targetCGPA,
-    required List<GradeResult> results,
-  }) {
-    if (currentIndex == rankedCourses.length) {
-      // Calculate CGPA for this combination
-      double semesterGradePoints = 0.0;
-      for (int i = 0; i < rankedCourses.length; i++) {
-        semesterGradePoints +=
-            rankedCourses[i].credits * gradePoints[currentGrades[i]];
-      }
-
-      final resultingCGPA =
-          (priorGradePoints + semesterGradePoints) / totalCredits;
-      final distance = (resultingCGPA - targetCGPA).abs();
-
-      // Check if this combination respects ranking
-      // Higher ranked courses should have equal or better grades
-      bool respectsRanking = true;
-      for (int i = 0; i < currentGrades.length - 1; i++) {
-        if (currentGrades[i] > currentGrades[i + 1]) {
-          // Lower grade index = better grade
-          // If higher ranked course has worse grade, it doesn't respect ranking
-          respectsRanking = false;
-          break;
-        }
-      }
-
-      final courseGrades = <String, String>{};
-      for (int i = 0; i < rankedCourses.length; i++) {
-        courseGrades[rankedCourses[i].courseCode] = grades[currentGrades[i]];
-      }
-
-      results.add(GradeResult(
-        courseGrades: courseGrades,
-        resultingCGPA: resultingCGPA,
-        distanceFromTarget: distance,
-        respectsRanking: respectsRanking,
-      ));
-      return;
-    }
-
-    // Try all grades for current course
-    for (int g = 0; g < grades.length; g++) {
-      _generateAllCombinations(
-        rankedCourses: rankedCourses,
-        currentIndex: currentIndex + 1,
-        currentGrades: [...currentGrades, g],
-        priorCredits: priorCredits,
-        priorGradePoints: priorGradePoints,
-        totalCredits: totalCredits,
-        targetCGPA: targetCGPA,
-        results: results,
-      );
-    }
-  }
-
-  void _generateRankedCombinations({
-    required List<CourseEntry> rankedCourses,
-    required double priorCredits,
-    required double priorGradePoints,
-    required double totalCredits,
-    required double targetCGPA,
-    required List<GradeResult> results,
-  }) {
-    // For larger course counts, generate combinations that respect ranking
-    // Start from uniform grades and explore variations
-    for (int baseGrade = 0; baseGrade < grades.length; baseGrade++) {
-      // All same grade
-      final uniformGrades = List.filled(rankedCourses.length, baseGrade);
-      _addResultFromGrades(
-        rankedCourses: rankedCourses,
-        gradeIndices: uniformGrades,
-        priorGradePoints: priorGradePoints,
-        totalCredits: totalCredits,
-        targetCGPA: targetCGPA,
-        results: results,
-      );
-
-      // Variations: higher ranked get better grades
-      for (int split = 1; split < rankedCourses.length; split++) {
-        for (int betterGrade = 0; betterGrade < baseGrade; betterGrade++) {
-          final variedGrades = List.generate(rankedCourses.length, (i) {
-            return i < split ? betterGrade : baseGrade;
-          });
-          _addResultFromGrades(
-            rankedCourses: rankedCourses,
-            gradeIndices: variedGrades,
-            priorGradePoints: priorGradePoints,
-            totalCredits: totalCredits,
-            targetCGPA: targetCGPA,
-            results: results,
-          );
-        }
-      }
-
-      // Gradual decline pattern
-      for (int step = 1; step <= 2; step++) {
-        final declineGrades = List.generate(rankedCourses.length, (i) {
-          final grade = baseGrade + (i * step ~/ rankedCourses.length);
-          return grade.clamp(0, grades.length - 1);
-        });
-        _addResultFromGrades(
-          rankedCourses: rankedCourses,
-          gradeIndices: declineGrades,
-          priorGradePoints: priorGradePoints,
-          totalCredits: totalCredits,
-          targetCGPA: targetCGPA,
-          results: results,
-        );
-      }
-    }
-  }
-
-  void _addResultFromGrades({
-    required List<CourseEntry> rankedCourses,
-    required List<int> gradeIndices,
-    required double priorGradePoints,
-    required double totalCredits,
-    required double targetCGPA,
-    required List<GradeResult> results,
-  }) {
-    double semesterGradePoints = 0.0;
-    for (int i = 0; i < rankedCourses.length; i++) {
-      semesterGradePoints +=
-          rankedCourses[i].credits * gradePoints[gradeIndices[i]];
-    }
-
-    final resultingCGPA =
-        (priorGradePoints + semesterGradePoints) / totalCredits;
-    final distance = (resultingCGPA - targetCGPA).abs();
-
-    bool respectsRanking = true;
-    for (int i = 0; i < gradeIndices.length - 1; i++) {
-      if (gradeIndices[i] > gradeIndices[i + 1]) {
-        respectsRanking = false;
-        break;
-      }
-    }
-
-    final courseGrades = <String, String>{};
-    for (int i = 0; i < rankedCourses.length; i++) {
-      courseGrades[rankedCourses[i].courseCode] = grades[gradeIndices[i]];
-    }
-
-    results.add(GradeResult(
-      courseGrades: courseGrades,
-      resultingCGPA: resultingCGPA,
-      distanceFromTarget: distance,
-      respectsRanking: respectsRanking,
-    ));
   }
 
   void _showError(String message) {
@@ -862,6 +643,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                 ],
               ),
             ),
+            if (_solution != null) _buildHeadline(context, _solution!),
             // Content
             if (_results.isEmpty)
               Padding(
@@ -908,6 +690,43 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// The one number that matters most: the average grade the semester must reach
+  /// (or that the target is out of reach). Shown above the combination list.
+  Widget _buildHeadline(BuildContext context, CgpaTargetSolution solution) {
+    final scheme = Theme.of(context).colorScheme;
+    final target = _targetCGPAController.text.trim();
+    final avg = solution.requiredSemesterAvg;
+
+    final (String msg, Color color, IconData icon) = !solution.feasible
+        ? ('Out of reach this semester — even straight A\'s reach only ${solution.maxAchievableCgpa.toStringAsFixed(2)}.',
+            scheme.error, Icons.error_outline)
+        : avg <= 0
+            ? ('You\'re already above $target — any passing semester holds it.',
+                AppDesign.success(context), Icons.check_circle_outline)
+            : ('Average ${avg.toStringAsFixed(2)} across these courses to reach $target.',
+                scheme.secondary, Icons.flag_outlined);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(msg,
+                style:
+                    TextStyle(color: scheme.onSurface, fontWeight: FontWeight.w500)),
+          ),
+        ],
       ),
     );
   }
@@ -1054,26 +873,6 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                 );
               }).toList(),
             ),
-            if (!result.respectsRanking) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 14,
-                    color: colorScheme.outline,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Lower priority courses have better grades',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.outline,
-                          fontStyle: FontStyle.italic,
-                        ),
-                  ),
-                ],
-              ),
-            ],
           ],
         ),
       ),
@@ -1084,13 +883,6 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
 class GradeResult {
   final Map<String, String> courseGrades;
   final double resultingCGPA;
-  final double distanceFromTarget;
-  final bool respectsRanking;
 
-  GradeResult({
-    required this.courseGrades,
-    required this.resultingCGPA,
-    required this.distanceFromTarget,
-    required this.respectsRanking,
-  });
+  GradeResult({required this.courseGrades, required this.resultingCGPA});
 }

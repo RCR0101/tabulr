@@ -47,26 +47,24 @@ class AppButton extends StatelessWidget {
       ),
     };
 
-    final child = isLoading
-        ? SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: fg,
-            ),
-          )
-        : Row(
-            mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 18),
-                const SizedBox(width: AppDesign.spacingSm),
+    final child =
+        isLoading
+            ? SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: fg),
+            )
+            : Row(
+              mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 18),
+                  const SizedBox(width: AppDesign.spacingSm),
+                ],
+                Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
               ],
-              Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
-            ],
-          );
+            );
 
     final button = FilledButton(
       onPressed: isLoading ? null : onTap,
@@ -76,7 +74,7 @@ class AppButton extends StatelessWidget {
         elevation: 0,
         side: BorderSide(color: border),
         shape: RoundedRectangleBorder(
-          borderRadius: AppDesign.borderRadiusMd,
+          borderRadius: AppDesign.buttonBorderRadius(context),
         ),
         padding: const EdgeInsets.symmetric(
           horizontal: AppDesign.spacingMd,

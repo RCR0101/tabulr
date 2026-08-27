@@ -3,8 +3,6 @@ import 'package:flutter/services.dart';
 import '../services/data/auth_service.dart';
 import '../services/data/cgpa_service.dart';
 import '../services/data/profile_service.dart';
-import '../services/data/course_announcement_service.dart';
-import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../services/ui/tutorial_service.dart';
 import '../screens/timetables_screen.dart';
@@ -17,6 +15,7 @@ import '../screens/course_announcements_screen.dart';
 import '../screens/bug_report_screen.dart';
 import '../screens/faq_screen.dart';
 import '../screens/minors_screen.dart';
+import '../screens/guide_screen.dart';
 // Deferred: ~7k lines across screens/admin/ that only allowlisted accounts can
 // open, otherwise compiled into the bundle every visitor downloads.
 import '../screens/admin_screen.dart' deferred as admin_screen;
@@ -26,17 +25,15 @@ import '../utils/app_routes.dart';
 import 'common/deferred_screen.dart';
 import 'app_destinations.dart';
 import 'app_tools.dart';
-import 'app_sidebar.dart';
+import 'app_workspaces.dart';
+import 'workspace_frame.dart';
 import 'command_palette.dart';
 import 'theme_selector_widget.dart';
 
 class AppShell extends StatefulWidget {
   final DrawerScreen initialScreen;
 
-  const AppShell({
-    super.key,
-    this.initialScreen = AppRoutes.defaultScreen,
-  });
+  const AppShell({super.key, this.initialScreen = AppRoutes.defaultScreen});
 
   /// The mounted shell, if there is one.
   ///
@@ -58,12 +55,34 @@ class AppShell extends StatefulWidget {
   /// The tab the mounted shell is showing, or null when none is mounted.
   static DrawerScreen? get currentScreen => _active?._currentScreen;
 
+  static AppTool? get currentTool => _active?._currentTool;
+  static String? get guideAnchor => _active?._guideAnchor;
+  static bool get isMounted => _active != null;
+
+  /// Only intercept at the shell root. A contextual editor tool must keep its
+  /// selection link and its normal route/unsaved-changes behaviour.
+  static bool openTool(AppTool tool, {String? guideAnchor}) {
+    final active = _active;
+    if (active == null ||
+        AppWorkspaces.forTool(tool) == null ||
+        !AppTools.of(tool).isReachable) {
+      return false;
+    }
+    active._onToolSelected(tool, guideAnchor: guideAnchor);
+    return true;
+  }
+
   @override
   State<AppShell> createState() => _AppShellState();
 }
 
 class _AppShellState extends State<AppShell> {
   late DrawerScreen _currentScreen;
+  AppTool? _currentTool;
+  String? _guideAnchor;
+  final Set<AppTool> _visitedTools = {};
+  final Map<AppWorkspace, WorkspaceEntry> _lastEntries = {};
+  final AdminService _adminService = AdminService();
   bool _sidebarCollapsed = false;
   final Set<DrawerScreen> _visitedScreens = {};
 
@@ -77,6 +96,23 @@ class _AppShellState extends State<AppShell> {
     // later — a sign-out and back in — reopens wherever the user actually is.
     _currentScreen = AppRoutes.screenIn(Uri.base) ?? widget.initialScreen;
     _visitedScreens.add(_currentScreen);
+    final launchTool = AppRoutes.pageIn(Uri.base)?.tool;
+    if (launchTool != null &&
+        AppWorkspaces.forTool(launchTool) != null &&
+        AppRoutes.history.topRouteName != AppRoutes.pagePathIn(Uri.base)) {
+      _currentTool = launchTool;
+      if (launchTool == AppTool.guide && Uri.base.fragment.isNotEmpty) {
+        _guideAnchor = Uri.base.fragment;
+      }
+      _visitedTools.add(launchTool);
+    }
+    final initialEntry = _workspace.entries.firstWhere(
+      (entry) => _currentTool == null
+          ? entry.screen == _currentScreen
+          : entry.tool == _currentTool,
+    );
+    _lastEntries[_workspace.workspace] = initialEntry;
+    _adminService.addListener(_onAccessChanged);
     AppShell._active = this;
     // The address bar may name a tab this user cannot open, or nothing at all;
     // either way it should now say what this shell actually opened.
@@ -88,7 +124,7 @@ class _AppShellState extends State<AppShell> {
     HardwareKeyboard.instance.addHandler(_handleGlobalCommandPaletteKey);
     if (AuthService().isAuthenticated) {
       Future.delayed(const Duration(seconds: 2), () {
-        CGPAService().prefetch();
+        if (mounted && isSignedIn()) CGPAService().prefetch();
       });
       // Load saved defaults so consumers (exam seating, CDC loader, …) can
       // read them synchronously.
@@ -111,9 +147,11 @@ class _AppShellState extends State<AppShell> {
   /// signed-in user. This shell only exists once auth has resolved, which makes
   /// it the first honest place to ask.
   void _openLaunchUrlPage() {
-    final path =
-        AppRoutes.launchPageToOpen(Uri.base, AppRoutes.history.topRouteName);
-    if (path == null) return;
+    final path = AppRoutes.launchPageToOpen(
+      Uri.base,
+      AppRoutes.history.topRouteName,
+    );
+    if (path == null || _currentTool != null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || AppRoutes.history.topRouteName == path) return;
       AppRoutes.navigatorKey.currentState?.pushNamed(path);
@@ -122,6 +160,7 @@ class _AppShellState extends State<AppShell> {
 
   @override
   void dispose() {
+    _adminService.removeListener(_onAccessChanged);
     HardwareKeyboard.instance.removeHandler(_handleGlobalCommandPaletteKey);
     // Guarded so a shell being replaced by a newer one doesn't clear the
     // newcomer's registration on its way out.
@@ -143,23 +182,82 @@ class _AppShellState extends State<AppShell> {
     return true;
   }
 
+  void _onAccessChanged() {
+    if (!mounted) return;
+    if (!AppDestinations.of(_currentScreen).isVisible && _currentTool == null) {
+      _onScreenSelected(AppRoutes.defaultScreen);
+    } else {
+      setState(() {});
+    }
+  }
+
+  WorkspaceInfo get _workspace => _currentTool == null
+      ? AppWorkspaces.forScreen(_currentScreen)
+      : AppWorkspaces.forTool(_currentTool!)!;
+
   void _onScreenSelected(DrawerScreen screen) {
-    if (screen == _currentScreen) return;
+    if (!AppDestinations.of(screen).isVisible) return;
+    if (screen == _currentScreen && _currentTool == null) return;
     setState(() {
       _currentScreen = screen;
+      _currentTool = null;
       _visitedScreens.add(screen);
+      final info = AppWorkspaces.forScreen(screen);
+      _lastEntries[info.workspace] = info.entries.firstWhere(
+        (e) => e.screen == screen,
+      );
     });
     AppRoutes.refresh();
+  }
+
+  void _onToolSelected(AppTool tool, {String? guideAnchor}) {
+    final info = AppTools.of(tool);
+    if (info.screen != null) {
+      _onScreenSelected(info.screen!);
+      return;
+    }
+    if (!info.isReachable ||
+        (tool == _currentTool &&
+            (tool != AppTool.guide || guideAnchor == _guideAnchor))) {
+      return;
+    }
+    setState(() {
+      _currentTool = tool;
+      if (tool == AppTool.guide) _guideAnchor = guideAnchor;
+      _visitedTools.add(tool);
+      final workspace = AppWorkspaces.forTool(tool)!;
+      _lastEntries[workspace.workspace] = workspace.entries.firstWhere(
+        (e) => e.tool == tool,
+      );
+    });
+    AppRoutes.refresh();
+  }
+
+  void _onEntrySelected(WorkspaceEntry entry) {
+    if (entry.screen != null) {
+      _onScreenSelected(entry.screen!);
+    } else {
+      _onToolSelected(entry.tool!);
+    }
+  }
+
+  void _onWorkspaceSelected(AppWorkspace workspace) {
+    if (workspace == _workspace.workspace) return;
+    final entries = AppWorkspaces.of(workspace).visibleEntries;
+    if (entries.isEmpty) return;
+    final last = _lastEntries[workspace];
+    _onEntrySelected(last != null && last.isVisible ? last : entries.first);
   }
 
   void _showCommandPalette() {
     CommandPalette.show(
       context,
-      currentScreen: _currentScreen,
+      currentScreen: _currentTool == null ? _currentScreen : null,
       onNavigate: (screen) => _onScreenSelected(screen),
       onToggleTheme: () => ThemeSelectorDialog.show(context),
       onReplayTour: () {
-        if (!TutorialService().replayForScreen(context, _currentScreen)) {
+        if (_currentTool != null ||
+            !TutorialService().replayForScreen(context, _currentScreen)) {
           ToastService.showInfo('No guided tour for this page');
         }
       },
@@ -198,256 +296,67 @@ class _AppShellState extends State<AppShell> {
   }
 
   Widget _buildIndexedStack() {
-    final currentIndex = _allScreens.indexOf(_currentScreen);
+    final tools = AppTool.values
+        .where(
+          (tool) =>
+              AppTools.of(tool).screen == null &&
+              AppWorkspaces.forTool(tool) != null,
+        )
+        .toList();
+    final currentIndex = _currentTool == null
+        ? _allScreens.indexOf(_currentScreen)
+        : _allScreens.length + tools.indexOf(_currentTool!);
     return IndexedStack(
       index: currentIndex,
-      children: _allScreens.map((screen) {
-        if (!_visitedScreens.contains(screen)) return const SizedBox.shrink();
-        return _screenFor(screen);
-      }).toList(),
+      children: [
+        for (final screen in _allScreens)
+          if (_visitedScreens.contains(screen) &&
+              AppDestinations.of(screen).isVisible)
+            TickerMode(
+              enabled: _currentTool == null && screen == _currentScreen,
+              child: _screenFor(screen),
+            )
+          else
+            const SizedBox.shrink(),
+        for (final tool in tools)
+          if (_visitedTools.contains(tool) &&
+              AppTools.of(tool).isReachable &&
+              (tool != AppTool.degreeAudit || tool == _currentTool))
+            TickerMode(
+              enabled: tool == _currentTool,
+              child: tool == AppTool.guide
+                  ? GuideScreen(
+                      key: ValueKey(_guideAnchor),
+                      embedded: true,
+                      initialAnchor: _guideAnchor,
+                    )
+                  : AppTools.of(tool).build(null),
+            )
+          else
+            const SizedBox.shrink(),
+      ],
     );
   }
 
   @override
-  Widget build(BuildContext context) {
-    final isDesktop = !ResponsiveService.isMobile(context);
-    final isTablet = ResponsiveService.isTablet(context);
-
-    Widget body;
-    if (isDesktop) {
-      body = Row(
-        children: [
-          AppSidebar(
-            currentScreen: _currentScreen,
-            onScreenSelected: _onScreenSelected,
-            collapsed: isTablet || _sidebarCollapsed,
-            onToggleCollapse: isTablet
-                ? null
-                : () => setState(() => _sidebarCollapsed = !_sidebarCollapsed),
-            onShowCommandPalette: _showCommandPalette,
-          ),
-          Expanded(child: _buildIndexedStack()),
-        ],
-      );
-    } else {
-      body = _MobileShell(
-        currentScreen: _currentScreen,
-        onScreenSelected: _onScreenSelected,
-        onShowCommandPalette: _showCommandPalette,
-        child: _buildIndexedStack(),
-      );
-    }
-
-    return Focus(
-      autofocus: true,
-      child: body,
-    );
-  }
-}
-
-class _MobileShell extends StatelessWidget {
-  final DrawerScreen currentScreen;
-  final ValueChanged<DrawerScreen> onScreenSelected;
-  final VoidCallback onShowCommandPalette;
-  final Widget child;
-
-  const _MobileShell({
-    required this.currentScreen,
-    required this.onScreenSelected,
-    required this.onShowCommandPalette,
-    required this.child,
-  });
-
-  static const _primaryTabs = [
-    DrawerScreen.timetables,
-    DrawerScreen.calendar,
-    DrawerScreen.examSeating,
-  ];
-
-  // Bottom-nav indices for the two non-screen actions that follow the tabs.
-  static const _searchIndex = 3;
-  static const _moreIndex = 4;
-
-  List<DrawerScreen> _overflowItems() {
-    final auth = AuthService();
-    final items = <DrawerScreen>[];
-    if (auth.isAuthenticated) items.add(DrawerScreen.freeSlotFinder);
-    if (auth.isAuthenticated) items.add(DrawerScreen.cgpaCalculator);
-    if (auth.isAuthenticated) items.add(DrawerScreen.acadDrives);
-    if (auth.isAuthenticated) items.add(DrawerScreen.profChambers);
-    if (auth.isAuthenticated && CourseAnnouncementService().isHyderabadUser()) {
-      items.add(DrawerScreen.announcements);
-    }
-    items.add(DrawerScreen.minors);
-    items.add(DrawerScreen.faq);
-    if (auth.isAuthenticated) items.add(DrawerScreen.bugReport);
-    if (auth.isAuthenticated && AdminService().isAdmin) {
-      items.add(DrawerScreen.admin);
-    }
-    return items;
-  }
-
-  int _currentIndex() {
-    final idx = _primaryTabs.indexOf(currentScreen);
-    // Screens reached via the "More" sheet keep that tab highlighted.
-    return idx >= 0 ? idx : _moreIndex;
-  }
-
-  void _onTap(BuildContext context, int index) {
-    if (index < _primaryTabs.length) {
-      onScreenSelected(_primaryTabs[index]);
-    } else if (index == _searchIndex) {
-      // Search opens the palette as an overlay; it isn't a screen, so the
-      // selected tab stays on whatever's currently showing.
-      onShowCommandPalette();
-    } else {
-      _showMoreSheet(context);
-    }
-  }
-
-  void _showMoreSheet(BuildContext context) {
-    final overflow = _overflowItems();
-    showModalBottomSheet(
-      context: context,
-      // Let the sheet grow to its content, capped below, so it can scroll
-      // instead of the default 9/16 clamp forcing an overflow on short phones.
-      isScrollControlled: true,
-      builder: (ctx) => SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(ctx).size.height * 0.85,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 8),
-              Container(
-                width: 32,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Scrolls only when the items don't fit (small phones); otherwise
-              // Flexible shrinks to content and nothing scrolls. Handle stays pinned.
-              Flexible(
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ...overflow.map((screen) => ListTile(
-                            leading: Icon(_iconFor(screen)),
-                            title: Text(_labelFor(screen)),
-                            selected: currentScreen == screen,
-                            onTap: () {
-                              Navigator.pop(ctx);
-                              onScreenSelected(screen);
-                            },
-                          )),
-                      const Divider(height: 1),
-                      if (AuthService().isAuthenticated)
-                        ListTile(
-                          leading: const Icon(Icons.badge_outlined),
-                          title: const Text('Profile'),
-                          onTap: () {
-                            Navigator.pop(ctx);
-                            AppTools.of(AppTool.profile).pushOn(Navigator.of(context));
-                          },
-                        ),
-                      ListTile(
-                        leading: const Icon(Icons.info_outline),
-                        title: const Text('Credits'),
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          AppTools.of(AppTool.credits).pushOn(Navigator.of(context));
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+  Widget build(BuildContext context) => Focus(
+        autofocus: true,
+        child: WorkspaceFrame(
+          workspace: _workspace,
+          workspaces: AppWorkspaces.visible,
+          entries: _workspace.visibleEntries,
+          selectedId: _currentTool?.name ?? _currentScreen.name,
+          onWorkspaceSelected: _onWorkspaceSelected,
+          onEntrySelected: _onEntrySelected,
+          onSearch: _showCommandPalette,
+          onTheme: () => ThemeSelectorDialog.show(context),
+          onProfile: isSignedIn()
+              ? () => AppTools.of(AppTool.profile).pushOn(Navigator.of(context))
+              : null,
+          collapsed: _sidebarCollapsed,
+          onToggleCollapse: () =>
+              setState(() => _sidebarCollapsed = !_sidebarCollapsed),
+          child: _buildIndexedStack(),
         ),
-      ),
-    );
-  }
-
-  static IconData _iconFor(DrawerScreen screen) => switch (screen) {
-        DrawerScreen.timetables => Icons.schedule,
-        DrawerScreen.calendar => Icons.calendar_month,
-        DrawerScreen.freeSlotFinder => Icons.group,
-        DrawerScreen.cgpaCalculator => Icons.calculate,
-        DrawerScreen.examSeating => Icons.event_seat,
-        DrawerScreen.acadDrives => Icons.folder_shared,
-        DrawerScreen.profChambers => Icons.person,
-        DrawerScreen.announcements => Icons.campaign,
-        DrawerScreen.minors => Icons.workspace_premium_outlined,
-        DrawerScreen.faq => Icons.help_outline,
-        DrawerScreen.bugReport => Icons.bug_report_outlined,
-        DrawerScreen.admin => Icons.admin_panel_settings,
-      };
-
-  /// Short label for the bottom nav, where width is tight.
-  static String _navLabelFor(DrawerScreen screen) => switch (screen) {
-        DrawerScreen.examSeating => 'Exams',
-        _ => _labelFor(screen),
-      };
-
-  static String _labelFor(DrawerScreen screen) => switch (screen) {
-        DrawerScreen.timetables => 'Timetables',
-        DrawerScreen.calendar => 'Calendar',
-        DrawerScreen.freeSlotFinder => 'Free Slots',
-        DrawerScreen.cgpaCalculator => 'CGPA',
-        DrawerScreen.examSeating => 'Exam Seating',
-        DrawerScreen.acadDrives => 'Acad Drives',
-        DrawerScreen.profChambers => 'Prof Chambers',
-        DrawerScreen.announcements => 'Announcements',
-        DrawerScreen.minors => 'Minors',
-        DrawerScreen.faq => 'Academic FAQ',
-        DrawerScreen.bugReport => 'Bug Report',
-        DrawerScreen.admin => 'Admin',
-      };
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final selectedIndex = _currentIndex();
-
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex,
-        onDestinationSelected: (i) => _onTap(context, i),
-        height: 64,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        backgroundColor: scheme.surface,
-        indicatorColor: scheme.primary.withValues(alpha: 0.12),
-        destinations: [
-          // Primary tabs are derived so this list and _primaryTabs can't drift
-          // out of index alignment.
-          for (final tab in _primaryTabs)
-            NavigationDestination(
-              icon: Icon(_iconFor(tab),
-                  color: scheme.onSurface.withValues(alpha: 0.6)),
-              selectedIcon: Icon(_iconFor(tab), color: scheme.primary),
-              label: _navLabelFor(tab),
-            ),
-          NavigationDestination(
-            icon: Icon(Icons.search, color: scheme.onSurface.withValues(alpha: 0.6)),
-            selectedIcon: Icon(Icons.search, color: scheme.primary),
-            label: 'Search',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.more_horiz, color: scheme.onSurface.withValues(alpha: 0.6)),
-            selectedIcon: Icon(Icons.more_horiz, color: scheme.primary),
-            label: 'More',
-          ),
-        ],
-      ),
-    );
-  }
+      );
 }

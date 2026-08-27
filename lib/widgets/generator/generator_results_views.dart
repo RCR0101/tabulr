@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/core/timetable_generator_controller.dart';
 import '../../services/core/timetable_ranker.dart';
 import '../../utils/design_constants.dart';
 
@@ -102,6 +103,8 @@ class EmptyResults extends StatelessWidget {
     super.key,
     required this.isGenerating,
     required this.result,
+    this.relaxations = const [],
+    this.onRelax,
   });
 
   final bool isGenerating;
@@ -109,6 +112,8 @@ class EmptyResults extends StatelessWidget {
   /// Non-null once a generate has run. An empty `ranked` with non-empty
   /// `unmetIntents` is the "your required constraints left nothing" case.
   final RankingResult? result;
+  final List<ConstraintRelaxation> relaxations;
+  final ValueChanged<ConstraintRelaxation>? onRelax;
 
   bool get _blockedByHardConstraints =>
       !isGenerating &&
@@ -154,12 +159,46 @@ class EmptyResults extends StatelessWidget {
                   )),
               const SizedBox(height: 12),
               Text(
-                'Turn off "Require this" on a constraint to fall back to '
-                'best-effort ranking.',
+                relaxations.isEmpty
+                    ? 'Loosen one required constraint to return to best-effort ranking.'
+                    : 'Try one change at a time. Your preference stays active for ranking.',
                 style: TextStyle(
                     fontSize: 12,
                     color: scheme.onSurface.withValues(alpha: 0.6)),
               ),
+              if (onRelax != null && relaxations.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                for (final relaxation in relaxations)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => onRelax!(relaxation),
+                        icon: const Icon(Icons.lock_open_outlined, size: 17),
+                        label: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(relaxation.label),
+                              Text(
+                                relaxation.detail,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w400,
+                                  color: scheme.onSurface.withValues(
+                                    alpha: 0.6,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ],
           ),
         ),

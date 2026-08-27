@@ -110,6 +110,37 @@ void main() {
       expect(copied.projectCount, 3);
     });
 
+    test('duplicate retains academic context but gets a fresh share identity', () {
+      final original = Timetable(
+        id: 'source',
+        name: 'Source',
+        createdAt: DateTime(2026, 1, 1),
+        updatedAt: DateTime(2026, 1, 1),
+        campus: Campus.pilani,
+        availableCourses: [],
+        selectedSections: [],
+        clashWarnings: [],
+        shareId: 'public-source',
+        projectCount: 2,
+        term: '2026-2027_sem1',
+        creditBasis: CreditBasis.hours,
+      );
+
+      final duplicate = original.duplicateAs(
+        id: 'duplicate',
+        name: 'Duplicate',
+        at: DateTime(2026, 2, 1),
+      );
+
+      expect(duplicate.id, 'duplicate');
+      expect(duplicate.name, 'Duplicate');
+      expect(duplicate.shareId, isNull);
+      expect(duplicate.projectCount, 2);
+      expect(duplicate.term, '2026-2027_sem1');
+      expect(duplicate.creditBasis, CreditBasis.hours);
+      expect(identical(duplicate.availableCourses, original.availableCourses), isFalse);
+    });
+
     test('copyWith shareId nullable function pattern', () {
       final original = Timetable(
         id: 'test',

@@ -22,9 +22,9 @@ import 'services/data/admin_service.dart';
 import 'services/ui/secure_logger.dart';
 import 'services/ui/performance_monitor.dart';
 import 'services/ui/remote_log_sink.dart';
-import 'widgets/theme_transition_overlay.dart';
 import 'utils/app_routes.dart';
 import 'utils/app_scroll_behavior.dart';
+import 'utils/design_constants.dart';
 import 'constants/app_constants.dart';
 
 void main() async {
@@ -46,27 +46,31 @@ void main() async {
     apiKey: loggerKey,
   );
 
-  await SecureLogger.measureAsync('firebase_init', () => Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  ));
+  await SecureLogger.measureAsync(
+    'firebase_init',
+    () =>
+        Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform),
+  );
 
   FirebaseFirestore.instance.settings = const Settings(
     persistenceEnabled: true,
     cacheSizeBytes: 40 * 1024 * 1024,
   );
 
-
-  await SecureLogger.measureAsync('local_init', () => Future.wait([
-        CampusService.initializeCampus().catchError((e) {
-          SecureLogger.error('STARTUP', 'Failed to initialize campus', e);
-        }),
-        theme_service.ThemeService().initialize().catchError((e) {
-          SecureLogger.error('STARTUP', 'Failed to initialize theme', e);
-        }),
-        PreferencesService().initialize().catchError((e) {
-          SecureLogger.error('STARTUP', 'Failed to initialize preferences', e);
-        }),
-      ]));
+  await SecureLogger.measureAsync(
+    'local_init',
+    () => Future.wait([
+      CampusService.initializeCampus().catchError((e) {
+        SecureLogger.error('STARTUP', 'Failed to initialize campus', e);
+      }),
+      theme_service.ThemeService().initialize().catchError((e) {
+        SecureLogger.error('STARTUP', 'Failed to initialize theme', e);
+      }),
+      PreferencesService().initialize().catchError((e) {
+        SecureLogger.error('STARTUP', 'Failed to initialize preferences', e);
+      }),
+    ]),
+  );
 
   if (kIsWeb) {
     web_utils.usePathUrlStrategy();
@@ -117,32 +121,14 @@ void _setupWebCacheClearOnClose() {
 class TimetableMakerApp extends StatefulWidget {
   const TimetableMakerApp({super.key});
 
-  static ThemeTransitionController? themeTransition;
-
   @override
   State<TimetableMakerApp> createState() => _TimetableMakerAppState();
 }
 
 class _TimetableMakerAppState extends State<TimetableMakerApp> {
-  final _screenshotKey = GlobalKey();
-  final _themeTransition = ThemeTransitionController();
-
   /// Built once and handed to the router delegate, which outlives the theme
   /// rebuilds this widget goes through.
-  late final Widget _home = ThemeTransitionOverlay(
-    controller: _themeTransition,
-    screenshotKey: _screenshotKey,
-    child: RepaintBoundary(
-      key: _screenshotKey,
-      child: const MaintenanceGate(child: AuthWrapper()),
-    ),
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    TimetableMakerApp.themeTransition = _themeTransition;
-  }
+  late final Widget _home = const MaintenanceGate(child: AuthWrapper());
 
   String? _lastBootColors;
 
@@ -184,6 +170,8 @@ class _TimetableMakerAppState extends State<TimetableMakerApp> {
           theme: light,
           darkTheme: dark,
           themeMode: themeService.currentThemeMode,
+          themeAnimationDuration: AppDesign.motionStandard,
+          themeAnimationCurve: AppDesign.curveStandard,
           routeInformationParser: const AppRouteInformationParser(),
           routerDelegate: AppRoutes.delegateFor(_home),
           scrollBehavior: const AppScrollBehavior(),
@@ -211,11 +199,14 @@ class _MaintenanceGateState extends State<MaintenanceGate> {
   @override
   void initState() {
     super.initState();
-    ConfigService().loadSemesterDates().then((_) {
-      if (mounted) setState(() {});
-    }).catchError((e) {
-      SecureLogger.error('STARTUP', 'Failed to load app config', e);
-    });
+    ConfigService()
+        .loadSemesterDates()
+        .then((_) {
+          if (mounted) setState(() {});
+        })
+        .catchError((e) {
+          SecureLogger.error('STARTUP', 'Failed to load app config', e);
+        });
   }
 
   @override
@@ -327,12 +318,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
     }
 
     if (!_authReady) {
-      return const Scaffold(
-        body: TimetableListSkeleton(),
-      );
+      return const Scaffold(body: TimetableListSkeleton());
     }
 
     return const AuthScreen();
   }
 }
-

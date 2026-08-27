@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import '../../models/cgpa_data.dart';
+import '../core/account_scoped_cache.dart';
 import 'auth_service.dart';
 import '../ui/secure_logger.dart';
 import '../../constants/app_constants.dart';
@@ -230,33 +231,42 @@ class CGPAService {
     }
   }
 
-  CGPAData? _cachedData;
+  final AccountScopedCache<CGPAData> _cachedData =
+      AccountScopedCache<CGPAData>();
 
-  void invalidateCache() => _cachedData = null;
+  void invalidateCache() => _cachedData.clear();
 
   Future<void> prefetch() async {
-    if (_cachedData != null) return;
-    _cachedData = await loadAllCGPAData();
+    await loadAllCGPAData();
   }
 
   Future<CGPAData> loadAllCGPAData() async {
-    if (_cachedData != null) return _cachedData!;
+    final uid = _authService.userDocId;
+    if (uid == null) {
+      SecureLogger.warning(
+          'CGPA', 'Load all CGPA data operation attempted without authentication');
+      return CGPAData();
+    }
+    final cached = _cachedData.read(uid);
+    if (cached != null) return cached;
     try {
       final user = _authService.currentUser;
-      if (user == null || _authService.userDocId == null) {
+      if (user == null) {
         SecureLogger.warning('CGPA', 'Load all CGPA data operation attempted without authentication');
         return CGPAData();
       }
 
       final snapshot = await _firestore
           .collection(FirestoreCollections.users)
-          .doc(_authService.userDocId!)
+          .doc(uid)
           .collection(FirestoreCollections.cgpaSemesters)
           .get();
 
       if (snapshot.docs.isEmpty) {
         SecureLogger.info('CGPA', 'No semester data found for user');
-        return CGPAData();
+        final empty = CGPAData();
+        _cachedData.write(uid, empty);
+        return empty;
       }
 
       final semesters = <String, SemesterData>{};
@@ -305,8 +315,9 @@ class CGPAService {
         'totalDocuments': snapshot.docs.length,
       });
       
-      _cachedData = CGPAData(semesters: semesters);
-      return _cachedData!;
+      final data = CGPAData(semesters: semesters);
+      _cachedData.write(uid, data);
+      return data;
     } catch (e) {
       SecureLogger.error('CGPA', 'Failed to load all CGPA data', e);
       return CGPAData();

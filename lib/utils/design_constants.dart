@@ -24,6 +24,29 @@ class AppDesign {
   static final BorderRadius borderRadiusXl = BorderRadius.circular(radiusXl);
   static final BorderRadius borderRadiusXxl = BorderRadius.circular(radiusXxl);
 
+  static BorderRadius cardBorderRadius(BuildContext context) =>
+      BorderRadius.circular(ThemeGeometry.of(context).cardRadius);
+
+  static BorderRadius buttonBorderRadius(BuildContext context) =>
+      BorderRadius.circular(ThemeGeometry.of(context).buttonRadius);
+
+  static BorderRadius inputBorderRadius(
+    BuildContext context, {
+    bool dense = false,
+  }) {
+    final radius = ThemeGeometry.of(context).inputRadius;
+    return BorderRadius.circular(
+      dense ? (radius - 4).clamp(4.0, radius) : radius,
+    );
+  }
+
+  static ShapeBorder dialogShape(BuildContext context) =>
+      RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(
+          ThemeGeometry.of(context).dialogRadius,
+        ),
+      );
+
   // Icon sizes
   static const double iconSizeSm = 18.0;
   static const double iconSizeMd = 20.0;
@@ -90,14 +113,18 @@ class AppDesign {
     bool dense = false,
   }) {
     final scheme = Theme.of(context).colorScheme;
-    final radius = dense ? borderRadiusSm : borderRadiusMd;
+    final radius = inputBorderRadius(context, dense: dense);
     final borderAlpha = dense ? 0.15 : 0.3;
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      hintStyle: dense
-          ? TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: opacityLow))
-          : null,
+      hintStyle:
+          dense
+              ? TextStyle(
+                fontSize: 12,
+                color: scheme.onSurface.withValues(alpha: opacityLow),
+              )
+              : null,
       prefixIcon: prefixIcon,
       suffixIcon: suffixIcon,
       isDense: dense,
@@ -106,42 +133,72 @@ class AppDesign {
       border: OutlineInputBorder(borderRadius: radius),
       enabledBorder: OutlineInputBorder(
         borderRadius: radius,
-        borderSide: BorderSide(color: scheme.outline.withValues(alpha: borderAlpha)),
+        borderSide: BorderSide(
+          color: scheme.outline.withValues(alpha: borderAlpha),
+        ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: radius,
         borderSide: BorderSide(color: scheme.primary, width: 1.5),
       ),
-      contentPadding: dense
-          ? const EdgeInsets.symmetric(horizontal: spacingSm + 4, vertical: spacingSm + 2)
-          : const EdgeInsets.symmetric(horizontal: spacingMd, vertical: spacingSm + 4),
+      contentPadding:
+          dense
+              ? const EdgeInsets.symmetric(
+                horizontal: spacingSm + 4,
+                vertical: spacingSm + 2,
+              )
+              : const EdgeInsets.symmetric(
+                horizontal: spacingMd,
+                vertical: spacingSm + 4,
+              ),
     );
   }
 
   // ── Standardized dialog shape ──────────────────────────────────────
-  static ShapeBorder dialogShape = RoundedRectangleBorder(
-    borderRadius: borderRadiusLg,
+  static EdgeInsets dialogPadding = const EdgeInsets.fromLTRB(
+    spacingLg,
+    spacingLg,
+    spacingLg,
+    spacingMd,
   );
 
-  static EdgeInsets dialogPadding =
-      const EdgeInsets.fromLTRB(spacingLg, spacingLg, spacingLg, spacingMd);
-
   // ── Standardized card decoration ───────────────────────────────────
-  static BoxDecoration cardDecoration(BuildContext context, {bool selected = false}) {
+  static BoxDecoration cardDecoration(
+    BuildContext context, {
+    bool selected = false,
+  }) {
     final scheme = Theme.of(context).colorScheme;
+    final geometry = ThemeGeometry.of(context);
     return BoxDecoration(
       color: scheme.surface,
-      borderRadius: borderRadiusMd,
-      border: selected
-          ? Border.all(color: scheme.primary.withValues(alpha: 0.4))
-          : Border.all(color: scheme.outline.withValues(alpha: opacityDivider)),
-      boxShadow: [
-        BoxShadow(
-          color: scheme.shadow.withValues(alpha: 0.06),
-          blurRadius: 4,
-          offset: const Offset(0, 2),
-        ),
-      ],
+      borderRadius: cardBorderRadius(context),
+      border:
+          selected
+              ? Border.all(
+                color: scheme.primary.withValues(alpha: 0.55),
+                width:
+                    geometry.cardBorderWidth > 0 ? geometry.cardBorderWidth : 1,
+              )
+              : Border.all(
+                color: scheme.outline.withValues(alpha: opacityDivider),
+                width:
+                    geometry.cardBorderWidth > 0 ? geometry.cardBorderWidth : 1,
+              ),
+      boxShadow:
+          geometry.cardElevation <= 0
+              ? null
+              : [
+                BoxShadow(
+                  color: scheme.shadow.withValues(
+                    alpha:
+                        Theme.of(context).brightness == Brightness.dark
+                            ? 0.16
+                            : 0.07,
+                  ),
+                  blurRadius: geometry.cardElevation * 4,
+                  offset: Offset(0, geometry.cardElevation),
+                ),
+              ],
     );
   }
 
@@ -155,14 +212,15 @@ class AppDesign {
     Widget? titleWidget,
     List<Widget>? actions,
     Widget? leading,
-    bool centerTitle = true,
+    bool centerTitle = false,
     PreferredSizeWidget? bottom,
   }) {
     return AppBar(
       title: titleWidget ?? (title != null ? Text(title) : null),
       centerTitle: centerTitle,
       elevation: elevationNone,
-      scrolledUnderElevation: elevationLow,
+      scrolledUnderElevation: elevationNone,
+      surfaceTintColor: Colors.transparent,
       leading: leading,
       actions: actions,
       bottom: bottom,
@@ -214,16 +272,21 @@ class AppDesign {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(title,
-                  style: text.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
+              Text(
+                title,
+                style: text.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               if (subtitle != null)
-                Text(subtitle,
-                    style: text.bodySmall?.copyWith(
-                        color: scheme.onSurface.withValues(alpha: 0.7)),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
+                Text(
+                  subtitle,
+                  style: text.bodySmall?.copyWith(
+                    color: scheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
             ],
           ),
         ),
@@ -271,9 +334,9 @@ class AppDesign {
   }
 
   // ── Motion tokens ─────────────────────────────────────────────────
-  static const Duration motionFast = Duration(milliseconds: 200);
-  static const Duration motionStandard = Duration(milliseconds: 350);
-  static const Duration motionEmphasized = Duration(milliseconds: 500);
+  static const Duration motionFast = Duration(milliseconds: 160);
+  static const Duration motionStandard = Duration(milliseconds: 280);
+  static const Duration motionEmphasized = Duration(milliseconds: 400);
 
   static const Curve curveStandard = Curves.easeOutCubic;
   static const Curve curveEmphasized = Curves.easeInOutCubicEmphasized;
@@ -294,21 +357,39 @@ extension AppMotion on Widget {
     double slideOffset = 16,
   }) {
     return animate(delay: delay)
-        .fadeIn(duration: duration ?? AppDesign.motionStandard, curve: curve ?? AppDesign.curveStandard)
-        .slideY(begin: slideOffset / 100, end: 0, duration: duration ?? AppDesign.motionStandard, curve: curve ?? AppDesign.curveStandard);
+        .fadeIn(
+          duration: duration ?? AppDesign.motionStandard,
+          curve: curve ?? AppDesign.curveStandard,
+        )
+        .slideY(
+          begin: slideOffset / 100,
+          end: 0,
+          duration: duration ?? AppDesign.motionStandard,
+          curve: curve ?? AppDesign.curveStandard,
+        );
   }
 
   /// Quick fade — for content swaps, tab changes, overlays.
   Widget motionFadeIn({Duration? duration, Duration? delay}) {
-    return animate(delay: delay)
-        .fadeIn(duration: duration ?? AppDesign.motionFast, curve: AppDesign.curveStandard);
+    return animate(delay: delay).fadeIn(
+      duration: duration ?? AppDesign.motionFast,
+      curve: AppDesign.curveStandard,
+    );
   }
 
   /// Scale + fade — for dialogs, modals, FABs.
   Widget motionScale({Duration? duration, Duration? delay}) {
     return animate(delay: delay)
-        .fadeIn(duration: duration ?? AppDesign.motionStandard, curve: AppDesign.curveStandard)
-        .scale(begin: const Offset(0.92, 0.92), end: const Offset(1, 1), duration: duration ?? AppDesign.motionStandard, curve: AppDesign.curveEmphasized);
+        .fadeIn(
+          duration: duration ?? AppDesign.motionStandard,
+          curve: AppDesign.curveStandard,
+        )
+        .scale(
+          begin: const Offset(0.92, 0.92),
+          end: const Offset(1, 1),
+          duration: duration ?? AppDesign.motionStandard,
+          curve: AppDesign.curveEmphasized,
+        );
   }
 
   /// Staggered list item — use with index for cascading entries.
@@ -318,7 +399,11 @@ extension AppMotion on Widget {
   /// on short, non-lazy lists: in a lazy `ListView.builder`/`SliverList` items
   /// re-run this entrance animation every time they scroll back into view,
   /// which flashes during scrolling — prefer plain items there.
-  Widget motionListItem(int index, {Duration? stagger, int maxStaggerItems = 6}) {
+  Widget motionListItem(
+    int index, {
+    Duration? stagger,
+    int maxStaggerItems = 6,
+  }) {
     final steps = index.clamp(0, maxStaggerItems);
     final delay = (stagger ?? const Duration(milliseconds: 50)) * steps;
     return motionEntry(delay: delay, duration: AppDesign.motionStandard);
@@ -356,7 +441,9 @@ class FrostedContainer extends StatelessWidget {
             color: scheme.surface.withValues(alpha: AppDesign.glassTintOpacity),
             borderRadius: radius,
             border: Border.all(
-              color: scheme.outline.withValues(alpha: AppDesign.glassBorderOpacity),
+              color: scheme.outline.withValues(
+                alpha: AppDesign.glassBorderOpacity,
+              ),
             ),
           ),
           child: child,

@@ -1,416 +1,340 @@
 import 'package:flutter/material.dart';
-import '../services/data/admin_service.dart';
-import '../services/data/auth_service.dart';
 import '../services/ui/tutorial_service.dart';
 import '../utils/design_constants.dart';
-import 'app_destinations.dart';
-import 'app_tools.dart';
+import 'app_workspaces.dart';
 
-class AppSidebar extends StatefulWidget {
-  final DrawerScreen currentScreen;
-  final ValueChanged<DrawerScreen> onScreenSelected;
-  final bool collapsed;
-  final VoidCallback? onToggleCollapse;
-  final VoidCallback? onShowCommandPalette;
-
+/// Shared desktop/tablet rail. It deliberately knows nothing about Firebase.
+class AppSidebar extends StatelessWidget {
   const AppSidebar({
     super.key,
-    required this.currentScreen,
-    required this.onScreenSelected,
+    required this.currentWorkspace,
+    required this.workspaces,
+    required this.onWorkspaceSelected,
     required this.collapsed,
-    required this.onToggleCollapse,
-    this.onShowCommandPalette,
+    this.onToggleCollapse,
+    required this.onShowCommandPalette,
+    required this.onShowProfile,
+    required this.onShowTheme,
   });
 
-  @override
-  State<AppSidebar> createState() => _AppSidebarState();
-}
-
-class _AppSidebarState extends State<AppSidebar> {
-  final AuthService _auth = AuthService();
-  final AdminService _adminService = AdminService();
-  int? _hoveredIndex;
-
-  @override
-  void initState() {
-    super.initState();
-    _adminService.addListener(_onAdminChanged);
-  }
-
-  @override
-  void dispose() {
-    _adminService.removeListener(_onAdminChanged);
-    super.dispose();
-  }
-
-  void _onAdminChanged() {
-    if (mounted) setState(() {});
-  }
-
-  /// Straight from [AppDestinations] — the sidebar no longer keeps its own
-  /// copy of the navigation surface, so it can't drift from the command
-  /// palette the way it did when Minors and Academic FAQ landed here only.
-  List<AppDestination> _buildItems() => AppDestinations.visible;
+  final AppWorkspace currentWorkspace;
+  final List<WorkspaceInfo> workspaces;
+  final ValueChanged<AppWorkspace> onWorkspaceSelected;
+  final bool collapsed;
+  final VoidCallback? onToggleCollapse;
+  final VoidCallback onShowCommandPalette;
+  final VoidCallback? onShowProfile;
+  final VoidCallback onShowTheme;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final items = _buildItems();
-    final collapsed = widget.collapsed;
-
+    final motion =
+        MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : AppDesign.animDurationNormal;
     return AnimatedContainer(
       key: TutorialKeys.sidebarNav,
-      duration: AppDesign.animDurationNormal,
-      curve: AppDesign.animCurve,
+      duration: motion,
+      curve: Curves.easeOutCubic,
       clipBehavior: Clip.hardEdge,
-      width: collapsed
-          ? AppDesign.sidebarCollapsedWidth
-          : AppDesign.sidebarWidth,
+      width: collapsed ? 76 : 232,
       decoration: BoxDecoration(
-        color: scheme.surface,
-        border: Border(
-          right: BorderSide(
-            color: scheme.outline.withValues(alpha: 0.12),
-          ),
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(context, scheme, collapsed),
-              if (widget.onShowCommandPalette != null)
-                _buildSearchButton(context, scheme, collapsed),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: AppDesign.spacingSm,
-                    horizontal: AppDesign.spacingSm,
-                  ),
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    final item = items[index];
-                    final isSelected = item.screen == widget.currentScreen;
-                    final isHovered = _hoveredIndex == index;
-                    return _buildItem(
-                      context, scheme, item, isSelected, isHovered, index, collapsed,
-                    ).motionListItem(index, stagger: const Duration(milliseconds: 30));
-                  },
-                ),
-              ),
-              _buildFooter(context, scheme, collapsed),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, ColorScheme scheme, bool collapsed) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: collapsed ? AppDesign.spacingSm : AppDesign.spacingMd,
-        vertical: AppDesign.spacingMd,
-      ),
-      child: Row(
-        mainAxisAlignment: collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: AppDesign.borderRadiusSm,
-            child: Image.asset(
-              'images/logo_nobg.png',
-              width: 36,
-              height: 36,
-            ),
-          ),
-          if (!collapsed) ...[
-            const SizedBox(width: AppDesign.spacingSm + 4),
-            AnimatedOpacity(
-              opacity: collapsed ? 0.0 : 1.0,
-              duration: AppDesign.animDurationFast,
-              child: Text(
-                'Tabulr',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            scheme.surfaceContainerLow,
+            Color.alphaBlend(
+              scheme.primary.withValues(alpha: 0.045),
+              scheme.surface,
             ),
           ],
-        ],
+        ),
+        border: Border(
+          right: BorderSide(color: scheme.outline.withValues(alpha: 0.12)),
+        ),
       ),
-    );
-  }
-
-  Widget _buildSearchButton(
-      BuildContext context, ColorScheme scheme, bool collapsed) {
-    final isMac = Theme.of(context).platform == TargetPlatform.macOS;
-    final shortcut = isMac ? '⌘K' : 'Ctrl K';
-
-    final button = InkWell(
-      onTap: widget.onShowCommandPalette,
-      borderRadius: AppDesign.borderRadiusSm,
-      child: AnimatedContainer(
-        duration: AppDesign.animDurationFast,
-        curve: AppDesign.animCurve,
-        padding: EdgeInsets.symmetric(
-          horizontal: collapsed ? AppDesign.spacingSm : AppDesign.spacingSm + 4,
-          vertical: AppDesign.spacingSm + 2,
-        ),
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
-          borderRadius: AppDesign.borderRadiusSm,
-          border: Border.all(color: scheme.outline.withValues(alpha: 0.12)),
-        ),
-        child: collapsed
-            ? Center(
-                child: Icon(Icons.search,
-                    size: 20, color: scheme.onSurface.withValues(alpha: 0.6)),
-              )
-            : Row(
+      child: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Column(
                 children: [
-                  Icon(Icons.search,
-                      size: 18, color: scheme.onSurface.withValues(alpha: 0.6)),
-                  const SizedBox(width: AppDesign.spacingSm + 4),
-                  Expanded(
-                    child: Text(
-                      'Search…',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: scheme.onSurface.withValues(alpha: 0.5),
-                      ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      collapsed ? 16 : 22,
+                      28,
+                      16,
+                      28,
+                    ),
+                    child: Row(
+                      children: [
+                        Image.asset(
+                          'images/logo_nobg.png',
+                          width: 40,
+                          height: 40,
+                          fit: BoxFit.contain,
+                          semanticLabel: 'Tabulr logo',
+                        ),
+                        Expanded(
+                          child: AnimatedSwitcher(
+                            duration: motion,
+                            switchInCurve: Curves.easeOutCubic,
+                            switchOutCurve: Curves.easeInCubic,
+                            transitionBuilder:
+                                (child, animation) => FadeTransition(
+                                  opacity: animation,
+                                  child: SizeTransition(
+                                    sizeFactor: animation,
+                                    axis: Axis.horizontal,
+                                    alignment: AlignmentDirectional.topStart,
+                                    child: child,
+                                  ),
+                                ),
+                            child:
+                                collapsed
+                                    ? const SizedBox.shrink(
+                                      key: ValueKey('collapsed-brand'),
+                                    )
+                                    : Padding(
+                                      key: const ValueKey('expanded-brand'),
+                                      padding: const EdgeInsets.only(left: 12),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'tabulr',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.clip,
+                                            style: Theme.of(
+                                              context,
+                                            ).textTheme.headlineSmall?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                              letterSpacing: -1,
+                                            ),
+                                          ),
+                                          Text(
+                                            'ACADEMIC WORKSPACE',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 8,
+                                              fontWeight: FontWeight.w600,
+                                              letterSpacing: .6,
+                                              color: scheme.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: scheme.surface,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: scheme.outline.withValues(alpha: 0.15)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: _item(
+                      context,
+                      Icons.search_rounded,
+                      'Search anything',
+                      onShowCommandPalette,
+                      outlined: true,
+                      shortcut: true,
                     ),
-                    child: Text(
-                      shortcut,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: scheme.onSurface.withValues(alpha: 0.45),
-                      ),
+                  ),
+                  const SizedBox(height: 28),
+                  AnimatedSize(
+                    duration: motion,
+                    curve: Curves.easeOutCubic,
+                    alignment: Alignment.topCenter,
+                    child:
+                        collapsed
+                            ? const SizedBox.shrink()
+                            : Padding(
+                              padding: const EdgeInsets.fromLTRB(24, 0, 24, 10),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'WORKSPACES',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 1.6,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Column(
+                      children: [
+                        for (final info in workspaces)
+                          if (AppWorkspaces.primary.contains(info.workspace))
+                            _workspaceItem(context, info),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      children: [
+                        for (final info in workspaces)
+                          if (!AppWorkspaces.primary.contains(info.workspace))
+                            _workspaceItem(context, info),
+                        const SizedBox(height: 8),
+                        Divider(color: scheme.outline.withValues(alpha: 0.15)),
+                        if (onShowProfile != null)
+                          _item(
+                            context,
+                            Icons.badge_outlined,
+                            'Profile',
+                            onShowProfile!,
+                          ),
+                        _item(
+                          context,
+                          Icons.palette_outlined,
+                          'Appearance',
+                          onShowTheme,
+                        ),
+                        if (onToggleCollapse != null)
+                          _item(
+                            context,
+                            collapsed
+                                ? Icons.keyboard_double_arrow_right
+                                : Icons.keyboard_double_arrow_left,
+                            'Collapse sidebar',
+                            onToggleCollapse!,
+                          ),
+                      ],
                     ),
                   ),
                 ],
               ),
-      ),
-    );
-
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        collapsed ? AppDesign.spacingSm : AppDesign.spacingSm + 4,
-        0,
-        collapsed ? AppDesign.spacingSm : AppDesign.spacingSm + 4,
-        AppDesign.spacingSm,
-      ),
-      child: Tooltip(
-        message: collapsed ? 'Search  ·  $shortcut' : '',
-        preferBelow: false,
-        waitDuration: const Duration(milliseconds: 400),
-        child: button,
-      ),
-    );
-  }
-
-  Widget _buildItem(
-    BuildContext context,
-    ColorScheme scheme,
-    AppDestination item,
-    bool isSelected,
-    bool isHovered,
-    int index,
-    bool collapsed,
-  ) {
-    final icon = Icon(
-      item.icon,
-      size: collapsed ? 22 : 20,
-      color: isSelected
-          ? scheme.primary
-          : scheme.onSurface.withValues(alpha: 0.7),
-    );
-
-    final content = collapsed
-        ? Center(child: icon)
-        : Row(
-            children: [
-              icon,
-              const SizedBox(width: AppDesign.spacingSm + 4),
-              Expanded(
-                child: Text(
-                  item.label,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    color: isSelected ? scheme.primary : scheme.onSurface,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
-              ),
-            ],
-          );
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppDesign.spacingXxs),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hoveredIndex = index),
-        onExit: (_) => setState(() => _hoveredIndex = null),
-        child: Tooltip(
-          message: collapsed ? item.label : '',
-          preferBelow: false,
-          waitDuration: const Duration(milliseconds: 400),
-          child: Semantics(
-            label: item.label,
-            button: true,
-            selected: isSelected,
-            child: GestureDetector(
-            onTap: () => widget.onScreenSelected(item.screen),
-            child: AnimatedContainer(
-              duration: AppDesign.animDurationFast,
-              curve: AppDesign.animCurve,
-              padding: EdgeInsets.symmetric(
-                horizontal: collapsed
-                    ? AppDesign.spacingSm
-                    : AppDesign.spacingSm + 4,
-                vertical: AppDesign.spacingSm + 2,
-              ),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? scheme.primary.withValues(alpha: 0.12)
-                    : isHovered
-                        ? scheme.onSurface.withValues(alpha: 0.06)
-                        : Colors.transparent,
-                borderRadius: AppDesign.borderRadiusSm,
-              ),
-              child: content,
             ),
-          ),
-          ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildFooter(BuildContext context, ColorScheme scheme, bool collapsed) {
-    return Container(
-      padding: const EdgeInsets.all(AppDesign.spacingSm),
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(
-            color: scheme.outline.withValues(alpha: 0.12),
-          ),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (_auth.isAuthenticated)
-            _profileFooterButton(context, scheme, collapsed),
-          collapsed
-          ? (widget.onToggleCollapse != null
-              ? Center(
-                  child: IconButton(
-                    onPressed: widget.onToggleCollapse,
-                    icon: const Icon(Icons.chevron_right, size: 20),
-                    tooltip: 'Expand sidebar',
+  Widget _workspaceItem(BuildContext context, WorkspaceInfo info) => _item(
+    context,
+    info.icon,
+    info.label,
+    () => onWorkspaceSelected(info.workspace),
+    selected: currentWorkspace == info.workspace,
+  );
+
+  Widget _item(
+    BuildContext context,
+    IconData icon,
+    String label,
+    VoidCallback onTap, {
+    bool selected = false,
+    bool outlined = false,
+    bool shortcut = false,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    final foreground = selected ? scheme.onPrimary : scheme.onSurface;
+    final motion =
+        MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : AppDesign.animDurationFast;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Semantics(
+        selected: selected,
+        button: true,
+        child: Tooltip(
+          message:
+              shortcut
+                  ? 'Search anything'
+                  : collapsed
+                  ? label
+                  : '',
+          child: TweenAnimationBuilder<Color?>(
+            duration: motion,
+            curve: Curves.easeOutCubic,
+            tween: ColorTween(
+              end: selected ? scheme.primary : Colors.transparent,
+            ),
+            builder:
+                (context, color, child) => Material(
+                  color: color,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side:
+                        outlined
+                            ? BorderSide(
+                              color: scheme.outline.withValues(alpha: 0.2),
+                            )
+                            : BorderSide.none,
                   ),
-                )
-              : const SizedBox.shrink())
-          : Row(
-              children: [
-                Expanded(
                   child: InkWell(
-                    borderRadius: AppDesign.borderRadiusSm,
-                    onTap: () => AppTools.of(AppTool.credits)
-                        .pushOn(Navigator.of(context)),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: AppDesign.spacingSm,
-                          vertical: AppDesign.spacingXs + 2),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            size: 14,
-                            color: scheme.onSurface.withValues(alpha: 0.4),
-                          ),
-                          const SizedBox(width: AppDesign.spacingSm),
-                          Flexible(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Made with ',
-                                  style: TextStyle(fontSize: 11, color: scheme.onSurface.withValues(alpha: 0.4)),
+                    onTap: onTap,
+                    borderRadius: BorderRadius.circular(12),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 48),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: collapsed ? 0 : 12,
+                          vertical: 10,
+                        ),
+                        child: Row(
+                          mainAxisAlignment:
+                              collapsed
+                                  ? MainAxisAlignment.center
+                                  : MainAxisAlignment.start,
+                          children: [
+                            Icon(icon, size: 20, color: foreground),
+                            if (!collapsed) ...[
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  shortcut ? 'Search' : label,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight:
+                                        selected
+                                            ? FontWeight.w600
+                                            : FontWeight.w500,
+                                    color: foreground,
+                                  ),
                                 ),
-                                Icon(Icons.favorite, size: 11, color: Colors.red.withValues(alpha: 0.6)),
+                              ),
+                              if (shortcut)
                                 Text(
-                                  ' for students',
-                                  style: TextStyle(fontSize: 11, color: scheme.onSurface.withValues(alpha: 0.4)),
+                                  Theme.of(context).platform ==
+                                          TargetPlatform.macOS
+                                      ? 'Cmd K'
+                                      : 'Ctrl K',
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.labelSmall?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
                                 ),
-                              ],
-                            ),
-                          ),
-                        ],
+                              if (selected)
+                                Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: 14,
+                                  color: foreground,
+                                ),
+                            ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-                IconButton(
-                  onPressed: widget.onToggleCollapse,
-                  icon: const Icon(Icons.chevron_left, size: 20),
-                  tooltip: 'Collapse sidebar',
-                  iconSize: 20,
-                  visualDensity: VisualDensity.compact,
-                ),
-              ],
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _profileFooterButton(
-      BuildContext context, ColorScheme scheme, bool collapsed) {
-    void open() => AppTools.of(AppTool.profile).pushOn(Navigator.of(context));
-
-    if (collapsed) {
-      return Center(
-        child: IconButton(
-          onPressed: open,
-          icon: const Icon(Icons.badge_outlined, size: 20),
-          tooltip: 'Profile',
-          visualDensity: VisualDensity.compact,
-        ),
-      );
-    }
-
-    return InkWell(
-      borderRadius: AppDesign.borderRadiusSm,
-      onTap: open,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: AppDesign.spacingSm, vertical: AppDesign.spacingSm),
-        child: Row(
-          children: [
-            Icon(Icons.badge_outlined,
-                size: 18, color: scheme.onSurface.withValues(alpha: 0.7)),
-            const SizedBox(width: AppDesign.spacingSm + 4),
-            Text(
-              'Profile',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: scheme.onSurface.withValues(alpha: 0.8),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

@@ -248,4 +248,69 @@ void main() {
       expect(ctrl.avoidedInstructors, ['Prof A', 'Prof B', 'Prof C']);
     });
   });
+
+  group('actionable explanations', () {
+    test('a suggested relaxation only drops the selected hard requirement', () {
+      final ctrl = TimetableGeneratorController();
+      ctrl.setHoursWindow(startSlot: 3, endSlot: 8);
+      ctrl.requireHoursWindow = true;
+      ctrl.toggleFreeDayPreference(DayOfWeek.F);
+      ctrl.requireFreeDays = true;
+
+      expect(
+        ctrl.hardConstraintRelaxations,
+        containsAll([
+          ConstraintRelaxation.hoursWindow,
+          ConstraintRelaxation.freeDays,
+        ]),
+      );
+
+      ctrl.applyRelaxation(ConstraintRelaxation.hoursWindow);
+
+      expect(ctrl.requireHoursWindow, isFalse);
+      expect(ctrl.requireFreeDays, isTrue);
+      expect(
+        ctrl.hasHoursWindow,
+        isTrue,
+        reason: 'the preference remains active for soft ranking',
+      );
+    });
+
+    test('protecting a free-day strength creates a real hard constraint', () {
+      final ctrl = TimetableGeneratorController();
+      final generated = GeneratedTimetable(
+        id: 'Friday off',
+        sections: const [],
+        pros: const [],
+        cons: const [],
+        hoursPerDay: {
+          DayOfWeek.M: 2,
+          DayOfWeek.T: 2,
+          DayOfWeek.W: 2,
+          DayOfWeek.Th: 2,
+          DayOfWeek.F: 0,
+          DayOfWeek.S: 0,
+        },
+      );
+
+      expect(ctrl.protectStrength(RankAxis.freeDays, generated), isTrue);
+      expect(ctrl.freeDayPreference, contains(DayOfWeek.F));
+      expect(ctrl.requireFreeDays, isTrue);
+      expect(ctrl.axisImportance[RankAxis.freeDays], AxisImportance.high);
+    });
+
+    test('does not claim unsupported axes can be hard-locked', () {
+      final ctrl = TimetableGeneratorController();
+      final generated = GeneratedTimetable(
+        id: 'Option',
+        sections: const [],
+        pros: const [],
+        cons: const [],
+        hoursPerDay: const {},
+      );
+
+      expect(ctrl.protectStrength(RankAxis.instructors, generated), isFalse);
+      expect(ctrl.protectStrength(RankAxis.examComfort, generated), isFalse);
+    });
+  });
 }

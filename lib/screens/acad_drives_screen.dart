@@ -25,38 +25,29 @@ import '../widgets/common/app_tappable.dart';
 import '../widgets/common/app_button.dart';
 import '../services/data/courses_master_service.dart';
 import '../utils/page_info_helper.dart';
+import '../widgets/acad_drives/acad_drives_layout.dart';
 
+enum CourseSortOption { nameAsc, nameDesc, fileCountAsc, fileCountDesc }
 
-enum CourseSortOption {
-  nameAsc,
-  nameDesc,
-  fileCountAsc,
-  fileCountDesc,
-}
-
-enum FileSortOption {
-  nameAsc,
-  nameDesc,
-  dateAsc,
-  dateDesc,
-  sizeAsc,
-  sizeDesc,
-}
+enum FileSortOption { nameAsc, nameDesc, dateAsc, dateDesc, sizeAsc, sizeDesc }
 
 int _naturalSort(String a, String b) {
   final regex = RegExp(r'(\d+|\D+)');
-  final aParts = regex.allMatches(a.toLowerCase()).map((m) => m.group(0)!).toList();
-  final bParts = regex.allMatches(b.toLowerCase()).map((m) => m.group(0)!).toList();
-  
-  final minLength = aParts.length < bParts.length ? aParts.length : bParts.length;
-  
+  final aParts =
+      regex.allMatches(a.toLowerCase()).map((m) => m.group(0)!).toList();
+  final bParts =
+      regex.allMatches(b.toLowerCase()).map((m) => m.group(0)!).toList();
+
+  final minLength =
+      aParts.length < bParts.length ? aParts.length : bParts.length;
+
   for (int i = 0; i < minLength; i++) {
     final aPart = aParts[i];
     final bPart = bParts[i];
-    
+
     final aNum = int.tryParse(aPart);
     final bNum = int.tryParse(bPart);
-    
+
     if (aNum != null && bNum != null) {
       final comparison = aNum.compareTo(bNum);
       if (comparison != 0) return comparison;
@@ -65,7 +56,7 @@ int _naturalSort(String a, String b) {
       if (comparison != 0) return comparison;
     }
   }
-  
+
   return aParts.length.compareTo(bParts.length);
 }
 
@@ -88,6 +79,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   bool _hasMoreCourses = true;
   bool _isLoadingFiles = false;
   DocumentSnapshot? _lastCourseDoc;
+  DocumentSnapshot? _lastFileDoc;
+  bool _hasMoreFiles = false;
+  int _fileRequestId = 0;
   int _totalCourseCount = 0;
 
   bool _isSubmitting = false;
@@ -124,23 +118,26 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         );
       }
     });
-    CommandPaletteActions.register(DrawerScreen.acadDrives, () => [
-      CommandPaletteEntry(
-        label: 'Submit Drive Link',
-        subtitle: 'Submit a new academic resource link',
-        icon: Icons.add_link,
-        category: CommandCategory.context,
-        onSelect: _showSubmitDialog,
-      ),
-      if (_selectedCourse != null)
+    CommandPaletteActions.register(
+      DrawerScreen.acadDrives,
+      () => [
         CommandPaletteEntry(
-          label: 'Back to Courses',
-          subtitle: 'Return to course list',
-          icon: Icons.arrow_back,
+          label: 'Submit Drive Link',
+          subtitle: 'Submit a new academic resource link',
+          icon: Icons.add_link,
           category: CommandCategory.context,
-          onSelect: _goBackToCourses,
+          onSelect: _showSubmitDialog,
         ),
-    ]);
+        if (_selectedCourse != null)
+          CommandPaletteEntry(
+            label: 'Back to Courses',
+            subtitle: 'Return to course list',
+            icon: Icons.arrow_back,
+            category: CommandCategory.context,
+            onSelect: _goBackToCourses,
+          ),
+      ],
+    );
   }
 
   @override
@@ -167,17 +164,18 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
       final docs = await _drivesService.fetchCoursesByCodes(codes);
       final master = CoursesMasterService();
-      final entries = docs.map((doc) {
-        final data = doc.data();
-        final code = data['code'] ?? doc.id;
-        final title = master.getTitle(code);
-        return {
-          'code': code,
-          'name': title != code ? title : '',
-          'fileCount': data['fileCount'] ?? 0,
-          'driveCount': data['driveCount'] ?? 0,
-        };
-      }).toList();
+      final entries =
+          docs.map((doc) {
+            final data = doc.data();
+            final code = data['code'] ?? doc.id;
+            final title = master.getTitle(code);
+            return {
+              'code': code,
+              'name': title != code ? title : '',
+              'fileCount': data['fileCount'] ?? 0,
+              'driveCount': data['driveCount'] ?? 0,
+            };
+          }).toList();
 
       final normalizedCodes = codes.map((c) => c.toUpperCase()).toSet();
       if (mounted) {
@@ -187,7 +185,11 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         });
       }
     } catch (e) {
-      SecureLogger.warning('ACAD_DRIVES', 'Failed to load enrolled course codes', {'error': e.toString()});
+      SecureLogger.warning(
+        'ACAD_DRIVES',
+        'Failed to load enrolled course codes',
+        {'error': e.toString()},
+      );
     }
   }
 
@@ -212,7 +214,10 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       _totalCourseCount = await _drivesService.getCourseCount();
 
       final query = _buildCourseQuery();
-      final snapshot = await _drivesService.fetchCourses(query, limit: _coursePageSize);
+      final snapshot = await _drivesService.fetchCourses(
+        query,
+        limit: _coursePageSize,
+      );
 
       setState(() {
         _courses = _parseCourses(snapshot.docs);
@@ -267,7 +272,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     }
   }
 
-  List<Map<String, dynamic>> _parseCourses(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+  List<Map<String, dynamic>> _parseCourses(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
     final master = CoursesMasterService();
     return docs.map((doc) {
       final data = doc.data();
@@ -283,7 +290,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     }).toList();
   }
 
-  List<Map<String, dynamic>> _parseCourseMaps(List<Map<String, dynamic>> rawMaps) {
+  List<Map<String, dynamic>> _parseCourseMaps(
+    List<Map<String, dynamic>> rawMaps,
+  ) {
     final master = CoursesMasterService();
     return rawMaps.map((data) {
       final code = data['code'] ?? data['_docId'] ?? '';
@@ -294,9 +303,12 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         'name': title != code ? title : '',
         'fileCount': data['fileCount'] ?? 0,
         'driveCount': data['driveCount'] ?? 0,
-        'driveLinks': driveLinks is Map<String, dynamic>
-            ? driveLinks
-            : (driveLinks is Map ? Map<String, dynamic>.from(driveLinks) : <String, dynamic>{}),
+        'driveLinks':
+            driveLinks is Map<String, dynamic>
+                ? driveLinks
+                : (driveLinks is Map
+                    ? Map<String, dynamic>.from(driveLinks)
+                    : <String, dynamic>{}),
       };
     }).toList();
   }
@@ -319,6 +331,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   bool _isLoadingMoreFiles = false;
 
   Future<void> _loadCourseFiles(String courseCode) async {
+    final requestId = ++_fileRequestId;
     final courseEntry = _courses.firstWhere(
       (c) => c['code'] == courseCode,
       orElse: () => <String, dynamic>{},
@@ -327,33 +340,36 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       _isLoadingFiles = true;
       _isLoadingMoreFiles = false;
       _selectedCourse = courseCode;
-      _selectedDriveLinks = (courseEntry['driveLinks'] as Map<String, dynamic>?) ?? {};
+      _selectedDriveLinks =
+          (courseEntry['driveLinks'] as Map<String, dynamic>?) ?? {};
       _courseFiles = [];
+      _lastFileDoc = null;
+      _hasMoreFiles = false;
     });
 
     try {
-      final filesSnapshot = await _drivesService.fetchCourseFiles(
+      final snapshot = await _drivesService.fetchCourseFiles(
         courseCode,
         limit: _filePageSize,
       );
+      if (!mounted ||
+          requestId != _fileRequestId ||
+          _selectedCourse != courseCode) {
+        return;
+      }
 
-      final files = filesSnapshot.docs.map((doc) {
-        final data = doc.data();
-        return {
-          'id': doc.id,
-          ...data,
-        };
-      }).toList();
-
+      final files =
+          snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList();
       setState(() {
         _courseFiles = files;
+        _lastFileDoc = snapshot.docs.isEmpty ? null : snapshot.docs.last;
+        _hasMoreFiles =
+            snapshot.docs.length == _filePageSize &&
+            files.length < AppLimits.acadDriveFileMaxSize;
         _isLoadingFiles = false;
       });
-
-      if (files.length == _filePageSize) {
-        _loadRemainingFiles(courseCode, filesSnapshot.docs.last);
-      }
     } catch (e) {
+      if (!mounted || requestId != _fileRequestId) return;
       setState(() {
         _courseFiles = [];
         _isLoadingFiles = false;
@@ -362,36 +378,65 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     }
   }
 
-  Future<void> _loadRemainingFiles(String courseCode, DocumentSnapshot lastDoc) async {
-    if (_selectedCourse != courseCode) return;
+  Future<void> _loadMoreFiles() async {
+    final courseCode = _selectedCourse;
+    final cursor = _lastFileDoc;
+    if (courseCode == null ||
+        cursor == null ||
+        _isLoadingMoreFiles ||
+        !_hasMoreFiles) {
+      return;
+    }
+
+    final requestId = _fileRequestId;
+    final remaining = AppLimits.acadDriveFileMaxSize - _courseFiles.length;
+    if (remaining <= 0) {
+      setState(() => _hasMoreFiles = false);
+      return;
+    }
+    final limit = remaining < _filePageSize ? remaining : _filePageSize;
     setState(() => _isLoadingMoreFiles = true);
 
     try {
       final snapshot = await _drivesService.fetchCourseFiles(
         courseCode,
-        limit: AppLimits.acadDriveFileMaxSize - _filePageSize,
-        startAfter: lastDoc,
+        limit: limit,
+        startAfter: cursor,
       );
+      if (!mounted ||
+          requestId != _fileRequestId ||
+          _selectedCourse != courseCode) {
+        return;
+      }
 
-      if (_selectedCourse != courseCode || !mounted) return;
-
-      final moreFiles = snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList();
+      final moreFiles =
+          snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList();
       setState(() {
         _courseFiles.addAll(moreFiles);
+        _lastFileDoc = snapshot.docs.isEmpty ? cursor : snapshot.docs.last;
+        _hasMoreFiles =
+            snapshot.docs.length == limit &&
+            _courseFiles.length < AppLimits.acadDriveFileMaxSize;
         _isLoadingMoreFiles = false;
       });
     } catch (_) {
-      if (mounted) setState(() => _isLoadingMoreFiles = false);
+      if (mounted && requestId == _fileRequestId) {
+        setState(() => _isLoadingMoreFiles = false);
+      }
     }
   }
 
   void _goBackToCourses() {
+    _fileRequestId++;
     setState(() {
       _selectedCourse = null;
       _showingBookmarks = false;
       _selectedDriveLinks = {};
       _courseFiles = [];
       _bookmarkedFiles = [];
+      _lastFileDoc = null;
+      _hasMoreFiles = false;
+      _isLoadingMoreFiles = false;
       _searchController.clear();
       _searchQuery = '';
     });
@@ -444,21 +489,34 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       result = List.of(_courses);
     } else {
       final query = _searchQuery.toLowerCase();
-      result = _courses.where((course) {
-        final code = (course['code'] ?? '').toString().toLowerCase();
-        final name = (course['name'] ?? '').toString().toLowerCase();
-        return code.contains(query) || name.contains(query);
-      }).toList();
+      result =
+          _courses.where((course) {
+            final code = (course['code'] ?? '').toString().toLowerCase();
+            final name = (course['name'] ?? '').toString().toLowerCase();
+            return code.contains(query) || name.contains(query);
+          }).toList();
 
       switch (_courseSortOption) {
         case CourseSortOption.nameAsc:
-          result.sort((a, b) => (a['code'] ?? '').toString().toLowerCase().compareTo((b['code'] ?? '').toString().toLowerCase()));
+          result.sort(
+            (a, b) => (a['code'] ?? '').toString().toLowerCase().compareTo(
+              (b['code'] ?? '').toString().toLowerCase(),
+            ),
+          );
         case CourseSortOption.nameDesc:
-          result.sort((a, b) => (b['code'] ?? '').toString().toLowerCase().compareTo((a['code'] ?? '').toString().toLowerCase()));
+          result.sort(
+            (a, b) => (b['code'] ?? '').toString().toLowerCase().compareTo(
+              (a['code'] ?? '').toString().toLowerCase(),
+            ),
+          );
         case CourseSortOption.fileCountAsc:
-          result.sort((a, b) => (a['fileCount'] as int).compareTo(b['fileCount'] as int));
+          result.sort(
+            (a, b) => (a['fileCount'] as int).compareTo(b['fileCount'] as int),
+          );
         case CourseSortOption.fileCountDesc:
-          result.sort((a, b) => (b['fileCount'] as int).compareTo(a['fileCount'] as int));
+          result.sort(
+            (a, b) => (b['fileCount'] as int).compareTo(a['fileCount'] as int),
+          );
       }
     }
 
@@ -478,26 +536,38 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
   List<Map<String, dynamic>> get _filteredFiles {
     List<Map<String, dynamic>> filtered;
-    
+
     if (_searchQuery.isEmpty) {
       filtered = List.from(_courseFiles);
     } else {
-      filtered = _courseFiles.where((file) {
-        final name = (file['name'] ?? '').toString().toLowerCase();
-        final path = (file['path'] ?? '').toString().toLowerCase();
-        final tags = (file['tags'] as List<dynamic>? ?? []).join(' ').toLowerCase();
-        final query = _searchQuery.toLowerCase();
-        return name.contains(query) || path.contains(query) || tags.contains(query);
-      }).toList();
+      filtered =
+          _courseFiles.where((file) {
+            final name = (file['name'] ?? '').toString().toLowerCase();
+            final path = (file['path'] ?? '').toString().toLowerCase();
+            final tags =
+                (file['tags'] as List<dynamic>? ?? []).join(' ').toLowerCase();
+            final query = _searchQuery.toLowerCase();
+            return name.contains(query) ||
+                path.contains(query) ||
+                tags.contains(query);
+          }).toList();
     }
-    
+
     // Apply sorting
     switch (_fileSortOption) {
       case FileSortOption.nameAsc:
-        filtered.sort((a, b) => (a['name'] ?? '').toString().toLowerCase().compareTo((b['name'] ?? '').toString().toLowerCase()));
+        filtered.sort(
+          (a, b) => (a['name'] ?? '').toString().toLowerCase().compareTo(
+            (b['name'] ?? '').toString().toLowerCase(),
+          ),
+        );
         break;
       case FileSortOption.nameDesc:
-        filtered.sort((a, b) => (b['name'] ?? '').toString().toLowerCase().compareTo((a['name'] ?? '').toString().toLowerCase()));
+        filtered.sort(
+          (a, b) => (b['name'] ?? '').toString().toLowerCase().compareTo(
+            (a['name'] ?? '').toString().toLowerCase(),
+          ),
+        );
         break;
       case FileSortOption.dateAsc:
         filtered.sort((a, b) {
@@ -506,8 +576,14 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           if (aDate == null && bDate == null) return 0;
           if (aDate == null) return -1;
           if (bDate == null) return 1;
-          final aDateTime = aDate is Timestamp ? aDate.toDate() : DateTime.tryParse(aDate.toString()) ?? DateTime(1970);
-          final bDateTime = bDate is Timestamp ? bDate.toDate() : DateTime.tryParse(bDate.toString()) ?? DateTime(1970);
+          final aDateTime =
+              aDate is Timestamp
+                  ? aDate.toDate()
+                  : DateTime.tryParse(aDate.toString()) ?? DateTime(1970);
+          final bDateTime =
+              bDate is Timestamp
+                  ? bDate.toDate()
+                  : DateTime.tryParse(bDate.toString()) ?? DateTime(1970);
           return aDateTime.compareTo(bDateTime);
         });
         break;
@@ -518,19 +594,29 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           if (aDate == null && bDate == null) return 0;
           if (aDate == null) return 1;
           if (bDate == null) return -1;
-          final aDateTime = aDate is Timestamp ? aDate.toDate() : DateTime.tryParse(aDate.toString()) ?? DateTime(1970);
-          final bDateTime = bDate is Timestamp ? bDate.toDate() : DateTime.tryParse(bDate.toString()) ?? DateTime(1970);
+          final aDateTime =
+              aDate is Timestamp
+                  ? aDate.toDate()
+                  : DateTime.tryParse(aDate.toString()) ?? DateTime(1970);
+          final bDateTime =
+              bDate is Timestamp
+                  ? bDate.toDate()
+                  : DateTime.tryParse(bDate.toString()) ?? DateTime(1970);
           return bDateTime.compareTo(aDateTime);
         });
         break;
       case FileSortOption.sizeAsc:
-        filtered.sort((a, b) => (a['size'] as int? ?? 0).compareTo(b['size'] as int? ?? 0));
+        filtered.sort(
+          (a, b) => (a['size'] as int? ?? 0).compareTo(b['size'] as int? ?? 0),
+        );
         break;
       case FileSortOption.sizeDesc:
-        filtered.sort((a, b) => (b['size'] as int? ?? 0).compareTo(a['size'] as int? ?? 0));
+        filtered.sort(
+          (a, b) => (b['size'] as int? ?? 0).compareTo(a['size'] as int? ?? 0),
+        );
         break;
     }
-    
+
     return filtered;
   }
 
@@ -542,14 +628,14 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       } else if (type == 'download') {
         url = file['url'];
       }
-      
+
       if (url != null) {
-              web_utils.openUrl(url);
-            } else {
+        web_utils.openUrl(url);
+      } else {
         ToastService.showError('File URL not available');
       }
     }
-    }
+  }
 
   bool _isDownloading = false;
   bool _downloadCancelled = false;
@@ -562,12 +648,15 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     if (_isDownloading) return;
 
     final allFiles = folderTree.collectAllFiles();
-    final downloadable = allFiles.where((f) {
-      final url = f.file['url'];
-      if (url == null || url == 'NA' || url.toString().trim().isEmpty) return false;
-      final uri = Uri.tryParse(url.toString());
-      return uri != null && uri.scheme == 'https';
-    }).toList();
+    final downloadable =
+        allFiles.where((f) {
+          final url = f.file['url'];
+          if (url == null || url == 'NA' || url.toString().trim().isEmpty) {
+            return false;
+          }
+          final uri = Uri.tryParse(url.toString());
+          return uri != null && uri.scheme == 'https';
+        }).toList();
 
     if (downloadable.isEmpty) {
       ToastService.showError('No downloadable files found');
@@ -583,43 +672,46 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => PopScope(
-        canPop: false,
-        child: AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 8),
-              ValueListenableBuilder<double>(
-                valueListenable: progressValue,
-                builder: (_, value, __) => LinearProgressIndicator(
-                  value: value > 0 ? value : null,
-                  minHeight: 6,
-                  borderRadius: BorderRadius.circular(3),
-                ),
+      builder:
+          (ctx) => PopScope(
+            canPop: false,
+            child: AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 8),
+                  ValueListenableBuilder<double>(
+                    valueListenable: progressValue,
+                    builder:
+                        (_, value, __) => LinearProgressIndicator(
+                          value: value > 0 ? value : null,
+                          minHeight: 6,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                  ),
+                  const SizedBox(height: 16),
+                  ValueListenableBuilder<String>(
+                    valueListenable: progressNotifier,
+                    builder:
+                        (_, text, __) => Text(
+                          text,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(ctx).textTheme.bodyMedium,
+                        ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              ValueListenableBuilder<String>(
-                valueListenable: progressNotifier,
-                builder: (_, text, __) => Text(
-                  text,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(ctx).textTheme.bodyMedium,
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    _downloadCancelled = true;
+                    Navigator.of(ctx).pop();
+                  },
+                  child: const Text('Cancel'),
                 ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                _downloadCancelled = true;
-                Navigator.of(ctx).pop();
-              },
-              child: const Text('Cancel'),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
     );
 
     try {
@@ -632,15 +724,20 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         if (_downloadCancelled) break;
         try {
           final uri = Uri.parse(entry.file['url']);
-          if (uri.scheme != 'https') { failed++; continue; }
+          if (uri.scheme != 'https') {
+            failed++;
+            continue;
+          }
           final response = await http.get(uri);
           if (_downloadCancelled) break;
           if (response.statusCode == 200) {
-            archive.addFile(arch.ArchiveFile(
-              entry.path,
-              response.bodyBytes.length,
-              response.bodyBytes,
-            ));
+            archive.addFile(
+              arch.ArchiveFile(
+                entry.path,
+                response.bodyBytes.length,
+                response.bodyBytes,
+              ),
+            );
             fetched++;
           } else {
             failed++;
@@ -649,7 +746,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           failed++;
         }
         progressValue.value = (fetched + failed) / total;
-        progressNotifier.value = 'Downloading ${fetched + failed}/$total files...';
+        progressNotifier.value =
+            'Downloading ${fetched + failed}/$total files...';
       }
 
       if (_downloadCancelled) {
@@ -712,42 +810,51 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
             const SizedBox(height: 16),
             Text(
               'Metadata',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
 
             if (file['contributor'] != null)
               _InfoRow('Contributor', file['contributor']),
 
-            if (file['driveName'] != null)
-              _InfoRow('Drive', file['driveName']),
+            if (file['driveName'] != null) _InfoRow('Drive', file['driveName']),
 
-            if (file['course_codes'] != null && (file['course_codes'] as List).isNotEmpty)
-              _InfoRow('Course', (file['course_codes'] as List).first.toString()),
+            if (file['course_codes'] != null &&
+                (file['course_codes'] as List).isNotEmpty)
+              _InfoRow(
+                'Course',
+                (file['course_codes'] as List).first.toString(),
+              ),
 
             if (file['tags'] != null && (file['tags'] as List).isNotEmpty) ...[
               const SizedBox(height: 16),
               Text(
                 'Tags',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: (file['tags'] as List<dynamic>)
-                    .map((tag) => Chip(
-                          label: Text(
-                            tag.toString(),
-                            style: Theme.of(context).textTheme.bodySmall,
+                children:
+                    (file['tags'] as List<dynamic>)
+                        .map(
+                          (tag) => Chip(
+                            label: Text(
+                              tag.toString(),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            backgroundColor:
+                                Theme.of(
+                                  context,
+                                ).colorScheme.secondaryContainer,
                           ),
-                          backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                        ))
-                    .toList(),
+                        )
+                        .toList(),
               ),
             ],
           ],
@@ -775,7 +882,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
             Text(
               'Share your notes, papers, or other academic materials with the community',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
             const SizedBox(height: 20),
@@ -814,17 +923,14 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           variant: AppButtonVariant.ghost,
           onTap: () => Navigator.of(context).pop(),
         ),
-        AppButton(
-          label: 'Submit',
-          onTap: _isSubmitting ? null : _submitLink,
-        ),
+        AppButton(label: 'Submit', onTap: _isSubmitting ? null : _submitLink),
       ],
     );
   }
 
   Future<void> _submitLink() async {
-    if (_driveLinkController.text.isEmpty || 
-        _titleController.text.isEmpty || 
+    if (_driveLinkController.text.isEmpty ||
+        _titleController.text.isEmpty ||
         _contributorController.text.isEmpty) {
       ToastService.showError('Please fill in all required fields');
       return;
@@ -838,7 +944,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       // Get user email from auth service
       final authService = AuthService();
       final userEmail = authService.userEmail;
-      
+
       final submissionData = {
         'driveLink': _driveLinkController.text.trim(),
         'title': _titleController.text.trim(),
@@ -850,12 +956,14 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
       await _drivesService.submitDriveLink(submissionData);
 
-      ToastService.showSuccess('✅ Thank you! Your submission has been received and is pending approval.');
-      
+      ToastService.showSuccess(
+        '✅ Thank you! Your submission has been received and is pending approval.',
+      );
+
       if (mounted) {
         Navigator.of(context).pop();
       }
-      
+
       // Clear form
       _driveLinkController.clear();
       _titleController.clear();
@@ -875,10 +983,22 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     if (mt.contains('image')) return Icons.image_rounded;
     if (mt.contains('video')) return Icons.videocam_rounded;
     if (mt.contains('audio')) return Icons.audiotrack_rounded;
-    if (mt.contains('spreadsheet') || mt.contains('excel') || mt.contains('csv')) return Icons.table_chart_rounded;
-    if (mt.contains('presentation') || mt.contains('powerpoint')) return Icons.slideshow_rounded;
-    if (mt.contains('document') || mt.contains('word') || mt.contains('msword')) return Icons.article_rounded;
-    if (mt.contains('zip') || mt.contains('rar') || mt.contains('compressed')) return Icons.folder_zip_rounded;
+    if (mt.contains('spreadsheet') ||
+        mt.contains('excel') ||
+        mt.contains('csv')) {
+      return Icons.table_chart_rounded;
+    }
+    if (mt.contains('presentation') || mt.contains('powerpoint')) {
+      return Icons.slideshow_rounded;
+    }
+    if (mt.contains('document') ||
+        mt.contains('word') ||
+        mt.contains('msword')) {
+      return Icons.article_rounded;
+    }
+    if (mt.contains('zip') || mt.contains('rar') || mt.contains('compressed')) {
+      return Icons.folder_zip_rounded;
+    }
     if (mt.contains('text')) return Icons.description_rounded;
     return Icons.insert_drive_file_rounded;
   }
@@ -894,53 +1014,48 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       context: context,
       title: 'Sort Courses',
       icon: Icons.sort,
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: CourseSortOption.values.map((option) {
-          String title;
-          String subtitle;
-          IconData icon;
-
-          switch (option) {
-            case CourseSortOption.nameAsc:
-              title = 'Name A-Z';
-              subtitle = 'Sort by course name ascending';
-              icon = Icons.sort_by_alpha;
-              break;
-            case CourseSortOption.nameDesc:
-              title = 'Name Z-A';
-              subtitle = 'Sort by course name descending';
-              icon = Icons.sort_by_alpha;
-              break;
-            case CourseSortOption.fileCountAsc:
-              title = 'Files Count ↑';
-              subtitle = 'Sort by file count ascending';
-              icon = Icons.trending_up;
-              break;
-            case CourseSortOption.fileCountDesc:
-              title = 'Files Count ↓';
-              subtitle = 'Sort by file count descending';
-              icon = Icons.trending_down;
-              break;
-          }
-
-          return RadioListTile<CourseSortOption>(
-            value: option,
-            groupValue: _courseSortOption, // ignore: deprecated_member_use
-            onChanged: (value) { // ignore: deprecated_member_use
-              setState(() {
-                _courseSortOption = value!;
-              });
-              Navigator.pop(context);
-              if (_searchQuery.isEmpty) {
-                _loadCourses();
-              }
-            },
-            title: Text(title),
-            subtitle: Text(subtitle),
-            secondary: Icon(icon),
-          );
-        }).toList(),
+      content: RadioGroup<CourseSortOption>(
+        groupValue: _courseSortOption,
+        onChanged: (value) {
+          if (value == null) return;
+          setState(() => _courseSortOption = value);
+          Navigator.pop(context);
+          if (_searchQuery.isEmpty) _loadCourses();
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children:
+              CourseSortOption.values.map((option) {
+                final (title, subtitle, icon) = switch (option) {
+                  CourseSortOption.nameAsc => (
+                    'Name A-Z',
+                    'Sort by course name ascending',
+                    Icons.sort_by_alpha,
+                  ),
+                  CourseSortOption.nameDesc => (
+                    'Name Z-A',
+                    'Sort by course name descending',
+                    Icons.sort_by_alpha,
+                  ),
+                  CourseSortOption.fileCountAsc => (
+                    'Files Count ↑',
+                    'Sort by file count ascending',
+                    Icons.trending_up,
+                  ),
+                  CourseSortOption.fileCountDesc => (
+                    'Files Count ↓',
+                    'Sort by file count descending',
+                    Icons.trending_down,
+                  ),
+                };
+                return RadioListTile<CourseSortOption>(
+                  value: option,
+                  title: Text(title),
+                  subtitle: Text(subtitle),
+                  secondary: Icon(icon),
+                );
+              }).toList(),
+        ),
       ),
     );
   }
@@ -950,67 +1065,64 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       context: context,
       title: 'Sort Files',
       icon: Icons.sort,
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: FileSortOption.values.map((option) {
-          String title;
-          String subtitle;
-          IconData icon;
-
-          switch (option) {
-            case FileSortOption.nameAsc:
-              title = 'Name A-Z';
-              subtitle = 'Sort by filename ascending';
-              icon = Icons.sort_by_alpha;
-              break;
-            case FileSortOption.nameDesc:
-              title = 'Name Z-A';
-              subtitle = 'Sort by filename descending';
-              icon = Icons.sort_by_alpha;
-              break;
-            case FileSortOption.dateAsc:
-              title = 'Date Oldest';
-              subtitle = 'Sort by upload date ascending';
-              icon = Icons.schedule;
-              break;
-            case FileSortOption.dateDesc:
-              title = 'Date Newest';
-              subtitle = 'Sort by upload date descending';
-              icon = Icons.schedule;
-              break;
-            case FileSortOption.sizeAsc:
-              title = 'Size Smallest';
-              subtitle = 'Sort by file size ascending';
-              icon = Icons.storage;
-              break;
-            case FileSortOption.sizeDesc:
-              title = 'Size Largest';
-              subtitle = 'Sort by file size descending';
-              icon = Icons.storage;
-              break;
-          }
-
-          return RadioListTile<FileSortOption>(
-            value: option,
-            groupValue: _fileSortOption, // ignore: deprecated_member_use
-            onChanged: (value) { // ignore: deprecated_member_use
-              setState(() {
-                _fileSortOption = value!;
-              });
-              Navigator.pop(context);
-            },
-            title: Text(title),
-            subtitle: Text(subtitle),
-            secondary: Icon(icon),
-          );
-        }).toList(),
+      content: RadioGroup<FileSortOption>(
+        groupValue: _fileSortOption,
+        onChanged: (value) {
+          if (value == null) return;
+          setState(() => _fileSortOption = value);
+          Navigator.pop(context);
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children:
+              FileSortOption.values.map((option) {
+                final (title, subtitle, icon) = switch (option) {
+                  FileSortOption.nameAsc => (
+                    'Name A-Z',
+                    'Sort by filename ascending',
+                    Icons.sort_by_alpha,
+                  ),
+                  FileSortOption.nameDesc => (
+                    'Name Z-A',
+                    'Sort by filename descending',
+                    Icons.sort_by_alpha,
+                  ),
+                  FileSortOption.dateAsc => (
+                    'Date Oldest',
+                    'Sort by upload date ascending',
+                    Icons.schedule,
+                  ),
+                  FileSortOption.dateDesc => (
+                    'Date Newest',
+                    'Sort by upload date descending',
+                    Icons.schedule,
+                  ),
+                  FileSortOption.sizeAsc => (
+                    'Size Smallest',
+                    'Sort by file size ascending',
+                    Icons.storage,
+                  ),
+                  FileSortOption.sizeDesc => (
+                    'Size Largest',
+                    'Sort by file size descending',
+                    Icons.storage,
+                  ),
+                };
+                return RadioListTile<FileSortOption>(
+                  value: option,
+                  title: Text(title),
+                  subtitle: Text(subtitle),
+                  secondary: Icon(icon),
+                );
+              }).toList(),
+        ),
       ),
     );
   }
 
   String _formatDate(dynamic dateValue) {
     DateTime date;
-    
+
     if (dateValue is Timestamp) {
       date = dateValue.toDate();
     } else if (dateValue is String) {
@@ -1020,7 +1132,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     } else {
       return 'Unknown';
     }
-    
+
     final now = DateTime.now();
     final difference = now.difference(date).inDays;
     if (difference == 0) return 'Today';
@@ -1029,119 +1141,392 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppDesign.appBar(
-        context,
-        titleWidget: Text(_showingBookmarks ? 'Bookmarks' : (_selectedCourse ?? 'Academic Drives')),
-        leading: (_selectedCourse != null || _showingBookmarks)
-            ? IconButton(
-                onPressed: _goBackToCourses,
-                icon: const Icon(Icons.arrow_back),
-                tooltip: 'Back to Courses',
-              )
-            : null,
-        actions: [
-          if (!_showingBookmarks && _selectedCourse == null)
-            IconButton(
-              onPressed: _loadBookmarks,
-              icon: Badge(
-                isLabelVisible: UserSettingsService().acadDriveBookmarks.isNotEmpty,
-                label: Text('${UserSettingsService().acadDriveBookmarks.length}'),
-                child: const Icon(Icons.bookmark_rounded),
-              ),
-              tooltip: 'Bookmarks',
+  Map<String, dynamic>? _courseEntryFor(String? code) {
+    if (code == null) return null;
+    for (final course in [..._enrolledCourseEntries, ..._courses]) {
+      if (course['code'] == code) return course;
+    }
+    return null;
+  }
+
+  Widget _buildDrivesHero() {
+    final scheme = Theme.of(context).colorScheme;
+    final selectedEntry = _courseEntryFor(_selectedCourse);
+    final selectedTitle = (selectedEntry?['name'] ?? '').toString();
+    final bookmarks = UserSettingsService().acadDriveBookmarks.length;
+    final starred = UserSettingsService().starredCourses.length;
+
+    final title =
+        _showingBookmarks
+            ? 'Your saved resource shelf'
+            : _selectedCourse != null
+            ? _selectedCourse!
+            : 'Find the material behind every course';
+    final description =
+        _showingBookmarks
+            ? 'Everything you bookmarked, collected in one focused view.'
+            : _selectedCourse != null
+            ? (selectedTitle.isEmpty
+                ? 'Browse folders, preview file details, or open the source drive.'
+                : '$selectedTitle · Browse folders, files, and source drives.')
+            : 'Past papers, slides, notes, and student-contributed drives in one searchable library.';
+
+    return AcadDrivesHeader(
+      icon:
+          _showingBookmarks
+              ? Icons.bookmarks_rounded
+              : _selectedCourse != null
+              ? Icons.folder_open_rounded
+              : Icons.local_library_rounded,
+      eyebrow:
+          _showingBookmarks
+              ? 'Saved resources'
+              : _selectedCourse != null
+              ? 'Course library'
+              : 'Academic drives',
+      title: title,
+      description: description,
+      accent: scheme.tertiary,
+      metrics:
+          _selectedCourse != null && !_showingBookmarks
+              ? [
+                AcadDrivesMetric(
+                  value: '${_courseFiles.length}',
+                  label: 'files loaded',
+                  icon: Icons.description_outlined,
+                ),
+                AcadDrivesMetric(
+                  value: '${_selectedDriveLinks.length}',
+                  label: 'source drives',
+                  icon: Icons.cloud_outlined,
+                ),
+                AcadDrivesMetric(
+                  value: '$bookmarks',
+                  label: 'bookmarked',
+                  icon: Icons.bookmark_outline_rounded,
+                ),
+              ]
+              : [
+                AcadDrivesMetric(
+                  value:
+                      '${_totalCourseCount > 0 ? _totalCourseCount : _courses.length}',
+                  label: 'courses',
+                  icon: Icons.menu_book_rounded,
+                ),
+                AcadDrivesMetric(
+                  value: '$starred',
+                  label: 'starred',
+                  icon: Icons.star_outline_rounded,
+                ),
+                AcadDrivesMetric(
+                  value: '$bookmarks',
+                  label: 'bookmarked',
+                  icon: Icons.bookmark_outline_rounded,
+                ),
+              ],
+      actions: [
+        OutlinedButton.icon(
+          onPressed: _showingBookmarks ? _goBackToCourses : _loadBookmarks,
+          icon: Badge(
+            isLabelVisible: !_showingBookmarks && bookmarks > 0,
+            label: Text('$bookmarks'),
+            child: Icon(
+              _showingBookmarks
+                  ? Icons.arrow_back_rounded
+                  : Icons.bookmarks_outlined,
+              size: 18,
             ),
-          PageInfoHelper.infoButton(context, PageInfoHelper.acadDrives, key: TutorialKeys.infoAcadDrives),
-          IconButton(
-            key: TutorialKeys.acadDrivesSubmit,
-            onPressed: _showSubmitDialog,
-            icon: const Icon(Icons.cloud_upload_outlined),
-            tooltip: 'Submit Resource',
+          ),
+          label: Text(_showingBookmarks ? 'All courses' : 'Bookmarks'),
+        ),
+        FilledButton.icon(
+          key: TutorialKeys.acadDrivesSubmit,
+          onPressed: _showSubmitDialog,
+          icon: const Icon(Icons.add_link_rounded, size: 18),
+          label: const Text('Submit resource'),
+        ),
+      ],
+    );
+  }
+
+  void _onResourceSearchChanged(String value) {
+    final wasEmpty = _searchQuery.isEmpty;
+    final isNowEmpty = value.isEmpty;
+    setState(() => _searchQuery = value);
+    if (_selectedCourse == null && !_showingBookmarks) {
+      if (wasEmpty && !isNowEmpty) {
+        _loadAllCoursesForSearch();
+      } else if (!wasEmpty && isNowEmpty) {
+        _loadCourses();
+      }
+    }
+  }
+
+  void _clearResourceSearch() {
+    _searchController.clear();
+    final wasSearching = _searchQuery.isNotEmpty;
+    setState(() => _searchQuery = '');
+    if (_selectedCourse == null && !_showingBookmarks && wasSearching) {
+      _loadCourses();
+    }
+  }
+
+  Widget _buildResourceToolbar() {
+    final scheme = Theme.of(context).colorScheme;
+    return AcadDrivesToolbar(
+      key: TutorialKeys.acadDrivesSearch,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final search = Semantics(
+            label: 'Search Acad Drives',
+            textField: true,
+            child: TextField(
+              controller: _searchController,
+              onChanged: _onResourceSearchChanged,
+              decoration: AppDesign.inputDecoration(
+                context,
+                dense: true,
+                hint:
+                    _showingBookmarks
+                        ? 'Search bookmarked files'
+                        : _selectedCourse != null
+                        ? 'Search files in $_selectedCourse'
+                        : 'Search course code or title',
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                suffixIcon:
+                    _searchController.text.isNotEmpty
+                        ? IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 18),
+                          onPressed: _clearResourceSearch,
+                          tooltip: 'Clear search',
+                        )
+                        : null,
+              ),
+            ),
+          );
+          final sort = OutlinedButton.icon(
+            onPressed:
+                _selectedCourse != null || _showingBookmarks
+                    ? _showFileSortDialog
+                    : _showCourseSortDialog,
+            icon: const Icon(Icons.swap_vert_rounded, size: 18),
+            label: const Text('Sort'),
+          );
+          if (constraints.maxWidth < 560) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [search, const SizedBox(height: 8), sort],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(child: search),
+              const SizedBox(width: 10),
+              Text(
+                _selectedCourse != null || _showingBookmarks
+                    ? '${_filteredFiles.length} resources'
+                    : '${_filteredCourses.length} courses',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: 10),
+              sort,
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDesktopCourseNavigator() {
+    final scheme = Theme.of(context).colorScheme;
+    final starredCodes = UserSettingsService().starredCourses;
+    final courses = <Map<String, dynamic>>[];
+    final seen = <String>{};
+    for (final course in [..._enrolledCourseEntries, ..._courses]) {
+      final code = (course['code'] ?? '').toString();
+      if (code.isNotEmpty && seen.add(code)) courses.add(course);
+    }
+
+    return Container(
+      width: 350,
+      decoration: BoxDecoration(
+        color: scheme.surface.withValues(alpha: .9),
+        borderRadius: AppDesign.borderRadiusXl,
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: .75)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 17, 12, 10),
+            child: AcadDrivesSectionTitle(
+              title: 'Courses',
+              caption: '${courses.length} currently loaded',
+              trailing: IconButton(
+                onPressed: _goBackToCourses,
+                icon: const Icon(Icons.grid_view_rounded, size: 20),
+                tooltip: 'Open full course library',
+              ),
+            ),
+          ),
+          Divider(
+            height: 1,
+            color: scheme.outlineVariant.withValues(alpha: .6),
+          ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: courses.length,
+              itemBuilder: (context, index) {
+                final course = courses[index];
+                final code = (course['code'] ?? '').toString();
+                return _CourseCard(
+                  course: course,
+                  compact: true,
+                  selected: code == _selectedCourse,
+                  enrolled: _enrolledCourseCodes.contains(code),
+                  starred: starredCodes.contains(code),
+                  onTap: () => _loadCourseFiles(code),
+                  onToggleStar: () {
+                    UserSettingsService().toggleStarredCourse(code);
+                    setState(() {});
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Search Section
-          Container(
-            key: TutorialKeys.acadDrivesSearch,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(
-              children: [
-                // Search Field
-                Expanded(
-                  child: Semantics(
-                    label: 'Search Acad Drives',
-                    textField: true,
-                    child: TextField(
-                    controller: _searchController,
-                    onChanged: (value) {
-                      final wasEmpty = _searchQuery.isEmpty;
-                      final isNowEmpty = value.isEmpty;
-                      setState(() => _searchQuery = value);
-                      if (_selectedCourse == null) {
-                        if (wasEmpty && !isNowEmpty) {
-                          _loadAllCoursesForSearch();
-                        } else if (!wasEmpty && isNowEmpty) {
-                          _loadCourses();
-                        }
-                      }
-                    },
-                    decoration: InputDecoration(
-                      hintText: _selectedCourse != null
-                        ? 'Search files in $_selectedCourse...'
-                        : 'Search courses...',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _searchController.clear();
-                                final wasSearching = _searchQuery.isNotEmpty;
-                                setState(() => _searchQuery = '');
-                                if (_selectedCourse == null && wasSearching) {
-                                  _loadCourses();
-                                }
-                              },
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                  ),
-                ),
-                
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: _selectedCourse != null
-                      ? _showFileSortDialog
-                      : _showCourseSortDialog,
-                  icon: const Icon(Icons.sort, size: 22),
-                  tooltip: _selectedCourse != null ? 'Sort files' : 'Sort courses',
-                ),
-              ],
-            ),
-          ),
+    );
+  }
 
-          // Content
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: AppDesign.animDurationNormal,
-              child: KeyedSubtree(
-                key: ValueKey(_showingBookmarks ? '_bookmarks' : (_selectedCourse ?? '_courses')),
-                child: _showingBookmarks
-                    ? _buildBookmarksView()
-                    : _selectedCourse == null
-                        ? _buildCoursesView()
-                        : _buildFilesView(),
+  Widget _buildResourcePane() {
+    final scheme = Theme.of(context).colorScheme;
+    final selectedEntry = _courseEntryFor(_selectedCourse);
+    final title = (selectedEntry?['name'] ?? '').toString();
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surface.withValues(alpha: .9),
+        borderRadius: AppDesign.borderRadiusXl,
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: .75)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 17, 12, 12),
+            child: AcadDrivesSectionTitle(
+              title: _selectedCourse ?? 'Resources',
+              caption: title.isEmpty ? 'Folders and files' : title,
+              trailing: IconButton(
+                onPressed: () => _loadCourseFiles(_selectedCourse!),
+                icon: const Icon(Icons.refresh_rounded, size: 20),
+                tooltip: 'Refresh resources',
               ),
             ),
           ),
+          Divider(
+            height: 1,
+            color: scheme.outlineVariant.withValues(alpha: .6),
+          ),
+          Expanded(child: _buildFilesView()),
         ],
+      ),
+    );
+  }
+
+  Widget _buildResponsiveContent(bool wide) {
+    if (_showingBookmarks) return _buildBookmarksView();
+    if (_selectedCourse == null) return _buildCoursesView();
+    if (!wide) return _buildFilesView();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildDesktopCourseNavigator(),
+          const SizedBox(width: 16),
+          Expanded(child: _buildResourcePane()),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mobile = ResponsiveService.isMobile(context);
+    return Scaffold(
+      appBar: AppDesign.appBar(
+        context,
+        title: 'Academic Drives',
+        leading:
+            mobile && (_selectedCourse != null || _showingBookmarks)
+                ? IconButton(
+                  onPressed: _goBackToCourses,
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  tooltip: 'Back to courses',
+                )
+                : null,
+        actions: [
+          PageInfoHelper.infoButton(
+            context,
+            PageInfoHelper.acadDrives,
+            key: TutorialKeys.infoAcadDrives,
+          ),
+          const SizedBox(width: AppDesign.spacingSm),
+        ],
+      ),
+      body: AcadDrivesPageBackground(
+        accent: Theme.of(context).colorScheme.tertiary,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth >= 1050;
+            return Column(
+              children: [
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1320),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildDrivesHero().motionEntry(),
+                          const SizedBox(height: 14),
+                          _buildResourceToolbar(),
+                          const SizedBox(height: 10),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1320),
+                      child: AnimatedSwitcher(
+                        duration: AppDesign.motionStandard,
+                        switchInCurve: AppDesign.curveStandard,
+                        switchOutCurve: AppDesign.curveStandard,
+                        child: KeyedSubtree(
+                          key: ValueKey(
+                            _showingBookmarks
+                                ? '_bookmarks'
+                                : (_selectedCourse ?? '_courses'),
+                          ),
+                          child: _buildResponsiveContent(wide),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -1158,7 +1543,11 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.school_outlined, size: 64, color: AppDesign.muted(context)),
+            Icon(
+              Icons.school_outlined,
+              size: 64,
+              color: AppDesign.muted(context),
+            ),
             const SizedBox(height: 16),
             Text(
               'No courses found',
@@ -1175,10 +1564,21 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     final hasEnrolledSection = enrolledCount > 0;
 
     // Split courses into enrolled and rest
-    final enrolledCourses = hasEnrolledSection ? courses.sublist(0, enrolledCount) : <Map<String, dynamic>>[];
-    final restCourses = hasEnrolledSection ? courses.sublist(enrolledCount) : courses;
+    final enrolledCourses =
+        hasEnrolledSection
+            ? courses.sublist(0, enrolledCount)
+            : <Map<String, dynamic>>[];
+    final restCourses =
+        hasEnrolledSection ? courses.sublist(enrolledCount) : courses;
 
-    Widget sectionHeader(String text, IconData icon, {Key? key, int? count, bool? expanded, VoidCallback? onToggle}) {
+    Widget sectionHeader(
+      String text,
+      IconData icon, {
+      Key? key,
+      int? count,
+      bool? expanded,
+      VoidCallback? onToggle,
+    }) {
       final scheme = Theme.of(context).colorScheme;
       return AppTappable(
         key: key,
@@ -1190,15 +1590,21 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
             children: [
               Icon(icon, size: 16, color: scheme.primary),
               const SizedBox(width: 6),
-              Text(text, style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: scheme.primary,
-                fontWeight: FontWeight.w600,
-              )),
+              Text(
+                text,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               if (count != null) ...[
                 const SizedBox(width: 6),
-                Text('($count)', style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: scheme.onSurface.withValues(alpha: 0.5),
-                )),
+                Text(
+                  '($count)',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: scheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                ),
               ],
               const Spacer(),
               if (expanded != null)
@@ -1206,7 +1612,11 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                   turns: expanded ? 0.0 : -0.25,
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeInOut,
-                  child: Icon(Icons.expand_more, size: 18, color: scheme.primary.withValues(alpha: 0.7)),
+                  child: Icon(
+                    Icons.expand_more,
+                    size: 18,
+                    color: scheme.primary.withValues(alpha: 0.7),
+                  ),
                 ),
             ],
           ),
@@ -1216,12 +1626,17 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
     final isMobile = ResponsiveService.isMobile(context);
     final starredCodes = UserSettingsService().starredCourses;
-    final starredCourseEntries = _searchQuery.isEmpty
-        ? courses.where((c) => starredCodes.contains(c['code'])).toList()
-        : <Map<String, dynamic>>[];
+    final starredCourseEntries =
+        _searchQuery.isEmpty
+            ? courses.where((c) => starredCodes.contains(c['code'])).toList()
+            : <Map<String, dynamic>>[];
     final hasStarred = starredCourseEntries.isNotEmpty;
 
-    Widget courseCardWithStar(Map<String, dynamic> course, {bool compact = false, bool enrolled = false}) {
+    Widget courseCardWithStar(
+      Map<String, dynamic> course, {
+      bool compact = false,
+      bool enrolled = false,
+    }) {
       final code = course['code'] ?? '';
       return _CourseCard(
         course: course,
@@ -1236,33 +1651,57 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       );
     }
 
-    Widget collapsibleSection(List<Map<String, dynamic>> items, {required bool expanded, bool enrolled = false, bool useGrid = false}) {
+    Widget collapsibleSection(
+      List<Map<String, dynamic>> items, {
+      required bool expanded,
+      bool enrolled = false,
+      bool useGrid = false,
+    }) {
       return SliverToBoxAdapter(
         child: AnimatedSize(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
           alignment: Alignment.topCenter,
           clipBehavior: Clip.hardEdge,
-          child: !expanded
-              ? const SizedBox(width: double.infinity)
-              : useGrid
+          child:
+              !expanded
+                  ? const SizedBox(width: double.infinity)
+                  : useGrid
                   ? Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      child: Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: items.map((course) => SizedBox(
-                          width: 340,
-                          height: 80,
-                          child: courseCardWithStar(course, compact: true, enrolled: enrolled),
-                        )).toList(),
-                      ),
-                    )
-                  : Column(
-                      children: items.map((course) =>
-                        courseCardWithStar(course, enrolled: enrolled),
-                      ).toList(),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
                     ),
+                    child: Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children:
+                          items
+                              .map(
+                                (course) => SizedBox(
+                                  width: 360,
+                                  height: 116,
+                                  child: courseCardWithStar(
+                                    course,
+                                    compact: true,
+                                    enrolled: enrolled,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                    ),
+                  )
+                  : Column(
+                    children:
+                        items
+                            .map(
+                              (course) => courseCardWithStar(
+                                course,
+                                enrolled: enrolled,
+                              ),
+                            )
+                            .toList(),
+                  ),
         ),
       );
     }
@@ -1280,37 +1719,61 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                 slivers: [
                   if (hasStarred) ...[
                     SliverToBoxAdapter(
-                      child: sectionHeader('Starred', Icons.star_rounded,
+                      child: sectionHeader(
+                        'Starred',
+                        Icons.star_rounded,
                         count: starredCourseEntries.length,
                         expanded: _starredExpanded,
-                        onToggle: () => setState(() => _starredExpanded = !_starredExpanded),
+                        onToggle:
+                            () => setState(
+                              () => _starredExpanded = !_starredExpanded,
+                            ),
                       ),
                     ),
-                    collapsibleSection(starredCourseEntries, expanded: _starredExpanded),
+                    collapsibleSection(
+                      starredCourseEntries,
+                      expanded: _starredExpanded,
+                    ),
                   ],
                   if (hasEnrolledSection) ...[
                     SliverToBoxAdapter(
-                      child: sectionHeader('Your Courses', Icons.school,
+                      child: sectionHeader(
+                        'Your Courses',
+                        Icons.school,
                         key: TutorialKeys.acadDrivesYourCourses,
                         count: enrolledCount,
                         expanded: _yourCoursesExpanded,
-                        onToggle: () => setState(() => _yourCoursesExpanded = !_yourCoursesExpanded),
+                        onToggle:
+                            () => setState(
+                              () =>
+                                  _yourCoursesExpanded = !_yourCoursesExpanded,
+                            ),
                       ),
                     ),
-                    collapsibleSection(enrolledCourses, expanded: _yourCoursesExpanded, enrolled: true),
+                    collapsibleSection(
+                      enrolledCourses,
+                      expanded: _yourCoursesExpanded,
+                      enrolled: true,
+                    ),
                   ],
                   if (hasEnrolledSection || hasStarred)
-                    SliverToBoxAdapter(child: sectionHeader('All Courses', Icons.library_books)),
+                    SliverToBoxAdapter(
+                      child: sectionHeader('All Courses', Icons.library_books),
+                    ),
                   SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
-                        if (index >= restCourses.length) return _buildLoadingFooter();
+                        if (index >= restCourses.length) {
+                          return _buildLoadingFooter();
+                        }
                         // No per-item entrance animation: this list is lazy and
                         // paginated, so animating on build re-fades cards every
                         // time they scroll back into view.
                         return courseCardWithStar(restCourses[index]);
                       },
-                      childCount: restCourses.length + (_hasMoreCourses && _searchQuery.isEmpty ? 1 : 0),
+                      childCount:
+                          restCourses.length +
+                          (_hasMoreCourses && _searchQuery.isEmpty ? 1 : 0),
                     ),
                   ),
                   const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
@@ -1332,40 +1795,68 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
             slivers: [
               if (hasStarred) ...[
                 SliverToBoxAdapter(
-                  child: sectionHeader('Starred', Icons.star_rounded,
+                  child: sectionHeader(
+                    'Starred',
+                    Icons.star_rounded,
                     count: starredCourseEntries.length,
                     expanded: _starredExpanded,
-                    onToggle: () => setState(() => _starredExpanded = !_starredExpanded),
+                    onToggle:
+                        () => setState(
+                          () => _starredExpanded = !_starredExpanded,
+                        ),
                   ),
                 ),
-                collapsibleSection(starredCourseEntries, expanded: _starredExpanded, useGrid: true),
+                collapsibleSection(
+                  starredCourseEntries,
+                  expanded: _starredExpanded,
+                  useGrid: true,
+                ),
               ],
               if (hasEnrolledSection) ...[
                 SliverToBoxAdapter(
-                  child: sectionHeader('Your Courses', Icons.school,
+                  child: sectionHeader(
+                    'Your Courses',
+                    Icons.school,
                     key: TutorialKeys.acadDrivesYourCourses,
                     count: enrolledCount,
                     expanded: _yourCoursesExpanded,
-                    onToggle: () => setState(() => _yourCoursesExpanded = !_yourCoursesExpanded),
+                    onToggle:
+                        () => setState(
+                          () => _yourCoursesExpanded = !_yourCoursesExpanded,
+                        ),
                   ),
                 ),
-                collapsibleSection(enrolledCourses, expanded: _yourCoursesExpanded, enrolled: true, useGrid: true),
+                collapsibleSection(
+                  enrolledCourses,
+                  expanded: _yourCoursesExpanded,
+                  enrolled: true,
+                  useGrid: true,
+                ),
               ],
               if (hasEnrolledSection || hasStarred)
-                SliverToBoxAdapter(child: sectionHeader('All Courses', Icons.library_books)),
+                SliverToBoxAdapter(
+                  child: sectionHeader('All Courses', Icons.library_books),
+                ),
               SliverPadding(
                 padding: const EdgeInsets.all(16),
                 sliver: SliverGrid(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
-                      if (index >= restCourses.length) return _buildLoadingFooter();
-                      return courseCardWithStar(restCourses[index], compact: true);
+                      if (index >= restCourses.length) {
+                        return _buildLoadingFooter();
+                      }
+                      return courseCardWithStar(
+                        restCourses[index],
+                        compact: true,
+                      );
                     },
-                    childCount: restCourses.length + (_hasMoreCourses && _searchQuery.isEmpty ? 1 : 0),
+                    childCount:
+                        restCourses.length +
+                        (_hasMoreCourses && _searchQuery.isEmpty ? 1 : 0),
                   ),
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 360,
-                    mainAxisExtent: 80,
+                    mainAxisExtent: 124,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
                   ),
@@ -1380,9 +1871,10 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
   Widget _buildCourseCountBar(int shown) {
     final total = _searchQuery.isNotEmpty ? shown : _totalCourseCount;
-    final label = _searchQuery.isNotEmpty
-        ? '$shown result${shown == 1 ? '' : 's'}'
-        : _hasMoreCourses
+    final label =
+        _searchQuery.isNotEmpty
+            ? '$shown result${shown == 1 ? '' : 's'}'
+            : _hasMoreCourses
             ? 'Showing $shown of $total courses'
             : '$total courses';
     return Padding(
@@ -1392,7 +1884,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           Text(
             label,
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
         ],
@@ -1417,7 +1911,11 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.bookmark_border_rounded, size: 64, color: AppDesign.muted(context)),
+            Icon(
+              Icons.bookmark_border_rounded,
+              size: 64,
+              color: AppDesign.muted(context),
+            ),
             const SizedBox(height: 16),
             Text(
               'No bookmarks yet',
@@ -1428,24 +1926,29 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
             const SizedBox(height: 8),
             Text(
               'Bookmark files from any course for quick access',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppDesign.muted(context),
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: AppDesign.muted(context)),
             ),
           ],
         ),
       );
     }
 
-    final filtered = _searchQuery.isEmpty
-        ? _bookmarkedFiles
-        : _bookmarkedFiles.where((file) {
-            final name = (file['name'] ?? '').toString().toLowerCase();
-            final course = (file['courseName'] ?? '').toString().toLowerCase();
-            final code = ((file['course_codes'] as List?)?.firstOrNull ?? '').toString().toLowerCase();
-            final q = _searchQuery.toLowerCase();
-            return name.contains(q) || course.contains(q) || code.contains(q);
-          }).toList();
+    final filtered =
+        _searchQuery.isEmpty
+            ? _bookmarkedFiles
+            : _bookmarkedFiles.where((file) {
+              final name = (file['name'] ?? '').toString().toLowerCase();
+              final course =
+                  (file['courseName'] ?? '').toString().toLowerCase();
+              final code =
+                  ((file['course_codes'] as List?)?.firstOrNull ?? '')
+                      .toString()
+                      .toLowerCase();
+              final q = _searchQuery.toLowerCase();
+              return name.contains(q) || course.contains(q) || code.contains(q);
+            }).toList();
 
     return ListView.builder(
       itemCount: filtered.length,
@@ -1495,7 +1998,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     }
 
     final files = _filteredFiles;
-    
+
     if (files.isEmpty) {
       return Center(
         child: Column(
@@ -1523,7 +2026,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       final contributor = file['contributor'] as String?;
 
       // Track contributor per drive (use the first one found)
-      if (contributor != null && contributor.isNotEmpty && !driveContributors.containsKey(driveName)) {
+      if (contributor != null &&
+          contributor.isNotEmpty &&
+          !driveContributors.containsKey(driveName)) {
         driveContributors[driveName] = contributor;
       }
 
@@ -1548,155 +2053,217 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
     return RefreshIndicator(
       onRefresh: () => _loadCourseFiles(_selectedCourse!),
-      child: ListView.builder(
-        itemCount: driveNames.length + (_isLoadingMoreFiles ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index >= driveNames.length) {
-            return Padding(
-              padding: const EdgeInsets.all(16),
-              child: Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                    const SizedBox(width: 12),
-                    Text('Loading more files...', style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                    )),
-                  ],
-                ),
-              ),
-            );
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          if (notification.metrics.extentAfter < 320 &&
+              _hasMoreFiles &&
+              !_isLoadingMoreFiles) {
+            _loadMoreFiles();
           }
-          final driveName = driveNames[index];
-          final folderTree = driveTrees[driveName]!;
-          final contributor = driveContributors[driveName];
-
-          return _DriveHierarchySection(
-            driveName: driveName,
-            contributor: contributor,
-            driveLink: _selectedDriveLinks[driveName] as String?,
-            folderTree: folderTree,
-            onOpenFile: (file, type) => _openFile(file, type),
-            onShowFileInfo: (file) => _showFileInfo(file),
-            formatFileSize: _formatFileSize,
-            formatDate: _formatDate,
-            onDownloadZip: _downloadAsZip,
-            isBookmarked: (fileId) => UserSettingsService().isAcadDriveBookmarked(fileId),
-            onToggleBookmark: (fileId) => _toggleBookmark(fileId),
-          ).motionListItem(index);
+          return false;
         },
+        child: ListView.builder(
+          itemCount:
+              driveNames.length +
+              ((_hasMoreFiles || _isLoadingMoreFiles) ? 1 : 0),
+          itemBuilder: (context, index) {
+            if (index >= driveNames.length) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                child: Center(
+                  child:
+                      _isLoadingMoreFiles
+                          ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : OutlinedButton.icon(
+                            onPressed: _loadMoreFiles,
+                            icon: const Icon(
+                              Icons.expand_more_rounded,
+                              size: 18,
+                            ),
+                            label: Text('Load $_filePageSize more files'),
+                          ),
+                ),
+              );
+            }
+            final driveName = driveNames[index];
+            final folderTree = driveTrees[driveName]!;
+            final contributor = driveContributors[driveName];
+
+            return _DriveHierarchySection(
+              driveName: driveName,
+              contributor: contributor,
+              driveLink: _selectedDriveLinks[driveName] as String?,
+              folderTree: folderTree,
+              onOpenFile: (file, type) => _openFile(file, type),
+              onShowFileInfo: (file) => _showFileInfo(file),
+              formatFileSize: _formatFileSize,
+              formatDate: _formatDate,
+              onDownloadZip: _downloadAsZip,
+              isBookmarked:
+                  (fileId) =>
+                      UserSettingsService().isAcadDriveBookmarked(fileId),
+              onToggleBookmark: (fileId) => _toggleBookmark(fileId),
+            );
+          },
+        ),
       ),
     );
   }
 }
 
 class _CourseCard extends StatelessWidget {
-  final Map<String, dynamic> course;
-  final VoidCallback onTap;
-  final bool compact;
-  final bool enrolled;
-  final bool starred;
-  final VoidCallback? onToggleStar;
-
   const _CourseCard({
     required this.course,
     required this.onTap,
     this.compact = false,
     this.enrolled = false,
     this.starred = false,
+    this.selected = false,
     this.onToggleStar,
   });
+
+  final Map<String, dynamic> course;
+  final VoidCallback onTap;
+  final bool compact;
+  final bool enrolled;
+  final bool starred;
+  final bool selected;
+  final VoidCallback? onToggleStar;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final code = course['code'] ?? 'Unknown Course';
-    final title = (course['name'] ?? '') as String;
+    final code = (course['code'] ?? 'Unknown Course').toString();
+    final title = (course['name'] ?? '').toString();
     final fileCount = course['fileCount'] ?? 0;
     final driveCount = course['driveCount'] ?? 0;
+    final accent = selected ? scheme.tertiary : scheme.primary;
 
-    return Container(
-      margin: compact ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-      decoration: BoxDecoration(
-        color: enrolled ? scheme.primaryContainer.withValues(alpha: 0.15) : scheme.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: enrolled ? scheme.primary.withValues(alpha: 0.4) : scheme.outlineVariant.withValues(alpha: 0.3)),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: onTap,
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: compact ? 12 : 14,
-            vertical: compact ? 10 : 12,
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: compact ? 36 : 40,
-                height: compact ? 36 : 40,
-                decoration: BoxDecoration(
-                  color: scheme.primaryContainer.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.menu_book_rounded,
-                  size: compact ? 18 : 20,
-                  color: scheme.primary,
-                ),
+    return Padding(
+      padding:
+          compact
+              ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+              : const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: AppDesign.borderRadiusLg,
+          onTap: onTap,
+          child: Ink(
+            padding: const EdgeInsets.fromLTRB(13, 12, 9, 12),
+            decoration: BoxDecoration(
+              color:
+                  selected
+                      ? scheme.tertiaryContainer.withValues(alpha: .35)
+                      : enrolled
+                      ? scheme.primaryContainer.withValues(alpha: .2)
+                      : scheme.surface.withValues(alpha: .92),
+              borderRadius: AppDesign.borderRadiusLg,
+              border: Border.all(
+                color:
+                    selected
+                        ? scheme.tertiary.withValues(alpha: .46)
+                        : enrolled
+                        ? scheme.primary.withValues(alpha: .28)
+                        : scheme.outlineVariant.withValues(alpha: .7),
               ),
-              SizedBox(width: compact ? 10 : 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      code,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+              boxShadow:
+                  selected
+                      ? [
+                        BoxShadow(
+                          color: scheme.tertiary.withValues(alpha: .1),
+                          blurRadius: 14,
+                          offset: const Offset(0, 6),
+                        ),
+                      ]
+                      : null,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        accent.withValues(alpha: .19),
+                        accent.withValues(alpha: .07),
+                      ],
                     ),
-                    if (title.isNotEmpty) ...[
-                      const SizedBox(height: 1),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(Icons.menu_book_rounded, size: 21, color: accent),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
                       Text(
-                        title,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurface.withValues(alpha: 0.55),
-                          fontSize: 12,
+                        code,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -.15,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (title.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          title,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: scheme.onSurfaceVariant),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          _ResourceCount(
+                            icon: Icons.description_outlined,
+                            label: '$fileCount',
+                          ),
+                          _ResourceCount(
+                            icon: Icons.cloud_outlined,
+                            label: '$driveCount',
+                          ),
+                        ],
+                      ),
                     ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '$fileCount file${fileCount == 1 ? '' : 's'}${driveCount > 1 ? ' · $driveCount drives' : ''}',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: scheme.onSurface.withValues(alpha: 0.4),
-                ),
-              ),
-              if (onToggleStar != null) ...[
-                const SizedBox(width: 2),
-                AppTappable(
-                  onTap: onToggleStar,
-                  child: Icon(
-                    starred ? Icons.star_rounded : Icons.star_outline_rounded,
-                    size: 20,
-                    color: starred ? scheme.tertiary : scheme.onSurface.withValues(alpha: 0.25),
                   ),
                 ),
+                if (onToggleStar != null)
+                  IconButton(
+                    onPressed: onToggleStar,
+                    icon: Icon(
+                      starred ? Icons.star_rounded : Icons.star_outline_rounded,
+                      size: 21,
+                    ),
+                    color:
+                        starred
+                            ? scheme.tertiary
+                            : scheme.onSurfaceVariant.withValues(alpha: .5),
+                    tooltip: starred ? 'Remove star' : 'Star course',
+                  ),
+                Icon(
+                  selected
+                      ? Icons.arrow_forward_rounded
+                      : Icons.chevron_right_rounded,
+                  size: 19,
+                  color: accent.withValues(alpha: .8),
+                ),
               ],
-              const SizedBox(width: 4),
-              Icon(Icons.chevron_right, size: 18,
-                  color: scheme.onSurface.withValues(alpha: 0.3)),
-            ],
+            ),
           ),
         ),
       ),
@@ -1704,16 +2271,30 @@ class _CourseCard extends StatelessWidget {
   }
 }
 
-// File Card Widget
-class _FileCard extends StatelessWidget {
-  final Map<String, dynamic> file;
-  final Function(String) onOpen;
-  final VoidCallback onInfo;
-  final String Function(int) formatFileSize;
-  final String Function(dynamic) formatDate;
-  final bool isBookmarked;
-  final VoidCallback? onToggleBookmark;
+class _ResourceCount extends StatelessWidget {
+  const _ResourceCount({required this.icon, required this.label});
 
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final tint = Theme.of(context).colorScheme.onSurfaceVariant;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: tint.withValues(alpha: .78)),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(color: tint),
+        ),
+      ],
+    );
+  }
+}
+
+class _FileCard extends StatelessWidget {
   const _FileCard({
     required this.file,
     required this.onOpen,
@@ -1724,110 +2305,202 @@ class _FileCard extends StatelessWidget {
     this.onToggleBookmark,
   });
 
+  final Map<String, dynamic> file;
+  final Function(String) onOpen;
+  final VoidCallback onInfo;
+  final String Function(int) formatFileSize;
+  final String Function(dynamic) formatDate;
+  final bool isBookmarked;
+  final VoidCallback? onToggleBookmark;
+
   @override
   Widget build(BuildContext context) {
-    final hasDriveLink = file['folderMetadata']?['drive_link'] != null && file['folderMetadata']?['drive_link'] != 'NA';
-    final hasDownloadUrl = file['url'] != null && file['url'] != 'NA' && file['url'].toString().trim().isNotEmpty;
-    
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Icon(
-              _AcadDrivesScreenState._getFileIconData(file['mimeType'] ?? ''),
-              size: 20,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+    final scheme = Theme.of(context).colorScheme;
+    final hasDriveLink =
+        file['folderMetadata']?['drive_link'] != null &&
+        file['folderMetadata']?['drive_link'] != 'NA';
+    final hasDownloadUrl =
+        file['url'] != null &&
+        file['url'] != 'NA' &&
+        file['url'].toString().trim().isNotEmpty;
+    final mimeType = (file['mimeType'] ?? '').toString();
+    final icon = _AcadDrivesScreenState._getFileIconData(mimeType);
+    final primaryAction =
+        hasDownloadUrl
+            ? 'download'
+            : hasDriveLink
+            ? 'drive'
+            : null;
+
+    void handleMenu(String value) {
+      switch (value) {
+        case 'bookmark':
+          onToggleBookmark?.call();
+        case 'info':
+          onInfo();
+        case 'drive':
+          onOpen('drive');
+        case 'download':
+          onOpen('download');
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: primaryAction == null ? onInfo : () => onOpen(primaryAction),
+          borderRadius: AppDesign.borderRadiusMd,
+          child: Ink(
+            padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+            decoration: BoxDecoration(
+              color: scheme.surface.withValues(alpha: .94),
+              borderRadius: AppDesign.borderRadiusMd,
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: .65),
+              ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    file['name'] ?? 'Unknown File',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 520;
+                final details = Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        formatFileSize(file['size'] ?? 0),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                        (file['name'] ?? 'Unknown File').toString(),
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(height: 4),
                       Text(
-                        '•',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        formatDate(file['uploadedAt']),
+                        '${formatFileSize(file['size'] ?? 0)}  ·  '
+                        '${formatDate(file['uploadedAt'])}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          color: scheme.onSurfaceVariant,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
+                );
 
-            // Action Buttons
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (onToggleBookmark != null)
-                  IconButton(
-                    onPressed: onToggleBookmark,
-                    icon: Icon(
-                      isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                      size: 20,
+                return Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: scheme.secondaryContainer.withValues(alpha: .55),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Icon(
+                        icon,
+                        size: 19,
+                        color: scheme.onSecondaryContainer,
+                      ),
                     ),
-                    tooltip: isBookmarked ? 'Remove bookmark' : 'Bookmark',
-                    color: isBookmarked ? Theme.of(context).colorScheme.primary : null,
-                  ),
-                // Info Button
-                IconButton(
-                  onPressed: onInfo,
-                  icon: const Icon(Icons.info_outline, size: 20),
-                  tooltip: 'File Info',
-                ),
-                
-                // Drive Button (conditional)
-                if (hasDriveLink)
-                  IconButton(
-                    onPressed: () => onOpen('drive'),
-                    icon: const Icon(Icons.open_in_new, size: 20),
-                    tooltip: 'Open in Drive',
-                  ),
-                
-                // Download Button (conditional)
-                if (hasDownloadUrl)
-                  IconButton(
-                    onPressed: () => onOpen('download'),
-                    icon: const Icon(Icons.download, size: 20),
-                    tooltip: 'Download',
-                  ),
-              ],
+                    const SizedBox(width: 11),
+                    details,
+                    if (compact) ...[
+                      if (isBookmarked)
+                        Icon(
+                          Icons.bookmark_rounded,
+                          size: 18,
+                          color: scheme.primary,
+                        ),
+                      PopupMenuButton<String>(
+                        tooltip: 'File actions',
+                        onSelected: handleMenu,
+                        itemBuilder:
+                            (context) => [
+                              if (onToggleBookmark != null)
+                                PopupMenuItem(
+                                  value: 'bookmark',
+                                  child: ListTile(
+                                    leading: Icon(
+                                      isBookmarked
+                                          ? Icons.bookmark_remove_outlined
+                                          : Icons.bookmark_add_outlined,
+                                    ),
+                                    title: Text(
+                                      isBookmarked
+                                          ? 'Remove bookmark'
+                                          : 'Bookmark',
+                                    ),
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                ),
+                              const PopupMenuItem(
+                                value: 'info',
+                                child: ListTile(
+                                  leading: Icon(Icons.info_outline_rounded),
+                                  title: Text('File details'),
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                              if (hasDriveLink)
+                                const PopupMenuItem(
+                                  value: 'drive',
+                                  child: ListTile(
+                                    leading: Icon(Icons.open_in_new_rounded),
+                                    title: Text('Open in Drive'),
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                ),
+                              if (hasDownloadUrl)
+                                const PopupMenuItem(
+                                  value: 'download',
+                                  child: ListTile(
+                                    leading: Icon(Icons.download_rounded),
+                                    title: Text('Download'),
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
+                                ),
+                            ],
+                      ),
+                    ] else ...[
+                      if (onToggleBookmark != null)
+                        IconButton(
+                          onPressed: onToggleBookmark,
+                          icon: Icon(
+                            isBookmarked
+                                ? Icons.bookmark_rounded
+                                : Icons.bookmark_border_rounded,
+                            size: 20,
+                          ),
+                          tooltip:
+                              isBookmarked ? 'Remove bookmark' : 'Bookmark',
+                          color: isBookmarked ? scheme.primary : null,
+                        ),
+                      IconButton(
+                        onPressed: onInfo,
+                        icon: const Icon(Icons.info_outline_rounded, size: 20),
+                        tooltip: 'File details',
+                      ),
+                      if (hasDriveLink)
+                        IconButton(
+                          onPressed: () => onOpen('drive'),
+                          icon: const Icon(Icons.open_in_new_rounded, size: 20),
+                          tooltip: 'Open in Drive',
+                        ),
+                      if (hasDownloadUrl)
+                        IconButton(
+                          onPressed: () => onOpen('download'),
+                          icon: const Icon(Icons.download_rounded, size: 20),
+                          tooltip: 'Download',
+                        ),
+                    ],
+                  ],
+                );
+              },
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -1838,7 +2511,7 @@ class _FileCard extends StatelessWidget {
 class _FolderTree {
   final Map<String, _FolderTree> subfolders = {};
   final List<Map<String, dynamic>> files = [];
-  
+
   void addFile(List<String> folderPath, Map<String, dynamic> file) {
     if (folderPath.isEmpty) {
       files.add(file);
@@ -1848,7 +2521,7 @@ class _FolderTree {
       subfolders[folderName]!.addFile(folderPath.sublist(1), file);
     }
   }
-  
+
   int get totalFileCount {
     int count = files.length;
     for (final subfolder in subfolders.values) {
@@ -1857,7 +2530,9 @@ class _FolderTree {
     return count;
   }
 
-  List<({String path, Map<String, dynamic> file})> collectAllFiles([String prefix = '']) {
+  List<({String path, Map<String, dynamic> file})> collectAllFiles([
+    String prefix = '',
+  ]) {
     final result = <({String path, Map<String, dynamic> file})>[];
     for (final file in files) {
       final name = file['name'] ?? 'unknown';
@@ -1881,7 +2556,8 @@ class _DriveHierarchySection extends StatefulWidget {
   final Function(Map<String, dynamic>) onShowFileInfo;
   final String Function(int) formatFileSize;
   final String Function(dynamic) formatDate;
-  final Future<void> Function(String zipName, _FolderTree folderTree) onDownloadZip;
+  final Future<void> Function(String zipName, _FolderTree folderTree)
+  onDownloadZip;
   final bool Function(String)? isBookmarked;
   final Function(String)? onToggleBookmark;
 
@@ -1904,7 +2580,7 @@ class _DriveHierarchySection extends StatefulWidget {
 }
 
 class _DriveHierarchySectionState extends State<_DriveHierarchySection> {
-  bool _isExpanded = false;
+  bool _isExpanded = true;
 
   @override
   Widget build(BuildContext context) {
@@ -1929,7 +2605,9 @@ class _DriveHierarchySectionState extends State<_DriveHierarchySection> {
               child: Row(
                 children: [
                   Icon(
-                    _isExpanded ? Icons.folder_open_rounded : Icons.folder_rounded,
+                    _isExpanded
+                        ? Icons.folder_open_rounded
+                        : Icons.folder_rounded,
                     color: scheme.onSurface.withValues(alpha: 0.5),
                     size: 20,
                   ),
@@ -1940,22 +2618,32 @@ class _DriveHierarchySectionState extends State<_DriveHierarchySection> {
                       children: [
                         Text(
                           widget.driveName,
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 2),
                         Text.rich(
-                          TextSpan(children: [
-                            TextSpan(text: '${widget.folderTree.totalFileCount} file${widget.folderTree.totalFileCount == 1 ? '' : 's'}'),
-                            TextSpan(text: ' · ${widget.folderTree.subfolders.length} folder${widget.folderTree.subfolders.length == 1 ? '' : 's'}'),
-                            if (widget.contributor != null && widget.contributor!.isNotEmpty)
+                          TextSpan(
+                            children: [
                               TextSpan(
-                                text: ' · ${widget.contributor}',
-                                style: TextStyle(fontStyle: FontStyle.italic),
+                                text:
+                                    '${widget.folderTree.totalFileCount} file${widget.folderTree.totalFileCount == 1 ? '' : 's'}',
                               ),
-                          ]),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              TextSpan(
+                                text:
+                                    ' · ${widget.folderTree.subfolders.length} folder${widget.folderTree.subfolders.length == 1 ? '' : 's'}',
+                              ),
+                              if (widget.contributor != null &&
+                                  widget.contributor!.isNotEmpty)
+                                TextSpan(
+                                  text: ' · ${widget.contributor}',
+                                  style: TextStyle(fontStyle: FontStyle.italic),
+                                ),
+                            ],
+                          ),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(
                             color: scheme.onSurface.withValues(alpha: 0.45),
                             fontSize: 12,
                           ),
@@ -1973,7 +2661,11 @@ class _DriveHierarchySectionState extends State<_DriveHierarchySection> {
                     ),
                   if (kIsWeb)
                     IconButton(
-                      onPressed: () => widget.onDownloadZip(widget.driveName, widget.folderTree),
+                      onPressed:
+                          () => widget.onDownloadZip(
+                            widget.driveName,
+                            widget.folderTree,
+                          ),
                       icon: Icon(Icons.download_rounded, size: 18),
                       tooltip: 'Download all files as zip',
                       visualDensity: VisualDensity.compact,
@@ -1992,13 +2684,17 @@ class _DriveHierarchySectionState extends State<_DriveHierarchySection> {
           AnimatedCrossFade(
             duration: AppDesign.animDurationNormal,
             sizeCurve: AppDesign.animCurve,
-            crossFadeState: _isExpanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
+            crossFadeState:
+                _isExpanded
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
             firstChild: const SizedBox.shrink(),
             secondChild: Column(
               children: [
-                Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.3)),
+                Divider(
+                  height: 1,
+                  color: scheme.outlineVariant.withValues(alpha: 0.3),
+                ),
                 _FolderNode(
                   folderTree: widget.folderTree,
                   level: 0,
@@ -2028,7 +2724,8 @@ class _FolderNode extends StatefulWidget {
   final Function(Map<String, dynamic>) onShowFileInfo;
   final String Function(int) formatFileSize;
   final String Function(dynamic) formatDate;
-  final Future<void> Function(String zipName, _FolderTree folderTree) onDownloadZip;
+  final Future<void> Function(String zipName, _FolderTree folderTree)
+  onDownloadZip;
   final bool Function(String)? isBookmarked;
   final Function(String)? onToggleBookmark;
 
@@ -2054,8 +2751,9 @@ class _FolderNodeState extends State<_FolderNode> {
 
   @override
   Widget build(BuildContext context) {
-    final subfolderNames = widget.folderTree.subfolders.keys.toList()..sort(_naturalSort);
-    
+    final subfolderNames =
+        widget.folderTree.subfolders.keys.toList()..sort(_naturalSort);
+
     return Column(
       children: [
         // Render subfolders
@@ -2063,12 +2761,15 @@ class _FolderNodeState extends State<_FolderNode> {
           final subfolder = widget.folderTree.subfolders[folderName]!;
           final isExpanded = _folderExpanded[folderName] ?? false;
           final hasSubfolders = subfolder.subfolders.isNotEmpty;
-          
+
           return Column(
             children: [
               // Folder Header
               InkWell(
-                onTap: () => setState(() => _folderExpanded[folderName] = !isExpanded),
+                onTap:
+                    () => setState(
+                      () => _folderExpanded[folderName] = !isExpanded,
+                    ),
                 child: Container(
                   padding: EdgeInsets.only(
                     left: 16.0 + (widget.level * 20.0),
@@ -2082,7 +2783,7 @@ class _FolderNodeState extends State<_FolderNode> {
                   child: Row(
                     children: [
                       Icon(
-                        hasSubfolders || subfolder.files.isNotEmpty 
+                        hasSubfolders || subfolder.files.isNotEmpty
                             ? (isExpanded ? Icons.folder_open : Icons.folder)
                             : Icons.folder_outlined,
                         color: _getFolderIconColor(context, widget.level),
@@ -2092,7 +2793,9 @@ class _FolderNodeState extends State<_FolderNode> {
                       Expanded(
                         child: Text(
                           folderName,
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          style: Theme.of(
+                            context,
+                          ).textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: _getFolderTextColor(context, widget.level),
                           ),
@@ -2101,18 +2804,26 @@ class _FolderNodeState extends State<_FolderNode> {
                       Text(
                         '${subfolder.totalFileCount}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
                       if (kIsWeb)
                         IconButton(
-                          onPressed: () => widget.onDownloadZip(folderName, subfolder),
+                          onPressed:
+                              () => widget.onDownloadZip(folderName, subfolder),
                           icon: Icon(Icons.download_rounded, size: 16),
                           tooltip: 'Download folder as zip',
                           visualDensity: VisualDensity.compact,
-                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
                           padding: EdgeInsets.zero,
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.45),
                         ),
                       const SizedBox(width: 4),
                       Icon(
@@ -2124,14 +2835,15 @@ class _FolderNodeState extends State<_FolderNode> {
                   ),
                 ),
               ),
-              
+
               // Folder Contents (Recursive)
               AnimatedCrossFade(
                 duration: AppDesign.animDurationNormal,
                 sizeCurve: AppDesign.animCurve,
-                crossFadeState: isExpanded
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
+                crossFadeState:
+                    isExpanded
+                        ? CrossFadeState.showSecond
+                        : CrossFadeState.showFirst,
                 firstChild: const SizedBox.shrink(),
                 secondChild: _FolderNode(
                   folderTree: subfolder,
@@ -2149,7 +2861,7 @@ class _FolderNodeState extends State<_FolderNode> {
             ],
           );
         }),
-        
+
         // Render files at this level
         ...widget.folderTree.files.map((file) {
           final fileId = file['id'] as String? ?? '';
@@ -2162,16 +2874,17 @@ class _FolderNodeState extends State<_FolderNode> {
               formatFileSize: widget.formatFileSize,
               formatDate: widget.formatDate,
               isBookmarked: widget.isBookmarked?.call(fileId) ?? false,
-              onToggleBookmark: widget.onToggleBookmark != null && fileId.isNotEmpty
-                  ? () => widget.onToggleBookmark!(fileId)
-                  : null,
+              onToggleBookmark:
+                  widget.onToggleBookmark != null && fileId.isNotEmpty
+                      ? () => widget.onToggleBookmark!(fileId)
+                      : null,
             ),
           );
         }),
       ],
     );
   }
-  
+
   Color _getFolderBackgroundColor(BuildContext context, int level) {
     final scheme = Theme.of(context).colorScheme;
     final alpha = (0.04 + level * 0.02).clamp(0.0, 0.1);
@@ -2207,15 +2920,14 @@ class _InfoRow extends StatelessWidget {
               '$label:',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ),
           Expanded(
-            child: Text(
-              value,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            child: Text(value, style: Theme.of(context).textTheme.bodyMedium),
           ),
         ],
       ),

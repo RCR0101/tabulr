@@ -258,6 +258,49 @@ class BranchStructureService {
     ];
   }
 
+  /// Every core requirement of a degree, choices intact, grouped by semester in
+  /// academic order. Merges a dual degree's two halves the way the editor does.
+  /// Foundation for the degree audit (P1) — one place that knows the full core
+  /// map, so the auditor stays a pure diff.
+  Future<Map<String, List<CdcSlot>>> coreSlotsBySemester(
+    String primaryBranch, {
+    String? secondaryBranch,
+  }) async {
+    final pair = constants.dualDegreePair(primaryBranch, secondaryBranch);
+    final Map<String, List<String>> raw;
+    if (pair != null) {
+      raw = await getMergedCDCs(pair.msc, pair.be);
+    } else {
+      raw = {...(await getBranchData(primaryBranch)).cdcs};
+      if (secondaryBranch != null && secondaryBranch.isNotEmpty) {
+        final sec = await getBranchData(secondaryBranch);
+        for (final e in sec.cdcs.entries) {
+          raw[e.key] = [...(raw[e.key] ?? const []), ...e.value];
+        }
+      }
+    }
+
+    final ordered = <String, List<CdcSlot>>{};
+    // A course/choice can be listed under two semesters or both halves of a dual
+    // degree; the student takes it once, so dedupe within a semester.
+    for (final sem in SemesterConstants.all) {
+      final entries = raw[sem];
+      if (entries == null) continue;
+      final seen = <String>{};
+      ordered[sem] = [
+        for (final slot in CdcSlot.parseAll(entries))
+          if (seen.add(slot.encode())) slot,
+      ];
+    }
+    // Semesters named outside the catalogue keep their order after the known ones.
+    for (final e in raw.entries) {
+      if (!SemesterConstants.all.contains(e.key)) {
+        ordered[e.key] = CdcSlot.parseAll(e.value);
+      }
+    }
+    return ordered;
+  }
+
   void clearCache() {
     _cache.clear();
     _availableBranches = null;

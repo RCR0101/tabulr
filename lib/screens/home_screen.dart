@@ -22,11 +22,7 @@ class HomeScreen extends StatefulWidget {
   final Timetable? timetable;
   final Function(bool)? onUnsavedChangesChanged;
 
-  const HomeScreen({
-    super.key,
-    this.timetable,
-    this.onUnsavedChangesChanged,
-  });
+  const HomeScreen({super.key, this.timetable, this.onUnsavedChangesChanged});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -234,28 +230,29 @@ class _HomeScreenState extends State<HomeScreen>
 
         return GestureDetector(
           onHorizontalDragUpdate: (_) {},
-          child: wrapWithKeyboardShortcuts(Scaffold(
-            appBar: AppDesign.appBar(
-              context,
-              titleWidget: _isStandalone
-                  ? AppDesign.appLogo(context, height: 32)
-                  : Text(_timetable!.name),
-              leading: _isStandalone
-                  ? null
-                  : IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      // maybePop, not pop: the editor's PopScope guard only sees
-                      // pops that go through the pop-disposition machinery, so an
-                      // unconditional pop here would skip the unsaved-changes
-                      // prompt.
-                      onPressed: () => Navigator.maybePop(context),
-                      tooltip: 'Back',
-                    ),
-              actions: buildCommonActions(),
+          child: wrapWithKeyboardShortcuts(
+            Scaffold(
+              appBar: AppDesign.appBar(
+                context,
+                titleWidget: buildEditorTitle(standalone: _isStandalone),
+                leading:
+                    _isStandalone
+                        ? null
+                        : IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          // maybePop, not pop: the editor's PopScope guard only sees
+                          // pops that go through the pop-disposition machinery, so an
+                          // unconditional pop here would skip the unsaved-changes
+                          // prompt.
+                          onPressed: () => Navigator.maybePop(context),
+                          tooltip: 'Back',
+                        ),
+                actions: buildCommonActions(),
+              ),
+              body: buildBodyLayout(isWideScreen),
+              floatingActionButton: buildFABs(isWideScreen),
             ),
-            body: buildBodyLayout(isWideScreen),
-            floatingActionButton: buildFABs(isWideScreen),
-          )),
+          ),
         );
       },
     );

@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 
 enum AppTheme {
-  githubDark('GitHub Dark', Icons.code),
+  githubDark('GitHub', Icons.code),
   draculaDark('Dracula', Icons.brightness_2),
   nordDark('Nord', Icons.ac_unit),
   tokyoNightDark('Tokyo Night', Icons.nightlight_round),
   gruvboxDark('Gruvbox', Icons.grain),
   catppuccinDark('Catppuccin', Icons.pets),
-  solarizedDark('Solarized Dark', Icons.wb_sunny),
+  solarizedDark('Solarized', Icons.wb_sunny),
   arcticFrost('Arctic Frost', Icons.severe_cold),
-  amoledDark('AMOLED Dark', Icons.brightness_1),
-  ;
+  amoledDark('AMOLED', Icons.brightness_1);
 
   const AppTheme(this.displayName, this.icon);
   final String displayName;
@@ -51,18 +50,17 @@ class ThemeGeometry extends ThemeExtension<ThemeGeometry> {
     double? cardBorderWidth,
     FontWeight? headingWeight,
     FontWeight? bodyWeight,
-  }) =>
-      ThemeGeometry(
-        cardRadius: cardRadius ?? this.cardRadius,
-        buttonRadius: buttonRadius ?? this.buttonRadius,
-        dialogRadius: dialogRadius ?? this.dialogRadius,
-        inputRadius: inputRadius ?? this.inputRadius,
-        chipRadius: chipRadius ?? this.chipRadius,
-        cardElevation: cardElevation ?? this.cardElevation,
-        cardBorderWidth: cardBorderWidth ?? this.cardBorderWidth,
-        headingWeight: headingWeight ?? this.headingWeight,
-        bodyWeight: bodyWeight ?? this.bodyWeight,
-      );
+  }) => ThemeGeometry(
+    cardRadius: cardRadius ?? this.cardRadius,
+    buttonRadius: buttonRadius ?? this.buttonRadius,
+    dialogRadius: dialogRadius ?? this.dialogRadius,
+    inputRadius: inputRadius ?? this.inputRadius,
+    chipRadius: chipRadius ?? this.chipRadius,
+    cardElevation: cardElevation ?? this.cardElevation,
+    cardBorderWidth: cardBorderWidth ?? this.cardBorderWidth,
+    headingWeight: headingWeight ?? this.headingWeight,
+    bodyWeight: bodyWeight ?? this.bodyWeight,
+  );
 
   @override
   ThemeGeometry lerp(covariant ThemeGeometry? other, double t) {
@@ -81,7 +79,8 @@ class ThemeGeometry extends ThemeExtension<ThemeGeometry> {
   }
 
   static ThemeGeometry of(BuildContext context) {
-    return Theme.of(context).extension<ThemeGeometry>() ?? const ThemeGeometry();
+    return Theme.of(context).extension<ThemeGeometry>() ??
+        const ThemeGeometry();
   }
 
   static double? lerpDouble(double a, double b, double t) => a + (b - a) * t;
@@ -101,7 +100,12 @@ class TimetableTheme extends ThemeExtension<TimetableTheme> {
     return TimetableTheme(
       List.generate(
         accents.length,
-        (i) => Color.lerp(accents[i], i < other.accents.length ? other.accents[i] : accents[i], t)!,
+        (i) =>
+            Color.lerp(
+              accents[i],
+              i < other.accents.length ? other.accents[i] : accents[i],
+              t,
+            )!,
       ),
     );
   }

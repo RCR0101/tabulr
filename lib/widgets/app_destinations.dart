@@ -37,12 +37,7 @@ bool isSignedIn() {
 /// Kept as data rather than an `if` at each call site so the sidebar and the
 /// command palette can't gate the same screen differently — they used to, and
 /// nobody would notice until a guest saw an entry that led nowhere.
-enum DestinationAccess {
-  everyone,
-  signedIn,
-  hyderabad,
-  admin,
-}
+enum DestinationAccess { everyone, signedIn, hyderabad, admin }
 
 /// One navigable screen, described once.
 @immutable
@@ -106,105 +101,108 @@ abstract final class AppDestinations {
   /// until it is described here. That is the point — a test can be forgotten,
   /// a compile error cannot.
   static AppDestination of(DrawerScreen screen) => switch (screen) {
-        DrawerScreen.timetables => const AppDestination(
-            screen: DrawerScreen.timetables,
-            slug: 'timetables',
-            icon: Icons.schedule,
-            label: 'TT Builder',
-            description: 'Build and manage your timetables',
-            access: DestinationAccess.everyone,
-          ),
-        DrawerScreen.calendar => const AppDestination(
-            screen: DrawerScreen.calendar,
-            slug: 'calendar',
-            icon: Icons.calendar_month,
-            label: 'Calendar',
-            description: 'Your week, exams and announcements in one view',
-          ),
-        DrawerScreen.freeSlotFinder => const AppDestination(
-            screen: DrawerScreen.freeSlotFinder,
-            slug: 'free-slots',
-            icon: Icons.group,
-            label: 'Free Time Finder',
-            description: 'Find common free slots with friends',
-          ),
-        DrawerScreen.cgpaCalculator => const AppDestination(
-            screen: DrawerScreen.cgpaCalculator,
-            slug: 'cgpa',
-            icon: Icons.calculate,
-            label: 'CGPA',
-            description: 'Calculate, plan and project your CGPA',
-          ),
-        DrawerScreen.examSeating => const AppDestination(
-            screen: DrawerScreen.examSeating,
-            slug: 'exam-seating',
-            icon: Icons.event_seat,
-            label: 'Exam Seating',
-            description: 'Find your exam seat and room',
-            access: DestinationAccess.everyone,
-          ),
-        DrawerScreen.acadDrives => const AppDestination(
-            screen: DrawerScreen.acadDrives,
-            slug: 'acad-drives',
-            icon: Icons.folder_shared,
-            label: 'Acad Drives',
-            description: 'Course materials and resources',
-          ),
-        DrawerScreen.profChambers => const AppDestination(
-            screen: DrawerScreen.profChambers,
-            slug: 'professors',
-            icon: Icons.person,
-            label: 'Prof Chambers',
-            description: 'Professor chambers, schedules and contacts',
-          ),
-        DrawerScreen.announcements => const AppDestination(
-            screen: DrawerScreen.announcements,
-            slug: 'announcements',
-            icon: Icons.campaign,
-            label: 'Announcements',
-            description: 'Course announcements from your classmates',
-            access: DestinationAccess.hyderabad,
-          ),
-        // Open to guests: the Bulletin is public, and someone deciding whether
-        // to sign up benefits from it as much as a logged-in student.
-        DrawerScreen.minors => const AppDestination(
-            screen: DrawerScreen.minors,
-            slug: 'minors',
-            icon: Icons.workspace_premium_outlined,
-            label: 'Minors',
-            description: 'Browse minor programmes and track your progress',
-            access: DestinationAccess.everyone,
-          ),
-        DrawerScreen.faq => const AppDestination(
-            screen: DrawerScreen.faq,
-            slug: 'faq',
-            icon: Icons.help_outline,
-            label: 'Academic FAQ',
-            description: 'Rules on grades, attendance, registration and more',
-            access: DestinationAccess.everyone,
-          ),
-        DrawerScreen.bugReport => const AppDestination(
-            screen: DrawerScreen.bugReport,
-            slug: 'bug-report',
-            icon: Icons.bug_report_outlined,
-            label: 'Bug Report',
-            description: 'File and track bug reports',
-          ),
-        DrawerScreen.admin => const AppDestination(
-            screen: DrawerScreen.admin,
-            slug: 'admin',
-            icon: Icons.admin_panel_settings,
-            label: 'Admin',
-            description: 'Admin panel',
-            access: DestinationAccess.admin,
-          ),
-      };
+    DrawerScreen.timetables => const AppDestination(
+      screen: DrawerScreen.timetables,
+      slug: 'timetables',
+      icon: Icons.schedule,
+      label: 'Timetables',
+      description: 'Build and manage your timetables',
+      access: DestinationAccess.everyone,
+    ),
+    DrawerScreen.calendar => const AppDestination(
+      screen: DrawerScreen.calendar,
+      slug: 'calendar',
+      icon: Icons.calendar_month,
+      label: 'Calendar',
+      description: 'Your week, exams and announcements in one view',
+    ),
+    DrawerScreen.freeSlotFinder => const AppDestination(
+      screen: DrawerScreen.freeSlotFinder,
+      slug: 'free-slots',
+      icon: Icons.group,
+      label: 'Free Time Finder',
+      description: 'Find common free slots with friends',
+    ),
+    DrawerScreen.cgpaCalculator => const AppDestination(
+      screen: DrawerScreen.cgpaCalculator,
+      slug: 'cgpa',
+      icon: Icons.calculate,
+      label: 'CGPA',
+      description: 'Calculate, plan and project your CGPA',
+    ),
+    DrawerScreen.examSeating => const AppDestination(
+      screen: DrawerScreen.examSeating,
+      slug: 'exam-seating',
+      icon: Icons.event_seat,
+      label: 'Exam Seating',
+      description: 'Find your exam room from your student ID',
+      access: DestinationAccess.everyone,
+    ),
+    DrawerScreen.acadDrives => const AppDestination(
+      screen: DrawerScreen.acadDrives,
+      slug: 'acad-drives',
+      icon: Icons.folder_shared,
+      label: 'Acad Drives',
+      description: 'Course materials and resources',
+    ),
+    DrawerScreen.profChambers => const AppDestination(
+      screen: DrawerScreen.profChambers,
+      slug: 'professors',
+      icon: Icons.person,
+      label: 'Prof Chambers',
+      description: 'Professor chambers, schedules and contacts',
+    ),
+    DrawerScreen.announcements => const AppDestination(
+      screen: DrawerScreen.announcements,
+      slug: 'announcements',
+      icon: Icons.campaign,
+      label: 'Announcements',
+      description: 'Course announcements from your classmates',
+      access: DestinationAccess.hyderabad,
+    ),
+    // Open to guests: the Bulletin is public, and someone deciding whether
+    // to sign up benefits from it as much as a logged-in student.
+    DrawerScreen.minors => const AppDestination(
+      screen: DrawerScreen.minors,
+      slug: 'minors',
+      icon: Icons.workspace_premium_outlined,
+      label: 'Minors',
+      description: 'Browse minor programmes and track your progress',
+      access: DestinationAccess.everyone,
+    ),
+    DrawerScreen.faq => const AppDestination(
+      screen: DrawerScreen.faq,
+      slug: 'faq',
+      icon: Icons.help_outline,
+      label: 'Academic FAQ',
+      description: 'Rules on grades, attendance, registration and more',
+      access: DestinationAccess.everyone,
+    ),
+    DrawerScreen.bugReport => const AppDestination(
+      screen: DrawerScreen.bugReport,
+      slug: 'bug-report',
+      icon: Icons.bug_report_outlined,
+      label: 'Bug Report',
+      description: 'File and track bug reports',
+    ),
+    DrawerScreen.admin => const AppDestination(
+      screen: DrawerScreen.admin,
+      slug: 'admin',
+      icon: Icons.admin_panel_settings,
+      label: 'Admin',
+      description: 'Admin panel',
+      access: DestinationAccess.admin,
+    ),
+  };
 
   /// Every destination, in navigation order.
-  static List<AppDestination> get all =>
-      [for (final screen in DrawerScreen.values) of(screen)];
+  static List<AppDestination> get all => [
+    for (final screen in DrawerScreen.values) of(screen),
+  ];
 
   /// Those the current user can reach.
-  static List<AppDestination> get visible =>
-      [for (final destination in all) if (destination.isVisible) destination];
+  static List<AppDestination> get visible => [
+    for (final destination in all)
+      if (destination.isVisible) destination,
+  ];
 }

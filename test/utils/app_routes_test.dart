@@ -3,12 +3,29 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:timetable_maker/utils/app_routes.dart';
 import 'package:timetable_maker/widgets/app_destinations.dart';
 import 'package:timetable_maker/widgets/app_tools.dart';
+import 'package:timetable_maker/screens/guide_screen.dart';
+import 'package:timetable_maker/utils/page_transitions.dart';
 
 void main() {
+  test('guide anchors survive route generation and browser history', () {
+    final uri = Uri.parse('/guide#degree-audit');
+    expect(AppRoutes.pagePathIn(uri), '/guide#degree-audit');
+    expect(AppRoutes.launchPageToOpen(uri, '/'), '/guide#degree-audit');
+    expect(AppRoutes.launchPageToOpen(uri, '/guide#degree-audit'), isNull);
+    expect(AppRouteHistory.isAddressable('/guide#degree-audit'), isTrue);
+    expect(AppRouteHistory.isAddressable('http://['), isFalse);
+    final route = AppRoutes.onGenerateRoute(
+      const RouteSettings(name: '/guide#degree-audit'),
+    ) as FadeSlidePageRoute<void>;
+    expect((route.page as GuideScreen).initialAnchor, 'degree-audit');
+  });
+
   group('AppRoutes.screenIn', () {
     test('resolves a public destination by its slug', () {
-      expect(AppRoutes.screenIn(Uri.parse('https://tabulr.net/exam-seating')),
-          DrawerScreen.examSeating);
+      expect(
+        AppRoutes.screenIn(Uri.parse('https://tabulr.net/exam-seating')),
+        DrawerScreen.examSeating,
+      );
       expect(AppRoutes.screenIn(Uri.parse('/minors')), DrawerScreen.minors);
     });
 
@@ -38,7 +55,11 @@ void main() {
       final slugs = AppDestinations.all.map((d) => d.slug).toList();
       expect(slugs.toSet(), hasLength(slugs.length));
       for (final slug in slugs) {
-        expect(slug, matches(RegExp(r'^[a-z0-9]+(-[a-z0-9]+)*$')), reason: slug);
+        expect(
+          slug,
+          matches(RegExp(r'^[a-z0-9]+(-[a-z0-9]+)*$')),
+          reason: slug,
+        );
       }
     });
   });
@@ -114,8 +135,11 @@ void main() {
       // The tools reached from the timetable list are gated the same way.
       for (final tool in [AppTool.electives, AppTool.prerequisites]) {
         expect(AppRoutes.pathForTool(tool), isNotNull, reason: tool.name);
-        expect(AppRoutes.pageIn(Uri.parse(AppRoutes.pathForTool(tool)!)), isNull,
-            reason: tool.name);
+        expect(
+          AppRoutes.pageIn(Uri.parse(AppRoutes.pathForTool(tool)!)),
+          isNull,
+          reason: tool.name,
+        );
       }
     });
 
@@ -144,19 +168,27 @@ void main() {
     });
 
     test('creates a named route for a reachable screen, and nothing else', () {
-      expect(AppRoutes.onGenerateRoute(const RouteSettings(name: '/credits')),
-          isNotNull);
-      expect(AppRoutes.onGenerateRoute(const RouteSettings(name: '/missing')),
-          isNull);
-      expect(AppRoutes.onGenerateRoute(const RouteSettings(name: null)), isNull);
+      expect(
+        AppRoutes.onGenerateRoute(const RouteSettings(name: '/credits')),
+        isNotNull,
+      );
+      expect(
+        AppRoutes.onGenerateRoute(const RouteSettings(name: '/missing')),
+        isNull,
+      );
+      expect(
+        AppRoutes.onGenerateRoute(const RouteSettings(name: null)),
+        isNull,
+      );
     });
 
     test('the generated route keeps its name, so Back can identify it', () {
       // AppRoutes.applyUrl tells "a registered screen is open" from "the editor
       // is open" by this name alone, and pops the second one only through its
       // guard.
-      final route =
-          AppRoutes.onGenerateRoute(const RouteSettings(name: '/credits'));
+      final route = AppRoutes.onGenerateRoute(
+        const RouteSettings(name: '/credits'),
+      );
       expect(route!.settings.name, '/credits');
       expect(AppRoutes.history.isShowingPage, isFalse);
     });
@@ -181,14 +213,20 @@ void main() {
 
   group('AppRoutes.launchPageToOpen', () {
     test('opens the screen a launch URL names', () {
-      expect(AppRoutes.launchPageToOpen(Uri.parse('/credits'), '/'), '/credits');
+      expect(
+        AppRoutes.launchPageToOpen(Uri.parse('/credits'), '/'),
+        '/credits',
+      );
     });
 
     test('does not re-open one Flutter already stacked', () {
       // A public screen is generated from the browser path before the shell
       // exists. Pushing it again put two copies on the stack and the user had
       // to close it twice.
-      expect(AppRoutes.launchPageToOpen(Uri.parse('/credits'), '/credits'), isNull);
+      expect(
+        AppRoutes.launchPageToOpen(Uri.parse('/credits'), '/credits'),
+        isNull,
+      );
     });
 
     test('ignores tabs and unknown paths', () {
@@ -200,7 +238,10 @@ void main() {
     test('still respects the gate', () {
       // Signed out here, as during MaterialApp's first build — which is the
       // whole reason the shell asks again once auth has resolved.
-      expect(AppRoutes.launchPageToOpen(Uri.parse('/prerequisites'), '/'), isNull);
+      expect(
+        AppRoutes.launchPageToOpen(Uri.parse('/prerequisites'), '/'),
+        isNull,
+      );
       expect(AppRoutes.launchPageToOpen(Uri.parse('/profile'), '/'), isNull);
     });
   });
@@ -224,8 +265,10 @@ void main() {
 
   group('AppRoutes share links', () {
     test('reads the code out of a /s/<code> url', () {
-      expect(AppRoutes.shareCodeIn(Uri.parse('https://tabulr.net/s/abc-123')),
-          'abc-123');
+      expect(
+        AppRoutes.shareCodeIn(Uri.parse('https://tabulr.net/s/abc-123')),
+        'abc-123',
+      );
     });
 
     test('is not fooled by other two-segment paths', () {
@@ -246,18 +289,23 @@ void main() {
   // shell rather than on nothing. Covers a signed-out `/profile` and every tab
   // URL (`/cgpa`) alike, since tabs are not routes at all.
   testWidgets('an unopenable launch path lands on the shell', (tester) async {
-    await tester.pumpWidget(MaterialApp.router(
-      routeInformationParser: const AppRouteInformationParser(),
-      routerDelegate: AppRouterDelegate(home: const Text('shell')),
-      routeInformationProvider: PlatformRouteInformationProvider(
-        initialRouteInformation: RouteInformation(uri: Uri.parse('/profile')),
+    await tester.pumpWidget(
+      MaterialApp.router(
+        routeInformationParser: const AppRouteInformationParser(),
+        routerDelegate: AppRouterDelegate(home: const Text('shell')),
+        routeInformationProvider: PlatformRouteInformationProvider(
+          initialRouteInformation: RouteInformation(uri: Uri.parse('/profile')),
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
     expect(find.text('shell'), findsOneWidget);
-    expect(tester.state<NavigatorState>(find.byType(Navigator)).canPop(), isFalse);
+    expect(
+      tester.state<NavigatorState>(find.byType(Navigator)).canPop(),
+      isFalse,
+    );
   });
 }
 

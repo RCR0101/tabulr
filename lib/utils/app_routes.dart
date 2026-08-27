@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show SynchronousFuture, kIsWeb;
 import '../widgets/app_destinations.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/app_tools.dart';
+import '../screens/guide_screen.dart';
 import 'page_transitions.dart';
 
 /// Maps between browser URLs and what the app is showing.
@@ -54,8 +55,9 @@ abstract final class AppRoutes {
 
   /// The pushed screen [uri] names, or null if it names something else or the
   /// current user can't open it.
-  static AppToolInfo? pageIn(Uri uri) =>
-      uri.pathSegments.length == 1 ? AppTools.byPath('/${uri.pathSegments.first}') : null;
+  static AppToolInfo? pageIn(Uri uri) => uri.pathSegments.length == 1
+      ? AppTools.byPath('/${uri.pathSegments.first}')
+      : null;
 
   /// The pushed screen a launch URL names and that is not already open, or
   /// null when there is nothing to do.
@@ -65,22 +67,35 @@ abstract final class AppRoutes {
   /// the browser path — and pushing it again stacks two copies. A gated one is
   /// not, because its gate was read before Firebase Auth restored the session.
   static String? launchPageToOpen(Uri uri, String? topRouteName) {
-    final path = pageIn(uri)?.path;
+    final path = pagePathIn(uri);
     return path == null || path == topRouteName ? null : path;
   }
 
-  /// Builds the pushed screens, for both `Navigator.pushNamed` and the initial
-  /// route Flutter generates from the launch URL.
-  ///
-  /// Returning null for an unreachable screen is what makes a signed-out
-  /// visitor opening `/profile` land on the app instead: Flutter drops an
-  /// initial route it cannot generate and falls back to `/`.
+  static String? pagePathIn(Uri uri) {
+    final info = pageIn(uri);
+    if (info == null) return null;
+    return Uri(
+      path: info.path,
+      fragment: info.tool == AppTool.guide && uri.fragment.isNotEmpty
+          ? uri.fragment
+          : null,
+    ).toString();
+  }
+
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
-    final info = AppTools.byPath(settings.name);
+    final uri = Uri.tryParse(settings.name ?? '');
+    final info = uri == null ? null : pageIn(uri);
     if (info == null) return null;
     // No selection link: a path cannot carry one, so these always open in their
     // standalone mode.
-    return FadeSlidePageRoute<void>(page: info.build(null), settings: settings);
+    return FadeSlidePageRoute<void>(
+      page: info.tool == AppTool.guide
+          ? GuideScreen(
+              initialAnchor: uri!.fragment.isEmpty ? null : uri.fragment,
+            )
+          : info.build(null),
+      settings: settings,
+    );
   }
 
   static String get origin => kIsWeb ? Uri.base.origin : _fallbackOrigin;
@@ -140,6 +155,16 @@ abstract final class AppRoutes {
   static Uri get currentUri {
     final page = history.addressablePath;
     if (page != null) return Uri.parse(page);
+    final tool = AppShell.currentTool;
+    if (tool != null) {
+      final path = pathForTool(tool);
+      if (path != null) {
+        return Uri(
+          path: path,
+          fragment: tool == AppTool.guide ? AppShell.guideAnchor : null,
+        );
+      }
+    }
     final screen = AppShell.currentScreen;
     if (screen != null) return Uri.parse(pathFor(screen));
     return kIsWeb ? Uri(path: Uri.base.path) : Uri(path: '/');
@@ -178,7 +203,7 @@ abstract final class AppRoutes {
 
     if (navigator != null &&
         navigator.canPop() &&
-        history.topRouteName != page?.path) {
+        history.topRouteName != pagePathIn(uri)) {
       // Something is stacked over the shell and the URL has stopped naming it,
       // so this Back is about closing that — never also about switching the tab
       // underneath. Doing both made one Back press do two navigations: the
@@ -199,7 +224,15 @@ abstract final class AppRoutes {
     }
 
     if (page != null) {
-      final path = page.path;
+      if (AppShell.isMounted &&
+          navigator?.canPop() != true &&
+          AppShell.openTool(
+            page.tool,
+            guideAnchor: uri.fragment.isEmpty ? null : uri.fragment,
+          )) {
+        return;
+      }
+      final path = pagePathIn(uri);
       if (path != null && history.topRouteName != path) {
         navigator?.pushNamed(path);
       }
@@ -267,7 +300,9 @@ class AppRouterDelegate extends RouterDelegate<Uri>
         onGenerateRoute: (settings) =>
             settings.name == Navigator.defaultRouteName
                 ? MaterialPageRoute<void>(
-                    builder: (_) => home, settings: settings)
+                    builder: (_) => home,
+                    settings: settings,
+                  )
                 : AppRoutes.onGenerateRoute(settings),
       );
 
@@ -279,8 +314,9 @@ class AppRouterDelegate extends RouterDelegate<Uri>
   Future<void> setInitialRoutePath(Uri configuration) async {
     // After the frame: the Navigator this wants to push onto is built by the
     // very first call to [build], which has not happened yet.
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) => AppRoutes.applyUrl(configuration));
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => AppRoutes.applyUrl(configuration),
+    );
   }
 }
 
@@ -297,8 +333,7 @@ class AppRouteHistory extends NavigatorObserver {
   /// The topmost route's name: a registered screen's path when one is open,
   /// `'/'` for the shell, and null for a route pushed without settings — the
   /// timetable editor, and every dialog, menu and bottom sheet.
-  String? get topRouteName =>
-      _stack.isEmpty ? null : _stack.last.settings.name;
+  String? get topRouteName => _stack.isEmpty ? null : _stack.last.settings.name;
 
   /// The path of the nearest route to the top that has one, or null when only
   /// the shell and unaddressable routes are open.
@@ -315,7 +350,10 @@ class AppRouteHistory extends NavigatorObserver {
   /// Access is deliberately not consulted: this answers "did that route own an
   /// address", which stays true for a screen whose gate closed mid-session.
   static bool isAddressable(String? name) =>
-      name != null && AppTools.all.any((info) => info.path == name);
+      name != null &&
+      AppTools.all.any(
+        (info) => info.path != null && info.path == Uri.tryParse(name)?.path,
+      );
 
   /// True when the topmost route is one [AppRoutes] put there, and so is safe
   /// to close without asking. Anything else may carry a `PopScope` guard.

@@ -25,11 +25,27 @@ import '../utils/page_info_helper.dart';
 /// exists, finds Auto-add CDCs and presses Generate. This screen is that
 /// sequence in one step, for the semester they pick.
 class SampleTimetablesScreen extends StatefulWidget {
-  const SampleTimetablesScreen({super.key, this.selectionLink});
+  const SampleTimetablesScreen({
+    super.key,
+    this.selectionLink,
+    this.courseLoader,
+    this.initialPick,
+    this.sampleBuilder,
+  });
 
   /// Non-null when opened from inside the editor, in which case a sample can be
   /// added straight to the timetable being edited.
   final TimetableSelectionLink? selectionLink;
+
+  /// Lets previews render the setup state without starting remote data access.
+  final Future<List<Course>> Function()? courseLoader;
+
+  final AutoLoadCDCResult? initialPick;
+  final Future<SampleTimetables> Function(
+    AutoLoadCDCResult pick,
+    List<Course> courses,
+  )?
+  sampleBuilder;
 
   @override
   State<SampleTimetablesScreen> createState() => _SampleTimetablesScreenState();
@@ -53,6 +69,7 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
   @override
   void initState() {
     super.initState();
+    _picked = widget.initialPick;
     _load();
   }
 
@@ -64,15 +81,16 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
 
   Future<void> _load() async {
     try {
-      final courses = await CourseDataService().fetchCourses();
+      final courses =
+          await (widget.courseLoader?.call() ??
+              CourseDataService().fetchCourses());
       if (!mounted) return;
       setState(() {
         _courses = courses;
         _loading = false;
       });
-      // Straight into the picker: the screen has nothing to show until a
-      // branch and semester have been named.
-      await _pick();
+      final initial = _picked;
+      if (initial != null) await _generate(initial);
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -80,16 +98,23 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
     }
   }
 
-  Future<void> _pick() async {
+  Future<void> _changePick() async {
     final result = await showDialog<AutoLoadCDCResult>(
       context: context,
-      builder: (_) => AutoLoadCDCDialog(
-        // Only the first semester of each year has a package published to
-        // build a sample from.
-        semesters: SemesterConstants.firstSemesters,
-      ),
+      builder:
+          (_) => AutoLoadCDCDialog(
+            // Only the first semester of each year has a package published to
+            // build a sample from.
+            semesters: SemesterConstants.firstSemesters,
+            initialValue: _picked,
+          ),
     );
     if (result == null || !mounted) return;
+    setState(() => _picked = result);
+    await _generate(result);
+  }
+
+  Future<void> _selectInitial(AutoLoadCDCResult result) async {
     setState(() => _picked = result);
     await _generate(result);
   }
@@ -102,13 +127,17 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
       _page = 0;
     });
     try {
-      final result = await SampleTimetableService.build(
-        primaryBranch: pick.primaryBranch,
-        secondaryBranch: pick.secondaryBranch,
-        semester: pick.semester,
-        availableCourses: _courses,
-        chosen: pick.chosen,
-      );
+      final customBuilder = widget.sampleBuilder;
+      final result =
+          customBuilder != null
+              ? await customBuilder(pick, _courses)
+              : await SampleTimetableService.build(
+                primaryBranch: pick.primaryBranch,
+                secondaryBranch: pick.secondaryBranch,
+                semester: pick.semester,
+                availableCourses: _courses,
+                chosen: pick.chosen,
+              );
       if (!mounted) return;
       setState(() {
         _result = result;
@@ -125,13 +154,13 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
   }
 
   List<tt.SelectedSection> _sectionsOf(RankedTimetable ranked) => [
-        for (final s in ranked.timetable.sections)
-          tt.SelectedSection(
-            courseCode: s.courseCode,
-            sectionId: s.sectionId,
-            section: s.section,
-          ),
-      ];
+    for (final s in ranked.timetable.sections)
+      tt.SelectedSection(
+        courseCode: s.courseCode,
+        sectionId: s.sectionId,
+        section: s.section,
+      ),
+  ];
 
   String _nameFor(RankedTimetable ranked) {
     final pick = _picked;
@@ -153,8 +182,10 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (final s in sections)
-            Text('• ${s.courseCode} — ${s.sectionId}',
-                style: const TextStyle(fontSize: 12)),
+            Text(
+              '• ${s.courseCode} — ${s.sectionId}',
+              style: const TextStyle(fontSize: 12),
+            ),
         ],
       ),
       actions: [
@@ -175,7 +206,9 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
         AppButton(
           label: 'Save as new',
           variant:
-              link == null ? AppButtonVariant.primary : AppButtonVariant.secondary,
+              link == null
+                  ? AppButtonVariant.primary
+                  : AppButtonVariant.secondary,
           onTap: () {
             Navigator.pop(context);
             _saveAsNew(sections, _nameFor(ranked));
@@ -205,7 +238,9 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
     };
     var added = 0;
     for (final section in sections) {
-      if (already.contains('${section.courseCode}|${section.sectionId}')) continue;
+      if (already.contains('${section.courseCode}|${section.sectionId}')) {
+        continue;
+      }
       link.onSectionToggle(section.courseCode, section.sectionId, false);
       added++;
     }
@@ -214,10 +249,16 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
     }
   }
 
-  Future<void> _saveAsNew(List<tt.SelectedSection> sections, String name) async {
+  Future<void> _saveAsNew(
+    List<tt.SelectedSection> sections,
+    String name,
+  ) async {
     try {
-      await SampleTimetableService.saveAsNew(sections, name,
-          basis: _result?.basis ?? CreditBasis.units);
+      await SampleTimetableService.saveAsNew(
+        sections,
+        name,
+        basis: _result?.basis ?? CreditBasis.units,
+      );
       if (!mounted) return;
       ToastService.showSuccess('Saved as "$name"');
     } catch (e) {
@@ -235,27 +276,30 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
 
     final target = await showDialog<tt.Timetable>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Overwrite which timetable?'),
-        content: SizedBox(
-          width: 360,
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              for (final t in timetables)
-                ListTile(
-                  title: Text(t.name),
-                  subtitle: Text('${t.selectedSections.length} sections'),
-                  onTap: () => Navigator.pop(ctx, t),
-                ),
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('Overwrite which timetable?'),
+            content: SizedBox(
+              width: 360,
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final t in timetables)
+                    ListTile(
+                      title: Text(t.name),
+                      subtitle: Text('${t.selectedSections.length} sections'),
+                      onTap: () => Navigator.pop(ctx, t),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-        ],
-      ),
     );
     if (target == null || !mounted) return;
 
@@ -263,28 +307,35 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
     // once saved, so it is asked for plainly rather than assumed.
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Replace "${target.name}"?'),
-        content: Text(
-          'Its ${target.selectedSections.length} section'
-          '${target.selectedSections.length == 1 ? '' : 's'} will be replaced '
-          'by this sample.',
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Replace')),
-        ],
-      ),
+      builder:
+          (ctx) => AlertDialog(
+            title: Text('Replace "${target.name}"?'),
+            content: Text(
+              'Its ${target.selectedSections.length} section'
+              '${target.selectedSections.length == 1 ? '' : 's'} will be replaced '
+              'by this sample.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Replace'),
+              ),
+            ],
+          ),
     );
     if (confirmed != true) return;
 
     try {
-      await SampleTimetableService.overwrite(target, sections, _courses,
-          basis: _result?.basis ?? CreditBasis.units);
+      await SampleTimetableService.overwrite(
+        target,
+        sections,
+        _courses,
+        basis: _result?.basis ?? CreditBasis.units,
+      );
       if (!mounted) return;
       ToastService.showSuccess('Replaced "${target.name}"');
     } catch (e) {
@@ -298,22 +349,19 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
     return Scaffold(
       appBar: AppDesign.appBar(
         context,
-        titleWidget: AppDesign.iconTitle(
-          context,
-          icon: Icons.calendar_view_week,
-          title: 'Sample Timetables',
-          subtitle: 'Built from your core courses',
-        ),
-        actions: [PageInfoHelper.infoButton(context, PageInfoHelper.sampleTimetables)],
+        title: 'Sample Timetables',
+        actions: [
+          PageInfoHelper.infoButton(context, PageInfoHelper.sampleTimetables),
+        ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                if (pick != null) _pickHeader(pick),
-                Expanded(child: _results()),
-              ],
-            ),
+      body:
+          _loading
+              ? const Center(child: CircularProgressIndicator())
+              : pick == null
+              ? _setup()
+              : Column(
+                children: [_pickHeader(pick), Expanded(child: _results())],
+              ),
     );
   }
 
@@ -335,18 +383,100 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
                   'Semester ${pick.semester}',
                   style: TextStyle(
                     fontSize: 12,
-                    color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
+                    color: scheme.onSurface.withValues(
+                      alpha: AppDesign.opacityMedium,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
           TextButton.icon(
-            onPressed: _generating ? null : _pick,
+            onPressed: _generating ? null : _changePick,
             icon: const Icon(Icons.edit, size: 16),
             label: const Text('Change'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _setup() {
+    final scheme = Theme.of(context).colorScheme;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppDesign.spacingLg),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 820),
+          child: Container(
+            padding: const EdgeInsets.all(AppDesign.spacingLg),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  scheme.primaryContainer.withValues(alpha: 0.44),
+                  scheme.surface,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: scheme.primary.withValues(alpha: 0.16)),
+              boxShadow: [
+                BoxShadow(
+                  color: scheme.shadow.withValues(alpha: 0.06),
+                  blurRadius: 28,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: scheme.primary,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(
+                        Icons.auto_awesome_rounded,
+                        color: scheme.onPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Start with your core package',
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Choose your branch and semester once. Tabulr will build and rank clash-free sample timetables from the published CDCs.',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: scheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                AutoLoadCDCSelector(
+                  semesters: SemesterConstants.firstSemesters,
+                  actionLabel: 'Generate samples',
+                  onSelected: _selectInitial,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -359,19 +489,13 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
     // The generator threw: an exam clash, or a course missing from the
     // catalog. Its own sentence names the courses, so it is shown as written.
     final error = _error;
-    if (error != null) return _explain(Icons.error_outline, error, isError: true);
+    if (error != null) {
+      return _explain(Icons.error_outline, error, isError: true);
+    }
 
     final result = _result;
     if (result == null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: AppButton(
-            label: 'Pick a branch and semester',
-            onTap: _pick,
-          ),
-        ),
-      );
+      return const SizedBox.shrink();
     }
 
     // Three different answers, which used to be one empty list.
@@ -418,34 +542,32 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
   }
 
   Widget _sampleCard(RankedTimetable ranked) => SampleTimetableCard(
-        generated: ranked.timetable,
-        slots: TimetableService().generateTimetableSlots(
-          _sectionsOf(ranked),
-          _courses,
-          campus: CampusService.currentCampus,
-        ),
-        onUse: () => _offerActions(ranked),
-      );
+    generated: ranked.timetable,
+    slots: TimetableService().generateTimetableSlots(
+      _sectionsOf(ranked),
+      _courses,
+      campus: CampusService.currentCampus,
+    ),
+    onUse: () => _offerActions(ranked),
+  );
 
   /// Swipe position. The cards scroll horizontally, so there is nothing on
   /// screen to say how many there are or where you are in them.
-  Widget _pager(int count) => CarouselPager(
-        page: _page,
-        count: count,
-        onGoTo: _goTo,
-      );
+  Widget _pager(int count) =>
+      CarouselPager(page: _page, count: count, onGoTo: _goTo);
 
   void _goTo(int page) => _pageController.animateToPage(
-        page,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-      );
+    page,
+    duration: const Duration(milliseconds: 250),
+    curve: Curves.easeOut,
+  );
 
   Widget _explain(IconData icon, String message, {bool isError = false}) {
     final scheme = Theme.of(context).colorScheme;
-    final color = isError
-        ? scheme.error
-        : scheme.onSurface.withValues(alpha: AppDesign.opacityMedium);
+    final color =
+        isError
+            ? scheme.error
+            : scheme.onSurface.withValues(alpha: AppDesign.opacityMedium);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -459,7 +581,7 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
             AppButton(
               label: 'Pick another semester',
               variant: AppButtonVariant.secondary,
-              onTap: _pick,
+              onTap: _changePick,
             ),
           ],
         ),

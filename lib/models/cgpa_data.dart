@@ -243,6 +243,25 @@ class CGPAData {
   List<CourseEntry> _deduplicatedCourses() =>
       latestAttempts().values.map((a) => a.entry).toList();
 
+  /// Credits + grade points already standing, for projecting a future semester.
+  ///
+  /// Excludes [semester] (the one being planned) and any course in
+  /// [replacedCodes] — a course you plan to retake supersedes its earlier
+  /// attempt (Reg 4.21), so counting the old grade *and* the projected one would
+  /// double-count its credits. Foundation for the Grade Planner and P3.
+  ({double credits, double gradePoints}) standingBefore({
+    String? semester,
+    Set<String> replacedCodes = const {},
+  }) {
+    double credits = 0, gradePoints = 0;
+    for (final a in latestAttempts(excludingSemester: semester).values) {
+      if (replacedCodes.contains(a.entry.courseCode)) continue;
+      credits += a.entry.credits;
+      gradePoints += a.entry.totalGradePoints;
+    }
+    return (credits: credits, gradePoints: gradePoints);
+  }
+
   int get uniqueCourseCount => _deduplicatedCourses().length;
 
   double get effectiveTotalCredits {

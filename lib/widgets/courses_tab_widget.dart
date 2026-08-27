@@ -5,7 +5,6 @@ import '../models/credit_mix.dart';
 import '../models/timetable.dart';
 import 'course_list_widget.dart';
 import 'exam_dates_widget.dart';
-import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 
@@ -51,11 +50,12 @@ class CoursesTabWidget extends StatefulWidget {
 class _CoursesTabWidgetState extends State<CoursesTabWidget>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _showExamSchedule = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -82,23 +82,28 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
       decoration: BoxDecoration(
         color: scheme.errorContainer,
         border: Border(
-            bottom: BorderSide(color: scheme.error.withValues(alpha: 0.4))),
+          bottom: BorderSide(color: scheme.error.withValues(alpha: 0.4)),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.report_problem_outlined,
-                  size: 16, color: scheme.onErrorContainer),
+              Icon(
+                Icons.report_problem_outlined,
+                size: 16,
+                color: scheme.onErrorContainer,
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   'This timetable mixes credits and credit hours',
                   style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: scheme.onErrorContainer),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onErrorContainer,
+                  ),
                 ),
               ),
             ],
@@ -109,19 +114,22 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
             'how everyone else does. You can only register for one of them, so '
             'drop the set that is not yours.',
             style: TextStyle(
-                fontSize: 12,
-                height: 1.35,
-                color: scheme.onErrorContainer.withValues(alpha: 0.9)),
+              fontSize: 12,
+              height: 1.35,
+              color: scheme.onErrorContainer.withValues(alpha: 0.9),
+            ),
           ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 6,
             children: [
+              _removeButton('$unitCount in credits', CreditBasis.units, scheme),
               _removeButton(
-                  '$unitCount in credits', CreditBasis.units, scheme),
-              _removeButton(
-                  '$hourCount in credit hours', CreditBasis.hours, scheme),
+                '$hourCount in credit hours',
+                CreditBasis.hours,
+                scheme,
+              ),
             ],
           ),
         ],
@@ -131,9 +139,10 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
 
   Widget _removeButton(String what, CreditBasis basis, ColorScheme scheme) {
     return OutlinedButton.icon(
-      onPressed: widget.onRemoveBasis == null
-          ? null
-          : () => widget.onRemoveBasis!(basis),
+      onPressed:
+          widget.onRemoveBasis == null
+              ? null
+              : () => widget.onRemoveBasis!(basis),
       icon: const Icon(Icons.delete_outline, size: 15),
       label: Text('Remove $what', style: const TextStyle(fontSize: 12)),
       style: OutlinedButton.styleFrom(
@@ -147,7 +156,8 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
   }
 
   Widget _buildStickyCreditsBar(CreditMix mix) {
-    final selectedCoursesCodes = widget.selectedSections.map((s) => s.courseCode).toSet();
+    final selectedCoursesCodes =
+        widget.selectedSections.map((s) => s.courseCode).toSet();
     // The two bases are kept apart because they are different quantities —
     // adding them would report a number that matches no rule the registrar has.
     final courseCredits = mix.amountFor(CreditBasis.units);
@@ -169,17 +179,34 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: isOver ? scheme.errorContainer : scheme.primaryContainer.withValues(alpha: AppDesign.opacityLow),
-        border: Border(bottom: BorderSide(color: scheme.outline.withValues(alpha: AppDesign.opacityLow))),
+        color:
+            isOver
+                ? scheme.errorContainer
+                : scheme.primaryContainer.withValues(
+                  alpha: AppDesign.opacityLow,
+                ),
+        border: Border(
+          bottom: BorderSide(
+            color: scheme.outline.withValues(alpha: AppDesign.opacityLow),
+          ),
+        ),
       ),
       child: Row(
         children: [
-          Icon(Icons.school, size: 16, color: isOver ? scheme.error : scheme.primary),
+          Icon(
+            Icons.school,
+            size: 16,
+            color: isOver ? scheme.error : scheme.primary,
+          ),
           const SizedBox(width: 6),
           Text(
             '${total % 1 == 0 ? total.toInt() : total.toStringAsFixed(1)}'
             '/${cap.toInt()} ${widget.creditBasis.label}',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isOver ? scheme.error : scheme.primary),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: isOver ? scheme.error : scheme.primary,
+            ),
           ),
           // Only when the timetable is NOT already reporting in hours — this is
           // the mixed case, which the warning above is about.
@@ -188,15 +215,19 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
             Text(
               '+ ${creditHours % 1 == 0 ? creditHours.toInt() : creditHours.toStringAsFixed(1)} credit hours',
               style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: scheme.tertiary),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: scheme.tertiary,
+              ),
             ),
           ],
           if (selectedCoursesCodes.isNotEmpty) ...[
             Text(
               '  (${selectedCoursesCodes.length} course${selectedCoursesCodes.length != 1 ? 's' : ''})',
-              style: TextStyle(fontSize: 11, color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow)),
+              style: TextStyle(
+                fontSize: 11,
+                color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow),
+              ),
             ),
           ],
           const Spacer(),
@@ -204,159 +235,218 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
           // there is no hours figure for one, so counting it into an hours
           // total would be inventing a number.
           if (!inHours) ...[
-          Text('Projects', style: TextStyle(fontSize: 11, color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium))),
-          const SizedBox(width: 4),
-          InkWell(
-            onTap: widget.projectCount > 0 ? () { widget.onProjectCountChanged(widget.projectCount - 1); } : null,
-            child: Icon(Icons.remove_circle_outline, size: 16, color: widget.projectCount > 0 ? scheme.primary : scheme.onSurface.withValues(alpha: AppDesign.opacityLow)),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text('${widget.projectCount}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: scheme.primary)),
-          ),
-          InkWell(
-            onTap: canAddProject
-                ? () { widget.onProjectCountChanged(widget.projectCount + 1); }
-                : () { if (total + 3 > cap) ToastService.showError('Cannot add project — would exceed the ${cap.toInt()} ${widget.creditBasis.label} limit'); },
-            child: Icon(Icons.add_circle_outline, size: 16, color: canAddProject ? scheme.primary : scheme.onSurface.withValues(alpha: AppDesign.opacityLow)),
-          ),
-          if (widget.projectCount > 0) ...[
+            Text(
+              'Projects',
+              style: TextStyle(
+                fontSize: 11,
+                color: scheme.onSurface.withValues(
+                  alpha: AppDesign.opacityMedium,
+                ),
+              ),
+            ),
             const SizedBox(width: 4),
-            Text('(+$projectCredits)', style: TextStyle(fontSize: 10, color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow))),
-          ],
+            InkWell(
+              onTap:
+                  widget.projectCount > 0
+                      ? () {
+                        widget.onProjectCountChanged(widget.projectCount - 1);
+                      }
+                      : null,
+              child: Icon(
+                Icons.remove_circle_outline,
+                size: 16,
+                color:
+                    widget.projectCount > 0
+                        ? scheme.primary
+                        : scheme.onSurface.withValues(
+                          alpha: AppDesign.opacityLow,
+                        ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                '${widget.projectCount}',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: scheme.primary,
+                ),
+              ),
+            ),
+            InkWell(
+              onTap:
+                  canAddProject
+                      ? () {
+                        widget.onProjectCountChanged(widget.projectCount + 1);
+                      }
+                      : () {
+                        if (total + 3 > cap) {
+                          ToastService.showError(
+                            'Cannot add project — would exceed the ${cap.toInt()} ${widget.creditBasis.label} limit',
+                          );
+                        }
+                      },
+              child: Icon(
+                Icons.add_circle_outline,
+                size: 16,
+                color:
+                    canAddProject
+                        ? scheme.primary
+                        : scheme.onSurface.withValues(
+                          alpha: AppDesign.opacityLow,
+                        ),
+              ),
+            ),
+            if (widget.projectCount > 0) ...[
+              const SizedBox(width: 4),
+              Text(
+                '(+$projectCredits)',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: scheme.onSurface.withValues(
+                    alpha: AppDesign.opacityLow,
+                  ),
+                ),
+              ),
+            ],
           ],
         ],
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final isMobile = ResponsiveService.isMobile(context) || ResponsiveService.isTablet(context);
-    
-    final mix = CreditMix.of(widget.selectedSections, widget.courses);
+  Widget _buildPlanPanel() {
+    final scheme = Theme.of(context).colorScheme;
+    final selectedCount =
+        widget.selectedSections.map((s) => s.courseCode).toSet().length;
 
     return Column(
       children: [
-        if (mix.isMixed) _buildMixWarning(mix),
-        _buildStickyCreditsBar(mix),
         Container(
+          padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
+            color: scheme.surface,
+            border: Border(
+              bottom: BorderSide(color: scheme.outline.withValues(alpha: 0.12)),
+            ),
           ),
-          child: TabBar(
-            controller: _tabController,
-            labelColor: Theme.of(context).colorScheme.primary,
-            unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
-            indicatorColor: Theme.of(context).colorScheme.primary,
-            dividerColor: Theme.of(context).colorScheme.outline,
-            isScrollable: false,
-            labelPadding: isMobile ? const EdgeInsets.symmetric(horizontal: 4) : null,
-            tabAlignment: TabAlignment.fill,
-            tabs: isMobile ? [
-              Tab(
-                height: 60,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.search, size: 16),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Search',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                        textAlign: TextAlign.center,
-                      ),
-                      Text(
-                        '(${widget.courses.length})',
-                        style: TextStyle(fontSize: 10),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _showExamSchedule
+                      ? 'Exam schedule'
+                      : '$selectedCount selected course${selectedCount == 1 ? '' : 's'}',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
-              Tab(
-                height: 60,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.school, size: 16),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Selected',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                        textAlign: TextAlign.center,
-                      ),
-                      Text(
-                        '(${widget.selectedSections.map((s) => s.courseCode).toSet().length})',
-                        style: TextStyle(fontSize: 10),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
+              TextButton.icon(
+                onPressed:
+                    selectedCount == 0
+                        ? null
+                        : () => setState(
+                          () => _showExamSchedule = !_showExamSchedule,
+                        ),
+                icon: Icon(
+                  _showExamSchedule
+                      ? Icons.arrow_back_rounded
+                      : Icons.event_outlined,
+                  size: 17,
                 ),
-              ),
-              Tab(
-                height: 60,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.event, size: 16),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Exams',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
+                label: Text(
+                  _showExamSchedule ? 'Courses' : 'Exams',
+                  style: const TextStyle(fontSize: 12),
                 ),
-              ),
-            ] : [
-              Tab(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.search, size: 16),
-                    const SizedBox(width: 4),
-                    Text('Search (${widget.courses.length})', style: TextStyle(fontSize: 14)),
-                  ],
-                ),
-              ),
-              Tab(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.school, size: 16),
-                    const SizedBox(width: 4),
-                    Text('My Courses (${widget.selectedSections.map((s) => s.courseCode).toSet().length})', style: TextStyle(fontSize: 14)),
-                  ],
-                ),
-              ),
-              Tab(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.event, size: 16),
-                    const SizedBox(width: 4),
-                    const Text('Exams', style: TextStyle(fontSize: 14)),
-                  ],
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(0, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
                 ),
               ),
             ],
           ),
         ),
         Expanded(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            child:
+                _showExamSchedule
+                    ? Padding(
+                      key: const ValueKey('plan-exams'),
+                      padding: const EdgeInsets.all(8),
+                      child: ExamDatesWidget(
+                        selectedSections: widget.selectedSections,
+                        courses: widget.courses,
+                      ),
+                    )
+                    : CourseListWidget(
+                      key: const ValueKey('plan-courses'),
+                      courses: widget.courses,
+                      selectedSections: widget.selectedSections,
+                      onSectionToggle: widget.onSectionToggle,
+                      showOnlySelected: true,
+                      allowSectionClash: widget.allowSectionClash,
+                      creditBasis: widget.creditBasis,
+                    ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mix = CreditMix.of(widget.selectedSections, widget.courses);
+    final scheme = Theme.of(context).colorScheme;
+    final selectedCount =
+        widget.selectedSections.map((s) => s.courseCode).toSet().length;
+
+    return Column(
+      children: [
+        if (mix.isMixed) _buildMixWarning(mix),
+        _buildStickyCreditsBar(mix),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+          child: Container(
+            height: 42,
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(color: scheme.outline.withValues(alpha: 0.12)),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              labelColor: scheme.onSurface,
+              unselectedLabelColor: scheme.onSurfaceVariant,
+              dividerColor: Colors.transparent,
+              indicatorSize: TabBarIndicatorSize.tab,
+              indicator: BoxDecoration(
+                color: scheme.surface,
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(
+                  color: scheme.outline.withValues(alpha: 0.12),
+                ),
+              ),
+              labelStyle: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+              tabs: [
+                Tab(text: 'Catalog  ${widget.courses.length}'),
+                Tab(text: 'My Plan  $selectedCount'),
+              ],
+            ),
+          ),
+        ),
+        Expanded(
           child: TabBarView(
             controller: _tabController,
             children: [
-              // Search tab - shows all courses without reordering
               CourseListWidget(
                 courses: widget.courses,
                 selectedSections: widget.selectedSections,
@@ -366,52 +456,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
                 allowSectionClash: widget.allowSectionClash,
                 creditBasis: widget.creditBasis,
               ),
-              // My Courses tab - shows only selected courses
-              CourseListWidget(
-                courses: widget.courses,
-                selectedSections: widget.selectedSections,
-                onSectionToggle: widget.onSectionToggle,
-                showOnlySelected: true,
-                allowSectionClash: widget.allowSectionClash,
-                creditBasis: widget.creditBasis,
-              ),
-              // Exam schedule tab
-              widget.selectedSections.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.event_busy,
-                            size: 64,
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityLow),
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'No courses selected',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Add courses to see exam schedules',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: AppDesign.opacityLow),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: ExamDatesWidget(
-                        selectedSections: widget.selectedSections,
-                        courses: widget.courses,
-                      ),
-                    ),
+              _buildPlanPanel(),
             ],
           ),
         ),

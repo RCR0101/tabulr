@@ -5,6 +5,25 @@ import '../ui/secure_logger.dart';
 import 'timetable_generator.dart';
 import 'timetable_ranker.dart';
 
+enum ConstraintRelaxation { hoursWindow, freeDays, lunchBreak }
+
+extension ConstraintRelaxationLabel on ConstraintRelaxation {
+  String get label => switch (this) {
+    ConstraintRelaxation.hoursWindow => 'Allow classes outside the window',
+    ConstraintRelaxation.freeDays => 'Make preferred free days optional',
+    ConstraintRelaxation.lunchBreak => 'Allow classes during lunch',
+  };
+
+  String get detail => switch (this) {
+    ConstraintRelaxation.hoursWindow =>
+      'Keeps your preferred hours as a ranking signal instead of excluding every option outside them.',
+    ConstraintRelaxation.freeDays =>
+      'Still favours those days off, but permits the generator to use them when necessary.',
+    ConstraintRelaxation.lunchBreak =>
+      'Still prefers a free lunch, but no longer rejects an otherwise valid timetable.',
+  };
+}
+
 /// Holds everything the generator form collects, and runs the generation.
 ///
 /// State lives here rather than in the widget's `State` so the UI can subscribe
@@ -486,6 +505,90 @@ class TimetableGeneratorController extends ChangeNotifier {
 
   bool get hasCustomImportance =>
       _axisImportance.values.any((v) => v != AxisImportance.normal);
+
+  List<ConstraintRelaxation> get hardConstraintRelaxations => [
+    if (_requireHoursWindow) ConstraintRelaxation.hoursWindow,
+    if (_requireFreeDays) ConstraintRelaxation.freeDays,
+    if (_requireLunchFree) ConstraintRelaxation.lunchBreak,
+  ];
+
+  void applyRelaxation(ConstraintRelaxation relaxation) {
+    final changed = switch (relaxation) {
+      ConstraintRelaxation.hoursWindow => _requireHoursWindow,
+      ConstraintRelaxation.freeDays => _requireFreeDays,
+      ConstraintRelaxation.lunchBreak => _requireLunchFree,
+    };
+    if (!changed) return;
+    switch (relaxation) {
+      case ConstraintRelaxation.hoursWindow:
+        _requireHoursWindow = false;
+      case ConstraintRelaxation.freeDays:
+        _requireFreeDays = false;
+      case ConstraintRelaxation.lunchBreak:
+        _requireLunchFree = false;
+    }
+    _changed([constraints]);
+  }
+
+  /// Converts one measurable strength of [timetable] into a hard constraint for
+  /// the next run. Returns false for axes that cannot be represented honestly as
+  /// a generator constraint (instructor and exam quality remain ranking-only).
+  bool protectStrength(RankAxis axis, GeneratedTimetable timetable) {
+    switch (axis) {
+      case RankAxis.freeDays:
+        final free =
+            DayOfWeek.values
+                .where((day) => (timetable.hoursPerDay[day] ?? 0) == 0)
+                .toList();
+        if (free.isEmpty) return false;
+        final day = free.contains(DayOfWeek.F) ? DayOfWeek.F : free.first;
+        if (!_freeDayPreference.contains(day)) _freeDayPreference.add(day);
+        _requireFreeDays = true;
+      case RankAxis.lightLoad:
+        final busiest = timetable.hoursPerDay.values.fold<int>(
+          0,
+          (a, b) => a > b ? a : b,
+        );
+        if (busiest <= 0) return false;
+        _maxHoursPerDay = busiest;
+      case RankAxis.timeFit:
+        final hours =
+            timetable.sections
+                .expand((selection) => selection.section.schedule)
+                .expand((entry) => entry.hours)
+                .toList();
+        if (hours.isEmpty) return false;
+        final earliest = hours.reduce((a, b) => a < b ? a : b);
+        final latest = hours.reduce((a, b) => a > b ? a : b);
+        _earliestStartSlot = earliest <= 1 ? null : earliest;
+        _latestEndSlot = latest >= 12 ? null : latest;
+        if (!hasHoursWindow) return false;
+        _requireHoursWindow = true;
+      case RankAxis.coursesFitted:
+        final fitted = timetable.optionalCourseCodes.length;
+        if (fitted == 0) return false;
+        _optionalTarget = fitted.clamp(1, _optionalCourses.length);
+      case RankAxis.instructors:
+      case RankAxis.examComfort:
+        return false;
+    }
+    _axisImportance[axis] = AxisImportance.high;
+    _changed([constraints, courses, importance]);
+    return true;
+  }
+
+  List<RankAxis> protectableStrengths(RankedTimetable ranked) => [
+    for (final entry in ranked.axisSatisfaction.entries)
+      if (entry.value >= 0.75 &&
+          switch (entry.key) {
+            RankAxis.freeDays ||
+            RankAxis.lightLoad ||
+            RankAxis.timeFit ||
+            RankAxis.coursesFitted => true,
+            RankAxis.instructors || RankAxis.examComfort => false,
+          })
+        entry.key,
+  ];
 
   void reset() {
     _mandatoryCourses.clear();

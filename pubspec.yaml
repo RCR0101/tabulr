@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 2.5.67+171
+version: 2.5.68+172
 
 environment:
   sdk: ^3.7.0
@@ -92,12 +92,16 @@ flutter:
   # uses the real typeface instead of flashing a fallback. One variable file
   # carries every weight; FontWeight maps onto its `wght` axis.
   fonts:
+    - family: SpaceGrotesk
+      fonts:
+        - asset: assets/fonts/SpaceGrotesk.ttf
     - family: Inter
       fonts:
         - asset: assets/fonts/Inter.ttf
 
   # To add assets to your application, add an assets section, like this:
   assets:
+    - assets/fonts/SpaceGrotesk-OFL.txt
     - images/full_logo_bg.png
     - images/logo_bg.png
     - images/logo_nobg.png

@@ -134,6 +134,7 @@ function requireHydAuth(request) {
 // same post either.
 const DEDUP_EVENTS = new Set([
   "source_attached",
+  "post_removed_inaccuracy",
   "post_community_verified",
   "confirmed_verified_post",
   "denied_incorrect_post",
@@ -233,7 +234,7 @@ function computeVerificationState(cw, dw) {
 
 // ─── Reputation functions ───
 
-const CLIENT_ALLOWED_EVENTS = new Set(["source_attached", "post_removed_inaccuracy"]);
+const CLIENT_ALLOWED_EVENTS = new Set(["source_attached"]);
 
 exports.addReputationEvent = onCall({ region: REGION, enforceAppCheck: false }, async (request) => {
   if (!request.auth) {
@@ -250,7 +251,7 @@ exports.addReputationEvent = onCall({ region: REGION, enforceAppCheck: false }, 
   }
   // Stored verbatim in the reputation event log.
   const description = requireString(request.data.description, "description", 200);
-  // Optional: post_removed_inaccuracy legitimately carries no announcementId.
+  // Optional for client events that are not tied to an announcement.
   const announcementId = request.data.announcementId == null
     ? null
     : requireAnnouncementId(request.data.announcementId);
@@ -310,6 +311,57 @@ exports.touchReputationActivity = onCall({ region: REGION, enforceAppCheck: fals
     .set({ lastActive: FieldValue.serverTimestamp() }, { merge: true });
   return { success: true };
 });
+
+// ─── Announcement: Delete ───
+
+async function deleteAnnouncementForCaller({
+  callerDocId,
+  announcementId,
+  database = db,
+  addReputation = addRepEvent,
+}) {
+  const annRef = database.collection(ANN_COLLECTION).doc(announcementId);
+  const annSnap = await annRef.get();
+  if (!annSnap.exists) {
+    // A previous recursive delete may have removed the parent before all
+    // descendants. Retrying against the path cleans any orphaned children.
+    await database.recursiveDelete(annRef);
+    return { success: true, deleted: false };
+  }
+
+  const data = annSnap.data();
+  if (data.authorUid !== callerDocId) {
+    throw new HttpsError(
+      "permission-denied",
+      "Can only delete an announcement you authored"
+    );
+  }
+
+  const state = data.disputeState || "undisputed";
+  if (state === "disputed" || state === "correction_accepted") {
+    await addReputation({
+      uid: callerDocId,
+      type: "post_removed_inaccuracy",
+      points: scalarPoints("post_removed_inaccuracy"),
+      description: "Post removed while in " + state + " state",
+      announcementId,
+    });
+  }
+
+  // Firestore does not cascade subcollections. Admin recursiveDelete removes
+  // votes, flags and verifications without asking the client to bypass rules.
+  await database.recursiveDelete(annRef);
+  return { success: true, deleted: true };
+}
+
+exports.deleteAnnouncement = onCall(
+  { region: REGION, enforceAppCheck: false },
+  async (request) => {
+    const callerDocId = requireHydAuth(request);
+    const announcementId = requireAnnouncementId(request.data.announcementId);
+    return deleteAnnouncementForCaller({ callerDocId, announcementId });
+  }
+);
 
 // ─── Announcement: Vote ───
 
@@ -688,7 +740,12 @@ exports.acceptCorrection = onCall({ region: REGION, enforceAppCheck: false }, as
 // ─── Admin functions (Node.js — checkAdmin, professors) ───
 // uploadTimetable and uploadExamSeating are in functions-python/
 // Exposed for functions/test/validation.test.js only; not a callable.
-exports._test = { requireString, optionalString, requireAnnouncementId };
+exports._test = {
+  requireString,
+  optionalString,
+  requireAnnouncementId,
+  deleteAnnouncementForCaller,
+};
 
 const adminFunctions = require("./admin");
 exports.checkAdminStatus = adminFunctions.checkAdminStatus;

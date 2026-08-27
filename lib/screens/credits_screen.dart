@@ -17,22 +17,21 @@ class _Person {
   final String? avatarUrl;
   final String? url;
 
-  const _Person({
-    required this.name,
-    this.subtitle,
-    this.avatarUrl,
-    this.url,
-  });
+  const _Person({required this.name, this.subtitle, this.avatarUrl, this.url});
 
-  Map<String, dynamic> toMap() =>
-      {'name': name, 'subtitle': subtitle, 'avatarUrl': avatarUrl, 'url': url};
+  Map<String, dynamic> toMap() => {
+    'name': name,
+    'subtitle': subtitle,
+    'avatarUrl': avatarUrl,
+    'url': url,
+  };
 
   factory _Person.fromMap(Map<String, dynamic> m) => _Person(
-        name: m['name'] as String? ?? '',
-        subtitle: m['subtitle'] as String?,
-        avatarUrl: m['avatarUrl'] as String?,
-        url: m['url'] as String?,
-      );
+    name: m['name'] as String? ?? '',
+    subtitle: m['subtitle'] as String?,
+    avatarUrl: m['avatarUrl'] as String?,
+    url: m['url'] as String?,
+  );
 }
 
 class CreditsScreen extends StatefulWidget {
@@ -46,8 +45,9 @@ class _CreditsScreenState extends State<CreditsScreen> {
   // ── Configure these ───────────────────────────────────────────────────────
 
   /// "owner/repo", read off the one place the repo is named.
-  static final String _githubRepoSlug =
-      Uri.parse(AppUrls.githubRepo).path.substring(1);
+  static final String _githubRepoSlug = Uri.parse(
+    AppUrls.githubRepo,
+  ).path.substring(1);
 
   static const _creator = _Person(
     name: 'Aryan Dalmia',
@@ -102,20 +102,24 @@ class _CreditsScreenState extends State<CreditsScreen> {
     }
 
     try {
-      final res = await FirebaseFunctions.instanceFor(
-              region: FirebaseConfig.functionsRegion)
-          .httpsCallable('getAdmins')
-          .call();
-      final list = ((res.data as Map)['admins'] as List? ?? [])
-          .cast<Map<dynamic, dynamic>>();
-      _admins = list
-          .map((a) => _Person(
-                name: a['name'] as String? ?? '',
-                subtitle: 'Admin',
-                avatarUrl: a['photoUrl'] as String?,
-              ))
-          .where((p) => p.name.isNotEmpty)
-          .toList();
+      final res =
+          await FirebaseFunctions.instanceFor(
+            region: FirebaseConfig.functionsRegion,
+          ).httpsCallable('getAdmins').call();
+      final list =
+          ((res.data as Map)['admins'] as List? ?? [])
+              .cast<Map<dynamic, dynamic>>();
+      _admins =
+          list
+              .map(
+                (a) => _Person(
+                  name: a['name'] as String? ?? '',
+                  subtitle: 'Admin',
+                  avatarUrl: a['photoUrl'] as String?,
+                ),
+              )
+              .where((p) => p.name.isNotEmpty)
+              .toList();
       if (_admins.isNotEmpty) {
         _memAdmins = _admins;
         await _writeCache(_adminsCacheKey, _admins);
@@ -142,23 +146,30 @@ class _CreditsScreenState extends State<CreditsScreen> {
     try {
       final res = await http.get(
         Uri.parse(
-            'https://api.github.com/repos/$_githubRepoSlug/contributors?per_page=50'),
+          'https://api.github.com/repos/$_githubRepoSlug/contributors?per_page=50',
+        ),
         headers: {'Accept': 'application/vnd.github+json'},
       );
       if (res.statusCode == 200) {
-        final list = (jsonDecode(res.body) as List).cast<Map<String, dynamic>>();
-        final fetched = list
-            .where((c) => (c['type'] == 'User') &&
-                !(c['login'] as String? ?? '').endsWith('[bot]'))
-            .map((c) {
-              final n = (c['contributions'] as num?)?.toInt() ?? 0;
-              return _Person(
-                name: c['login'] as String? ?? '',
-                subtitle: '$n contribution${n == 1 ? '' : 's'}',
-                avatarUrl: c['avatar_url'] as String?,
-                url: c['html_url'] as String?,
-              );
-            }).toList();
+        final list =
+            (jsonDecode(res.body) as List).cast<Map<String, dynamic>>();
+        final fetched =
+            list
+                .where(
+                  (c) =>
+                      (c['type'] == 'User') &&
+                      !(c['login'] as String? ?? '').endsWith('[bot]'),
+                )
+                .map((c) {
+                  final n = (c['contributions'] as num?)?.toInt() ?? 0;
+                  return _Person(
+                    name: c['login'] as String? ?? '',
+                    subtitle: '$n contribution${n == 1 ? '' : 's'}',
+                    avatarUrl: c['avatar_url'] as String?,
+                    url: c['html_url'] as String?,
+                  );
+                })
+                .toList();
         if (fetched.isNotEmpty) {
           _contributors = fetched;
           _memContributors = fetched;
@@ -191,7 +202,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppDesign.appBar(context, title: 'Credits'),
+      appBar: AppDesign.appBar(context, title: 'About'),
       body: ListView(
         padding: const EdgeInsets.all(AppDesign.spacingMd),
         children: [
@@ -241,7 +252,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
     }
     // Contributor names are GitHub handles — show them verbatim.
     return [
-      for (final c in _contributors) _personTile(c, scheme, titleCase: false)
+      for (final c in _contributors) _personTile(c, scheme, titleCase: false),
     ];
   }
 
@@ -250,36 +261,51 @@ class _CreditsScreenState extends State<CreditsScreen> {
     return Column(
       children: [
         Container(
-          width: 64,
-          height: 64,
+          width: 76,
+          height: 76,
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [scheme.primary, scheme.secondary],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+            color: scheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: .65),
             ),
-            borderRadius: BorderRadius.circular(16),
           ),
           alignment: Alignment.center,
-          child: Icon(Icons.calendar_month_rounded,
-              color: scheme.onPrimary, size: 34),
+          child: Image.asset(
+            'images/logo_nobg.png',
+            fit: BoxFit.contain,
+            semanticLabel: 'Tabulr logo',
+          ),
         ),
         const SizedBox(height: AppDesign.spacingSm + 4),
-        Text(config.appName,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+        Text(
+          config.appName,
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+        ),
         const SizedBox(height: 2),
-        Text('v${config.appVersion}',
-            style: TextStyle(fontSize: 12, color: AppDesign.muted(context))),
+        Text(
+          'v${config.appVersion}',
+          style: TextStyle(fontSize: 12, color: AppDesign.muted(context)),
+        ),
         const SizedBox(height: 6),
         Row(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Made with ',
-                style: TextStyle(fontSize: 12, color: AppDesign.muted(context))),
-            Icon(Icons.favorite, size: 12, color: Colors.red.withValues(alpha: 0.7)),
-            Text(' for students',
-                style: TextStyle(fontSize: 12, color: AppDesign.muted(context))),
+            Text(
+              'Made with ',
+              style: TextStyle(fontSize: 12, color: AppDesign.muted(context)),
+            ),
+            Icon(
+              Icons.favorite,
+              size: 12,
+              color: Colors.red.withValues(alpha: 0.7),
+            ),
+            Text(
+              ' for students',
+              style: TextStyle(fontSize: 12, color: AppDesign.muted(context)),
+            ),
           ],
         ),
       ],
@@ -324,22 +350,31 @@ class _CreditsScreenState extends State<CreditsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(info.label,
-                        style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w700)),
+                    Text(
+                      info.label,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       info.description,
                       style: TextStyle(
-                          fontSize: 12,
-                          height: 1.35,
-                          color: AppDesign.muted(context)),
+                        fontSize: 12,
+                        height: 1.35,
+                        color: AppDesign.muted(context),
+                      ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: AppDesign.spacingSm),
-              Icon(Icons.arrow_forward_rounded, size: 18, color: scheme.primary),
+              Icon(
+                Icons.arrow_forward_rounded,
+                size: 18,
+                color: scheme.primary,
+              ),
             ],
           ),
         ),
@@ -356,10 +391,11 @@ class _CreditsScreenState extends State<CreditsScreen> {
           child: Text(
             title.toUpperCase(),
             style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.5,
-                color: Theme.of(context).colorScheme.primary),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+              color: Theme.of(context).colorScheme.primary,
+            ),
           ),
         ),
         Container(
@@ -376,47 +412,69 @@ class _CreditsScreenState extends State<CreditsScreen> {
     );
   }
 
-  Widget _personTile(_Person person, ColorScheme scheme,
-      {bool titleCase = true}) {
-    final initials = person.name.isEmpty
-        ? '?'
-        : person.name.trim().split(RegExp(r'\s+')).take(2).map((w) => w[0]).join();
+  Widget _personTile(
+    _Person person,
+    ColorScheme scheme, {
+    bool titleCase = true,
+  }) {
+    final initials =
+        person.name.isEmpty
+            ? '?'
+            : person.name
+                .trim()
+                .split(RegExp(r'\s+'))
+                .take(2)
+                .map((w) => w[0])
+                .join();
     return ListTile(
       onTap: person.url == null ? null : () => _open(person.url),
       leading: CircleAvatar(
         radius: 20,
         backgroundColor: scheme.primary.withValues(alpha: 0.15),
-        backgroundImage: (person.avatarUrl != null)
-            ? NetworkImage(person.avatarUrl!)
-            : null,
-        child: person.avatarUrl == null
-            ? Text(initials.toUpperCase(),
-                style: TextStyle(
+        backgroundImage:
+            (person.avatarUrl != null) ? NetworkImage(person.avatarUrl!) : null,
+        child:
+            person.avatarUrl == null
+                ? Text(
+                  initials.toUpperCase(),
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: scheme.primary))
-            : null,
+                    color: scheme.primary,
+                  ),
+                )
+                : null,
       ),
-      title: Text(titleCase ? titleCaseName(person.name) : person.name,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-      subtitle: person.subtitle == null
-          ? null
-          : Text(person.subtitle!, style: const TextStyle(fontSize: 12)),
-      trailing: person.url == null
-          ? null
-          : Icon(Icons.open_in_new_rounded,
-              size: 16, color: AppDesign.muted(context)),
+      title: Text(
+        titleCase ? titleCaseName(person.name) : person.name,
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+      ),
+      subtitle:
+          person.subtitle == null
+              ? null
+              : Text(person.subtitle!, style: const TextStyle(fontSize: 12)),
+      trailing:
+          person.url == null
+              ? null
+              : Icon(
+                Icons.open_in_new_rounded,
+                size: 16,
+                color: AppDesign.muted(context),
+              ),
     );
   }
 
   Widget _emptyNote(String text, ColorScheme scheme) {
     return Padding(
       padding: const EdgeInsets.all(AppDesign.spacingMd),
-      child: Text(text,
-          style: TextStyle(
-              fontSize: 12,
-              fontStyle: FontStyle.italic,
-              color: AppDesign.muted(context))),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 12,
+          fontStyle: FontStyle.italic,
+          color: AppDesign.muted(context),
+        ),
+      ),
     );
   }
 }

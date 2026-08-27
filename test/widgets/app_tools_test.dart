@@ -34,28 +34,20 @@ void main() {
       expect(labels.toSet().length, labels.length);
     });
 
-    test('the editor menu holds the course-planning tools', () {
-      expect(
-        AppTools.editorMenu.map((i) => i.tool),
-        [
-          // First: a student with nothing on the grid yet gets a whole
-          // timetable from it in one tap.
-          AppTool.sampleTimetables,
-          // Second: the other end of the same problem — too much on the grid
-          // rather than nothing.
-          AppTool.trimTimetable,
-          AppTool.courseGuide,
-          AppTool.prerequisites,
-          // One Electives entry, tabbed: the three separate browsers asked for
-          // the same branch and semester before showing anything.
-          AppTool.electives,
-          AppTool.minors,
-          // Deciding whether to take a course now turns on whether it will run
-          // again, so the past-offerings record belongs beside the browsers.
-          AppTool.courseHistory,
-          AppTool.profChambers,
-        ],
-      );
+    test('the editor menu holds only timetable-bound tools', () {
+      expect(AppTools.editorMenu.map((i) => i.tool), [
+        // First: a student with nothing on the grid yet gets a whole
+        // timetable from it in one tap.
+        AppTool.sampleTimetables,
+        // Second: the other end of the same problem — too much on the grid
+        // rather than nothing.
+        AppTool.trimTimetable,
+        // One Electives entry, tabbed: the three separate browsers asked for
+        // the same branch and semester before showing anything.
+        AppTool.electives,
+        AppTool.minors,
+        AppTool.profChambers,
+      ]);
     });
 
     test('Compare and Credits stay out of the editor menu', () {

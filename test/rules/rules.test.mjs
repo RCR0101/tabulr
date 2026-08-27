@@ -190,6 +190,19 @@ await test('CANNOT list every user reputation', async () => {
   await assertFails(getDocs(collection(user(HYD), 'reputation')));
 });
 
+group('announcements: deletion is callable-only');
+
+await seed(async (db) => {
+  await setDoc(doc(db, 'announcements/delete-me'), {
+    authorUid: 'f20220123H',
+    title: 'Test',
+  });
+});
+
+await test('even the author cannot bypass callable cleanup with deleteDoc', async () => {
+  await assertFails(deleteDoc(doc(user(HYD), 'announcements/delete-me')));
+});
+
 // ───────────────────────────────────────────────────────────────────────────
 group('acad_drives_submissions: contributor emails are not public');
 

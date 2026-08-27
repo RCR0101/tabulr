@@ -6,7 +6,11 @@ import 'package:timetable_maker/services/core/timetable_ranker.dart';
 import 'package:timetable_maker/widgets/generated_timetable_card.dart';
 import '../helpers/test_data.dart';
 
-RankedTimetable _sampleRanked({required int tier, required double closeness, List<RankAxis> weak = const []}) {
+RankedTimetable _sampleRanked({
+  required int tier,
+  required double closeness,
+  List<RankAxis> weak = const [],
+}) {
   final tt = GeneratedTimetable(
     id: '3-day week, light days',
     sections: [
@@ -18,7 +22,9 @@ RankedTimetable _sampleRanked({required int tier, required double closeness, Lis
     ],
     pros: const ['Compact week'],
     cons: const [],
-    hoursPerDay: {for (final d in DayOfWeek.values) d: d == DayOfWeek.M ? 1 : 0},
+    hoursPerDay: {
+      for (final d in DayOfWeek.values) d: d == DayOfWeek.M ? 1 : 0,
+    },
     totalCredits: 4,
   );
   return RankedTimetable(
@@ -31,16 +37,29 @@ RankedTimetable _sampleRanked({required int tier, required double closeness, Lis
 }
 
 void main() {
-  Widget host(RankedTimetable r) => MaterialApp(
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: GeneratedTimetableCard(ranked: r, onSelect: () {}),
-          ),
+  Widget host(
+    RankedTimetable r, {
+    List<RankAxis> protectableAxes = const [],
+    ValueChanged<RankAxis>? onProtect,
+  }) => MaterialApp(
+    home: Scaffold(
+      body: SingleChildScrollView(
+        child: GeneratedTimetableCard(
+          ranked: r,
+          onSelect: () {},
+          protectableAxes: protectableAxes,
+          onProtectAxis: onProtect,
         ),
-      );
+      ),
+    ),
+  );
 
-  testWidgets('renders tier badge, fit %, and relaxed-axis hint', (tester) async {
-    await tester.pumpWidget(host(_sampleRanked(tier: 1, closeness: 0.82, weak: [RankAxis.lightLoad])));
+  testWidgets('renders tier badge, fit %, and relaxed-axis hint', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      host(_sampleRanked(tier: 1, closeness: 0.82, weak: [RankAxis.lightLoad])),
+    );
 
     expect(find.text('Best trade-off'), findsOneWidget);
     expect(find.text('Fit 82%'), findsOneWidget);
@@ -55,8 +74,12 @@ void main() {
     expect(find.text('Tier 3'), findsOneWidget);
   });
 
-  testWidgets('tapping the tier opens the trade-off explanation', (tester) async {
-    await tester.pumpWidget(host(_sampleRanked(tier: 1, closeness: 0.82, weak: [RankAxis.lightLoad])));
+  testWidgets('tapping the tier opens the trade-off explanation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      host(_sampleRanked(tier: 1, closeness: 0.82, weak: [RankAxis.lightLoad])),
+    );
 
     await tester.tap(find.text('Fit 82%'));
     await tester.pumpAndSettle();
@@ -65,5 +88,26 @@ void main() {
     expect(find.text('Free days'), findsOneWidget);
     expect(find.text('Light, compact days'), findsOneWidget);
     expect(find.textContaining('best trade-off'), findsOneWidget);
+  });
+
+  testWidgets('can protect a measurable strength from the explanation', (
+    tester,
+  ) async {
+    RankAxis? protected;
+    await tester.pumpWidget(
+      host(
+        _sampleRanked(tier: 1, closeness: 0.82),
+        protectableAxes: const [RankAxis.freeDays],
+        onProtect: (axis) => protected = axis,
+      ),
+    );
+
+    await tester.tap(find.text('Fit 82%'));
+    await tester.pumpAndSettle();
+    expect(find.text('Keep free days'), findsOneWidget);
+
+    await tester.tap(find.text('Keep free days'));
+    await tester.pumpAndSettle();
+    expect(protected, RankAxis.freeDays);
   });
 }

@@ -14,12 +14,18 @@ class GeneratedTimetableCard extends StatelessWidget {
   final VoidCallback? onToggleCompare;
   final bool selectedForCompare;
 
+  /// Axes this result can turn into an honest hard constraint for the next run.
+  final List<RankAxis> protectableAxes;
+  final ValueChanged<RankAxis>? onProtectAxis;
+
   const GeneratedTimetableCard({
     super.key,
     required this.ranked,
     required this.onSelect,
     this.onToggleCompare,
     this.selectedForCompare = false,
+    this.protectableAxes = const [],
+    this.onProtectAxis,
   });
 
   GeneratedTimetable get timetable => ranked.timetable;
@@ -301,6 +307,39 @@ class GeneratedTimetableCard extends StatelessWidget {
             'Bars are relative to the best option in this batch on each measure.',
             style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
           ),
+          if (onProtectAxis != null && protectableAxes.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Protect a strength in the next run',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final axis in protectableAxes)
+                  ActionChip(
+                    avatar: const Icon(Icons.lock_outline, size: 16),
+                    label: Text('Keep ${axis.shortLabel}'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      onProtectAxis!(axis);
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'This converts the strength into a required constraint and regenerates.',
+              style: TextStyle(
+                fontSize: 11,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.5),
+              ),
+            ),
+          ],
         ],
       ),
       actions: [

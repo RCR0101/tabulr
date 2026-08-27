@@ -105,55 +105,41 @@ class CourseAnnouncementService {
     await docRef.set(announcement.toFirestore());
 
     if (source.isHighOrMedium) {
-      await _reputationService.addEvent(
-        uid: _authService.userDocId!,
-        type: 'source_attached',
-        points: 2,
-        description: 'Attached ${source.label} to announcement',
-        announcementId: docRef.id,
-      );
-    }
-
-    await _reputationService.touchActivity(_authService.userDocId!);
-    SecureLogger.info('ANNOUNCEMENTS', 'Posted announcement: $title');
-  }
-
-  Future<void> deleteAnnouncement(String id) async {
-    final docRef = _firestore.collection(FirestoreCollections.announcements).doc(id);
-    final snap = await docRef.get();
-
-    if (snap.exists) {
-      final data = snap.data()!;
-      final authorUid = data['authorUid'] as String?;
-      final state = data['disputeState'] as String? ?? 'undisputed';
-
-      if (authorUid != null &&
-          (state == 'disputed' || state == 'correction_accepted')) {
+      try {
         await _reputationService.addEvent(
-          uid: authorUid,
-          type: 'post_removed_inaccuracy',
-          points: -15,
-          description: 'Post removed while in $state state',
-          announcementId: id,
+          uid: _authService.userDocId!,
+          type: 'source_attached',
+          points: 2,
+          description: 'Attached ${source.label} to announcement',
+          announcementId: docRef.id,
+        );
+      } catch (e) {
+        // The announcement is already durable; a reputation-side failure
+        // must not make the UI offer a duplicate retry.
+        SecureLogger.error(
+          'ANNOUNCEMENTS',
+          'Failed to award source reputation',
+          e,
         );
       }
     }
 
-    final flagsSnap = await docRef.collection(FirestoreCollections.flags).get();
-    final verifSnap = await docRef.collection(FirestoreCollections.verifications).get();
-    final votesSnap = await docRef.collection(FirestoreCollections.votes).get();
-    final batch = _firestore.batch();
-    for (final d in flagsSnap.docs) {
-      batch.delete(d.reference);
+    try {
+      await _reputationService.touchActivity(_authService.userDocId!);
+    } catch (e) {
+      SecureLogger.error(
+        'ANNOUNCEMENTS',
+        'Failed to update reputation activity',
+        e,
+      );
     }
-    for (final d in verifSnap.docs) {
-      batch.delete(d.reference);
-    }
-    for (final d in votesSnap.docs) {
-      batch.delete(d.reference);
-    }
-    batch.delete(docRef);
-    await batch.commit();
+    SecureLogger.info('ANNOUNCEMENTS', 'Posted announcement: $title');
+  }
+
+  Future<void> deleteAnnouncement(String id) async {
+    await _functions.httpsCallable('deleteAnnouncement').call({
+      'announcementId': id,
+    });
     SecureLogger.info('ANNOUNCEMENTS', 'Deleted announcement: $id');
   }
 

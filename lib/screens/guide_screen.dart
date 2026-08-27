@@ -14,8 +14,9 @@ import '../widgets/guide_visuals.dart';
 
 class GuideScreen extends StatefulWidget {
   final String? initialAnchor;
+  final bool embedded;
 
-  const GuideScreen({super.key, this.initialAnchor});
+  const GuideScreen({super.key, this.initialAnchor, this.embedded = false});
 
   @override
   State<GuideScreen> createState() => _GuideScreenState();
@@ -33,9 +34,12 @@ class _GuideScreenState extends State<GuideScreen> {
   String _query = '';
 
   bool _showVisuals = false;
+  bool _isNavigating = false;
+  int _navigationSequence = 0;
 
-  final ValueNotifier<String?> _current =
-      ValueNotifier(guideSections.first.topics.first.anchor);
+  final ValueNotifier<String?> _current = ValueNotifier(
+    guideSections.first.topics.first.anchor,
+  );
 
   @override
   void initState() {
@@ -80,7 +84,7 @@ class _GuideScreenState extends State<GuideScreen> {
       _visible.fold<int>(0, (sum, s) => sum + s.topics.length);
 
   void _syncCurrent() {
-    if (!mounted) return;
+    if (!mounted || _isNavigating) return;
     String? top;
     double best = double.infinity;
     for (final entry in _keys.entries) {
@@ -101,19 +105,34 @@ class _GuideScreenState extends State<GuideScreen> {
   Future<void> _jumpTo(String anchor) async {
     final target = _keys[anchor]?.currentContext;
     if (target == null || !target.mounted) return;
+
+    final sequence = ++_navigationSequence;
+    _isNavigating = true;
     _current.value = anchor;
-    await Scrollable.ensureVisible(
-      target,
-      duration: AppDesign.motionStandard,
-      curve: AppDesign.curveStandard,
-      alignment: 0.02,
-    );
+    try {
+      await Scrollable.ensureVisible(
+        target,
+        duration: AppDesign.motionStandard,
+        curve: AppDesign.curveStandard,
+        alignment: 0.02,
+      );
+    } finally {
+      if (mounted && sequence == _navigationSequence) {
+        _current.value = anchor;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && sequence == _navigationSequence) {
+            _isNavigating = false;
+          }
+        });
+      }
+    }
   }
 
   Future<void> _copyLink(GuideTopic topic) async {
     final path = AppRoutes.pathForTool(AppTool.guide) ?? '/guide';
     await Clipboard.setData(
-        ClipboardData(text: '${AppRoutes.origin}$path#${topic.anchor}'));
+      ClipboardData(text: '${AppRoutes.origin}$path#${topic.anchor}'),
+    );
     AppToast.showSuccess('Link to "${topic.title}" copied');
   }
 
@@ -123,16 +142,19 @@ class _GuideScreenState extends State<GuideScreen> {
     final wide = MediaQuery.sizeOf(context).width >= _railBreakpoint;
 
     return Scaffold(
-      appBar: AppDesign.appBar(
-        context,
-        titleWidget: AppDesign.iconTitle(
-          context,
-          icon: Icons.auto_stories_outlined,
-          title: 'How Tabulr works',
-          subtitle: 'Every feature, with the real thing on screen',
-        ),
-        centerTitle: false,
-      ),
+      appBar:
+          widget.embedded
+              ? null
+              : AppDesign.appBar(
+                context,
+                titleWidget: AppDesign.iconTitle(
+                  context,
+                  icon: Icons.auto_stories_outlined,
+                  title: 'Using Tabulr',
+                  subtitle: 'Practical answers, one topic at a time',
+                ),
+                centerTitle: false,
+              ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1140),
@@ -145,25 +167,27 @@ class _GuideScreenState extends State<GuideScreen> {
                   children: [
                     _controls(context, wide),
                     Expanded(
-                      child: visible.isEmpty
-                          ? _noResults(context)
-                          : SingleChildScrollView(
-                              controller: _scroll,
-                              padding: const EdgeInsets.fromLTRB(
-                                AppDesign.spacingMd,
-                                0,
-                                AppDesign.spacingMd,
-                                AppDesign.spacingXxl,
+                      child:
+                          visible.isEmpty
+                              ? _noResults(context)
+                              : SingleChildScrollView(
+                                controller: _scroll,
+                                padding: const EdgeInsets.fromLTRB(
+                                  AppDesign.spacingMd,
+                                  0,
+                                  AppDesign.spacingMd,
+                                  AppDesign.spacingXxl,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    for (final section in visible)
+                                      _sectionBlock(context, section),
+                                    _footer(context),
+                                  ],
+                                ),
                               ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  for (final section in visible)
-                                    _sectionBlock(context, section),
-                                  _footer(context),
-                                ],
-                              ),
-                            ),
                     ),
                   ],
                 ),
@@ -180,15 +204,23 @@ class _GuideScreenState extends State<GuideScreen> {
     return Container(
       width: 232,
       margin: const EdgeInsets.fromLTRB(
-          AppDesign.spacingMd, AppDesign.spacingMd, 0, AppDesign.spacingMd),
+        AppDesign.spacingMd,
+        AppDesign.spacingMd,
+        0,
+        AppDesign.spacingMd,
+      ),
       decoration: AppDesign.cardDecoration(context),
       child: ListView(
         padding: const EdgeInsets.symmetric(vertical: AppDesign.spacingSm),
         children: [
           for (final section in guideSections) ...[
             Padding(
-              padding: const EdgeInsets.fromLTRB(AppDesign.spacingMd,
-                  AppDesign.spacingSm, AppDesign.spacingSm, AppDesign.spacingXs),
+              padding: const EdgeInsets.fromLTRB(
+                AppDesign.spacingMd,
+                AppDesign.spacingSm,
+                AppDesign.spacingSm,
+                AppDesign.spacingXs,
+              ),
               child: Row(
                 children: [
                   Icon(section.icon, size: 14, color: scheme.primary),
@@ -207,8 +239,7 @@ class _GuideScreenState extends State<GuideScreen> {
                 ],
               ),
             ),
-            for (final topic in section.topics)
-              _railItem(context, topic),
+            for (final topic in section.topics) _railItem(context, topic),
           ],
         ],
       ),
@@ -218,8 +249,9 @@ class _GuideScreenState extends State<GuideScreen> {
   Widget _railItem(BuildContext context, GuideTopic topic) {
     return ValueListenableBuilder<String?>(
       valueListenable: _current,
-      builder: (context, current, _) =>
-          _railTile(context, topic, current == topic.anchor),
+      builder:
+          (context, current, _) =>
+              _railTile(context, topic, current == topic.anchor),
     );
   }
 
@@ -228,11 +260,13 @@ class _GuideScreenState extends State<GuideScreen> {
     return AppTappable(
       onTap: () => _jumpTo(topic.anchor),
       child: Container(
+        key: ValueKey('guide-rail-${topic.anchor}'),
         padding: const EdgeInsets.fromLTRB(AppDesign.spacingMd, 7, 10, 7),
         decoration: BoxDecoration(
-          color: selected
-              ? scheme.primary.withValues(alpha: 0.10)
-              : Colors.transparent,
+          color:
+              selected
+                  ? scheme.primary.withValues(alpha: 0.10)
+                  : Colors.transparent,
           border: Border(
             left: BorderSide(
               width: 2,
@@ -246,9 +280,10 @@ class _GuideScreenState extends State<GuideScreen> {
             fontSize: 12.5,
             height: 1.3,
             fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-            color: selected
-                ? scheme.primary
-                : scheme.onSurface.withValues(alpha: 0.75),
+            color:
+                selected
+                    ? scheme.primary
+                    : scheme.onSurface.withValues(alpha: 0.75),
           ),
         ),
       ),
@@ -258,8 +293,12 @@ class _GuideScreenState extends State<GuideScreen> {
   Widget _controls(BuildContext context, bool wide) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppDesign.spacingMd, AppDesign.spacingMd,
-          AppDesign.spacingMd, AppDesign.spacingSm),
+      padding: const EdgeInsets.fromLTRB(
+        AppDesign.spacingMd,
+        AppDesign.spacingMd,
+        AppDesign.spacingMd,
+        AppDesign.spacingSm,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -277,7 +316,9 @@ class _GuideScreenState extends State<GuideScreen> {
                 children: [
                   for (final section in guideSections)
                     Padding(
-                      padding: const EdgeInsets.only(right: AppDesign.spacingSm),
+                      padding: const EdgeInsets.only(
+                        right: AppDesign.spacingSm,
+                      ),
                       child: ActionChip(
                         avatar: Icon(section.icon, size: 15),
                         label: Text(section.title),
@@ -293,8 +334,8 @@ class _GuideScreenState extends State<GuideScreen> {
             Text(
               '$_resultCount ${_resultCount == 1 ? 'topic' : 'topics'} for "$_query"',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurface.withValues(alpha: 0.6),
-                  ),
+                color: scheme.onSurface.withValues(alpha: 0.6),
+              ),
             ),
           ],
         ],
@@ -309,7 +350,11 @@ class _GuideScreenState extends State<GuideScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(
-              AppDesign.spacingXs, AppDesign.spacingXl, 0, AppDesign.spacingXs),
+            AppDesign.spacingXs,
+            AppDesign.spacingXl,
+            0,
+            AppDesign.spacingXs,
+          ),
           child: Row(
             children: [
               Icon(section.icon, size: 20, color: scheme.primary),
@@ -317,9 +362,9 @@ class _GuideScreenState extends State<GuideScreen> {
               Expanded(
                 child: Text(
                   section.title,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
             ],
@@ -327,7 +372,9 @@ class _GuideScreenState extends State<GuideScreen> {
         ),
         Padding(
           padding: const EdgeInsets.only(
-              left: AppDesign.spacingXs, bottom: AppDesign.spacingSm),
+            left: AppDesign.spacingXs,
+            bottom: AppDesign.spacingSm,
+          ),
           child: Text(
             section.blurb,
             style: TextStyle(
@@ -369,8 +416,8 @@ class _GuideScreenState extends State<GuideScreen> {
                 child: Text(
                   topic.title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               IconButton(
@@ -385,9 +432,9 @@ class _GuideScreenState extends State<GuideScreen> {
           Text(
             topic.lead,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  height: 1.55,
-                  color: scheme.onSurface.withValues(alpha: 0.85),
-                ),
+              height: 1.55,
+              color: scheme.onSurface.withValues(alpha: 0.85),
+            ),
           ),
           if (topic.steps.isNotEmpty) ...[
             const SizedBox(height: AppDesign.spacingMd),
@@ -432,9 +479,9 @@ class _GuideScreenState extends State<GuideScreen> {
             child: Text(
               text,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    height: 1.45,
-                    color: scheme.onSurface.withValues(alpha: 0.8),
-                  ),
+                height: 1.45,
+                color: scheme.onSurface.withValues(alpha: 0.8),
+              ),
             ),
           ),
         ],
@@ -448,7 +495,9 @@ class _GuideScreenState extends State<GuideScreen> {
       padding: const EdgeInsets.only(top: AppDesign.spacingMd),
       child: Container(
         padding: const EdgeInsets.symmetric(
-            horizontal: AppDesign.spacingMd, vertical: AppDesign.spacingSm),
+          horizontal: AppDesign.spacingMd,
+          vertical: AppDesign.spacingSm,
+        ),
         decoration: BoxDecoration(
           color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
           borderRadius: AppDesign.borderRadiusMd,
@@ -459,17 +508,21 @@ class _GuideScreenState extends State<GuideScreen> {
             for (final (i, feature) in info.features.indexed) ...[
               if (i > 0)
                 Divider(
-                    height: 1,
-                    color: scheme.outlineVariant.withValues(alpha: 0.3)),
+                  height: 1,
+                  color: scheme.outlineVariant.withValues(alpha: 0.3),
+                ),
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: AppDesign.spacingSm),
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppDesign.spacingSm,
+                ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(feature.icon,
-                        size: 15,
-                        color: scheme.primary.withValues(alpha: 0.8)),
+                    Icon(
+                      feature.icon,
+                      size: 15,
+                      color: scheme.primary.withValues(alpha: 0.8),
+                    ),
                     const SizedBox(width: AppDesign.spacingSm + 2),
                     Expanded(
                       child: Text.rich(
@@ -477,14 +530,14 @@ class _GuideScreenState extends State<GuideScreen> {
                           children: [
                             TextSpan(
                               text: '${feature.label}  ',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                             TextSpan(
                               text: feature.description,
                               style: TextStyle(
-                                color:
-                                    scheme.onSurface.withValues(alpha: 0.7),
+                                color: scheme.onSurface.withValues(alpha: 0.7),
                               ),
                             ),
                           ],
@@ -513,10 +566,11 @@ class _GuideScreenState extends State<GuideScreen> {
       subtitle: 'Try a different word — "clash", "share", "minor", "seat".',
       actionLabel: 'Clear search',
       actionIcon: Icons.close,
-      onAction: () => setState(() {
-        _search.clear();
-        _query = '';
-      }),
+      onAction:
+          () => setState(() {
+            _search.clear();
+            _query = '';
+          }),
     );
   }
 
@@ -529,9 +583,9 @@ class _GuideScreenState extends State<GuideScreen> {
         'same way.',
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppDesign.muted(context),
-              height: 1.5,
-            ),
+          color: AppDesign.muted(context),
+          height: 1.5,
+        ),
       ),
     );
   }

@@ -81,3 +81,78 @@ test("requireAnnouncementId rejects empty, non-string and over-long ids", () => 
     assert.throws(() => requireAnnouncementId(bad), /Invalid announcementId/);
   }
 });
+
+function deletionDatabase(announcement) {
+  const ref = {
+    get: async () => ({
+      exists: announcement !== null,
+      data: () => announcement,
+    }),
+  };
+  const state = { deleted: false };
+  return {
+    state,
+    collection: () => ({ doc: () => ref }),
+    recursiveDelete: async (received) => {
+      assert.equal(received, ref);
+      state.deleted = true;
+    },
+  };
+}
+
+test("delete announcement rejects a caller who is not the author", async () => {
+  const database = deletionDatabase({
+    authorUid: "authorH",
+    disputeState: "undisputed",
+  });
+
+  await assert.rejects(
+    () => fns._test.deleteAnnouncementForCaller({
+      callerDocId: "otherH",
+      announcementId: "announcement-1",
+      database,
+      addReputation: async () => {},
+    }),
+    /authored/
+  );
+  assert.equal(database.state.deleted, false);
+});
+
+test("delete announcement recursively removes interaction subcollections", async () => {
+  const database = deletionDatabase({
+    authorUid: "authorH",
+    disputeState: "undisputed",
+  });
+  const reputationEvents = [];
+
+  const result = await fns._test.deleteAnnouncementForCaller({
+    callerDocId: "authorH",
+    announcementId: "announcement-1",
+    database,
+    addReputation: async (event) => reputationEvents.push(event),
+  });
+
+  assert.deepEqual(result, { success: true, deleted: true });
+  assert.equal(database.state.deleted, true);
+  assert.deepEqual(reputationEvents, []);
+});
+
+test("deleting a disputed post applies its idempotent penalty first", async () => {
+  const database = deletionDatabase({
+    authorUid: "authorH",
+    disputeState: "disputed",
+  });
+  const reputationEvents = [];
+
+  await fns._test.deleteAnnouncementForCaller({
+    callerDocId: "authorH",
+    announcementId: "announcement-1",
+    database,
+    addReputation: async (event) => reputationEvents.push(event),
+  });
+
+  assert.equal(reputationEvents.length, 1);
+  assert.equal(reputationEvents[0].type, "post_removed_inaccuracy");
+  assert.equal(reputationEvents[0].points, -15);
+  assert.equal(database.state.deleted, true);
+});

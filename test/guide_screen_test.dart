@@ -4,18 +4,23 @@ import 'package:timetable_maker/screens/guide_screen.dart';
 import 'package:timetable_maker/utils/guide_content.dart';
 
 void main() {
-  Future<void> pumpGuide(WidgetTester tester, double width,
-      {String? anchor}) async {
+  Future<void> pumpGuide(
+    WidgetTester tester,
+    double width, {
+    String? anchor,
+  }) async {
     tester.view.physicalSize = Size(width, 1400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() {
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
     });
-    await tester.pumpWidget(MaterialApp(
-      theme: ThemeData(useMaterial3: true),
-      home: GuideScreen(initialAnchor: anchor),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(useMaterial3: true),
+        home: GuideScreen(initialAnchor: anchor),
+      ),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -66,6 +71,27 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.getTopLeft(lead).dy, lessThan(400));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the clicked rail topic stays selected while the body scrolls', (
+    tester,
+  ) async {
+    await pumpGuide(tester, 1200);
+    final topic = guideTopicAt('cgpa')!;
+
+    await tester.tap(find.text(topic.title).first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 140));
+
+    final tile = tester.widget<Container>(
+      find.byKey(ValueKey('guide-rail-${topic.anchor}')),
+    );
+    final decoration = tile.decoration! as BoxDecoration;
+    final border = decoration.border! as Border;
+    expect(border.left.color, isNot(Colors.transparent));
+
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 }
