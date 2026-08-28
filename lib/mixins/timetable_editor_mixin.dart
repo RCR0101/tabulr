@@ -1591,7 +1591,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     );
   }
 
-  Widget buildCoursesPanel() {
+  Widget buildCoursesPanel({VoidCallback? onPanelChanged}) {
     final tt = currentTimetable!;
     final scheme = Theme.of(context).colorScheme;
     return ColoredBox(
@@ -1603,7 +1603,10 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
             padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
             child: SearchFilterWidget(
               key: TutorialKeys.courseSearch,
-              onSearchChanged: onSearchChanged,
+              onSearchChanged: (query, filters) {
+                onSearchChanged(query, filters);
+                onPanelChanged?.call();
+              },
               hasBranch: hasBranchForPools,
             ),
           ),
@@ -1615,13 +1618,17 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
               projectCount: tt.projectCount,
               allowSectionClash: allowSectionClash,
               creditBasis: creditBasis,
-              onRemoveBasis: removeAllInBasis,
+              onRemoveBasis: (basis) async {
+                await removeAllInBasis(basis);
+                onPanelChanged?.call();
+              },
               onProjectCountChanged: (count) {
                 setState(() {
                   tt.projectCount = count;
                   hasUnsavedChanges = true;
                 });
                 markUnsaved(true);
+                onPanelChanged?.call();
               },
               onSectionToggle: (courseCode, sectionId, isSelected) {
                 if (isSelected) {
@@ -1629,6 +1636,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
                 } else {
                   addSection(courseCode, sectionId);
                 }
+                onPanelChanged?.call();
               },
             ),
           ),
@@ -2256,53 +2264,77 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     );
   }
 
-  void _showMobileCourses() {
+  Future<void> _showMobileCourses() async {
     final scheme = Theme.of(context).colorScheme;
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: scheme.surface,
-      builder:
-          (sheetContext) => DraggableScrollableSheet(
-            initialChildSize: 0.94,
-            minChildSize: 0.65,
-            maxChildSize: 0.98,
-            expand: false,
-            builder:
-                (context, scrollController) => Column(
-                  children: [
-                    Container(
-                      height: 52,
-                      padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(
-                            color: scheme.outline.withValues(alpha: 0.12),
-                          ),
+    // The sheet is a separate route, so editor setState calls do not rebuild it.
+    final revision = ValueNotifier<int>(0);
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: scheme.surface,
+        builder:
+            (sheetContext) => ValueListenableBuilder<int>(
+              valueListenable: revision,
+              builder:
+                  (context, _, __) => DraggableScrollableSheet(
+                    initialChildSize: 0.94,
+                    minChildSize: 0.65,
+                    maxChildSize: 0.98,
+                    expand: false,
+                    builder:
+                        (context, scrollController) => Column(
+                          children: [
+                            Container(
+                              height: 52,
+                              padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  bottom: BorderSide(
+                                    color: scheme.outline.withValues(
+                                      alpha: 0.12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    'Course browser',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                  const Spacer(),
+                                  IconButton(
+                                    onPressed:
+                                        () => Navigator.pop(sheetContext),
+                                    icon: const Icon(Icons.close_rounded),
+                                    tooltip: 'Close course browser',
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              child: buildCoursesPanel(
+                                onPanelChanged: () => revision.value++,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      child: Row(
-                        children: [
-                          Text(
-                            'Course browser',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w600),
-                          ),
-                          const Spacer(),
-                          IconButton(
-                            onPressed: () => Navigator.pop(sheetContext),
-                            icon: const Icon(Icons.close_rounded),
-                            tooltip: 'Close course browser',
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(child: buildCoursesPanel()),
-                  ],
-                ),
-          ),
-    );
+                  ),
+            ),
+      );
+    } finally {
+      revision.dispose();
+      // A reopened sheet has a fresh, blank search field; its results must match.
+      final tt = currentTimetable;
+      if (mounted && tt != null) {
+        setState(() => filteredCourses = tt.availableCourses);
+      }
+    }
   }
 
   Widget? buildFABs(bool isWideScreen) => null;
