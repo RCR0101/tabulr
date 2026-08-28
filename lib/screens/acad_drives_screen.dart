@@ -1304,18 +1304,26 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
               ),
             ),
           );
+          final showSort =
+              _selectedCourse != null || _showingBookmarks
+                  ? _showFileSortDialog
+                  : _showCourseSortDialog;
           final sort = OutlinedButton.icon(
-            onPressed:
-                _selectedCourse != null || _showingBookmarks
-                    ? _showFileSortDialog
-                    : _showCourseSortDialog,
+            onPressed: showSort,
             icon: const Icon(Icons.swap_vert_rounded, size: 18),
             label: const Text('Sort'),
           );
           if (constraints.maxWidth < 560) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [search, const SizedBox(height: 8), sort],
+            return Row(
+              children: [
+                Expanded(child: search),
+                const SizedBox(width: 8),
+                IconButton.filledTonal(
+                  onPressed: showSort,
+                  icon: const Icon(Icons.swap_vert_rounded, size: 20),
+                  tooltip: 'Sort resources',
+                ),
+              ],
             );
           }
           return Row(
@@ -1486,23 +1494,24 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
             final wide = constraints.maxWidth >= 1050;
             return Column(
               children: [
-                Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1320),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _buildDrivesHero().motionEntry(),
-                          const SizedBox(height: 14),
-                          _buildResourceToolbar(),
-                          const SizedBox(height: 10),
-                        ],
+                if (!mobile)
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1320),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildDrivesHero().motionEntry(),
+                            const SizedBox(height: 14),
+                            _buildResourceToolbar(),
+                            const SizedBox(height: 10),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
                 Expanded(
                   child: Center(
                     child: ConstrainedBox(
@@ -1531,15 +1540,43 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     );
   }
 
+  Widget _buildMobileResourceToolbar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: _buildResourceToolbar(),
+    );
+  }
+
+  Widget _buildMobileResourceState(
+    Widget child, {
+    required Future<void> Function() onRefresh,
+  }) {
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: CustomScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(child: _buildMobileResourceToolbar()),
+          SliverFillRemaining(hasScrollBody: false, child: child),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCoursesView() {
+    final isMobile = ResponsiveService.isMobile(context);
     if (_isLoading) {
-      return AcadDrivesSkeleton(grid: !ResponsiveService.isMobile(context));
+      final skeleton = AcadDrivesSkeleton(grid: !isMobile);
+      return isMobile
+          ? _buildMobileResourceState(skeleton, onRefresh: _loadCourses)
+          : skeleton;
     }
 
     final courses = _filteredCourses;
 
     if (courses.isEmpty) {
-      return Center(
+      final empty = Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -1558,6 +1595,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           ],
         ),
       );
+      return isMobile
+          ? _buildMobileResourceState(empty, onRefresh: _loadCourses)
+          : empty;
     }
 
     final enrolledCount = _enrolledCourseCount;
@@ -1624,7 +1664,6 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       );
     }
 
-    final isMobile = ResponsiveService.isMobile(context);
     final starredCodes = UserSettingsService().starredCourses;
     final starredCourseEntries =
         _searchQuery.isEmpty
@@ -1707,81 +1746,76 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     }
 
     if (isMobile) {
-      return Column(
-        children: [
-          _buildCourseCountBar(courses.length),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _loadCourses,
-              child: CustomScrollView(
-                controller: _coursesScrollController,
-                scrollCacheExtent: ScrollCacheExtent.pixels(800),
-                slivers: [
-                  if (hasStarred) ...[
-                    SliverToBoxAdapter(
-                      child: sectionHeader(
-                        'Starred',
-                        Icons.star_rounded,
-                        count: starredCourseEntries.length,
-                        expanded: _starredExpanded,
-                        onToggle:
-                            () => setState(
-                              () => _starredExpanded = !_starredExpanded,
-                            ),
+      return RefreshIndicator(
+        onRefresh: _loadCourses,
+        child: CustomScrollView(
+          controller: _coursesScrollController,
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          physics: const AlwaysScrollableScrollPhysics(),
+          scrollCacheExtent: ScrollCacheExtent.pixels(800),
+          slivers: [
+            SliverToBoxAdapter(child: _buildMobileResourceToolbar()),
+            SliverToBoxAdapter(child: _buildCourseCountBar(courses.length)),
+            if (hasStarred) ...[
+              SliverToBoxAdapter(
+                child: sectionHeader(
+                  'Starred',
+                  Icons.star_rounded,
+                  count: starredCourseEntries.length,
+                  expanded: _starredExpanded,
+                  onToggle:
+                      () =>
+                          setState(() => _starredExpanded = !_starredExpanded),
+                ),
+              ),
+              collapsibleSection(
+                starredCourseEntries,
+                expanded: _starredExpanded,
+              ),
+            ],
+            if (hasEnrolledSection) ...[
+              SliverToBoxAdapter(
+                child: sectionHeader(
+                  'Your Courses',
+                  Icons.school,
+                  key: TutorialKeys.acadDrivesYourCourses,
+                  count: enrolledCount,
+                  expanded: _yourCoursesExpanded,
+                  onToggle:
+                      () => setState(
+                        () => _yourCoursesExpanded = !_yourCoursesExpanded,
                       ),
-                    ),
-                    collapsibleSection(
-                      starredCourseEntries,
-                      expanded: _starredExpanded,
-                    ),
-                  ],
-                  if (hasEnrolledSection) ...[
-                    SliverToBoxAdapter(
-                      child: sectionHeader(
-                        'Your Courses',
-                        Icons.school,
-                        key: TutorialKeys.acadDrivesYourCourses,
-                        count: enrolledCount,
-                        expanded: _yourCoursesExpanded,
-                        onToggle:
-                            () => setState(
-                              () =>
-                                  _yourCoursesExpanded = !_yourCoursesExpanded,
-                            ),
-                      ),
-                    ),
-                    collapsibleSection(
-                      enrolledCourses,
-                      expanded: _yourCoursesExpanded,
-                      enrolled: true,
-                    ),
-                  ],
-                  if (hasEnrolledSection || hasStarred)
-                    SliverToBoxAdapter(
-                      child: sectionHeader('All Courses', Icons.library_books),
-                    ),
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        if (index >= restCourses.length) {
-                          return _buildLoadingFooter();
-                        }
-                        // No per-item entrance animation: this list is lazy and
-                        // paginated, so animating on build re-fades cards every
-                        // time they scroll back into view.
-                        return courseCardWithStar(restCourses[index]);
-                      },
-                      childCount:
-                          restCourses.length +
-                          (_hasMoreCourses && _searchQuery.isEmpty ? 1 : 0),
-                    ),
-                  ),
-                  const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
-                ],
+                ),
+              ),
+              collapsibleSection(
+                enrolledCourses,
+                expanded: _yourCoursesExpanded,
+                enrolled: true,
+              ),
+            ],
+            if (hasEnrolledSection || hasStarred)
+              SliverToBoxAdapter(
+                child: sectionHeader('All Courses', Icons.library_books),
+              ),
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  if (index >= restCourses.length) {
+                    return _buildLoadingFooter();
+                  }
+                  // No per-item entrance animation: this list is lazy and
+                  // paginated, so animating on build re-fades cards every
+                  // time they scroll back into view.
+                  return courseCardWithStar(restCourses[index]);
+                },
+                childCount:
+                    restCourses.length +
+                    (_hasMoreCourses && _searchQuery.isEmpty ? 1 : 0),
               ),
             ),
-          ),
-        ],
+            const SliverPadding(padding: EdgeInsets.only(bottom: 16)),
+          ],
+        ),
       );
     }
 
@@ -1902,12 +1936,16 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   }
 
   Widget _buildBookmarksView() {
+    final mobile = ResponsiveService.isMobile(context);
     if (_isLoadingFiles) {
-      return const GenericListSkeleton(count: 8, itemHeight: 56);
+      const skeleton = GenericListSkeleton(count: 8, itemHeight: 56);
+      return mobile
+          ? _buildMobileResourceState(skeleton, onRefresh: _loadBookmarks)
+          : skeleton;
     }
 
     if (_bookmarkedFiles.isEmpty) {
-      return Center(
+      final empty = Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -1933,6 +1971,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           ],
         ),
       );
+      return mobile
+          ? _buildMobileResourceState(empty, onRefresh: _loadBookmarks)
+          : empty;
     }
 
     final filtered =
@@ -1951,16 +1992,19 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
             }).toList();
 
     return ListView.builder(
-      itemCount: filtered.length,
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      itemCount: filtered.length + (mobile ? 1 : 0),
       itemBuilder: (context, index) {
-        final file = filtered[index];
+        if (mobile && index == 0) return _buildMobileResourceToolbar();
+        final fileIndex = index - (mobile ? 1 : 0);
+        final file = filtered[fileIndex];
         final fileId = file['id'] as String? ?? '';
         final codes = (file['course_codes'] as List?)?.join(', ') ?? '';
         return Column(
           children: [
             if (codes.isNotEmpty)
               Padding(
-                padding: EdgeInsets.only(left: 16, top: index == 0 ? 8 : 4),
+                padding: EdgeInsets.only(left: 16, top: fileIndex == 0 ? 8 : 4),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -1993,14 +2037,19 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   }
 
   Widget _buildFilesView() {
+    final mobile = ResponsiveService.isMobile(context);
+    Future<void> refresh() => _loadCourseFiles(_selectedCourse!);
     if (_isLoadingFiles) {
-      return const GenericListSkeleton(count: 8, itemHeight: 56);
+      const skeleton = GenericListSkeleton(count: 8, itemHeight: 56);
+      return mobile
+          ? _buildMobileResourceState(skeleton, onRefresh: refresh)
+          : skeleton;
     }
 
     final files = _filteredFiles;
 
     if (files.isEmpty) {
-      return Center(
+      final empty = Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -2015,6 +2064,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           ],
         ),
       );
+      return mobile
+          ? _buildMobileResourceState(empty, onRefresh: refresh)
+          : empty;
     }
 
     // Group files by driveName and then create hierarchical folder structure
@@ -2052,7 +2104,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     final driveNames = driveTrees.keys.toList()..sort(_naturalSort);
 
     return RefreshIndicator(
-      onRefresh: () => _loadCourseFiles(_selectedCourse!),
+      onRefresh: refresh,
       child: NotificationListener<ScrollNotification>(
         onNotification: (notification) {
           if (notification.metrics.extentAfter < 320 &&
@@ -2063,11 +2115,15 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           return false;
         },
         child: ListView.builder(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           itemCount:
               driveNames.length +
+              (mobile ? 1 : 0) +
               ((_hasMoreFiles || _isLoadingMoreFiles) ? 1 : 0),
           itemBuilder: (context, index) {
-            if (index >= driveNames.length) {
+            if (mobile && index == 0) return _buildMobileResourceToolbar();
+            final contentIndex = index - (mobile ? 1 : 0);
+            if (contentIndex >= driveNames.length) {
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 18),
                 child: Center(
@@ -2089,7 +2145,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                 ),
               );
             }
-            final driveName = driveNames[index];
+            final driveName = driveNames[contentIndex];
             final folderTree = driveTrees[driveName]!;
             final contributor = driveContributors[driveName];
 

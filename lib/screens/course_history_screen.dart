@@ -73,7 +73,9 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
   final CoursesMasterService _master = CoursesMasterService();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  final _searchDebounce = Debouncer(duration: const Duration(milliseconds: 250));
+  final _searchDebounce = Debouncer(
+    duration: const Duration(milliseconds: 250),
+  );
 
   _Lens _lens = _Lens.courses;
   _CourseFilter _filter = _CourseFilter.all;
@@ -126,55 +128,57 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
   List<CourseTimeline> _visibleCourses(CourseHistory history) {
     final terms = history.terms;
     final current = history.currentTerm;
-    final courses = history.courses.where((course) {
-      if (_query.isNotEmpty &&
-          !course.courseCode.toLowerCase().contains(_query) &&
-          !_titleOf(course.courseCode).toLowerCase().contains(_query)) {
-        return false;
-      }
-      return switch (_filter) {
-        _CourseFilter.all => true,
-        _CourseFilter.offered => course.lastOfferedTerm == current,
-        _CourseFilter.paused => course.lastOfferedTerm != current,
-        _CourseFilter.fresh => course.isNewIn(terms),
-      };
-    }).toList();
+    final courses =
+        history.courses.where((course) {
+          if (_query.isNotEmpty &&
+              !course.courseCode.toLowerCase().contains(_query) &&
+              !_titleOf(course.courseCode).toLowerCase().contains(_query)) {
+            return false;
+          }
+          return switch (_filter) {
+            _CourseFilter.all => true,
+            _CourseFilter.offered => course.lastOfferedTerm == current,
+            _CourseFilter.paused => course.lastOfferedTerm != current,
+            _CourseFilter.fresh => course.isNewIn(terms),
+          };
+        }).toList();
 
     courses.sort(switch (_courseSort) {
       _CourseSort.code => (a, b) => a.courseCode.compareTo(b.courseCode),
       // Ties broken by code throughout, so the order is stable rather than
       // whatever the previous sort happened to leave behind.
       _CourseSort.recent => (a, b) {
-          final byTerm = b.lastOfferedTerm.compareTo(a.lastOfferedTerm);
-          return byTerm != 0 ? byTerm : a.courseCode.compareTo(b.courseCode);
-        },
+        final byTerm = b.lastOfferedTerm.compareTo(a.lastOfferedTerm);
+        return byTerm != 0 ? byTerm : a.courseCode.compareTo(b.courseCode);
+      },
       _CourseSort.gap => (a, b) {
-          final byTerm = a.lastOfferedTerm.compareTo(b.lastOfferedTerm);
-          return byTerm != 0 ? byTerm : a.courseCode.compareTo(b.courseCode);
-        },
+        final byTerm = a.lastOfferedTerm.compareTo(b.lastOfferedTerm);
+        return byTerm != 0 ? byTerm : a.courseCode.compareTo(b.courseCode);
+      },
       _CourseSort.frequency => (a, b) {
-          final byCount = b.timesOffered.compareTo(a.timesOffered);
-          return byCount != 0 ? byCount : a.courseCode.compareTo(b.courseCode);
-        },
+        final byCount = b.timesOffered.compareTo(a.timesOffered);
+        return byCount != 0 ? byCount : a.courseCode.compareTo(b.courseCode);
+      },
     });
     return courses;
   }
 
   List<InstructorTimeline> _visibleProfessors(CourseHistory history) {
-    final professors = history.instructors
-        .where((prof) => _query.isEmpty || prof.searchText.contains(_query))
-        .toList();
+    final professors =
+        history.instructors
+            .where((prof) => _query.isEmpty || prof.searchText.contains(_query))
+            .toList();
 
     professors.sort(switch (_profSort) {
       _ProfSort.name => (a, b) => a.name.compareTo(b.name),
       _ProfSort.courses => (a, b) {
-          final byCount = b.courses.length.compareTo(a.courses.length);
-          return byCount != 0 ? byCount : a.name.compareTo(b.name);
-        },
+        final byCount = b.courses.length.compareTo(a.courses.length);
+        return byCount != 0 ? byCount : a.name.compareTo(b.name);
+      },
       _ProfSort.recent => (a, b) {
-          final byTerm = b.lastActiveTerm.compareTo(a.lastActiveTerm);
-          return byTerm != 0 ? byTerm : a.name.compareTo(b.name);
-        },
+        final byTerm = b.lastActiveTerm.compareTo(a.lastActiveTerm);
+        return byTerm != 0 ? byTerm : a.name.compareTo(b.name);
+      },
     });
     return professors;
   }
@@ -189,22 +193,24 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
         // Three actions leave a phone's toolbar no room for the icon chip and a
         // subtitle; the semester count moves into the axis label instead.
         title: ResponsiveService.isMobile(context) ? 'Course History' : null,
-        titleWidget: ResponsiveService.isMobile(context)
-            ? null
-            : ListenableBuilder(
-                listenable: _service,
-                builder: (context, _) {
-                  final terms = _service.history.terms.length;
-                  return AppDesign.iconTitle(
-                    context,
-                    icon: Icons.history_toggle_off,
-                    title: 'Course History',
-                    subtitle: terms == 0
-                        ? 'Past semesters'
-                        : '$terms semester${terms == 1 ? '' : 's'} on record',
-                  );
-                },
-              ),
+        titleWidget:
+            ResponsiveService.isMobile(context)
+                ? null
+                : ListenableBuilder(
+                  listenable: _service,
+                  builder: (context, _) {
+                    final terms = _service.history.terms.length;
+                    return AppDesign.iconTitle(
+                      context,
+                      icon: Icons.history_toggle_off,
+                      title: 'Course History',
+                      subtitle:
+                          terms == 0
+                              ? 'Past semesters'
+                              : '$terms semester${terms == 1 ? '' : 's'} on record',
+                    );
+                  },
+                ),
         centerTitle: false,
         actions: [
           PageInfoHelper.infoButton(context, PageInfoHelper.courseHistory),
@@ -255,9 +261,11 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
   Widget _noHistoryView() {
     return EmptyStateWidget(
       icon: Icons.history_toggle_off,
-      title: 'No history yet for '
+      title:
+          'No history yet for '
           '${CampusService.currentCampusDisplayName}',
-      subtitle: 'A semester joins the record when its timetable is uploaded, so '
+      subtitle:
+          'A semester joins the record when its timetable is uploaded, so '
           'this fills in from here. Try another campus in the meantime.',
     );
   }
@@ -271,16 +279,20 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: _maxContentWidth),
-        child: Column(
-          children: [
-            _controls(),
-            Expanded(
-              child: _lens == _Lens.courses
-                  ? _courseList(history)
-                  : _professorList(history),
-            ),
-          ],
-        ),
+        child:
+            ResponsiveService.isMobile(context)
+                ? _mobileHistory(history)
+                : Column(
+                  children: [
+                    _controls(),
+                    Expanded(
+                      child:
+                          _lens == _Lens.courses
+                              ? _courseList(history)
+                              : _professorList(history),
+                    ),
+                  ],
+                ),
       ),
     );
   }
@@ -290,32 +302,38 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
     final searchField = AppSearchField(
       controller: _searchController,
       focusNode: _searchFocusNode,
-      hint: _lens == _Lens.courses
-          ? 'Search a course code or name'
-          : 'Search a professor',
+      hint:
+          _lens == _Lens.courses
+              ? 'Search a course code or name'
+              : 'Search a professor',
       onSubmitted: (_) => _searchFocusNode.unfocus(),
       onClear: _clearSearch,
     );
     // Sort rides with the search field rather than with the filter chips: the
     // chips need the whole width to themselves, and at phone width sharing a row
     // with them clipped "Not offered now" mid-word.
-    final sort = _lens == _Lens.courses
-        ? _sortPicker<_CourseSort>(
-            value: _courseSort,
-            values: _CourseSort.values,
-            labelOf: (option) => option.label,
-            onChanged: (option) => setState(() => _courseSort = option),
-          )
-        : _sortPicker<_ProfSort>(
-            value: _profSort,
-            values: _ProfSort.values,
-            labelOf: (option) => option.label,
-            onChanged: (option) => setState(() => _profSort = option),
-          );
+    final sort =
+        _lens == _Lens.courses
+            ? _sortPicker<_CourseSort>(
+              value: _courseSort,
+              values: _CourseSort.values,
+              labelOf: (option) => option.label,
+              onChanged: (option) => setState(() => _courseSort = option),
+            )
+            : _sortPicker<_ProfSort>(
+              value: _profSort,
+              values: _ProfSort.values,
+              labelOf: (option) => option.label,
+              onChanged: (option) => setState(() => _profSort = option),
+            );
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AppDesign.spacingMd, AppDesign.spacingSm + 4, AppDesign.spacingMd, 0),
+        AppDesign.spacingMd,
+        AppDesign.spacingSm + 4,
+        AppDesign.spacingMd,
+        0,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -324,11 +342,13 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
           if (isMobile) ...[
             _lensToggle(),
             const SizedBox(height: AppDesign.spacingSm),
-            Row(children: [
-              Expanded(child: searchField),
-              const SizedBox(width: AppDesign.spacingSm),
-              sort,
-            ]),
+            Row(
+              children: [
+                Expanded(child: searchField),
+                const SizedBox(width: AppDesign.spacingSm),
+                sort,
+              ],
+            ),
           ] else
             Row(
               children: [
@@ -368,8 +388,8 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
         visualDensity: VisualDensity.compact,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
-      onSelectionChanged: (selection) =>
-          setState(() => _lens = selection.first),
+      onSelectionChanged:
+          (selection) => setState(() => _lens = selection.first),
     );
   }
 
@@ -421,6 +441,44 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
   double get _stripWidth => ResponsiveService.isMobile(context) ? 96 : 150;
   double get _recencyWidth => ResponsiveService.isMobile(context) ? 100 : 118;
 
+  Widget _mobileHistory(CourseHistory history) {
+    final courses = _visibleCourses(history);
+    final professors = _visibleProfessors(history);
+    final showingCourses = _lens == _Lens.courses;
+    final count = showingCourses ? courses.length : professors.length;
+
+    return CustomScrollView(
+      key: PageStorageKey('course-history-${_lens.name}'),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      slivers: [
+        SliverToBoxAdapter(child: _controls()),
+        if (count == 0)
+          SliverFillRemaining(hasScrollBody: false, child: _noMatchesView())
+        else ...[
+          SliverToBoxAdapter(
+            child: _timelineAxis(
+              history,
+              leading: showingCourses ? 'COURSE' : 'PROFESSOR',
+              trailing: showingCourses ? 'LAST OFFERED' : 'LAST TAUGHT',
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.only(bottom: AppDesign.spacingMd),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) =>
+                    showingCourses
+                        ? _courseRow(history, courses[index], index)
+                        : _professorRow(history, professors[index], index),
+                childCount: count,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   // ── Courses ──────────────────────────────────────────────────────────────
 
   Widget _courseList(CourseHistory history) {
@@ -435,8 +493,8 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
             scrollCacheExtent: ScrollCacheExtent.pixels(800),
             padding: const EdgeInsets.only(bottom: AppDesign.spacingMd),
             itemCount: courses.length,
-            itemBuilder: (context, index) =>
-                _courseRow(history, courses[index], index),
+            itemBuilder:
+                (context, index) => _courseRow(history, courses[index], index),
           ),
         ),
       ],
@@ -457,11 +515,14 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
         // A faint banded background rather than grid lines: the eye has to
         // follow one course across three columns, and boxing every cell in a
         // list this dense is noise.
-        color: index.isEven
-            ? scheme.surfaceContainerLow.withValues(alpha: 0.5)
-            : Colors.transparent,
+        color:
+            index.isEven
+                ? scheme.surfaceContainerLow.withValues(alpha: 0.5)
+                : Colors.transparent,
         padding: const EdgeInsets.symmetric(
-            horizontal: AppDesign.spacingMd, vertical: 10),
+          horizontal: AppDesign.spacingMd,
+          vertical: 10,
+        ),
         child: Row(
           children: [
             Expanded(
@@ -471,9 +532,13 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
                 children: [
                   Row(
                     children: [
-                      Text(course.courseCode,
-                          style: const TextStyle(
-                              fontSize: 13.5, fontWeight: FontWeight.w700)),
+                      Text(
+                        course.courseCode,
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       if (course.isNewIn(history.terms)) ...[
                         const SizedBox(width: AppDesign.spacingSm),
                         _tag('New', scheme.tertiary),
@@ -484,8 +549,9 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
                     Text(
                       _titleOf(course.courseCode),
                       style: TextStyle(
-                          fontSize: 11.5,
-                          color: scheme.onSurface.withValues(alpha: 0.62)),
+                        fontSize: 11.5,
+                        color: scheme.onSurface.withValues(alpha: 0.62),
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -533,8 +599,9 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
             scrollCacheExtent: ScrollCacheExtent.pixels(800),
             padding: const EdgeInsets.only(bottom: AppDesign.spacingMd),
             itemCount: professors.length,
-            itemBuilder: (context, index) =>
-                _professorRow(history, professors[index], index),
+            itemBuilder:
+                (context, index) =>
+                    _professorRow(history, professors[index], index),
           ),
         ),
       ],
@@ -542,7 +609,10 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
   }
 
   Widget _professorRow(
-      CourseHistory history, InstructorTimeline prof, int index) {
+    CourseHistory history,
+    InstructorTimeline prof,
+    int index,
+  ) {
     final scheme = Theme.of(context).colorScheme;
     final courses = prof.courses.length;
     final terms = prof.terms.length;
@@ -551,11 +621,14 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
       onTap: () => _showProfessorSheet(history, prof),
       behavior: HitTestBehavior.opaque,
       child: Container(
-        color: index.isEven
-            ? scheme.surfaceContainerLow.withValues(alpha: 0.5)
-            : Colors.transparent,
+        color:
+            index.isEven
+                ? scheme.surfaceContainerLow.withValues(alpha: 0.5)
+                : Colors.transparent,
         padding: const EdgeInsets.symmetric(
-            horizontal: AppDesign.spacingMd, vertical: 10),
+          horizontal: AppDesign.spacingMd,
+          vertical: 10,
+        ),
         child: Row(
           children: [
             Expanded(
@@ -563,9 +636,13 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(prof.displayName,
-                      style: const TextStyle(
-                          fontSize: 13.5, fontWeight: FontWeight.w700)),
+                  Text(
+                    prof.displayName,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   Text(
                     '$courses course${courses == 1 ? '' : 's'} · '
                     '$terms semester${terms == 1 ? '' : 's'}'
@@ -573,8 +650,9 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
                     // section of one, and only worth saying when they did.
                     '${prof.everInCharge.isEmpty ? '' : ' · ${prof.everInCharge.length} as IC'}',
                     style: TextStyle(
-                        fontSize: 11.5,
-                        color: scheme.onSurface.withValues(alpha: 0.62)),
+                      fontSize: 11.5,
+                      color: scheme.onSurface.withValues(alpha: 0.62),
+                    ),
                   ),
                 ],
               ),
@@ -609,8 +687,11 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
 
   /// Column labels, plus the two ends of the timeline so the strip below reads
   /// as an axis rather than a row of unexplained boxes.
-  Widget _timelineAxis(CourseHistory history,
-      {required String leading, required String trailing}) {
+  Widget _timelineAxis(
+    CourseHistory history, {
+    required String leading,
+    required String trailing,
+  }) {
     final scheme = Theme.of(context).colorScheme;
     final labelStyle = TextStyle(
       fontSize: 10,
@@ -621,7 +702,11 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AppDesign.spacingMd, AppDesign.spacingMd, AppDesign.spacingMd, 6),
+        AppDesign.spacingMd,
+        AppDesign.spacingMd,
+        AppDesign.spacingMd,
+        6,
+      ),
       child: Row(
         children: [
           Expanded(child: Text(leading, style: labelStyle)),
@@ -632,16 +717,18 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(Terms.tickLabel(history.terms.first), style: labelStyle),
-                if (history.terms.length > 1)
-                  Text('NOW', style: labelStyle),
+                if (history.terms.length > 1) Text('NOW', style: labelStyle),
               ],
             ),
           ),
           const SizedBox(width: AppDesign.spacingSm + 4),
           SizedBox(
             width: _recencyWidth,
-            child: Text(trailing,
-                textAlign: TextAlign.right, style: labelStyle),
+            child: Text(
+              trailing,
+              textAlign: TextAlign.right,
+              style: labelStyle,
+            ),
           ),
         ],
       ),
@@ -657,8 +744,10 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
       _ => AppDesign.warning(context),
     };
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: AppDesign.spacingSm, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppDesign.spacingSm,
+        vertical: 4,
+      ),
       decoration: BoxDecoration(
         color: colour.withValues(alpha: 0.12),
         borderRadius: AppDesign.borderRadiusSm,
@@ -666,7 +755,10 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
       child: Text(
         Terms.relative(termsAgo),
         style: TextStyle(
-            fontSize: 11, fontWeight: FontWeight.w600, color: colour),
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: colour,
+        ),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -680,9 +772,14 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
         color: colour.withValues(alpha: 0.14),
         borderRadius: AppDesign.borderRadiusXs,
       ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 9.5, fontWeight: FontWeight.w700, color: colour)),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 9.5,
+          fontWeight: FontWeight.w700,
+          color: colour,
+        ),
+      ),
     );
   }
 
@@ -690,10 +787,11 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
     return EmptyStateWidget(
       icon: Icons.search_off,
       title: 'Nothing matches',
-      subtitle: _query.isEmpty
-          ? 'No course fits this filter. Try "All".'
-          : 'No ${_lens == _Lens.courses ? 'course' : 'professor'} matches '
-              '"${_searchController.text.trim()}".',
+      subtitle:
+          _query.isEmpty
+              ? 'No course fits this filter. Try "All".'
+              : 'No ${_lens == _Lens.courses ? 'course' : 'professor'} matches '
+                  '"${_searchController.text.trim()}".',
       actionLabel: _query.isEmpty ? null : 'Clear search',
       actionIcon: Icons.clear,
       onAction: _query.isEmpty ? null : _clearSearch,
@@ -706,7 +804,9 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
   /// to "is this coming back", so they get a row of their own rather than being
   /// left out of the list.
   Future<void> _showCourseSheet(
-      CourseHistory history, CourseTimeline course) async {
+    CourseHistory history,
+    CourseTimeline course,
+  ) async {
     final scheme = Theme.of(context).colorScheme;
     final jumpTo = await AppDialog.adaptive<String>(
       context: context,
@@ -723,8 +823,12 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
     if (jumpTo != null && mounted) _openProfessorNamed(history, jumpTo);
   }
 
-  Widget _courseTermRow(CourseHistory history, CourseTimeline course,
-      String term, ColorScheme scheme) {
+  Widget _courseTermRow(
+    CourseHistory history,
+    CourseTimeline course,
+    String term,
+    ColorScheme scheme,
+  ) {
     final offering = course.offeringIn(term);
     final isCurrent = term == history.currentTerm;
 
@@ -735,14 +839,17 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
         children: [
           Row(
             children: [
-              Text(Terms.label(term),
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: offering == null
-                        ? scheme.onSurface.withValues(alpha: 0.55)
-                        : scheme.onSurface,
-                  )),
+              Text(
+                Terms.label(term),
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color:
+                      offering == null
+                          ? scheme.onSurface.withValues(alpha: 0.55)
+                          : scheme.onSurface,
+                ),
+              ),
               if (isCurrent) ...[
                 const SizedBox(width: AppDesign.spacingSm),
                 _tag('NOW', scheme.primary),
@@ -751,17 +858,21 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
           ),
           const SizedBox(height: 3),
           if (offering == null)
-            Text('Not offered',
-                style: TextStyle(
-                    fontSize: 12,
-                    color: scheme.onSurface.withValues(alpha: 0.55)))
+            Text(
+              'Not offered',
+              style: TextStyle(
+                fontSize: 12,
+                color: scheme.onSurface.withValues(alpha: 0.55),
+              ),
+            )
           else ...[
             Text(
               '${offering.sections} '
               'section${offering.sections == 1 ? '' : 's'}',
               style: TextStyle(
-                  fontSize: 12,
-                  color: scheme.onSurface.withValues(alpha: 0.75)),
+                fontSize: 12,
+                color: scheme.onSurface.withValues(alpha: 0.75),
+              ),
             ),
             if (offering.instructors.isNotEmpty) ...[
               const SizedBox(height: AppDesign.spacingSm),
@@ -775,9 +886,10 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
                 children: [
                   for (final name in offering.inCharge)
                     _linkChip(
-                        value: name,
-                        display: titleCaseName(name),
-                        inCharge: true),
+                      value: name,
+                      display: titleCaseName(name),
+                      inCharge: true,
+                    ),
                   for (final name in offering.supporting)
                     _linkChip(value: name, display: titleCaseName(name)),
                 ],
@@ -790,7 +902,9 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
   }
 
   Future<void> _showProfessorSheet(
-      CourseHistory history, InstructorTimeline prof) async {
+    CourseHistory history,
+    InstructorTimeline prof,
+  ) async {
     final scheme = Theme.of(context).colorScheme;
     final courses = prof.courses.length;
     final jumpTo = await AppDialog.adaptive<String>(
@@ -798,7 +912,8 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
       icon: Icons.person_search_outlined,
       title: prof.displayName,
       content: _sheetBody(
-        header: '$courses course${courses == 1 ? '' : 's'} across '
+        header:
+            '$courses course${courses == 1 ? '' : 's'} across '
             '${prof.terms.length} semester${prof.terms.length == 1 ? '' : 's'}',
         children: [
           for (final term in history.terms.reversed)
@@ -809,8 +924,12 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
     if (jumpTo != null && mounted) _openCourseNamed(history, jumpTo);
   }
 
-  Widget _profTermRow(CourseHistory history, InstructorTimeline prof,
-      String term, ColorScheme scheme) {
+  Widget _profTermRow(
+    CourseHistory history,
+    InstructorTimeline prof,
+    String term,
+    ColorScheme scheme,
+  ) {
     final taught = prof.coursesByTerm[term];
     final isCurrent = term == history.currentTerm;
 
@@ -821,14 +940,17 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
         children: [
           Row(
             children: [
-              Text(Terms.label(term),
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: taught == null
-                        ? scheme.onSurface.withValues(alpha: 0.55)
-                        : scheme.onSurface,
-                  )),
+              Text(
+                Terms.label(term),
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color:
+                      taught == null
+                          ? scheme.onSurface.withValues(alpha: 0.55)
+                          : scheme.onSurface,
+                ),
+              ),
               if (isCurrent) ...[
                 const SizedBox(width: AppDesign.spacingSm),
                 _tag('NOW', scheme.primary),
@@ -837,10 +959,13 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
           ),
           const SizedBox(height: 3),
           if (taught == null)
-            Text('Nothing on record',
-                style: TextStyle(
-                    fontSize: 12,
-                    color: scheme.onSurface.withValues(alpha: 0.55)))
+            Text(
+              'Nothing on record',
+              style: TextStyle(
+                fontSize: 12,
+                color: scheme.onSurface.withValues(alpha: 0.55),
+              ),
+            )
           else
             Padding(
               padding: const EdgeInsets.only(top: 3),
@@ -850,10 +975,11 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
                 children: [
                   for (final code in taught)
                     _linkChip(
-                        value: code,
-                        display: code,
-                        bold: true,
-                        inCharge: prof.wasInChargeOf(term, code)),
+                      value: code,
+                      display: code,
+                      bold: true,
+                      inCharge: prof.wasInChargeOf(term, code),
+                    ),
                 ],
               ),
             ),
@@ -877,10 +1003,13 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (header.isNotEmpty) ...[
-              Text(header,
-                  style: TextStyle(
-                      fontSize: 12.5,
-                      color: scheme.onSurface.withValues(alpha: 0.7))),
+              Text(
+                header,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: scheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
               const SizedBox(height: AppDesign.spacingMd),
             ],
             ...children,
@@ -907,14 +1036,17 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
     final chip = Container(
       padding: EdgeInsets.fromLTRB(inCharge ? 5 : 9, 5, 9, 5),
       decoration: BoxDecoration(
-        color: inCharge
-            ? scheme.primary.withValues(alpha: 0.10)
-            : scheme.surfaceContainerHighest.withValues(alpha: 0.55),
+        color:
+            inCharge
+                ? scheme.primary.withValues(alpha: 0.10)
+                : scheme.surfaceContainerHighest.withValues(alpha: 0.55),
         borderRadius: AppDesign.borderRadiusSm,
         border: Border.all(
-            color: inCharge
-                ? scheme.primary.withValues(alpha: 0.35)
-                : scheme.outline.withValues(alpha: 0.18)),
+          color:
+              inCharge
+                  ? scheme.primary.withValues(alpha: 0.35)
+                  : scheme.outline.withValues(alpha: 0.18),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -926,32 +1058,38 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
                 color: scheme.primary.withValues(alpha: 0.16),
                 borderRadius: AppDesign.borderRadiusXs,
               ),
-              child: Text('IC',
-                  style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.3,
-                      color: scheme.primary)),
+              child: Text(
+                'IC',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.3,
+                  color: scheme.primary,
+                ),
+              ),
             ),
             const SizedBox(width: 5),
           ],
           Text(
             display,
             style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: bold || inCharge ? FontWeight.w700 : FontWeight.w600,
-                color: inCharge
-                    ? scheme.primary
-                    : scheme.onSurface.withValues(alpha: 0.85)),
+              fontSize: 11.5,
+              fontWeight: bold || inCharge ? FontWeight.w700 : FontWeight.w600,
+              color:
+                  inCharge
+                      ? scheme.primary
+                      : scheme.onSurface.withValues(alpha: 0.85),
+            ),
           ),
         ],
       ),
     );
     return AppTappable(
       onTap: () => Navigator.of(context).pop(value),
-      child: inCharge
-          ? Tooltip(message: 'Instructor-in-charge', child: chip)
-          : chip,
+      child:
+          inCharge
+              ? Tooltip(message: 'Instructor-in-charge', child: chip)
+              : chip,
     );
   }
 
@@ -993,9 +1131,14 @@ class _GapMark extends StatelessWidget {
         child: SizedBox(
           width: 5,
           child: Center(
-            child: Text('/',
-                style: TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w700, color: colour)),
+            child: Text(
+              '/',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: colour,
+              ),
+            ),
           ),
         ),
       ),
@@ -1046,9 +1189,10 @@ class _TermStrip extends StatelessWidget {
                 waitDuration: const Duration(milliseconds: 400),
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: activeTerms.contains(term)
-                        ? scheme.primary.withValues(alpha: 0.85)
-                        : scheme.onSurface.withValues(alpha: 0.09),
+                    color:
+                        activeTerms.contains(term)
+                            ? scheme.primary.withValues(alpha: 0.85)
+                            : scheme.onSurface.withValues(alpha: 0.09),
                     borderRadius: AppDesign.borderRadiusXs,
                   ),
                   child: const SizedBox.expand(),

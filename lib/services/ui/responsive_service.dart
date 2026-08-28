@@ -11,21 +11,28 @@ class ResponsiveService {
   static const double tabletBreakpoint = ResponsiveConstants.tabletBreakpoint;
 
   static const double minTouchTarget = ResponsiveConstants.minTouchTarget;
-  static const double preferredTouchTarget = ResponsiveConstants.preferredTouchTarget;
+  static const double preferredTouchTarget =
+      ResponsiveConstants.preferredTouchTarget;
   static const double largeTouchTarget = ResponsiveConstants.largeTouchTarget;
 
-  static const double mobilePaddingScale = ResponsiveConstants.mobilePaddingScale;
-  static const double tabletPaddingScale = ResponsiveConstants.tabletPaddingScale;
-  static const double desktopPaddingScale = ResponsiveConstants.desktopPaddingScale;
+  static const double mobilePaddingScale =
+      ResponsiveConstants.mobilePaddingScale;
+  static const double tabletPaddingScale =
+      ResponsiveConstants.tabletPaddingScale;
+  static const double desktopPaddingScale =
+      ResponsiveConstants.desktopPaddingScale;
 
   static const double mobileFontScale = ResponsiveConstants.mobileFontScale;
   static const double tabletFontScale = ResponsiveConstants.tabletFontScale;
   static const double desktopFontScale = ResponsiveConstants.desktopFontScale;
 
   static ScreenSize getScreenSize(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
+    final size = MediaQuery.sizeOf(context);
+    final width = size.width;
+    final landscapePhone =
+        size.height < width && size.height <= 500 && width <= 960;
 
-    if (width <= mobileBreakpoint) {
+    if (width <= mobileBreakpoint || landscapePhone) {
       return ScreenSize.mobile;
     } else if (width <= tabletBreakpoint) {
       return ScreenSize.tablet;
@@ -75,7 +82,10 @@ class ResponsiveService {
     return getOrientation(context) == ScreenOrientation.portrait;
   }
 
-  static EdgeInsets getAdaptivePadding(BuildContext context, EdgeInsets basePadding) {
+  static EdgeInsets getAdaptivePadding(
+    BuildContext context,
+    EdgeInsets basePadding,
+  ) {
     final screenSize = getScreenSize(context);
     double scale;
 
@@ -118,12 +128,15 @@ class ResponsiveService {
     return baseFontSize * scale;
   }
 
-  static const double _mobileMinFontSize = ResponsiveConstants.mobileMinFontSize;
+  static const double _mobileMinFontSize =
+      ResponsiveConstants.mobileMinFontSize;
 
   /// Returns [baseFontSize] on desktop/tablet, but clamps to at least 11px on mobile.
   static double clampedFontSize(BuildContext context, double baseFontSize) {
     if (isMobile(context)) {
-      return baseFontSize < _mobileMinFontSize ? _mobileMinFontSize : baseFontSize;
+      return baseFontSize < _mobileMinFontSize
+          ? _mobileMinFontSize
+          : baseFontSize;
     }
     return baseFontSize;
   }
@@ -141,7 +154,10 @@ class ResponsiveService {
     }
   }
 
-  static double getAdaptiveBorderRadius(BuildContext context, double baseBorderRadius) {
+  static double getAdaptiveBorderRadius(
+    BuildContext context,
+    double baseBorderRadius,
+  ) {
     final screenSize = getScreenSize(context);
 
     switch (screenSize) {
@@ -167,7 +183,8 @@ class ResponsiveService {
     }
   }
 
-  static int getGridColumns(BuildContext context, {
+  static int getGridColumns(
+    BuildContext context, {
     int mobileColumns = 1,
     int tabletColumns = 2,
     int desktopColumns = 3,
@@ -323,8 +340,8 @@ class ResponsiveService {
 
   static Duration getLongPressDuration(BuildContext context) {
     return isMobile(context)
-      ? const Duration(milliseconds: 500)
-      : const Duration(milliseconds: 400);
+        ? const Duration(milliseconds: 500)
+        : const Duration(milliseconds: 400);
   }
 
   static Widget buildPerformantWidget({
@@ -347,12 +364,13 @@ class ResponsiveService {
   /// match the app-wide `AppScrollBehavior`, so lists feel fluid instead of
   /// hard-clamping on desktop/web. Pass `bouncing: false` for the rare case
   /// where a clamped scroll is desired.
-  static ScrollPhysics getScrollPhysics(BuildContext context, {
+  static ScrollPhysics getScrollPhysics(
+    BuildContext context, {
     bool bouncing = true,
   }) {
     return bouncing
-      ? const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics())
-      : const ClampingScrollPhysics();
+        ? const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics())
+        : const ClampingScrollPhysics();
   }
 
   static Widget buildOptimizedListView({
@@ -369,7 +387,9 @@ class ResponsiveService {
       padding: padding,
       shrinkWrap: shrinkWrap,
       itemCount: itemCount,
-      scrollCacheExtent: ScrollCacheExtent.pixels(isMobile(context) ? 250.0 : 500.0),
+      scrollCacheExtent: ScrollCacheExtent.pixels(
+        isMobile(context) ? 250.0 : 500.0,
+      ),
       itemBuilder: (context, index) {
         return buildPerformantWidget(
           context: context,
@@ -378,7 +398,6 @@ class ResponsiveService {
       },
     );
   }
-
 }
 
 /// Extension methods for easier access
@@ -403,6 +422,7 @@ extension ResponsiveContext on BuildContext {
   void triggerLightFeedback() => ResponsiveService.triggerLightFeedback(this);
   void triggerMediumFeedback() => ResponsiveService.triggerMediumFeedback(this);
   void triggerHeavyFeedback() => ResponsiveService.triggerHeavyFeedback(this);
-  void triggerSelectionFeedback() => ResponsiveService.triggerSelectionFeedback(this);
+  void triggerSelectionFeedback() =>
+      ResponsiveService.triggerSelectionFeedback(this);
   void triggerVibrate() => ResponsiveService.triggerVibrate(this);
 }

@@ -11,6 +11,7 @@ import '../widgets/common/app_toast.dart';
 import '../widgets/app_tools.dart';
 import '../widgets/common/empty_state_widget.dart';
 import '../widgets/guide_visuals.dart';
+import '../widgets/workspace_navigation_scope.dart';
 
 class GuideScreen extends StatefulWidget {
   final String? initialAnchor;
@@ -140,10 +141,12 @@ class _GuideScreenState extends State<GuideScreen> {
   Widget build(BuildContext context) {
     final visible = _visible;
     final wide = MediaQuery.sizeOf(context).width >= _railBreakpoint;
+    final workspace = WorkspaceNavigationScope.maybeOf(context);
+    final hideAppBar = widget.embedded && workspace?.mobile != true;
 
     return Scaffold(
       appBar:
-          widget.embedded
+          hideAppBar
               ? null
               : AppDesign.appBar(
                 context,
@@ -163,38 +166,73 @@ class _GuideScreenState extends State<GuideScreen> {
             children: [
               if (wide) _rail(context),
               Expanded(
-                child: Column(
-                  children: [
-                    _controls(context, wide),
-                    Expanded(
-                      child:
-                          visible.isEmpty
-                              ? _noResults(context)
-                              : SingleChildScrollView(
-                                controller: _scroll,
-                                padding: const EdgeInsets.fromLTRB(
-                                  AppDesign.spacingMd,
-                                  0,
-                                  AppDesign.spacingMd,
-                                  AppDesign.spacingXxl,
+                child:
+                    wide
+                        ? Column(
+                          children: [
+                            _controls(context, true),
+                            Expanded(child: _guideContent(visible)),
+                          ],
+                        )
+                        : SingleChildScrollView(
+                          controller: _scroll,
+                          keyboardDismissBehavior:
+                              ScrollViewKeyboardDismissBehavior.onDrag,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _controls(context, false),
+                              if (visible.isEmpty)
+                                SizedBox(
+                                  height:
+                                      MediaQuery.sizeOf(context).height * 0.45,
+                                  child: _noResults(context),
+                                )
+                              else ...[
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: AppDesign.spacingMd,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      for (final section in visible)
+                                        _sectionBlock(context, section),
+                                      _footer(context),
+                                    ],
+                                  ),
                                 ),
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    for (final section in visible)
-                                      _sectionBlock(context, section),
-                                    _footer(context),
-                                  ],
-                                ),
-                              ),
-                    ),
-                  ],
-                ),
+                                const SizedBox(height: AppDesign.spacingXxl),
+                              ],
+                            ],
+                          ),
+                        ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _guideContent(List<GuideSection> visible) {
+    if (visible.isEmpty) return _noResults(context);
+    return SingleChildScrollView(
+      controller: _scroll,
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: const EdgeInsets.fromLTRB(
+        AppDesign.spacingMd,
+        0,
+        AppDesign.spacingMd,
+        AppDesign.spacingXxl,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final section in visible) _sectionBlock(context, section),
+          _footer(context),
+        ],
       ),
     );
   }

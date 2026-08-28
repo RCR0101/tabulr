@@ -590,7 +590,7 @@ final List<GuideSection> guideSections = [
             'including what happens when you repeat a course. You do not have '
             'to type it all in: pull courses from a timetable, load your '
             'branch\'s compulsory courses automatically, or import a '
-            'performance sheet PDF.',
+            'performance sheet PDF. On a phone, tap the current semester in the title to switch, add or remove semesters.',
         pageInfo: PageInfoHelper.cgpaCalculator,
         keywords: [
           'cgpa',
@@ -669,7 +669,7 @@ final List<GuideSection> guideSections = [
             'What your branch is supposed to take, semester by semester — the '
             'compulsory disciplinary courses and the electives that count. '
             'Useful when you are deciding what to register for and do not want '
-            'to read the bulletin cover to cover.',
+            'to read the bulletin cover to cover. On a phone, the branch form folds into a compact Change summary after selection.',
         pageInfo: PageInfoHelper.courseGuide,
         keywords: [
           'cdc',
@@ -687,7 +687,7 @@ final List<GuideSection> guideSections = [
             'Discipline, humanities and open electives in one browsable list '
             'instead of three documents. If you have filled in your CGPA '
             'record, courses you have already taken are marked, so you are not '
-            'shortlisting something you passed last year.',
+            'shortlisting something you passed last year. On a phone, tap the pool name in the title; the branch form folds into a Change summary after selection.',
         pageInfo: PageInfoHelper.electives,
         keywords: [
           'elective',
@@ -766,7 +766,7 @@ final List<GuideSection> guideSections = [
             'Your week as a real calendar, with your classes, your exams and '
             'anything else you add. Cancelled class? Scrap that slot for the '
             'week and it disappears without touching your timetable. The whole '
-            'semester\'s holidays and deadlines are one tap away.',
+            'semester\'s holidays and deadlines are one tap away. On a phone, timetable switching and secondary controls are under Calendar options.',
         pageInfo: PageInfoHelper.calendar,
         visuals: [GuideVisual.academicCalendar],
         keywords: [
@@ -812,8 +812,9 @@ final List<GuideSection> guideSections = [
         icon: Icons.person_search,
         lead:
             'Where a professor sits, how to reach them, and whether they are '
-            'in class right now. Worth checking before you walk across campus '
-            'to a closed door.',
+            'in class right now. Search by name or chamber; on phones the '
+            'controls scroll with the results so the list gets the full screen. '
+            'Worth checking before you walk across campus to a closed door.',
         pageInfo: PageInfoHelper.profChambers,
         keywords: [
           'professor',
@@ -853,7 +854,7 @@ final List<GuideSection> guideSections = [
         anchor: 'acad-drives',
         icon: Icons.folder_shared,
         lead:
-            "Acad Drives is a searchable resource library for past papers, slides and notes. Star courses, bookmark individual files and use the enrolled-course section to find material related to saved timetables. On desktop, selecting a course keeps the course navigator beside its drives and folders; phones use a focused drill-down view. Submit a Google Drive link to suggest a resource; there is no direct file-upload form. Downloads and fresh listings require a connection.",
+            "Acad Drives is a searchable resource library for past papers, slides and notes. Star courses, bookmark individual files and use the enrolled-course section to find material related to saved timetables. On desktop, selecting a course keeps the course navigator beside its drives and folders; phones use a focused drill-down view where the compact search and sort shelf scrolls with the active list. Submit a Google Drive link to suggest a resource; there is no direct file-upload form. Downloads and fresh listings require a connection.",
         steps: [
           "Search by course code or title, then open a course to browse its source drives and folders.",
           "Star courses and bookmark files to return to them. Enrolled courses are derived from your saved timetables.",

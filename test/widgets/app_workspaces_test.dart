@@ -4,7 +4,10 @@ import 'package:timetable_maker/widgets/app_destinations.dart';
 import 'package:timetable_maker/widgets/app_tools.dart';
 import 'package:timetable_maker/widgets/app_workspaces.dart';
 import 'package:timetable_maker/widgets/workspace_frame.dart';
+import 'package:timetable_maker/widgets/workspace_navigation_scope.dart';
+import 'package:timetable_maker/utils/design_constants.dart';
 import 'package:timetable_maker/services/ui/theme_service.dart';
+import 'package:timetable_maker/services/ui/responsive_service.dart';
 
 void main() {
   test('Degree Audit remains the final Degree destination', () {
@@ -81,6 +84,7 @@ void main() {
     const Size(820, 900),
     const Size(390, 844),
     const Size(320, 640),
+    const Size(844, 390),
   ]) {
     testWidgets('workspace chrome is usable at ${size.width}', (tester) async {
       tester.view.devicePixelRatio = 1;
@@ -105,7 +109,16 @@ void main() {
             onProfile: () {},
             collapsed: false,
             onToggleCollapse: () {},
-            child: const Text('Feature body'),
+            child: Builder(
+              builder:
+                  (context) => Scaffold(
+                    appBar: AppDesign.appBar(context, title: 'Feature page'),
+                    body: const SizedBox.expand(
+                      key: ValueKey('feature-body'),
+                      child: Text('Feature body'),
+                    ),
+                  ),
+            ),
           ),
         ),
       );
@@ -117,8 +130,19 @@ void main() {
       expect(selected?.screen, DrawerScreen.cgpaCalculator);
       await tester.tap(find.byTooltip('Search anything').last);
       expect(searches, 1);
-      if (size.width <= 600) {
-        await tester.tap(find.byTooltip('Help and more'));
+      final mobile = ResponsiveService.isMobile(
+        tester.element(find.byType(WorkspaceFrame)),
+      );
+      if (mobile) {
+        final bodyHeight =
+            tester.getSize(find.byKey(const ValueKey('feature-body'))).height;
+        expect(bodyHeight, greaterThanOrEqualTo(size.height - 180));
+        await tester.tap(
+          find.descendant(
+            of: find.byType(NavigationBar),
+            matching: find.text('More'),
+          ),
+        );
         await tester.pumpAndSettle();
         await tester.scrollUntilVisible(
           find.text('Help & support'),
@@ -141,6 +165,51 @@ void main() {
       }
     });
   }
+
+  testWidgets('single-entry mobile workspaces do not reserve tab space', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 640);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final workspace = AppWorkspaces.of(AppWorkspace.exams);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WorkspaceFrame(
+          workspace: workspace,
+          workspaces: AppWorkspaces.all,
+          entries: workspace.entries,
+          selectedId: 'examSeating',
+          onWorkspaceSelected: (_) {},
+          onEntrySelected: (_) {},
+          onSearch: () {},
+          onTheme: () {},
+          onProfile: null,
+          collapsed: false,
+          onToggleCollapse: () {},
+          child: Builder(
+            builder:
+                (context) => Scaffold(
+                  appBar: AppDesign.appBar(context, title: 'Exam seating'),
+                  body: const SizedBox.expand(
+                    key: ValueKey('single-entry-body'),
+                  ),
+                ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(WorkspaceTabs), findsNothing);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('single-entry-body'))).height,
+      greaterThanOrEqualTo(500),
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'long tabs reveal the selected destination and support large text',
@@ -169,4 +238,125 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+  testWidgets('mobile workspace tabs follow scroll direction smoothly', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final workspace = AppWorkspaces.of(AppWorkspace.degree);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WorkspaceFrame(
+          workspace: workspace,
+          workspaces: AppWorkspaces.all,
+          entries: workspace.entries,
+          selectedId: 'minors',
+          onWorkspaceSelected: (_) {},
+          onEntrySelected: (_) {},
+          onSearch: () {},
+          onTheme: () {},
+          onProfile: null,
+          collapsed: false,
+          onToggleCollapse: () {},
+          child: Builder(
+            builder:
+                (context) => Scaffold(
+                  appBar: AppDesign.appBar(
+                    context,
+                    title: 'Scrollable feature',
+                  ),
+                  body: ListView.builder(
+                    key: const ValueKey('feature-list'),
+                    itemExtent: 56,
+                    itemCount: 40,
+                    itemBuilder: (_, index) => Text('Item $index'),
+                  ),
+                ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final expandedHeight = tester.getSize(find.byType(AppBar)).height;
+    expect(expandedHeight, greaterThan(90));
+
+    await tester.drag(
+      find.byKey(const ValueKey('feature-list')),
+      const Offset(0, -300),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+    final transitionHeight = tester.getSize(find.byType(AppBar)).height;
+    expect(
+      tester
+          .widget<WorkspaceNavigationScope>(
+            find.byType(WorkspaceNavigationScope),
+          )
+          .tabVisibility,
+      lessThan(1),
+    );
+    expect(transitionHeight, lessThan(expandedHeight));
+    expect(transitionHeight, greaterThan(56));
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.byType(AppBar)).height, closeTo(56, 0.1));
+
+    await tester.drag(
+      find.byKey(const ValueKey('feature-list')),
+      const Offset(0, 160),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSize(find.byType(AppBar)).height,
+      closeTo(expandedHeight, 0.1),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('mobile workspace tabs yield their space to the keyboard', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final workspace = AppWorkspaces.of(AppWorkspace.degree);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: WorkspaceFrame(
+          workspace: workspace,
+          workspaces: AppWorkspaces.all,
+          entries: workspace.entries,
+          selectedId: 'minors',
+          onWorkspaceSelected: (_) {},
+          onEntrySelected: (_) {},
+          onSearch: () {},
+          onTheme: () {},
+          onProfile: null,
+          collapsed: false,
+          onToggleCollapse: () {},
+          child: Builder(
+            builder:
+                (context) => Scaffold(
+                  appBar: AppDesign.appBar(context, title: 'Search feature'),
+                  body: const TextField(key: ValueKey('search-field')),
+                ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.byType(AppBar)).height, greaterThan(90));
+
+    await tester.showKeyboard(find.byKey(const ValueKey('search-field')));
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    addTearDown(tester.view.resetViewInsets);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.byType(AppBar)).height, closeTo(56, 0.1));
+    expect(tester.takeException(), isNull);
+  });
 }

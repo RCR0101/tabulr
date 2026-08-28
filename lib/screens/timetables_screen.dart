@@ -1253,24 +1253,20 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
       ),
       body: ColoredBox(
         color: Theme.of(context).colorScheme.surfaceContainerLowest,
-        child: Column(
-          children: [
-            const TopAnnouncementWidget(),
-            Expanded(
-              child: ReorderableListView.builder(
-                padding: EdgeInsets.zero,
-                scrollCacheExtent: ScrollCacheExtent.pixels(900),
-                header: _buildLibraryHeader(),
-                footer: _buildLibraryFooter(),
-                itemCount: _sortedTimetables.length,
-                onReorderItem: _onReorder,
-                buildDefaultDragHandles: false,
-                itemBuilder:
-                    (context, index) =>
-                        _buildTimetableCard(_sortedTimetables[index], index),
-              ),
-            ),
-          ],
+        child: ReorderableListView.builder(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: EdgeInsets.zero,
+          scrollCacheExtent: ScrollCacheExtent.pixels(900),
+          header: Column(
+            children: [const TopAnnouncementWidget(), _buildLibraryHeader()],
+          ),
+          footer: _buildLibraryFooter(),
+          itemCount: _sortedTimetables.length,
+          onReorderItem: _onReorder,
+          buildDefaultDragHandles: false,
+          itemBuilder:
+              (context, index) =>
+                  _buildTimetableCard(_sortedTimetables[index], index),
         ),
       ),
     );

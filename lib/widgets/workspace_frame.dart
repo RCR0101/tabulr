@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
+
 import '../services/ui/responsive_service.dart';
 import 'app_sidebar.dart';
 import 'app_workspaces.dart';
+import 'workspace_navigation_scope.dart';
 
 /// Navigation chrome shared by every workspace, with feature bodies kept lazy
 /// by the shell. No nested Navigator: editor leave guards stay on the root.
-class WorkspaceFrame extends StatelessWidget {
+class WorkspaceFrame extends StatefulWidget {
   const WorkspaceFrame({
     super.key,
     required this.workspace,
@@ -35,54 +38,106 @@ class WorkspaceFrame extends StatelessWidget {
   final VoidCallback onToggleCollapse;
   final Widget child;
 
+  @override
+  State<WorkspaceFrame> createState() => _WorkspaceFrameState();
+}
+
+class _WorkspaceFrameState extends State<WorkspaceFrame> {
+  bool _tabsVisible = true;
+
+  @override
+  void didUpdateWidget(WorkspaceFrame oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedId != widget.selectedId ||
+        oldWidget.workspace.workspace != widget.workspace.workspace) {
+      _showTabs();
+    }
+  }
+
+  void _showTabs() {
+    if (!_tabsVisible && mounted) setState(() => _tabsVisible = true);
+  }
+
+  void _hideTabs() {
+    if (_tabsVisible && mounted) setState(() => _tabsVisible = false);
+  }
+
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) return false;
+    if (notification.metrics.pixels <= 8) {
+      _showTabs();
+    } else if (notification is ScrollUpdateNotification &&
+        notification.scrollDelta != null) {
+      if (notification.scrollDelta! > 2) {
+        _hideTabs();
+      } else if (notification.scrollDelta! < -2) {
+        _showTabs();
+      }
+    } else if (notification is UserScrollNotification) {
+      switch (notification.direction) {
+        case ScrollDirection.forward:
+          _showTabs();
+        case ScrollDirection.reverse:
+          _hideTabs();
+        case ScrollDirection.idle:
+          break;
+      }
+    }
+    return false;
+  }
+
   void _showMore(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(ctx).height * .8,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final info in workspaces)
-                  if (!AppWorkspaces.primary.take(4).contains(info.workspace))
+      builder:
+          (ctx) => SafeArea(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(ctx).height * .8,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final info in widget.workspaces)
+                      if (!AppWorkspaces.primary
+                          .take(4)
+                          .contains(info.workspace))
+                        ListTile(
+                          leading: Icon(info.icon),
+                          title: Text(info.label),
+                          selected:
+                              info.workspace == widget.workspace.workspace,
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            widget.onWorkspaceSelected(info.workspace);
+                          },
+                        ),
+                    const Divider(),
+                    if (widget.onProfile != null)
+                      ListTile(
+                        leading: const Icon(Icons.badge_outlined),
+                        title: const Text('Profile'),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          widget.onProfile!();
+                        },
+                      ),
                     ListTile(
-                      leading: Icon(info.icon),
-                      title: Text(info.label),
-                      selected: info.workspace == workspace.workspace,
+                      leading: const Icon(Icons.palette_outlined),
+                      title: const Text('Appearance'),
                       onTap: () {
                         Navigator.pop(ctx);
-                        onWorkspaceSelected(info.workspace);
+                        widget.onTheme();
                       },
                     ),
-                const Divider(),
-                if (onProfile != null)
-                  ListTile(
-                    leading: const Icon(Icons.badge_outlined),
-                    title: const Text('Profile'),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      onProfile!();
-                    },
-                  ),
-                ListTile(
-                  leading: const Icon(Icons.palette_outlined),
-                  title: const Text('Appearance'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    onTheme();
-                  },
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
     );
   }
 
@@ -91,21 +146,17 @@ class WorkspaceFrame extends StatelessWidget {
     final mobile = ResponsiveService.isMobile(context);
     final tablet = ResponsiveService.isTablet(context);
     final scheme = Theme.of(context).colorScheme;
-    final primary = workspaces
-        .where((w) => AppWorkspaces.primary.take(4).contains(w.workspace))
-        .toList();
+    final primary =
+        widget.workspaces
+            .where((w) => AppWorkspaces.primary.take(4).contains(w.workspace))
+            .toList();
     final primaryIndex = primary.indexWhere(
-      (w) => w.workspace == workspace.workspace,
+      (w) => w.workspace == widget.workspace.workspace,
     );
-    final content = Column(
+    final desktopContent = Column(
       children: [
         Container(
-          padding: EdgeInsets.fromLTRB(
-            mobile ? 16 : 28,
-            mobile ? 6 : 20,
-            mobile ? 8 : 28,
-            0,
-          ),
+          padding: const EdgeInsets.fromLTRB(28, 20, 28, 0),
           decoration: BoxDecoration(
             color: scheme.surface,
             border: Border(
@@ -118,183 +169,143 @@ class WorkspaceFrame extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          workspace.label,
-                          style:
-                              (mobile
-                                      ? Theme.of(context).textTheme.titleLarge
-                                      : Theme.of(
-                                          context,
-                                        ).textTheme.headlineMedium)
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: -.6,
-                                  ),
-                        ),
-                      ],
+                    child: Text(
+                      widget.workspace.label,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -.6,
+                      ),
                     ),
                   ),
-                  if (mobile)
-                    IconButton(
-                      onPressed: onSearch,
-                      icon: const Icon(Icons.search_rounded, size: 21),
-                      tooltip: 'Search anything',
-                    ),
-                  if (mobile)
-                    IconButton(
-                      onPressed: () => _showMore(context),
-                      icon: const Icon(Icons.more_horiz),
-                      tooltip: 'Help and more',
-                    ),
                 ],
               ),
-              if (entries.length > 1)
+              if (widget.entries.length > 1)
                 WorkspaceTabs(
-                  entries: entries,
-                  selectedId: selectedId,
-                  onSelected: onEntrySelected,
+                  entries: widget.entries,
+                  selectedId: widget.selectedId,
+                  onSelected: widget.onEntrySelected,
                 )
               else
                 const SizedBox(height: 14),
             ],
           ),
         ),
-        Expanded(child: child),
+        Expanded(child: widget.child),
       ],
     );
-    return Scaffold(
-      body: mobile
-          ? SafeArea(bottom: false, child: content)
-          : Row(
-              children: [
-                AppSidebar(
-                  currentWorkspace: workspace.workspace,
-                  workspaces: workspaces,
-                  onWorkspaceSelected: onWorkspaceSelected,
-                  collapsed: tablet || collapsed,
-                  onToggleCollapse: tablet ? null : onToggleCollapse,
-                  onShowCommandPalette: onSearch,
-                  onShowProfile: onProfile,
-                  onShowTheme: onTheme,
-                ),
-                Expanded(child: content),
-              ],
+    final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(end: keyboardVisible || !_tabsVisible ? 0 : 1),
+      duration:
+          MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      builder:
+          (context, tabVisibility, _) => WorkspaceNavigationScope(
+            mobile: mobile,
+            entries: widget.entries,
+            selectedId: widget.selectedId,
+            onEntrySelected: widget.onEntrySelected,
+            onSearch: widget.onSearch,
+            tabVisibility: tabVisibility,
+            child: Scaffold(
+              body:
+                  mobile
+                      ? _WorkspaceScrollBody(
+                        onNotification: _handleScrollNotification,
+                        child: widget.child,
+                      )
+                      : Row(
+                        children: [
+                          AppSidebar(
+                            currentWorkspace: widget.workspace.workspace,
+                            workspaces: widget.workspaces,
+                            onWorkspaceSelected: widget.onWorkspaceSelected,
+                            collapsed: tablet || widget.collapsed,
+                            onToggleCollapse:
+                                tablet ? null : widget.onToggleCollapse,
+                            onShowCommandPalette: widget.onSearch,
+                            onShowProfile: widget.onProfile,
+                            onShowTheme: widget.onTheme,
+                          ),
+                          Expanded(child: desktopContent),
+                        ],
+                      ),
+              bottomNavigationBar:
+                  mobile
+                      ? NavigationBar(
+                        height: 68,
+                        elevation: 0,
+                        backgroundColor: scheme.surface,
+                        indicatorColor: scheme.primaryContainer,
+                        selectedIndex:
+                            primaryIndex < 0 ? primary.length : primaryIndex,
+                        onDestinationSelected:
+                            (index) =>
+                                index == primary.length
+                                    ? _showMore(context)
+                                    : widget.onWorkspaceSelected(
+                                      primary[index].workspace,
+                                    ),
+                        destinations: [
+                          for (final info in primary)
+                            NavigationDestination(
+                              icon: Icon(info.icon),
+                              label: info.label,
+                            ),
+                          const NavigationDestination(
+                            icon: Icon(Icons.grid_view_rounded),
+                            label: 'More',
+                          ),
+                        ],
+                      )
+                      : null,
             ),
-      bottomNavigationBar: mobile
-          ? NavigationBar(
-              height: 68,
-              elevation: 0,
-              backgroundColor: scheme.surface,
-              indicatorColor: scheme.primaryContainer,
-              selectedIndex: primaryIndex < 0 ? primary.length : primaryIndex,
-              onDestinationSelected: (index) => index == primary.length
-                  ? _showMore(context)
-                  : onWorkspaceSelected(primary[index].workspace),
-              destinations: [
-                for (final info in primary)
-                  NavigationDestination(
-                    icon: Icon(info.icon),
-                    label: info.label,
-                  ),
-                const NavigationDestination(
-                  icon: Icon(Icons.grid_view_rounded),
-                  label: 'More',
-                ),
-              ],
-            )
-          : null,
+          ),
     );
   }
 }
 
-class WorkspaceTabs extends StatefulWidget {
-  const WorkspaceTabs({
-    super.key,
-    required this.entries,
-    required this.selectedId,
-    required this.onSelected,
+class _WorkspaceScrollBody extends StatefulWidget {
+  const _WorkspaceScrollBody({
+    required this.onNotification,
+    required this.child,
   });
-  final List<WorkspaceEntry> entries;
-  final String selectedId;
-  final ValueChanged<WorkspaceEntry> onSelected;
+
+  final ValueChanged<ScrollNotification> onNotification;
+  final Widget child;
 
   @override
-  State<WorkspaceTabs> createState() => _WorkspaceTabsState();
+  State<_WorkspaceScrollBody> createState() => _WorkspaceScrollBodyState();
 }
 
-class _WorkspaceTabsState extends State<WorkspaceTabs> {
-  final _selectedKey = GlobalKey();
+class _WorkspaceScrollBodyState extends State<_WorkspaceScrollBody> {
+  ScrollNotificationObserverState? _observer;
 
   @override
-  void initState() {
-    super.initState();
-    _revealSelection();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final nextObserver = ScrollNotificationObserver.maybeOf(context);
+    if (identical(nextObserver, _observer)) return;
+    _observer?.removeListener(_onNotification);
+    _observer = nextObserver?..addListener(_onNotification);
+  }
+
+  void _onNotification(ScrollNotification notification) {
+    widget.onNotification(notification);
   }
 
   @override
-  void didUpdateWidget(WorkspaceTabs oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedId != widget.selectedId) _revealSelection();
-  }
-
-  void _revealSelection() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final target = _selectedKey.currentContext;
-      if (mounted && target != null) {
-        Scrollable.ensureVisible(target, alignment: .5);
-      }
-    });
+  void dispose() {
+    _observer?.removeListener(_onNotification);
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final entry in widget.entries)
-            Semantics(
-              selected: entry.id == widget.selectedId,
-              button: true,
-              child: AnimatedContainer(
-                duration: MediaQuery.disableAnimationsOf(context)
-                    ? Duration.zero
-                    : const Duration(milliseconds: 180),
-                curve: Curves.easeOutCubic,
-                key: entry.id == widget.selectedId
-                    ? _selectedKey
-                    : ValueKey(entry.id),
-                margin: const EdgeInsets.only(right: 20),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      width: 2,
-                      color: entry.id == widget.selectedId
-                          ? scheme.primary
-                          : Colors.transparent,
-                    ),
-                  ),
-                ),
-                child: TextButton(
-                  style: TextButton.styleFrom(
-                    minimumSize: const Size(0, 48),
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    foregroundColor: entry.id == widget.selectedId
-                        ? scheme.primary
-                        : scheme.onSurfaceVariant,
-                    shape: const RoundedRectangleBorder(),
-                  ),
-                  onPressed: () => widget.onSelected(entry),
-                  child: Text(entry.label),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
+    return widget.child;
   }
 }

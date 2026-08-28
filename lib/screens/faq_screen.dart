@@ -40,9 +40,10 @@ class _FaqScreenState extends State<FaqScreen> {
   }
 
   List<FaqCategory> get _visible {
-    final categories = _category == null
-        ? faqCategories
-        : faqCategories.where((c) => c.title == _category);
+    final categories =
+        _category == null
+            ? faqCategories
+            : faqCategories.where((c) => c.title == _category);
 
     return [
       for (final c in categories)
@@ -72,33 +73,44 @@ class _FaqScreenState extends State<FaqScreen> {
           title: 'Academic FAQ',
           subtitle: 'Straight answers from the regulations',
         ),
-        actions: [PageInfoHelper.infoButton(context, PageInfoHelper.academicFaq)],
+        actions: [
+          PageInfoHelper.infoButton(context, PageInfoHelper.academicFaq),
+        ],
         centerTitle: false,
       ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 820),
-          child: Column(
-            children: [
-              _buildControls(context),
-              Expanded(
-                child: visible.isEmpty
-                    ? _noResults(context)
-                    : ListView(
-                        padding: const EdgeInsets.fromLTRB(
-                          AppDesign.spacingMd,
-                          0,
-                          AppDesign.spacingMd,
-                          AppDesign.spacingXl,
+          child: CustomScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            slivers: [
+              SliverToBoxAdapter(child: _buildControls(context)),
+              if (visible.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _noResults(context),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppDesign.spacingMd,
+                    0,
+                    AppDesign.spacingMd,
+                    AppDesign.spacingXl,
+                  ),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      for (final (i, category) in visible.indexed)
+                        _buildCategory(
+                          context,
+                          category,
+                          i,
+                          autoExpand: searching,
                         ),
-                        children: [
-                          for (final (i, category) in visible.indexed)
-                            _buildCategory(context, category, i,
-                                autoExpand: searching),
-                          _buildFooter(context),
-                        ],
-                      ),
-              ),
+                      _buildFooter(context),
+                    ]),
+                  ),
+                ),
             ],
           ),
         ),
@@ -140,8 +152,8 @@ class _FaqScreenState extends State<FaqScreen> {
             Text(
               '$_resultCount ${_resultCount == 1 ? 'answer' : 'answers'} for "$_query"',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurface.withValues(alpha: 0.6),
-                  ),
+                color: scheme.onSurface.withValues(alpha: 0.6),
+              ),
             ),
           ],
         ],
@@ -149,19 +161,27 @@ class _FaqScreenState extends State<FaqScreen> {
     );
   }
 
-  Widget _categoryChip(BuildContext context, String? value, String label,
-      {IconData? icon}) {
+  Widget _categoryChip(
+    BuildContext context,
+    String? value,
+    String label, {
+    IconData? icon,
+  }) {
     final selected = _category == value;
     return Padding(
       padding: const EdgeInsets.only(right: AppDesign.spacingSm),
       child: FilterChip(
-        avatar: icon == null
-            ? null
-            : Icon(icon,
-                size: 16,
-                color: selected
-                    ? Theme.of(context).colorScheme.onSecondaryContainer
-                    : Theme.of(context).colorScheme.onSurface),
+        avatar:
+            icon == null
+                ? null
+                : Icon(
+                  icon,
+                  size: 16,
+                  color:
+                      selected
+                          ? Theme.of(context).colorScheme.onSecondaryContainer
+                          : Theme.of(context).colorScheme.onSurface,
+                ),
         label: Text(label),
         selected: selected,
         showCheckmark: false,
@@ -170,15 +190,23 @@ class _FaqScreenState extends State<FaqScreen> {
     );
   }
 
-  Widget _buildCategory(BuildContext context, FaqCategory category, int index,
-      {required bool autoExpand}) {
+  Widget _buildCategory(
+    BuildContext context,
+    FaqCategory category,
+    int index, {
+    required bool autoExpand,
+  }) {
     final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(
-              AppDesign.spacingXs, AppDesign.spacingMd, 0, AppDesign.spacingSm),
+            AppDesign.spacingXs,
+            AppDesign.spacingMd,
+            0,
+            AppDesign.spacingSm,
+          ),
           child: Row(
             children: [
               Icon(category.icon, size: 18, color: scheme.primary),
@@ -186,9 +214,9 @@ class _FaqScreenState extends State<FaqScreen> {
               Text(
                 category.title,
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: scheme.primary,
-                    ),
+                  fontWeight: FontWeight.w700,
+                  color: scheme.primary,
+                ),
               ),
             ],
           ),
@@ -209,7 +237,8 @@ class _FaqScreenState extends State<FaqScreen> {
     final key = '${category.title} · ${entry.question}';
     // While searching, everything opens so matches are readable at a glance;
     // an explicit tap still toggles that individual card.
-    final open = _expanded.contains(key) || (autoExpand && !_expanded.contains('!$key'));
+    final open =
+        _expanded.contains(key) || (autoExpand && !_expanded.contains('!$key'));
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppDesign.spacingSm),
@@ -220,15 +249,16 @@ class _FaqScreenState extends State<FaqScreen> {
         children: [
           AppTappable(
             behavior: HitTestBehavior.opaque,
-            onTap: () => setState(() {
-              if (open) {
-                _expanded.remove(key);
-                if (autoExpand) _expanded.add('!$key');
-              } else {
-                _expanded.add(key);
-                _expanded.remove('!$key');
-              }
-            }),
+            onTap:
+                () => setState(() {
+                  if (open) {
+                    _expanded.remove(key);
+                    if (autoExpand) _expanded.add('!$key');
+                  } else {
+                    _expanded.add(key);
+                    _expanded.remove('!$key');
+                  }
+                }),
             child: Padding(
               padding: const EdgeInsets.all(AppDesign.spacingMd),
               child: Row(
@@ -237,8 +267,8 @@ class _FaqScreenState extends State<FaqScreen> {
                     child: Text(
                       entry.question,
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   const SizedBox(width: AppDesign.spacingSm),
@@ -260,9 +290,10 @@ class _FaqScreenState extends State<FaqScreen> {
             duration: AppDesign.motionFast,
             curve: Curves.easeOut,
             alignment: Alignment.topCenter,
-            child: open
-                ? _answer(context, entry)
-                : const SizedBox(width: double.infinity),
+            child:
+                open
+                    ? _answer(context, entry)
+                    : const SizedBox(width: double.infinity),
           ),
         ],
       ),
@@ -286,9 +317,9 @@ class _FaqScreenState extends State<FaqScreen> {
           Text(
             entry.answer,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  height: 1.5,
-                  color: scheme.onSurface.withValues(alpha: 0.85),
-                ),
+              height: 1.5,
+              color: scheme.onSurface.withValues(alpha: 0.85),
+            ),
           ),
           if (entry.bullets.isNotEmpty) ...[
             const SizedBox(height: AppDesign.spacingSm),
@@ -312,12 +343,10 @@ class _FaqScreenState extends State<FaqScreen> {
                     Expanded(
                       child: Text(
                         bullet,
-                        style:
-                            Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  height: 1.45,
-                                  color:
-                                      scheme.onSurface.withValues(alpha: 0.8),
-                                ),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          height: 1.45,
+                          color: scheme.onSurface.withValues(alpha: 0.8),
+                        ),
                       ),
                     ),
                   ],
@@ -335,16 +364,18 @@ class _FaqScreenState extends State<FaqScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.menu_book_outlined,
-                      size: 13,
-                      color: scheme.onSurface.withValues(alpha: 0.55)),
+                  Icon(
+                    Icons.menu_book_outlined,
+                    size: 13,
+                    color: scheme.onSurface.withValues(alpha: 0.55),
+                  ),
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
                       entry.source!,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: scheme.onSurface.withValues(alpha: 0.65),
-                          ),
+                        color: scheme.onSurface.withValues(alpha: 0.65),
+                      ),
                     ),
                   ),
                 ],
@@ -363,11 +394,12 @@ class _FaqScreenState extends State<FaqScreen> {
       subtitle: 'Try a different word, or clear the filters.',
       actionLabel: 'Clear search',
       actionIcon: Icons.close,
-      onAction: () => setState(() {
-        _search.clear();
-        _query = '';
-        _category = null;
-      }),
+      onAction:
+          () => setState(() {
+            _search.clear();
+            _query = '';
+            _category = null;
+          }),
     );
   }
 
@@ -381,9 +413,9 @@ class _FaqScreenState extends State<FaqScreen> {
         'cited clause in the official document, which always takes precedence.',
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: scheme.onSurface.withValues(alpha: 0.45),
-              height: 1.5,
-            ),
+          color: scheme.onSurface.withValues(alpha: 0.45),
+          height: 1.5,
+        ),
       ),
     );
   }

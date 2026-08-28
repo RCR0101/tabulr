@@ -21,7 +21,6 @@ import '../widgets/common/app_tappable.dart';
 import '../utils/page_info_helper.dart';
 import '../services/ui/tutorial_service.dart';
 
-
 class ProfessorsScreen extends StatefulWidget {
   /// Set when opened from the editor, which turns the "teaches" chips in a
   /// professor's detail dialog into one-tap adds for that exact section — the
@@ -38,7 +37,9 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
   final ProfessorService _professorService = ProfessorService();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  final _searchDebounce = Debouncer(duration: const Duration(milliseconds: 250));
+  final _searchDebounce = Debouncer(
+    duration: const Duration(milliseconds: 250),
+  );
 
   @override
   void initState() {
@@ -72,12 +73,17 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final mobile = ResponsiveService.isMobile(context);
     return Scaffold(
       appBar: AppDesign.appBar(
         context,
         title: 'Prof Chambers',
         actions: [
-          PageInfoHelper.infoButton(context, PageInfoHelper.profChambers, key: TutorialKeys.infoProfChambers),
+          PageInfoHelper.infoButton(
+            context,
+            PageInfoHelper.profChambers,
+            key: TutorialKeys.infoProfChambers,
+          ),
           CampusSelectorWidget(
             onCampusChanged: (campus) {
               ToastService.showInfo(
@@ -95,17 +101,14 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
             ),
         ],
       ),
-      body: Column(
-        children: [
-          _buildSearchBar(),
-          Expanded(
-            child: _buildContent(),
-          ),
-        ],
-      ),
+      body:
+          mobile
+              ? _buildMobileContent()
+              : Column(
+                children: [_buildSearchBar(), Expanded(child: _buildContent())],
+              ),
     );
   }
-
 
   Widget _buildSearchBar() {
     return Padding(
@@ -135,6 +138,77 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMobileContent() {
+    return ListenableBuilder(
+      listenable: _professorService,
+      builder: (context, _) {
+        final professors = _professorService.professors;
+        final count = professors.length;
+        final stateKey =
+            _professorService.isLoading
+                ? 'loading'
+                : _professorService.error != null
+                ? 'error'
+                : professors.isEmpty
+                ? 'empty'
+                : 'content';
+        return AnimatedSwitcher(
+          duration: AppDesign.animDurationNormal,
+          child: RefreshIndicator(
+            key: ValueKey(stateKey),
+            onRefresh: _loadProfessors,
+            child: CustomScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(child: _buildSearchBar()),
+                if (_professorService.isLoading)
+                  const SliverToBoxAdapter(child: CourseListSkeleton(count: 5))
+                else if (_professorService.error != null)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _buildErrorView(),
+                  )
+                else if (professors.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _buildEmptyView(),
+                  )
+                else ...[
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                      child: Text(
+                        '$count professor${count == 1 ? '' : 's'}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) =>
+                            index.isOdd
+                                ? const SizedBox(height: 8)
+                                : _buildProfessorCard(professors[index ~/ 2]),
+                        childCount: count * 2 - 1,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -216,7 +290,9 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
           Icon(
             hasSearch ? Icons.search_off : Icons.school_outlined,
             size: 64,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
@@ -225,7 +301,9 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                 : 'No professors available for $campusName',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 8),
@@ -235,7 +313,9 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                 : 'Check the campus selector above — data may be under a different campus',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
           ),
           if (hasSearch) ...[
@@ -314,10 +394,9 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                   children: [
                     Text(
                       professor.name,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Wrap(
@@ -333,9 +412,9 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                       const SizedBox(height: 8),
                       Text(
                         'In ${currentClass.courseCode} · ${currentClass.room}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: scheme.error,
-                            ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: scheme.error),
                       ),
                     ],
                   ],
@@ -355,9 +434,10 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
   Widget _chamberChip(String chamber, bool unavailable) {
     final scheme = Theme.of(context).colorScheme;
     final fg = unavailable ? scheme.error : scheme.onSurfaceVariant;
-    final bg = unavailable
-        ? scheme.error.withValues(alpha: 0.1)
-        : scheme.surfaceContainerHighest;
+    final bg =
+        unavailable
+            ? scheme.error.withValues(alpha: 0.1)
+            : scheme.surfaceContainerHighest;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -371,7 +451,11 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
           const SizedBox(width: 5),
           Text(
             chamber,
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: fg),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: fg,
+            ),
           ),
         ],
       ),
@@ -381,7 +465,9 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
   /// Free (green) / Occupied (red) availability, with a leading dot.
   Widget _statusChip(bool isOccupied) {
     final color =
-        isOccupied ? Theme.of(context).colorScheme.error : AppDesign.success(context);
+        isOccupied
+            ? Theme.of(context).colorScheme.error
+            : AppDesign.success(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -399,7 +485,11 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
           const SizedBox(width: 6),
           Text(
             isOccupied ? 'Occupied' : 'Free',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -409,13 +499,13 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
   void _showScheduleDialog(Professor professor) {
     showDialog(
       context: context,
-      builder: (context) => _ProfessorDetailDialog(
-        professor: professor,
-        selectionLink: widget.selectionLink,
-      ),
+      builder:
+          (context) => _ProfessorDetailDialog(
+            professor: professor,
+            selectionLink: widget.selectionLink,
+          ),
     );
   }
-
 
   void _showSortDialog() {
     final currentSort = _professorService.sortType;
@@ -425,95 +515,162 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
       title: 'Sort Professors',
       icon: Icons.sort,
       content: SizedBox(
-        width: ResponsiveService.getValue(context, mobile: MediaQuery.sizeOf(context).width * 0.9, tablet: 400, desktop: 480),
+        width: ResponsiveService.getValue(
+          context,
+          mobile: MediaQuery.sizeOf(context).width * 0.9,
+          tablet: 400,
+          desktop: 480,
+        ),
         child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Wrap(
-                spacing: ResponsiveService.getValue(context, mobile: 8, tablet: 8, desktop: 8),
-                runSpacing: ResponsiveService.getValue(context, mobile: 8, tablet: 8, desktop: 8),
-                alignment: WrapAlignment.spaceEvenly,
-                children: ProfessorSortType.values.map((sortType) {
-                  final isSelected = currentSort == sortType;
-                  return SizedBox(
-                    width: ResponsiveService.getValue(context, mobile: (MediaQuery.sizeOf(context).width * 0.9 - 24) / 2, tablet: 180, desktop: 220),
-                    child: Material(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primaryContainer
-                          : Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      child: InkWell(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Wrap(
+              spacing: ResponsiveService.getValue(
+                context,
+                mobile: 8,
+                tablet: 8,
+                desktop: 8,
+              ),
+              runSpacing: ResponsiveService.getValue(
+                context,
+                mobile: 8,
+                tablet: 8,
+                desktop: 8,
+              ),
+              alignment: WrapAlignment.spaceEvenly,
+              children:
+                  ProfessorSortType.values.map((sortType) {
+                    final isSelected = currentSort == sortType;
+                    return SizedBox(
+                      width: ResponsiveService.getValue(
+                        context,
+                        mobile:
+                            (MediaQuery.sizeOf(context).width * 0.9 - 24) / 2,
+                        tablet: 180,
+                        desktop: 220,
+                      ),
+                      child: Material(
+                        color:
+                            isSelected
+                                ? Theme.of(context).colorScheme.primaryContainer
+                                : Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(12),
-                        onTap: () {
-                          _professorService.setSortType(sortType);
-                          Navigator.pop(context);
-                        },
-                        child: Container(
-                          constraints: BoxConstraints(
-                            minHeight: ResponsiveService.getTouchTargetSize(context),
-                          ),
-                          padding: ResponsiveService.getAdaptivePadding(context, EdgeInsets.all(ResponsiveService.isMobile(context) ? 8 : 12)),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSelected
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
-                              width: isSelected ? 2 : 1,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () {
+                            _professorService.setSortType(sortType);
+                            Navigator.pop(context);
+                          },
+                          child: Container(
+                            constraints: BoxConstraints(
+                              minHeight: ResponsiveService.getTouchTargetSize(
+                                context,
+                              ),
                             ),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                padding: EdgeInsets.all(ResponsiveService.isMobile(context) ? 8 : 8),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? Theme.of(context).colorScheme.primary
-                                      : Theme.of(context).colorScheme.surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  _getSortIcon(sortType),
-                                  size: ResponsiveService.isMobile(context) ? 18 : 18,
-                                  color: isSelected
-                                      ? Theme.of(context).colorScheme.onPrimary
-                                      : Theme.of(context).colorScheme.onSurfaceVariant,
-                                ),
+                            padding: ResponsiveService.getAdaptivePadding(
+                              context,
+                              EdgeInsets.all(
+                                ResponsiveService.isMobile(context) ? 8 : 12,
                               ),
-                              SizedBox(height: ResponsiveService.isMobile(context) ? 6 : 8),
-                              Text(
-                                _getSortOrderName(sortType),
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                  fontSize: ResponsiveService.isMobile(context) ? 10 : 12,
-                                  color: isSelected
-                                      ? Theme.of(context).colorScheme.onPrimaryContainer
-                                      : Theme.of(context).colorScheme.onSurface,
-                                ),
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color:
+                                    isSelected
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Theme.of(context).colorScheme.outline
+                                            .withValues(alpha: 0.3),
+                                width: isSelected ? 2 : 1,
                               ),
-                              if (isSelected) ...[
-                                const SizedBox(height: 4),
-                                Icon(
-                                  Icons.check_circle,
-                                  color: Theme.of(context).colorScheme.primary,
-                                  size: ResponsiveService.isMobile(context) ? 14 : 16,
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(
+                                    ResponsiveService.isMobile(context) ? 8 : 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        isSelected
+                                            ? Theme.of(
+                                              context,
+                                            ).colorScheme.primary
+                                            : Theme.of(context)
+                                                .colorScheme
+                                                .surfaceContainerHighest,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    _getSortIcon(sortType),
+                                    size:
+                                        ResponsiveService.isMobile(context)
+                                            ? 18
+                                            : 18,
+                                    color:
+                                        isSelected
+                                            ? Theme.of(
+                                              context,
+                                            ).colorScheme.onPrimary
+                                            : Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
+                                  ),
                                 ),
+                                SizedBox(
+                                  height:
+                                      ResponsiveService.isMobile(context)
+                                          ? 6
+                                          : 8,
+                                ),
+                                Text(
+                                  _getSortOrderName(sortType),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontWeight:
+                                        isSelected
+                                            ? FontWeight.w600
+                                            : FontWeight.w500,
+                                    fontSize:
+                                        ResponsiveService.isMobile(context)
+                                            ? 10
+                                            : 12,
+                                    color:
+                                        isSelected
+                                            ? Theme.of(
+                                              context,
+                                            ).colorScheme.onPrimaryContainer
+                                            : Theme.of(
+                                              context,
+                                            ).colorScheme.onSurface,
+                                  ),
+                                ),
+                                if (isSelected) ...[
+                                  const SizedBox(height: 4),
+                                  Icon(
+                                    Icons.check_circle,
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
+                                    size:
+                                        ResponsiveService.isMobile(context)
+                                            ? 14
+                                            : 16,
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
+                    );
+                  }).toList(),
+            ),
+          ],
+        ),
       ),
       actions: [
         AppButton(
@@ -554,10 +711,7 @@ class _ProfessorDetailDialog extends StatelessWidget {
   final Professor professor;
   final TimetableSelectionLink? selectionLink;
 
-  const _ProfessorDetailDialog({
-    required this.professor,
-    this.selectionLink,
-  });
+  const _ProfessorDetailDialog({required this.professor, this.selectionLink});
 
   @override
   Widget build(BuildContext context) {
@@ -567,7 +721,10 @@ class _ProfessorDetailDialog extends StatelessWidget {
       length: hasContact ? 2 : 1,
       child: AlertDialog(
         insetPadding: EdgeInsets.symmetric(
-          horizontal: ResponsiveService.isMobile(context) ? 16 : (MediaQuery.sizeOf(context).width - 480) / 2,
+          horizontal:
+              ResponsiveService.isMobile(context)
+                  ? 16
+                  : (MediaQuery.sizeOf(context).width - 480) / 2,
           vertical: 24,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -598,9 +755,8 @@ class _ProfessorDetailDialog extends StatelessWidget {
                     children: [
                       Text(
                         professor.name,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 2),
                       Row(
@@ -608,14 +764,20 @@ class _ProfessorDetailDialog extends StatelessWidget {
                           Icon(
                             Icons.location_on_outlined,
                             size: 14,
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
                           const SizedBox(width: 4),
                           Text(
                             professor.chamber,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                                ),
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.6),
+                            ),
                           ),
                         ],
                       ),
@@ -627,28 +789,34 @@ class _ProfessorDetailDialog extends StatelessWidget {
             const SizedBox(height: 12),
             if (hasContact)
               TabBar(
-                tabs: const [
-                  Tab(text: 'Schedule'),
-                  Tab(text: 'Contact'),
-                ],
-                labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                tabs: const [Tab(text: 'Schedule'), Tab(text: 'Contact')],
+                labelStyle: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                 indicatorSize: TabBarIndicatorSize.tab,
               ),
             if (!hasContact)
-              Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+              Divider(
+                height: 1,
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
           ],
         ),
         content: SizedBox(
-          width: ResponsiveService.isMobile(context) ? MediaQuery.sizeOf(context).width * 0.85 : 440,
+          width:
+              ResponsiveService.isMobile(context)
+                  ? MediaQuery.sizeOf(context).width * 0.85
+                  : 440,
           height: 300,
-          child: hasContact
-              ? TabBarView(
-                  children: [
-                    _buildScheduleTab(context),
-                    _buildContactTab(context),
-                  ],
-                )
-              : _buildScheduleTab(context),
+          child:
+              hasContact
+                  ? TabBarView(
+                    children: [
+                      _buildScheduleTab(context),
+                      _buildContactTab(context),
+                    ],
+                  )
+                  : _buildScheduleTab(context),
         ),
         actions: [
           TextButton(
@@ -672,14 +840,18 @@ class _ProfessorDetailDialog extends StatelessWidget {
             Icon(
               Icons.event_busy,
               size: 40,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.4),
             ),
             const SizedBox(height: 8),
             Text(
               'No schedule data available',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
             ),
           ],
         ),
@@ -695,7 +867,9 @@ class _ProfessorDetailDialog extends StatelessWidget {
           _buildTaughtSections(context),
           ...dayOrder
               .where((day) => scheduleByDay.containsKey(day))
-              .map((day) => _buildDaySchedule(context, day, scheduleByDay[day]!)),
+              .map(
+                (day) => _buildDaySchedule(context, day, scheduleByDay[day]!),
+              ),
         ],
       ),
     );
@@ -753,7 +927,11 @@ class _ProfessorDetailDialog extends StatelessWidget {
                 color: Theme.of(context).colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, size: 20, color: Theme.of(context).colorScheme.onPrimaryContainer),
+              child: Icon(
+                icon,
+                size: 20,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -763,16 +941,18 @@ class _ProfessorDetailDialog extends StatelessWidget {
                   Text(
                     label,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                        ),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     value,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
@@ -780,7 +960,9 @@ class _ProfessorDetailDialog extends StatelessWidget {
             Icon(
               Icons.open_in_new,
               size: 16,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.4),
             ),
           ],
         ),
@@ -815,10 +997,10 @@ class _ProfessorDetailDialog extends StatelessWidget {
           Text(
             link == null ? 'TEACHES' : 'TEACHES — TAP TO ADD',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.6,
-                  color: scheme.primary,
-                ),
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+              color: scheme.primary,
+            ),
           ),
           const SizedBox(height: 6),
           // This dialog is stateless, so without listening to the link a tapped
@@ -835,14 +1017,15 @@ class _ProfessorDetailDialog extends StatelessWidget {
           else
             ListenableBuilder(
               listenable: link.revision,
-              builder: (context, _) => Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  for (final entry in sections)
-                    _buildTaughtChip(context, entry, link),
-                ],
-              ),
+              builder:
+                  (context, _) => Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final entry in sections)
+                        _buildTaughtChip(context, entry, link),
+                    ],
+                  ),
             ),
         ],
       ),
@@ -859,26 +1042,35 @@ class _ProfessorDetailDialog extends StatelessWidget {
 
     // Only offer the add when the open timetable actually carries this course;
     // a chip that fails on tap is worse than a plain one.
-    final addable = link != null &&
-        link.availableCourses.any((c) =>
-            AcademicRecord.normalizeCode(c.courseCode) ==
-            AcademicRecord.normalizeCode(entry.courseCode));
+    final addable =
+        link != null &&
+        link.availableCourses.any(
+          (c) =>
+              AcademicRecord.normalizeCode(c.courseCode) ==
+              AcademicRecord.normalizeCode(entry.courseCode),
+        );
 
-    final selected = link != null &&
-        link.selectedSections.any((s) =>
-            s.courseCode == entry.courseCode && s.sectionId == entry.sectionId);
+    final selected =
+        link != null &&
+        link.selectedSections.any(
+          (s) =>
+              s.courseCode == entry.courseCode &&
+              s.sectionId == entry.sectionId,
+        );
 
     final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: selected
-            ? scheme.primary.withValues(alpha: 0.15)
-            : scheme.surfaceContainerHighest,
+        color:
+            selected
+                ? scheme.primary.withValues(alpha: 0.15)
+                : scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: selected
-              ? scheme.primary.withValues(alpha: 0.5)
-              : scheme.outline.withValues(alpha: 0.2),
+          color:
+              selected
+                  ? scheme.primary.withValues(alpha: 0.5)
+                  : scheme.outline.withValues(alpha: 0.2),
         ),
       ),
       child: Row(
@@ -895,10 +1087,10 @@ class _ProfessorDetailDialog extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                  color: selected ? scheme.primary : null,
-                ),
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              color: selected ? scheme.primary : null,
+            ),
           ),
         ],
       ),
@@ -907,16 +1099,18 @@ class _ProfessorDetailDialog extends StatelessWidget {
     if (!addable) return chip;
 
     return AppTappable(
-      onTap: () => link.onSectionToggle(
-        entry.courseCode,
-        entry.sectionId,
-        selected,
-      ),
+      onTap:
+          () =>
+              link.onSectionToggle(entry.courseCode, entry.sectionId, selected),
       child: chip,
     );
   }
 
-  Widget _buildDaySchedule(BuildContext context, String day, List<ProfessorScheduleEntry> entries) {
+  Widget _buildDaySchedule(
+    BuildContext context,
+    String day,
+    List<ProfessorScheduleEntry> entries,
+  ) {
     final dayNames = {
       'M': 'Monday',
       'T': 'Tuesday',
@@ -968,35 +1162,43 @@ class _ProfessorDetailDialog extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 6,
-            children: groupedByTime.entries
-                .map((e) => _buildTimeSlotChip(context, e.key, e.value, dayColor))
-                .toList(),
+            children:
+                groupedByTime.entries
+                    .map(
+                      (e) =>
+                          _buildTimeSlotChip(context, e.key, e.value, dayColor),
+                    )
+                    .toList(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTimeSlotChip(BuildContext context, String timeSlot, List<ProfessorScheduleEntry> entries, Color accentColor) {
+  Widget _buildTimeSlotChip(
+    BuildContext context,
+    String timeSlot,
+    List<ProfessorScheduleEntry> entries,
+    Color accentColor,
+  ) {
     final time = timeSlot
         .replaceAll(' AM', '')
         .replaceAll(' PM', '')
         .replaceAll(':00', '');
 
-    final courses = entries.map((e) {
-      if (e.room.isNotEmpty) return '${e.courseCode} @ ${e.room}';
-      return e.courseCode;
-    }).join(', ');
+    final courses = entries
+        .map((e) {
+          if (e.room.isNotEmpty) return '${e.courseCode} @ ${e.room}';
+          return e.courseCode;
+        })
+        .join(', ');
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: accentColor.withValues(alpha: 0.3),
-          width: 1,
-        ),
+        border: Border.all(color: accentColor.withValues(alpha: 0.3), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1004,23 +1206,27 @@ class _ProfessorDetailDialog extends StatelessWidget {
           Icon(
             Icons.access_time,
             size: 12,
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.6),
           ),
           const SizedBox(width: 4),
           Text(
             time,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                  fontSize: 11,
-                ),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.7),
+              fontSize: 11,
+            ),
           ),
           const SizedBox(width: 8),
           Text(
             courses,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                ),
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
           ),
         ],
       ),

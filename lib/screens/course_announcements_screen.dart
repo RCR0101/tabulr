@@ -21,7 +21,6 @@ import '../widgets/common/app_dialog.dart';
 import '../utils/page_info_helper.dart';
 import '../services/ui/tutorial_service.dart';
 
-
 class CourseAnnouncementsScreen extends StatefulWidget {
   const CourseAnnouncementsScreen({super.key});
 
@@ -94,10 +93,8 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
       return;
     }
 
-    final courseCodes = timetable.selectedSections
-        .map((s) => s.courseCode)
-        .toSet()
-        .toList();
+    final courseCodes =
+        timetable.selectedSections.map((s) => s.courseCode).toSet().toList();
 
     if (courseCodes.isEmpty) {
       setState(() {
@@ -113,25 +110,28 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
     _announcementsSub = _announcementService
         .watchAnnouncements(courseCodes, timetable.campus.code)
         .listen(
-      (announcements) {
-        setState(() {
-          _allAnnouncements = announcements;
-          _applyFilter();
-          _isLoading = false;
-        });
-        _loadAuthorTiers();
-        _loadUserStates(announcements);
-      },
-      onError: (e) {
-        setState(() => _isLoading = false);
-        ToastService.showError('Failed to load announcements');
-      },
-    );
+          (announcements) {
+            setState(() {
+              _allAnnouncements = announcements;
+              _applyFilter();
+              _isLoading = false;
+            });
+            _loadAuthorTiers();
+            _loadUserStates(announcements);
+          },
+          onError: (e) {
+            setState(() => _isLoading = false);
+            ToastService.showError('Failed to load announcements');
+          },
+        );
   }
 
   void _loadUserStates(List<CourseAnnouncement> announcements) {
     final newIds =
-        announcements.map((a) => a.id).where((id) => !_userStates.containsKey(id)).toList();
+        announcements
+            .map((a) => a.id)
+            .where((id) => !_userStates.containsKey(id))
+            .toList();
     if (newIds.isEmpty) return;
     _announcementService.fetchUserStates(newIds).then((states) {
       if (mounted) setState(() => _userStates.addAll(states));
@@ -140,10 +140,11 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
 
   void _loadAuthorTiers() {
     // One batched query per 30 authors instead of a document read each.
-    final uids = _announcements
-        .map((a) => a.authorUid)
-        .where((uid) => !_authorTiers.containsKey(uid))
-        .toSet();
+    final uids =
+        _announcements
+            .map((a) => a.authorUid)
+            .where((uid) => !_authorTiers.containsKey(uid))
+            .toSet();
     if (uids.isEmpty) return;
     _reputationService.getReputations(uids).then((reps) {
       if (!mounted) return;
@@ -159,9 +160,8 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
     } else {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
-      _announcements = _allAnnouncements
-          .where((a) => !a.eventDate.isBefore(today))
-          .toList();
+      _announcements =
+          _allAnnouncements.where((a) => !a.eventDate.isBefore(today)).toList();
     }
   }
 
@@ -207,30 +207,40 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
     }
     showDialog(
       context: context,
-      builder: (ctx) => _PostAnnouncementDialog(
-        courseSections: courseSections,
-        onPost: (title, description, courseCode, sectionId, eventDate,
-            startTime, endTime, source, confidence) async {
-          Navigator.pop(ctx);
-          try {
-            await _announcementService.postAnnouncement(
-              title: title,
-              description: description,
-              courseCode: courseCode,
-              sectionId: sectionId,
-              campus: _selectedTimetable!.campus.code,
-              eventDate: eventDate,
-              startTime: startTime,
-              endTime: endTime,
-              source: source,
-              confidence: confidence,
-            );
-            ToastService.showSuccess('Announcement posted');
-          } catch (e) {
-            ToastService.showError('Failed to post announcement');
-          }
-        },
-      ),
+      builder:
+          (ctx) => _PostAnnouncementDialog(
+            courseSections: courseSections,
+            onPost: (
+              title,
+              description,
+              courseCode,
+              sectionId,
+              eventDate,
+              startTime,
+              endTime,
+              source,
+              confidence,
+            ) async {
+              Navigator.pop(ctx);
+              try {
+                await _announcementService.postAnnouncement(
+                  title: title,
+                  description: description,
+                  courseCode: courseCode,
+                  sectionId: sectionId,
+                  campus: _selectedTimetable!.campus.code,
+                  eventDate: eventDate,
+                  startTime: startTime,
+                  endTime: endTime,
+                  source: source,
+                  confidence: confidence,
+                );
+                ToastService.showSuccess('Announcement posted');
+              } catch (e) {
+                ToastService.showError('Failed to post announcement');
+              }
+            },
+          ),
     );
   }
 
@@ -241,64 +251,69 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
     }
     showDialog(
       context: context,
-      builder: (ctx) => _FlagDialog(
-        onSubmit: (reason, counterSourceUrl, confidence) async {
-          Navigator.pop(ctx);
-          final prev = _userStates[announcement.id] ?? const AnnouncementUserState();
-          setState(() {
-            _userStates[announcement.id] = prev.copyWith(
-              flag: () => AnnouncementFlag(
-                uid: '',
-                reason: reason,
-                counterSourceUrl: counterSourceUrl,
-                confidence: confidence,
-                weight: 1,
-                timestamp: DateTime.now(),
-              ),
-            );
-          });
-          try {
-            await _announcementService.submitFlag(
-              announcementId: announcement.id,
-              reason: reason,
-              counterSourceUrl: counterSourceUrl,
-              confidence: confidence,
-            );
-            ToastService.showSuccess('Flag submitted');
-          } catch (e) {
-            setState(() => _userStates[announcement.id] = prev);
-            ToastService.showError('Failed to submit flag');
-          }
-        },
-      ),
+      builder:
+          (ctx) => _FlagDialog(
+            onSubmit: (reason, counterSourceUrl, confidence) async {
+              Navigator.pop(ctx);
+              final prev =
+                  _userStates[announcement.id] ?? const AnnouncementUserState();
+              setState(() {
+                _userStates[announcement.id] = prev.copyWith(
+                  flag:
+                      () => AnnouncementFlag(
+                        uid: '',
+                        reason: reason,
+                        counterSourceUrl: counterSourceUrl,
+                        confidence: confidence,
+                        weight: 1,
+                        timestamp: DateTime.now(),
+                      ),
+                );
+              });
+              try {
+                await _announcementService.submitFlag(
+                  announcementId: announcement.id,
+                  reason: reason,
+                  counterSourceUrl: counterSourceUrl,
+                  confidence: confidence,
+                );
+                ToastService.showSuccess('Flag submitted');
+              } catch (e) {
+                setState(() => _userStates[announcement.id] = prev);
+                ToastService.showError('Failed to submit flag');
+              }
+            },
+          ),
     );
   }
 
   void _showAcceptCorrectionDialog(CourseAnnouncement announcement) {
     showDialog(
       context: context,
-      builder: (ctx) => _AcceptCorrectionDialog(
-        onSubmit: (correctionText, correctionSource) async {
-          Navigator.pop(ctx);
-          try {
-            await _announcementService.acceptCorrection(
-              announcementId: announcement.id,
-              correctionText: correctionText,
-              correctionSource: correctionSource,
-            );
-            ToastService.showSuccess('Correction accepted');
-          } catch (e) {
-            ToastService.showError('Failed to accept correction');
-          }
-        },
-      ),
+      builder:
+          (ctx) => _AcceptCorrectionDialog(
+            onSubmit: (correctionText, correctionSource) async {
+              Navigator.pop(ctx);
+              try {
+                await _announcementService.acceptCorrection(
+                  announcementId: announcement.id,
+                  correctionText: correctionText,
+                  correctionSource: correctionSource,
+                );
+                ToastService.showSuccess('Correction accepted');
+              } catch (e) {
+                ToastService.showError('Failed to accept correction');
+              }
+            },
+          ),
     );
   }
 
   Future<void> _confirmDelete(CourseAnnouncement announcement) async {
     String warning = 'Are you sure you want to delete this announcement?';
     if (announcement.isDisputed || announcement.isCorrectionAccepted) {
-      warning += '\n\nThis post is ${announcement.disputeState.replaceAll('_', ' ')}. '
+      warning +=
+          '\n\nThis post is ${announcement.disputeState.replaceAll('_', ' ')}. '
           'Deleting it will incur a reputation penalty.';
     }
     final confirmed = await AppDialog.confirm(
@@ -359,18 +374,23 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
         context,
         title: 'Announcements',
         actions: [
-          PageInfoHelper.infoButton(context, PageInfoHelper.announcements, key: TutorialKeys.infoAnnouncements),
+          PageInfoHelper.infoButton(
+            context,
+            PageInfoHelper.announcements,
+            key: TutorialKeys.infoAnnouncements,
+          ),
           if (_currentUserRep != null) _buildRepChip(theme),
           const SizedBox(width: 8),
         ],
       ),
-      floatingActionButton: _selectedTimetable != null
-          ? FloatingActionButton(
-              onPressed: _showPostDialog,
-              heroTag: 'announcements_post',
-              child: const Icon(Icons.add),
-            )
-          : null,
+      floatingActionButton:
+          _selectedTimetable != null
+              ? FloatingActionButton(
+                onPressed: _showPostDialog,
+                heroTag: 'announcements_post',
+                child: const Icon(Icons.add),
+              )
+              : null,
       body: Column(
         children: [
           if (_currentUserRep?.isSuspended == true)
@@ -403,7 +423,10 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
             Text(
               '${rep.decayedScore} · ${UserReputation.tierName(tier)}',
               style: TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w600, color: color),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
             ),
           ],
         ),
@@ -435,6 +458,58 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
   }
 
   Widget _buildTimetablePicker(ThemeData theme) {
+    final selected = _selectedTimetable;
+    if (ResponsiveService.isMobile(context) && selected != null) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          border: Border(
+            bottom: BorderSide(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.calendar_view_week_outlined,
+              size: 18,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                selected.name.isNotEmpty ? selected.name : 'Selected timetable',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+            PopupMenuButton<String>(
+              tooltip: 'Switch timetable',
+              icon: const Icon(Icons.unfold_more_rounded),
+              onSelected: (id) {
+                final timetable = _timetables.firstWhere((t) => t.id == id);
+                _onTimetableChanged(timetable);
+              },
+              itemBuilder:
+                  (context) => [
+                    for (final timetable in _timetables)
+                      PopupMenuItem(
+                        value: timetable.id,
+                        child: Text(
+                          timetable.name.isNotEmpty
+                              ? timetable.name
+                              : 'Timetable ${timetable.id}',
+                        ),
+                      ),
+                  ],
+            ),
+          ],
+        ),
+      );
+    }
     return Container(
       padding: ResponsiveService.getAdaptivePadding(
         context,
@@ -454,18 +529,23 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
         initialValue: _selectedTimetable?.id,
         decoration: InputDecoration(
           labelText: 'Select Timetable',
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
+          ),
         ),
-        items: _timetables
-            .map((t) => DropdownMenuItem(
-                  value: t.id,
-                  child: Text(
-                    t.name.isNotEmpty ? t.name : 'Timetable ${t.id}',
-                    overflow: TextOverflow.ellipsis,
+        items:
+            _timetables
+                .map(
+                  (t) => DropdownMenuItem(
+                    value: t.id,
+                    child: Text(
+                      t.name.isNotEmpty ? t.name : 'Timetable ${t.id}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ))
-            .toList(),
+                )
+                .toList(),
         onChanged: (id) {
           final timetable = _timetables.firstWhere((t) => t.id == id);
           _onTimetableChanged(timetable);
@@ -509,14 +589,18 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.schedule,
-                size: 64,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
+            Icon(
+              Icons.schedule,
+              size: 64,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+            ),
             const SizedBox(height: 16),
-            Text('Create a timetable first to see announcements',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                    color:
-                        theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+            Text(
+              'Create a timetable first to see announcements',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
           ],
         ),
       );
@@ -526,14 +610,18 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.class_outlined,
-                size: 64,
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
+            Icon(
+              Icons.class_outlined,
+              size: 64,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+            ),
             const SizedBox(height: 16),
-            Text('Add courses to your timetable to see announcements',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                    color:
-                        theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+            Text(
+              'Add courses to your timetable to see announcements',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
           ],
         ),
       );
@@ -547,19 +635,25 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.campaign_outlined,
-                      size: 64,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
+                  Icon(
+                    Icons.campaign_outlined,
+                    size: 64,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                  ),
                   const SizedBox(height: 16),
-                  Text('No upcoming announcements for your courses',
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                          color:
-                              theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                  Text(
+                    'No upcoming announcements for your courses',
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  Text('Tap + to post one, or toggle "Show past" above',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                          color:
-                              theme.colorScheme.onSurface.withValues(alpha: 0.4))),
+                  Text(
+                    'Tap + to post one, or toggle "Show past" above',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -576,14 +670,18 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.campaign_outlined,
-                      size: 64,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.3)),
+                  Icon(
+                    Icons.campaign_outlined,
+                    size: 64,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                  ),
                   const SizedBox(height: 16),
-                  Text('No announcements for your courses yet',
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                          color:
-                              theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                  Text(
+                    'No announcements for your courses yet',
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -603,8 +701,9 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
                 const EdgeInsets.all(16),
               ),
               itemCount: _announcements.length,
-              itemBuilder: (context, index) =>
-                  _buildAnnouncementCard(_announcements[index], theme),
+              itemBuilder:
+                  (context, index) =>
+                      _buildAnnouncementCard(_announcements[index], theme),
             ),
           ),
         ),
@@ -615,9 +714,10 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
   // ── Announcement card ─────────────────────────────────────────────────
 
   Widget _buildAnnouncementCard(
-      CourseAnnouncement announcement, ThemeData theme) {
-    final isAuthor =
-        announcement.authorUid == _authService.userDocId;
+    CourseAnnouncement announcement,
+    ThemeData theme,
+  ) {
+    final isAuthor = announcement.authorUid == _authService.userDocId;
     final authorTier = _authorTiers[announcement.authorUid];
 
     return Card(
@@ -634,12 +734,14 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
               announcement.title,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                decoration: announcement.isCorrectionAccepted
-                    ? TextDecoration.lineThrough
-                    : null,
-                color: announcement.isCorrectionAccepted
-                    ? theme.colorScheme.onSurface.withValues(alpha: 0.5)
-                    : null,
+                decoration:
+                    announcement.isCorrectionAccepted
+                        ? TextDecoration.lineThrough
+                        : null,
+                color:
+                    announcement.isCorrectionAccepted
+                        ? theme.colorScheme.onSurface.withValues(alpha: 0.5)
+                        : null,
               ),
             ),
             if (announcement.isCorrectionAccepted &&
@@ -656,8 +758,8 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
               Text(
                 announcement.description,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface
-                        .withValues(alpha: 0.7)),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
                 maxLines: 4,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -665,34 +767,36 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
             const SizedBox(height: 10),
             Row(
               children: [
-                Icon(Icons.event,
-                    size: 15,
-                    color: theme.colorScheme.onSurface
-                        .withValues(alpha: 0.5)),
+                Icon(
+                  Icons.event,
+                  size: 15,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                ),
                 const SizedBox(width: 4),
                 Text(
                   _formatEventDate(announcement.eventDate),
                   style: TextStyle(
                     fontSize: 13,
-                    color: theme.colorScheme.onSurface
-                        .withValues(alpha: 0.6),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 if (announcement.hasTime) ...[
                   const SizedBox(width: 8),
-                  Icon(Icons.access_time,
-                      size: 14,
-                      color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.5)),
+                  Icon(
+                    Icons.access_time,
+                    size: 14,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
                   const SizedBox(width: 3),
                   Text(
                     _formatTimeRange(
-                        announcement.startTime!, announcement.endTime),
+                      announcement.startTime!,
+                      announcement.endTime,
+                    ),
                     style: TextStyle(
                       fontSize: 13,
-                      color: theme.colorScheme.onSurface
-                          .withValues(alpha: 0.6),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -702,17 +806,17 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
             const SizedBox(height: 4),
             Row(
               children: [
-                Icon(Icons.person_outline,
-                    size: 14,
-                    color: theme.colorScheme.onSurface
-                        .withValues(alpha: 0.4)),
+                Icon(
+                  Icons.person_outline,
+                  size: 14,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                ),
                 const SizedBox(width: 4),
                 Text(
                   announcement.authorName,
                   style: TextStyle(
                     fontSize: 12,
-                    color: theme.colorScheme.onSurface
-                        .withValues(alpha: 0.5),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
                 if (authorTier != null) ...[
@@ -724,8 +828,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
                   _relativeTime(announcement.createdAt),
                   style: TextStyle(
                     fontSize: 12,
-                    color: theme.colorScheme.onSurface
-                        .withValues(alpha: 0.4),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                   ),
                 ),
               ],
@@ -741,7 +844,10 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
   }
 
   Widget _buildCardHeader(
-      CourseAnnouncement announcement, ThemeData theme, bool isAuthor) {
+    CourseAnnouncement announcement,
+    ThemeData theme,
+    bool isAuthor,
+  ) {
     return Row(
       children: [
         Container(
@@ -762,8 +868,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
         if (announcement.isSectionSpecific) ...[
           const SizedBox(width: 6),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
             decoration: BoxDecoration(
               color: theme.colorScheme.tertiaryContainer,
               borderRadius: BorderRadius.circular(6),
@@ -824,7 +929,10 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
           Text(
             source.label,
             style: TextStyle(
-                fontSize: 10, fontWeight: FontWeight.w600, color: color),
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -842,41 +950,54 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
       child: Text(
         UserReputation.tierName(tier),
         style: TextStyle(
-            fontSize: 10, fontWeight: FontWeight.w600, color: color),
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
       ),
     );
   }
 
   Widget _buildCorrectionBanner(
-      CourseAnnouncement announcement, ThemeData theme) {
+    CourseAnnouncement announcement,
+    ThemeData theme,
+  ) {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: AppDesign.success(context).withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppDesign.success(context).withValues(alpha: 0.2)),
+        border: Border.all(
+          color: AppDesign.success(context).withValues(alpha: 0.2),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.check_circle, size: 16, color: AppDesign.success(context)),
+              Icon(
+                Icons.check_circle,
+                size: 16,
+                color: AppDesign.success(context),
+              ),
               const SizedBox(width: 6),
               Text(
                 'Correction',
                 style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppDesign.success(context)),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppDesign.success(context),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
             announcement.correctionText!,
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(fontWeight: FontWeight.w500),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
           ),
           if (announcement.correctionSource != null) ...[
             const SizedBox(height: 4),
@@ -898,22 +1019,29 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
   }
 
   Widget _buildDisputeBanner(
-      CourseAnnouncement announcement, ThemeData theme, bool isAuthor) {
+    CourseAnnouncement announcement,
+    ThemeData theme,
+    bool isAuthor,
+  ) {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: theme.colorScheme.error.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(8),
-        border:
-            Border.all(color: theme.colorScheme.error.withValues(alpha: 0.2)),
+        border: Border.all(
+          color: theme.colorScheme.error.withValues(alpha: 0.2),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.warning_amber_rounded,
-                  size: 16, color: theme.colorScheme.error),
+              Icon(
+                Icons.warning_amber_rounded,
+                size: 16,
+                color: theme.colorScheme.error,
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
@@ -942,11 +1070,12 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
             SizedBox(
               height: 30,
               child: TextButton.icon(
-                onPressed: () =>
-                    _showAcceptCorrectionDialog(announcement),
+                onPressed: () => _showAcceptCorrectionDialog(announcement),
                 icon: const Icon(Icons.edit, size: 14),
-                label: const Text('Accept & Correct',
-                    style: TextStyle(fontSize: 12)),
+                label: const Text(
+                  'Accept & Correct',
+                  style: TextStyle(fontSize: 12),
+                ),
                 style: TextButton.styleFrom(
                   foregroundColor: theme.colorScheme.error,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -960,7 +1089,9 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
   }
 
   Widget _buildVerificationRow(
-      CourseAnnouncement announcement, ThemeData theme) {
+    CourseAnnouncement announcement,
+    ThemeData theme,
+  ) {
     final state = announcement.verificationState;
     final cc = announcement.confirmCount;
     final dc = announcement.denyCount;
@@ -1005,26 +1136,29 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
           decoration: BoxDecoration(
             color: badgeColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(6),
-            border:
-                Border.all(color: badgeColor.withValues(alpha: 0.3)),
+            border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(badgeIcon, size: 13, color: badgeColor),
               const SizedBox(width: 4),
-              Text(badgeText,
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: badgeColor)),
+              Text(
+                badgeText,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: badgeColor,
+                ),
+              ),
               if (cc > 0 || dc > 0) ...[
                 const SizedBox(width: 6),
                 Text(
                   '($cc✓ $dc✗)',
                   style: TextStyle(
-                      fontSize: 10,
-                      color: badgeColor.withValues(alpha: 0.7)),
+                    fontSize: 10,
+                    color: badgeColor.withValues(alpha: 0.7),
+                  ),
                 ),
               ],
             ],
@@ -1032,8 +1166,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
         ),
         if (announcement.isStale)
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
             decoration: BoxDecoration(
               color: AppDesign.warning(context).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(6),
@@ -1041,12 +1174,19 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.schedule,
-                    size: 12, color: AppDesign.warning(context)),
+                Icon(
+                  Icons.schedule,
+                  size: 12,
+                  color: AppDesign.warning(context),
+                ),
                 const SizedBox(width: 3),
-                Text('Needs verification',
-                    style: TextStyle(
-                        fontSize: 10, color: AppDesign.warning(context))),
+                Text(
+                  'Needs verification',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppDesign.warning(context),
+                  ),
+                ),
               ],
             ),
           ),
@@ -1057,11 +1197,14 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
   // ── Action row ────────────────────────────────────────────────────────
 
   Widget _buildActionRow(
-      CourseAnnouncement announcement, ThemeData theme, bool isAuthor) {
-    final showModActions =
-        !isAuthor && !announcement.isCorrectionAccepted;
+    CourseAnnouncement announcement,
+    ThemeData theme,
+    bool isAuthor,
+  ) {
+    final showModActions = !isAuthor && !announcement.isCorrectionAccepted;
 
-    final userState = _userStates[announcement.id] ?? const AnnouncementUserState();
+    final userState =
+        _userStates[announcement.id] ?? const AnnouncementUserState();
     final userVote = userState.vote;
     final hasFlag = userState.flag != null;
     final userVerif = userState.verification;
@@ -1088,7 +1231,9 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
                 try {
                   await _announcementService.toggleVote(announcement.id, 1);
                 } catch (_) {
-                  if (mounted) setState(() => _userStates[announcement.id] = prev);
+                  if (mounted) {
+                    setState(() => _userStates[announcement.id] = prev);
+                  }
                 }
               },
             ),
@@ -1108,7 +1253,9 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
                 try {
                   await _announcementService.toggleVote(announcement.id, -1);
                 } catch (_) {
-                  if (mounted) setState(() => _userStates[announcement.id] = prev);
+                  if (mounted) {
+                    setState(() => _userStates[announcement.id] = prev);
+                  }
                 }
               },
             ),
@@ -1134,29 +1281,35 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
                 isActive: isConfirmed,
                 activeColor: AppDesign.success(context),
                 tooltip: isConfirmed ? 'Confirmed' : 'Confirm this',
-                onTap: isConfirmed
-                    ? null
-                    : () async {
-                        final prev = userState;
-                        setState(() {
-                          _userStates[announcement.id] = userState.copyWith(
-                            verification: () => AnnouncementVerification(
-                              uid: '',
+                onTap:
+                    isConfirmed
+                        ? null
+                        : () async {
+                          final prev = userState;
+                          setState(() {
+                            _userStates[announcement.id] = userState.copyWith(
+                              verification:
+                                  () => AnnouncementVerification(
+                                    uid: '',
+                                    type: VerificationType.confirm,
+                                    weight: 1,
+                                    timestamp: DateTime.now(),
+                                  ),
+                            );
+                          });
+                          try {
+                            await _announcementService.submitVerification(
+                              announcementId: announcement.id,
                               type: VerificationType.confirm,
-                              weight: 1,
-                              timestamp: DateTime.now(),
-                            ),
-                          );
-                        });
-                        try {
-                          await _announcementService.submitVerification(
-                            announcementId: announcement.id,
-                            type: VerificationType.confirm,
-                          );
-                        } catch (_) {
-                          if (mounted) setState(() => _userStates[announcement.id] = prev);
-                        }
-                      },
+                            );
+                          } catch (_) {
+                            if (mounted) {
+                              setState(
+                                () => _userStates[announcement.id] = prev,
+                              );
+                            }
+                          }
+                        },
               ),
               const SizedBox(width: 2),
               _ActionIconButton(
@@ -1165,29 +1318,35 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
                 isActive: isDenied,
                 activeColor: AppDesign.danger(context),
                 tooltip: isDenied ? 'Denied' : 'Deny this',
-                onTap: isDenied
-                    ? null
-                    : () async {
-                        final prev = userState;
-                        setState(() {
-                          _userStates[announcement.id] = userState.copyWith(
-                            verification: () => AnnouncementVerification(
-                              uid: '',
+                onTap:
+                    isDenied
+                        ? null
+                        : () async {
+                          final prev = userState;
+                          setState(() {
+                            _userStates[announcement.id] = userState.copyWith(
+                              verification:
+                                  () => AnnouncementVerification(
+                                    uid: '',
+                                    type: VerificationType.deny,
+                                    weight: 1,
+                                    timestamp: DateTime.now(),
+                                  ),
+                            );
+                          });
+                          try {
+                            await _announcementService.submitVerification(
+                              announcementId: announcement.id,
                               type: VerificationType.deny,
-                              weight: 1,
-                              timestamp: DateTime.now(),
-                            ),
-                          );
-                        });
-                        try {
-                          await _announcementService.submitVerification(
-                            announcementId: announcement.id,
-                            type: VerificationType.deny,
-                          );
-                        } catch (_) {
-                          if (mounted) setState(() => _userStates[announcement.id] = prev);
-                        }
-                      },
+                            );
+                          } catch (_) {
+                            if (mounted) {
+                              setState(
+                                () => _userStates[announcement.id] = prev,
+                              );
+                            }
+                          }
+                        },
               ),
             ],
           ),
@@ -1235,29 +1394,35 @@ class _VoteButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: isActive
-              ? activeColor.withValues(alpha: 0.12)
-              : theme.colorScheme.surfaceContainerHighest
-                  .withValues(alpha: 0.5),
+          color:
+              isActive
+                  ? activeColor.withValues(alpha: 0.12)
+                  : theme.colorScheme.surfaceContainerHighest.withValues(
+                    alpha: 0.5,
+                  ),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon,
-                size: 16,
-                color: isActive
-                    ? activeColor
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.5)),
+            Icon(
+              icon,
+              size: 16,
+              color:
+                  isActive
+                      ? activeColor
+                      : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
             const SizedBox(width: 4),
             Text(
               '$count',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: isActive
-                    ? activeColor
-                    : theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                color:
+                    isActive
+                        ? activeColor
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           ],
@@ -1297,9 +1462,10 @@ class _ActionIconButton extends StatelessWidget {
           child: Icon(
             isActive ? activeIcon : icon,
             size: 18,
-            color: isActive
-                ? activeColor
-                : onTap != null
+            color:
+                isActive
+                    ? activeColor
+                    : onTap != null
                     ? theme.colorScheme.onSurface.withValues(alpha: 0.5)
                     : theme.colorScheme.onSurface.withValues(alpha: 0.25),
           ),
@@ -1316,15 +1482,17 @@ class _ActionIconButton extends StatelessWidget {
 class _PostAnnouncementDialog extends StatefulWidget {
   final Map<String, List<String>> courseSections;
   final Future<void> Function(
-      String title,
-      String description,
-      String courseCode,
-      String sectionId,
-      DateTime eventDate,
-      TimeOfDay? startTime,
-      TimeOfDay? endTime,
-      AnnouncementSource source,
-      String confidence) onPost;
+    String title,
+    String description,
+    String courseCode,
+    String sectionId,
+    DateTime eventDate,
+    TimeOfDay? startTime,
+    TimeOfDay? endTime,
+    AnnouncementSource source,
+    String confidence,
+  )
+  onPost;
 
   const _PostAnnouncementDialog({
     required this.courseSections,
@@ -1385,7 +1553,8 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
   Future<void> _pickEndTime() async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: _endTime ??
+      initialTime:
+          _endTime ??
           TimeOfDay(
             hour: (_startTime?.hour ?? 9) + 1,
             minute: _startTime?.minute ?? 0,
@@ -1461,219 +1630,228 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: EdgeInsets.symmetric(
-        horizontal: ResponsiveService.isMobile(context) ? 16 : (MediaQuery.sizeOf(context).width - 480) / 2,
+        horizontal:
+            ResponsiveService.isMobile(context)
+                ? 16
+                : (MediaQuery.sizeOf(context).width - 480) / 2,
         vertical: 24,
       ),
       child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Post Announcement',
-                  style: theme.textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
-              DropdownButtonFormField<String>(
-                initialValue: _selectedCourse,
-                decoration: InputDecoration(
-                  labelText: 'Course *',
-                ),
-                items: courses
-                    .map(
-                        (c) => DropdownMenuItem(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (v) => setState(() {
-                  _selectedCourse = v;
-                  _selectedSection = '';
-                }),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Post Announcement',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
               ),
-              if (_selectedCourse != null &&
-                  widget.courseSections[_selectedCourse]!.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedSection.isEmpty
-                      ? null
-                      : _selectedSection,
-                  decoration: const InputDecoration(
-                    labelText: 'Section (optional)',
-                  ),
-                  items: [
-                    const DropdownMenuItem(
-                        value: '', child: Text('All sections')),
-                    ...widget.courseSections[_selectedCourse]!.map(
-                        (s) =>
-                            DropdownMenuItem(value: s, child: Text(s))),
-                  ],
-                  onChanged: (v) =>
-                      setState(() => _selectedSection = v ?? ''),
-                ),
-              ],
-              const SizedBox(height: 12),
-              TextField(
-                controller: _titleController,
-                decoration: InputDecoration(
-                  labelText: 'Title *',
-                  hintText: 'e.g. Quiz postponed to next week',
-                ),
-                textCapitalization: TextCapitalization.sentences,
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _descriptionController,
-                decoration: InputDecoration(
-                  labelText: 'Description (optional)',
-                ),
-                maxLines: 3,
-                textCapitalization: TextCapitalization.sentences,
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: _pickDate,
-                icon: const Icon(Icons.calendar_today, size: 18),
-                label: Text(
-                  _selectedDate != null
-                      ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
-                      : 'Pick event date *',
-                ),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _pickStartTime,
-                      icon: const Icon(Icons.access_time, size: 18),
-                      label: Text(
-                        _startTime != null
-                            ? _fmtTime(_startTime!)
-                            : 'Start time',
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed:
-                          _startTime != null ? _pickEndTime : null,
-                      icon: const Icon(Icons.access_time, size: 18),
-                      label: Text(
-                        _endTime != null
-                            ? _fmtTime(_endTime!)
-                            : 'End time',
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
-                  ),
-                  if (_startTime != null)
-                    IconButton(
-                      icon: const Icon(Icons.clear, size: 18),
-                      onPressed: () => setState(() {
-                        _startTime = null;
-                        _endTime = null;
-                      }),
-                      tooltip: 'Clear times',
-                      visualDensity: VisualDensity.compact,
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Divider(
-                  color: theme.colorScheme.outlineVariant
-                      .withValues(alpha: 0.5)),
-              const SizedBox(height: 12),
-              Text('Source & Confidence',
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<SourceType>(
-                initialValue: _selectedSourceType,
-                decoration: InputDecoration(
-                  labelText: 'Source (optional)',
-                ),
-                items: SourceType.values
-                    .map((t) => DropdownMenuItem(
-                        value: t, child: Text(_sourceTypeLabel(t))))
-                    .toList(),
-                onChanged: (v) => setState(() {
-                  _selectedSourceType = v ?? SourceType.none;
-                  if (!_needsUrl(_selectedSourceType)) {
-                    _sourceUrlController.clear();
-                  }
-                }),
-              ),
-              if (_needsUrl(_selectedSourceType)) ...[
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _sourceUrlController,
-                  decoration: const InputDecoration(
-                    labelText: 'Source URL',
-                    hintText: 'https://...',
-                  ),
-                  keyboardType: TextInputType.url,
-                ),
-              ],
+            ),
+            const SizedBox(height: 20),
+            DropdownButtonFormField<String>(
+              initialValue: _selectedCourse,
+              decoration: InputDecoration(labelText: 'Course *'),
+              items:
+                  courses
+                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                      .toList(),
+              onChanged:
+                  (v) => setState(() {
+                    _selectedCourse = v;
+                    _selectedSection = '';
+                  }),
+            ),
+            if (_selectedCourse != null &&
+                widget.courseSections[_selectedCourse]!.isNotEmpty) ...[
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                initialValue: _confidence,
-                decoration: InputDecoration(
-                  labelText: 'How sure are you?',
+                initialValue:
+                    _selectedSection.isEmpty ? null : _selectedSection,
+                decoration: const InputDecoration(
+                  labelText: 'Section (optional)',
                 ),
-                items: const [
-                  DropdownMenuItem(
-                      value: 'certain', child: Text('Certain')),
-                  DropdownMenuItem(
-                      value: 'fairly_sure',
-                      child: Text('Fairly sure')),
-                  DropdownMenuItem(
-                      value: 'speculative',
-                      child: Text('Speculative')),
-                ],
-                onChanged: (v) =>
-                    setState(() => _confidence = v ?? 'fairly_sure'),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
+                items: [
+                  const DropdownMenuItem(
+                    value: '',
+                    child: Text('All sections'),
                   ),
-                  const SizedBox(width: 12),
-                  FilledButton(
-                    onPressed: _canPost ? _post : null,
-                    child: _isPosting
-                        ? SizedBox(
+                  ...widget.courseSections[_selectedCourse]!.map(
+                    (s) => DropdownMenuItem(value: s, child: Text(s)),
+                  ),
+                ],
+                onChanged: (v) => setState(() => _selectedSection = v ?? ''),
+              ),
+            ],
+            const SizedBox(height: 12),
+            TextField(
+              controller: _titleController,
+              decoration: InputDecoration(
+                labelText: 'Title *',
+                hintText: 'e.g. Quiz postponed to next week',
+              ),
+              textCapitalization: TextCapitalization.sentences,
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _descriptionController,
+              decoration: InputDecoration(labelText: 'Description (optional)'),
+              maxLines: 3,
+              textCapitalization: TextCapitalization.sentences,
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _pickDate,
+              icon: const Icon(Icons.calendar_today, size: 18),
+              label: Text(
+                _selectedDate != null
+                    ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
+                    : 'Pick event date *',
+              ),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _pickStartTime,
+                    icon: const Icon(Icons.access_time, size: 18),
+                    label: Text(
+                      _startTime != null ? _fmtTime(_startTime!) : 'Start time',
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _startTime != null ? _pickEndTime : null,
+                    icon: const Icon(Icons.access_time, size: 18),
+                    label: Text(
+                      _endTime != null ? _fmtTime(_endTime!) : 'End time',
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+                if (_startTime != null)
+                  IconButton(
+                    icon: const Icon(Icons.clear, size: 18),
+                    onPressed:
+                        () => setState(() {
+                          _startTime = null;
+                          _endTime = null;
+                        }),
+                    tooltip: 'Clear times',
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Divider(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Source & Confidence',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<SourceType>(
+              initialValue: _selectedSourceType,
+              decoration: InputDecoration(labelText: 'Source (optional)'),
+              items:
+                  SourceType.values
+                      .map(
+                        (t) => DropdownMenuItem(
+                          value: t,
+                          child: Text(_sourceTypeLabel(t)),
+                        ),
+                      )
+                      .toList(),
+              onChanged:
+                  (v) => setState(() {
+                    _selectedSourceType = v ?? SourceType.none;
+                    if (!_needsUrl(_selectedSourceType)) {
+                      _sourceUrlController.clear();
+                    }
+                  }),
+            ),
+            if (_needsUrl(_selectedSourceType)) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _sourceUrlController,
+                decoration: const InputDecoration(
+                  labelText: 'Source URL',
+                  hintText: 'https://...',
+                ),
+                keyboardType: TextInputType.url,
+              ),
+            ],
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _confidence,
+              decoration: InputDecoration(labelText: 'How sure are you?'),
+              items: const [
+                DropdownMenuItem(value: 'certain', child: Text('Certain')),
+                DropdownMenuItem(
+                  value: 'fairly_sure',
+                  child: Text('Fairly sure'),
+                ),
+                DropdownMenuItem(
+                  value: 'speculative',
+                  child: Text('Speculative'),
+                ),
+              ],
+              onChanged:
+                  (v) => setState(() => _confidence = v ?? 'fairly_sure'),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 12),
+                FilledButton(
+                  onPressed: _canPost ? _post : null,
+                  child:
+                      _isPosting
+                          ? SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
+                              strokeWidth: 2,
+                              color: Theme.of(context).colorScheme.onPrimary,
+                            ),
                           )
-                        : const Text('Post'),
-                  ),
-                ],
-              ),
-            ],
-          ),
+                          : const Text('Post'),
+                ),
+              ],
+            ),
+          ],
         ),
+      ),
     );
   }
 }
@@ -1684,7 +1862,11 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
 
 class _FlagDialog extends StatefulWidget {
   final Future<void> Function(
-      String reason, String? counterSourceUrl, String confidence) onSubmit;
+    String reason,
+    String? counterSourceUrl,
+    String confidence,
+  )
+  onSubmit;
 
   const _FlagDialog({required this.onSubmit});
 
@@ -1727,97 +1909,105 @@ class _FlagDialogState extends State<_FlagDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: EdgeInsets.symmetric(
-        horizontal: ResponsiveService.isMobile(context) ? 16 : (MediaQuery.sizeOf(context).width - 480) / 2,
+        horizontal:
+            ResponsiveService.isMobile(context)
+                ? 16
+                : (MediaQuery.sizeOf(context).width - 480) / 2,
         vertical: 24,
       ),
       child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Flag as Incorrect',
-                  style: theme.textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(
-                'Explain why this announcement is incorrect. Be specific.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface
-                        .withValues(alpha: 0.6)),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Flag as Incorrect',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _reasonController,
-                decoration: InputDecoration(
-                  labelText: 'Reason *',
-                  hintText: 'Describe what is incorrect and why...',
-                  helperText: charCount < 20
-                      ? '${20 - charCount} more characters needed'
-                      : null,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Explain why this announcement is incorrect. Be specific.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _reasonController,
+              decoration: InputDecoration(
+                labelText: 'Reason *',
+                hintText: 'Describe what is incorrect and why...',
+                helperText:
+                    charCount < 20
+                        ? '${20 - charCount} more characters needed'
+                        : null,
+              ),
+              // Mirrors the bound submitFlag enforces (functions/index.js
+              // LIMITS), so over-long text is stopped here, not by an error.
+              maxLength: 500,
+              maxLines: 3,
+              textCapitalization: TextCapitalization.sentences,
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _counterSourceController,
+              decoration: InputDecoration(
+                labelText: 'Counter-source URL (optional)',
+                hintText: 'Link to correct information...',
+                counterText: '',
+              ),
+              maxLength: 500,
+              keyboardType: TextInputType.url,
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _confidence,
+              decoration: InputDecoration(labelText: 'How sure are you?'),
+              items: const [
+                DropdownMenuItem(value: 'certain', child: Text('Certain')),
+                DropdownMenuItem(
+                  value: 'fairly_sure',
+                  child: Text('Fairly sure'),
                 ),
-                // Mirrors the bound submitFlag enforces (functions/index.js
-                // LIMITS), so over-long text is stopped here, not by an error.
-                maxLength: 500,
-                maxLines: 3,
-                textCapitalization: TextCapitalization.sentences,
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _counterSourceController,
-                decoration: InputDecoration(
-                  labelText: 'Counter-source URL (optional)',
-                  hintText: 'Link to correct information...',
-                  counterText: '',
+              ],
+              onChanged:
+                  (v) => setState(() => _confidence = v ?? 'fairly_sure'),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
                 ),
-                maxLength: 500,
-                keyboardType: TextInputType.url,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _confidence,
-                decoration: InputDecoration(
-                  labelText: 'How sure are you?',
-                ),
-                items: const [
-                  DropdownMenuItem(
-                      value: 'certain', child: Text('Certain')),
-                  DropdownMenuItem(
-                      value: 'fairly_sure',
-                      child: Text('Fairly sure')),
-                ],
-                onChanged: (v) =>
-                    setState(() => _confidence = v ?? 'fairly_sure'),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
+                const SizedBox(width: 12),
+                FilledButton(
+                  onPressed: _canSubmit ? _submit : null,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: theme.colorScheme.error,
                   ),
-                  const SizedBox(width: 12),
-                  FilledButton(
-                    onPressed: _canSubmit ? _submit : null,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: theme.colorScheme.error,
-                    ),
-                    child: _isSubmitting
-                        ? SizedBox(
+                  child:
+                      _isSubmitting
+                          ? SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
+                              strokeWidth: 2,
+                              color: Theme.of(context).colorScheme.onPrimary,
+                            ),
                           )
-                        : const Text('Submit Flag'),
-                  ),
-                ],
-              ),
-            ],
-          ),
+                          : const Text('Submit Flag'),
+                ),
+              ],
+            ),
+          ],
         ),
+      ),
     );
   }
 }
@@ -1828,7 +2018,7 @@ class _FlagDialogState extends State<_FlagDialog> {
 
 class _AcceptCorrectionDialog extends StatefulWidget {
   final Future<void> Function(String correctionText, String? correctionSource)
-      onSubmit;
+  onSubmit;
 
   const _AcceptCorrectionDialog({required this.onSubmit});
 
@@ -1868,86 +2058,94 @@ class _AcceptCorrectionDialogState extends State<_AcceptCorrectionDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: EdgeInsets.symmetric(
-        horizontal: ResponsiveService.isMobile(context) ? 16 : (MediaQuery.sizeOf(context).width - 480) / 2,
+        horizontal:
+            ResponsiveService.isMobile(context)
+                ? 16
+                : (MediaQuery.sizeOf(context).width - 480) / 2,
         vertical: 24,
       ),
       child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Accept & Correct',
-                  style: theme.textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(
-                'Provide the correct information. This will be displayed alongside the original post.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface
-                        .withValues(alpha: 0.6)),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Accept & Correct',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.error.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'Accepting a correction applies a reputation penalty.',
-                  style: TextStyle(
-                      fontSize: 12, color: theme.colorScheme.error),
-                ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Provide the correct information. This will be displayed alongside the original post.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _correctionController,
-                decoration: InputDecoration(
-                  labelText: 'Correct information *',
-                  hintText: 'What is the correct information?',
-                ),
-                maxLength: 2000,
-                maxLines: 3,
-                textCapitalization: TextCapitalization.sentences,
-                onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.error.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(8),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _sourceController,
-                decoration: InputDecoration(
-                  labelText: 'Source URL (optional)',
-                  hintText: 'Link to correct source...',
-                  counterText: '',
-                ),
-                maxLength: 500,
-                keyboardType: TextInputType.url,
+              child: Text(
+                'Accepting a correction applies a reputation penalty.',
+                style: TextStyle(fontSize: 12, color: theme.colorScheme.error),
               ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: 12),
-                  FilledButton(
-                    onPressed: _canSubmit ? _submit : null,
-                    child: _isSubmitting
-                        ? SizedBox(
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _correctionController,
+              decoration: InputDecoration(
+                labelText: 'Correct information *',
+                hintText: 'What is the correct information?',
+              ),
+              maxLength: 2000,
+              maxLines: 3,
+              textCapitalization: TextCapitalization.sentences,
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _sourceController,
+              decoration: InputDecoration(
+                labelText: 'Source URL (optional)',
+                hintText: 'Link to correct source...',
+                counterText: '',
+              ),
+              maxLength: 500,
+              keyboardType: TextInputType.url,
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 12),
+                FilledButton(
+                  onPressed: _canSubmit ? _submit : null,
+                  child:
+                      _isSubmitting
+                          ? SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Theme.of(context).colorScheme.onPrimary),
+                              strokeWidth: 2,
+                              color: Theme.of(context).colorScheme.onPrimary,
+                            ),
                           )
-                        : const Text('Accept Correction'),
-                  ),
-                ],
-              ),
-            ],
-          ),
+                          : const Text('Accept Correction'),
+                ),
+              ],
+            ),
+          ],
         ),
+      ),
     );
   }
 }

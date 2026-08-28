@@ -29,6 +29,7 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
   /// most students are single degree, and a dropdown they must ignore is one
   /// more thing between them and their courses.
   bool _dualDegree = false;
+  bool _filtersExpanded = false;
 
   Map<String, List<CourseGuideSlot>> _cdcData = {};
   bool _isLoading = true;
@@ -157,8 +158,11 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.wifi_off_rounded,
-                size: 48, color: AppDesign.muted(context)),
+            Icon(
+              Icons.wifi_off_rounded,
+              size: 48,
+              color: AppDesign.muted(context),
+            ),
             const SizedBox(height: AppDesign.spacingMd),
             Text(_error!, textAlign: TextAlign.center),
             const SizedBox(height: AppDesign.spacingMd),
@@ -171,7 +175,15 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildFilters(),
+        AnimatedSwitcher(
+          duration: AppDesign.motionStandard,
+          switchInCurve: AppDesign.curveStandard,
+          switchOutCurve: AppDesign.curveStandard,
+          child: KeyedSubtree(
+            key: ValueKey(_selectedPrimaryBranch == null || _filtersExpanded),
+            child: _buildFilters(),
+          ),
+        ),
         const SizedBox(height: AppDesign.spacingSm),
         Expanded(child: _buildResults()),
       ],
@@ -182,6 +194,11 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
 
   Widget _buildFilters() {
     final scheme = Theme.of(context).colorScheme;
+    if (ResponsiveService.isMobile(context) &&
+        _selectedPrimaryBranch != null &&
+        !_filtersExpanded) {
+      return _buildFilterSummary(scheme);
+    }
 
     return Container(
       padding: const EdgeInsets.all(AppDesign.spacingMd),
@@ -196,21 +213,27 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
               context,
               label: 'Your branch',
               hint: 'Select a branch',
-              prefixIcon:
-                  const Icon(Icons.school_rounded, size: AppDesign.iconSizeMd),
+              prefixIcon: const Icon(
+                Icons.school_rounded,
+                size: AppDesign.iconSizeMd,
+              ),
             ),
-            items: _availableBranches
-                .map((code) => DropdownMenuItem(
-                      value: code,
-                      child: Text(
-                        '$code · ${constants.branchCodeToName[code] ?? code}',
-                        overflow: TextOverflow.ellipsis,
+            items:
+                _availableBranches
+                    .map(
+                      (code) => DropdownMenuItem(
+                        value: code,
+                        child: Text(
+                          '$code · ${constants.branchCodeToName[code] ?? code}',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ))
-                .toList(),
+                    )
+                    .toList(),
             onChanged: (v) {
               setState(() {
                 _selectedPrimaryBranch = v;
+                _filtersExpanded = false;
                 if (_selectedSecondaryBranch == v) {
                   _selectedSecondaryBranch = null;
                 }
@@ -227,34 +250,45 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
                 context,
                 label: 'Second branch',
                 hint: 'Select a branch',
-                prefixIcon: const Icon(Icons.school_outlined,
-                    size: AppDesign.iconSizeMd),
+                prefixIcon: const Icon(
+                  Icons.school_outlined,
+                  size: AppDesign.iconSizeMd,
+                ),
                 suffixIcon: IconButton(
                   tooltip: 'Not a dual degree',
-                  icon: const Icon(Icons.close_rounded,
-                      size: AppDesign.iconSizeSm),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    size: AppDesign.iconSizeSm,
+                  ),
                   onPressed: () {
                     setState(() {
                       _dualDegree = false;
                       _selectedSecondaryBranch = null;
+                      _filtersExpanded = false;
                       _validationError = null;
                     });
                     _loadCDCs();
                   },
                 ),
               ),
-              items: _availableBranches
-                  .where((c) => c != _selectedPrimaryBranch)
-                  .map((code) => DropdownMenuItem(
-                        value: code,
-                        child: Text(
-                          '$code · ${constants.branchCodeToName[code] ?? code}',
-                          overflow: TextOverflow.ellipsis,
+              items:
+                  _availableBranches
+                      .where((c) => c != _selectedPrimaryBranch)
+                      .map(
+                        (code) => DropdownMenuItem(
+                          value: code,
+                          child: Text(
+                            '$code · ${constants.branchCodeToName[code] ?? code}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ))
-                  .toList(),
+                      )
+                      .toList(),
               onChanged: (v) {
-                setState(() => _selectedSecondaryBranch = v);
+                setState(() {
+                  _selectedSecondaryBranch = v;
+                  _filtersExpanded = false;
+                });
                 _loadCDCs();
               },
             ),
@@ -267,8 +301,12 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
                 label: const Text('I have a second branch (dual degree)'),
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: AppDesign.spacingSm),
-                  minimumSize: Size(0, ResponsiveService.getTouchTargetSize(context)),
+                    horizontal: AppDesign.spacingSm,
+                  ),
+                  minimumSize: Size(
+                    0,
+                    ResponsiveService.getTouchTargetSize(context),
+                  ),
                 ),
               ),
             ),
@@ -277,18 +315,81 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.error_outline_rounded,
-                    size: AppDesign.iconSizeSm, color: scheme.error),
+                Icon(
+                  Icons.error_outline_rounded,
+                  size: AppDesign.iconSizeSm,
+                  color: scheme.error,
+                ),
                 const SizedBox(width: AppDesign.spacingSm),
                 Expanded(
-                  child: Text(_validationError!,
-                      style: TextStyle(color: scheme.error, fontSize: 13)),
+                  child: Text(
+                    _validationError!,
+                    style: TextStyle(color: scheme.error, fontSize: 13),
+                  ),
                 ),
               ],
             ),
           ],
           const SizedBox(height: AppDesign.spacingSm + 4),
           _buildSemesterChips(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterSummary(ColorScheme scheme) {
+    final primary = _selectedPrimaryBranch!;
+    final secondary = _selectedSecondaryBranch;
+    final branchNames = [
+      constants.branchCodeToName[primary] ?? primary,
+      if (secondary != null) constants.branchCodeToName[secondary] ?? secondary,
+    ];
+    final semester =
+        _selectedSemester == null
+            ? 'All years'
+            : 'Year ${_selectedSemester!.split('-').join(' · Semester ')}';
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+      decoration: AppDesign.cardDecoration(context),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+              color: scheme.primaryContainer,
+              borderRadius: AppDesign.borderRadiusSm,
+            ),
+            child: Icon(
+              Icons.school_outlined,
+              size: AppDesign.iconSizeMd,
+              color: scheme.onPrimaryContainer,
+            ),
+          ),
+          const SizedBox(width: AppDesign.spacingSm + 2),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  branchNames.join(' + '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  semester,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => setState(() => _filtersExpanded = true),
+            child: const Text('Change'),
+          ),
         ],
       ),
     );
@@ -314,13 +415,17 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
           ),
           selectedColor: scheme.primary,
           side: BorderSide(
-            color: selected
-                ? Colors.transparent
-                : scheme.outline.withValues(alpha: 0.4),
+            color:
+                selected
+                    ? Colors.transparent
+                    : scheme.outline.withValues(alpha: 0.4),
           ),
           onSelected: (_) {
             if (selected) return;
-            setState(() => _selectedSemester = value);
+            setState(() {
+              _selectedSemester = value;
+              _filtersExpanded = false;
+            });
             _loadCDCs();
           },
         ),
@@ -363,17 +468,19 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
       );
     }
 
-    final semesters = _cdcData.keys.where((k) => _cdcData[k]!.isNotEmpty).toList()
-      ..sort();
+    final semesters =
+        _cdcData.keys.where((k) => _cdcData[k]!.isNotEmpty).toList()..sort();
     if (semesters.isEmpty) {
       return EmptyStateWidget(
         icon: Icons.search_off_rounded,
-        title: _selectedSemester == null
-            ? 'No core courses listed for this branch yet'
-            : 'Nothing listed for year $_selectedSemester',
-        subtitle: _selectedSemester == null
-            ? null
-            : 'Try another year, or "All years" to see the whole degree.',
+        title:
+            _selectedSemester == null
+                ? 'No core courses listed for this branch yet'
+                : 'Nothing listed for year $_selectedSemester',
+        subtitle:
+            _selectedSemester == null
+                ? null
+                : 'Try another year, or "All years" to see the whole degree.',
       );
     }
 
@@ -384,12 +491,13 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: AppDesign.spacingSm),
         itemCount: semesters.length,
-        itemBuilder: (context, i) => CourseGuideSemesterCard(
-          semester: semesters[i],
-          slots: _cdcData[semesters[i]]!,
-          // One semester on screen is the answer itself; eight is a menu.
-          initiallyExpanded: semesters.length == 1,
-        ),
+        itemBuilder:
+            (context, i) => CourseGuideSemesterCard(
+              semester: semesters[i],
+              slots: _cdcData[semesters[i]]!,
+              // One semester on screen is the answer itself; eight is a menu.
+              initiallyExpanded: semesters.length == 1,
+            ),
       ),
     );
   }
@@ -415,9 +523,10 @@ class CourseGuideSemesterCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final parts = semester.split('-');
-    final label = parts.length == 2
-        ? 'Year ${parts[0]} · Semester ${parts[1]}'
-        : semester;
+    final label =
+        parts.length == 2
+            ? 'Year ${parts[0]} · Semester ${parts[1]}'
+            : semester;
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppDesign.spacingSm + 4),
@@ -432,22 +541,28 @@ class CourseGuideSemesterCard extends StatelessWidget {
         child: Material(
           type: MaterialType.transparency,
           child: ExpansionTile(
-          initiallyExpanded: initiallyExpanded,
-          tilePadding: const EdgeInsets.symmetric(
-              horizontal: AppDesign.spacingMd, vertical: AppDesign.spacingXs),
-          childrenPadding: EdgeInsets.zero,
-          expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
-          title: Text(label,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-          subtitle: Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Text(
-              // A choice is one course to take, not two, so it counts once.
-              '${slots.length} course${slots.length == 1 ? '' : 's'} · ${_unitsLabel(slots)} units',
-              style: TextStyle(
-                  fontSize: 12.5, color: AppDesign.muted(context)),
+            initiallyExpanded: initiallyExpanded,
+            tilePadding: const EdgeInsets.symmetric(
+              horizontal: AppDesign.spacingMd,
+              vertical: AppDesign.spacingXs,
             ),
-          ),
+            childrenPadding: EdgeInsets.zero,
+            expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+            title: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                // A choice is one course to take, not two, so it counts once.
+                '${slots.length} course${slots.length == 1 ? '' : 's'} · ${_unitsLabel(slots)} units',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: AppDesign.muted(context),
+                ),
+              ),
+            ),
             children: [
               Container(
                 decoration: BoxDecoration(
@@ -484,9 +599,7 @@ class CourseGuideSemesterCard extends StatelessWidget {
       low += values.first;
       high += values.last;
     }
-    return low == high
-        ? _credits(low)
-        : '${_credits(low)}–${_credits(high)}';
+    return low == high ? _credits(low) : '${_credits(low)}–${_credits(high)}';
   }
 
   static String _credits(double value) =>
@@ -516,25 +629,30 @@ class _SlotRow extends StatelessWidget {
         // Choices get a hue of their own, not just a lighter grey — the
         // difference has to survive both themes and colour blindness, and the
         // banner carries the actual meaning.
-        color: slot.isChoice
-            ? scheme.tertiary.withValues(alpha: 0.11)
-            : banded
+        color:
+            slot.isChoice
+                ? scheme.tertiary.withValues(alpha: 0.11)
+                : banded
                 ? scheme.onSurface.withValues(alpha: 0.03)
                 : null,
-        border: isLast
-            ? null
-            : Border(bottom: BorderSide(color: AppDesign.dividerColor(context))),
+        border:
+            isLast
+                ? null
+                : Border(
+                  bottom: BorderSide(color: AppDesign.dividerColor(context)),
+                ),
       ),
       padding: const EdgeInsets.symmetric(
-          horizontal: AppDesign.spacingMd, vertical: 10),
+        horizontal: AppDesign.spacingMd,
+        vertical: 10,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (slot.isChoice) ...[
             Row(
               children: [
-                Icon(Icons.alt_route_rounded,
-                    size: 15, color: scheme.tertiary),
+                Icon(Icons.alt_route_rounded, size: 15, color: scheme.tertiary),
                 const SizedBox(width: AppDesign.spacingXs + 2),
                 Text(
                   'Take any one of these',
@@ -553,12 +671,14 @@ class _SlotRow extends StatelessWidget {
             if (i > 0)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 5),
-                child: Text('or',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontStyle: FontStyle.italic,
-                      color: AppDesign.muted(context),
-                    )),
+                child: Text(
+                  'or',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontStyle: FontStyle.italic,
+                    color: AppDesign.muted(context),
+                  ),
+                ),
               ),
             _optionLine(context, slot.options[i]),
           ],
@@ -569,9 +689,10 @@ class _SlotRow extends StatelessWidget {
 
   Widget _optionLine(BuildContext context, CourseGuideEntry entry) {
     final scheme = Theme.of(context).colorScheme;
-    final name = entry.name.isNotEmpty
-        ? entry.name
-        : CoursesMasterService().getTitle(entry.code);
+    final name =
+        entry.name.isNotEmpty
+            ? entry.name
+            : CoursesMasterService().getTitle(entry.code);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -458,25 +458,56 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
             );
           }
 
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: _buildSearchSection(),
+          return _buildCompactDashboard();
+        },
+      ),
+    );
+  }
+
+  Widget _buildCompactDashboard() {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final duration =
+        reduceMotion ? Duration.zero : AppDesign.animDurationNormal;
+    final sortedCourses = List<ExamSeating>.from(_selectedCourses)
+      ..sort((a, b) => _compareExamDates(a.examDate, b.examDate));
+
+    return RefreshIndicator(
+      onRefresh: _loadExamData,
+      child: CustomScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            sliver: SliverToBoxAdapter(child: _buildSearchSection()),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            sliver: SliverToBoxAdapter(child: _buildOverview()),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            sliver: SliverToBoxAdapter(child: _sectionHeader()),
+          ),
+          if (sortedCourses.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                child: _emptyExamPlan(),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: _buildOverview(),
-              ),
-              const SizedBox(height: 4),
-              Expanded(
-                child: _buildSelectedCourses(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => _examCard(sortedCourses[index], duration),
+                  childCount: sortedCourses.length,
                 ),
               ),
-            ],
-          );
-        },
+            ),
+        ],
       ),
     );
   }

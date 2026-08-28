@@ -1038,6 +1038,93 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     );
   }
 
+  Widget _buildMobileSemesterTitle() {
+    final semesters = _controller.semesters;
+    if (semesters.isEmpty) return const Text('CGPA Calculator');
+    final index = _tabController.index.clamp(0, semesters.length - 1);
+    final current = semesters[index];
+
+    return PopupMenuButton<String>(
+      key: TutorialKeys.semesterTabs,
+      tooltip: 'Switch semester',
+      onSelected: (value) {
+        if (value == 'add') {
+          _addCustomSemester();
+          return;
+        }
+        if (value == 'remove') {
+          _removeSemester(current);
+          return;
+        }
+        final selected = int.tryParse(value);
+        if (selected == null) return;
+        _tabController.animateTo(selected);
+        setState(() {});
+      },
+      itemBuilder:
+          (context) => [
+            for (final (semesterIndex, semester) in semesters.indexed)
+              PopupMenuItem(
+                value: '$semesterIndex',
+                child: Row(
+                  children: [
+                    Icon(
+                      semesterIndex == index
+                          ? Icons.check_circle_rounded
+                          : Icons.calendar_view_month_outlined,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(semester)),
+                    if ((_controller.cgpaData.semesters[semester]?.courses ??
+                            const [])
+                        .isNotEmpty)
+                      Text(
+                        (_controller.cgpaData.semesters[semester]?.sgpa ?? 0)
+                            .toStringAsFixed(1),
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
+                  ],
+                ),
+              ),
+            const PopupMenuDivider(),
+            const PopupMenuItem(
+              value: 'add',
+              child: ListTile(
+                dense: true,
+                leading: Icon(Icons.add_rounded),
+                title: Text('Add semester'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            PopupMenuItem(
+              value: 'remove',
+              enabled: semesters.length > 1,
+              child: const ListTile(
+                dense: true,
+                leading: Icon(Icons.delete_outline),
+                title: Text('Remove current semester'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              'CGPA · $current',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 4),
+          const Icon(Icons.expand_more_rounded, size: 20),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_authService.isAuthenticated) {
@@ -1079,129 +1166,149 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       );
     }
 
+    final isMobile = ResponsiveService.isMobile(context);
+
     return Scaffold(
       appBar: AppDesign.appBar(
         context,
-        title: 'CGPA Calculator',
-        bottom: PreferredSize(
-          key: TutorialKeys.semesterTabs,
-          preferredSize: const Size.fromHeight(52),
-          child: SizedBox(
-            height: 52,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              itemCount: _controller.semesters.length + 1,
-              itemBuilder: (context, index) {
-                if (index == _controller.semesters.length) {
-                  return Padding(
-                    padding: const EdgeInsets.only(left: 4),
-                    child: ActionChip(
-                      avatar: Icon(
-                        Icons.add_rounded,
-                        size: 18,
-                        color: Theme.of(context).colorScheme.primary,
+        title: isMobile ? null : 'CGPA Calculator',
+        titleWidget: isMobile ? _buildMobileSemesterTitle() : null,
+        bottom:
+            isMobile
+                ? null
+                : PreferredSize(
+                  key: TutorialKeys.semesterTabs,
+                  preferredSize: const Size.fromHeight(52),
+                  child: SizedBox(
+                    height: 52,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
                       ),
-                      label: const Text('Add'),
-                      labelStyle: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      side: BorderSide(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.primary.withValues(alpha: 0.3),
-                      ),
-                      backgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.05),
-                      onPressed: _addCustomSemester,
-                    ),
-                  );
-                }
+                      itemCount: _controller.semesters.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == _controller.semesters.length) {
+                          return Padding(
+                            padding: const EdgeInsets.only(left: 4),
+                            child: ActionChip(
+                              avatar: Icon(
+                                Icons.add_rounded,
+                                size: 18,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              label: const Text('Add'),
+                              labelStyle: TextStyle(
+                                fontSize: 12,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              side: BorderSide(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.3),
+                              ),
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary.withValues(alpha: 0.05),
+                              onPressed: _addCustomSemester,
+                            ),
+                          );
+                        }
 
-                final sem = _controller.semesters[index];
-                final isSelected = _tabController.index == index;
-                final semester = _controller.cgpaData.semesters[sem];
-                final sgpa = semester?.sgpa ?? 0.0;
-                final hasData = semester != null && semester.courses.isNotEmpty;
+                        final sem = _controller.semesters[index];
+                        final isSelected = _tabController.index == index;
+                        final semester = _controller.cgpaData.semesters[sem];
+                        final sgpa = semester?.sgpa ?? 0.0;
+                        final hasData =
+                            semester != null && semester.courses.isNotEmpty;
 
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: GestureDetector(
-                    onLongPress: () => _removeSemester(sem),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      child: ChoiceChip(
-                        label: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(sem),
-                            if (hasData) ...[
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 5,
-                                  vertical: 1,
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: GestureDetector(
+                            onLongPress: () => _removeSemester(sem),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              child: ChoiceChip(
+                                label: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(sem),
+                                    if (hasData) ...[
+                                      const SizedBox(width: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 5,
+                                          vertical: 1,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              isSelected
+                                                  ? Theme.of(context)
+                                                      .colorScheme
+                                                      .onPrimary
+                                                      .withValues(alpha: 0.25)
+                                                  : Theme.of(context)
+                                                      .colorScheme
+                                                      .primary
+                                                      .withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          sgpa.toStringAsFixed(1),
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color:
+                                                isSelected
+                                                    ? Theme.of(
+                                                      context,
+                                                    ).colorScheme.onPrimary
+                                                    : Theme.of(
+                                                      context,
+                                                    ).colorScheme.primary,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
-                                decoration: BoxDecoration(
+                                selected: isSelected,
+                                onSelected: (_) {
+                                  _tabController.animateTo(index);
+                                  setState(() {});
+                                },
+                                selectedColor:
+                                    Theme.of(context).colorScheme.primary,
+                                labelStyle: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight:
+                                      isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
                                   color:
                                       isSelected
-                                          ? Theme.of(context)
-                                              .colorScheme
-                                              .onPrimary
-                                              .withValues(alpha: 0.25)
-                                          : Theme.of(context)
-                                              .colorScheme
-                                              .primary
-                                              .withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(8),
+                                          ? Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary
+                                          : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
                                 ),
-                                child: Text(
-                                  sgpa.toStringAsFixed(1),
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    color:
-                                        isSelected
-                                            ? Theme.of(
-                                              context,
-                                            ).colorScheme.onPrimary
-                                            : Theme.of(
-                                              context,
-                                            ).colorScheme.primary,
-                                  ),
-                                ),
+                                showCheckmark: false,
+                                materialTapTargetSize:
+                                    MaterialTapTargetSize.shrinkWrap,
+                                visualDensity: VisualDensity.compact,
                               ),
-                            ],
-                          ],
-                        ),
-                        selected: isSelected,
-                        onSelected: (_) {
-                          _tabController.animateTo(index);
-                          setState(() {});
-                        },
-                        selectedColor: Theme.of(context).colorScheme.primary,
-                        labelStyle: TextStyle(
-                          fontSize: 12,
-                          fontWeight:
-                              isSelected ? FontWeight.w700 : FontWeight.w500,
-                          color:
-                              isSelected
-                                  ? Theme.of(context).colorScheme.onPrimary
-                                  : Theme.of(context).colorScheme.onSurface,
-                        ),
-                        showCheckmark: false,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                      ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
-                );
-              },
-            ),
-          ),
-        ),
+                ),
         actions: [
           PageInfoHelper.infoButton(
             context,

@@ -1010,6 +1010,44 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+  Future<void> _showTimetablePicker() async {
+    if (_timetables.isEmpty) return;
+    final selected = await showModalBottomSheet<Timetable>(
+      context: context,
+      showDragHandle: true,
+      builder:
+          (sheetContext) => SafeArea(
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.only(bottom: AppDesign.spacingSm),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+                  child: Text(
+                    'Show timetable',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                for (final timetable in _timetables)
+                  ListTile(
+                    leading: Icon(
+                      timetable.id == _selectedTimetable?.id
+                          ? Icons.check_circle_rounded
+                          : Icons.calendar_view_week_outlined,
+                    ),
+                    title: Text(timetable.name),
+                    selected: timetable.id == _selectedTimetable?.id,
+                    onTap: () => Navigator.pop(sheetContext, timetable),
+                  ),
+              ],
+            ),
+          ),
+    );
+    if (selected != null) _onTimetableChanged(selected);
+  }
+
   Widget _buildWeekMenu({
     bool iconOnly = false,
     bool includeUtilities = false,
@@ -1018,6 +1056,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       tooltip: includeUtilities ? 'Calendar options' : 'Week options',
       icon: iconOnly ? const Icon(Icons.more_horiz_rounded) : null,
       onSelected: (value) {
+        if (value == 'today') _goToToday();
+        if (value == 'timetable') _showTimetablePicker();
         if (value == 'academic_dates') _showAcademicCalendar();
         if (value == 'student_id') _editStudentId();
         if (value == 'scrap_week') _scrapAllForWeek();
@@ -1030,6 +1070,31 @@ class _CalendarScreenState extends State<CalendarScreen> {
       itemBuilder:
           (context) => [
             if (includeUtilities) ...[
+              if (!isToday)
+                const PopupMenuItem(
+                  value: 'today',
+                  child: ListTile(
+                    dense: true,
+                    leading: Icon(Icons.today_outlined),
+                    title: Text('Go to today'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              PopupMenuItem(
+                value: 'timetable',
+                enabled: _timetables.isNotEmpty,
+                child: ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.calendar_view_week_outlined),
+                  title: const Text('Switch timetable'),
+                  subtitle: Text(
+                    _selectedTimetable?.name ?? 'No timetable selected',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
               const PopupMenuItem(
                 value: 'academic_dates',
                 child: ListTile(
@@ -1218,25 +1283,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   ),
                 ),
               ),
-              if (!isToday)
-                IconButton(
-                  onPressed: _goToToday,
-                  icon: const Icon(Icons.today_outlined, size: 20),
-                  tooltip: 'Today',
-                ),
               const SizedBox(width: 6),
               IconButton.filled(
                 onPressed: _addEvent,
                 icon: const Icon(Icons.add_rounded, size: 20),
                 tooltip: 'Add event',
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(child: _buildTimetableSelector(theme)),
-              const SizedBox(width: 4),
               _buildWeekMenu(iconOnly: true, includeUtilities: true),
             ],
           ),

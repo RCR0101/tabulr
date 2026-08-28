@@ -23,7 +23,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
   final PrerequisitesRepository _repository = PrerequisitesRepository();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  
+
   List<CoursePrerequisites> _searchResults = [];
   bool _isSearching = false;
   bool _hasSearched = false;
@@ -129,14 +129,17 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppDesign.appBar(context, title: 'Course Prerequisites',
-          actions: [PageInfoHelper.infoButton(context, PageInfoHelper.prerequisites)]),
+      appBar: AppDesign.appBar(
+        context,
+        title: 'Course Prerequisites',
+        actions: [
+          PageInfoHelper.infoButton(context, PageInfoHelper.prerequisites),
+        ],
+      ),
       body: Column(
         children: [
-          _buildSearchBar(theme, colorScheme),
-          Expanded(
-            child: _buildContent(theme, colorScheme),
-          ),
+          if (_selectedCourse == null) _buildSearchBar(theme, colorScheme),
+          Expanded(child: _buildContent(theme, colorScheme)),
         ],
       ),
     );
@@ -168,7 +171,8 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
           AppSearchField(
             controller: _searchController,
             focusNode: _searchFocusNode,
-            hint: 'Search by course code, name, or department (e.g., CS F111, CS, Biology)',
+            hint:
+                'Search by course code, name, or department (e.g., CS F111, CS, Biology)',
             onChanged: (value) {
               setState(() {}); // To update results
               if (value.isNotEmpty) {
@@ -252,97 +256,100 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
     return RefreshIndicator(
       onRefresh: _loadInitialCourses,
       child: ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _searchResults.length,
-      itemBuilder: (context, index) {
-        final course = _searchResults[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          elevation: 1,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () => _selectCourse(course),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: course.hasPrerequisites
-                          ? colorScheme.primaryContainer
-                          : colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(8),
+        padding: const EdgeInsets.all(16),
+        itemCount: _searchResults.length,
+        itemBuilder: (context, index) {
+          final course = _searchResults[index];
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            elevation: 1,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => _selectCourse(course),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color:
+                            course.hasPrerequisites
+                                ? colorScheme.primaryContainer
+                                : colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        course.hasPrerequisites
+                            ? Icons.link
+                            : Icons.check_circle_outline,
+                        color:
+                            course.hasPrerequisites
+                                ? colorScheme.onPrimaryContainer
+                                : colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                    child: Icon(
-                      course.hasPrerequisites
-                          ? Icons.link
-                          : Icons.check_circle_outline,
-                      color: course.hasPrerequisites
-                          ? colorScheme.onPrimaryContainer
-                          : colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          course.courseCode,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.primary,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            course.courseCode,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.primary,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          CoursesMasterService().getTitle(course.courseCode),
-                          style: theme.textTheme.bodyMedium,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              course.hasPrerequisites
-                                  ? Icons.check_circle
-                                  : Icons.cancel,
-                              size: 14,
-                              color: course.hasPrerequisites
-                                  ? AppDesign.success(context)
-                                  : AppDesign.muted(context),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              course.hasPrerequisites
-                                  ? '${course.groups.length} prerequisite(s)'
-                                  : 'No prerequisites',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
+                          const SizedBox(height: 4),
+                          Text(
+                            CoursesMasterService().getTitle(course.courseCode),
+                            style: theme.textTheme.bodyMedium,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                course.hasPrerequisites
+                                    ? Icons.check_circle
+                                    : Icons.cancel,
+                                size: 14,
+                                color:
+                                    course.hasPrerequisites
+                                        ? AppDesign.success(context)
+                                        : AppDesign.muted(context),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                              const SizedBox(width: 4),
+                              Text(
+                                course.hasPrerequisites
+                                    ? '${course.groups.length} prerequisite(s)'
+                                    : 'No prerequisites',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  Icon(
-                    Icons.chevron_right,
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ],
+                    Icon(
+                      Icons.chevron_right,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      },
-    ),
+          );
+        },
+      ),
     );
   }
 
@@ -495,8 +502,11 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
         children: [
           Row(
             children: [
-              Icon(met ? Icons.task_alt : Icons.pending_outlined,
-                  size: 20, color: color),
+              Icon(
+                met ? Icons.task_alt : Icons.pending_outlined,
+                size: 20,
+                color: color,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -564,7 +574,11 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
         padding: const EdgeInsets.only(bottom: 10),
         child: Row(
           children: [
-            Icon(Icons.checklist_rtl, size: 18, color: colorScheme.onSurfaceVariant),
+            Icon(
+              Icons.checklist_rtl,
+              size: 18,
+              color: colorScheme.onSurfaceVariant,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -693,11 +707,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
                 color: containerColor,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(
-                iconData,
-                color: textColor,
-                size: 20,
-              ),
+              child: Icon(iconData, color: textColor, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -726,13 +736,19 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
                       ),
                       const Spacer(),
                       if (!isChoice)
-                        CourseRecordBadge(record: _record, courseCode: prereqCode),
+                        CourseRecordBadge(
+                          record: _record,
+                          courseCode: prereqCode,
+                        ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   if (isChoice) ...[
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: colorScheme.secondaryContainer,
                         borderRadius: BorderRadius.circular(6),
@@ -775,17 +791,29 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
                                       color: colorScheme.primary,
                                     ),
                                   ),
-                                  if (CoursesMasterService().getTitle(group.options[oi].courseCode).isNotEmpty &&
-                                      CoursesMasterService().getTitle(group.options[oi].courseCode) != group.options[oi].courseCode)
+                                  if (CoursesMasterService()
+                                          .getTitle(
+                                            group.options[oi].courseCode,
+                                          )
+                                          .isNotEmpty &&
+                                      CoursesMasterService().getTitle(
+                                            group.options[oi].courseCode,
+                                          ) !=
+                                          group.options[oi].courseCode)
                                     Text(
-                                      CoursesMasterService().getTitle(group.options[oi].courseCode),
+                                      CoursesMasterService().getTitle(
+                                        group.options[oi].courseCode,
+                                      ),
                                       style: theme.textTheme.bodySmall,
                                     ),
                                 ],
                               ),
                             ),
                             const SizedBox(width: 8),
-                            CourseRecordBadge(record: _record, courseCode: group.options[oi].courseCode),
+                            CourseRecordBadge(
+                              record: _record,
+                              courseCode: group.options[oi].courseCode,
+                            ),
                           ],
                         ),
                       ),
@@ -800,21 +828,21 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
                     ),
                     if (prereqTitle.isNotEmpty) ...[
                       const SizedBox(height: 4),
-                      Text(
-                        prereqTitle,
-                        style: theme.textTheme.bodyMedium,
-                      ),
+                      Text(prereqTitle, style: theme.textTheme.bodyMedium),
                     ],
                   ],
                   const SizedBox(height: 8),
                   Text(
                     description,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: isUnclear
-                          ? colorScheme.error
-                          : colorScheme.onSurfaceVariant,
-                      fontStyle: isUnclear ? FontStyle.normal : FontStyle.italic,
-                      fontWeight: isUnclear ? FontWeight.w500 : FontWeight.normal,
+                      color:
+                          isUnclear
+                              ? colorScheme.error
+                              : colorScheme.onSurfaceVariant,
+                      fontStyle:
+                          isUnclear ? FontStyle.normal : FontStyle.italic,
+                      fontWeight:
+                          isUnclear ? FontWeight.w500 : FontWeight.normal,
                     ),
                   ),
                 ],

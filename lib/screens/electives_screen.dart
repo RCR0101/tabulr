@@ -95,6 +95,7 @@ class _ElectivesScreenState extends State<ElectivesScreen>
   String? _semester;
 
   bool _loading = true;
+  bool _selectionExpanded = false;
   String _loadError = '';
   StreamSubscription<Campus>? _campusSub;
 
@@ -133,8 +134,9 @@ class _ElectivesScreenState extends State<ElectivesScreen>
       initialIndex: widget.initialPool.index,
     )..addListener(_onTabChanged);
     _loadInitialData();
-    _campusSub =
-        CampusService.campusChangeStream.listen((_) => _loadInitialData());
+    _campusSub = CampusService.campusChangeStream.listen(
+      (_) => _loadInitialData(),
+    );
   }
 
   @override
@@ -161,12 +163,13 @@ class _ElectivesScreenState extends State<ElectivesScreen>
       _loadError = '';
     });
     try {
-      final branches = await _disciplineService
-          .getAvailableBranches()
-          .timeout(AppDurations.shortNetworkTimeout);
+      final branches = await _disciplineService.getAvailableBranches().timeout(
+        AppDurations.shortNetworkTimeout,
+      );
       // Linked to a timetable: browse that timetable's embedded catalog, so
       // everything offered here is something it can actually accept.
-      final catalog = widget.selectionLink?.availableCourses ??
+      final catalog =
+          widget.selectionLink?.availableCourses ??
           await _courseData.fetchCourses();
 
       if (!mounted || seq != _loadSeq) return;
@@ -293,10 +296,16 @@ class _ElectivesScreenState extends State<ElectivesScreen>
               _catalog,
             )
             .timeout(AppDurations.networkTimeout);
-        final courses = electives
-            .map((e) => _disciplineService.getCourseDetails(e.courseCode, _catalog))
-            .whereType<Course>()
-            .toList();
+        final courses =
+            electives
+                .map(
+                  (e) => _disciplineService.getCourseDetails(
+                    e.courseCode,
+                    _catalog,
+                  ),
+                )
+                .whereType<Course>()
+                .toList();
         return (courses, electives.length - courses.length);
 
       case ElectivePool.humanities:
@@ -378,7 +387,8 @@ class _ElectivesScreenState extends State<ElectivesScreen>
       // clash — the student simply takes one of the other two.
       for (final component in coreComponents) {
         if (component.every(
-            (core) => ClashDetector.sectionsConflict(section, core))) {
+          (core) => ClashDetector.sectionsConflict(section, core),
+        )) {
           return true;
         }
       }
@@ -396,13 +406,17 @@ class _ElectivesScreenState extends State<ElectivesScreen>
         if (course.midSemExam != null &&
             other.midSemExam != null &&
             ClashDetector.examDatesConflict(
-                course.midSemExam!, other.midSemExam!)) {
+              course.midSemExam!,
+              other.midSemExam!,
+            )) {
           return false;
         }
         if (course.endSemExam != null &&
             other.endSemExam != null &&
             ClashDetector.examDatesConflict(
-                course.endSemExam!, other.endSemExam!)) {
+              course.endSemExam!,
+              other.endSemExam!,
+            )) {
           return false;
         }
       }
@@ -422,14 +436,15 @@ class _ElectivesScreenState extends State<ElectivesScreen>
 
   List<Course> get _filtered {
     final state = _current;
-    final base =
-        _hideCoreClashes ? _dropClashes(state.courses) : state.courses;
+    final base = _hideCoreClashes ? _dropClashes(state.courses) : state.courses;
     if (state.query.isEmpty) return base;
     final q = state.query.toLowerCase();
     return base
-        .where((c) =>
-            c.courseCode.toLowerCase().contains(q) ||
-            c.courseTitle.toLowerCase().contains(q))
+        .where(
+          (c) =>
+              c.courseCode.toLowerCase().contains(q) ||
+              c.courseTitle.toLowerCase().contains(q),
+        )
         .toList();
   }
 
@@ -438,6 +453,9 @@ class _ElectivesScreenState extends State<ElectivesScreen>
   Widget _buildHeader(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isNarrow = ResponsiveService.isMobile(context);
+    if (isNarrow && _primary != null && !_selectionExpanded) {
+      return _buildSelectionSummary(scheme);
+    }
 
     final fields = <Widget>[
       _field(
@@ -452,12 +470,15 @@ class _ElectivesScreenState extends State<ElectivesScreen>
             for (final b in _branches)
               DropdownMenuItem(
                 value: b,
-                child:
-                    Text(branchLabel(b.code), overflow: TextOverflow.ellipsis),
+                child: Text(
+                  branchLabel(b.code),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
           ],
           onChanged: (v) {
             _primary = v;
+            _selectionExpanded = false;
             if (_secondary == v) _secondary = null;
             _onSelectionChanged();
           },
@@ -465,23 +486,28 @@ class _ElectivesScreenState extends State<ElectivesScreen>
       ),
       _field(
         label: 'Second branch',
-        trailing: _secondary == null
-            ? null
-            : InkWell(
-                onTap: () {
-                  _secondary = null;
-                  _onSelectionChanged();
-                },
-                borderRadius: BorderRadius.circular(4),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Text('Clear',
+        trailing:
+            _secondary == null
+                ? null
+                : InkWell(
+                  onTap: () {
+                    _secondary = null;
+                    _selectionExpanded = false;
+                    _onSelectionChanged();
+                  },
+                  borderRadius: BorderRadius.circular(4),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      'Clear',
                       style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: scheme.primary)),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.primary,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
         child: AppDropdown<BranchInfo>(
           isExpanded: true,
           height: _fieldHeight,
@@ -491,12 +517,15 @@ class _ElectivesScreenState extends State<ElectivesScreen>
             for (final b in _branches.where((b) => b != _primary))
               DropdownMenuItem(
                 value: b,
-                child:
-                    Text(branchLabel(b.code), overflow: TextOverflow.ellipsis),
+                child: Text(
+                  branchLabel(b.code),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
           ],
           onChanged: (v) {
             _secondary = v;
+            _selectionExpanded = false;
             _onSelectionChanged();
           },
         ),
@@ -505,9 +534,10 @@ class _ElectivesScreenState extends State<ElectivesScreen>
         label: 'Semester',
         // Stays in place but goes inert on Open Electives, so the header does
         // not reflow when switching tabs.
-        hint: _pool.membershipVariesBySemester
-            ? null
-            : 'Used to check clashes with your core courses',
+        hint:
+            _pool.membershipVariesBySemester
+                ? null
+                : 'Used to check clashes with your core courses',
         child: AppDropdown<String>(
           isExpanded: true,
           height: _fieldHeight,
@@ -520,6 +550,7 @@ class _ElectivesScreenState extends State<ElectivesScreen>
           // which core courses the clash filter compares against.
           onChanged: (v) {
             _semester = v;
+            _selectionExpanded = false;
             _onSelectionChanged();
           },
         ),
@@ -532,8 +563,9 @@ class _ElectivesScreenState extends State<ElectivesScreen>
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow.withValues(alpha: 0.6),
         border: Border(
-          bottom:
-              BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+          bottom: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: 0.6),
+          ),
         ),
       ),
       child: Column(
@@ -567,6 +599,54 @@ class _ElectivesScreenState extends State<ElectivesScreen>
     );
   }
 
+  Widget _buildSelectionSummary(ColorScheme scheme) {
+    final branches = [
+      branchLabel(_primary!.code),
+      if (_secondary != null) branchLabel(_secondary!.code),
+    ];
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 9, 8, 9),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow.withValues(alpha: 0.6),
+        border: Border(
+          bottom: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: 0.6),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.alt_route_rounded, size: 20, color: scheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  branches.join(' + '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  _semester ?? 'Choose semester',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => setState(() => _selectionExpanded = true),
+            child: const Text('Change'),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Taller than the app's compact default: these three are the screen's
   /// primary controls, and nothing below them works until they are set.
   static const double _fieldHeight = 46;
@@ -595,11 +675,14 @@ class _ElectivesScreenState extends State<ElectivesScreen>
               ),
             ),
             if (required)
-              Text(' *',
-                  style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: scheme.primary)),
+              Text(
+                ' *',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: scheme.primary,
+                ),
+              ),
             const Spacer(),
             if (trailing != null) trailing,
           ],
@@ -694,17 +777,18 @@ class _ElectivesScreenState extends State<ElectivesScreen>
         ),
         const Divider(height: 1),
         Expanded(
-          child: results.isEmpty
-              ? _placeholder(
-                  Icons.search_off,
-                  'Nothing matches "${state.query}"',
-                  'Try a course code, or clear the search.',
-                )
-              : ElectiveCourseList(
-                  courses: results,
-                  catalog: _catalog,
-                  selectionLink: widget.selectionLink,
-                ),
+          child:
+              results.isEmpty
+                  ? _placeholder(
+                    Icons.search_off,
+                    'Nothing matches "${state.query}"',
+                    'Try a course code, or clear the search.',
+                  )
+                  : ElectiveCourseList(
+                    courses: results,
+                    catalog: _catalog,
+                    selectionLink: widget.selectionLink,
+                  ),
         ),
       ],
     );
@@ -721,8 +805,7 @@ class _ElectivesScreenState extends State<ElectivesScreen>
       decoration: BoxDecoration(
         color: scheme.primaryContainer.withValues(alpha: 0.25),
         borderRadius: BorderRadius.circular(8),
-        border:
-            Border.all(color: scheme.primary.withValues(alpha: 0.25)),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.25)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -766,12 +849,17 @@ class _ElectivesScreenState extends State<ElectivesScreen>
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
-          Icon(Icons.filter_alt_outlined,
-              size: 15, color: scheme.onSurface.withValues(alpha: 0.6)),
+          Icon(
+            Icons.filter_alt_outlined,
+            size: 15,
+            color: scheme.onSurface.withValues(alpha: 0.6),
+          ),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              _hideCoreClashes ? _hidingLabel : 'Showing every course, clashes included',
+              _hideCoreClashes
+                  ? _hidingLabel
+                  : 'Showing every course, clashes included',
               style: TextStyle(
                 fontSize: 11.5,
                 color: scheme.onSurface.withValues(alpha: 0.7),
@@ -801,7 +889,11 @@ class _ElectivesScreenState extends State<ElectivesScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 40, color: scheme.onSurface.withValues(alpha: 0.3)),
+            Icon(
+              icon,
+              size: 40,
+              color: scheme.onSurface.withValues(alpha: 0.3),
+            ),
             const SizedBox(height: 14),
             Text(
               title,
@@ -828,31 +920,84 @@ class _ElectivesScreenState extends State<ElectivesScreen>
     );
   }
 
+  Widget _buildMobilePoolTitle() {
+    final current = _pool;
+    return PopupMenuButton<int>(
+      tooltip: 'Switch elective pool',
+      onSelected: (index) => _tabs.animateTo(index),
+      itemBuilder:
+          (context) => [
+            for (final (index, pool) in ElectivePool.values.indexed)
+              PopupMenuItem(
+                value: index,
+                child: Row(
+                  children: [
+                    Icon(
+                      pool == current ? Icons.check_circle_rounded : pool.icon,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(pool.label),
+                  ],
+                ),
+              ),
+          ],
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              current.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 4),
+          const Icon(Icons.expand_more_rounded, size: 20),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveService.isMobile(context);
     return Scaffold(
       appBar: AppDesign.appBar(
         context,
-        title: 'Electives',
+        title: isMobile ? null : 'Electives',
+        titleWidget: isMobile ? _buildMobilePoolTitle() : null,
         actions: [PageInfoHelper.infoButton(context, PageInfoHelper.electives)],
-        bottom: TabBar(
-          controller: _tabs,
-          tabs: [
-            for (final p in ElectivePool.values)
-              Tab(icon: Icon(p.icon, size: 18), text: p.label),
-          ],
-        ),
+        bottom:
+            isMobile
+                ? null
+                : TabBar(
+                  controller: _tabs,
+                  tabs: [
+                    for (final p in ElectivePool.values)
+                      Tab(icon: Icon(p.icon, size: 18), text: p.label),
+                  ],
+                ),
       ),
-      body: _loading
-          ? const CourseListSkeleton()
-          : Column(
-              children: [
-                if (_loadError.isNotEmpty)
-                  InlineErrorCard(message: _loadError),
-                _buildHeader(context),
-                Expanded(child: _buildBody(context)),
-              ],
-            ),
+      body:
+          _loading
+              ? const CourseListSkeleton()
+              : Column(
+                children: [
+                  if (_loadError.isNotEmpty)
+                    InlineErrorCard(message: _loadError),
+                  AnimatedSwitcher(
+                    duration: AppDesign.motionStandard,
+                    switchInCurve: AppDesign.curveStandard,
+                    switchOutCurve: AppDesign.curveStandard,
+                    child: KeyedSubtree(
+                      key: ValueKey(_primary == null || _selectionExpanded),
+                      child: _buildHeader(context),
+                    ),
+                  ),
+                  Expanded(child: _buildBody(context)),
+                ],
+              ),
     );
   }
 }

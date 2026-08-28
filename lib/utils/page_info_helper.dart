@@ -252,7 +252,7 @@ class PageInfoHelper {
       FeatureInfo(
         Icons.view_week_outlined,
         'Calendar Toolbar',
-        'switch timetables, set the student ID used for exam rooms, and manage the visible week',
+        'switch timetables, set the student ID used for exam rooms, and manage the visible week; on phones these live under Calendar options',
       ),
       FeatureInfo(
         Icons.swipe_rounded,
@@ -290,6 +290,11 @@ class PageInfoHelper {
     purpose:
         'Track grades across semesters and calculate your SGPA/CGPA. Import courses from timetables or performance sheets.',
     features: [
+      FeatureInfo(
+        Icons.calendar_view_month_outlined,
+        'Semesters',
+        'switch from the semester strip on larger screens, or tap the current semester in the phone title',
+      ),
       FeatureInfo(
         Icons.add_rounded,
         'Add Course',
@@ -374,7 +379,7 @@ class PageInfoHelper {
       FeatureInfo(
         Icons.search,
         'Search',
-        'search across course codes, titles, bookmarked files, and course resources',
+        'search across course codes, titles, bookmarked files, and course resources; on phones, search and sort scroll with the active list',
       ),
       FeatureInfo(
         Icons.star_outline_rounded,
@@ -406,7 +411,7 @@ class PageInfoHelper {
       FeatureInfo(
         Icons.search,
         'Search',
-        'search professors by name or department',
+        'search professors by name or chamber; on phones, the controls scroll with the results',
       ),
       FeatureInfo(Icons.refresh, 'Refresh', 'reload the latest data'),
     ],
@@ -651,7 +656,7 @@ class PageInfoHelper {
       FeatureInfo(
         Icons.category_outlined,
         'Pools',
-        'switch between discipline, humanities and open electives',
+        'switch between discipline, humanities and open electives; on phones tap the pool name in the title',
       ),
       FeatureInfo(
         Icons.check_circle_outline,
@@ -720,7 +725,7 @@ class PageInfoHelper {
       FeatureInfo(
         Icons.school_outlined,
         'Branch',
-        'pick your branch, and a second one if you are dual degree',
+        'pick your branch, and a second one if you are dual degree; on phones the form folds into a Change summary after selection',
       ),
       FeatureInfo(
         Icons.view_timeline_outlined,

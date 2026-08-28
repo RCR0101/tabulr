@@ -3,6 +3,7 @@ import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../services/ui/theme_service.dart';
+import '../widgets/workspace_navigation_scope.dart';
 
 class AppDesign {
   AppDesign._();
@@ -215,6 +216,15 @@ class AppDesign {
     bool centerTitle = false,
     PreferredSizeWidget? bottom,
   }) {
+    final workspace = WorkspaceNavigationScope.maybeOf(context);
+    final workspaceSearch =
+        workspace?.mobile == true
+            ? IconButton(
+              onPressed: workspace!.onSearch,
+              icon: const Icon(Icons.search_rounded),
+              tooltip: 'Search anything',
+            )
+            : null;
     return AppBar(
       title: titleWidget ?? (title != null ? Text(title) : null),
       centerTitle: centerTitle,
@@ -222,8 +232,8 @@ class AppDesign {
       scrolledUnderElevation: elevationNone,
       surfaceTintColor: Colors.transparent,
       leading: leading,
-      actions: actions,
-      bottom: bottom,
+      actions: [...?actions, if (workspaceSearch != null) workspaceSearch],
+      bottom: workspace?.combineAppBarBottom(bottom) ?? bottom,
     );
   }
 
