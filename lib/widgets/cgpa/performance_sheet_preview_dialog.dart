@@ -99,6 +99,10 @@ class PerformanceSheetPreviewDialog extends StatelessWidget {
                     children: semester.courses.map((course) {
                       final lookup = courseMap[course.courseCode.toUpperCase()];
                       final notFound = lookup == null;
+                      final gradeLabel = course.grade ?? 'Pending';
+                      final gradeTextColor = course.grade == null
+                          ? Theme.of(context).colorScheme.onSurfaceVariant
+                          : Theme.of(context).colorScheme.onPrimary;
 
                       return ListTile(
                         dense: true,
@@ -120,10 +124,10 @@ class PerformanceSheetPreviewDialog extends StatelessWidget {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            course.grade,
+                            gradeLabel,
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.onPrimary,
+                              color: gradeTextColor,
                             ),
                           ),
                         ),
@@ -143,8 +147,9 @@ class PerformanceSheetPreviewDialog extends StatelessWidget {
     );
   }
 
-  Color _getGradeColor(String grade, BuildContext context) =>
-      grade_utils.getGradeColor(grade, scheme: Theme.of(context).colorScheme);
+  Color _getGradeColor(String? grade, BuildContext context) => grade == null
+      ? Theme.of(context).colorScheme.surfaceContainerHighest
+      : grade_utils.getGradeColor(grade, scheme: Theme.of(context).colorScheme);
 }
 
 class _SummaryItem extends StatelessWidget {

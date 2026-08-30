@@ -247,9 +247,29 @@ void main() {
 
         controller.addCourseToSemester('1-1', c1);
         controller.addCourseToSemester('1-2', c1);
+        controller.updateGrade('1-1', 0, 'D');
+        controller.updateGrade('1-2', 0, 'A');
 
         expect(controller.isSuperseded('1-1', 'CS F111'), isTrue);
         expect(controller.isSuperseded('1-2', 'CS F111'), isFalse);
+      });
+
+      test('a pending repeat does not supersede the earlier grade', () {
+        controller.addSemester('3-2');
+        controller.addSemester('ST 2');
+
+        final course = AllCourse(
+          courseCode: 'CS F111',
+          courseTitle: 'CP',
+          creditValue: 4,
+          type: 'Normal',
+        );
+
+        controller.addCourseToSemester('3-2', course);
+        controller.updateGrade('3-2', 0, 'D');
+        controller.addCourseToSemester('ST 2', course);
+
+        expect(controller.isSuperseded('3-2', 'CS F111'), isFalse);
       });
     });
 

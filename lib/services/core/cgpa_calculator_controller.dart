@@ -234,7 +234,9 @@ class CGPACalculatorController extends ChangeNotifier {
     for (var i = currentIdx + 1; i < _semesters.length; i++) {
       final later = _cgpaData.semesters[_semesters[i]];
       if (later != null &&
-          later.courses.any((c) => c.courseCode == courseCode)) {
+          later.courses.any(
+            (c) => c.courseCode == courseCode && c.countsTowardCgpa,
+          )) {
         return true;
       }
     }

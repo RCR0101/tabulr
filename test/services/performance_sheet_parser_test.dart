@@ -21,7 +21,7 @@ ParsedSemester _semester(String name, List<ParsedCourseEntry> courses) {
   return ParsedSemester(rawName: name, normalizedName: name, courses: courses);
 }
 
-ParsedCourseEntry _entry(String code, String grade, {String? tag}) {
+ParsedCourseEntry _entry(String code, String? grade, {String? tag}) {
   return ParsedCourseEntry(courseCode: code, grade: grade, tag: tag);
 }
 
@@ -113,16 +113,18 @@ void main() {
       expect(results, isEmpty);
     });
 
-    test('pairs only courses that have matching grades', () {
+    test('retains courses without a matching grade as pending', () {
       final chunk =
           'CS F111 COMP PROG 4.0 MATH F112 MATHEMATICS I 3.0 PHY F111 PHYSICS 3.0 A B';
       final results = PerformanceSheetParser.extractCoursesFromChunk(chunk);
 
-      expect(results.length, 2);
+      expect(results.length, 3);
       expect(results[0].courseCode, 'CS F111');
       expect(results[0].grade, 'A');
       expect(results[1].courseCode, 'MATH F112');
       expect(results[1].grade, 'B');
+      expect(results[2].courseCode, 'PHY F111');
+      expect(results[2].grade, isNull);
     });
 
     test('handles float units without confusing them with grades', () {
@@ -164,6 +166,16 @@ void main() {
 
       expect(results.length, 1);
       expect(results[0].courseCode, 'CS G513');
+    });
+
+    test('keeps registered courses without grades', () {
+      const chunk =
+          'CS F303 CS F363 COMPUTER NETWORKS COMPILER CONSTRUCTION 4.0 3.0';
+
+      final results = PerformanceSheetParser.extractCoursesFromChunk(chunk);
+
+      expect(results.map((entry) => entry.courseCode), ['CS F303', 'CS F363']);
+      expect(results.map((entry) => entry.grade), [null, null]);
     });
   });
 
@@ -208,14 +220,24 @@ void main() {
       expect(result, 'ST 1');
     });
 
-    test('second summer term increments counter', () {
+    test('unknown summer year falls back to the encounter counter', () {
       final result = PerformanceSheetParser.normalizeSemesterName(
         'SUMMER TERM 2026-2027',
-        ['2025-2026', '2026-2027'],
+        ['2025-2026'],
         1,
       );
 
       expect(result, 'ST 2');
+    });
+
+    test('summer term uses academic year when earlier summers are absent', () {
+      final result = PerformanceSheetParser.normalizeSemesterName(
+        'SUMMER TERM 2026-2027',
+        ['2023-2024', '2024-2025', '2025-2026', '2026-2027'],
+        0,
+      );
+
+      expect(result, 'ST 3');
     });
 
     test('unknown year defaults to year 1', () {
@@ -349,6 +371,43 @@ void main() {
       expect(result.semesters.containsKey('1-2'), isTrue);
     });
 
+    test('keeps repeated course attempts in their actual semesters', () {
+      final parsed = _sheet([
+        _semester('3-2', [_entry('CS F111', 'D')]),
+        _semester('ST 2', [_entry('CS F111', 'A')]),
+      ]);
+
+      final result = PerformanceSheetParser.toCGPAData(parsed, []);
+
+      expect(result.semesters['3-2']!.courses.single.grade, 'D');
+      expect(result.semesters['ST 2']!.courses.single.grade, 'A');
+      expect(result.latestAttempts()['CS F111']!.semester, 'ST 2');
+    });
+
+    test('merges separate fragments of the same semester', () {
+      final parsed = _sheet([
+        _semester('2-2', [_entry('CS F211', 'A')]),
+        _semester('2-2', [_entry('CS F212', 'B')]),
+      ]);
+
+      final result = PerformanceSheetParser.toCGPAData(parsed, []);
+
+      expect(
+        result.semesters['2-2']!.courses.map((course) => course.courseCode),
+        ['CS F211', 'CS F212'],
+      );
+    });
+
+    test('imports pending courses with a null grade', () {
+      final parsed = _sheet([
+        _semester('ST 2', [_entry('CS F303', null)]),
+      ]);
+
+      final result = PerformanceSheetParser.toCGPAData(parsed, []);
+
+      expect(result.semesters['ST 2']!.courses.single.grade, isNull);
+    });
+
     test('empty parsed sheet produces empty CGPAData', () {
       final parsed = _sheet([]);
 
@@ -413,6 +472,11 @@ void main() {
     test('toString with tag', () {
       final entry = _entry('CS F111', 'A', tag: 'HEL');
       expect(entry.toString(), 'CS F111: A (HEL)');
+    });
+
+    test('toString labels an ungraded registration as pending', () {
+      final entry = _entry('CS F303', null);
+      expect(entry.toString(), 'CS F303: Pending');
     });
   });
 

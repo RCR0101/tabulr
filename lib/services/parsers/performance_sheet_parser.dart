@@ -12,7 +12,7 @@ import '../../models/all_course.dart';
 
 class ParsedCourseEntry {
   final String courseCode;
-  final String grade;
+  final String? grade;
   final String? tag;
 
   ParsedCourseEntry({
@@ -22,7 +22,8 @@ class ParsedCourseEntry {
   });
 
   @override
-  String toString() => '$courseCode: $grade${tag != null ? ' ($tag)' : ''}';
+  String toString() =>
+      '$courseCode: ${grade ?? 'Pending'}${tag != null ? ' ($tag)' : ''}';
 }
 
 class ParsedSemester {
@@ -178,13 +179,11 @@ class PerformanceSheetParser {
         }
 
         // Find semester headers in this line
-        final semHeaders = <String>[];
-        for (final m in _semHeaderPattern.allMatches(line)) {
-          semHeaders.add(m.group(0)!);
-        }
-        for (final m in _summerHeaderPattern.allMatches(line)) {
-          semHeaders.add(m.group(0)!);
-        }
+        final headerMatches = <RegExpMatch>[
+          ..._semHeaderPattern.allMatches(line),
+          ..._summerHeaderPattern.allMatches(line),
+        ]..sort((a, b) => a.start.compareTo(b.start));
+        final semHeaders = headerMatches.map((m) => m.group(0)!).toList();
 
         if (semHeaders.isEmpty) continue;
 
@@ -218,16 +217,12 @@ class PerformanceSheetParser {
           }
         }
 
-        final parsedChunks = <List<ParsedCourseEntry>>[];
-        for (final chunk in chunks) {
-          final courses = extractCoursesFromChunk(chunk);
-          if (courses.isNotEmpty) {
-            parsedChunks.add(courses);
-          }
-        }
+        // Keep empty/ungraded columns in place. Compacting this list used to
+        // pair a later column with an earlier header when a term had no grades.
+        final parsedChunks = chunks.map(extractCoursesFromChunk).toList();
 
         // Assign chunks to semester headers
-        for (int h = 0; h < semHeaders.length && h < parsedChunks.length; h++) {
+        for (int h = 0; h < semHeaders.length; h++) {
           final header = semHeaders[h];
           final normName = normalizeSemesterName(
             header, academicYears, summerCounter,
@@ -237,7 +232,9 @@ class PerformanceSheetParser {
           semesters.add(ParsedSemester(
             rawName: header,
             normalizedName: normName,
-            courses: parsedChunks[h],
+            courses: h < parsedChunks.length
+                ? parsedChunks[h]
+                : const <ParsedCourseEntry>[],
           ));
         }
 
@@ -253,6 +250,11 @@ class PerformanceSheetParser {
           }
         }
       }
+
+      final mergedSemesters = _mergeSemesterFragments(semesters);
+      semesters
+        ..clear()
+        ..addAll(mergedSemesters);
 
       if (semesters.isEmpty) {
         warnings.add('No semesters found in PDF');
@@ -350,17 +352,20 @@ class PerformanceSheetParser {
       }
     }
 
-    // Step 4: Pair courses with grades
+    // Step 4: Pair courses with grades. Registered courses in the active term
+    // have no grade yet, but keeping them makes that term available to the grade
+    // planner after import instead of dropping the entire semester.
     for (int c = 0; c < codes.length; c++) {
-      if (c < grades.length && _validGrades.contains(grades[c])) {
-        final code = codes[c];
-        if (!_courseCodePattern.hasMatch(code)) continue;
-        results.add(ParsedCourseEntry(
-          courseCode: code,
-          grade: grades[c],
-          tag: (c < tags.length && _validTags.contains(tags[c])) ? tags[c] : null,
-        ));
-      }
+      final code = codes[c];
+      if (!_courseCodePattern.hasMatch(code)) continue;
+      final grade = c < grades.length && _validGrades.contains(grades[c])
+          ? grades[c]
+          : null;
+      results.add(ParsedCourseEntry(
+        courseCode: code,
+        grade: grade,
+        tag: (c < tags.length && _validTags.contains(tags[c])) ? tags[c] : null,
+      ));
     }
 
     return results;
@@ -375,6 +380,17 @@ class PerformanceSheetParser {
     final upper = rawName.toUpperCase();
 
     if (upper.contains('SUMMER')) {
+      final match = _summerHeaderPattern.firstMatch(rawName);
+      if (match != null) {
+        final yearKey = '${match.group(1)}-${match.group(2)}';
+        final yearIndex = academicYears.indexOf(yearKey);
+        if (yearIndex >= 0) {
+          // ST 1 follows year 2, ST 2 follows year 3, and so on. Counting only
+          // summer headers mislabeled a student's first recorded summer after
+          // year 3 as ST 1, placing repeats before their older regular attempt.
+          return 'ST ${yearIndex < 1 ? 1 : yearIndex}';
+        }
+      }
       return 'ST ${summerCount + 1}';
     }
 
@@ -427,13 +443,31 @@ class PerformanceSheetParser {
         ));
       }
 
+      final existing = semesterMap[semester.normalizedName];
       semesterMap[semester.normalizedName] = SemesterData(
         semesterName: semester.normalizedName,
-        courses: courses,
+        courses: [...?existing?.courses, ...courses],
       );
     }
 
     return CGPAData(semesters: semesterMap);
+  }
+
+  static List<ParsedSemester> _mergeSemesterFragments(
+    List<ParsedSemester> semesters,
+  ) {
+    final merged = <String, ParsedSemester>{};
+    for (final semester in semesters) {
+      final existing = merged[semester.normalizedName];
+      merged[semester.normalizedName] = existing == null
+          ? semester
+          : ParsedSemester(
+              rawName: existing.rawName,
+              normalizedName: existing.normalizedName,
+              courses: [...existing.courses, ...semester.courses],
+            );
+    }
+    return merged.values.toList();
   }
 
   static String? _sanitize(String? input, {int maxLen = 50}) {
