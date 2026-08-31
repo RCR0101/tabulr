@@ -177,6 +177,49 @@ void main() {
       expect(results.map((entry) => entry.courseCode), ['CS F303', 'CS F363']);
       expect(results.map((entry) => entry.grade), [null, null]);
     });
+
+    test('separates two summer columns with unequal course counts', () {
+      const data =
+          '   BITS  F221 PRACTICE SCHOOL I 5.0 A    '
+          'CHEM  F243 EEE  F214 HSS  F346 ORGANIC CHEMISTRY II '
+          'ELECTRONIC DEVICES INTERNATIONAL RELATIONS 3.0 3.0 3.0 '
+          'A B- A R R     HEL';
+
+      final chunks = PerformanceSheetParser.splitSemesterChunks(data);
+      final first = PerformanceSheetParser.extractCoursesFromChunk(chunks[0]);
+      final second = PerformanceSheetParser.extractCoursesFromChunk(chunks[1]);
+
+      expect(chunks, hasLength(2));
+      expect(first.map((entry) => entry.courseCode), ['BITS F221']);
+      expect(first.map((entry) => entry.grade), ['A']);
+      expect(
+        second.map((entry) => entry.courseCode),
+        ['CHEM F243', 'EEE F214', 'HSS F346'],
+      );
+      expect(second.map((entry) => entry.grade), ['A', 'B-', 'A']);
+      expect(second.map((entry) => entry.tag), ['R', 'R', 'HEL']);
+    });
+  });
+
+  group('student metadata', () {
+    test('stops a compact student ID before the ERP label', () {
+      const line =
+          'Student ID:2023B2A30926HERP ID:41120230926Status:Normal';
+
+      expect(
+        PerformanceSheetParser.extractStudentId(line),
+        '2023B2A30926H',
+      );
+    });
+
+    test('reads a spaced student ID', () {
+      expect(
+        PerformanceSheetParser.extractStudentId(
+          'Student ID: 2023A7PS0124H ERP ID: 41120230124',
+        ),
+        '2023A7PS0124H',
+      );
+    });
   });
 
   group('normalizeSemesterName', () {

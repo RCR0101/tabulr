@@ -9,6 +9,16 @@ import '../widgets/common/app_dialog.dart';
 import '../widgets/timetable_changes_dialog.dart';
 import 'home_screen.dart';
 
+@visibleForTesting
+bool canApplyBackgroundTimetableRefresh({
+  required Timetable? currentTimetable,
+  required Timetable? timetableAtRequestStart,
+  required bool hasUnsavedChanges,
+}) {
+  return !hasUnsavedChanges &&
+      identical(currentTimetable, timetableAtRequestStart);
+}
+
 class TimetableEditorScreen extends StatefulWidget {
   final String timetableId;
   final Timetable? initialTimetable;
@@ -42,14 +52,30 @@ class _TimetableEditorScreenState extends State<TimetableEditorScreen> {
   }
 
   Future<void> _refreshCoursesInBackground() async {
+    final timetableAtRequestStart = _timetable;
     try {
-      final fresh = await _timetableService.getTimetableById(widget.timetableId);
-      if (fresh != null && mounted) {
+      final fresh = await _timetableService.getTimetableById(
+        widget.timetableId,
+      );
+      if (fresh != null &&
+          mounted &&
+          canApplyBackgroundTimetableRefresh(
+            currentTimetable: _timetable,
+            timetableAtRequestStart: timetableAtRequestStart,
+            hasUnsavedChanges: _hasUnsavedChanges,
+          )) {
         setState(() => _timetable = fresh);
         TimetableChangesNotice.notify(context, fresh.reconciliation);
+      } else if (fresh != null && mounted && _hasUnsavedChanges) {
+        SecureLogger.info(
+          'TIMETABLES',
+          'Skipped background refresh because the timetable has unsaved changes',
+        );
       }
     } catch (e) {
-      SecureLogger.warning('TIMETABLES', 'Background course refresh failed', {'error': e.toString()});
+      SecureLogger.warning('TIMETABLES', 'Background course refresh failed', {
+        'error': e.toString(),
+      });
     }
   }
 
@@ -89,7 +115,8 @@ class _TimetableEditorScreenState extends State<TimetableEditorScreen> {
     return await AppDialog.confirm(
       context: context,
       title: 'Unsaved Changes',
-      message: 'You have unsaved changes that will be lost. Are you sure you want to go back?',
+      message:
+          'You have unsaved changes that will be lost. Are you sure you want to go back?',
       confirmLabel: 'Leave',
       cancelLabel: 'Stay',
       isDangerous: true,

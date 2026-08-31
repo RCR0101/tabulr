@@ -193,48 +193,66 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.school,
-            size: 16,
-            color: isOver ? scheme.error : scheme.primary,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            '${total % 1 == 0 ? total.toInt() : total.toStringAsFixed(1)}'
-            '/${cap.toInt()} ${widget.creditBasis.label}',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: isOver ? scheme.error : scheme.primary,
+          Expanded(
+            child: Row(
+              children: [
+                Icon(
+                  Icons.school,
+                  size: 16,
+                  color: isOver ? scheme.error : scheme.primary,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text:
+                              '${total % 1 == 0 ? total.toInt() : total.toStringAsFixed(1)}'
+                              '/${cap.toInt()} ${widget.creditBasis.label}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: isOver ? scheme.error : scheme.primary,
+                          ),
+                        ),
+                        // Only when the timetable is not already reporting in
+                        // hours. The quantities stay visibly separate.
+                        if (!inHours && creditHours > 0)
+                          TextSpan(
+                            text:
+                                '  + ${creditHours % 1 == 0 ? creditHours.toInt() : creditHours.toStringAsFixed(1)} credit hours',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: scheme.tertiary,
+                            ),
+                          ),
+                        if (selectedCoursesCodes.isNotEmpty)
+                          TextSpan(
+                            text:
+                                '  (${selectedCoursesCodes.length} course${selectedCoursesCodes.length != 1 ? 's' : ''})',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: scheme.onSurface.withValues(
+                                alpha: AppDesign.opacityLow,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
           ),
-          // Only when the timetable is NOT already reporting in hours — this is
-          // the mixed case, which the warning above is about.
-          if (!inHours && creditHours > 0) ...[
-            const SizedBox(width: 8),
-            Text(
-              '+ ${creditHours % 1 == 0 ? creditHours.toInt() : creditHours.toStringAsFixed(1)} credit hours',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: scheme.tertiary,
-              ),
-            ),
-          ],
-          if (selectedCoursesCodes.isNotEmpty) ...[
-            Text(
-              '  (${selectedCoursesCodes.length} course${selectedCoursesCodes.length != 1 ? 's' : ''})',
-              style: TextStyle(
-                fontSize: 11,
-                color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow),
-              ),
-            ),
-          ],
-          const Spacer(),
           // Project counter inline — credits only. A project is worth 3 units;
           // there is no hours figure for one, so counting it into an hours
           // total would be inventing a number.
           if (!inHours) ...[
+            const SizedBox(width: 8),
             Text(
               'Projects',
               style: TextStyle(

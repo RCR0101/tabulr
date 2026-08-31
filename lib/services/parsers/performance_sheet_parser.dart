@@ -67,7 +67,7 @@ class PerformanceSheetParser {
   // 4.13 requires it to be replaced with a real grade within two weeks — so
   // missing it costs far less than mis-reading a course title as a grade.
   static final _validGrades = GradeConstants.allValid.difference({'I'});
-  static const _validTags = GradeConstants.electiveTags;
+  static const _validTags = {...GradeConstants.electiveTags, 'R'};
 
   // Course code: 2-4 uppercase letters + 1-3 spaces + F/G + 3 digits
   static final _courseCodePattern = RegExp(r'([A-Z]{2,4})\s{1,3}([FGK]\d{3}(?:-\d)?)');
@@ -130,10 +130,7 @@ class PerformanceSheetParser {
 
       // Extract student info from early lines
       for (final line in lines.take(10)) {
-        if (studentId == null) {
-          final m = RegExp(r'Student ID:\s*(\w+)').firstMatch(line);
-          if (m != null) studentId = _sanitize(m.group(1), maxLen: 20);
-        }
+        studentId ??= extractStudentId(line);
         if (studentName == null) {
           final m = RegExp(r'Name:\s*([A-Z][A-Z\s]+?)(?=CGPA|ERP|\n|$)').firstMatch(line);
           if (m != null) studentName = _sanitize(m.group(1)?.trim(), maxLen: 100);
@@ -198,24 +195,7 @@ class PerformanceSheetParser {
         dataText = dataText.replaceAll(RegExp(r'Grade'), '');
         dataText = dataText.replaceAll(RegExp(r'Tag'), '');
 
-        // Split into semester chunks using large whitespace gaps (10+ spaces)
-        // This separates left-table (sem1) from right-table (sem2) data
-        final rawChunks = dataText.split(RegExp(r'\s{10,}'))
-            .map((c) => c.trim())
-            .where((c) => c.isNotEmpty)
-            .toList();
-
-        // Merge tag-only chunks (HEL/DEL/EL) back onto the previous chunk
-        final chunks = <String>[];
-        for (final chunk in rawChunks) {
-          final tokens = chunk.split(RegExp(r'\s+'));
-          final isTagOnly = tokens.every((t) => _validTags.contains(t));
-          if (isTagOnly && chunks.isNotEmpty) {
-            chunks.last = '${chunks.last} $chunk';
-          } else {
-            chunks.add(chunk);
-          }
-        }
+        final chunks = splitSemesterChunks(dataText);
 
         // Keep empty/ungraded columns in place. Compacting this list used to
         // pair a later column with an earlier header when a term had no grades.
@@ -278,6 +258,31 @@ class PerformanceSheetParser {
   /// Extract course code + grade pairs from a text chunk.
   /// The chunk structure is: [codes...] [titles...] [units...] [grades...] [tags...]
   @visibleForTesting
+  static List<String> splitSemesterChunks(String dataText) {
+    // Oracle BI Publisher separates table columns with a whitespace gutter.
+    // Four spaces is the safe structural boundary: a course code itself may
+    // contain up to three, while titles and values use single spaces.
+    final rawChunks = dataText.split(RegExp(r'\s{4,}'))
+        .map((chunk) => chunk.trim())
+        .where((chunk) => chunk.isNotEmpty)
+        .toList();
+
+    // A sparse tag column can become its own chunk. Keep it with the preceding
+    // semester instead of mistaking it for another table column.
+    final chunks = <String>[];
+    for (final chunk in rawChunks) {
+      final tokens = chunk.split(RegExp(r'\s+'));
+      final isTagOnly = tokens.every(_validTags.contains);
+      if (isTagOnly && chunks.isNotEmpty) {
+        chunks.last = '${chunks.last} $chunk';
+      } else {
+        chunks.add(chunk);
+      }
+    }
+    return chunks;
+  }
+
+  @visibleForTesting
   static List<ParsedCourseEntry> extractCoursesFromChunk(String chunk) {
     final results = <ParsedCourseEntry>[];
 
@@ -328,27 +333,25 @@ class PerformanceSheetParser {
       }
     }
 
-    // Separate grades and tags from endTokens
-    // The pattern per course is: [grade] [optional tag]
-    // So we walk forward through endTokens assigning grade, then optional tag
-    int tokenIdx = 0;
-    while (tokenIdx < endTokens.length) {
-      final t = endTokens[tokenIdx];
-      if (t.isGrade) {
-        grades.add(t.value);
-        // Check if next token is a tag
-        if (tokenIdx + 1 < endTokens.length && endTokens[tokenIdx + 1].isTag) {
-          tags.add(endTokens[tokenIdx + 1].value);
-          tokenIdx += 2;
-        } else {
+    grades.addAll(endTokens.where((token) => token.isGrade).map((t) => t.value));
+
+    final tagTokens =
+        endTokens.where((token) => token.isTag).map((t) => t.value).toList();
+    final firstTag = endTokens.indexWhere((token) => token.isTag);
+    final lastGrade = endTokens.lastIndexWhere((token) => token.isGrade);
+    final tagsFollowGrades = firstTag > lastGrade;
+
+    if (tagsFollowGrades && tagTokens.length == codes.length) {
+      // BI Publisher flattens a complete tag column after the grade column.
+      tags.addAll(tagTokens);
+    } else if (!tagsFollowGrades) {
+      // Also support interleaved grade/tag text produced by simpler PDFs.
+      for (final token in endTokens) {
+        if (token.isGrade) {
           tags.add('');
-          tokenIdx++;
+        } else if (token.isTag && tags.isNotEmpty) {
+          tags[tags.length - 1] = token.value;
         }
-      } else if (t.isTag) {
-        // Tag without a preceding grade — skip
-        tokenIdx++;
-      } else {
-        tokenIdx++;
       }
     }
 
@@ -468,6 +471,15 @@ class PerformanceSheetParser {
             );
     }
     return merged.values.toList();
+  }
+
+  @visibleForTesting
+  static String? extractStudentId(String line) {
+    final match = RegExp(
+      r'Student ID:\s*([A-Z0-9]+?)(?=\s*(?:ERP\s*ID:|Status:|Name:|CGPA:|$))',
+      caseSensitive: false,
+    ).firstMatch(line);
+    return _sanitize(match?.group(1), maxLen: 20);
   }
 
   static String? _sanitize(String? input, {int maxLen = 50}) {

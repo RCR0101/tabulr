@@ -851,7 +851,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
         builder: (context, constraints) {
           final scale = MediaQuery.textScalerOf(context).scale(1);
           final baseBreakpoint =
-              widget.onCreditBasisChanged == null ? 900.0 : 1000.0;
+              widget.onCreditBasisChanged == null ? 1120.0 : 1280.0;
           final roomy =
               !_isMobile &&
               constraints.maxWidth >= baseBreakpoint * scale.clamp(1, 1.25);
