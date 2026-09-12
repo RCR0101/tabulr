@@ -266,7 +266,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: scheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: AppDesign.cardBorderRadius(context),
             border: Border.all(
               color: scheme.outlineVariant.withValues(alpha: .65),
             ),
@@ -317,12 +317,12 @@ class _CreditsScreenState extends State<CreditsScreen> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: AppDesign.borderRadiusLg,
+        borderRadius: AppDesign.buttonBorderRadius(context),
         onTap: () => info.pushOn(Navigator.of(context)),
         child: Container(
           padding: const EdgeInsets.all(AppDesign.spacingMd),
           decoration: BoxDecoration(
-            borderRadius: AppDesign.borderRadiusLg,
+            borderRadius: AppDesign.cardBorderRadius(context),
             border: Border.all(color: scheme.primary.withValues(alpha: 0.35)),
             gradient: LinearGradient(
               colors: [
@@ -341,7 +341,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: scheme.primary.withValues(alpha: 0.14),
-                  borderRadius: AppDesign.borderRadiusMd,
+                  borderRadius: AppDesign.innerBorderRadius(context),
                 ),
                 child: Icon(info.icon, size: 22, color: scheme.primary),
               ),

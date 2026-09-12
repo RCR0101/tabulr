@@ -996,9 +996,10 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
 
     try {
       final autoLoadService = AutoLoadCDCService();
-      final result = await showDialog<AutoLoadCDCResult>(
+      final result = await AppDialog.adaptive<AutoLoadCDCResult>(
         context: context,
-        builder: (context) => const AutoLoadCDCDialog(),
+        title: 'Load Compulsory Courses',
+        content: const AutoLoadCDCDialog(),
       );
 
       if (!mounted) return;
@@ -1524,7 +1525,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
       padding: const EdgeInsets.all(8),
       child: Material(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDesign.cardBorderRadius(context),
         clipBehavior: Clip.antiAlias,
         child: SizedBox(
           width: 44,
@@ -1754,6 +1755,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
                 onCreditBasisChanged: setCreditBasis,
                 onQuickReplace: quickReplaceCourse,
                 onSectionShuffle: sectionShuffle,
+                onSwitchSection: addSection,
                 onUndo: isMobile ? undo : null,
                 onRedo: isMobile ? redo : null,
                 canUndo: isMobile && undoRedoService.canUndo,
@@ -1801,7 +1803,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
                           color: Theme.of(
                             ctx,
                           ).colorScheme.onSurface.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(2),
+                          borderRadius: AppDesign.borderRadiusXxs,
                         ),
                       ),
                       Padding(
@@ -2355,7 +2357,7 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
                   height: 4,
                   decoration: BoxDecoration(
                     color: scheme.onSurface.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: AppDesign.borderRadiusXxs,
                   ),
                 ),
                 const SizedBox(height: 8),

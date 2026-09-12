@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_constants.dart';
 import '../models/academic_calendar_event.dart';
+import '../models/app_theme.dart';
 import '../services/data/academic_calendar_service.dart';
 import '../services/data/campus_service.dart';
 import '../services/ui/responsive_service.dart';
@@ -24,8 +25,8 @@ Future<void> showAcademicCalendarSheet(
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(ThemeGeometry.of(context).dialogRadius)),
       ),
       builder: (_) => DraggableScrollableSheet(
         initialChildSize: 0.85,
@@ -348,7 +349,7 @@ class _AcademicCalendarAgendaState extends State<AcademicCalendarAgenda> {
           horizontal: AppDesign.spacingMd, vertical: 10),
       decoration: BoxDecoration(
         color: accent.withValues(alpha: past ? 0.04 : 0.08),
-        borderRadius: AppDesign.borderRadiusMd,
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border(left: BorderSide(color: accent, width: 3)),
       ),
       child: Row(
@@ -429,7 +430,7 @@ class _AcademicCalendarAgendaState extends State<AcademicCalendarAgenda> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: accent.withValues(alpha: 0.15 * fade),
-        borderRadius: AppDesign.borderRadiusXs,
+        borderRadius: AppDesign.innerBorderRadius(context),
       ),
       child: Text(
         label,

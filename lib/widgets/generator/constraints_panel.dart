@@ -250,7 +250,7 @@ class _ConstraintsPanelState extends State<ConstraintsPanel> {
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
       ),
       padding: const EdgeInsets.all(12),
@@ -296,7 +296,7 @@ class _ConstraintsPanelState extends State<ConstraintsPanel> {
                   margin: const EdgeInsets.only(bottom: 4),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: AppDesign.innerBorderRadius(context),
                     border: Border.all(
                       color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                     ),
@@ -450,7 +450,7 @@ class _ConstraintsPanelState extends State<ConstraintsPanel> {
             constraints: const BoxConstraints(maxHeight: 160),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: AppDesign.cardBorderRadius(context),
               border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.4)),
             ),
             padding: const EdgeInsets.all(12),
@@ -478,7 +478,7 @@ class _ConstraintsPanelState extends State<ConstraintsPanel> {
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: AppDesign.cardBorderRadius(context),
                       ),
                       child: Text(
                         '${widget.controller.instructorRankings.length} course${widget.controller.instructorRankings.length == 1 ? '' : 's'}',
@@ -496,7 +496,7 @@ class _ConstraintsPanelState extends State<ConstraintsPanel> {
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.errorContainer,
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: AppDesign.innerBorderRadius(context),
                         ),
                         child: Icon(
                           Icons.clear_all,
@@ -533,7 +533,7 @@ class _ConstraintsPanelState extends State<ConstraintsPanel> {
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: AppDesign.cardBorderRadius(context),
                               border: Border.all(
                                 color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                               ),
@@ -557,7 +557,7 @@ class _ConstraintsPanelState extends State<ConstraintsPanel> {
                                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                                       decoration: BoxDecoration(
                                         color: Theme.of(context).colorScheme.primary,
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius: AppDesign.buttonBorderRadius(context),
                                       ),
                                       child: Text(
                                         totalRanked.toString(),
@@ -612,7 +612,7 @@ class _ConstraintsPanelState extends State<ConstraintsPanel> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: AppDesign.buttonBorderRadius(context),
               border: Border.all(color: Theme.of(context).colorScheme.outline),
             ),
             child: Text(
@@ -646,7 +646,7 @@ class _ConstraintsPanelState extends State<ConstraintsPanel> {
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       decoration: BoxDecoration(
         color: badgeColor.withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppDesign.innerBorderRadius(context),
       ),
       child: Text(
         '$sectionType:$count',

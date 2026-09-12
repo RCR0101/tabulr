@@ -5,6 +5,7 @@ import '../../services/data/admin_service.dart';
 import '../../services/data/courses_master_service.dart';
 import '../../services/ui/toast_service.dart';
 import '../../utils/design_constants.dart';
+import '../../models/app_theme.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_dialog.dart';
 
@@ -363,7 +364,7 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
                     alignment: Alignment.topLeft,
                     child: Material(
                       elevation: 4,
-                      borderRadius: AppDesign.borderRadiusSm,
+                      borderRadius: BorderRadius.circular(ThemeGeometry.of(ctx).dialogRadius),
                       child: ConstrainedBox(
                         constraints:
                             const BoxConstraints(maxHeight: 200, maxWidth: 360),
@@ -513,7 +514,7 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
                         color: AppDesign.muted(context))),
               )
             else
-              for (var i = 0; i < _groups.length; i++) _groupCard(i, scheme),
+              for (var i = 0; i < _groups.length; i++) _groupCard(i, scheme, context),
           ],
           const SizedBox(height: AppDesign.spacingLg),
           AppButton(
@@ -528,7 +529,7 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
     );
   }
 
-  Widget _groupCard(int index, ColorScheme scheme) {
+  Widget _groupCard(int index, ColorScheme scheme, BuildContext context) {
     final g = _groups[index];
     final isChoice = g.codes.length > 1;
     return Container(
@@ -551,7 +552,7 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
                   color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppDesign.inputBorderRadius(context),
                   border:
                       Border.all(color: scheme.outline.withValues(alpha: 0.15)),
                 ),
@@ -562,7 +563,7 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
                   value: _types.contains(g.type) ? g.type : 'pre',
                   underline: const SizedBox.shrink(),
                   isDense: true,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppDesign.inputBorderRadius(context),
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,

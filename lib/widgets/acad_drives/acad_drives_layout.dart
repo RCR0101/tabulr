@@ -56,7 +56,7 @@ class AcadDrivesHeader extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: scheme.surface,
-        borderRadius: AppDesign.borderRadiusLg,
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: scheme.outlineVariant.withValues(alpha: .8)),
       ),
       child: LayoutBuilder(
@@ -70,7 +70,7 @@ class AcadDrivesHeader extends StatelessWidget {
                 height: 40,
                 decoration: BoxDecoration(
                   color: tint.withValues(alpha: .09),
-                  borderRadius: AppDesign.borderRadiusSm,
+                  borderRadius: AppDesign.innerBorderRadius(context),
                 ),
                 child: Icon(icon, color: tint, size: 21),
               ),
@@ -208,7 +208,7 @@ class AcadDrivesToolbar extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: scheme.surface,
-        borderRadius: AppDesign.borderRadiusMd,
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: scheme.outlineVariant.withValues(alpha: .8)),
       ),
       child: child,

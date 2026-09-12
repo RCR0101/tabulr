@@ -4,6 +4,7 @@ import '../../constants/app_constants.dart';
 import '../../widgets/app_destinations.dart';
 import '../data/user_settings_service.dart';
 import '../data/auth_service.dart';
+import '../../utils/design_constants.dart';
 
 class TutorialKeys {
   TutorialKeys._();
@@ -808,7 +809,7 @@ class TutorialService {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: scheme.surface.withValues(alpha: 0.95),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: AppDesign.cardBorderRadius(context),
                     border: Border.all(
                       color: scheme.primary.withValues(alpha: 0.3),
                       width: 1.5,

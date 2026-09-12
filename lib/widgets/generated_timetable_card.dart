@@ -76,7 +76,7 @@ class GeneratedTimetableCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: Theme.of(context).colorScheme.secondaryContainer,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: AppDesign.chipBorderRadius(context),
                           ),
                           child: Text(
                             '${timetable.totalCredits.toStringAsFixed(1)}'
@@ -102,7 +102,7 @@ class GeneratedTimetableCard extends StatelessWidget {
               message: 'Why this rank?',
               child: InkWell(
                 onTap: () => _showTradeoff(context),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppDesign.buttonBorderRadius(context),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -153,7 +153,7 @@ class GeneratedTimetableCard extends StatelessWidget {
                     color: isOptional
                         ? Theme.of(context).colorScheme.tertiaryContainer.withValues(alpha: AppDesign.opacityLow)
                         : Theme.of(context).colorScheme.primaryContainer.withValues(alpha: AppDesign.opacityLow),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: AppDesign.innerBorderRadius(context),
                     border: Border.all(
                       color: isOptional
                           ? Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.3)
@@ -258,7 +258,7 @@ class GeneratedTimetableCard extends StatelessWidget {
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: color, borderRadius: AppDesign.chipBorderRadius(context)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -360,7 +360,7 @@ class GeneratedTimetableCard extends StatelessWidget {
           ),
           Expanded(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: AppDesign.innerBorderRadius(context),
               child: LinearProgressIndicator(
                 value: value.clamp(0.0, 1.0),
                 minHeight: 8,

@@ -201,13 +201,13 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
 
       if (!mounted) return;
 
-      final selectedCourses = await showDialog<Map<String, List<AllCourse>>>(
+      final selectedCourses = await AppDialog.adaptive<Map<String, List<AllCourse>>>(
         context: context,
-        builder:
-            (context) => CourseSelectionDialog(
-              timetables: allTimetables,
-              semesters: _controller.semesters,
-            ),
+        title: 'Select Courses',
+        content: CourseSelectionDialog(
+          timetables: allTimetables,
+          semesters: _controller.semesters,
+        ),
       );
 
       if (selectedCourses == null || selectedCourses.isEmpty) return;
@@ -266,13 +266,13 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
 
       if (!mounted) return;
 
-      final confirmed = await showDialog<bool>(
+      final confirmed = await AppDialog.adaptive<bool>(
         context: context,
-        builder:
-            (context) => PerformanceSheetPreviewDialog(
-              parsed: parsed,
-              allCourses: _controller.allCourses,
-            ),
+        title: 'Preview Performance Sheet',
+        content: PerformanceSheetPreviewDialog(
+          parsed: parsed,
+          allCourses: _controller.allCourses,
+        ),
       );
 
       if (confirmed != true) return;
@@ -301,9 +301,10 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
 
   Future<void> _loadCDCs() async {
     try {
-      final result = await showDialog<AutoLoadCDCResult>(
+      final result = await AppDialog.adaptive<AutoLoadCDCResult>(
         context: context,
-        builder: (context) => const AutoLoadCDCDialog(),
+        title: 'Load Compulsory Courses',
+        content: const AutoLoadCDCDialog(),
       );
 
       if (result == null || !mounted) return;
@@ -343,55 +344,78 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
 
     if (semestersWithData.isEmpty) return;
 
-    showDialog(
+    AppDialog.show(
       context: context,
-      builder:
-          (context) => Dialog(
-            backgroundColor: Colors.transparent,
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: ResponsiveService.isMobile(context) ? 340 : 400,
-                maxHeight: ResponsiveService.isMobile(context) ? 500 : 600,
-              ),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.shadow.withValues(alpha: 0.15),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(24),
+      title: 'Semester Breakdown',
+      icon: Icons.analytics_rounded,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'SGPA for each semester',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Flexible(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 350),
+              child: ListView.builder(
+                padding: const EdgeInsets.all(0),
+                shrinkWrap: true,
+                itemCount: semestersWithData.length,
+                itemBuilder: (context, index) {
+                  final entry = semestersWithData[index];
+                  final semesterName = entry.key;
+                  final semesterData = entry.value;
+                  final sgpa = semesterData.sgpa;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(24),
-                        topRight: Radius.circular(24),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainer
+                          .withValues(alpha: 0.5),
+                      borderRadius: AppDesign.cardBorderRadius(context),
+                      border: Border.all(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outline.withValues(alpha: 0.2),
                       ),
                     ),
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(8),
+                          width: 48,
+                          height: 48,
                           decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Theme.of(context).colorScheme.primary
+                                    .withValues(alpha: 0.8),
+                                Theme.of(context).colorScheme.primary
+                                    .withValues(alpha: 0.6),
+                              ],
+                            ),
+                            borderRadius: AppDesign.cardBorderRadius(context),
                           ),
-                          child: Icon(
-                            Icons.analytics_rounded,
-                            color: Theme.of(context).colorScheme.primary,
-                            size: 24,
+                          child: Center(
+                            child: Text(
+                              '${index + 1}',
+                              style: TextStyle(
+                                color:
+                                    Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -400,233 +424,122 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Semester Breakdown',
+                                semesterName,
                                 style: Theme.of(
                                   context,
-                                ).textTheme.titleLarge?.copyWith(
-                                  color:
-                                      Theme.of(context).colorScheme.onSurface,
-                                  fontWeight: FontWeight.bold,
+                                ).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              Text(
-                                'SGPA for each semester',
-                                style: Theme.of(
-                                  context,
-                                ).textTheme.bodyMedium?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface
-                                      .withValues(alpha: 0.7),
-                                ),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.school_rounded,
+                                    size: 16,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant
+                                        .withValues(alpha: 0.7),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${semesterData.courses.length} courses • ${semesterData.totalCredits.toStringAsFixed(0)} credits',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant
+                                          .withValues(alpha: 0.8),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                         ),
-                        IconButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: Icon(
-                            Icons.close_rounded,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.7),
-                            size: 24,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Flexible(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      shrinkWrap: true,
-                      itemCount: semestersWithData.length,
-                      itemBuilder: (context, index) {
-                        final entry = semestersWithData[index];
-                        final semesterName = entry.key;
-                        final semesterData = entry.value;
-                        final sgpa = semesterData.sgpa;
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainer
-                                .withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(16),
+                            color: _getSGPAColor(
+                              sgpa,
+                            ).withValues(alpha: 0.15),
+                            borderRadius: AppDesign.cardBorderRadius(context),
                             border: Border.all(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.outline.withValues(alpha: 0.2),
+                              color: _getSGPAColor(
+                                sgpa,
+                              ).withValues(alpha: 0.3),
                             ),
                           ),
-                          child: Row(
+                          child: Column(
                             children: [
-                              Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      Theme.of(context).colorScheme.primary
-                                          .withValues(alpha: 0.8),
-                                      Theme.of(context).colorScheme.primary
-                                          .withValues(alpha: 0.6),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '${index + 1}',
-                                    style: TextStyle(
-                                      color:
-                                          Theme.of(
-                                            context,
-                                          ).colorScheme.onPrimary,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
+                              Text(
+                                sgpa.toStringAsFixed(2),
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.titleMedium?.copyWith(
+                                  color: _getSGPAColor(sgpa),
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      semesterName,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.school_rounded,
-                                          size: 16,
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurfaceVariant
-                                              .withValues(alpha: 0.7),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${semesterData.courses.length} courses • ${semesterData.totalCredits.toStringAsFixed(0)} credits',
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.bodySmall?.copyWith(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onSurfaceVariant
-                                                .withValues(alpha: 0.8),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _getSGPAColor(
-                                    sgpa,
-                                  ).withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: _getSGPAColor(
-                                      sgpa,
-                                    ).withValues(alpha: 0.3),
-                                  ),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      sgpa.toStringAsFixed(2),
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleMedium?.copyWith(
-                                        color: _getSGPAColor(sgpa),
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Text(
-                                      // Named for what it is, or flagged when the
-                                      // weights are not comparable — an average of
-                                      // units and contact hours is not an SGPA.
+                              Text(
+                                // Named for what it is, or flagged when the
+                                // weights are not comparable — an average of
+                                // units and contact hours is not an SGPA.
+                                semesterData.mixesCreditBasis
+                                    ? 'SGPA ⚠'
+                                    : 'SGPA',
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.labelSmall?.copyWith(
+                                  color:
                                       semesterData.mixesCreditBasis
-                                          ? 'SGPA ⚠'
-                                          : 'SGPA',
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.labelSmall?.copyWith(
-                                        color:
-                                            semesterData.mixesCreditBasis
-                                                ? Theme.of(
-                                                  context,
-                                                ).colorScheme.error
-                                                : _getSGPAColor(sgpa),
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                  ],
+                                          ? Theme.of(
+                                            context,
+                                          ).colorScheme.error
+                                          : _getSGPAColor(sgpa),
+                                  fontSize: 10,
                                 ),
                               ),
                             ],
                           ),
-                        );
-                      },
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(24),
-                        bottomRight: Radius.circular(24),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.calculate_rounded,
-                          size: 16,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.7),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Overall CGPA: ${_controller.cgpaData.cgpa.toStringAsFixed(2)}',
-                          style: Theme.of(
-                            context,
-                          ).textTheme.titleMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontWeight: FontWeight.w600,
-                          ),
                         ),
                       ],
                     ),
-                  ),
-                ],
+                  );
+                },
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.calculate_rounded,
+                size: 16,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Overall CGPA: ${_controller.cgpaData.cgpa.toStringAsFixed(2)}',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -649,55 +562,79 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
 
     if (semestersWithData.isEmpty) return;
 
-    showDialog(
+    AppDialog.show(
       context: context,
-      builder:
-          (context) => Dialog(
-            backgroundColor: Colors.transparent,
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: ResponsiveService.isMobile(context) ? 340 : 400,
-                maxHeight: ResponsiveService.isMobile(context) ? 500 : 600,
-              ),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.shadow.withValues(alpha: 0.15),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(24),
+      title: 'Credits Breakdown',
+      icon: Icons.school_rounded,
+      iconColor: Theme.of(context).colorScheme.secondary,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Credits for each semester',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Flexible(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 350),
+              child: ListView.builder(
+                padding: const EdgeInsets.all(0),
+                shrinkWrap: true,
+                itemCount: semestersWithData.length,
+                itemBuilder: (context, index) {
+                  final entry = semestersWithData[index];
+                  final semesterName = entry.key;
+                  final semesterData = entry.value;
+                  final credits = semesterData.totalCredits;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(24),
-                        topRight: Radius.circular(24),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainer
+                          .withValues(alpha: 0.5),
+                      borderRadius: AppDesign.cardBorderRadius(context),
+                      border: Border.all(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.outline.withValues(alpha: 0.2),
                       ),
                     ),
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(8),
+                          width: 48,
+                          height: 48,
                           decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.secondary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Theme.of(context).colorScheme.secondary
+                                    .withValues(alpha: 0.8),
+                                Theme.of(context).colorScheme.secondary
+                                    .withValues(alpha: 0.6),
+                              ],
+                            ),
+                            borderRadius: AppDesign.cardBorderRadius(context),
                           ),
-                          child: Icon(
-                            Icons.school_rounded,
-                            color: Theme.of(context).colorScheme.secondary,
-                            size: 24,
+                          child: Center(
+                            child: Text(
+                              '${index + 1}',
+                              style: TextStyle(
+                                color:
+                                    Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -706,223 +643,112 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Credits Breakdown',
+                                semesterName,
                                 style: Theme.of(
                                   context,
-                                ).textTheme.titleLarge?.copyWith(
-                                  color:
-                                      Theme.of(context).colorScheme.onSurface,
-                                  fontWeight: FontWeight.bold,
+                                ).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              Text(
-                                'Credits for each semester',
-                                style: Theme.of(
-                                  context,
-                                ).textTheme.bodyMedium?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface
-                                      .withValues(alpha: 0.7),
-                                ),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.book_rounded,
+                                    size: 16,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant
+                                        .withValues(alpha: 0.7),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${semesterData.courses.length} courses enrolled',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant
+                                          .withValues(alpha: 0.8),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                         ),
-                        IconButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: Icon(
-                            Icons.close_rounded,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.7),
-                            size: 24,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Flexible(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      shrinkWrap: true,
-                      itemCount: semestersWithData.length,
-                      itemBuilder: (context, index) {
-                        final entry = semestersWithData[index];
-                        final semesterName = entry.key;
-                        final semesterData = entry.value;
-                        final credits = semesterData.totalCredits;
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surfaceContainer
-                                .withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(16),
+                            color: _getCreditsColor(
+                              credits,
+                            ).withValues(alpha: 0.15),
+                            borderRadius: AppDesign.cardBorderRadius(context),
                             border: Border.all(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.outline.withValues(alpha: 0.2),
+                              color: _getCreditsColor(
+                                credits,
+                              ).withValues(alpha: 0.3),
                             ),
                           ),
-                          child: Row(
+                          child: Column(
                             children: [
-                              Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      Theme.of(context).colorScheme.secondary
-                                          .withValues(alpha: 0.8),
-                                      Theme.of(context).colorScheme.secondary
-                                          .withValues(alpha: 0.6),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '${index + 1}',
-                                    style: TextStyle(
-                                      color:
-                                          Theme.of(
-                                            context,
-                                          ).colorScheme.onPrimary,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
+                              Text(
+                                credits.toStringAsFixed(0),
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.titleMedium?.copyWith(
+                                  color: _getCreditsColor(credits),
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      semesterName,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.book_rounded,
-                                          size: 16,
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurfaceVariant
-                                              .withValues(alpha: 0.7),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${semesterData.courses.length} courses enrolled',
-                                          style: Theme.of(
-                                            context,
-                                          ).textTheme.bodySmall?.copyWith(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onSurfaceVariant
-                                                .withValues(alpha: 0.8),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _getCreditsColor(
-                                    credits,
-                                  ).withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: _getCreditsColor(
-                                      credits,
-                                    ).withValues(alpha: 0.3),
-                                  ),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      credits.toStringAsFixed(0),
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleMedium?.copyWith(
-                                        color: _getCreditsColor(credits),
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Text(
-                                      'Credits',
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.labelSmall?.copyWith(
-                                        color: _getCreditsColor(credits),
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                  ],
+                              Text(
+                                'Credits',
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.labelSmall?.copyWith(
+                                  color: _getCreditsColor(credits),
+                                  fontSize: 10,
                                 ),
                               ),
                             ],
                           ),
-                        );
-                      },
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(24),
-                        bottomRight: Radius.circular(24),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.school_rounded,
-                          size: 16,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.7),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Total Credits: ${_controller.cgpaData.semesters.values.fold<double>(0.0, (sum, sem) => sum + sem.totalCredits).toStringAsFixed(0)}',
-                          style: Theme.of(
-                            context,
-                          ).textTheme.titleMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontWeight: FontWeight.w600,
-                          ),
                         ),
                       ],
                     ),
-                  ),
-                ],
+                  );
+                },
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.school_rounded,
+                size: 16,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Total Credits: ${_controller.cgpaData.semesters.values.fold<double>(0.0, (sum, sem) => sum + sem.totalCredits).toStringAsFixed(0)}',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -983,7 +809,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
         children: [
           ListTile(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: AppDesign.buttonBorderRadius(context),
             ),
             leading: Icon(
               Icons.school_rounded,
@@ -1006,7 +832,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
           const SizedBox(height: 8),
           ListTile(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: AppDesign.buttonBorderRadius(context),
             ),
             leading: Icon(
               Icons.wb_sunny_rounded,
@@ -1782,7 +1608,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                               style: FilledButton.styleFrom(
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: AppDesign.buttonBorderRadius(context),
                                 ),
                               ),
                             ),
@@ -1831,7 +1657,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                                 ).colorScheme.primary.withValues(alpha: 0.5),
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: AppDesign.buttonBorderRadius(context),
                               ),
                             ),
                           ),
@@ -1857,7 +1683,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                             style: FilledButton.styleFrom(
                               elevation: 0,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: AppDesign.cardBorderRadius(context),
                               ),
                             ),
                           ),
@@ -1901,7 +1727,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                               ).colorScheme.primary.withValues(alpha: 0.5),
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: AppDesign.cardBorderRadius(context),
                             ),
                           ),
                         ),
@@ -1979,14 +1805,14 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
     return Container(
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(
           color: scheme.outline.withValues(alpha: AppDesign.opacityDivider),
         ),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDesign.cardBorderRadius(context),
         child: Padding(
           padding: EdgeInsets.all(isMobile ? 10 : 12),
           child: Column(
@@ -2053,7 +1879,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                     ),
                     decoration: BoxDecoration(
                       color: scheme.secondaryContainer.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppDesign.cardBorderRadius(context),
                     ),
                     child: Text(
                       '${course.credits} ${course.isInCreditHours ? 'ch' : 'cr'}',
@@ -2074,7 +1900,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                         ),
                         decoration: BoxDecoration(
                           color: scheme.error.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: AppDesign.chipBorderRadius(context),
                         ),
                         child: Text(
                           'Superseded',
@@ -2108,7 +1934,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surfaceContainerHighest
                         .withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: AppDesign.chipBorderRadius(context),
                     border: Border.all(
                       color: Theme.of(
                         context,
@@ -2163,7 +1989,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
 
     return Material(
       elevation: 0,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: AppDesign.cardBorderRadius(context),
       child: Container(
         height: isMobile ? 44 : 48,
         decoration: BoxDecoration(
@@ -2171,7 +1997,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
               selectedGrade != null
                   ? gradeColor!.withValues(alpha: 0.08)
                   : colorScheme.surfaceContainer,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppDesign.cardBorderRadius(context),
           border: Border.all(
             color:
                 selectedGrade != null
@@ -2229,7 +2055,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                       height: 28,
                       decoration: BoxDecoration(
                         color: color,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: AppDesign.inputBorderRadius(context),
                         boxShadow: [
                           BoxShadow(
                             color: color.withValues(alpha: 0.3),
@@ -2268,7 +2094,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 color: colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppDesign.inputBorderRadius(context),
               ),
               child: Icon(
                 Icons.expand_more_rounded,
@@ -2276,7 +2102,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                 color: colorScheme.primary,
               ),
             ),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppDesign.cardBorderRadius(context),
             elevation: 2,
             dropdownColor: colorScheme.surfaceContainer,
             menuMaxHeight: 320,
@@ -2300,7 +2126,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                             height: 28,
                             decoration: BoxDecoration(
                               color: gradeColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: AppDesign.chipBorderRadius(context),
                             ),
                             child: Center(
                               child: Text(
@@ -2350,7 +2176,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
       builder:
           (context) => Dialog(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppDesign.cardBorderRadius(context),
             ),
             child: ConstrainedBox(
               constraints: BoxConstraints(
@@ -2402,7 +2228,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                             labelText: 'Search Course',
                             hintText: 'Enter course code or title',
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: AppDesign.inputBorderRadius(context),
                             ),
                             prefixIcon: const Icon(
                               Icons.search_outlined,
@@ -2463,7 +2289,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                                       : Theme.of(
                                         context,
                                       ).colorScheme.secondaryContainer,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: AppDesign.cardBorderRadius(context),
                             ),
                             child: Text(
                               course.type,

@@ -358,7 +358,7 @@ class _CourseGuideWidgetState extends State<CourseGuideWidget> {
             padding: const EdgeInsets.all(9),
             decoration: BoxDecoration(
               color: scheme.primaryContainer,
-              borderRadius: AppDesign.borderRadiusSm,
+              borderRadius: AppDesign.innerBorderRadius(context),
             ),
             child: Icon(
               Icons.school_outlined,
@@ -728,7 +728,7 @@ class _SlotRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
           decoration: BoxDecoration(
             color: scheme.primary.withValues(alpha: 0.1),
-            borderRadius: AppDesign.borderRadiusXs,
+            borderRadius: AppDesign.innerBorderRadius(context),
           ),
           child: Text(
             '${CourseGuideSemesterCard._credits(entry.credits)}'

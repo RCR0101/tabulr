@@ -433,7 +433,7 @@ class _CourseCard extends StatelessWidget {
       color: surface,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppDesign.cardBorderRadius(context),
         side: BorderSide(color: outline),
       ),
       child: Theme(
@@ -667,7 +667,7 @@ class _CourseCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: filled ? 0.16 : 0.09),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: AppDesign.innerBorderRadius(context),
         border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Text(
@@ -720,7 +720,7 @@ class _CourseCard extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: rowColor,
-        borderRadius: BorderRadius.circular(11),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: rowBorder),
       ),
       child: Row(
@@ -845,7 +845,7 @@ class _CourseCard extends StatelessWidget {
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           backgroundColor:
               enabled ? color.withValues(alpha: 0.11) : Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(borderRadius: AppDesign.buttonBorderRadius(context)),
         ),
         child: Text(
           state.isSelected
@@ -871,7 +871,7 @@ class _CourseCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
         color: scheme.errorContainer.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(9),
+        borderRadius: AppDesign.cardBorderRadius(context),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

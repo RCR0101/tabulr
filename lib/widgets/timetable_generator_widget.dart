@@ -29,6 +29,7 @@ import 'generator/constraints_panel.dart';
 import 'generator/generator_results_views.dart';
 import 'generator/ranking_importance_panel.dart';
 
+import '../models/app_theme.dart';
 class TimetableGeneratorWidget extends StatefulWidget {
   final List<Course> availableCourses;
   final Function(GeneratedTimetable) onTimetableSelected;
@@ -234,7 +235,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
@@ -245,9 +246,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(ThemeGeometry.of(context).cardRadius),
+                topRight: Radius.circular(ThemeGeometry.of(context).cardRadius),
               ),
             ),
             child: Row(
@@ -288,7 +289,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       // The panel's card colour would otherwise hide the ink/background of the
@@ -296,7 +297,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       // back on top of the card, clipped to the same corners.
       child: Material(
         type: MaterialType.transparency,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDesign.cardBorderRadius(context),
         child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -306,8 +307,8 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
+                topLeft: Radius.circular(ThemeGeometry.of(context).cardRadius),
+                topRight: Radius.circular(ThemeGeometry.of(context).cardRadius),
               ),
             ),
             child: Row(
@@ -346,7 +347,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       child: Column(
@@ -357,9 +358,9 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(ThemeGeometry.of(context).cardRadius),
+                topRight: Radius.circular(ThemeGeometry.of(context).cardRadius),
               ),
             ),
             child: Row(
@@ -384,7 +385,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppDesign.cardBorderRadius(context),
                     ),
                     child: Text(
                       '${_ctrl.rankedTimetables.length} found',
@@ -433,9 +434,10 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
   /// picks the actual sections. Codes already sitting in the optional list are
   /// promoted to mandatory rather than duplicated.
   Future<void> _autoAddCDCs() async {
-    final result = await showDialog<AutoLoadCDCResult>(
+    final result = await AppDialog.adaptive<AutoLoadCDCResult>(
       context: context,
-      builder: (context) => const AutoLoadCDCDialog(),
+      title: 'Load Compulsory Courses',
+      content: const AutoLoadCDCDialog(),
     );
     if (result == null || !mounted) return;
 
@@ -696,7 +698,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: AppDesign.warning(context).withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: AppDesign.cardBorderRadius(context),
           border: Border.all(color: AppDesign.warning(context).withValues(alpha: 0.4)),
         ),
         child: Column(
@@ -808,7 +810,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: AppDesign.buttonBorderRadius(context),
           border: Border.all(color: Theme.of(context).colorScheme.outline),
         ),
         child: Center(
@@ -831,7 +833,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       constraints: const BoxConstraints(maxHeight: 150),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDesign.buttonBorderRadius(context),
         border: Border.all(color: Theme.of(context).colorScheme.outline),
       ),
       padding: const EdgeInsets.all(12),
@@ -932,7 +934,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: AppDesign.buttonBorderRadius(context),
           border: Border.all(color: Theme.of(context).colorScheme.outline),
         ),
         child: Center(
@@ -968,7 +970,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
     return Container(
       decoration: BoxDecoration(
         color: scheme.surface.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDesign.buttonBorderRadius(context),
         border: Border.all(
           color: isClashGroup
               ? scheme.error.withValues(alpha: 0.3)
@@ -1041,7 +1043,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
       margin: const EdgeInsets.only(bottom: 4),
       decoration: BoxDecoration(
         color: accentColor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: AppDesign.innerBorderRadius(context),
         border: Border.all(color: accentColor.withValues(alpha: 0.3)),
       ),
       child: Row(
@@ -1229,7 +1231,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: AppDesign.warning(context).withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: AppDesign.cardBorderRadius(context),
           border: Border.all(color: AppDesign.warning(context).withValues(alpha: 0.4)),
         ),
         child: Column(
@@ -1447,7 +1449,7 @@ class _TimetableGeneratorWidgetState extends State<TimetableGeneratorWidget>
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: AppDesign.buttonBorderRadius(context),
               border: Border.all(
                 color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
               ),

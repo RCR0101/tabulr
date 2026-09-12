@@ -92,7 +92,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     maxHeight: 200,
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: AppDesign.cardBorderRadius(context),
                     child: Image.asset(
                       'images/full_logo_bg.png',
                       fit: BoxFit.contain,

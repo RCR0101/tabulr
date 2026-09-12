@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/design_constants.dart';
 
 /// A dropdown in a rounded, bordered box.
 ///
@@ -68,7 +69,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
       height: widget.height,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDesign.inputBorderRadius(context),
         color: _focused && enabled
             ? scheme.primary.withValues(alpha: 0.06)
             : Colors.transparent,
@@ -88,7 +89,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
           // rectangle that looked wrong inside the rounded box.
           focusColor: Colors.transparent,
           // Rounds the popup menu to match the control it opens from.
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: AppDesign.cardBorderRadius(context),
           // Derived from the text theme, not a bare TextStyle: a TextStyle with
           // no fontFamily falls back to the platform default rather than the
           // app's typeface, so every dropdown was rendering in the wrong font.

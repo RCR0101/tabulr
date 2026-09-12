@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/timetable_constraints.dart';
 import '../../services/ui/responsive_service.dart';
 
+import '../../utils/design_constants.dart';
 class InstructorRankingDialog extends StatefulWidget {
   final Map<String, Map<String, List<String>>> courseSectionInstructors;
   final Map<String, InstructorRankings> currentRankings;
@@ -63,7 +64,7 @@ class _InstructorRankingDialogState extends State<InstructorRankingDialog>
             Container(
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppDesign.buttonBorderRadius(context),
                 border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3)),
               ),
               child: TabBar(
@@ -203,7 +204,7 @@ class _InstructorRankingDialogState extends State<InstructorRankingDialog>
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppDesign.cardBorderRadius(context),
                   ),
                   child: Text(
                     typeKey,
@@ -238,7 +239,7 @@ class _InstructorRankingDialogState extends State<InstructorRankingDialog>
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppDesign.buttonBorderRadius(context),
                 border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
               ),
               // ListTiles paint ink/background on the nearest Material; provide a
@@ -272,7 +273,7 @@ class _InstructorRankingDialogState extends State<InstructorRankingDialog>
                           ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
                           : Theme.of(context).colorScheme.surface,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: AppDesign.innerBorderRadius(context),
                         side: isTopRank
                             ? BorderSide(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3))
                             : BorderSide.none,

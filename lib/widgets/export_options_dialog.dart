@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/export_options.dart';
+import '../utils/design_constants.dart';
 import '../services/ui/responsive_service.dart';
 
 class ExportOptionsDialog extends StatefulWidget {
@@ -169,7 +170,7 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
               padding: ResponsiveService.getAdaptivePadding(context, const EdgeInsets.all(12)),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppDesign.cardBorderRadius(context),
                 border: Border.all(
                   color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
                 ),
@@ -211,7 +212,7 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
                           ResponsiveService.getTouchTargetSize(context),
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: AppDesign.buttonBorderRadius(context),
                           side: BorderSide(
                             color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
                           ),
@@ -235,7 +236,7 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
                           ResponsiveService.getTouchTargetSize(context),
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: AppDesign.buttonBorderRadius(context),
                           side: BorderSide(
                             color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
                           ),
@@ -262,7 +263,7 @@ class _ExportOptionsDialogState extends State<ExportOptionsDialog> {
                       ResponsiveService.getTouchTargetSize(context),
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppDesign.buttonBorderRadius(context),
                     ),
                   ),
                   icon: Icon(Icons.download, size: ResponsiveService.getAdaptiveIconSize(context, 16)),

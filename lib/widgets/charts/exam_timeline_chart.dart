@@ -3,6 +3,7 @@ import '../../constants/app_constants.dart';
 import '../../models/course.dart' show TimeSlotInfo;
 import '../../models/timetable_stats.dart';
 
+import '../../utils/design_constants.dart';
 /// Two day-by-day strips — one for Mid-Semester exams, one for Comprehensives —
 /// each spanning only its own window (from that block's first exam to its last).
 /// Keeping them separate avoids a dead two-month gap between the blocks. Within
@@ -125,7 +126,7 @@ class ExamTimelineChart extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
         color: inCluster ? scheme.error.withValues(alpha: 0.08) : null,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: AppDesign.innerBorderRadius(context),
         border: inCluster
             ? Border.all(color: scheme.error.withValues(alpha: 0.25))
             : null,
@@ -159,7 +160,7 @@ class ExamTimelineChart extends StatelessWidget {
                       height: 6,
                       decoration: BoxDecoration(
                         color: markerColor,
-                        borderRadius: BorderRadius.circular(3),
+                        borderRadius: AppDesign.innerBorderRadius(context),
                       ),
                     ),
                   ),
@@ -180,7 +181,7 @@ class ExamTimelineChart extends StatelessWidget {
           height: 12,
           decoration: BoxDecoration(
             color: scheme.error.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: AppDesign.innerBorderRadius(context),
             border: Border.all(color: scheme.error.withValues(alpha: 0.25)),
           ),
         ),

@@ -109,7 +109,7 @@ class TimetableInsightsSheet extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: AppDesign.cardBorderRadius(context),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -133,7 +133,7 @@ class TimetableInsightsSheet extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: scheme.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDesign.cardBorderRadius(context),
       ),
       child: Row(
         children: [

@@ -97,7 +97,7 @@ class _CgpaTrajectoryScreenState extends State<CgpaTrajectoryScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: AppDesign.chipBorderRadius(context),
       ),
       child: Row(
         children: [
@@ -190,7 +190,7 @@ class _CgpaTrajectoryScreenState extends State<CgpaTrajectoryScreen> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDesign.cardBorderRadius(context),
       ),
       child: Row(
         children: [
@@ -239,7 +239,7 @@ class _CgpaTrajectoryScreenState extends State<CgpaTrajectoryScreen> {
                         width: w,
                         decoration: BoxDecoration(
                           color: _gradeColor(scheme, g),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: AppDesign.innerBorderRadius(context),
                         ),
                       ),
                     );
@@ -272,7 +272,7 @@ class _CgpaTrajectoryScreenState extends State<CgpaTrajectoryScreen> {
                 width: 14,
                 height: line ? 3 : 10,
                 decoration: BoxDecoration(
-                    color: c, borderRadius: BorderRadius.circular(3))),
+                    color: c, borderRadius: AppDesign.borderRadiusXxs)),
             const SizedBox(width: 5),
             Text(label,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -291,7 +291,7 @@ class _CgpaTrajectoryScreenState extends State<CgpaTrajectoryScreen> {
       padding: const EdgeInsets.all(AppDesign.spacingMd),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: scheme.outline.withValues(alpha: 0.1)),
       ),
       child: Column(

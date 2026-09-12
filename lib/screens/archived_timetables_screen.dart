@@ -88,10 +88,10 @@ class _ArchivedTimetablesScreenState extends State<ArchivedTimetablesScreen> {
                     final courseCodes = tt.selectedSections.map((s) => s.courseCode).toSet().toList();
                     return Card(
                       elevation: 1,
-                      shape: RoundedRectangleBorder(borderRadius: AppDesign.borderRadiusMd),
+                      shape: RoundedRectangleBorder(borderRadius: AppDesign.cardBorderRadius(context)),
                       margin: const EdgeInsets.only(bottom: 12),
                       child: InkWell(
-                        borderRadius: AppDesign.borderRadiusMd,
+                        borderRadius: AppDesign.buttonBorderRadius(context),
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -116,7 +116,7 @@ class _ArchivedTimetablesScreenState extends State<ArchivedTimetablesScreen> {
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                     decoration: BoxDecoration(
                                       color: scheme.secondaryContainer,
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: AppDesign.chipBorderRadius(context),
                                     ),
                                     child: Text(
                                       'Archived',
@@ -136,7 +136,7 @@ class _ArchivedTimetablesScreenState extends State<ArchivedTimetablesScreen> {
                                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                                     decoration: BoxDecoration(
                                       color: scheme.surfaceContainerHighest,
-                                      borderRadius: BorderRadius.circular(6),
+                                      borderRadius: AppDesign.chipBorderRadius(context),
                                     ),
                                     child: Text(
                                       code,

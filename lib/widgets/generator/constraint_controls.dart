@@ -67,7 +67,7 @@ class ChipListSection extends StatelessWidget {
             constraints: BoxConstraints(maxHeight: maxHeight),
             decoration: BoxDecoration(
               color: scheme.surfaceContainerLow.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: AppDesign.cardBorderRadius(context),
               border: Border.all(
                   color: scheme.outlineVariant.withValues(alpha: 0.4)),
             ),
@@ -81,7 +81,7 @@ class ChipListSection extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: scheme.surfaceContainerLow.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: AppDesign.cardBorderRadius(context),
               border: Border.all(
                   color: scheme.outlineVariant.withValues(alpha: 0.4)),
             ),
@@ -143,7 +143,7 @@ class RequireToggle extends StatelessWidget {
         : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
     return InkWell(
       onTap: () => onChanged(!value),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: AppDesign.buttonBorderRadius(context),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: Row(

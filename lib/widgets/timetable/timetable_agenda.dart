@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/course.dart';
 import '../../models/timetable.dart';
 import '../../utils/datetime_utils.dart';
+import '../../utils/design_constants.dart';
 import 'course_palette.dart';
 import 'timetable_blocks.dart';
 
@@ -193,13 +194,13 @@ class _AgendaRow extends StatelessWidget {
       button: true,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: AppDesign.cardBorderRadius(context),
         child: Container(
           margin: const EdgeInsets.only(bottom: 6),
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: accent.withValues(alpha: isDark ? 0.13 : 0.08),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: AppDesign.cardBorderRadius(context),
             border: Border.all(color: accent.withValues(alpha: 0.22)),
           ),
           child: Row(
@@ -210,7 +211,7 @@ class _AgendaRow extends StatelessWidget {
                 height: 38,
                 decoration: BoxDecoration(
                   color: accent,
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: AppDesign.borderRadiusXxs,
                 ),
               ),
               const SizedBox(width: 10),

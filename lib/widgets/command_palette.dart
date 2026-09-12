@@ -625,7 +625,7 @@ class _CommandPaletteState extends State<CommandPalette> {
             height: 38,
             decoration: BoxDecoration(
               color: scheme.primary,
-              borderRadius: BorderRadius.circular(13),
+              borderRadius: AppDesign.cardBorderRadius(context),
               boxShadow: [
                 BoxShadow(
                   color: scheme.primary.withValues(alpha: 0.22),
@@ -679,7 +679,7 @@ class _CommandPaletteState extends State<CommandPalette> {
         curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
           color: scheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: AppDesign.cardBorderRadius(context),
           border: Border.all(
             color:
                 focused
@@ -828,7 +828,7 @@ class _CommandPaletteState extends State<CommandPalette> {
                 onHover: (hovering) {
                   if (hovering) setState(() => _selectedIndex = index);
                 },
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: AppDesign.cardBorderRadius(context),
                 child: AnimatedContainer(
                   duration:
                       MediaQuery.disableAnimationsOf(context)
@@ -845,7 +845,7 @@ class _CommandPaletteState extends State<CommandPalette> {
                         isSelected
                             ? scheme.primary.withValues(alpha: 0.095)
                             : Colors.transparent,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: AppDesign.cardBorderRadius(context),
                     border: Border.all(
                       color:
                           isSelected
@@ -867,7 +867,7 @@ class _CommandPaletteState extends State<CommandPalette> {
                               isSelected
                                   ? scheme.primary
                                   : scheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: AppDesign.cardBorderRadius(context),
                         ),
                         child: Icon(
                           entry.icon,
@@ -993,7 +993,7 @@ class _CommandPaletteState extends State<CommandPalette> {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: AppDesign.innerBorderRadius(context),
         border: Border.all(color: scheme.outline.withValues(alpha: 0.14)),
       ),
       child: Text(

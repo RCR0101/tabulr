@@ -118,7 +118,7 @@ class _ChangeCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppDesign.spacingSm + 2),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
-        borderRadius: AppDesign.borderRadiusSm,
+        borderRadius: AppDesign.innerBorderRadius(context),
         border: Border.all(
           color: (change.isRemoved ? scheme.error : scheme.outline)
               .withValues(alpha: 0.25),
@@ -139,7 +139,7 @@ class _ChangeCard extends StatelessWidget {
                 ),
               ),
               if (change.isRemoved)
-                _pill('No longer offered', scheme.error, scheme),
+                _pill(context, 'No longer offered', scheme.error),
             ],
           ),
           if (change.courseTitle.isNotEmpty &&
@@ -237,12 +237,12 @@ class _ChangeCard extends StatelessWidget {
     }
   }
 
-  Widget _pill(String text, Color color, ColorScheme scheme) {
+  Widget _pill(BuildContext context, String text, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: AppDesign.chipBorderRadius(context),
       ),
       child: Text(
         text,

@@ -203,7 +203,7 @@ class _DegreeAuditScreenState extends State<DegreeAuditScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: AppDesign.chipBorderRadius(context),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -224,7 +224,7 @@ class _DegreeAuditScreenState extends State<DegreeAuditScreen> {
           ),
           const SizedBox(height: 12),
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: AppDesign.cardBorderRadius(context),
             child: LinearProgressIndicator(
               value: audit.fractionCleared,
               minHeight: 10,
@@ -319,7 +319,7 @@ class _DegreeAuditScreenState extends State<DegreeAuditScreen> {
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: scheme.secondaryContainer.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppDesign.chipBorderRadius(context),
               ),
               child: Text.rich(
                 TextSpan(
@@ -383,7 +383,7 @@ class _DegreeAuditScreenState extends State<DegreeAuditScreen> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: c.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppDesign.cardBorderRadius(context),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -489,7 +489,7 @@ class _DegreeAuditScreenState extends State<DegreeAuditScreen> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: scheme.secondaryContainer.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppDesign.cardBorderRadius(context),
         ),
         child: body,
       );
@@ -512,7 +512,7 @@ class _DegreeAuditScreenState extends State<DegreeAuditScreen> {
       padding: const EdgeInsets.all(AppDesign.spacingMd),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: scheme.outline.withValues(alpha: 0.1)),
       ),
       child: Column(

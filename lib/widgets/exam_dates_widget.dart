@@ -129,7 +129,7 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
           decoration: BoxDecoration(
             color: scheme.primary.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(7),
+            borderRadius: AppDesign.cardBorderRadius(context),
           ),
           child: Text('$count',
               style: TextStyle(
@@ -188,9 +188,9 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
           color: selected
               ? scheme.primary.withValues(alpha: 0.14)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(7),
+          borderRadius: AppDesign.cardBorderRadius(context),
           child: InkWell(
-            borderRadius: BorderRadius.circular(7),
+            borderRadius: AppDesign.cardBorderRadius(context),
             onTap: () => setState(() => _sortColumn = column),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
@@ -227,9 +227,9 @@ class _ExamDatesWidgetState extends State<ExamDatesWidget> {
           message: ascending ? 'Ascending' : 'Descending',
           child: Material(
             color: scheme.surfaceContainerHighest.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(7),
+            borderRadius: AppDesign.cardBorderRadius(context),
             child: InkWell(
-              borderRadius: BorderRadius.circular(7),
+              borderRadius: AppDesign.cardBorderRadius(context),
               onTap: () => setState(() => _sortDirection = ascending
                   ? SortDirection.descending
                   : SortDirection.ascending),

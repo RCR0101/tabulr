@@ -99,15 +99,15 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
   }
 
   Future<void> _changePick() async {
-    final result = await showDialog<AutoLoadCDCResult>(
+    final result = await AppDialog.adaptive<AutoLoadCDCResult>(
       context: context,
-      builder:
-          (_) => AutoLoadCDCDialog(
-            // Only the first semester of each year has a package published to
-            // build a sample from.
-            semesters: SemesterConstants.firstSemesters,
-            initialValue: _picked,
-          ),
+      title: 'Pick a Sample',
+      content: AutoLoadCDCDialog(
+        // Only the first semester of each year has a package published to
+        // build a sample from.
+        semesters: SemesterConstants.firstSemesters,
+        initialValue: _picked,
+      ),
     );
     if (result == null || !mounted) return;
     setState(() => _picked = result);
@@ -419,7 +419,7 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
                   scheme.surface,
                 ],
               ),
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: AppDesign.cardBorderRadius(context),
               border: Border.all(color: scheme.primary.withValues(alpha: 0.16)),
               boxShadow: [
                 BoxShadow(
@@ -439,7 +439,7 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: scheme.primary,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: AppDesign.innerBorderRadius(context),
                       ),
                       child: Icon(
                         Icons.auto_awesome_rounded,

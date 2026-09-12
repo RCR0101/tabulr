@@ -5,6 +5,7 @@ import '../../services/data/duplicate_courses_service.dart';
 import '../../services/ui/toast_service.dart';
 import '../../services/ui/page_leave_warning_service.dart';
 import '../../utils/design_constants.dart';
+import '../../models/app_theme.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_dialog.dart';
 import '../../widgets/common/app_search_field.dart';
@@ -163,7 +164,7 @@ class _DuplicateCoursesManagementScreenState
                     alignment: Alignment.topLeft,
                     child: Material(
                       elevation: 4,
-                      borderRadius: AppDesign.borderRadiusSm,
+                      borderRadius: BorderRadius.circular(ThemeGeometry.of(ctx).dialogRadius),
                       child: ConstrainedBox(
                         constraints:
                             const BoxConstraints(maxHeight: 200, maxWidth: 360),
@@ -337,12 +338,12 @@ class _DuplicateCoursesManagementScreenState
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 for (final code in group) _codeChip(index, code, scheme),
-                _addChip(() => _addCode(index), scheme),
+                _addChip(() => _addCode(index), scheme, context),
               ],
             ),
           ),
           InkWell(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: AppDesign.chipBorderRadius(context),
             onTap: () => _deleteGroup(index),
             child: Padding(
               padding: const EdgeInsets.all(6),
@@ -368,7 +369,7 @@ class _DuplicateCoursesManagementScreenState
           color: highlighted
               ? scheme.primary.withValues(alpha: 0.14)
               : scheme.surfaceContainerHighest.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: AppDesign.chipBorderRadius(context),
           border: Border.all(
               color: highlighted
                   ? scheme.primary.withValues(alpha: 0.5)
@@ -383,7 +384,7 @@ class _DuplicateCoursesManagementScreenState
                     fontWeight: FontWeight.w600,
                     color: scheme.onSurface)),
             InkWell(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: AppDesign.chipBorderRadius(context),
               onTap: () => _removeCode(groupIndex, code),
               child: Padding(
                 padding: const EdgeInsets.only(left: 3),
@@ -397,14 +398,14 @@ class _DuplicateCoursesManagementScreenState
     );
   }
 
-  Widget _addChip(VoidCallback onTap, ColorScheme scheme) {
+  Widget _addChip(VoidCallback onTap, ColorScheme scheme, BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: AppDesign.chipBorderRadius(context),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: AppDesign.chipBorderRadius(context),
           border: Border.all(color: scheme.primary.withValues(alpha: 0.4)),
         ),
         child: Icon(Icons.add_rounded, size: 15, color: scheme.primary),

@@ -275,7 +275,7 @@ class _AcademicCalendarManagementScreenState
       padding: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: AppDesign.chipBorderRadius(context),
       ),
       child: Text(
         academicCategoryShort(c),

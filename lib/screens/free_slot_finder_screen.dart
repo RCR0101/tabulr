@@ -272,7 +272,7 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-              borderRadius: AppDesign.borderRadiusSm,
+              borderRadius: AppDesign.cardBorderRadius(context),
             ),
             child: Row(
               children: [
@@ -501,7 +501,7 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
             width: 16, height: 16,
             decoration: BoxDecoration(
               color: fill,
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: AppDesign.innerBorderRadius(context),
               border: Border.all(color: border),
             )),
         const SizedBox(width: 6),
@@ -517,7 +517,7 @@ class _FreeSlotFinderScreenState extends State<FreeSlotFinderScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: scheme.primaryContainer.withValues(alpha: 0.3),
-        borderRadius: AppDesign.borderRadiusMd,
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: scheme.primary.withValues(alpha: 0.3)),
       ),
       child: Row(

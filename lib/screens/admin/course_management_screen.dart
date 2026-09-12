@@ -20,12 +20,12 @@ class CourseManagementScreen extends StatefulWidget {
   State<CourseManagementScreen> createState() => _CourseManagementScreenState();
 }
 
-Widget _badge(String label, Color color) {
+Widget _badge(BuildContext context, String label, Color color) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: AppDesign.chipBorderRadius(context),
       border: Border.all(color: color.withValues(alpha: 0.3)),
     ),
     child: Text(label,
@@ -299,7 +299,7 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: AppDesign.buttonBorderRadius(context),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -310,7 +310,7 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                 Padding(
                   padding: const EdgeInsets.only(right: 2),
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: AppDesign.buttonBorderRadius(context),
                     onTap: () => setDialogState(() {
                       final dv = _dayValues[di];
                       if (days.contains(dv)) {
@@ -327,7 +327,7 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                         color: days.contains(_dayValues[di])
                             ? scheme.primary.withValues(alpha: 0.15)
                             : Colors.transparent,
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: AppDesign.buttonBorderRadius(context),
                         border: Border.all(
                           color: days.contains(_dayValues[di])
                               ? scheme.primary.withValues(alpha: 0.5)
@@ -363,7 +363,7 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
             children: [
               for (final h in _hourLabels.keys)
                 InkWell(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppDesign.buttonBorderRadius(context),
                   onTap: () => setDialogState(() {
                     if (hours.contains(h)) {
                       hours.remove(h);
@@ -380,7 +380,7 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                       color: hours.contains(h)
                           ? scheme.secondary.withValues(alpha: 0.15)
                           : Colors.transparent,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: AppDesign.buttonBorderRadius(context),
                       border: Border.all(
                         color: hours.contains(h)
                             ? scheme.secondary.withValues(alpha: 0.5)
@@ -467,9 +467,11 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
 
     bool saving = false;
 
-    await showDialog(
+    await AppDialog.adaptive<void>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
+      title: isNew ? 'Add Course' : 'Edit Course',
+      icon: isNew ? Icons.add_rounded : Icons.edit_rounded,
+      content: StatefulBuilder(
         builder: (ctx, setDialogState) {
           final scheme = Theme.of(ctx).colorScheme;
           final accent = scheme.primary;
@@ -574,7 +576,7 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                             decoration: BoxDecoration(
                               color: scheme.surfaceContainerHighest
                                   .withValues(alpha: 0.3),
-                              borderRadius: AppDesign.borderRadiusSm,
+                              borderRadius: AppDesign.cardBorderRadius(context),
                               border: Border.all(
                                   color:
                                       scheme.outline.withValues(alpha: 0.15)),
@@ -641,7 +643,7 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: scheme.surfaceContainerHighest.withValues(alpha: 0.2),
-                borderRadius: AppDesign.borderRadiusSm,
+                borderRadius: AppDesign.cardBorderRadius(context),
                 border: Border(
                   left: BorderSide(
                     color: typeStr.contains('.P')
@@ -757,36 +759,9 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
             );
           }
 
-          return Dialog(
-            insetPadding: const EdgeInsets.all(16),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520, maxHeight: 600),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.08),
-                      borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(28)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                            isNew
-                                ? Icons.add_rounded
-                                : Icons.edit_rounded,
-                            color: accent),
-                        const SizedBox(width: 10),
-                        Text(isNew ? 'Add Course' : 'Edit Course',
-                            style: Theme.of(ctx)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                  ),
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
                   Flexible(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.all(16),
@@ -990,9 +965,7 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
+            ],
           );
         },
       ),
@@ -1034,8 +1007,9 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
               children: [
                 InkWell(
                   onTap: _switchCampus,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: AppDesign.buttonBorderRadius(context),
                   child: _badge(
+                                        context,
                       _campusLabels[_campusId]!, accent),
                 ),
                 const SizedBox(width: 12),
@@ -1081,12 +1055,12 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     shape: RoundedRectangleBorder(
-                      borderRadius: AppDesign.borderRadiusSm,
+                      borderRadius: AppDesign.cardBorderRadius(context),
                       side: BorderSide(
                           color: scheme.outline.withValues(alpha: 0.12)),
                     ),
                     child: InkWell(
-                      borderRadius: AppDesign.borderRadiusSm,
+                      borderRadius: AppDesign.cardBorderRadius(context),
                       onTap: () => _showCourseDialog(existing: c),
                       child: Container(
                         decoration: BoxDecoration(
@@ -1107,31 +1081,32 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                                         fontWeight: FontWeight.w700,
                                         color: scheme.onSurface)),
                                 const SizedBox(width: 8),
-                                if (lSec > 0) _badge('L:$lSec sec', AppDesign.info(context)),
+                                if (lSec > 0) _badge(context, 'L:$lSec sec', AppDesign.info(context)),
                                 if (tSec > 0) Padding(
                                   padding: const EdgeInsets.only(left: 4),
-                                  child: _badge('T:$tSec sec', AppDesign.warning(context)),
+                                  child: _badge(context, 'T:$tSec sec', AppDesign.warning(context)),
                                 ),
                                 if (pSec > 0) Padding(
                                   padding: const EdgeInsets.only(left: 4),
-                                  child: _badge('P:$pSec sec', AppDesign.success(context)),
+                                  child: _badge(context, 'P:$pSec sec', AppDesign.success(context)),
                                 ),
                                 const Spacer(),
                                 if (lec > 0)
                                   Padding(
                                     padding: const EdgeInsets.only(left: 4),
                                     child: _badge(
+                                        context,
                                         'L:$lec', AppDesign.info(context)),
                                   ),
                                 if (prac > 0)
                                   Padding(
                                     padding: const EdgeInsets.only(left: 4),
-                                    child: _badge('P:$prac',
+                                    child: _badge(context, 'P:$prac',
                                         AppDesign.success(context)),
                                   ),
                                 Padding(
                                   padding: const EdgeInsets.only(left: 4),
-                                  child: _badge('U:$total',
+                                  child: _badge(context, 'U:$total',
                                       AppDesign.warning(context)),
                                 ),
                               ],

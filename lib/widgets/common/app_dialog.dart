@@ -74,7 +74,7 @@ class AppDialog {
                                 decoration: BoxDecoration(
                                   color: (iconColor ?? scheme.primary)
                                       .withValues(alpha: 0.1),
-                                  borderRadius: AppDesign.borderRadiusSm,
+                                  borderRadius: AppDesign.innerBorderRadius(ctx),
                                 ),
                                 child: Icon(
                                   icon,
@@ -170,7 +170,7 @@ class AppDialog {
                               color: (iconColor ?? scheme.primary).withValues(
                                 alpha: 0.1,
                               ),
-                              borderRadius: AppDesign.borderRadiusSm,
+                              borderRadius: AppDesign.innerBorderRadius(ctx),
                             ),
                             child: Icon(
                               icon,

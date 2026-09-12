@@ -234,7 +234,7 @@ class _ToastOverlayState extends State<_ToastOverlay>
                   ),
                   decoration: BoxDecoration(
                     color: bg,
-                    borderRadius: AppDesign.borderRadiusMd,
+                    borderRadius: AppDesign.cardBorderRadius(context),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.25),
@@ -269,7 +269,7 @@ class _ToastOverlayState extends State<_ToastOverlay>
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             side: BorderSide(color: fg.withValues(alpha: 0.5)),
                             shape: RoundedRectangleBorder(
-                              borderRadius: AppDesign.borderRadiusSm,
+                              borderRadius: AppDesign.innerBorderRadius(context),
                             ),
                           ),
                           child: Text(

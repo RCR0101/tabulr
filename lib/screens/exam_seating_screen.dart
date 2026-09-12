@@ -526,7 +526,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
             scheme.surfaceContainerLow,
           ],
         ),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: scheme.primary.withValues(alpha: 0.14)),
       ),
       child: Column(
@@ -538,7 +538,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: scheme.primary,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: AppDesign.innerBorderRadius(context),
                 ),
                 child: Icon(Icons.event_seat_rounded, color: scheme.onPrimary),
               ),
@@ -689,7 +689,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: Row(
@@ -915,7 +915,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: bg ?? scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDesign.chipBorderRadius(context),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -948,7 +948,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(
@@ -1065,7 +1065,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: scheme.surface,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: scheme.outlineVariant),
       ),
       child: Column(
@@ -1133,7 +1133,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
             ),
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: scheme.outlineVariant),
         boxShadow: [
           BoxShadow(
@@ -1272,7 +1272,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: BoxDecoration(
         color: scheme.primary,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: AppDesign.cardBorderRadius(context),
       ),
       child: Column(
         children: [

@@ -4,6 +4,7 @@ import '../models/timetable_stats.dart';
 import '../constants/app_constants.dart';
 import '../models/course.dart';
 
+import '../utils/design_constants.dart';
 class ExamTimelineWidget extends StatelessWidget {
   final Timetable timetable;
 
@@ -108,7 +109,7 @@ class ExamTimelineWidget extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: scheme.errorContainer.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: scheme.error.withValues(alpha: 0.3)),
       ),
       child: Column(
@@ -159,7 +160,7 @@ class ExamTimelineWidget extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: AppDesign.cardBorderRadius(context),
           ),
           child: Text(
             '$count',
@@ -208,7 +209,7 @@ class ExamTimelineWidget extends StatelessWidget {
         color: isCluster
             ? scheme.errorContainer.withValues(alpha: 0.15)
             : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDesign.buttonBorderRadius(context),
         border: isCluster ? Border.all(color: scheme.error.withValues(alpha: 0.2)) : null,
       ),
       child: Row(
@@ -251,7 +252,7 @@ class ExamTimelineWidget extends StatelessWidget {
                         height: 28,
                         decoration: BoxDecoration(
                           color: isCluster ? scheme.error : scheme.primary,
-                          borderRadius: BorderRadius.circular(2),
+                          borderRadius: AppDesign.borderRadiusXxs,
                         ),
                       ),
                       const SizedBox(width: 8),

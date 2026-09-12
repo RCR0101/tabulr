@@ -7,6 +7,7 @@ import '../services/data/timetable_sharing_service.dart';
 import '../utils/app_routes.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
+import '../models/app_theme.dart';
 import '../services/ui/responsive_service.dart';
 import 'common/app_dialog.dart';
 
@@ -24,7 +25,7 @@ class ShareTimetableDialog extends StatefulWidget {
         builder: (ctx) {
           final scheme = Theme.of(ctx).colorScheme;
           return ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(ThemeGeometry.of(ctx).dialogRadius)),
             child: BackdropFilter(
               filter: ImageFilter.blur(
                 sigmaX: AppDesign.glassBlur,
@@ -166,7 +167,7 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
           decoration: BoxDecoration(
             color: scheme.primaryContainer.withValues(alpha: 0.3),
-            borderRadius: AppDesign.borderRadiusMd,
+            borderRadius: AppDesign.cardBorderRadius(context),
             border: Border.all(color: scheme.primary.withValues(alpha: 0.3)),
           ),
           // The link, not the raw code: a code has to be explained, pasted into
@@ -420,7 +421,7 @@ class _ImportTimetableDialogState extends State<ImportTimetableDialog> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                  borderRadius: AppDesign.borderRadiusMd,
+                  borderRadius: AppDesign.cardBorderRadius(context),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

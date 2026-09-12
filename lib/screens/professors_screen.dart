@@ -378,7 +378,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
       decoration: BoxDecoration(
         color: scheme.surface,
         border: Border.all(color: scheme.outlineVariant),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppDesign.cardBorderRadius(context),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -442,7 +442,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDesign.chipBorderRadius(context),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -472,7 +472,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDesign.chipBorderRadius(context),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -497,13 +497,14 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
   }
 
   void _showScheduleDialog(Professor professor) {
-    showDialog(
+    AppDialog.adaptive(
       context: context,
-      builder:
-          (context) => _ProfessorDetailDialog(
-            professor: professor,
-            selectionLink: widget.selectionLink,
-          ),
+      title: professor.name,
+      icon: Icons.person,
+      content: _ProfessorDetailDialog(
+        professor: professor,
+        selectionLink: widget.selectionLink,
+      ),
     );
   }
 
@@ -554,9 +555,9 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                             isSelected
                                 ? Theme.of(context).colorScheme.primaryContainer
                                 : Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: AppDesign.buttonBorderRadius(context),
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: AppDesign.buttonBorderRadius(context),
                           onTap: () {
                             _professorService.setSortType(sortType);
                             Navigator.pop(context);
@@ -574,7 +575,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                               ),
                             ),
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: AppDesign.buttonBorderRadius(context),
                               border: Border.all(
                                 color:
                                     isSelected
@@ -601,7 +602,7 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                                             : Theme.of(context)
                                                 .colorScheme
                                                 .surfaceContainerHighest,
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: AppDesign.innerBorderRadius(context),
                                   ),
                                   child: Icon(
                                     _getSortIcon(sortType),
@@ -719,109 +720,74 @@ class _ProfessorDetailDialog extends StatelessWidget {
 
     return DefaultTabController(
       length: hasContact ? 2 : 1,
-      child: AlertDialog(
-        insetPadding: EdgeInsets.symmetric(
-          horizontal:
-              ResponsiveService.isMobile(context)
-                  ? 16
-                  : (MediaQuery.sizeOf(context).width - 480) / 2,
-          vertical: 24,
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-        contentPadding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.person,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        professor.name,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on_outlined,
-                            size: 14,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurface.withValues(alpha: 0.6),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            professor.chamber,
-                            style: Theme.of(
-                              context,
-                            ).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurface.withValues(alpha: 0.6),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (hasContact)
-              TabBar(
-                tabs: const [Tab(text: 'Schedule'), Tab(text: 'Contact')],
-                labelStyle: Theme.of(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.location_on_outlined,
+                size: 14,
+                color: Theme.of(
                   context,
-                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                indicatorSize: TabBarIndicatorSize.tab,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
               ),
-            if (!hasContact)
-              Divider(
-                height: 1,
-                color: Theme.of(context).colorScheme.outlineVariant,
+              const SizedBox(width: 4),
+              Text(
+                professor.chamber,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
               ),
-          ],
-        ),
-        content: SizedBox(
-          width:
-              ResponsiveService.isMobile(context)
-                  ? MediaQuery.sizeOf(context).width * 0.85
-                  : 440,
-          height: 300,
-          child:
-              hasContact
-                  ? TabBarView(
-                    children: [
-                      _buildScheduleTab(context),
-                      _buildContactTab(context),
-                    ],
-                  )
-                  : _buildScheduleTab(context),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (hasContact)
+            TabBar(
+              tabs: const [Tab(text: 'Schedule'), Tab(text: 'Contact')],
+              labelStyle: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              indicatorSize: TabBarIndicatorSize.tab,
+            ),
+          if (!hasContact)
+            Divider(
+              height: 1,
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.5,
+            ),
+            child: SizedBox(
+              width:
+                  ResponsiveService.isMobile(context)
+                      ? MediaQuery.sizeOf(context).width * 0.85
+                      : 440,
+              child:
+                  hasContact
+                      ? TabBarView(
+                        children: [
+                          _buildScheduleTab(context),
+                          _buildContactTab(context),
+                        ],
+                      )
+                      : _buildScheduleTab(context),
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
           ),
         ],
       ),
@@ -912,12 +878,12 @@ class _ProfessorDetailDialog extends StatelessWidget {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: AppDesign.buttonBorderRadius(context),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppDesign.cardBorderRadius(context),
         ),
         child: Row(
           children: [
@@ -925,7 +891,7 @@ class _ProfessorDetailDialog extends StatelessWidget {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppDesign.innerBorderRadius(context),
               ),
               child: Icon(
                 icon,
@@ -1065,7 +1031,7 @@ class _ProfessorDetailDialog extends StatelessWidget {
             selected
                 ? scheme.primary.withValues(alpha: 0.15)
                 : scheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDesign.chipBorderRadius(context),
         border: Border.all(
           color:
               selected
@@ -1147,7 +1113,7 @@ class _ProfessorDetailDialog extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               color: dayColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: AppDesign.innerBorderRadius(context),
             ),
             child: Text(
               dayNames[day] ?? day,
@@ -1197,7 +1163,7 @@ class _ProfessorDetailDialog extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDesign.chipBorderRadius(context),
         border: Border.all(color: accentColor.withValues(alpha: 0.3), width: 1),
       ),
       child: Row(

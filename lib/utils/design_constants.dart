@@ -41,6 +41,16 @@ class AppDesign {
     );
   }
 
+  static BorderRadius chipBorderRadius(BuildContext context) =>
+      BorderRadius.circular(ThemeGeometry.of(context).chipRadius);
+
+  /// Radius for small accents nested inside a card (icon holders, swatches,
+  /// progress bars): a step tighter than the card so the two read as one shape.
+  static BorderRadius innerBorderRadius(BuildContext context) =>
+      BorderRadius.circular(
+        (ThemeGeometry.of(context).cardRadius - 4).clamp(3.0, 8.0),
+      );
+
   static ShapeBorder dialogShape(BuildContext context) =>
       RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(

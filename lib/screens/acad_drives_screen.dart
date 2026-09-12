@@ -16,6 +16,7 @@ import '../services/ui/toast_service.dart';
 import '../services/data/auth_service.dart';
 import '../constants/app_constants.dart';
 import '../utils/design_constants.dart';
+import '../models/app_theme.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/command_palette.dart';
 import '../widgets/app_destinations.dart';
@@ -686,7 +687,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                         (_, value, __) => LinearProgressIndicator(
                           value: value > 0 ? value : null,
                           minHeight: 6,
-                          borderRadius: BorderRadius.circular(3),
+                          borderRadius: AppDesign.innerBorderRadius(context),
                         ),
                   ),
                   const SizedBox(height: 16),
@@ -1361,7 +1362,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       width: 350,
       decoration: BoxDecoration(
         color: scheme.surface.withValues(alpha: .9),
-        borderRadius: AppDesign.borderRadiusXl,
+        borderRadius: BorderRadius.circular(ThemeGeometry.of(context).dialogRadius),
         border: Border.all(color: scheme.outlineVariant.withValues(alpha: .75)),
       ),
       clipBehavior: Clip.antiAlias,
@@ -2207,7 +2208,7 @@ class _CourseCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: AppDesign.borderRadiusLg,
+          borderRadius: AppDesign.buttonBorderRadius(context),
           onTap: onTap,
           child: Ink(
             padding: const EdgeInsets.fromLTRB(13, 12, 9, 12),
@@ -2218,7 +2219,7 @@ class _CourseCard extends StatelessWidget {
                       : enrolled
                       ? scheme.primaryContainer.withValues(alpha: .2)
                       : scheme.surface.withValues(alpha: .92),
-              borderRadius: AppDesign.borderRadiusLg,
+              borderRadius: AppDesign.cardBorderRadius(context),
               border: Border.all(
                 color:
                     selected
@@ -2252,7 +2253,7 @@ class _CourseCard extends StatelessWidget {
                         accent.withValues(alpha: .07),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: AppDesign.cardBorderRadius(context),
                   ),
                   child: Icon(Icons.menu_book_rounded, size: 21, color: accent),
                 ),
@@ -2407,12 +2408,12 @@ class _FileCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: primaryAction == null ? onInfo : () => onOpen(primaryAction),
-          borderRadius: AppDesign.borderRadiusMd,
+          borderRadius: AppDesign.buttonBorderRadius(context),
           child: Ink(
             padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
             decoration: BoxDecoration(
               color: scheme.surface.withValues(alpha: .94),
-              borderRadius: AppDesign.borderRadiusMd,
+              borderRadius: AppDesign.cardBorderRadius(context),
               border: Border.all(
                 color: scheme.outlineVariant.withValues(alpha: .65),
               ),
@@ -2453,7 +2454,7 @@ class _FileCard extends StatelessWidget {
                       height: 38,
                       decoration: BoxDecoration(
                         color: scheme.secondaryContainer.withValues(alpha: .55),
-                        borderRadius: BorderRadius.circular(11),
+                        borderRadius: AppDesign.chipBorderRadius(context),
                       ),
                       child: Icon(
                         icon,
@@ -2645,7 +2646,7 @@ class _DriveHierarchySectionState extends State<_DriveHierarchySection> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
         color: scheme.surface,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
       ),
       child: Column(

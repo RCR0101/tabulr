@@ -524,4 +524,134 @@ void main() {
       expect(find.textContaining('No classes yet'), findsOneWidget);
     });
   });
+
+  group('other sections (ghost mode)', () {
+    Section sec(String id, List<DayOfWeek> days, List<int> hours) => Section(
+          sectionId: id,
+          type: SectionType.L,
+          instructor: 'Dr. B',
+          room: '2205',
+          schedule: [ScheduleEntry(days: days, hours: hours)],
+        );
+    final math = Course(
+      courseCode: 'MATH F211',
+      courseTitle: 'Mathematics III',
+      lectureCredits: 3,
+      practicalCredits: 0,
+      totalCredits: 3,
+      sections: [
+        sec('L1', [DayOfWeek.M], [2]),
+        sec('L2', [DayOfWeek.T], [4]),
+        sec('L3', [DayOfWeek.M], [3]),
+        // A different kind of section: never offered as an alternative to an L.
+        Section(
+          sectionId: 'T1',
+          type: SectionType.T,
+          instructor: 'Dr. B',
+          room: '2205',
+          schedule: [ScheduleEntry(days: [DayOfWeek.W], hours: [6])],
+        ),
+      ],
+    );
+    final week = [
+      slot(day: DayOfWeek.M, hours: [2], code: 'MATH F211', section: 'L1'),
+      slot(day: DayOfWeek.M, hours: [3], code: 'CS F211', section: 'L1'),
+      slot(day: DayOfWeek.F, hours: [8], code: 'BIO F111', section: 'L1'),
+    ];
+
+    testWidgets('long-press shows same-type alternatives and tap switches',
+        (tester) async {
+      String? swapped;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 760,
+            height: 700,
+            child: Builder(
+              builder: (context) => TimetableGrid(
+                slots: week,
+                layout: TimetableLayout.vertical,
+                size: TimetableSize.medium,
+                palette: CoursePalette.forCourses(
+                  context,
+                  week.map((s) => s.courseCode),
+                ),
+                alternatives: [math],
+                onSectionSwap: (code, from, to) => swapped = '$code $from>$to',
+              ),
+            ),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Other sections'), findsNothing);
+
+      await tester.longPress(
+        find.byKey(const ValueKey('block-MATH F211-L1-2')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Other sections of MATH F211'), findsOneWidget);
+      expect(find.byKey(const ValueKey('ghost-L2-DayOfWeek.T-4')), findsOneWidget);
+      // L3 lands on CS F211's hour, so it is offered but flagged.
+      expect(find.text('L3 · clash'), findsOneWidget);
+      // The tutorial section is a different kind and is not offered.
+      expect(find.byKey(const ValueKey('ghost-T1-DayOfWeek.W-6')), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('ghost-L2-DayOfWeek.T-4')));
+      await tester.pumpAndSettle();
+      expect(swapped, 'MATH F211 L1>L2');
+      expect(find.textContaining('Other sections'), findsNothing);
+    });
+
+    testWidgets('without alternatives, long-press does nothing', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 760,
+            height: 700,
+            child: Builder(
+              builder: (context) => TimetableGrid(
+                slots: week,
+                layout: TimetableLayout.vertical,
+                size: TimetableSize.medium,
+                palette: CoursePalette.forCourses(
+                  context,
+                  week.map((s) => s.courseCode),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await tester.longPress(
+        find.byKey(const ValueKey('block-MATH F211-L1-2')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Other sections'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  testWidgets('fit mode lays out without overflowing at any panel height',
+      (tester) async {
+    // The content plan admits a line if it fits with zero to spare, but a
+    // line's painted height is the font's metrics rounded up — which used to
+    // overflow the card by a quarter-pixel and throw here.
+    final week = [
+      slot(day: DayOfWeek.M, hours: [2], code: 'MATH F211', section: 'L1'),
+      slot(day: DayOfWeek.M, hours: [3], code: 'CS F211', section: 'L1'),
+      slot(day: DayOfWeek.F, hours: [8], code: 'BIO F111', section: 'L1'),
+    ];
+    for (final height in [640.0, 700.0, 900.0, 1100.0]) {
+      await tester.pumpWidget(harness(
+        week,
+        size: TimetableSize.fit,
+        panel: Size(760, height),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: 'panel height $height');
+    }
+  });
 }

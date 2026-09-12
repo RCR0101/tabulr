@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
 import '../widgets/common/app_tappable.dart';
+import '../widgets/common/app_dialog.dart';
 import '../widgets/common/empty_state_widget.dart';
 import '../models/timetable.dart';
 import '../models/timetable_stats.dart';
@@ -151,7 +152,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
             Container(
               decoration: BoxDecoration(
                 border: Border.all(color: Theme.of(context).colorScheme.outline),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppDesign.inputBorderRadius(context),
               ),
               child: DropdownButton<Timetable>(
                 // A square highlight inside a rounded box reads as a stray
@@ -457,7 +458,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppDesign.cardBorderRadius(context),
               ),
               child: Column(
                 children: [
@@ -556,7 +557,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
         padding: const EdgeInsets.all(12.0),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: AppDesign.cardBorderRadius(context),
           border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Column(
@@ -589,100 +590,56 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
   }
 
   void _showCoursesDialog(String title, List<ComparisonItem> items, Color color, IconData icon) {
-    showDialog(
+    AppDialog.adaptive(
       context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Container(
-            width: ResponsiveService.isMobile(context) ? double.infinity : 500,
-            constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.7),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                    border: Border(
-                      bottom: BorderSide(
-                        color: color.withValues(alpha: 0.3),
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(icon, color: color, size: 28),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: color,
-                              ),
-                            ),
-                            Text(
-                              '${items.length} courses',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.close),
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                      ),
-                    ],
-                  ),
-                ),
-                // Course list
-                Flexible(
-                  child: items.isEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.all(40),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.inbox_outlined,
-                                size: 64,
-                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No courses found',
-                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: items.length,
-                          itemBuilder: (context, index) {
-                            final item = items[index];
-                            return _buildDialogCourseItem(item, color);
-                          },
-                        ),
-                ),
-              ],
+      title: title,
+      icon: icon,
+      iconColor: color,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '${items.length} courses',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
-        );
-      },
+          const SizedBox(height: 16),
+          Flexible(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.5),
+              child: items.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(40),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.inbox_outlined,
+                            size: 64,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No courses found',
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: items.length,
+                      itemBuilder: (context, index) {
+                        final item = items[index];
+                        return _buildDialogCourseItem(item, color);
+                      },
+                    ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -692,7 +649,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(
           color: color.withValues(alpha: 0.2),
         ),
@@ -706,7 +663,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppDesign.chipBorderRadius(context),
                 ),
                 child: Text(
                   item.courseCode,
@@ -846,7 +803,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: AppDesign.cardBorderRadius(context),
                     border: Border.all(color: statusColor.withValues(alpha: 0.3)),
                   ),
                   child: Row(
@@ -923,7 +880,7 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
           padding: const EdgeInsets.all(8.0),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: AppDesign.innerBorderRadius(context),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

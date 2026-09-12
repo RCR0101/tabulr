@@ -445,7 +445,7 @@ class _GuideScreenState extends State<GuideScreen> {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: scheme.primary.withValues(alpha: 0.10),
-                  borderRadius: AppDesign.borderRadiusSm,
+                  borderRadius: AppDesign.innerBorderRadius(context),
                 ),
                 child: Icon(topic.icon, size: 17, color: scheme.primary),
               ),
@@ -538,7 +538,7 @@ class _GuideScreenState extends State<GuideScreen> {
         ),
         decoration: BoxDecoration(
           color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
-          borderRadius: AppDesign.borderRadiusMd,
+          borderRadius: AppDesign.cardBorderRadius(context),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -750,7 +750,7 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
       ),
       decoration: BoxDecoration(
         color: colour.withValues(alpha: 0.12),
-        borderRadius: AppDesign.borderRadiusSm,
+        borderRadius: AppDesign.cardBorderRadius(context),
       ),
       child: Text(
         Terms.relative(termsAgo),
@@ -770,7 +770,7 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: colour.withValues(alpha: 0.14),
-        borderRadius: AppDesign.borderRadiusXs,
+        borderRadius: AppDesign.innerBorderRadius(context),
       ),
       child: Text(
         label,
@@ -1040,7 +1040,7 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
             inCharge
                 ? scheme.primary.withValues(alpha: 0.10)
                 : scheme.surfaceContainerHighest.withValues(alpha: 0.55),
-        borderRadius: AppDesign.borderRadiusSm,
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(
           color:
               inCharge
@@ -1056,7 +1056,7 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: BoxDecoration(
                 color: scheme.primary.withValues(alpha: 0.16),
-                borderRadius: AppDesign.borderRadiusXs,
+                borderRadius: AppDesign.innerBorderRadius(context),
               ),
               child: Text(
                 'IC',
@@ -1193,7 +1193,7 @@ class _TermStrip extends StatelessWidget {
                         activeTerms.contains(term)
                             ? scheme.primary.withValues(alpha: 0.85)
                             : scheme.onSurface.withValues(alpha: 0.09),
-                    borderRadius: AppDesign.borderRadiusXs,
+                    borderRadius: AppDesign.innerBorderRadius(context),
                   ),
                   child: const SizedBox.expand(),
                 ),

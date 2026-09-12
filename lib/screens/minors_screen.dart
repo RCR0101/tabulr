@@ -230,7 +230,7 @@ class _MinorsScreenState extends State<MinorsScreen> {
               padding: const EdgeInsets.all(AppDesign.spacingSm),
               decoration: BoxDecoration(
                 color: scheme.primary.withValues(alpha: 0.07),
-                borderRadius: AppDesign.borderRadiusSm,
+                borderRadius: AppDesign.cardBorderRadius(context),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -366,7 +366,7 @@ class _MinorsScreenState extends State<MinorsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: AppDesign.chipBorderRadius(context),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -392,7 +392,7 @@ class _MinorsScreenState extends State<MinorsScreen> {
           SizedBox(
             width: 34,
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: AppDesign.borderRadiusXxs,
               child: LinearProgressIndicator(
                 value: progress.fraction,
                 minHeight: 3,
@@ -427,7 +427,7 @@ class _MinorsScreenState extends State<MinorsScreen> {
       padding: const EdgeInsets.all(AppDesign.spacingSm),
       decoration: BoxDecoration(
         color: scheme.primary.withValues(alpha: 0.06),
-        borderRadius: AppDesign.borderRadiusSm,
+        borderRadius: AppDesign.cardBorderRadius(context),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

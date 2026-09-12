@@ -18,12 +18,12 @@ class ProfessorManagementScreen extends StatefulWidget {
       _ProfessorManagementScreenState();
 }
 
-Widget _profBadge(String label, Color color) {
+Widget _profBadge(BuildContext context, String label, Color color) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: AppDesign.chipBorderRadius(context),
       border: Border.all(color: color.withValues(alpha: 0.3)),
     ),
     child: Text(label,
@@ -93,12 +93,13 @@ class _ProfessorManagementScreenState
 
     bool saving = false;
 
-    await showDialog(
+    await AppDialog.adaptive<void>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
+      title: isNew ? 'Add Professor' : 'Edit Professor',
+      icon: isNew ? Icons.person_add_rounded : Icons.edit_rounded,
+      content: StatefulBuilder(
         builder: (ctx, setDialogState) {
           final scheme = Theme.of(ctx).colorScheme;
-          final accent = scheme.primary;
 
           Widget field(String label, TextEditingController ctrl,
               {TextInputType? keyboardType}) {
@@ -117,175 +118,145 @@ class _ProfessorManagementScreenState
           final scheduleCount =
               (existing?['schedule'] as List?)?.length ?? 0;
 
-          return Dialog(
-            insetPadding: const EdgeInsets.all(16),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420, maxHeight: 480),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.08),
-                      borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(28)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                            isNew
-                                ? Icons.person_add_rounded
-                                : Icons.edit_rounded,
-                            color: accent),
-                        const SizedBox(width: 10),
-                        Text(
-                            isNew ? 'Add Professor' : 'Edit Professor',
-                            style: Theme.of(ctx)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                  ),
-                  Flexible(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          field('Name', nameCtrl),
-                          field('Chamber', chamberCtrl),
-                          field('Email', emailCtrl,
-                              keyboardType: TextInputType.emailAddress),
-                          field('Contact', contactCtrl,
-                              keyboardType: TextInputType.phone),
-                          if (!isNew && scheduleCount > 0)
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: scheme.surfaceContainerHighest
-                                    .withValues(alpha: 0.2),
-                                borderRadius: AppDesign.borderRadiusSm,
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.schedule_rounded,
-                                      size: 16, color: AppDesign.muted(ctx)),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '$scheduleCount schedule entries (managed via rebuild)',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: AppDesign.muted(ctx)),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        if (!isNew)
-                          AppButton(
-                            label: 'Delete',
-                            icon: Icons.delete_outline_rounded,
-                            variant: AppButtonVariant.danger,
-                            onTap: saving
-                                ? null
-                                : () async {
-                                    final confirm = await AppDialog.confirm(
-                                      context: ctx,
-                                      title: 'Delete Professor',
-                                      message:
-                                          'Delete ${nameCtrl.text}?',
-                                      isDangerous: true,
-                                    );
-                                    if (confirm && ctx.mounted) {
-                                      try {
-                                        await _crud.deleteProfessor(
-                                            _campusId, existing['docId']);
-                                        ToastService.showSuccess('Deleted');
-                                        if (ctx.mounted) Navigator.pop(ctx);
-                                        _load();
-                                      } catch (e) {
-                                        ToastService.showError(
-                                            'Delete failed');
-                                      }
-                                    }
-                                  },
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      field('Name', nameCtrl),
+                      field('Chamber', chamberCtrl),
+                      field('Email', emailCtrl,
+                          keyboardType: TextInputType.emailAddress),
+                      field('Contact', contactCtrl,
+                          keyboardType: TextInputType.phone),
+                      if (!isNew && scheduleCount > 0)
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: scheme.surfaceContainerHighest
+                                .withValues(alpha: 0.2),
+                            borderRadius: AppDesign.cardBorderRadius(ctx),
                           ),
-                        const Spacer(),
-                        AppButton(
-                          label: 'Cancel',
-                          variant: AppButtonVariant.ghost,
-                          onTap: saving ? null : () => Navigator.pop(ctx),
+                          child: Row(
+                            children: [
+                              Icon(Icons.schedule_rounded,
+                                  size: 16, color: AppDesign.muted(ctx)),
+                              const SizedBox(width: 8),
+                              Text(
+                                '$scheduleCount schedule entries (managed via rebuild)',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppDesign.muted(ctx)),
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(width: 8),
-                        AppButton(
-                          label: 'Save',
-                          icon: Icons.check_rounded,
-                          isLoading: saving,
-                          onTap: saving
-                              ? null
-                              : () async {
-                                  final name = nameCtrl.text.trim();
-                                  if (name.isEmpty) {
-                                    ToastService.showError('Name required');
-                                    return;
-                                  }
-                                  setDialogState(() => saving = true);
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    if (!isNew)
+                      AppButton(
+                        label: 'Delete',
+                        icon: Icons.delete_outline_rounded,
+                        variant: AppButtonVariant.danger,
+                        onTap: saving
+                            ? null
+                            : () async {
+                                final confirm = await AppDialog.confirm(
+                                  context: ctx,
+                                  title: 'Delete Professor',
+                                  message:
+                                      'Delete ${nameCtrl.text}?',
+                                  isDangerous: true,
+                                );
+                                if (confirm && ctx.mounted) {
                                   try {
-                                    final docId = isNew
-                                        ? name
-                                            .toLowerCase()
-                                            .replaceAll(RegExp(r'\s+'), '_')
-                                        : existing['docId'];
-                                    final data = <String, dynamic>{
-                                      'name': name,
-                                      'chamber': chamberCtrl.text.trim().isEmpty
-                                          ? 'Unavailable'
-                                          : chamberCtrl.text.trim(),
-                                      'updatedAt': DateTime.now()
-                                          .toIso8601String(),
-                                    };
-                                    if (isNew) {
-                                      data['id'] = docId;
-                                      data['createdAt'] =
-                                          DateTime.now().toIso8601String();
-                                      data['schedule'] = [];
-                                    }
-                                    final email = emailCtrl.text.trim();
-                                    final contact = contactCtrl.text.trim();
-                                    if (email.isNotEmpty) {
-                                      data['email'] = email;
-                                    }
-                                    if (contact.isNotEmpty) {
-                                      data['contact'] = contact;
-                                    }
-                                    await _crud.saveProfessor(_campusId, docId, data);
-                                    ToastService.showSuccess('Saved');
+                                    await _crud.deleteProfessor(
+                                        _campusId, existing['docId']);
+                                    ToastService.showSuccess('Deleted');
                                     if (ctx.mounted) Navigator.pop(ctx);
                                     _load();
                                   } catch (e) {
-                                    ToastService.showError('Save failed');
-                                  } finally {
-                                    if (ctx.mounted) {
-                                      setDialogState(() => saving = false);
-                                    }
+                                    ToastService.showError(
+                                        'Delete failed');
                                   }
-                                },
-                        ),
-                      ],
+                                }
+                              },
+                      ),
+                    const Spacer(),
+                    AppButton(
+                      label: 'Cancel',
+                      variant: AppButtonVariant.ghost,
+                      onTap: saving ? null : () => Navigator.pop(ctx),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    AppButton(
+                      label: 'Save',
+                      icon: Icons.check_rounded,
+                      isLoading: saving,
+                      onTap: saving
+                          ? null
+                          : () async {
+                              final name = nameCtrl.text.trim();
+                              if (name.isEmpty) {
+                                ToastService.showError('Name required');
+                                return;
+                              }
+                              setDialogState(() => saving = true);
+                              try {
+                                final docId = isNew
+                                    ? name
+                                        .toLowerCase()
+                                        .replaceAll(RegExp(r'\s+'), '_')
+                                    : existing['docId'];
+                                final data = <String, dynamic>{
+                                  'name': name,
+                                  'chamber': chamberCtrl.text.trim().isEmpty
+                                      ? 'Unavailable'
+                                      : chamberCtrl.text.trim(),
+                                  'updatedAt': DateTime.now()
+                                      .toIso8601String(),
+                                };
+                                if (isNew) {
+                                  data['id'] = docId;
+                                  data['createdAt'] =
+                                      DateTime.now().toIso8601String();
+                                  data['schedule'] = [];
+                                }
+                                final email = emailCtrl.text.trim();
+                                final contact = contactCtrl.text.trim();
+                                if (email.isNotEmpty) {
+                                  data['email'] = email;
+                                }
+                                if (contact.isNotEmpty) {
+                                  data['contact'] = contact;
+                                }
+                                await _crud.saveProfessor(_campusId, docId, data);
+                                ToastService.showSuccess('Saved');
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                _load();
+                              } catch (e) {
+                                ToastService.showError('Save failed');
+                              } finally {
+                                if (ctx.mounted) {
+                                  setDialogState(() => saving = false);
+                                }
+                              }
+                            },
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
           );
         },
       ),
@@ -323,8 +294,9 @@ class _ProfessorManagementScreenState
               children: [
                 InkWell(
                   onTap: _switchCampus,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: AppDesign.buttonBorderRadius(context),
                   child: _profBadge(
+                                        context,
                       _campusLabels[_campusId]!, scheme.primary),
                 ),
                 const SizedBox(width: 12),
@@ -366,12 +338,12 @@ class _ProfessorManagementScreenState
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     shape: RoundedRectangleBorder(
-                      borderRadius: AppDesign.borderRadiusSm,
+                      borderRadius: AppDesign.cardBorderRadius(context),
                       side: BorderSide(
                           color: scheme.outline.withValues(alpha: 0.12)),
                     ),
                     child: InkWell(
-                      borderRadius: AppDesign.borderRadiusSm,
+                      borderRadius: AppDesign.buttonBorderRadius(context),
                       onTap: () => _showDialog(existing: p),
                       child: Container(
                         decoration: BoxDecoration(
@@ -401,6 +373,7 @@ class _ProfessorManagementScreenState
                                   Row(
                                     children: [
                                       _profBadge(
+                                        context,
                                         chamber,
                                         unavailable
                                             ? scheme.error
@@ -414,7 +387,7 @@ class _ProfessorManagementScreenState
                                       ],
                                       if (schedCount > 0) ...[
                                         const SizedBox(width: 6),
-                                        _profBadge('$schedCount classes',
+                                        _profBadge(context, '$schedCount classes',
                                             scheme.primary),
                                       ],
                                     ],

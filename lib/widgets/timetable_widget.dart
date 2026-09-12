@@ -17,6 +17,8 @@ import 'timetable/timetable_grid.dart';
 
 export '../models/timetable_display.dart';
 
+import '../utils/design_constants.dart';
+import '../models/app_theme.dart';
 /// The editor's opt-in overrides for rules that normally refuse a section add.
 ///
 /// All three are session-only switches in the timetable toolbar's settings
@@ -65,6 +67,10 @@ class TimetableWidget extends StatefulWidget {
   final Function(Course selectedCourse, Course replacementCourse)?
   onQuickReplace;
   final Function(List<SelectedSection> newSections)? onSectionShuffle;
+
+  /// Switch a course to another section of the same kind, from the grid's
+  /// long-press "other sections" ghosts. Null hides the affordance.
+  final Function(String courseCode, String sectionId)? onSwitchSection;
   final VoidCallback? onUndo;
   final VoidCallback? onRedo;
   final bool canUndo;
@@ -110,6 +116,7 @@ class TimetableWidget extends StatefulWidget {
     this.selectedSections,
     this.onQuickReplace,
     this.onSectionShuffle,
+    this.onSwitchSection,
     this.onUndo,
     this.onRedo,
     this.canUndo = false,
@@ -575,7 +582,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
       ),
       padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12, vertical: 6),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDesign.buttonBorderRadius(context),
         border: Border.all(color: scheme.outline.withValues(alpha: 0.3)),
       ),
       child: Row(
@@ -989,6 +996,11 @@ class _TimetableWidgetState extends State<TimetableWidget> {
         incompleteSelectionWarnings: widget.incompleteSelectionWarnings,
         onSlotTap: _showBlockDetail,
         onRemoveSection: widget.onRemoveSection,
+        alternatives: widget.readOnly ? null : widget.availableCourses,
+        onSectionSwap: widget.onSwitchSection == null || widget.readOnly
+            ? null
+            : (courseCode, _, toSectionId) =>
+                widget.onSwitchSection!(courseCode, toSectionId),
       ),
     );
   }
@@ -1024,7 +1036,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
           margin: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppDesign.cardBorderRadius(context),
             border: Border.all(color: scheme.outline, width: borderWidth),
           ),
           child: Column(
@@ -1122,7 +1134,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
                   height: 34,
                   decoration: BoxDecoration(
                     color: courseColor,
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: AppDesign.borderRadiusXxs,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1311,7 +1323,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
             border: TableBorder.all(
               color: scheme.outline.withValues(alpha: 0.25),
               width: 1,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: AppDesign.buttonBorderRadius(context),
             ),
             columnWidths: const {
               0: FlexColumnWidth(2.5),
@@ -1322,8 +1334,8 @@ class _TimetableWidgetState extends State<TimetableWidget> {
               TableRow(
                 decoration: BoxDecoration(
                   color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(8),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(ThemeGeometry.of(context).buttonRadius),
                   ),
                 ),
                 children: [
@@ -1429,7 +1441,7 @@ class _TimetableWidgetState extends State<TimetableWidget> {
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
               color: accent.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: AppDesign.innerBorderRadius(context),
             ),
             child: Text(
               fmtDate(exam.date),

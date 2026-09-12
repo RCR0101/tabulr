@@ -30,7 +30,7 @@ class GenerateButton extends StatelessWidget {
         width: double.infinity,
         height: 56,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppDesign.cardBorderRadius(context),
           gradient: active
               ? LinearGradient(
                   colors: [
@@ -49,7 +49,7 @@ class GenerateButton extends StatelessWidget {
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppDesign.cardBorderRadius(context),
             ),
           ),
           child: isGenerating

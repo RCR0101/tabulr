@@ -108,7 +108,7 @@ class TimetableListSkeleton extends StatelessWidget {
                     .colorScheme
                     .surfaceContainerHighest
                     .withValues(alpha: 0.3),
-                borderRadius: AppDesign.borderRadiusMd,
+                borderRadius: AppDesign.cardBorderRadius(context),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(AppDesign.spacingMd),
@@ -270,7 +270,7 @@ class AnnouncementsSkeleton extends StatelessWidget {
                       .colorScheme
                       .surfaceContainerHighest
                       .withValues(alpha: 0.3),
-                  borderRadius: AppDesign.borderRadiusMd,
+                  borderRadius: AppDesign.cardBorderRadius(context),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(AppDesign.spacingMd),
@@ -322,7 +322,7 @@ class PrerequisitesSkeleton extends StatelessWidget {
                       .colorScheme
                       .surfaceContainerHighest
                       .withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppDesign.cardBorderRadius(context),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(AppDesign.spacingMd),

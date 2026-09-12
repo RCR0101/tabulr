@@ -205,42 +205,42 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
       ToastService.showError('You are temporarily suspended from posting');
       return;
     }
-    showDialog(
+    AppDialog.adaptive(
       context: context,
-      builder:
-          (ctx) => _PostAnnouncementDialog(
-            courseSections: courseSections,
-            onPost: (
-              title,
-              description,
-              courseCode,
-              sectionId,
-              eventDate,
-              startTime,
-              endTime,
-              source,
-              confidence,
-            ) async {
-              Navigator.pop(ctx);
-              try {
-                await _announcementService.postAnnouncement(
-                  title: title,
-                  description: description,
-                  courseCode: courseCode,
-                  sectionId: sectionId,
-                  campus: _selectedTimetable!.campus.code,
-                  eventDate: eventDate,
-                  startTime: startTime,
-                  endTime: endTime,
-                  source: source,
-                  confidence: confidence,
-                );
-                ToastService.showSuccess('Announcement posted');
-              } catch (e) {
-                ToastService.showError('Failed to post announcement');
-              }
-            },
-          ),
+      title: 'Post Announcement',
+      content: _PostAnnouncementDialog(
+        courseSections: courseSections,
+        onPost: (
+          title,
+          description,
+          courseCode,
+          sectionId,
+          eventDate,
+          startTime,
+          endTime,
+          source,
+          confidence,
+        ) async {
+          Navigator.pop(context);
+          try {
+            await _announcementService.postAnnouncement(
+              title: title,
+              description: description,
+              courseCode: courseCode,
+              sectionId: sectionId,
+              campus: _selectedTimetable!.campus.code,
+              eventDate: eventDate,
+              startTime: startTime,
+              endTime: endTime,
+              source: source,
+              confidence: confidence,
+            );
+            ToastService.showSuccess('Announcement posted');
+          } catch (e) {
+            ToastService.showError('Failed to post announcement');
+          }
+        },
+      ),
     );
   }
 
@@ -249,63 +249,63 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
       ToastService.showError('You are temporarily suspended');
       return;
     }
-    showDialog(
+    AppDialog.adaptive(
       context: context,
-      builder:
-          (ctx) => _FlagDialog(
-            onSubmit: (reason, counterSourceUrl, confidence) async {
-              Navigator.pop(ctx);
-              final prev =
-                  _userStates[announcement.id] ?? const AnnouncementUserState();
-              setState(() {
-                _userStates[announcement.id] = prev.copyWith(
-                  flag:
-                      () => AnnouncementFlag(
-                        uid: '',
-                        reason: reason,
-                        counterSourceUrl: counterSourceUrl,
-                        confidence: confidence,
-                        weight: 1,
-                        timestamp: DateTime.now(),
-                      ),
-                );
-              });
-              try {
-                await _announcementService.submitFlag(
-                  announcementId: announcement.id,
-                  reason: reason,
-                  counterSourceUrl: counterSourceUrl,
-                  confidence: confidence,
-                );
-                ToastService.showSuccess('Flag submitted');
-              } catch (e) {
-                setState(() => _userStates[announcement.id] = prev);
-                ToastService.showError('Failed to submit flag');
-              }
-            },
-          ),
+      title: 'Flag as Incorrect',
+      content: _FlagDialog(
+        onSubmit: (reason, counterSourceUrl, confidence) async {
+          Navigator.pop(context);
+          final prev =
+              _userStates[announcement.id] ?? const AnnouncementUserState();
+          setState(() {
+            _userStates[announcement.id] = prev.copyWith(
+              flag:
+                  () => AnnouncementFlag(
+                    uid: '',
+                    reason: reason,
+                    counterSourceUrl: counterSourceUrl,
+                    confidence: confidence,
+                    weight: 1,
+                    timestamp: DateTime.now(),
+                  ),
+            );
+          });
+          try {
+            await _announcementService.submitFlag(
+              announcementId: announcement.id,
+              reason: reason,
+              counterSourceUrl: counterSourceUrl,
+              confidence: confidence,
+            );
+            ToastService.showSuccess('Flag submitted');
+          } catch (e) {
+            setState(() => _userStates[announcement.id] = prev);
+            ToastService.showError('Failed to submit flag');
+          }
+        },
+      ),
     );
   }
 
   void _showAcceptCorrectionDialog(CourseAnnouncement announcement) {
-    showDialog(
+    AppDialog.adaptive(
       context: context,
-      builder:
-          (ctx) => _AcceptCorrectionDialog(
-            onSubmit: (correctionText, correctionSource) async {
-              Navigator.pop(ctx);
-              try {
-                await _announcementService.acceptCorrection(
-                  announcementId: announcement.id,
-                  correctionText: correctionText,
-                  correctionSource: correctionSource,
-                );
-                ToastService.showSuccess('Correction accepted');
-              } catch (e) {
-                ToastService.showError('Failed to accept correction');
-              }
-            },
-          ),
+      title: 'Accept & Correct',
+      content: _AcceptCorrectionDialog(
+        onSubmit: (correctionText, correctionSource) async {
+          Navigator.pop(context);
+          try {
+            await _announcementService.acceptCorrection(
+              announcementId: announcement.id,
+              correctionText: correctionText,
+              correctionSource: correctionSource,
+            );
+            ToastService.showSuccess('Correction accepted');
+          } catch (e) {
+            ToastService.showError('Failed to accept correction');
+          }
+        },
+      ),
     );
   }
 
@@ -412,7 +412,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppDesign.chipBorderRadius(context),
           border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Row(
@@ -722,7 +722,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: AppDesign.cardBorderRadius(context)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -854,7 +854,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
             color: theme.colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: AppDesign.innerBorderRadius(context),
           ),
           child: Text(
             announcement.courseCode,
@@ -871,7 +871,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
             decoration: BoxDecoration(
               color: theme.colorScheme.tertiaryContainer,
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: AppDesign.innerBorderRadius(context),
             ),
             child: Text(
               announcement.sectionId,
@@ -919,7 +919,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: AppDesign.innerBorderRadius(context),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -945,7 +945,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppDesign.innerBorderRadius(context),
       ),
       child: Text(
         UserReputation.tierName(tier),
@@ -966,7 +966,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: AppDesign.success(context).withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(
           color: AppDesign.success(context).withValues(alpha: 0.2),
         ),
@@ -1027,7 +1027,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: theme.colorScheme.error.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(
           color: theme.colorScheme.error.withValues(alpha: 0.2),
         ),
@@ -1135,7 +1135,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
             color: badgeColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: AppDesign.innerBorderRadius(context),
             border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
           ),
           child: Row(
@@ -1169,7 +1169,7 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
             decoration: BoxDecoration(
               color: AppDesign.warning(context).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: AppDesign.innerBorderRadius(context),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1389,7 +1389,7 @@ class _VoteButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return InkWell(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: AppDesign.buttonBorderRadius(context),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1400,7 +1400,7 @@ class _VoteButton extends StatelessWidget {
                   : theme.colorScheme.surfaceContainerHighest.withValues(
                     alpha: 0.5,
                   ),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: AppDesign.buttonBorderRadius(context),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1455,7 +1455,7 @@ class _ActionIconButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: InkWell(
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: AppDesign.innerBorderRadius(context),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(6),
@@ -1627,28 +1627,13 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
     final theme = Theme.of(context);
     final courses = widget.courseSections.keys.toList()..sort();
 
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      insetPadding: EdgeInsets.symmetric(
-        horizontal:
-            ResponsiveService.isMobile(context)
-                ? 16
-                : (MediaQuery.sizeOf(context).width - 480) / 2,
-        vertical: 24,
-      ),
+    return Flexible(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Post Announcement',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 20),
             DropdownButtonFormField<String>(
               initialValue: _selectedCourse,
               decoration: InputDecoration(labelText: 'Course *'),
@@ -1712,7 +1697,7 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppDesign.buttonBorderRadius(context),
                 ),
               ),
             ),
@@ -1729,7 +1714,7 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: AppDesign.buttonBorderRadius(context),
                       ),
                     ),
                   ),
@@ -1745,7 +1730,7 @@ class _PostAnnouncementDialogState extends State<_PostAnnouncementDialog> {
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: AppDesign.buttonBorderRadius(context),
                       ),
                     ),
                   ),
@@ -1906,28 +1891,13 @@ class _FlagDialogState extends State<_FlagDialog> {
     final theme = Theme.of(context);
     final charCount = _reasonController.text.trim().length;
 
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      insetPadding: EdgeInsets.symmetric(
-        horizontal:
-            ResponsiveService.isMobile(context)
-                ? 16
-                : (MediaQuery.sizeOf(context).width - 480) / 2,
-        vertical: 24,
-      ),
+    return Flexible(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Flag as Incorrect',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
             Text(
               'Explain why this announcement is incorrect. Be specific.',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -2055,28 +2025,13 @@ class _AcceptCorrectionDialogState extends State<_AcceptCorrectionDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      insetPadding: EdgeInsets.symmetric(
-        horizontal:
-            ResponsiveService.isMobile(context)
-                ? 16
-                : (MediaQuery.sizeOf(context).width - 480) / 2,
-        vertical: 24,
-      ),
+    return Flexible(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Accept & Correct',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
             Text(
               'Provide the correct information. This will be displayed alongside the original post.',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -2088,7 +2043,7 @@ class _AcceptCorrectionDialogState extends State<_AcceptCorrectionDialog> {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: theme.colorScheme.error.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppDesign.cardBorderRadius(context),
               ),
               child: Text(
                 'Accepting a correction applies a reputation penalty.',

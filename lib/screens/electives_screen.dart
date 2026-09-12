@@ -495,7 +495,7 @@ class _ElectivesScreenState extends State<ElectivesScreen>
                     _selectionExpanded = false;
                     _onSelectionChanged();
                   },
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppDesign.innerBorderRadius(context),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Text(
@@ -804,7 +804,7 @@ class _ElectivesScreenState extends State<ElectivesScreen>
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: scheme.primaryContainer.withValues(alpha: 0.25),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: scheme.primary.withValues(alpha: 0.25)),
       ),
       child: Row(

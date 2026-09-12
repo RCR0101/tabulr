@@ -19,12 +19,12 @@ class ExamSeatingManagementScreen extends StatefulWidget {
       _ExamSeatingManagementScreenState();
 }
 
-Widget _examBadge(String label, Color color) {
+Widget _examBadge(BuildContext context, String label, Color color) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: AppDesign.chipBorderRadius(context),
       border: Border.all(color: color.withValues(alpha: 0.3)),
     ),
     child: Text(label,
@@ -97,9 +97,11 @@ class _ExamSeatingManagementScreenState
 
     bool saving = false;
 
-    await showDialog(
+    await AppDialog.adaptive<void>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
+      title: isNew ? 'Add Exam Seating' : 'Edit Exam Seating',
+      icon: isNew ? Icons.add_rounded : Icons.edit_rounded,
+      content: StatefulBuilder(
         builder: (ctx, setDialogState) {
           final scheme = Theme.of(ctx).colorScheme;
           final accent = scheme.primary;
@@ -120,7 +122,7 @@ class _ExamSeatingManagementScreenState
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: scheme.surfaceContainerHighest.withValues(alpha: 0.2),
-                borderRadius: AppDesign.borderRadiusSm,
+                borderRadius: AppDesign.cardBorderRadius(ctx),
                 border: Border(
                   left: BorderSide(color: accent, width: 3),
                 ),
@@ -211,181 +213,149 @@ class _ExamSeatingManagementScreenState
             );
           }
 
-          return Dialog(
-            insetPadding: const EdgeInsets.all(16),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480, maxHeight: 550),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.08),
-                      borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(28)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                            isNew
-                                ? Icons.add_rounded
-                                : Icons.edit_rounded,
-                            color: accent),
-                        const SizedBox(width: 10),
-                        Text(
-                            isNew
-                                ? 'Add Exam Seating'
-                                : 'Edit Exam Seating',
-                            style: Theme.of(ctx)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                  ),
-                  Flexible(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(
+                            bottom: AppDesign.spacingSm),
+                        child: TextField(
+                          controller: codeCtrl,
+                          readOnly: !isNew,
+                          style: const TextStyle(fontSize: 13),
+                          decoration: AppDesign.inputDecoration(ctx,
+                              label: 'Course Code',
+                              hint: 'e.g. CS F111'),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(
+                            bottom: AppDesign.spacingSm),
+                        child: TextField(
+                          controller: dateCtrl,
+                          style: const TextStyle(fontSize: 13),
+                          decoration: AppDesign.inputDecoration(ctx,
+                              label: 'Exam Date',
+                              hint: 'e.g. 07/05/2026'),
+                        ),
+                      ),
+                      const Divider(),
+                      Row(
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.only(
-                                bottom: AppDesign.spacingSm),
-                            child: TextField(
-                              controller: codeCtrl,
-                              readOnly: !isNew,
-                              style: const TextStyle(fontSize: 13),
-                              decoration: AppDesign.inputDecoration(ctx,
-                                  label: 'Course Code',
-                                  hint: 'e.g. CS F111'),
-                            ),
+                          Text('Rooms',
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: scheme.onSurface)),
+                          const Spacer(),
+                          TextButton.icon(
+                            icon: Icon(Icons.add_rounded,
+                                size: 16, color: accent),
+                            label: Text('Add Room',
+                                style: TextStyle(
+                                    fontSize: 12, color: accent)),
+                            onPressed: () => setDialogState(() =>
+                                rooms.add({
+                                  'roomNo': '',
+                                  'idFrom': null,
+                                  'idTo': null,
+                                  'studentCount': null,
+                                })),
                           ),
-                          Padding(
-                            padding: const EdgeInsets.only(
-                                bottom: AppDesign.spacingSm),
-                            child: TextField(
-                              controller: dateCtrl,
-                              style: const TextStyle(fontSize: 13),
-                              decoration: AppDesign.inputDecoration(ctx,
-                                  label: 'Exam Date',
-                                  hint: 'e.g. 07/05/2026'),
-                            ),
-                          ),
-                          const Divider(),
-                          Row(
-                            children: [
-                              Text('Rooms',
-                                  style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: scheme.onSurface)),
-                              const Spacer(),
-                              TextButton.icon(
-                                icon: Icon(Icons.add_rounded,
-                                    size: 16, color: accent),
-                                label: Text('Add Room',
-                                    style: TextStyle(
-                                        fontSize: 12, color: accent)),
-                                onPressed: () => setDialogState(() =>
-                                    rooms.add({
-                                      'roomNo': '',
-                                      'idFrom': null,
-                                      'idTo': null,
-                                      'studentCount': null,
-                                    })),
-                              ),
-                            ],
-                          ),
-                          for (var i = 0; i < rooms.length; i++) roomCard(i),
                         ],
                       ),
-                    ),
+                      for (var i = 0; i < rooms.length; i++) roomCard(i),
+                    ],
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        if (!isNew)
-                          AppButton(
-                            label: 'Delete',
-                            icon: Icons.delete_outline_rounded,
-                            variant: AppButtonVariant.danger,
-                            onTap: saving
-                                ? null
-                                : () async {
-                                    final confirm = await AppDialog.confirm(
-                                      context: ctx,
-                                      title: 'Delete Exam Seating',
-                                      message:
-                                          'Delete seating for ${codeCtrl.text}?',
-                                      isDangerous: true,
-                                    );
-                                    if (confirm && ctx.mounted) {
-                                      try {
-                                        await _crud.deleteExamSeating(
-                                            _campusId, existing['docId']);
-                                        ToastService.showSuccess('Deleted');
-                                        if (ctx.mounted) Navigator.pop(ctx);
-                                        _load();
-                                      } catch (e) {
-                                        ToastService.showError(
-                                            'Delete failed');
-                                      }
-                                    }
-                                  },
-                          ),
-                        const Spacer(),
-                        AppButton(
-                          label: 'Cancel',
-                          variant: AppButtonVariant.ghost,
-                          onTap: saving ? null : () => Navigator.pop(ctx),
-                        ),
-                        const SizedBox(width: 8),
-                        AppButton(
-                          label: 'Save',
-                          icon: Icons.check_rounded,
-                          isLoading: saving,
-                          onTap: saving
-                              ? null
-                              : () async {
-                                  final code = codeCtrl.text.trim();
-                                  if (code.isEmpty) {
-                                    ToastService.showError(
-                                        'Course code required');
-                                    return;
-                                  }
-                                  setDialogState(() => saving = true);
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    if (!isNew)
+                      AppButton(
+                        label: 'Delete',
+                        icon: Icons.delete_outline_rounded,
+                        variant: AppButtonVariant.danger,
+                        onTap: saving
+                            ? null
+                            : () async {
+                                final confirm = await AppDialog.confirm(
+                                  context: ctx,
+                                  title: 'Delete Exam Seating',
+                                  message:
+                                      'Delete seating for ${codeCtrl.text}?',
+                                  isDangerous: true,
+                                );
+                                if (confirm && ctx.mounted) {
                                   try {
-                                    final docId = isNew
-                                        ? code.replaceAll(
-                                            RegExp(r'\s+'), '_')
-                                        : existing['docId'];
-                                    await _crud.saveExamSeating(_campusId, docId, {
-                                      'exam_date': dateCtrl.text.trim(),
-                                      'rooms': rooms,
-                                      'updated_at':
-                                          FieldValue.serverTimestamp(),
-                                    });
-                                    ToastService.showSuccess('Saved');
+                                    await _crud.deleteExamSeating(
+                                        _campusId, existing['docId']);
+                                    ToastService.showSuccess('Deleted');
                                     if (ctx.mounted) Navigator.pop(ctx);
                                     _load();
                                   } catch (e) {
-                                    ToastService.showError('Save failed');
-                                  } finally {
-                                    if (ctx.mounted) {
-                                      setDialogState(() => saving = false);
-                                    }
+                                    ToastService.showError(
+                                        'Delete failed');
                                   }
-                                },
-                        ),
-                      ],
+                                }
+                              },
+                      ),
+                    const Spacer(),
+                    AppButton(
+                      label: 'Cancel',
+                      variant: AppButtonVariant.ghost,
+                      onTap: saving ? null : () => Navigator.pop(ctx),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    AppButton(
+                      label: 'Save',
+                      icon: Icons.check_rounded,
+                      isLoading: saving,
+                      onTap: saving
+                          ? null
+                          : () async {
+                              final code = codeCtrl.text.trim();
+                              if (code.isEmpty) {
+                                ToastService.showError(
+                                    'Course code required');
+                                return;
+                              }
+                              setDialogState(() => saving = true);
+                              try {
+                                final docId = isNew
+                                    ? code.replaceAll(
+                                        RegExp(r'\s+'), '_')
+                                    : existing['docId'];
+                                await _crud.saveExamSeating(_campusId, docId, {
+                                  'exam_date': dateCtrl.text.trim(),
+                                  'rooms': rooms,
+                                  'updated_at':
+                                      FieldValue.serverTimestamp(),
+                                });
+                                ToastService.showSuccess('Saved');
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                _load();
+                              } catch (e) {
+                                ToastService.showError('Save failed');
+                              } finally {
+                                if (ctx.mounted) {
+                                  setDialogState(() => saving = false);
+                                }
+                              }
+                            },
+                    ),
+                  ],
+                ),
               ),
-            ),
+            ],
           );
         },
       ),
@@ -422,8 +392,9 @@ class _ExamSeatingManagementScreenState
               children: [
                 InkWell(
                   onTap: _switchCampus,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: AppDesign.buttonBorderRadius(context),
                   child: _examBadge(
+                                        context,
                       _campusLabels[_campusId]!, accent),
                 ),
                 const SizedBox(width: 12),
@@ -466,12 +437,12 @@ class _ExamSeatingManagementScreenState
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     shape: RoundedRectangleBorder(
-                      borderRadius: AppDesign.borderRadiusSm,
+                      borderRadius: AppDesign.cardBorderRadius(context),
                       side: BorderSide(
                           color: scheme.outline.withValues(alpha: 0.12)),
                     ),
                     child: InkWell(
-                      borderRadius: AppDesign.borderRadiusSm,
+                      borderRadius: AppDesign.buttonBorderRadius(context),
                       onTap: () => _showDialog(existing: e),
                       child: Container(
                         decoration: BoxDecoration(
@@ -505,6 +476,7 @@ class _ExamSeatingManagementScreenState
                               ),
                             ),
                             _examBadge(
+                                        context,
                                 '$roomCount rooms', scheme.secondary),
                           ],
                         ),

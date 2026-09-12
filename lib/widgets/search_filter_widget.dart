@@ -157,7 +157,7 @@ class _SearchFilterWidgetState extends State<SearchFilterWidget> {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: isMobile ? Colors.transparent : Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDesign.cardBorderRadius(context),
         boxShadow: isMobile
             ? null
             : [

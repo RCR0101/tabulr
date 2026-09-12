@@ -6,6 +6,7 @@ import '../../services/ui/toast_service.dart';
 import '../../services/ui/page_leave_warning_service.dart';
 import '../../utils/branch_constants.dart' as constants;
 import '../../utils/design_constants.dart';
+import '../../models/app_theme.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_dialog.dart';
 
@@ -200,7 +201,7 @@ class _BranchGroupManagementScreenState
                         alignment: Alignment.topLeft,
                         child: Material(
                           elevation: 4,
-                          borderRadius: AppDesign.borderRadiusSm,
+                          borderRadius: BorderRadius.circular(ThemeGeometry.of(ctx).dialogRadius),
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(
                                 maxHeight: 200, maxWidth: 360),
@@ -414,9 +415,9 @@ class _BranchGroupManagementScreenState
           : ListView(
               padding: const EdgeInsets.all(AppDesign.spacingMd),
               children: [
-                _infoBanner(scheme),
-                for (final g in _groups) _groupCard(g, scheme),
-                _ungroupedCard(scheme),
+                _infoBanner(scheme, context),
+                for (final g in _groups) _groupCard(g, scheme, context),
+                _ungroupedCard(scheme, context),
                 const SizedBox(height: 60),
               ],
             ),
@@ -424,13 +425,13 @@ class _BranchGroupManagementScreenState
     );
   }
 
-  Widget _infoBanner(ColorScheme scheme) {
+  Widget _infoBanner(ColorScheme scheme, BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: AppDesign.spacingMd),
       padding: const EdgeInsets.all(AppDesign.spacingSm + 4),
       decoration: BoxDecoration(
         color: scheme.primary.withValues(alpha: 0.06),
-        borderRadius: AppDesign.borderRadiusSm,
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: scheme.primary.withValues(alpha: 0.12)),
       ),
       child: Row(
@@ -453,7 +454,7 @@ class _BranchGroupManagementScreenState
     );
   }
 
-  Widget _groupCard(BranchGroup group, ColorScheme scheme) {
+  Widget _groupCard(BranchGroup group, ColorScheme scheme, BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: AppDesign.spacingMd),
       decoration: AppDesign.cardDecoration(context),
@@ -499,8 +500,8 @@ class _BranchGroupManagementScreenState
               ],
             ),
           ),
-          _cdcSection(group, '1-1', group.sem11, scheme),
-          _cdcSection(group, '1-2', group.sem12, scheme),
+          _cdcSection(group, '1-1', group.sem11, scheme, context),
+          _cdcSection(group, '1-2', group.sem12, scheme, context),
           // Branches
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
@@ -519,9 +520,10 @@ class _BranchGroupManagementScreenState
                         sub: constants.branchCodeToName[code],
                         scheme: scheme,
                         onRemove: () => _removeBranch(group, code),
+                        context: context,
                       ),
                     _addChip('Add branch', scheme,
-                        () => _showAddBranchDialog(group)),
+                        () => _showAddBranchDialog(group), context),
                   ],
                 ),
               ],
@@ -533,7 +535,7 @@ class _BranchGroupManagementScreenState
   }
 
   Widget _cdcSection(
-      BranchGroup group, String sem, List<String> codes, ColorScheme scheme) {
+      BranchGroup group, String sem, List<String> codes, ColorScheme scheme, BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 2),
       child: Column(
@@ -551,9 +553,10 @@ class _BranchGroupManagementScreenState
                   sub: _masterService.get(codes[i])?.title,
                   scheme: scheme,
                   onRemove: () => _removeCourse(codes, i),
+                  context: context,
                 ),
               _addChip('Add course', scheme,
-                  () => _addCourse(group, sem, codes)),
+                  () => _addCourse(group, sem, codes), context),
             ],
           ),
         ],
@@ -561,14 +564,14 @@ class _BranchGroupManagementScreenState
     );
   }
 
-  Widget _ungroupedCard(ColorScheme scheme) {
+  Widget _ungroupedCard(ColorScheme scheme, BuildContext context) {
     final ungrouped = _service.ungroupedBranches(_groups);
     if (ungrouped.isEmpty) return const SizedBox.shrink();
     return Container(
       margin: const EdgeInsets.only(bottom: AppDesign.spacingMd),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        borderRadius: AppDesign.borderRadiusSm,
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: scheme.error.withValues(alpha: 0.3)),
       ),
       child: Column(
@@ -595,7 +598,7 @@ class _BranchGroupManagementScreenState
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: AppDesign.chipBorderRadius(context),
                   ),
                   child: Text('$code · ${constants.branchCodeToName[code]}',
                       style: const TextStyle(fontSize: 12)),
@@ -621,12 +624,13 @@ class _BranchGroupManagementScreenState
     String? sub,
     required ColorScheme scheme,
     required VoidCallback onRemove,
+    required BuildContext context,
   }) {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 7, 6, 7),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: AppDesign.chipBorderRadius(context),
         border: Border.all(color: scheme.outline.withValues(alpha: 0.18)),
       ),
       child: Row(
@@ -650,7 +654,7 @@ class _BranchGroupManagementScreenState
             ),
           ],
           InkWell(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: AppDesign.chipBorderRadius(context),
             onTap: onRemove,
             child: Padding(
               padding: const EdgeInsets.only(left: 4),
@@ -663,14 +667,14 @@ class _BranchGroupManagementScreenState
     );
   }
 
-  Widget _addChip(String label, ColorScheme scheme, VoidCallback onTap) {
+  Widget _addChip(String label, ColorScheme scheme, VoidCallback onTap, BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: AppDesign.chipBorderRadius(context),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: AppDesign.chipBorderRadius(context),
           border: Border.all(color: scheme.primary.withValues(alpha: 0.4)),
         ),
         child: Row(

@@ -434,7 +434,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
               color: scheme.surfaceContainerHighest.withValues(alpha: 0.55),
-              borderRadius: BorderRadius.circular(9),
+              borderRadius: AppDesign.cardBorderRadius(context),
               border: Border.all(color: scheme.outline.withValues(alpha: 0.12)),
             ),
             child: TabBar(
@@ -445,7 +445,7 @@ class _CoursesTabWidgetState extends State<CoursesTabWidget>
               indicatorSize: TabBarIndicatorSize.tab,
               indicator: BoxDecoration(
                 color: scheme.surface,
-                borderRadius: BorderRadius.circular(7),
+                borderRadius: AppDesign.cardBorderRadius(context),
                 border: Border.all(
                   color: scheme.outline.withValues(alpha: 0.12),
                 ),

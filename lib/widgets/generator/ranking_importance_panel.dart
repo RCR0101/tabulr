@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/core/timetable_ranker.dart';
 import '../common/app_tappable.dart';
 
+import '../../utils/design_constants.dart';
 /// How much each intent axis counts when ordering results, feeding the ranker's
 /// TOPSIS weights. One Low/Normal/High segmented control per [RankAxis].
 class RankingImportancePanel extends StatelessWidget {
@@ -27,7 +28,7 @@ class RankingImportancePanel extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border:
             Border.all(color: scheme.outlineVariant.withValues(alpha: 0.4)),
       ),
@@ -105,7 +106,7 @@ class _ImportanceRow extends StatelessWidget {
             padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(
               color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(9),
+              borderRadius: AppDesign.cardBorderRadius(context),
             ),
             child: LayoutBuilder(
               builder: (context, c) {
@@ -123,7 +124,7 @@ class _ImportanceRow extends StatelessWidget {
                         height: double.infinity,
                         decoration: BoxDecoration(
                           color: scheme.primary,
-                          borderRadius: BorderRadius.circular(7),
+                          borderRadius: AppDesign.innerBorderRadius(context),
                         ),
                       ),
                     ),

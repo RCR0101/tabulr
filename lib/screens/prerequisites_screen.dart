@@ -264,10 +264,10 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
             margin: const EdgeInsets.only(bottom: 12),
             elevation: 1,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppDesign.cardBorderRadius(context),
             ),
             child: InkWell(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppDesign.buttonBorderRadius(context),
               onTap: () => _selectCourse(course),
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -281,7 +281,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
                             course.hasPrerequisites
                                 ? colorScheme.primaryContainer
                                 : colorScheme.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: AppDesign.innerBorderRadius(context),
                       ),
                       child: Icon(
                         course.hasPrerequisites
@@ -379,7 +379,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
           Card(
             elevation: 2,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: AppDesign.cardBorderRadius(context),
             ),
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -393,7 +393,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: AppDesign.innerBorderRadius(context),
                     ),
                     child: Text(
                       course.courseCode,
@@ -432,7 +432,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
           else
             Card(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppDesign.cardBorderRadius(context),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -494,7 +494,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
@@ -618,7 +618,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
               decoration: BoxDecoration(
                 color: colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppDesign.innerBorderRadius(context),
               ),
               child: Text(
                 'AND',
@@ -690,7 +690,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 1,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDesign.cardBorderRadius(context),
         side: BorderSide(
           color: containerColor.withValues(alpha: 0.5),
           width: 1,
@@ -705,7 +705,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: containerColor,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppDesign.innerBorderRadius(context),
               ),
               child: Icon(iconData, color: textColor, size: 20),
             ),
@@ -723,7 +723,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
                         ),
                         decoration: BoxDecoration(
                           color: containerColor,
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: AppDesign.innerBorderRadius(context),
                         ),
                         child: Text(
                           typeLabel,
@@ -751,7 +751,7 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: colorScheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: AppDesign.innerBorderRadius(context),
                       ),
                       child: Text(
                         'ANY ONE OF THESE',

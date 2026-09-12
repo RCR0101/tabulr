@@ -499,7 +499,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
                                         color: _getSectionTypeColor(context, selectedSection.section.type),
-                                        borderRadius: BorderRadius.circular(4),
+                                        borderRadius: AppDesign.chipBorderRadius(context),
                                       ),
                                       child: Text(
                                         selectedSection.section.type.name,
@@ -855,7 +855,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: AppDesign.cardBorderRadius(context),
                     border: Border.all(
                       color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
                     ),
@@ -917,7 +917,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: Theme.of(context).colorScheme.primary,
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: AppDesign.chipBorderRadius(context),
                               ),
                               child: Text(
                                 'Selected: $selectedSectionId',
@@ -934,7 +934,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: AppDesign.chipBorderRadius(context),
                                 border: Border.all(
                                   color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
                                 ),
@@ -1016,7 +1016,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
             color: examType == 'Mid-Sem' ? scheme.tertiary : scheme.error,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: AppDesign.chipBorderRadius(context),
           ),
           child: Text(
             examType,
@@ -1047,7 +1047,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
           decoration: BoxDecoration(
             color: examType == 'Mid-Sem' ? scheme.tertiary : scheme.error,
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: AppDesign.chipBorderRadius(context),
           ),
           child: Text(
             examType == 'Mid-Sem' ? 'MS' : 'CE',
@@ -1096,7 +1096,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppDesign.cardBorderRadius(context),
                 ),
                 child: Row(
                   children: [
@@ -1138,7 +1138,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                         )
                       : null,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: AppDesign.inputBorderRadius(context),
                   ),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
@@ -1225,7 +1225,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: AppDesign.success(context).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: AppDesign.cardBorderRadius(context),
                           border: Border.all(
                             color: AppDesign.success(context).withValues(alpha: 0.3),
                           ),
@@ -1269,7 +1269,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
                                         color: _getSectionTypeColor(context, sectionType),
-                                        borderRadius: BorderRadius.circular(4),
+                                        borderRadius: AppDesign.chipBorderRadius(context),
                                       ),
                                       child: Text(
                                         sectionType.name,
@@ -1333,7 +1333,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: AppDesign.cardBorderRadius(context),
                             border: Border.all(
                               color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
                             ),
@@ -1482,7 +1482,7 @@ class _AddSwapScreenState extends State<AddSwapScreen> {
                           color: (result.canBeAdded
                               ? AppDesign.success(context)
                               : AppDesign.danger(context)).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: AppDesign.cardBorderRadius(context),
                           border: Border.all(
                             color: (result.canBeAdded
                                 ? AppDesign.success(context)

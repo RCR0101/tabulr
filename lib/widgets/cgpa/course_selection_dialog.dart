@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../../models/all_course.dart';
 import '../../models/course.dart';
 import '../../models/timetable.dart';
-import '../../services/ui/responsive_service.dart';
 
+import '../../utils/design_constants.dart';
 class CourseSelectionDialog extends StatefulWidget {
   final List<Timetable> timetables;
   final List<String> semesters;
@@ -25,189 +25,144 @@ class _CourseSelectionDialogState extends State<CourseSelectionDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final isMobile = ResponsiveService.isMobile(context);
-
-    return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(ResponsiveService.getAdaptiveBorderRadius(context, 16)),
-      ),
-      child: Container(
-        width: isMobile ? double.infinity : 600,
-        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.7),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: ResponsiveService.getAdaptivePadding(context, const EdgeInsets.all(20)),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(ResponsiveService.getAdaptiveBorderRadius(context, 16)),
-                  topRight: Radius.circular(ResponsiveService.getAdaptiveBorderRadius(context, 16)),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.file_download_outlined, color: Theme.of(context).colorScheme.onPrimaryContainer, size: 24),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Import Courses from Timetable',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Flexible(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Select Timetable', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Theme.of(context).colorScheme.outline),
+                    borderRadius: AppDesign.buttonBorderRadius(context),
                   ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: ResponsiveService.getAdaptivePadding(context, const EdgeInsets.all(20)),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Select Timetable', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Theme.of(context).colorScheme.outline),
-                          borderRadius: BorderRadius.circular(ResponsiveService.getAdaptiveBorderRadius(context, 8)),
-                        ),
-                        child: DropdownButton<Timetable>(
-                          // A square highlight inside a rounded box reads as a stray
-                          // grey block; the box border is the focus affordance.
-                          focusColor: Colors.transparent,
-                          value: _selectedTimetable,
-                          isExpanded: true,
-                          underline: Container(),
-                          hint: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 12),
-                            child: Text('Choose a timetable'),
-                          ),
-                          onChanged: (timetable) {
-                            setState(() {
-                              _selectedTimetable = timetable;
-                              _selectedCourses.clear();
-                              _selectedSemester = null;
-                            });
-                          },
-                          items: widget.timetables.asMap().entries.map((entry) {
-                            final index = entry.key;
-                            final timetable = entry.value;
-                            String displayName = timetable.name.isNotEmpty && timetable.name != 'Untitled Timetable'
-                                ? timetable.name
-                                : 'Timetable ${index + 1}';
-                            final courseCount = timetable.selectedSections.length;
+                  child: DropdownButton<Timetable>(
+                    // A square highlight inside a rounded box reads as a stray
+                    // grey block; the box border is the focus affordance.
+                    focusColor: Colors.transparent,
+                    value: _selectedTimetable,
+                    isExpanded: true,
+                    underline: Container(),
+                    hint: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: Text('Choose a timetable'),
+                    ),
+                    onChanged: (timetable) {
+                      setState(() {
+                        _selectedTimetable = timetable;
+                        _selectedCourses.clear();
+                        _selectedSemester = null;
+                      });
+                    },
+                    items: widget.timetables.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final timetable = entry.value;
+                      String displayName = timetable.name.isNotEmpty && timetable.name != 'Untitled Timetable'
+                          ? timetable.name
+                          : 'Timetable ${index + 1}';
+                      final courseCount = timetable.selectedSections.length;
 
-                            return DropdownMenuItem<Timetable>(
-                              value: timetable,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
-                                child: Row(
-                                  children: [
-                                    Expanded(child: Text(displayName)),
-                                    Text(
-                                      '$courseCount course${courseCount != 1 ? 's' : ''}',
-                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                                      ),
-                                    ),
-                                  ],
+                      return DropdownMenuItem<Timetable>(
+                        value: timetable,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Row(
+                            children: [
+                              Expanded(child: Text(displayName)),
+                              Text(
+                                '$courseCount course${courseCount != 1 ? 's' : ''}',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                                 ),
                               ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                      if (_selectedTimetable != null) ...[
-                        const SizedBox(height: 24),
-                        Text('Select Semester', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 8),
-                        Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Theme.of(context).colorScheme.outline),
-                            borderRadius: BorderRadius.circular(ResponsiveService.getAdaptiveBorderRadius(context, 8)),
-                          ),
-                          child: DropdownButton<String>(
-                            // A square highlight inside a rounded box reads as a stray
-                            // grey block; the box border is the focus affordance.
-                            focusColor: Colors.transparent,
-                            value: _selectedSemester,
-                            isExpanded: true,
-                            underline: Container(),
-                            hint: const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 12),
-                              child: Text('Choose a semester for all courses'),
-                            ),
-                            onChanged: (semester) {
-                              setState(() => _selectedSemester = semester);
-                            },
-                            items: widget.semesters.map((semester) {
-                              return DropdownMenuItem<String>(
-                                value: semester,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                                  child: Text(semester),
-                                ),
-                              );
-                            }).toList(),
+                            ],
                           ),
                         ),
-                        if (_selectedSemester != null) ...[
-                          const SizedBox(height: 24),
-                          Text('Select Courses', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 8),
-                          Text(
-                            'All selected courses will be added to $_selectedSemester',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ..._buildCourseList(),
-                        ],
-                      ],
-                    ],
+                      );
+                    }).toList(),
                   ),
                 ),
-              ),
-            ),
-            Container(
-              padding: ResponsiveService.getAdaptivePadding(context, const EdgeInsets.all(16)),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                border: Border(
-                  top: BorderSide(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${_selectedCourses.length} selected',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                if (_selectedTimetable != null) ...[
+                  const SizedBox(height: 24),
+                  Text('Select Semester', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Theme.of(context).colorScheme.outline),
+                      borderRadius: AppDesign.buttonBorderRadius(context),
+                    ),
+                    child: DropdownButton<String>(
+                      // A square highlight inside a rounded box reads as a stray
+                      // grey block; the box border is the focus affordance.
+                      focusColor: Colors.transparent,
+                      value: _selectedSemester,
+                      isExpanded: true,
+                      underline: Container(),
+                      hint: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        child: Text('Choose a semester for all courses'),
+                      ),
+                      onChanged: (semester) {
+                        setState(() => _selectedSemester = semester);
+                      },
+                      items: widget.semesters.map((semester) {
+                        return DropdownMenuItem<String>(
+                          value: semester,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(semester),
+                          ),
+                        );
+                      }).toList(),
                     ),
                   ),
-                  Row(
-                    children: [
-                      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-                      const SizedBox(width: 8),
-                      FilledButton(
-                        onPressed: _selectedCourses.isEmpty ? null : _importCourses,
-                        child: const Text('Import'),
+                  if (_selectedSemester != null) ...[
+                    const SizedBox(height: 24),
+                    Text('Select Courses', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Text(
+                      'All selected courses will be added to $_selectedSemester',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 16),
+                    ..._buildCourseList(),
+                  ],
                 ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '${_selectedCourses.length} selected',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: _selectedCourses.isEmpty ? null : _importCourses,
+                  child: const Text('Import'),
+                ),
+              ],
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 
@@ -259,7 +214,7 @@ class _CourseSelectionDialogState extends State<CourseSelectionDialog> {
             ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
             : Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(ResponsiveService.getAdaptiveBorderRadius(context, 8)),
+          borderRadius: AppDesign.buttonBorderRadius(context),
           side: BorderSide(
             color: isSelected
                 ? Theme.of(context).colorScheme.primary
@@ -304,7 +259,7 @@ class _CourseSelectionDialogState extends State<CourseSelectionDialog> {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.secondaryContainer,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppDesign.cardBorderRadius(context),
                 ),
                 child: Text(
                   '${course.totalCredits}',

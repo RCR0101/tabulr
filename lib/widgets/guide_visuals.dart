@@ -164,7 +164,7 @@ class GuideVisualFrame extends StatelessWidget {
             width: double.infinity,
             decoration: BoxDecoration(
               color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
-              borderRadius: AppDesign.borderRadiusMd,
+              borderRadius: AppDesign.cardBorderRadius(context),
               border: Border.all(color: scheme.outline.withValues(alpha: 0.18)),
             ),
             clipBehavior: Clip.antiAlias,

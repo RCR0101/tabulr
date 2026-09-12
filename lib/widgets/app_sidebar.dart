@@ -269,7 +269,7 @@ class AppSidebar extends StatelessWidget {
                 (context, color, child) => Material(
                   color: color,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppDesign.cardBorderRadius(context),
                     side:
                         outlined
                             ? BorderSide(
@@ -279,7 +279,7 @@ class AppSidebar extends StatelessWidget {
                   ),
                   child: InkWell(
                     onTap: onTap,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppDesign.cardBorderRadius(context),
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(minHeight: 48),
                       child: Padding(

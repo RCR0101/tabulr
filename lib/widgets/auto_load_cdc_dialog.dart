@@ -395,7 +395,7 @@ class _AutoLoadCDCSelectorState extends State<AutoLoadCDCSelector> {
             margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
               color: scheme.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: AppDesign.cardBorderRadius(context),
               border: Border.all(
                 color: _picks.containsKey(index)
                     ? scheme.primary.withValues(alpha: 0.5)
@@ -437,32 +437,23 @@ class AutoLoadCDCDialog extends StatelessWidget {
   final AutoLoadCDCResult? initialValue;
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: Row(
-      children: [
-        Icon(
-          Icons.school_outlined,
-          color: Theme.of(context).colorScheme.primary,
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.6,
         ),
-        const SizedBox(width: 10),
-        const Expanded(child: Text('Auto Load CDCs')),
-      ],
-    ),
-    content: SizedBox(
-      width: ResponsiveService.getValue(
-        context,
-        mobile: MediaQuery.sizeOf(context).width - 32,
-        tablet: 440,
-        desktop: 460,
-      ),
-      child: SingleChildScrollView(
-        child: AutoLoadCDCSelector(
-          semesters: semesters,
-          initialValue: initialValue,
-          onCancel: () => Navigator.pop(context),
-          onSelected: (result) => Navigator.pop(context, result),
+        child: SingleChildScrollView(
+          child: AutoLoadCDCSelector(
+            semesters: semesters,
+            initialValue: initialValue,
+            onCancel: () => Navigator.pop(context),
+            onSelected: (result) => Navigator.pop(context, result),
+          ),
         ),
       ),
-    ),
+    ],
   );
 }

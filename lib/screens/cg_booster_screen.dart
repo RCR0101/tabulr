@@ -430,7 +430,7 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: InkWell(
-        borderRadius: AppDesign.borderRadiusSm,
+        borderRadius: AppDesign.buttonBorderRadius(context),
         onTap: () => setState(() => candidate.selected = !candidate.selected),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -481,7 +481,7 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: _gradeColor(candidate.currentGrade).withValues(alpha: 0.15),
-                  borderRadius: AppDesign.borderRadiusSm,
+                  borderRadius: AppDesign.cardBorderRadius(context),
                 ),
                 child: Text(
                   candidate.currentGrade,
@@ -562,7 +562,7 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: Colors.green.withValues(alpha: 0.1),
-                  borderRadius: AppDesign.borderRadiusSm,
+                  borderRadius: AppDesign.cardBorderRadius(context),
                 ),
                 child: Text(
                   '+${cgDelta.toStringAsFixed(2)}',
@@ -593,7 +593,7 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                       decoration: BoxDecoration(
                         color: _gradeColor(change.oldGrade).withValues(alpha: 0.1),
-                        borderRadius: AppDesign.borderRadiusSm,
+                        borderRadius: AppDesign.cardBorderRadius(context),
                       ),
                       child: Text(
                         change.oldGrade,
@@ -614,7 +614,7 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                       decoration: BoxDecoration(
                         color: _gradeColor(change.newGrade).withValues(alpha: 0.15),
-                        borderRadius: AppDesign.borderRadiusSm,
+                        borderRadius: AppDesign.cardBorderRadius(context),
                       ),
                       child: Text(
                         change.newGrade,

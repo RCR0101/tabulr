@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/ui/responsive_service.dart';
 
+import '../../utils/design_constants.dart';
 class InstructorAvoidanceDialog extends StatefulWidget {
   final Map<String, Map<String, List<String>>> courseSectionInstructors;
   final List<String> currentlyAvoided;
@@ -53,7 +54,7 @@ class _InstructorAvoidanceDialogState extends State<InstructorAvoidanceDialog> {
               child: Container(
                 decoration: BoxDecoration(
                   border: Border.all(color: Theme.of(context).colorScheme.outline),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppDesign.buttonBorderRadius(context),
                 ),
                 child: widget.courseSectionInstructors.isEmpty
                     ? const Center(
@@ -185,7 +186,7 @@ class _InstructorAvoidanceDialogState extends State<InstructorAvoidanceDialog> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppDesign.buttonBorderRadius(context),
                   border: Border.all(
                     color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                   ),

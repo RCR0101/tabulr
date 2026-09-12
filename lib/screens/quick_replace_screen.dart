@@ -16,6 +16,7 @@ import '../services/ui/secure_logger.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
 import '../utils/design_constants.dart';
+import '../models/app_theme.dart';
 import '../utils/page_info_helper.dart';
 
 enum CourseCategory { huel, del, other }
@@ -406,7 +407,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                         : Theme.of(
                           context,
                         ).colorScheme.primaryContainer.withValues(alpha: 0.45),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppDesign.buttonBorderRadius(context),
               ),
               child: Text(
                 plan.impactLabel,
@@ -647,7 +648,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppDesign.cardBorderRadius(context),
               border: Border.all(
                 color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
               ),
@@ -684,7 +685,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                     Container(
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: AppDesign.inputBorderRadius(context),
                         border: Border.all(
                           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
                         ),
@@ -793,7 +794,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(
           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
         ),
@@ -826,7 +827,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
             ),
             child: Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppDesign.inputBorderRadius(context),
                 border: Border.all(
                   color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
                 ),
@@ -860,7 +861,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: Theme.of(context).colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: AppDesign.chipBorderRadius(context),
                           ),
                           child: Text(
                             course.courseCode,
@@ -897,7 +898,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: Theme.of(context).colorScheme.primaryContainer,
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: AppDesign.chipBorderRadius(context),
                             ),
                             child: Text(
                               course.courseCode,
@@ -1124,7 +1125,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
       elevation: 1,
       child: InkWell(
         onTap: canReplace ? () => _performReplace(course) : null,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppDesign.inputBorderRadius(context),
         child: Opacity(
           opacity: canReplace ? 1.0 : 0.5,
           child: Padding(
@@ -1172,7 +1173,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                                 color: AppDesign.warning(
                                   context,
                                 ).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: AppDesign.buttonBorderRadius(context),
                                 border: Border.all(
                                   color: AppDesign.warning(context),
                                   width: 1,
@@ -1200,7 +1201,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                                 color: _getSimilarityColor(
                                   score,
                                 ).withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: AppDesign.cardBorderRadius(context),
                                 border: Border.all(
                                   color: _getSimilarityColor(score),
                                   width: 1,
@@ -1294,7 +1295,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
       decoration: BoxDecoration(
         color: badgeColor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: AppDesign.chipBorderRadius(context),
         border: Border.all(color: badgeColor, width: 0.5),
       ),
       child: Text(
@@ -1313,7 +1314,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(
           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
         ),
@@ -1334,7 +1335,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceContainerLow,
                 borderRadius: BorderRadius.vertical(
-                  top: const Radius.circular(12),
+                  top: Radius.circular(ThemeGeometry.of(context).cardRadius),
                   bottom: _isSearchParamsExpanded ? Radius.zero : const Radius.circular(12),
                 ),
               ),
@@ -1421,7 +1422,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                           style: FilledButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: AppDesign.inputBorderRadius(context),
                             ),
                             minimumSize: const Size(double.infinity, 44),
                           ),
@@ -1516,7 +1517,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: AppDesign.info(context).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: AppDesign.inputBorderRadius(context),
             border: Border.all(
               color: AppDesign.info(context).withValues(alpha: 0.3),
             ),
@@ -1563,7 +1564,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                         decoration: InputDecoration(
                           labelText: 'Branch',
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: AppDesign.chipBorderRadius(context),
                           ),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                           filled: true,
@@ -1608,7 +1609,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                         decoration: InputDecoration(
                           labelText: 'Semester',
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: AppDesign.chipBorderRadius(context),
                           ),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                           filled: true,
@@ -1667,7 +1668,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                         decoration: InputDecoration(
                           labelText: '',
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: AppDesign.chipBorderRadius(context),
                           ),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                           filled: true,
@@ -1725,7 +1726,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                         decoration: InputDecoration(
                           labelText: '',
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: AppDesign.chipBorderRadius(context),
                           ),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                           filled: true,

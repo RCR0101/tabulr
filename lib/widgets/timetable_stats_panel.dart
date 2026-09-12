@@ -147,7 +147,7 @@ class _Tile extends StatelessWidget {
         color: accent == null
             ? scheme.surfaceContainerHighest.withValues(alpha: 0.45)
             : accent!.withValues(alpha: 0.1),
-        borderRadius: AppDesign.borderRadiusMd,
+        borderRadius: AppDesign.cardBorderRadius(context),
       ),
       child: Column(
         children: [
@@ -241,7 +241,7 @@ class _Facts extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: (accent ?? scheme.onSurface).withValues(alpha: 0.08),
-              borderRadius: AppDesign.borderRadiusSm,
+              borderRadius: AppDesign.innerBorderRadius(context),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,

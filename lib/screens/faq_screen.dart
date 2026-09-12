@@ -359,7 +359,7 @@ class _FaqScreenState extends State<FaqScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
-                borderRadius: AppDesign.borderRadiusSm,
+                borderRadius: AppDesign.chipBorderRadius(context),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,

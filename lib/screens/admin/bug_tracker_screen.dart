@@ -218,7 +218,7 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppDesign.spacingSm),
       decoration: BoxDecoration(
-        borderRadius: AppDesign.borderRadiusSm,
+        borderRadius: AppDesign.inputBorderRadius(context),
         border: Border.all(color: scheme.outline.withValues(alpha: 0.3)),
       ),
       child: DropdownButtonHideUnderline(
@@ -228,7 +228,7 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
           focusColor: Colors.transparent,
           value: r.status,
           isDense: true,
-          borderRadius: AppDesign.borderRadiusMd,
+          borderRadius: AppDesign.inputBorderRadius(context),
           items: BugStatus.values
               .map((s) => DropdownMenuItem(
                     value: s,

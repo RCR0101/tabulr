@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../constants/app_constants.dart';
 import '../../models/course.dart' show DayOfWeek;
 
+import '../../utils/design_constants.dart';
 /// A compact bar per weekday (Mon–Sat) showing contact hours, so the *shape* of
 /// a week — a brutal Monday, a light Friday — is visible at a glance. Free days
 /// read as a faint baseline tick.
@@ -79,7 +80,7 @@ class WeeklyLoadChart extends StatelessWidget {
                     height: h,
                     decoration: BoxDecoration(
                       color: color,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: AppDesign.innerBorderRadius(context),
                     ),
                   ),
                 );

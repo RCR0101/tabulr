@@ -496,7 +496,7 @@ class _CourseGuideManagementScreenState
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: scheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: AppDesign.chipBorderRadius(context),
                   ),
                   child: Text(
                     'Year ${semester.split('-')[0]} / Sem ${semester.split('-')[1]}',
@@ -513,7 +513,7 @@ class _CourseGuideManagementScreenState
                 const Spacer(),
                 if (locked)
                   InkWell(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: AppDesign.buttonBorderRadius(context),
                     onTap: _openBranchGroups,
                     child: Padding(
                       padding: const EdgeInsets.all(4),
@@ -534,7 +534,7 @@ class _CourseGuideManagementScreenState
                   )
                 else ...[
                   InkWell(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: AppDesign.buttonBorderRadius(context),
                     onTap: () => _addCourse(semester),
                     child: Padding(
                       padding: const EdgeInsets.all(4),
@@ -553,7 +553,7 @@ class _CourseGuideManagementScreenState
                   ),
                   const SizedBox(width: 4),
                   InkWell(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: AppDesign.buttonBorderRadius(context),
                     onTap: () => _addChoice(semester),
                     child: Padding(
                       padding: const EdgeInsets.all(4),
@@ -634,7 +634,7 @@ class _CourseGuideManagementScreenState
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: scheme.tertiary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: AppDesign.chipBorderRadius(context),
                   ),
                   child: Text(title,
                       style: TextStyle(
@@ -648,7 +648,7 @@ class _CourseGuideManagementScreenState
                         fontSize: 12, color: AppDesign.muted(context))),
                 const Spacer(),
                 InkWell(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppDesign.buttonBorderRadius(context),
                   onTap: () => _addElective(list, shortLabel),
                   child: Padding(
                     padding: const EdgeInsets.all(4),
@@ -716,7 +716,7 @@ class _CourseGuideManagementScreenState
                 overflow: TextOverflow.ellipsis),
           ),
           InkWell(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: AppDesign.buttonBorderRadius(context),
             onTap: () => _removeElective(list, index),
             child: Padding(
               padding: const EdgeInsets.all(4),
@@ -773,7 +773,7 @@ class _CourseGuideManagementScreenState
           ),
           if (!locked)
             InkWell(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: AppDesign.buttonBorderRadius(context),
               onTap: () => _removeCourse(semester, index),
               child: Padding(
                 padding: const EdgeInsets.all(4),

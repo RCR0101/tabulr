@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/course.dart';
 import '../services/data/user_settings_service.dart';
+import '../utils/design_constants.dart';
 
 /// Which basis to count in, asked once per place the choice is made.
 ///
@@ -55,9 +56,7 @@ class _CreditBasisNoticeState extends State<CreditBasisNotice> {
     final scheme = Theme.of(context).colorScheme;
     // Amber rather than the error red the mix warning uses: this is a thing to
     // check, not a thing that is wrong.
-    final amber = Theme.of(context).brightness == Brightness.dark
-        ? const Color(0xFFFFCA28)
-        : const Color(0xFFB26A00);
+    final amber = AppDesign.warning(context);
 
     return Container(
       margin: widget.margin,
@@ -65,7 +64,7 @@ class _CreditBasisNoticeState extends State<CreditBasisNotice> {
       decoration: BoxDecoration(
         color: amber.withValues(alpha: 0.12),
         border: Border.all(color: amber.withValues(alpha: 0.45)),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: AppDesign.cardBorderRadius(context),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

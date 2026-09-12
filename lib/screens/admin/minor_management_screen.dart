@@ -245,7 +245,7 @@ class _MinorManagementScreenState extends State<MinorManagementScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.15),
-          borderRadius: AppDesign.borderRadiusSm,
+          borderRadius: AppDesign.chipBorderRadius(context),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

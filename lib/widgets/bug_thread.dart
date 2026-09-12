@@ -132,7 +132,7 @@ class _BugThreadState extends State<BugThread> {
           color: mine
               ? scheme.primary.withValues(alpha: 0.12)
               : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-          borderRadius: AppDesign.borderRadiusMd,
+          borderRadius: AppDesign.cardBorderRadius(context),
           border: Border.all(
             color: (mine ? scheme.primary : scheme.outline)
                 .withValues(alpha: 0.25),

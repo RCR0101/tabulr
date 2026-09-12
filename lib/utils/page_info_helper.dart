@@ -4,6 +4,7 @@ import '../screens/guide_screen.dart';
 import 'guide_content.dart';
 import 'page_transitions.dart';
 
+import '../utils/design_constants.dart';
 class PageInfoHelper {
   PageInfoHelper._();
 
@@ -26,7 +27,7 @@ class PageInfoHelper {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               color: scheme.primary.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: AppDesign.buttonBorderRadius(context),
             ),
             child: Text(
               info.purpose,
@@ -59,7 +60,7 @@ class PageInfoHelper {
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
                             color: scheme.primary.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: AppDesign.innerBorderRadius(context),
                           ),
                           child: Icon(
                             f.icon,

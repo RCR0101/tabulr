@@ -579,7 +579,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   padding: const EdgeInsets.all(AppDesign.spacingSm),
                   decoration: BoxDecoration(
                     color: scheme.primary.withValues(alpha: 0.1),
-                    borderRadius: AppDesign.borderRadiusSm,
+                    borderRadius: AppDesign.innerBorderRadius(context),
                   ),
                   child: Icon(icon, size: 20, color: scheme.primary),
                 ),
@@ -619,7 +619,7 @@ class _AdminScreenState extends State<AdminScreen> {
           horizontal: AppDesign.spacingSm + 4, vertical: AppDesign.spacingSm),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
-        borderRadius: AppDesign.borderRadiusSm,
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(
           color: file != null
               ? scheme.primary.withValues(alpha: 0.3)
@@ -646,7 +646,7 @@ class _AdminScreenState extends State<AdminScreen> {
                 extensions: extensions,
                 onPicked: (f) => onChanged(f),
               ),
-              borderRadius: AppDesign.borderRadiusSm,
+              borderRadius: AppDesign.buttonBorderRadius(context),
               child: Row(
                 children: [
                   Icon(
@@ -723,17 +723,17 @@ class _AdminScreenState extends State<AdminScreen> {
                 fillColor:
                     scheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 border: OutlineInputBorder(
-                  borderRadius: AppDesign.borderRadiusSm,
+                  borderRadius: AppDesign.inputBorderRadius(context),
                   borderSide:
                       BorderSide(color: scheme.outline.withValues(alpha: 0.15)),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: AppDesign.borderRadiusSm,
+                  borderRadius: AppDesign.inputBorderRadius(context),
                   borderSide:
                       BorderSide(color: scheme.outline.withValues(alpha: 0.15)),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: AppDesign.borderRadiusSm,
+                  borderRadius: AppDesign.inputBorderRadius(context),
                   borderSide: BorderSide(color: scheme.primary, width: 1.5),
                 ),
               ),
@@ -960,19 +960,19 @@ class _AdminScreenState extends State<AdminScreen> {
                       fillColor: scheme.surfaceContainerHighest
                           .withValues(alpha: 0.3),
                       border: OutlineInputBorder(
-                        borderRadius: AppDesign.borderRadiusSm,
+                        borderRadius: AppDesign.inputBorderRadius(context),
                         borderSide: BorderSide(
                           color: scheme.outline.withValues(alpha: 0.15),
                         ),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: AppDesign.borderRadiusSm,
+                        borderRadius: AppDesign.inputBorderRadius(context),
                         borderSide: BorderSide(
                           color: scheme.outline.withValues(alpha: 0.15),
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: AppDesign.borderRadiusSm,
+                        borderRadius: AppDesign.inputBorderRadius(context),
                         borderSide: BorderSide(
                           color: scheme.primary,
                           width: 1.5,
@@ -1005,7 +1005,7 @@ class _AdminScreenState extends State<AdminScreen> {
             onTap: () {
               _setStateIfMounted(() => controllers.add(TextEditingController()));
             },
-            borderRadius: AppDesign.borderRadiusSm,
+            borderRadius: AppDesign.buttonBorderRadius(context),
             child: Padding(
               padding: const EdgeInsets.symmetric(
                   vertical: AppDesign.spacingXs,
@@ -1037,7 +1037,7 @@ class _AdminScreenState extends State<AdminScreen> {
           horizontal: AppDesign.spacingSm + 4, vertical: AppDesign.spacingSm + 2),
       decoration: BoxDecoration(
         color: scheme.primary.withValues(alpha: 0.05),
-        borderRadius: AppDesign.borderRadiusSm,
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: scheme.primary.withValues(alpha: 0.1)),
       ),
       child: Row(
@@ -1073,7 +1073,7 @@ class _AdminScreenState extends State<AdminScreen> {
         color: isError
             ? scheme.error.withValues(alpha: 0.1)
             : scheme.primary.withValues(alpha: 0.08),
-        borderRadius: AppDesign.borderRadiusSm,
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(
           color: isError
               ? scheme.error.withValues(alpha: 0.2)
@@ -1114,14 +1114,14 @@ class _AdminScreenState extends State<AdminScreen> {
     return Material(
       key: key,
       color: scheme.surface,
-      borderRadius: AppDesign.borderRadiusSm,
+      borderRadius: AppDesign.buttonBorderRadius(context),
       child: InkWell(
-        borderRadius: AppDesign.borderRadiusSm,
+        borderRadius: AppDesign.buttonBorderRadius(context),
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           decoration: BoxDecoration(
-            borderRadius: AppDesign.borderRadiusSm,
+            borderRadius: AppDesign.buttonBorderRadius(context),
             border: Border.all(color: scheme.outline.withValues(alpha: 0.12)),
           ),
           child: Row(
@@ -1130,7 +1130,7 @@ class _AdminScreenState extends State<AdminScreen> {
                 padding: const EdgeInsets.all(AppDesign.spacingSm + 2),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.1),
-                  borderRadius: AppDesign.borderRadiusSm,
+                  borderRadius: AppDesign.innerBorderRadius(context),
                 ),
                 child: Icon(icon, size: 22, color: color),
               ),
@@ -1477,7 +1477,7 @@ class _AdminScreenState extends State<AdminScreen> {
           Padding(
             padding: const EdgeInsets.only(bottom: AppDesign.spacingXs + 2),
             child: InkWell(
-              borderRadius: AppDesign.borderRadiusSm,
+              borderRadius: AppDesign.buttonBorderRadius(context),
               onTap: _savingDates ? null : () => _pickSemesterDate(key),
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -1485,7 +1485,7 @@ class _AdminScreenState extends State<AdminScreen> {
                     vertical: AppDesign.spacingSm + 2),
                 decoration: BoxDecoration(
                   color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                  borderRadius: AppDesign.borderRadiusSm,
+                  borderRadius: AppDesign.cardBorderRadius(context),
                   border:
                       Border.all(color: scheme.outline.withValues(alpha: 0.15)),
                 ),

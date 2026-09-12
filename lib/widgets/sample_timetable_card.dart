@@ -110,7 +110,7 @@ class SampleTimetableCard extends StatelessWidget {
                             horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color: chipColor.withValues(alpha: 0.10),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: AppDesign.chipBorderRadius(context),
                         ),
                         child: Text(
                           chip,

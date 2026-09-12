@@ -139,7 +139,7 @@ class _CampusSelectorWidgetState extends State<CampusSelectorWidget> {
             color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
             width: 1,
           ),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: AppDesign.chipBorderRadius(context),
           color: Theme.of(context).colorScheme.surface,
         ),
         child: Row(

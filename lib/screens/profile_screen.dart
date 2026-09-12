@@ -110,7 +110,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.all(AppDesign.spacingMd),
       decoration: BoxDecoration(
         color: scheme.primary.withValues(alpha: 0.06),
-        borderRadius: AppDesign.borderRadiusMd,
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: scheme.primary.withValues(alpha: 0.15)),
       ),
       child: Row(

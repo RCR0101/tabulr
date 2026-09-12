@@ -536,9 +536,9 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
                         isSelected
                             ? scheme.primaryContainer.withValues(alpha: 0.5)
                             : Colors.transparent,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: AppDesign.buttonBorderRadius(context),
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: AppDesign.buttonBorderRadius(context),
                       onTap: () async {
                         final navigator = Navigator.of(context);
                         await _userSettingsService.updateSortOrder(sortOrder);

@@ -225,7 +225,7 @@ class ThemeSelectorDialog extends StatelessWidget {
               height: 4,
               decoration: BoxDecoration(
                 color: scheme.onSurface.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(2),
+                borderRadius: BorderRadius.circular(AppDesign.radiusXxs),
               ),
             ),
           ),
@@ -586,7 +586,7 @@ class _PreviewClass extends StatelessWidget {
                 child: Container(
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.24),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: AppDesign.innerBorderRadius(context),
                     border: Border.all(color: color.withValues(alpha: 0.7)),
                   ),
                 ),

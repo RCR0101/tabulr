@@ -818,7 +818,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             title: ann.title,
             subtitle: ann.courseCode,
             hour: ann.startTime?.hour ?? 0,
-            color: const Color(0xFFEF6C00),
+            color: AppDesign.warning(context),
             announcement: ann,
             slotKey: 'ann-${ann.id}',
           ),
@@ -1657,8 +1657,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   Container(
                                     width: 4,
                                     height: 4,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFFEF6C00),
+                                    decoration: BoxDecoration(
+                                      color: AppDesign.warning(context),
                                       shape: BoxShape.circle,
                                     ),
                                   ),
@@ -1855,7 +1855,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             ),
                             decoration: BoxDecoration(
                               color: item.color.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: AppDesign.innerBorderRadius(context),
                               border: Border(
                                 left: BorderSide(color: item.color, width: 3),
                               ),

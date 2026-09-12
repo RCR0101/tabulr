@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../models/all_course.dart';
 import '../../services/parsers/performance_sheet_parser.dart';
-import '../../services/ui/responsive_service.dart';
 import '../../utils/grade_utils.dart' as grade_utils;
 
+import '../../utils/design_constants.dart';
 class PerformanceSheetPreviewDialog extends StatelessWidget {
   final ParsedPerformanceSheet parsed;
   final List<AllCourse> allCourses;
@@ -21,128 +21,124 @@ class PerformanceSheetPreviewDialog extends StatelessWidget {
       courseMap[course.courseCode.toUpperCase()] = course;
     }
 
-    return AlertDialog(
-      title: Row(
-        children: [
-          const Icon(Icons.preview_outlined),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Import Preview'),
-                if (parsed.studentName != null)
-                  Text(
-                    parsed.studentName!,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-              ],
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (parsed.studentName != null)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                parsed.studentName!,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
           ),
-        ],
-      ),
-      content: SizedBox(
-        width: ResponsiveService.isMobile(context) ? MediaQuery.sizeOf(context).width * 0.85 : 400,
-        height: 400,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(8),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            borderRadius: AppDesign.buttonBorderRadius(context),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _SummaryItem(label: 'Semesters', value: '${parsed.semesters.length}'),
+              _SummaryItem(label: 'Courses', value: '${parsed.totalCourses}'),
+              if (parsed.cgpa != null)
+                _SummaryItem(label: 'CGPA', value: parsed.cgpa!.toStringAsFixed(2)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.errorContainer,
+            borderRadius: AppDesign.buttonBorderRadius(context),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.warning_amber_outlined, color: Theme.of(context).colorScheme.error, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'This will override existing data for the imported semesters.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                  ),
+                ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _SummaryItem(label: 'Semesters', value: '${parsed.semesters.length}'),
-                  _SummaryItem(label: 'Courses', value: '${parsed.totalCourses}'),
-                  if (parsed.cgpa != null)
-                    _SummaryItem(label: 'CGPA', value: parsed.cgpa!.toStringAsFixed(2)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.errorContainer,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.warning_amber_outlined, color: Theme.of(context).colorScheme.error, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'This will override existing data for the imported semesters.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onErrorContainer,
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.4,
+          ),
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: parsed.semesters.length,
+            itemBuilder: (context, index) {
+              final semester = parsed.semesters[index];
+              return ExpansionTile(
+                title: Text(semester.normalizedName),
+                subtitle: Text('${semester.courses.length} courses', style: Theme.of(context).textTheme.bodySmall),
+                children: semester.courses.map((course) {
+                  final lookup = courseMap[course.courseCode.toUpperCase()];
+                  final notFound = lookup == null;
+                  final gradeLabel = course.grade ?? 'Pending';
+                  final gradeTextColor = course.grade == null
+                      ? Theme.of(context).colorScheme.onSurfaceVariant
+                      : Theme.of(context).colorScheme.onPrimary;
+
+                  return ListTile(
+                    dense: true,
+                    leading: notFound
+                        ? Icon(Icons.warning_amber, color: Theme.of(context).colorScheme.error, size: 18)
+                        : null,
+                    title: Text(
+                      course.courseCode,
+                      style: TextStyle(color: notFound ? Theme.of(context).colorScheme.error : null),
+                    ),
+                    subtitle: Text(
+                      lookup?.courseTitle ?? 'Course not found in database',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getGradeColor(course.grade, context),
+                        borderRadius: AppDesign.innerBorderRadius(context),
+                      ),
+                      child: Text(
+                        gradeLabel,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: gradeTextColor,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView.builder(
-                itemCount: parsed.semesters.length,
-                itemBuilder: (context, index) {
-                  final semester = parsed.semesters[index];
-                  return ExpansionTile(
-                    title: Text(semester.normalizedName),
-                    subtitle: Text('${semester.courses.length} courses', style: Theme.of(context).textTheme.bodySmall),
-                    children: semester.courses.map((course) {
-                      final lookup = courseMap[course.courseCode.toUpperCase()];
-                      final notFound = lookup == null;
-                      final gradeLabel = course.grade ?? 'Pending';
-                      final gradeTextColor = course.grade == null
-                          ? Theme.of(context).colorScheme.onSurfaceVariant
-                          : Theme.of(context).colorScheme.onPrimary;
-
-                      return ListTile(
-                        dense: true,
-                        leading: notFound
-                            ? Icon(Icons.warning_amber, color: Theme.of(context).colorScheme.error, size: 18)
-                            : null,
-                        title: Text(
-                          course.courseCode,
-                          style: TextStyle(color: notFound ? Theme.of(context).colorScheme.error : null),
-                        ),
-                        subtitle: Text(
-                          lookup?.courseTitle ?? 'Course not found in database',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _getGradeColor(course.grade, context),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            gradeLabel,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: gradeTextColor,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
                   );
-                },
-              ),
-            ),
+                }).toList(),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            const SizedBox(width: 8),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Import')),
           ],
         ),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-        FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Import')),
       ],
     );
   }

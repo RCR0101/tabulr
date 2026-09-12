@@ -5,6 +5,7 @@ import '../services/core/cgpa_target_solver.dart';
 import '../services/ui/responsive_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
+import '../models/app_theme.dart';
 import '../utils/page_info_helper.dart';
 import '../utils/grade_utils.dart' as grade_utils;
 
@@ -239,7 +240,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppDesign.cardBorderRadius(context),
         side: BorderSide(
           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
         ),
@@ -260,7 +261,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
               initialValue: _selectedSemester,
               decoration: InputDecoration(
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppDesign.cardBorderRadius(context),
                 ),
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -293,7 +294,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
             Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppDesign.cardBorderRadius(context),
       ),
       padding: const EdgeInsets.all(20),
       child: Row(
@@ -302,7 +303,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppDesign.cardBorderRadius(context),
             ),
             child: Icon(
               Icons.analytics_rounded,
@@ -348,7 +349,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
       return Card(
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: AppDesign.cardBorderRadius(context),
           side: BorderSide(
             color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
           ),
@@ -371,7 +372,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppDesign.cardBorderRadius(context),
         side: BorderSide(
           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
         ),
@@ -415,7 +416,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
               proxyDecorator: (child, index, animation) {
                 return Material(
                   elevation: 4,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppDesign.cardBorderRadius(context),
                   child: child,
                 );
               },
@@ -437,7 +438,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(
           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
         ),
@@ -459,7 +460,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                 Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
               ],
             ),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: AppDesign.inputBorderRadius(context),
           ),
           child: Center(
             child: Text(
@@ -490,7 +491,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                     .colorScheme
                     .primaryContainer
                     .withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppDesign.inputBorderRadius(context),
               ),
               child: Text(
                 '${course.credits.toStringAsFixed(0)} credits',
@@ -520,7 +521,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppDesign.cardBorderRadius(context),
         side: BorderSide(
           color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
         ),
@@ -544,7 +545,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
               decoration: InputDecoration(
                 hintText: 'Enter target CGPA (e.g., 8.5)',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppDesign.cardBorderRadius(context),
                 ),
                 prefixIcon: const Icon(Icons.flag_rounded),
               ),
@@ -574,7 +575,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
       style: FilledButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppDesign.cardBorderRadius(context),
         ),
       ),
     );
@@ -588,7 +589,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
       child: Card(
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: AppDesign.cardBorderRadius(context),
           side: BorderSide(
             color: colorScheme.outline.withValues(alpha: 0.2),
           ),
@@ -609,9 +610,9 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                     colorScheme.primary.withValues(alpha: 0.8),
                   ],
                 ),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(ThemeGeometry.of(context).cardRadius),
+                  topRight: Radius.circular(ThemeGeometry.of(context).cardRadius),
                 ),
               ),
               child: Row(
@@ -620,7 +621,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppDesign.inputBorderRadius(context),
                     ),
                     child: Icon(
                       Icons.lightbulb_rounded,
@@ -715,7 +716,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppDesign.cardBorderRadius(context),
       ),
       child: Row(
         children: [
@@ -743,7 +744,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppDesign.cardBorderRadius(context),
         side: BorderSide(
           color: isTargetAchieved
               ? AppDesign.success(context).withValues(alpha: 0.5)
@@ -763,7 +764,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: AppDesign.inputBorderRadius(context),
                   ),
                   child: Text(
                     '#${index + 1}',
@@ -780,7 +781,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppDesign.success(context).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppDesign.inputBorderRadius(context),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -836,7 +837,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: _getGradeColor(grade).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: AppDesign.inputBorderRadius(context),
                     border: Border.all(
                       color: _getGradeColor(grade).withValues(alpha: 0.3),
                     ),
@@ -857,7 +858,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: _getGradeColor(grade),
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: AppDesign.buttonBorderRadius(context),
                         ),
                         child: Text(
                           grade,
