@@ -40,17 +40,7 @@ class AppSidebar extends StatelessWidget {
       clipBehavior: Clip.hardEdge,
       width: collapsed ? 76 : 232,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            scheme.surfaceContainerLow,
-            Color.alphaBlend(
-              scheme.primary.withValues(alpha: 0.045),
-              scheme.surface,
-            ),
-          ],
-        ),
+        color: scheme.surface,
         border: Border(
           right: BorderSide(color: scheme.outline.withValues(alpha: 0.12)),
         ),
@@ -117,11 +107,11 @@ class AppSidebar extends StatelessWidget {
                                             ),
                                           ),
                                           Text(
-                                            'ACADEMIC WORKSPACE',
+                                            'ACADEMIC PLANNER',
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
-                                              fontSize: 8,
+                                              fontSize: 10,
                                               fontWeight: FontWeight.w600,
                                               letterSpacing: .6,
                                               color: scheme.onSurfaceVariant,
@@ -146,7 +136,7 @@ class AppSidebar extends StatelessWidget {
                       shortcut: true,
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
                   AnimatedSize(
                     duration: motion,
                     curve: Curves.easeOutCubic,
@@ -161,7 +151,7 @@ class AppSidebar extends StatelessWidget {
                                 child: Text(
                                   'WORKSPACES',
                                   style: TextStyle(
-                                    fontSize: 10,
+                                    fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 1.6,
                                     color: scheme.onSurfaceVariant,
@@ -242,7 +232,7 @@ class AppSidebar extends StatelessWidget {
     bool shortcut = false,
   }) {
     final scheme = Theme.of(context).colorScheme;
-    final foreground = selected ? scheme.onPrimary : scheme.onSurface;
+    final foreground = selected ? scheme.primary : scheme.onSurface;
     final motion =
         MediaQuery.disableAnimationsOf(context)
             ? Duration.zero
@@ -259,80 +249,98 @@ class AppSidebar extends StatelessWidget {
                   : collapsed
                   ? label
                   : '',
-          child: TweenAnimationBuilder<Color?>(
+          child: TweenAnimationBuilder<double>(
             duration: motion,
             curve: Curves.easeOutCubic,
-            tween: ColorTween(
-              end: selected ? scheme.primary : Colors.transparent,
-            ),
+            tween: Tween(begin: 0, end: selected ? 1 : 0),
             builder:
-                (context, color, child) => Material(
-                  color: color,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: AppDesign.cardBorderRadius(context),
-                    side:
-                        outlined
-                            ? BorderSide(
-                              color: scheme.outline.withValues(alpha: 0.2),
-                            )
-                            : BorderSide.none,
-                  ),
-                  child: InkWell(
-                    onTap: onTap,
-                    borderRadius: AppDesign.cardBorderRadius(context),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(minHeight: 48),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: collapsed ? 0 : 12,
-                          vertical: 10,
-                        ),
-                        child: Row(
-                          mainAxisAlignment:
-                              collapsed
-                                  ? MainAxisAlignment.center
-                                  : MainAxisAlignment.start,
-                          children: [
-                            Icon(icon, size: 20, color: foreground),
-                            if (!collapsed) ...[
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  shortcut ? 'Search' : label,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight:
-                                        selected
-                                            ? FontWeight.w600
-                                            : FontWeight.w500,
-                                    color: foreground,
-                                  ),
-                                ),
-                              ),
-                              if (shortcut)
-                                Text(
-                                  Theme.of(context).platform ==
-                                          TargetPlatform.macOS
-                                      ? 'Cmd K'
-                                      : 'Ctrl K',
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.labelSmall?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              if (selected)
-                                Icon(
-                                  Icons.arrow_forward_rounded,
-                                  size: 14,
-                                  color: foreground,
-                                ),
-                            ],
-                          ],
+                (context, emphasis, child) => Stack(
+                  children: [
+                    PositionedDirectional(
+                      start: 0,
+                      top: 5,
+                      bottom: 5,
+                      child: AnimatedContainer(
+                        duration: motion,
+                        width: selected ? 3 : 0,
+                        decoration: BoxDecoration(
+                          color: scheme.primary,
+                          borderRadius: BorderRadius.circular(3),
                         ),
                       ),
                     ),
-                  ),
+                    Material(
+                      color: Color.alphaBlend(
+                        scheme.primary.withValues(alpha: .07 * emphasis),
+                        Colors.transparent,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: AppDesign.cardBorderRadius(context),
+                        side:
+                            outlined
+                                ? BorderSide(
+                                  color: scheme.outline.withValues(alpha: 0.2),
+                                )
+                                : BorderSide.none,
+                      ),
+                      child: InkWell(
+                        onTap: onTap,
+                        borderRadius: AppDesign.cardBorderRadius(context),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 48),
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: collapsed ? 0 : 12,
+                              vertical: 10,
+                            ),
+                            child: Row(
+                              mainAxisAlignment:
+                                  collapsed
+                                      ? MainAxisAlignment.center
+                                      : MainAxisAlignment.start,
+                              children: [
+                                Icon(icon, size: 20, color: foreground),
+                                if (!collapsed) ...[
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      shortcut ? 'Search' : label,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight:
+                                            selected
+                                                ? FontWeight.w600
+                                                : FontWeight.w500,
+                                        color: foreground,
+                                      ),
+                                    ),
+                                  ),
+                                  if (shortcut)
+                                    Text(
+                                      Theme.of(context).platform ==
+                                              TargetPlatform.macOS
+                                          ? 'Cmd K'
+                                          : 'Ctrl K',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.labelSmall?.copyWith(
+                                        color: scheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  if (selected)
+                                    Icon(
+                                      Icons.arrow_forward_rounded,
+                                      size: 14,
+                                      color: foreground,
+                                    ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
           ),
         ),

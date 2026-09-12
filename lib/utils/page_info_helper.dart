@@ -4,7 +4,6 @@ import '../screens/guide_screen.dart';
 import 'guide_content.dart';
 import 'page_transitions.dart';
 
-import '../utils/design_constants.dart';
 class PageInfoHelper {
   PageInfoHelper._();
 
@@ -19,91 +18,93 @@ class PageInfoHelper {
       context: context,
       title: info.title,
       icon: Icons.info_outline,
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: scheme.primary.withValues(alpha: 0.06),
-              borderRadius: AppDesign.buttonBorderRadius(context),
-            ),
-            child: Text(
-              info.purpose,
-              style: TextStyle(
-                fontSize: 13,
-                height: 1.4,
-                color: scheme.onSurface.withValues(alpha: 0.85),
-              ),
-            ),
-          ),
-          if (info.features.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            ...List.generate(info.features.length, (i) {
-              final f = info.features[i];
-              return Column(
-                children: [
-                  if (i > 0)
-                    Divider(
-                      height: 1,
-                      color: scheme.outlineVariant.withValues(alpha: 0.3),
-                    ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 28,
-                          height: 28,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: scheme.primary.withValues(alpha: 0.08),
-                            borderRadius: AppDesign.innerBorderRadius(context),
-                          ),
-                          child: Icon(
-                            f.icon,
-                            size: 15,
-                            color: scheme.primary.withValues(alpha: 0.8),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text.rich(
-                            TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: '${f.label}  ',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: f.description,
-                                  style: TextStyle(
-                                    color: scheme.onSurface.withValues(
-                                      alpha: 0.7,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: scheme.onSurface,
-                              height: 1.3,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+      content: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.58,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.fromLTRB(14, 4, 0, 4),
+                decoration: BoxDecoration(
+                  border: Border(
+                    left: BorderSide(color: scheme.primary, width: 3),
                   ),
-                ],
-              );
-            }),
-          ],
-        ],
+                ),
+                child: Text(
+                  info.purpose,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    height: 1.5,
+                    color: scheme.onSurface,
+                  ),
+                ),
+              ),
+              if (info.features.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                ...List.generate(info.features.length, (i) {
+                  final f = info.features[i];
+                  return Column(
+                    children: [
+                      if (i > 0)
+                        Divider(
+                          height: 1,
+                          color: scheme.outlineVariant.withValues(alpha: 0.3),
+                        ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 28,
+                              child: Icon(
+                                f.icon,
+                                size: 18,
+                                color: scheme.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text.rich(
+                                TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: '${f.label}  ',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: f.description,
+                                      style: TextStyle(
+                                        color: scheme.onSurface.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.bodyMedium?.copyWith(
+                                  color: scheme.onSurface,
+                                  height: 1.45,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                }),
+              ],
+            ],
+          ),
+        ),
       ),
       actions: [
         if (anchor != null)
@@ -197,6 +198,11 @@ class PageInfoHelper {
       ),
       FeatureInfo(Icons.swipe_left, 'Swipe Left', 'delete a timetable'),
       FeatureInfo(
+        Icons.view_week_outlined,
+        'Weekly preview',
+        'read each plan’s day-by-day workload before opening the editor',
+      ),
+      FeatureInfo(
         Icons.drag_handle,
         'Custom Order',
         'choose Custom Order, then drag the handles to arrange your plans',
@@ -254,6 +260,11 @@ class PageInfoHelper {
         Icons.view_week_outlined,
         'Calendar Toolbar',
         'switch timetables, set the student ID used for exam rooms, and manage the visible week; on phones these live under Calendar options',
+      ),
+      FeatureInfo(
+        Icons.today_outlined,
+        'Desktop day focus',
+        'scan the week and use the side agenda for the corresponding day in the displayed week',
       ),
       FeatureInfo(
         Icons.swipe_rounded,

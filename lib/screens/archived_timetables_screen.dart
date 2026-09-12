@@ -87,7 +87,8 @@ class _ArchivedTimetablesScreenState extends State<ArchivedTimetablesScreen> {
                     final tt = _timetables![index];
                     final courseCodes = tt.selectedSections.map((s) => s.courseCode).toSet().toList();
                     return Card(
-                      elevation: 1,
+                      color: scheme.surfaceContainerLow,
+                      elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: AppDesign.cardBorderRadius(context)),
                       margin: const EdgeInsets.only(bottom: 12),
                       child: InkWell(
@@ -103,7 +104,10 @@ class _ArchivedTimetablesScreenState extends State<ArchivedTimetablesScreen> {
                           ),
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.all(AppDesign.spacingMd),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppDesign.spacingMd,
+                            vertical: AppDesign.spacingMd + 2,
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [

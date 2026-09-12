@@ -9,6 +9,7 @@ import '../services/data/local_cache_service.dart';
 import '../utils/design_constants.dart';
 import '../utils/name_utils.dart';
 import '../widgets/app_tools.dart';
+import '../widgets/common/tabulr_surface.dart';
 
 /// A person shown in the credits (creator, contributor, or admin).
 class _Person {
@@ -319,20 +320,9 @@ class _CreditsScreenState extends State<CreditsScreen> {
       child: InkWell(
         borderRadius: AppDesign.buttonBorderRadius(context),
         onTap: () => info.pushOn(Navigator.of(context)),
-        child: Container(
+        child: TabulrSurface(
+          level: TabulrSurfaceLevel.panel,
           padding: const EdgeInsets.all(AppDesign.spacingMd),
-          decoration: BoxDecoration(
-            borderRadius: AppDesign.cardBorderRadius(context),
-            border: Border.all(color: scheme.primary.withValues(alpha: 0.35)),
-            gradient: LinearGradient(
-              colors: [
-                scheme.primary.withValues(alpha: 0.10),
-                scheme.secondary.withValues(alpha: 0.06),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
           child: Row(
             children: [
               Container(

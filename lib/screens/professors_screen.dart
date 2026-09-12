@@ -17,6 +17,7 @@ import '../utils/design_constants.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
 import '../widgets/common/app_search_field.dart';
+import '../widgets/common/tabulr_surface.dart';
 import '../widgets/common/app_tappable.dart';
 import '../utils/page_info_helper.dart';
 import '../services/ui/tutorial_service.dart';
@@ -374,12 +375,8 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
     final hasSchedule = professor.schedule.isNotEmpty;
     final chamberUnavailable = professor.chamber == 'Unavailable';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        border: Border.all(color: scheme.outlineVariant),
-        borderRadius: AppDesign.cardBorderRadius(context),
-      ),
+    return TabulrSurface(
+      level: TabulrSurfaceLevel.panel,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         // The whole row opens the schedule; only meaningful when there is one.
@@ -575,7 +572,9 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                               ),
                             ),
                             decoration: BoxDecoration(
-                              borderRadius: AppDesign.buttonBorderRadius(context),
+                              borderRadius: AppDesign.buttonBorderRadius(
+                                context,
+                              ),
                               border: Border.all(
                                 color:
                                     isSelected
@@ -602,7 +601,9 @@ class _ProfessorsScreenState extends State<ProfessorsScreen> {
                                             : Theme.of(context)
                                                 .colorScheme
                                                 .surfaceContainerHighest,
-                                    borderRadius: AppDesign.innerBorderRadius(context),
+                                    borderRadius: AppDesign.innerBorderRadius(
+                                      context,
+                                    ),
                                   ),
                                   child: Icon(
                                     _getSortIcon(sortType),
@@ -736,9 +737,7 @@ class _ProfessorDetailDialog extends StatelessWidget {
               const SizedBox(width: 4),
               Text(
                 professor.chamber,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(
                     context,
                   ).colorScheme.onSurface.withValues(alpha: 0.6),

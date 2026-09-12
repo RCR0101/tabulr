@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollDirection;
 
 import '../services/ui/responsive_service.dart';
+import '../utils/design_constants.dart';
 import 'app_sidebar.dart';
 import 'app_workspaces.dart';
 import 'workspace_navigation_scope.dart';
@@ -42,8 +43,20 @@ class WorkspaceFrame extends StatefulWidget {
   State<WorkspaceFrame> createState() => _WorkspaceFrameState();
 }
 
-class _WorkspaceFrameState extends State<WorkspaceFrame> {
+class _WorkspaceFrameState extends State<WorkspaceFrame>
+    with SingleTickerProviderStateMixin {
   bool _tabsVisible = true;
+  late final AnimationController _contentController;
+
+  @override
+  void initState() {
+    super.initState();
+    _contentController = AnimationController(
+      vsync: this,
+      duration: AppDesign.animDurationFast,
+      value: 1,
+    );
+  }
 
   @override
   void didUpdateWidget(WorkspaceFrame oldWidget) {
@@ -51,7 +64,16 @@ class _WorkspaceFrameState extends State<WorkspaceFrame> {
     if (oldWidget.selectedId != widget.selectedId ||
         oldWidget.workspace.workspace != widget.workspace.workspace) {
       _showTabs();
+      _contentController
+        ..reset()
+        ..forward();
     }
+  }
+
+  @override
+  void dispose() {
+    _contentController.dispose();
+    super.dispose();
   }
 
   void _showTabs() {
@@ -192,7 +214,15 @@ class _WorkspaceFrameState extends State<WorkspaceFrame> {
             ],
           ),
         ),
-        Expanded(child: widget.child),
+        Expanded(
+          child: FadeTransition(
+            opacity: CurvedAnimation(
+              parent: _contentController,
+              curve: Curves.easeOut,
+            ),
+            child: widget.child,
+          ),
+        ),
       ],
     );
     final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
@@ -236,35 +266,149 @@ class _WorkspaceFrameState extends State<WorkspaceFrame> {
                       ),
               bottomNavigationBar:
                   mobile
-                      ? NavigationBar(
-                        height: 68,
-                        elevation: 0,
-                        backgroundColor: scheme.surface,
-                        indicatorColor: scheme.primaryContainer,
+                      ? _WorkspaceDock(
+                        destinations: primary,
                         selectedIndex:
                             primaryIndex < 0 ? primary.length : primaryIndex,
-                        onDestinationSelected:
+                        onSelected:
                             (index) =>
                                 index == primary.length
                                     ? _showMore(context)
                                     : widget.onWorkspaceSelected(
                                       primary[index].workspace,
                                     ),
-                        destinations: [
-                          for (final info in primary)
-                            NavigationDestination(
-                              icon: Icon(info.icon),
-                              label: info.label,
-                            ),
-                          const NavigationDestination(
-                            icon: Icon(Icons.grid_view_rounded),
-                            label: 'More',
-                          ),
-                        ],
                       )
                       : null,
             ),
           ),
+    );
+  }
+}
+
+class _WorkspaceDock extends StatelessWidget {
+  const _WorkspaceDock({
+    required this.destinations,
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  final List<WorkspaceInfo> destinations;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final items = <(IconData, String)>[
+      for (final info in destinations) (info.icon, info.label),
+      (Icons.grid_view_rounded, 'More'),
+    ];
+
+    return Material(
+      color: scheme.surface,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(
+              color: scheme.outlineVariant.withValues(alpha: 0.7),
+            ),
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: AppDesign.navBarHeight,
+            child: Row(
+              children: [
+                for (var index = 0; index < items.length; index++)
+                  Expanded(
+                    child: _WorkspaceDockItem(
+                      icon: items[index].$1,
+                      label: items[index].$2,
+                      selected: selectedIndex == index,
+                      onTap: () => onSelected(index),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WorkspaceDockItem extends StatelessWidget {
+  const _WorkspaceDockItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final foreground = selected ? scheme.primary : scheme.onSurfaceVariant;
+
+    return Semantics(
+      selected: selected,
+      button: true,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            AnimatedPositioned(
+              duration: reduceMotion ? Duration.zero : AppDesign.motionFast,
+              curve: AppDesign.curveStandard,
+              top: 0,
+              left: selected ? 18 : 28,
+              right: selected ? 18 : 28,
+              child: AnimatedContainer(
+                duration: reduceMotion ? Duration.zero : AppDesign.motionFast,
+                height: selected ? 3 : 0,
+                decoration: BoxDecoration(
+                  color: scheme.primary,
+                  borderRadius: AppDesign.borderRadiusXxs,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 9, 4, 5),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedScale(
+                    scale: selected ? 1.05 : 1,
+                    duration:
+                        reduceMotion ? Duration.zero : AppDesign.motionFast,
+                    curve: AppDesign.curveStandard,
+                    child: Icon(icon, size: 21, color: foreground),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: foreground,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

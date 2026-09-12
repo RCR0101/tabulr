@@ -989,7 +989,7 @@ ThemeData _buildTheme(_ThemeColors c) {
   final isDark = c.brightness == Brightness.dark;
   final base = isDark ? ThemeData.dark() : ThemeData.light();
   final effectiveBorderColor = c.borderColor ?? c.outline;
-  final g = c.geometry;
+  const g = ThemeGeometry.brand;
 
   double contrastRatio(Color foreground, Color background) {
     final lighter = foreground.computeLuminance() + 0.05;

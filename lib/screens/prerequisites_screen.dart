@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/common/app_search_field.dart';
+import '../widgets/common/tabulr_surface.dart';
 import '../models/academic_record.dart';
 import '../models/prerequisite.dart';
 import '../models/prerequisite_status.dart';
@@ -260,90 +261,92 @@ class _PrerequisitesScreenState extends State<PrerequisitesScreen> {
         itemCount: _searchResults.length,
         itemBuilder: (context, index) {
           final course = _searchResults[index];
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            elevation: 1,
-            shape: RoundedRectangleBorder(
-              borderRadius: AppDesign.cardBorderRadius(context),
-            ),
-            child: InkWell(
-              borderRadius: AppDesign.buttonBorderRadius(context),
-              onTap: () => _selectCourse(course),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color:
-                            course.hasPrerequisites
-                                ? colorScheme.primaryContainer
-                                : colorScheme.surfaceContainerHighest,
-                        borderRadius: AppDesign.innerBorderRadius(context),
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: TabulrSurface(
+              level: TabulrSurfaceLevel.panel,
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                borderRadius: AppDesign.buttonBorderRadius(context),
+                onTap: () => _selectCourse(course),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color:
+                              course.hasPrerequisites
+                                  ? colorScheme.primaryContainer
+                                  : colorScheme.surfaceContainerHighest,
+                          borderRadius: AppDesign.innerBorderRadius(context),
+                        ),
+                        child: Icon(
+                          course.hasPrerequisites
+                              ? Icons.link
+                              : Icons.check_circle_outline,
+                          color:
+                              course.hasPrerequisites
+                                  ? colorScheme.onPrimaryContainer
+                                  : colorScheme.onSurfaceVariant,
+                        ),
                       ),
-                      child: Icon(
-                        course.hasPrerequisites
-                            ? Icons.link
-                            : Icons.check_circle_outline,
-                        color:
-                            course.hasPrerequisites
-                                ? colorScheme.onPrimaryContainer
-                                : colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            course.courseCode,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: colorScheme.primary,
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              course.courseCode,
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.primary,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            CoursesMasterService().getTitle(course.courseCode),
-                            style: theme.textTheme.bodyMedium,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Icon(
-                                course.hasPrerequisites
-                                    ? Icons.check_circle
-                                    : Icons.cancel,
-                                size: 14,
-                                color:
-                                    course.hasPrerequisites
-                                        ? AppDesign.success(context)
-                                        : AppDesign.muted(context),
+                            const SizedBox(height: 4),
+                            Text(
+                              CoursesMasterService().getTitle(
+                                course.courseCode,
                               ),
-                              const SizedBox(width: 4),
-                              Text(
-                                course.hasPrerequisites
-                                    ? '${course.groups.length} prerequisite(s)'
-                                    : 'No prerequisites',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
+                              style: theme.textTheme.bodyMedium,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  course.hasPrerequisites
+                                      ? Icons.check_circle
+                                      : Icons.cancel,
+                                  size: 14,
+                                  color:
+                                      course.hasPrerequisites
+                                          ? AppDesign.success(context)
+                                          : AppDesign.muted(context),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
+                                const SizedBox(width: 4),
+                                Text(
+                                  course.hasPrerequisites
+                                      ? '${course.groups.length} prerequisite(s)'
+                                      : 'No prerequisites',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    Icon(
-                      Icons.chevron_right,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ],
+                      Icon(
+                        Icons.chevron_right,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

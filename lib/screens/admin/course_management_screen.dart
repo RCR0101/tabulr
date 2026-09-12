@@ -28,8 +28,10 @@ Widget _badge(BuildContext context, String label, Color color) {
       borderRadius: AppDesign.chipBorderRadius(context),
       border: Border.all(color: color.withValues(alpha: 0.3)),
     ),
-    child: Text(label,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+    child: Text(
+      label,
+      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+    ),
   );
 }
 
@@ -71,8 +73,11 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
     setState(() => _loading = true);
     try {
       final q = _searchController.text.trim();
-      _courses = await _crud.fetchCourses(_campusId,
-          query: q.isEmpty ? null : q, forceRefresh: force);
+      _courses = await _crud.fetchCourses(
+        _campusId,
+        query: q.isEmpty ? null : q,
+        forceRefresh: force,
+      );
     } catch (e) {
       ToastService.showError('Failed to load courses');
     }
@@ -86,7 +91,9 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
       _professorNames =
           profService.professors.map((p) => p.name).toSet().toList()..sort();
     } catch (e) {
-      SecureLogger.warning('COURSE_ADMIN', 'Failed to load professor names', {'error': e.toString()});
+      SecureLogger.warning('COURSE_ADMIN', 'Failed to load professor names', {
+        'error': e.toString(),
+      });
     }
   }
 
@@ -99,13 +106,19 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
 
   static const _dayLabels = DayConstants.singleChar;
   static const _dayValues = [
-    'DayOfWeek.M', 'DayOfWeek.T', 'DayOfWeek.W',
-    'DayOfWeek.Th', 'DayOfWeek.F', 'DayOfWeek.S',
+    'DayOfWeek.M',
+    'DayOfWeek.T',
+    'DayOfWeek.W',
+    'DayOfWeek.Th',
+    'DayOfWeek.F',
+    'DayOfWeek.S',
   ];
   static const _hourLabels = ScheduleConstants.hourLabels;
 
   Widget _scheduleEditor(
-      Map<String, dynamic> section, StateSetter setDialogState) {
+    Map<String, dynamic> section,
+    StateSetter setDialogState,
+  ) {
     final schedule = (section['schedule'] as List?) ?? [];
     section['schedule'] = schedule;
     final scheme = Theme.of(context).colorScheme;
@@ -117,29 +130,35 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
         children: [
           Row(
             children: [
-              Text('Schedule',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppDesign.muted(context))),
+              Text(
+                'Schedule',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppDesign.muted(context),
+                ),
+              ),
               const Spacer(),
               InkWell(
-                onTap: () => setDialogState(() => schedule.add({
-                      'days': <String>[],
-                      'hours': <int>[],
-                    })),
+                onTap:
+                    () => setDialogState(
+                      () =>
+                          schedule.add({'days': <String>[], 'hours': <int>[]}),
+                    ),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.add_rounded,
-                          size: 14, color: scheme.primary),
+                      Icon(Icons.add_rounded, size: 14, color: scheme.primary),
                       const SizedBox(width: 2),
-                      Text('Add',
-                          style:
-                              TextStyle(fontSize: 11, color: scheme.primary)),
+                      Text(
+                        'Add',
+                        style: TextStyle(fontSize: 11, color: scheme.primary),
+                      ),
                     ],
                   ),
                 ),
@@ -181,9 +200,10 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
       }
       comCodes
         ..clear()
-        ..addAll([
-          for (final v in variants) ((v['com_code'] as num?)?.toInt() ?? 0)
-        ]..sort());
+        ..addAll(
+          [for (final v in variants) ((v['com_code'] as num?)?.toInt() ?? 0)]
+            ..sort(),
+        );
     }
 
     return Column(
@@ -192,9 +212,13 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
         const SizedBox(height: 8),
         Row(
           children: [
-            Text('Offered as',
-                style: TextStyle(
-                    fontWeight: FontWeight.w600, color: scheme.onSurface)),
+            Text(
+              'Offered as',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: scheme.onSurface,
+              ),
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -202,15 +226,21 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                     ? 'one way — the totals above'
                     : '${variants.length} rows in the booklet',
                 style: TextStyle(
-                    fontSize: 11,
-                    color: scheme.onSurface.withValues(alpha: 0.6)),
+                  fontSize: 11,
+                  color: scheme.onSurface.withValues(alpha: 0.6),
+                ),
               ),
             ),
             TextButton.icon(
-              onPressed: () => setDialogState(() {
-                variants.add({'com_code': 0, 'credits': 0, 'credit_hours': 0});
-                syncTotals();
-              }),
+              onPressed:
+                  () => setDialogState(() {
+                    variants.add({
+                      'com_code': 0,
+                      'credits': 0,
+                      'credit_hours': 0,
+                    });
+                    syncTotals();
+                  }),
               icon: const Icon(Icons.add, size: 16),
               label: const Text('Add row'),
               style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
@@ -226,7 +256,9 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                   child: TextFormField(
                     initialValue: '${variants[i]['com_code'] ?? 0}',
                     decoration: const InputDecoration(
-                        labelText: 'com cod', isDense: true),
+                      labelText: 'com cod',
+                      isDense: true,
+                    ),
                     keyboardType: TextInputType.number,
                     onChanged: (v) {
                       variants[i]['com_code'] = int.tryParse(v.trim()) ?? 0;
@@ -239,9 +271,12 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                   child: TextFormField(
                     initialValue: '${variants[i]['credits'] ?? 0}',
                     decoration: const InputDecoration(
-                        labelText: 'units', isDense: true),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                      labelText: 'units',
+                      isDense: true,
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     onChanged: (v) {
                       variants[i]['credits'] = double.tryParse(v.trim()) ?? 0;
                       syncTotals();
@@ -253,11 +288,15 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                   child: TextFormField(
                     initialValue: '${variants[i]['credit_hours'] ?? 0}',
                     decoration: const InputDecoration(
-                        labelText: 'credit hours', isDense: true),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                      labelText: 'credit hours',
+                      isDense: true,
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     onChanged: (v) {
-                      variants[i]['credit_hours'] = double.tryParse(v.trim()) ?? 0;
+                      variants[i]['credit_hours'] =
+                          double.tryParse(v.trim()) ?? 0;
                       syncTotals();
                     },
                   ),
@@ -265,10 +304,11 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                 IconButton(
                   tooltip: 'Remove this row',
                   icon: Icon(Icons.close, size: 16, color: scheme.error),
-                  onPressed: () => setDialogState(() {
-                    variants.removeAt(i);
-                    syncTotals();
-                  }),
+                  onPressed:
+                      () => setDialogState(() {
+                        variants.removeAt(i);
+                        syncTotals();
+                      }),
                 ),
               ],
             ),
@@ -288,10 +328,17 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
   }
 
   Widget _scheduleEntryRow(
-      List<dynamic> schedule, int ei, StateSetter setDialogState) {
+    List<dynamic> schedule,
+    int ei,
+    StateSetter setDialogState,
+  ) {
     final entry = schedule[ei] as Map<String, dynamic>;
     final days = List<String>.from(entry['days'] ?? []);
-    final hours = List<int>.from((entry['hours'] ?? []).map((h) => h is int ? h : int.tryParse(h.toString()) ?? 0));
+    final hours = List<int>.from(
+      (entry['hours'] ?? []).map(
+        (h) => h is int ? h : int.tryParse(h.toString()) ?? 0,
+      ),
+    );
     final scheme = Theme.of(context).colorScheme;
 
     return Container(
@@ -311,27 +358,32 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                   padding: const EdgeInsets.only(right: 2),
                   child: InkWell(
                     borderRadius: AppDesign.buttonBorderRadius(context),
-                    onTap: () => setDialogState(() {
-                      final dv = _dayValues[di];
-                      if (days.contains(dv)) {
-                        days.remove(dv);
-                      } else {
-                        days.add(dv);
-                      }
-                      entry['days'] = days;
-                    }),
+                    onTap:
+                        () => setDialogState(() {
+                          final dv = _dayValues[di];
+                          if (days.contains(dv)) {
+                            days.remove(dv);
+                          } else {
+                            days.add(dv);
+                          }
+                          entry['days'] = days;
+                        }),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 3),
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
-                        color: days.contains(_dayValues[di])
-                            ? scheme.primary.withValues(alpha: 0.15)
-                            : Colors.transparent,
+                        color:
+                            days.contains(_dayValues[di])
+                                ? scheme.primary.withValues(alpha: 0.15)
+                                : Colors.transparent,
                         borderRadius: AppDesign.buttonBorderRadius(context),
                         border: Border.all(
-                          color: days.contains(_dayValues[di])
-                              ? scheme.primary.withValues(alpha: 0.5)
-                              : scheme.outline.withValues(alpha: 0.2),
+                          color:
+                              days.contains(_dayValues[di])
+                                  ? scheme.primary.withValues(alpha: 0.5)
+                                  : scheme.outline.withValues(alpha: 0.2),
                         ),
                       ),
                       child: Text(
@@ -339,9 +391,10 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
-                          color: days.contains(_dayValues[di])
-                              ? scheme.primary
-                              : AppDesign.muted(context),
+                          color:
+                              days.contains(_dayValues[di])
+                                  ? scheme.primary
+                                  : AppDesign.muted(context),
                         ),
                       ),
                     ),
@@ -349,10 +402,12 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                 ),
               const Spacer(),
               InkWell(
-                onTap: () =>
-                    setDialogState(() => schedule.removeAt(ei)),
-                child: Icon(Icons.close_rounded,
-                    size: 14, color: scheme.error.withValues(alpha: 0.7)),
+                onTap: () => setDialogState(() => schedule.removeAt(ei)),
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 14,
+                  color: scheme.error.withValues(alpha: 0.7),
+                ),
               ),
             ],
           ),
@@ -364,27 +419,32 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
               for (final h in _hourLabels.keys)
                 InkWell(
                   borderRadius: AppDesign.buttonBorderRadius(context),
-                  onTap: () => setDialogState(() {
-                    if (hours.contains(h)) {
-                      hours.remove(h);
-                    } else {
-                      hours.add(h);
-                      hours.sort();
-                    }
-                    entry['hours'] = hours;
-                  }),
+                  onTap:
+                      () => setDialogState(() {
+                        if (hours.contains(h)) {
+                          hours.remove(h);
+                        } else {
+                          hours.add(h);
+                          hours.sort();
+                        }
+                        entry['hours'] = hours;
+                      }),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 5, vertical: 2),
+                      horizontal: 5,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
-                      color: hours.contains(h)
-                          ? scheme.secondary.withValues(alpha: 0.15)
-                          : Colors.transparent,
+                      color:
+                          hours.contains(h)
+                              ? scheme.secondary.withValues(alpha: 0.15)
+                              : Colors.transparent,
                       borderRadius: AppDesign.buttonBorderRadius(context),
                       border: Border.all(
-                        color: hours.contains(h)
-                            ? scheme.secondary.withValues(alpha: 0.5)
-                            : scheme.outline.withValues(alpha: 0.15),
+                        color:
+                            hours.contains(h)
+                                ? scheme.secondary.withValues(alpha: 0.5)
+                                : scheme.outline.withValues(alpha: 0.15),
                       ),
                     ),
                     child: Text(
@@ -392,9 +452,10 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
-                        color: hours.contains(h)
-                            ? scheme.secondary
-                            : AppDesign.muted(context),
+                        color:
+                            hours.contains(h)
+                                ? scheme.secondary
+                                : AppDesign.muted(context),
                       ),
                     ),
                   ),
@@ -413,20 +474,32 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
   Future<void> _showCourseDialog({Map<String, dynamic>? existing}) async {
     final isNew = existing == null;
     final codeCtrl = TextEditingController(
-        text: existing?['course_code']?.toString() ?? '');
-    final titleCtrl =
-        TextEditingController(text: existing?['title']?.toString() ?? '');
+      text: existing?['course_code']?.toString() ?? '',
+    );
+    final titleCtrl = TextEditingController(
+      text: existing?['title']?.toString() ?? '',
+    );
     final icCtrl = TextEditingController(
-        text: existing?['instructor_in_charge']?.toString() ?? '');
+      text: existing?['instructor_in_charge']?.toString() ?? '',
+    );
     final lecCtrl = TextEditingController(
-        text: (existing?['lecture_credits'] ?? 0).toString());
+      text: (existing?['lecture_credits'] ?? 0).toString(),
+    );
     final pracCtrl = TextEditingController(
-        text: (existing?['practical_credits'] ?? 0).toString());
+      text: (existing?['practical_credits'] ?? 0).toString(),
+    );
     final totalCtrl = TextEditingController(
-        text: (existing?['total_credits'] ?? existing?['credits'] ?? ((existing?['lecture_credits'] ?? 0) + (existing?['practical_credits'] ?? 0))).toString());
+      text:
+          (existing?['total_credits'] ??
+                  existing?['credits'] ??
+                  ((existing?['lecture_credits'] ?? 0) +
+                      (existing?['practical_credits'] ?? 0)))
+              .toString(),
+    );
 
     final hoursCtrl = TextEditingController(
-        text: (existing?['total_credit_hours'] ?? 0).toString());
+      text: (existing?['total_credit_hours'] ?? 0).toString(),
+    );
     // Both ways the registrar prints this course. Empty means the ordinary
     // single-row case, where the two totals above say everything.
     final variants = <Map<String, dynamic>>[
@@ -451,17 +524,27 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
     if (existing?['mid_sem_exam'] != null) {
       try {
         midSem = ExamSchedule.fromJson(
-            Map<String, dynamic>.from(existing!['mid_sem_exam'] as Map));
+          Map<String, dynamic>.from(existing!['mid_sem_exam'] as Map),
+        );
       } catch (e) {
-        SecureLogger.warning('COURSE_ADMIN', 'Failed to parse stored mid-sem exam', {'error': e.toString()});
+        SecureLogger.warning(
+          'COURSE_ADMIN',
+          'Failed to parse stored mid-sem exam',
+          {'error': e.toString()},
+        );
       }
     }
     if (existing?['end_sem_exam'] != null) {
       try {
         endSem = ExamSchedule.fromJson(
-            Map<String, dynamic>.from(existing!['end_sem_exam'] as Map));
+          Map<String, dynamic>.from(existing!['end_sem_exam'] as Map),
+        );
       } catch (e) {
-        SecureLogger.warning('COURSE_ADMIN', 'Failed to parse stored end-sem exam', {'error': e.toString()});
+        SecureLogger.warning(
+          'COURSE_ADMIN',
+          'Failed to parse stored end-sem exam',
+          {'error': e.toString()},
+        );
       }
     }
 
@@ -476,11 +559,14 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
           final scheme = Theme.of(ctx).colorScheme;
           final accent = scheme.primary;
 
-          Widget field(String label, TextEditingController ctrl,
-              {bool readOnly = false,
-              TextInputType? keyboardType,
-              List<String>? autocompleteOptions,
-              ValueChanged<String>? onChanged}) {
+          Widget field(
+            String label,
+            TextEditingController ctrl, {
+            bool readOnly = false,
+            TextInputType? keyboardType,
+            List<String>? autocompleteOptions,
+            ValueChanged<String>? onChanged,
+          }) {
             if (autocompleteOptions != null && autocompleteOptions.isNotEmpty) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: AppDesign.spacingSm),
@@ -501,8 +587,11 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                       controller: textCtrl,
                       focusNode: focusNode,
                       style: const TextStyle(fontSize: 13),
-                      decoration: AppDesign.inputDecoration(ctx,
-                          label: label, hint: label),
+                      decoration: AppDesign.inputDecoration(
+                        ctx,
+                        label: label,
+                        hint: label,
+                      ),
                     );
                   },
                 ),
@@ -516,16 +605,25 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                 keyboardType: keyboardType,
                 onChanged: onChanged,
                 style: const TextStyle(fontSize: 13),
-                decoration:
-                    AppDesign.inputDecoration(ctx, label: label, hint: label),
+                decoration: AppDesign.inputDecoration(
+                  ctx,
+                  label: label,
+                  hint: label,
+                ),
               ),
             );
           }
 
-          Widget examPicker(String label, ExamSchedule? exam,
-              ValueChanged<ExamSchedule?> onChanged, bool isMidSem) {
+          Widget examPicker(
+            String label,
+            ExamSchedule? exam,
+            ValueChanged<ExamSchedule?> onChanged,
+            bool isMidSem,
+          ) {
             final slots =
-                isMidSem ? [TimeSlot.MS1, TimeSlot.MS2, TimeSlot.MS3, TimeSlot.MS4] : [TimeSlot.FN, TimeSlot.AN];
+                isMidSem
+                    ? [TimeSlot.MS1, TimeSlot.MS2, TimeSlot.MS3, TimeSlot.MS4]
+                    : [TimeSlot.FN, TimeSlot.AN];
             return Padding(
               padding: const EdgeInsets.only(bottom: AppDesign.spacingSm),
               child: Column(
@@ -533,21 +631,29 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                 children: [
                   Row(
                     children: [
-                      Text(label,
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: scheme.onSurface)),
+                      Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurface,
+                        ),
+                      ),
                       const Spacer(),
                       if (exam != null)
                         IconButton(
-                          icon: Icon(Icons.clear_rounded,
-                              size: 16, color: scheme.error),
-                          onPressed: () =>
-                              setDialogState(() => onChanged(null)),
+                          icon: Icon(
+                            Icons.clear_rounded,
+                            size: 16,
+                            color: scheme.error,
+                          ),
+                          onPressed:
+                              () => setDialogState(() => onChanged(null)),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(
-                              minWidth: 24, minHeight: 24),
+                            minWidth: 24,
+                            minHeight: 24,
+                          ),
                         ),
                     ],
                   ),
@@ -564,33 +670,43 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                               lastDate: DateTime(2030),
                             );
                             if (picked != null) {
-                              setDialogState(() => onChanged(ExamSchedule(
-                                  date: picked,
-                                  timeSlot:
-                                      exam?.timeSlot ?? slots.first)));
+                              setDialogState(
+                                () => onChanged(
+                                  ExamSchedule(
+                                    date: picked,
+                                    timeSlot: exam?.timeSlot ?? slots.first,
+                                  ),
+                                ),
+                              );
                             }
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
                             decoration: BoxDecoration(
-                              color: scheme.surfaceContainerHighest
-                                  .withValues(alpha: 0.3),
+                              color: scheme.surfaceContainerHighest.withValues(
+                                alpha: 0.3,
+                              ),
                               borderRadius: AppDesign.cardBorderRadius(context),
                               border: Border.all(
-                                  color:
-                                      scheme.outline.withValues(alpha: 0.15)),
+                                color: scheme.outline.withValues(alpha: 0.15),
+                              ),
                             ),
                             child: Text(
                               exam != null
                                   ? '${exam.date.day}/${exam.date.month}/${exam.date.year}'
                                   : 'Pick date',
                               style: TextStyle(
-                                  fontSize: 13,
-                                  color: exam != null
-                                      ? scheme.onSurface
-                                      : scheme.onSurface
-                                          .withValues(alpha: 0.38)),
+                                fontSize: 13,
+                                color:
+                                    exam != null
+                                        ? scheme.onSurface
+                                        : scheme.onSurface.withValues(
+                                          alpha: 0.38,
+                                        ),
+                              ),
                             ),
                           ),
                         ),
@@ -602,24 +718,34 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                         focusColor: Colors.transparent,
                         value: exam?.timeSlot ?? slots.first,
                         underline: const SizedBox(),
-                        style:
-                            TextStyle(fontSize: 13, color: scheme.onSurface),
-                        items: slots
-                            .map((s) => DropdownMenuItem(
-                                value: s,
-                                child: Text(
-                                    '${s.name} (${TimeSlotInfo.getTimeSlotName(s, campus: _campusId)})',
-                                    style: const TextStyle(fontSize: 12))))
-                            .toList(),
-                        onChanged: exam == null
-                            ? null
-                            : (v) {
-                                if (v != null) {
-                                  setDialogState(() => onChanged(
-                                      ExamSchedule(
-                                          date: exam.date, timeSlot: v)));
-                                }
-                              },
+                        style: TextStyle(fontSize: 13, color: scheme.onSurface),
+                        items:
+                            slots
+                                .map(
+                                  (s) => DropdownMenuItem(
+                                    value: s,
+                                    child: Text(
+                                      '${s.name} (${TimeSlotInfo.getTimeSlotName(s, campus: _campusId)})',
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged:
+                            exam == null
+                                ? null
+                                : (v) {
+                                  if (v != null) {
+                                    setDialogState(
+                                      () => onChanged(
+                                        ExamSchedule(
+                                          date: exam.date,
+                                          timeSlot: v,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
                       ),
                     ],
                   ),
@@ -630,12 +756,15 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
 
           Widget sectionCard(int idx) {
             final s = sections[idx];
-            final idCtrl =
-                TextEditingController(text: s['sectionId']?.toString() ?? '');
-            final instrCtrl =
-                TextEditingController(text: s['instructor']?.toString() ?? '');
-            final roomCtrl =
-                TextEditingController(text: s['room']?.toString() ?? '');
+            final idCtrl = TextEditingController(
+              text: s['sectionId']?.toString() ?? '',
+            );
+            final instrCtrl = TextEditingController(
+              text: s['instructor']?.toString() ?? '',
+            );
+            final roomCtrl = TextEditingController(
+              text: s['room']?.toString() ?? '',
+            );
             final typeStr = s['type']?.toString() ?? 'SectionType.L';
 
             return Container(
@@ -646,9 +775,10 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                 borderRadius: AppDesign.cardBorderRadius(context),
                 border: Border(
                   left: BorderSide(
-                    color: typeStr.contains('.P')
-                        ? AppDesign.success(ctx)
-                        : typeStr.contains('.T')
+                    color:
+                        typeStr.contains('.P')
+                            ? AppDesign.success(ctx)
+                            : typeStr.contains('.T')
                             ? AppDesign.warning(ctx)
                             : AppDesign.info(ctx),
                     width: 3,
@@ -664,11 +794,14 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                         child: TextField(
                           controller: idCtrl,
                           style: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w600),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
                           decoration: const InputDecoration(
-                              hintText: 'L1',
-                              isDense: true,
-                              border: InputBorder.none),
+                            hintText: 'L1',
+                            isDense: true,
+                            border: InputBorder.none,
+                          ),
                           onChanged: (v) => s['sectionId'] = v,
                         ),
                       ),
@@ -679,30 +812,37 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                         focusColor: Colors.transparent,
                         value: typeStr,
                         underline: const SizedBox(),
-                        style:
-                            TextStyle(fontSize: 12, color: scheme.onSurface),
+                        style: TextStyle(fontSize: 12, color: scheme.onSurface),
                         items: const [
                           DropdownMenuItem(
-                              value: 'SectionType.L', child: Text('Lecture')),
+                            value: 'SectionType.L',
+                            child: Text('Lecture'),
+                          ),
                           DropdownMenuItem(
-                              value: 'SectionType.P',
-                              child: Text('Practical')),
+                            value: 'SectionType.P',
+                            child: Text('Practical'),
+                          ),
                           DropdownMenuItem(
-                              value: 'SectionType.T',
-                              child: Text('Tutorial')),
+                            value: 'SectionType.T',
+                            child: Text('Tutorial'),
+                          ),
                         ],
-                        onChanged: (v) =>
-                            setDialogState(() => s['type'] = v),
+                        onChanged: (v) => setDialogState(() => s['type'] = v),
                       ),
                       const Spacer(),
                       IconButton(
-                        icon: Icon(Icons.delete_outline_rounded,
-                            size: 18, color: scheme.error),
-                        onPressed: () =>
-                            setDialogState(() => sections.removeAt(idx)),
+                        icon: Icon(
+                          Icons.delete_outline_rounded,
+                          size: 18,
+                          color: scheme.error,
+                        ),
+                        onPressed:
+                            () => setDialogState(() => sections.removeAt(idx)),
                         padding: EdgeInsets.zero,
-                        constraints:
-                            const BoxConstraints(minWidth: 28, minHeight: 28),
+                        constraints: const BoxConstraints(
+                          minWidth: 28,
+                          minHeight: 28,
+                        ),
                       ),
                     ],
                   ),
@@ -734,7 +874,9 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                           hintText: 'Instructor',
                           isDense: true,
                           contentPadding: EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 8),
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
                           border: OutlineInputBorder(),
                         ),
                       );
@@ -747,8 +889,10 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                     decoration: const InputDecoration(
                       hintText: 'Room',
                       isDense: true,
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
                       border: OutlineInputBorder(),
                     ),
                     onChanged: (v) => s['room'] = v,
@@ -762,209 +906,256 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-                  Flexible(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      field('Course Code', codeCtrl, readOnly: !isNew),
+                      field('Course Title', titleCtrl),
+                      field(
+                        'Instructor-in-Charge',
+                        icCtrl,
+                        autocompleteOptions: _professorNames,
+                      ),
+                      Row(
                         children: [
-                          field('Course Code', codeCtrl, readOnly: !isNew),
-                          field('Course Title', titleCtrl),
-                          field('Instructor-in-Charge', icCtrl,
-                              autocompleteOptions: _professorNames),
-                          Row(
-                            children: [
-                              Expanded(
-                                  child: field('L', lecCtrl,
-                                      keyboardType: const TextInputType
-                                          .numberWithOptions(decimal: true),
-                                      onChanged: (_) {
-                                        final l = double.tryParse(lecCtrl.text) ?? 0;
-                                        final p = double.tryParse(pracCtrl.text) ?? 0;
-                                        totalCtrl.text = '${_unitsValue(l + p)}';
-                                      })),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                  child: field('P', pracCtrl,
-                                      keyboardType: const TextInputType
-                                          .numberWithOptions(decimal: true),
-                                      onChanged: (_) {
-                                        final l = double.tryParse(lecCtrl.text) ?? 0;
-                                        final p = double.tryParse(pracCtrl.text) ?? 0;
-                                        totalCtrl.text = '${_unitsValue(l + p)}';
-                                      })),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                  child: field('Total (U)', totalCtrl,
-                                      keyboardType: const TextInputType
-                                          .numberWithOptions(decimal: true))),
-                              const SizedBox(width: 8),
-                              // Contact hours, and a separate number from
-                              // units — never units x 3. 0 where the booklet
-                              // publishes none, which is most courses.
-                              Expanded(
-                                  child: field('CH', hoursCtrl,
-                                      keyboardType: const TextInputType
-                                          .numberWithOptions(decimal: true))),
-                            ],
+                          Expanded(
+                            child: field(
+                              'L',
+                              lecCtrl,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              onChanged: (_) {
+                                final l = double.tryParse(lecCtrl.text) ?? 0;
+                                final p = double.tryParse(pracCtrl.text) ?? 0;
+                                totalCtrl.text = '${_unitsValue(l + p)}';
+                              },
+                            ),
                           ),
-                          _variantEditor(ctx, setDialogState, variants,
-                              comCodes, totalCtrl, hoursCtrl),
-                          examPicker('Mid-Sem Exam', midSem, (v) {
-                            midSem = v;
-                          }, true),
-                          examPicker('End-Sem Exam', endSem, (v) {
-                            endSem = v;
-                          }, false),
-                          const Divider(),
-                          Row(
-                            children: [
-                              Text('Sections',
-                                  style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: scheme.onSurface)),
-                              const Spacer(),
-                              TextButton.icon(
-                                icon: Icon(Icons.add_rounded,
-                                    size: 16, color: accent),
-                                label: Text('Add',
-                                    style: TextStyle(
-                                        fontSize: 12, color: accent)),
-                                onPressed: () => setDialogState(() =>
-                                    sections.add({
-                                      'sectionId': '',
-                                      'type': 'SectionType.L',
-                                      'instructor': '',
-                                      'room': '',
-                                      'schedule': [],
-                                    })),
-                              ),
-                            ],
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: field(
+                              'P',
+                              pracCtrl,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              onChanged: (_) {
+                                final l = double.tryParse(lecCtrl.text) ?? 0;
+                                final p = double.tryParse(pracCtrl.text) ?? 0;
+                                totalCtrl.text = '${_unitsValue(l + p)}';
+                              },
+                            ),
                           ),
-                          for (var i = 0; i < sections.length; i++)
-                            sectionCard(i),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: field(
+                              'Total (U)',
+                              totalCtrl,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Contact hours, and a separate number from
+                          // units — never units x 3. 0 where the booklet
+                          // publishes none, which is most courses.
+                          Expanded(
+                            child: field(
+                              'CH',
+                              hoursCtrl,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                            ),
+                          ),
                         ],
                       ),
-                    ),
+                      _variantEditor(
+                        ctx,
+                        setDialogState,
+                        variants,
+                        comCodes,
+                        totalCtrl,
+                        hoursCtrl,
+                      ),
+                      examPicker('Mid-Sem Exam', midSem, (v) {
+                        midSem = v;
+                      }, true),
+                      examPicker('End-Sem Exam', endSem, (v) {
+                        endSem = v;
+                      }, false),
+                      const Divider(),
+                      Row(
+                        children: [
+                          Text(
+                            'Sections',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: scheme.onSurface,
+                            ),
+                          ),
+                          const Spacer(),
+                          TextButton.icon(
+                            icon: Icon(
+                              Icons.add_rounded,
+                              size: 16,
+                              color: accent,
+                            ),
+                            label: Text(
+                              'Add',
+                              style: TextStyle(fontSize: 12, color: accent),
+                            ),
+                            onPressed:
+                                () => setDialogState(
+                                  () => sections.add({
+                                    'sectionId': '',
+                                    'type': 'SectionType.L',
+                                    'instructor': '',
+                                    'room': '',
+                                    'schedule': [],
+                                  }),
+                                ),
+                          ),
+                        ],
+                      ),
+                      for (var i = 0; i < sections.length; i++) sectionCard(i),
+                    ],
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        if (!isNew)
-                          AppButton(
-                            label: 'Delete',
-                            icon: Icons.delete_outline_rounded,
-                            variant: AppButtonVariant.danger,
-                            onTap: saving
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    if (!isNew)
+                      AppButton(
+                        label: 'Delete',
+                        icon: Icons.delete_outline_rounded,
+                        variant: AppButtonVariant.danger,
+                        onTap:
+                            saving
                                 ? null
                                 : () async {
-                                    final confirm = await AppDialog.confirm(
-                                      context: ctx,
-                                      title: 'Delete Course',
-                                      message:
-                                          'Delete ${codeCtrl.text}? This cannot be undone.',
-                                      isDangerous: true,
-                                    );
-                                    if (confirm && ctx.mounted) {
-                                      try {
-                                        await _crud.deleteCourse(
-                                            _campusId, existing['docId']);
-                                        ToastService.showSuccess(
-                                            'Course deleted');
-                                        if (ctx.mounted) {
-                                          Navigator.pop(ctx);
-                                        }
-                                        _loadCourses();
-                                      } catch (e) {
-                                        ToastService.showError(
-                                            'Delete failed');
+                                  final confirm = await AppDialog.confirm(
+                                    context: ctx,
+                                    title: 'Delete Course',
+                                    message:
+                                        'Delete ${codeCtrl.text}? This cannot be undone.',
+                                    isDangerous: true,
+                                  );
+                                  if (confirm && ctx.mounted) {
+                                    try {
+                                      await _crud.deleteCourse(
+                                        _campusId,
+                                        existing['docId'],
+                                      );
+                                      ToastService.showSuccess(
+                                        'Course deleted',
+                                      );
+                                      if (ctx.mounted) {
+                                        Navigator.pop(ctx);
                                       }
-                                    }
-                                  },
-                          ),
-                        const Spacer(),
-                        AppButton(
-                          label: 'Cancel',
-                          variant: AppButtonVariant.ghost,
-                          onTap:
-                              saving ? null : () => Navigator.pop(ctx),
-                        ),
-                        const SizedBox(width: 8),
-                        AppButton(
-                          label: 'Save',
-                          icon: Icons.check_rounded,
-                          isLoading: saving,
-                          onTap: saving
-                              ? null
-                              : () async {
-                                  final code = codeCtrl.text.trim();
-                                  if (code.isEmpty) {
-                                    ToastService.showError(
-                                        'Course code is required');
-                                    return;
-                                  }
-                                  setDialogState(() => saving = true);
-                                  try {
-                                    final docId =
-                                        isNew ? _docId(code) : existing['docId'];
-                                    final lec =
-                                        double.tryParse(lecCtrl.text) ?? 0;
-                                    final prac =
-                                        double.tryParse(pracCtrl.text) ?? 0;
-                                    final total =
-                                        double.tryParse(totalCtrl.text) ?? (lec + prac);
-                                    final hours =
-                                        double.tryParse(hoursCtrl.text) ?? 0;
-                                    final ic = icCtrl.text.trim();
-                                    await _crud.saveCourse(_campusId,
-                                      docId: docId,
-                                      timetableData: {
-                                        'sections': sections,
-                                        'mid_sem_exam': midSem?.toJson(),
-                                        'end_sem_exam': endSem?.toJson(),
-                                        'lecture_credits': _unitsValue(lec),
-                                        'practical_credits': _unitsValue(prac),
-                                        // Persist U so the client shows the real
-                                        // unit count, not a recomputed L + P.
-                                        'total_credits': _unitsValue(total),
-                                        'total_credit_hours': _unitsValue(hours),
-                                        'com_codes': comCodes,
-                                        // Absent rather than empty for the
-                                        // ordinary case, matching the uploader:
-                                        // the client synthesises the single
-                                        // variant from the totals above.
-                                        if (variants.isNotEmpty)
-                                          'variants': variants,
-                                        if (ic.isNotEmpty)
-                                          'instructor_in_charge': ic,
-                                      },
-                                      masterData: {
-                                        'course_code': code,
-                                        'title': titleCtrl.text.trim(),
-                                        'credits': _unitsValue(total),
-                                        'credit_hours': _unitsValue(hours),
-                                        'type': 'Normal',
-                                        if (ic.isNotEmpty)
-                                          'instructor_in_charge': ic,
-                                      },
-                                    );
-                                    ToastService.showSuccess('Course saved');
-                                    if (ctx.mounted) Navigator.pop(ctx);
-                                    _loadCourses();
-                                  } catch (e) {
-                                    ToastService.showError('Save failed: $e');
-                                  } finally {
-                                    if (ctx.mounted) {
-                                      setDialogState(() => saving = false);
+                                      _loadCourses();
+                                    } catch (e) {
+                                      ToastService.showError('Delete failed');
                                     }
                                   }
                                 },
-                        ),
-                      ],
+                      ),
+                    const Spacer(),
+                    AppButton(
+                      label: 'Cancel',
+                      variant: AppButtonVariant.ghost,
+                      onTap: saving ? null : () => Navigator.pop(ctx),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    AppButton(
+                      label: 'Save',
+                      icon: Icons.check_rounded,
+                      isLoading: saving,
+                      onTap:
+                          saving
+                              ? null
+                              : () async {
+                                final code = codeCtrl.text.trim();
+                                if (code.isEmpty) {
+                                  ToastService.showError(
+                                    'Course code is required',
+                                  );
+                                  return;
+                                }
+                                setDialogState(() => saving = true);
+                                try {
+                                  final docId =
+                                      isNew ? _docId(code) : existing['docId'];
+                                  final lec =
+                                      double.tryParse(lecCtrl.text) ?? 0;
+                                  final prac =
+                                      double.tryParse(pracCtrl.text) ?? 0;
+                                  final total =
+                                      double.tryParse(totalCtrl.text) ??
+                                      (lec + prac);
+                                  final hours =
+                                      double.tryParse(hoursCtrl.text) ?? 0;
+                                  final ic = icCtrl.text.trim();
+                                  await _crud.saveCourse(
+                                    _campusId,
+                                    docId: docId,
+                                    timetableData: {
+                                      'sections': sections,
+                                      'mid_sem_exam': midSem?.toJson(),
+                                      'end_sem_exam': endSem?.toJson(),
+                                      'lecture_credits': _unitsValue(lec),
+                                      'practical_credits': _unitsValue(prac),
+                                      // Persist U so the client shows the real
+                                      // unit count, not a recomputed L + P.
+                                      'total_credits': _unitsValue(total),
+                                      'total_credit_hours': _unitsValue(hours),
+                                      'com_codes': comCodes,
+                                      // Absent rather than empty for the
+                                      // ordinary case, matching the uploader:
+                                      // the client synthesises the single
+                                      // variant from the totals above.
+                                      if (variants.isNotEmpty)
+                                        'variants': variants,
+                                      if (ic.isNotEmpty)
+                                        'instructor_in_charge': ic,
+                                    },
+                                    masterData: {
+                                      'course_code': code,
+                                      'title': titleCtrl.text.trim(),
+                                      'credits': _unitsValue(total),
+                                      'credit_hours': _unitsValue(hours),
+                                      'type': 'Normal',
+                                      if (ic.isNotEmpty)
+                                        'instructor_in_charge': ic,
+                                    },
+                                  );
+                                  ToastService.showSuccess('Course saved');
+                                  if (ctx.mounted) Navigator.pop(ctx);
+                                  _loadCourses();
+                                } catch (e) {
+                                  ToastService.showError('Save failed: $e');
+                                } finally {
+                                  if (ctx.mounted) {
+                                    setDialogState(() => saving = false);
+                                  }
+                                }
+                              },
+                    ),
+                  ],
+                ),
+              ),
             ],
           );
         },
@@ -995,6 +1186,9 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
     return Scaffold(
       appBar: AppDesign.appBar(context, title: 'Course Management'),
       floatingActionButton: FloatingActionButton(
+        elevation: 2,
+        focusElevation: 2,
+        hoverElevation: 3,
         backgroundColor: accent,
         onPressed: () => _showCourseDialog(),
         child: const Icon(Icons.add_rounded, color: Colors.white),
@@ -1008,9 +1202,7 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                 InkWell(
                   onTap: _switchCampus,
                   borderRadius: AppDesign.buttonBorderRadius(context),
-                  child: _badge(
-                                        context,
-                      _campusLabels[_campusId]!, accent),
+                  child: _badge(context, _campusLabels[_campusId]!, accent),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1024,40 +1216,62 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
             ),
           ),
           if (_loading)
-            const Expanded(
-                child: Center(child: CircularProgressIndicator()))
+            const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (_courses.isEmpty)
             Expanded(
               child: Center(
-                child: Text('No courses found',
-                    style: TextStyle(color: AppDesign.muted(context))),
+                child: Text(
+                  'No courses found',
+                  style: TextStyle(color: AppDesign.muted(context)),
+                ),
               ),
             )
           else
             Expanded(
               child: ListView.builder(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AppDesign.spacingMd),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppDesign.spacingMd,
+                ),
                 itemCount: _courses.length,
                 itemBuilder: (_, i) {
                   final c = _courses[i];
                   final code = c['course_code']?.toString() ?? '';
                   final title = c['title']?.toString() ?? '';
                   final secsList = (c['sections'] as List?) ?? [];
-                  final lSec = secsList.where((s) => s['type']?.toString().contains('.L') ?? true).length;
-                  final pSec = secsList.where((s) => s['type']?.toString().contains('.P') ?? false).length;
-                  final tSec = secsList.where((s) => s['type']?.toString().contains('.T') ?? false).length;
+                  final lSec =
+                      secsList
+                          .where(
+                            (s) => s['type']?.toString().contains('.L') ?? true,
+                          )
+                          .length;
+                  final pSec =
+                      secsList
+                          .where(
+                            (s) =>
+                                s['type']?.toString().contains('.P') ?? false,
+                          )
+                          .length;
+                  final tSec =
+                      secsList
+                          .where(
+                            (s) =>
+                                s['type']?.toString().contains('.T') ?? false,
+                          )
+                          .length;
                   final lec = c['lecture_credits'] ?? 0;
                   final prac = c['practical_credits'] ?? 0;
                   final total =
                       c['total_credits'] ?? c['credits'] ?? (lec + prac);
 
                   return Card(
+                    elevation: 0,
+                    surfaceTintColor: Colors.transparent,
                     margin: const EdgeInsets.only(bottom: 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: AppDesign.cardBorderRadius(context),
                       side: BorderSide(
-                          color: scheme.outline.withValues(alpha: 0.12)),
+                        color: scheme.outline.withValues(alpha: 0.12),
+                      ),
                     ),
                     child: InkWell(
                       borderRadius: AppDesign.cardBorderRadius(context),
@@ -1069,58 +1283,90 @@ class _CourseManagementScreenState extends State<CourseManagementScreen> {
                           ),
                         ),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
-                                Text(code,
-                                    style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: scheme.onSurface)),
+                                Text(
+                                  code,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: scheme.onSurface,
+                                  ),
+                                ),
                                 const SizedBox(width: 8),
-                                if (lSec > 0) _badge(context, 'L:$lSec sec', AppDesign.info(context)),
-                                if (tSec > 0) Padding(
-                                  padding: const EdgeInsets.only(left: 4),
-                                  child: _badge(context, 'T:$tSec sec', AppDesign.warning(context)),
-                                ),
-                                if (pSec > 0) Padding(
-                                  padding: const EdgeInsets.only(left: 4),
-                                  child: _badge(context, 'P:$pSec sec', AppDesign.success(context)),
-                                ),
+                                if (lSec > 0)
+                                  _badge(
+                                    context,
+                                    'L:$lSec sec',
+                                    AppDesign.info(context),
+                                  ),
+                                if (tSec > 0)
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 4),
+                                    child: _badge(
+                                      context,
+                                      'T:$tSec sec',
+                                      AppDesign.warning(context),
+                                    ),
+                                  ),
+                                if (pSec > 0)
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 4),
+                                    child: _badge(
+                                      context,
+                                      'P:$pSec sec',
+                                      AppDesign.success(context),
+                                    ),
+                                  ),
                                 const Spacer(),
                                 if (lec > 0)
                                   Padding(
                                     padding: const EdgeInsets.only(left: 4),
                                     child: _badge(
-                                        context,
-                                        'L:$lec', AppDesign.info(context)),
+                                      context,
+                                      'L:$lec',
+                                      AppDesign.info(context),
+                                    ),
                                   ),
                                 if (prac > 0)
                                   Padding(
                                     padding: const EdgeInsets.only(left: 4),
-                                    child: _badge(context, 'P:$prac',
-                                        AppDesign.success(context)),
+                                    child: _badge(
+                                      context,
+                                      'P:$prac',
+                                      AppDesign.success(context),
+                                    ),
                                   ),
                                 Padding(
                                   padding: const EdgeInsets.only(left: 4),
-                                  child: _badge(context, 'U:$total',
-                                      AppDesign.warning(context)),
+                                  child: _badge(
+                                    context,
+                                    'U:$total',
+                                    AppDesign.warning(context),
+                                  ),
                                 ),
                               ],
                             ),
                             if (title.isNotEmpty)
                               Padding(
                                 padding: const EdgeInsets.only(top: 4),
-                                child: Text(title,
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: scheme.onSurface.withValues(
-                                            alpha: AppDesign.opacityMedium)),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis),
+                                child: Text(
+                                  title,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: scheme.onSurface.withValues(
+                                      alpha: AppDesign.opacityMedium,
+                                    ),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                           ],
                         ),

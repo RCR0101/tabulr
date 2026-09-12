@@ -6,6 +6,7 @@ import '../services/ui/toast_service.dart';
 import '../utils/branch_constants.dart' as branch_constants;
 import '../utils/design_constants.dart';
 import '../widgets/common/app_button.dart';
+import '../widgets/common/tabulr_surface.dart';
 import '../utils/page_info_helper.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -21,8 +22,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   static final List<String> _semesters = SemesterConstants.regular;
 
-  final List<String> _branches = branch_constants.branchCodeToName.keys.toList()
-    ..sort();
+  final List<String> _branches =
+      branch_constants.branchCodeToName.keys.toList()..sort();
 
   String? _primaryBranch;
   String? _secondaryBranch;
@@ -56,12 +57,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _save() async {
     setState(() => _saving = true);
-    final ok = await _service.save(UserProfile(
-      studentId: _idController.text.trim(),
-      primaryBranch: _primaryBranch,
-      secondaryBranch: _secondaryBranch,
-      currentSemester: _semester,
-    ));
+    final ok = await _service.save(
+      UserProfile(
+        studentId: _idController.text.trim(),
+        primaryBranch: _primaryBranch,
+        secondaryBranch: _secondaryBranch,
+        currentSemester: _semester,
+      ),
+    );
     if (!mounted) return;
     setState(() => _saving = false);
     if (ok) {
@@ -85,22 +88,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [PageInfoHelper.infoButton(context, PageInfoHelper.profile)],
         centerTitle: false,
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 620),
-                child: ListView(
-                  padding: const EdgeInsets.all(AppDesign.spacingMd),
-                  children: [
-                    _infoBanner(context),
-                    const SizedBox(height: AppDesign.spacingMd),
-                    _card(context),
-                    const SizedBox(height: AppDesign.spacingXl),
-                  ],
+      body:
+          _loading
+              ? const Center(child: CircularProgressIndicator())
+              : Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 620),
+                  child: ListView(
+                    padding: const EdgeInsets.all(AppDesign.spacingMd),
+                    children: [
+                      _infoBanner(context),
+                      const SizedBox(height: AppDesign.spacingMd),
+                      _card(context),
+                      const SizedBox(height: AppDesign.spacingXl),
+                    ],
+                  ),
                 ),
               ),
-            ),
     );
   }
 
@@ -111,7 +115,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         color: scheme.primary.withValues(alpha: 0.06),
         borderRadius: AppDesign.cardBorderRadius(context),
-        border: Border.all(color: scheme.primary.withValues(alpha: 0.15)),
+        border: Border(left: BorderSide(color: scheme.primary, width: 3)),
       ),
       child: Row(
         children: [
@@ -122,8 +126,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               'These defaults pre-fill things like your exam-seating ID and '
               'CDC auto-load, so you don\'t re-enter them everywhere.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurface.withValues(alpha: 0.75),
-                  ),
+                color: scheme.onSurface.withValues(alpha: 0.75),
+              ),
             ),
           ),
         ],
@@ -132,9 +136,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _card(BuildContext context) {
-    return Container(
+    return TabulrSurface(
+      level: TabulrSurfaceLevel.panel,
       padding: const EdgeInsets.all(AppDesign.spacingLg),
-      decoration: AppDesign.cardDecoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -152,8 +156,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           DropdownButtonFormField<String>(
             initialValue: _primaryBranch,
             isExpanded: true,
-            decoration:
-                AppDesign.inputDecoration(context, label: 'Primary branch'),
+            decoration: AppDesign.inputDecoration(
+              context,
+              label: 'Primary branch',
+            ),
             items: _branchItems(),
             onChanged: (v) => setState(() => _primaryBranch = v),
           ),
@@ -175,12 +181,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
           DropdownButtonFormField<String>(
             initialValue: _semester,
             isExpanded: true,
-            decoration:
-                AppDesign.inputDecoration(context, label: 'Current semester'),
-            items: _semesters
-                .map((s) =>
-                    DropdownMenuItem(value: s, child: Text('Semester $s')))
-                .toList(),
+            decoration: AppDesign.inputDecoration(
+              context,
+              label: 'Current semester',
+            ),
+            items:
+                _semesters
+                    .map(
+                      (s) => DropdownMenuItem(
+                        value: s,
+                        child: Text('Semester $s'),
+                      ),
+                    )
+                    .toList(),
             onChanged: (v) => setState(() => _semester = v),
           ),
           const SizedBox(height: AppDesign.spacingLg),

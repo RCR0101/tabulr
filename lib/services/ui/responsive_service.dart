@@ -7,6 +7,13 @@ import '../../models/screen_size.dart';
 export '../../models/screen_size.dart';
 
 class ResponsiveService {
+  // Classifies the actual space offered to a widget, not the device window.
+  static ScreenSize getScreenSizeForWidth(double width) {
+    if (width <= mobileBreakpoint) return ScreenSize.mobile;
+    if (width <= tabletBreakpoint) return ScreenSize.tablet;
+    return ScreenSize.desktop;
+  }
+
   static const double mobileBreakpoint = ResponsiveConstants.mobileBreakpoint;
   static const double tabletBreakpoint = ResponsiveConstants.tabletBreakpoint;
 
@@ -39,6 +46,19 @@ class ResponsiveService {
     } else {
       return ScreenSize.desktop;
     }
+  }
+
+  static Widget buildForConstraints(
+    BoxConstraints constraints, {
+    required Widget compact,
+    Widget? medium,
+    Widget? expanded,
+  }) {
+    return switch (getScreenSizeForWidth(constraints.maxWidth)) {
+      ScreenSize.mobile => compact,
+      ScreenSize.tablet => medium ?? compact,
+      ScreenSize.desktop => expanded ?? medium ?? compact,
+    };
   }
 
   static double getScreenWidth(BuildContext context) {

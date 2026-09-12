@@ -276,14 +276,16 @@ class AppDesign {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: const EdgeInsets.all(spacingSm),
+          width: 3,
+          height: 30,
           decoration: BoxDecoration(
-            color: scheme.primary.withValues(alpha: 0.1),
-            borderRadius: borderRadiusSm,
+            color: scheme.primary,
+            borderRadius: borderRadiusXxs,
           ),
-          child: Icon(icon, color: scheme.primary, size: 24),
         ),
-        const SizedBox(width: spacingSm + 4),
+        const SizedBox(width: spacingSm + 2),
+        Icon(icon, color: scheme.primary, size: iconSizeMd),
+        const SizedBox(width: spacingSm + 2),
         // Flexible: an app bar with several actions leaves the title well under
         // 200px on a phone, and an unconstrained Column there overflows the
         // toolbar rather than shortening the text.
@@ -294,7 +296,7 @@ class AppDesign {
             children: [
               Text(
                 title,
-                style: text.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: text.titleMedium,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

@@ -16,6 +16,7 @@ import '../../widgets/common/app_dropdown.dart';
 import '../../widgets/common/app_search_field.dart';
 import '../../widgets/common/app_tappable.dart';
 import '../../widgets/common/empty_state_widget.dart';
+import '../../widgets/admin/admin_workspace.dart';
 
 /// Edits `courses_master` — the curated catalogue of every course that exists,
 /// offered this semester or not.
@@ -70,13 +71,15 @@ class _CoursesMasterManagementScreenState
     setState(() => _loading = true);
     try {
       final query = _searchController.text.trim();
-      final rows = await _crud.fetchMasterCourses(_campusId,
-          query: query, forceRefresh: force);
+      final rows = await _crud.fetchMasterCourses(
+        _campusId,
+        query: query,
+        forceRefresh: force,
+      );
       // Unfiltered count, so the header can say "12 of 2,852" rather than
       // implying the catalogue only holds what the search matched.
-      final all = query.isEmpty
-          ? rows
-          : await _crud.fetchMasterCourses(_campusId);
+      final all =
+          query.isEmpty ? rows : await _crud.fetchMasterCourses(_campusId);
       if (!mounted || seq != _loadSeq) return;
       setState(() {
         _rows = rows;
@@ -100,9 +103,10 @@ class _CoursesMasterManagementScreenState
           context,
           icon: Icons.inventory_2_outlined,
           title: 'Courses Master',
-          subtitle: _loading
-              ? 'Loading…'
-              : '${_rows.length} of $_total in ${_campusLabels[_campusId]}',
+          subtitle:
+              _loading
+                  ? 'Loading…'
+                  : '${_rows.length} of $_total in ${_campusLabels[_campusId]}',
         ),
         centerTitle: false,
         actions: [
@@ -118,19 +122,21 @@ class _CoursesMasterManagementScreenState
         icon: const Icon(Icons.add),
         label: const Text('Add course'),
       ),
-      body: Column(
-        children: [
-          _controls(),
-          Expanded(child: _list()),
-        ],
+      body: AdminWorkspace(
+        padding: EdgeInsets.zero,
+        child: Column(children: [_controls(), Expanded(child: _list())]),
       ),
     );
   }
 
   Widget _controls() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppDesign.spacingMd,
-          AppDesign.spacingSm + 4, AppDesign.spacingMd, AppDesign.spacingSm),
+      padding: const EdgeInsets.fromLTRB(
+        AppDesign.spacingMd,
+        AppDesign.spacingSm + 4,
+        AppDesign.spacingMd,
+        AppDesign.spacingSm,
+      ),
       child: Row(
         children: [
           AppDropdown<String>(
@@ -173,10 +179,11 @@ class _CoursesMasterManagementScreenState
       return EmptyStateWidget(
         icon: Icons.search_off,
         title: 'No course matches',
-        subtitle: _searchController.text.trim().isEmpty
-            ? 'The catalogue is empty for ${_campusLabels[_campusId]}.'
-            : 'Nothing in ${_campusLabels[_campusId]} matches '
-                '"${_searchController.text.trim()}".',
+        subtitle:
+            _searchController.text.trim().isEmpty
+                ? 'The catalogue is empty for ${_campusLabels[_campusId]}.'
+                : 'Nothing in ${_campusLabels[_campusId]} matches '
+                    '"${_searchController.text.trim()}".',
       );
     }
     return ListView.builder(
@@ -198,11 +205,14 @@ class _CoursesMasterManagementScreenState
       onTap: () => _openEditor(row),
       behavior: HitTestBehavior.opaque,
       child: Container(
-        color: index.isEven
-            ? scheme.surfaceContainerLow.withValues(alpha: 0.5)
-            : Colors.transparent,
+        color:
+            index.isEven
+                ? scheme.surfaceContainerLow.withValues(alpha: 0.5)
+                : Colors.transparent,
         padding: const EdgeInsets.symmetric(
-            horizontal: AppDesign.spacingMd, vertical: 10),
+          horizontal: AppDesign.spacingMd,
+          vertical: 10,
+        ),
         child: Row(
           children: [
             Expanded(
@@ -210,20 +220,26 @@ class _CoursesMasterManagementScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(code,
-                      style: const TextStyle(
-                          fontSize: 13.5, fontWeight: FontWeight.w700)),
+                  Text(
+                    code,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   Text(
                     // A code with no title is the thing this screen exists to
                     // fix, so it is called out rather than left blank.
                     title.isEmpty ? 'No title' : title,
                     style: TextStyle(
-                        fontSize: 11.5,
-                        fontStyle:
-                            title.isEmpty ? FontStyle.italic : FontStyle.normal,
-                        color: title.isEmpty
-                            ? scheme.error
-                            : scheme.onSurface.withValues(alpha: 0.62)),
+                      fontSize: 11.5,
+                      fontStyle:
+                          title.isEmpty ? FontStyle.italic : FontStyle.normal,
+                      color:
+                          title.isEmpty
+                              ? scheme.error
+                              : scheme.onSurface.withValues(alpha: 0.62),
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -242,16 +258,21 @@ class _CoursesMasterManagementScreenState
                     : '${credits == credits.roundToDouble() ? credits.toInt() : credits}U',
                 textAlign: TextAlign.right,
                 style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: credits == 0
-                        ? scheme.error
-                        : scheme.onSurface.withValues(alpha: 0.75)),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color:
+                      credits == 0
+                          ? scheme.error
+                          : scheme.onSurface.withValues(alpha: 0.75),
+                ),
               ),
             ),
             const SizedBox(width: AppDesign.spacingSm),
-            Icon(Icons.chevron_right,
-                size: AppDesign.iconSizeMd, color: scheme.onSurfaceVariant),
+            Icon(
+              Icons.chevron_right,
+              size: AppDesign.iconSizeMd,
+              color: scheme.onSurfaceVariant,
+            ),
           ],
         ),
       ),
@@ -265,9 +286,14 @@ class _CoursesMasterManagementScreenState
         color: colour.withValues(alpha: 0.12),
         borderRadius: AppDesign.borderRadiusXs,
       ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 10, fontWeight: FontWeight.w700, color: colour)),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: colour,
+        ),
+      ),
     );
   }
 
@@ -277,14 +303,18 @@ class _CoursesMasterManagementScreenState
   /// the old code.
   Future<void> _openEditor(Map<String, dynamic>? row) async {
     final isNew = row == null;
-    final codeController =
-        TextEditingController(text: row?['course_code'] as String? ?? '');
-    final titleController =
-        TextEditingController(text: row?['title'] as String? ?? '');
+    final codeController = TextEditingController(
+      text: row?['course_code'] as String? ?? '',
+    );
+    final titleController = TextEditingController(
+      text: row?['title'] as String? ?? '',
+    );
     final creditsController = TextEditingController(
-        text: ((row?['credits'] as num?) ?? 0).toString());
+      text: ((row?['credits'] as num?) ?? 0).toString(),
+    );
     final creditHoursController = TextEditingController(
-        text: ((row?['credit_hours'] as num?) ?? 0).toString());
+      text: ((row?['credit_hours'] as num?) ?? 0).toString(),
+    );
     var type = row?['type'] as String? ?? 'Normal';
     var allCampuses = false;
 
@@ -293,93 +323,109 @@ class _CoursesMasterManagementScreenState
       icon: isNew ? Icons.add : Icons.edit_outlined,
       title: isNew ? 'Add a course' : (row['course_code'] as String? ?? 'Edit'),
       content: StatefulBuilder(
-        builder: (context, setInner) => ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppDesign.maxDialogWidth),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (isNew)
-                TextField(
-                  controller: codeController,
-                  autofocus: true,
-                  textCapitalization: TextCapitalization.characters,
-                  decoration: AppDesign.inputDecoration(context,
-                      label: 'Course code', hint: 'CS F211'),
-                ),
-              if (isNew) const SizedBox(height: AppDesign.spacingMd),
-              TextField(
-                controller: titleController,
-                autofocus: !isNew,
-                decoration:
-                    AppDesign.inputDecoration(context, label: 'Title'),
+        builder:
+            (context, setInner) => ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: AppDesign.maxDialogWidth,
               ),
-              const SizedBox(height: AppDesign.spacingMd),
-              Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    width: 100,
-                    child: TextField(
-                      controller: creditsController,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      decoration: AppDesign.inputDecoration(context,
-                          label: 'Units'),
+                  if (isNew)
+                    TextField(
+                      controller: codeController,
+                      autofocus: true,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: AppDesign.inputDecoration(
+                        context,
+                        label: 'Course code',
+                        hint: 'CS F211',
+                      ),
+                    ),
+                  if (isNew) const SizedBox(height: AppDesign.spacingMd),
+                  TextField(
+                    controller: titleController,
+                    autofocus: !isNew,
+                    decoration: AppDesign.inputDecoration(
+                      context,
+                      label: 'Title',
                     ),
                   ),
-                  const SizedBox(width: AppDesign.spacingSm),
-                  // Contact hours, for the courses the booklet publishes no
-                  // unit count for. Its own number: CHEM U101 is 3 units and 7
-                  // credit hours, so this is never units x 3.
-                  SizedBox(
-                    width: 110,
-                    child: TextField(
-                      controller: creditHoursController,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      decoration: AppDesign.inputDecoration(context,
-                          label: 'Credit hrs'),
-                    ),
+                  const SizedBox(height: AppDesign.spacingMd),
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 100,
+                        child: TextField(
+                          controller: creditsController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: AppDesign.inputDecoration(
+                            context,
+                            label: 'Units',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppDesign.spacingSm),
+                      // Contact hours, for the courses the booklet publishes no
+                      // unit count for. Its own number: CHEM U101 is 3 units and 7
+                      // credit hours, so this is never units x 3.
+                      SizedBox(
+                        width: 110,
+                        child: TextField(
+                          controller: creditHoursController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: AppDesign.inputDecoration(
+                            context,
+                            label: 'Credit hrs',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppDesign.spacingMd),
+                      Expanded(
+                        child: AppDropdown<String>(
+                          value: type,
+                          height: 48,
+                          isExpanded: true,
+                          items: [
+                            for (final t in AdminDataService.courseTypes)
+                              DropdownMenuItem(value: t, child: Text(t)),
+                          ],
+                          onChanged: (t) {
+                            if (t != null) setInner(() => type = t);
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: AppDesign.spacingMd),
-                  Expanded(
-                    child: AppDropdown<String>(
-                      value: type,
-                      height: 48,
-                      isExpanded: true,
-                      items: [
-                        for (final t in AdminDataService.courseTypes)
-                          DropdownMenuItem(value: t, child: Text(t)),
-                      ],
-                      onChanged: (t) {
-                        if (t != null) setInner(() => type = t);
-                      },
+                  const SizedBox(height: AppDesign.spacingSm),
+                  // The catalogue is stored per campus and has drifted: 21 rows
+                  // differ between Hyderabad and Pilani, some of it deliberate.
+                  // Off by default so an edit cannot quietly flatten that.
+                  CheckboxListTile(
+                    value: allCampuses,
+                    onChanged: (v) => setInner(() => allCampuses = v ?? false),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: const Text(
+                      'Apply to all three campuses',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    subtitle: Text(
+                      allCampuses
+                          ? 'Writes to Hyderabad, Pilani and Goa'
+                          : 'Writes to ${_campusLabels[_campusId]} only',
+                      style: const TextStyle(fontSize: 11),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: AppDesign.spacingSm),
-              // The catalogue is stored per campus and has drifted: 21 rows
-              // differ between Hyderabad and Pilani, some of it deliberate.
-              // Off by default so an edit cannot quietly flatten that.
-              CheckboxListTile(
-                value: allCampuses,
-                onChanged: (v) => setInner(() => allCampuses = v ?? false),
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                title: const Text('Apply to all three campuses',
-                    style: TextStyle(fontSize: 13)),
-                subtitle: Text(
-                  allCampuses
-                      ? 'Writes to Hyderabad, Pilani and Goa'
-                      : 'Writes to ${_campusLabels[_campusId]} only',
-                  style: const TextStyle(fontSize: 11),
-                ),
-              ),
-            ],
-          ),
-        ),
+            ),
       ),
       actions: [
         if (!isNew)
@@ -393,10 +439,7 @@ class _CoursesMasterManagementScreenState
           variant: AppButtonVariant.ghost,
           onTap: () => Navigator.of(context).pop(),
         ),
-        AppButton(
-          label: 'Save',
-          onTap: () => Navigator.of(context).pop(true),
-        ),
+        AppButton(label: 'Save', onTap: () => Navigator.of(context).pop(true)),
       ],
     );
 
@@ -415,8 +458,11 @@ class _CoursesMasterManagementScreenState
       return;
     }
     if (isNew &&
-        _rows.any((r) => normalizeCourseCode(r['course_code'] as String? ?? '') ==
-            normalizeCourseCode(code))) {
+        _rows.any(
+          (r) =>
+              normalizeCourseCode(r['course_code'] as String? ?? '') ==
+              normalizeCourseCode(code),
+        )) {
       ToastService.showError('$code is already in the catalogue');
       return;
     }
@@ -434,8 +480,7 @@ class _CoursesMasterManagementScreenState
         courseCode: code,
         title: title,
         credits: double.tryParse(creditsController.text.trim()) ?? 0,
-        creditHours:
-            double.tryParse(creditHoursController.text.trim()) ?? 0,
+        creditHours: double.tryParse(creditHoursController.text.trim()) ?? 0,
         type: type,
       );
       // The app-wide catalogue is now stale in memory; drop it so titles and
@@ -443,7 +488,8 @@ class _CoursesMasterManagementScreenState
       CoursesMasterService().clear();
       if (!mounted) return;
       ToastService.showSuccess(
-          'Saved $code to ${targets.length == 1 ? _campusLabels[targets.first] : 'all campuses'}');
+        'Saved $code to ${targets.length == 1 ? _campusLabels[targets.first] : 'all campuses'}',
+      );
       await _load(force: true);
     } catch (e) {
       SecureLogger.error('CoursesMasterAdmin', 'Save failed: $e');
@@ -488,35 +534,45 @@ class _CoursesMasterManagementScreenState
             if (references.isEmpty)
               Row(
                 children: [
-                  Icon(Icons.check_circle_outline,
-                      size: AppDesign.iconSizeSm,
-                      color: AppDesign.success(context)),
+                  Icon(
+                    Icons.check_circle_outline,
+                    size: AppDesign.iconSizeSm,
+                    color: AppDesign.success(context),
+                  ),
                   const SizedBox(width: AppDesign.spacingSm),
                   const Expanded(
-                    child: Text('Nothing else refers to this code.',
-                        style: TextStyle(fontSize: 12.5)),
+                    child: Text(
+                      'Nothing else refers to this code.',
+                      style: TextStyle(fontSize: 12.5),
+                    ),
                   ),
                 ],
               )
             else ...[
-              Text('Still referred to by:',
-                  style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: scheme.error)),
+              Text(
+                'Still referred to by:',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: scheme.error,
+                ),
+              ),
               const SizedBox(height: AppDesign.spacingSm),
               for (final reference in references)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 4),
-                  child: Text('•  $reference',
-                      style: const TextStyle(fontSize: 12)),
+                  child: Text(
+                    '•  $reference',
+                    style: const TextStyle(fontSize: 12),
+                  ),
                 ),
               const SizedBox(height: AppDesign.spacingSm),
               Text(
                 'These keep the code and will render it with no title.',
                 style: TextStyle(
-                    fontSize: 11.5,
-                    color: scheme.onSurface.withValues(alpha: 0.7)),
+                  fontSize: 11.5,
+                  color: scheme.onSurface.withValues(alpha: 0.7),
+                ),
               ),
             ],
           ],
@@ -539,7 +595,9 @@ class _CoursesMasterManagementScreenState
     if (confirmed != true || !mounted) return;
     try {
       await _crud.deleteMasterCourse(
-          campusIds: targets, courseCode: courseCode);
+        campusIds: targets,
+        courseCode: courseCode,
+      );
       CoursesMasterService().clear();
       if (!mounted) return;
       ToastService.showSuccess('Deleted $courseCode');

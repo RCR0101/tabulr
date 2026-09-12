@@ -3,6 +3,7 @@ import '../constants/app_constants.dart';
 import '../models/cgpa_data.dart';
 import '../utils/design_constants.dart';
 import '../widgets/charts/cgpa_trajectory_chart.dart';
+import '../widgets/common/tabulr_surface.dart';
 import '../utils/page_info_helper.dart';
 
 /// Visualises the CGPA data the student already entered: SGPA-per-semester bars
@@ -30,7 +31,8 @@ class _CgpaTrajectoryScreenState extends State<CgpaTrajectoryScreen> {
     // sensible default, so the readout means something before the user edits.
     final points = widget.cgpaData.trajectory();
     final seed = points.isNotEmpty ? points.last.credits : 20.0;
-    _creditsCtrl.text = seed % 1 == 0 ? seed.toInt().toString() : seed.toString();
+    _creditsCtrl.text =
+        seed % 1 == 0 ? seed.toInt().toString() : seed.toString();
   }
 
   @override
@@ -47,8 +49,13 @@ class _CgpaTrajectoryScreenState extends State<CgpaTrajectoryScreen> {
     final cgpa = widget.cgpaData.cgpa;
 
     return Scaffold(
-      appBar: AppDesign.appBar(context, title: 'CGPA Trajectory',
-          actions: [PageInfoHelper.infoButton(context, PageInfoHelper.cgpaTrajectory)]),
+      appBar: AppDesign.appBar(
+        context,
+        title: 'CGPA Trajectory',
+        actions: [
+          PageInfoHelper.infoButton(context, PageInfoHelper.cgpaTrajectory),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(AppDesign.spacingMd),
         children: [
@@ -83,46 +90,58 @@ class _CgpaTrajectoryScreenState extends State<CgpaTrajectoryScreen> {
     );
   }
 
-  Widget _headerCard(BuildContext context, ColorScheme scheme, double cgpa,
-      List<CgpaTrajectoryPoint> points) {
-    final trend = points.length >= 2
-        ? points.last.cumulativeCgpa - points[points.length - 2].cumulativeCgpa
-        : 0.0;
+  Widget _headerCard(
+    BuildContext context,
+    ColorScheme scheme,
+    double cgpa,
+    List<CgpaTrajectoryPoint> points,
+  ) {
+    final trend =
+        points.length >= 2
+            ? points.last.cumulativeCgpa -
+                points[points.length - 2].cumulativeCgpa
+            : 0.0;
     final up = trend >= 0;
-    return Container(
+    return TabulrSurface(
+      level: TabulrSurfaceLevel.raised,
       padding: const EdgeInsets.all(AppDesign.spacingLg),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [scheme.primaryContainer, scheme.surfaceContainerHigh],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: AppDesign.chipBorderRadius(context),
-      ),
       child: Row(
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Current CGPA',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: scheme.onSurface.withValues(alpha: 0.6))),
-              Text(cgpa.toStringAsFixed(2),
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                      fontWeight: FontWeight.w700, color: scheme.onSurface)),
+              Text(
+                'Current CGPA',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: scheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+              Text(
+                cgpa.toStringAsFixed(2),
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurface,
+                ),
+              ),
             ],
           ),
           const Spacer(),
           if (points.length >= 2)
             Row(
               children: [
-                Icon(up ? Icons.trending_up : Icons.trending_down,
-                    color: up ? scheme.primary : scheme.error, size: 18),
+                Icon(
+                  up ? Icons.trending_up : Icons.trending_down,
+                  color: up ? scheme.primary : scheme.error,
+                  size: 18,
+                ),
                 const SizedBox(width: 4),
-                Text('${up ? '+' : ''}${trend.toStringAsFixed(2)} last sem',
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: up ? scheme.primary : scheme.error,
-                        fontWeight: FontWeight.w600)),
+                Text(
+                  '${up ? '+' : ''}${trend.toStringAsFixed(2)} last sem',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: up ? scheme.primary : scheme.error,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
         ],
@@ -139,11 +158,17 @@ class _CgpaTrajectoryScreenState extends State<CgpaTrajectoryScreen> {
             Expanded(
               child: TextField(
                 controller: _targetCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration:
-                    AppDesign.inputDecoration(context, hint: 'Target CGPA'),
-                onChanged: (_) => setState(
-                    () => _target = double.tryParse(_targetCtrl.text.trim())),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: AppDesign.inputDecoration(
+                  context,
+                  hint: 'Target CGPA',
+                ),
+                onChanged:
+                    (_) => setState(
+                      () => _target = double.tryParse(_targetCtrl.text.trim()),
+                    ),
               ),
             ),
             const SizedBox(width: AppDesign.spacingSm),
@@ -151,9 +176,10 @@ class _CgpaTrajectoryScreenState extends State<CgpaTrajectoryScreen> {
               width: 110,
               child: TextField(
                 controller: _creditsCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration:
-                    AppDesign.inputDecoration(context, hint: 'Credits'),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: AppDesign.inputDecoration(context, hint: 'Credits'),
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -174,17 +200,29 @@ class _CgpaTrajectoryScreenState extends State<CgpaTrajectoryScreen> {
         style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.6)),
       );
     }
-    final needed =
-        widget.cgpaData.requiredSgpa(targetCgpa: target, nextCredits: credits);
+    final needed = widget.cgpaData.requiredSgpa(
+      targetCgpa: target,
+      nextCredits: credits,
+    );
 
-    final (String msg, Color color, IconData icon) = needed <= 0
-        ? ('You\'re already at or above ${target.toStringAsFixed(2)} — any passing semester keeps it.',
-            scheme.primary, Icons.check_circle_outline)
-        : needed > 10
-            ? ('Out of reach in one semester — a perfect 10.0 over $credits credits still falls short of ${target.toStringAsFixed(2)}.',
-                scheme.error, Icons.error_outline)
-            : ('Score ${needed.toStringAsFixed(2)} SGPA over $credits credits to reach ${target.toStringAsFixed(2)}.',
-                scheme.secondary, Icons.flag_outlined);
+    final (String msg, Color color, IconData icon) =
+        needed <= 0
+            ? (
+              'You\'re already at or above ${target.toStringAsFixed(2)} — any passing semester keeps it.',
+              scheme.primary,
+              Icons.check_circle_outline,
+            )
+            : needed > 10
+            ? (
+              'Out of reach in one semester — a perfect 10.0 over $credits credits still falls short of ${target.toStringAsFixed(2)}.',
+              scheme.error,
+              Icons.error_outline,
+            )
+            : (
+              'Score ${needed.toStringAsFixed(2)} SGPA over $credits credits to reach ${target.toStringAsFixed(2)}.',
+              scheme.secondary,
+              Icons.flag_outlined,
+            );
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -197,9 +235,13 @@ class _CgpaTrajectoryScreenState extends State<CgpaTrajectoryScreen> {
           Icon(icon, color: color, size: 20),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(msg,
-                style: TextStyle(
-                    color: scheme.onSurface, fontWeight: FontWeight.w500)),
+            child: Text(
+              msg,
+              style: TextStyle(
+                color: scheme.onSurface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ],
       ),
@@ -209,12 +251,15 @@ class _CgpaTrajectoryScreenState extends State<CgpaTrajectoryScreen> {
   Widget _distribution(BuildContext context, ColorScheme scheme) {
     final dist = widget.cgpaData.gradeDistribution();
     if (dist.isEmpty) {
-      return Text('No letter grades entered yet.',
-          style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.5)));
+      return Text(
+        'No letter grades entered yet.',
+        style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.5)),
+      );
     }
-    final grades = GradeConstants.gradePoints.keys
-        .where((g) => (dist[g] ?? 0) > 0)
-        .toList();
+    final grades =
+        GradeConstants.gradePoints.keys
+            .where((g) => (dist[g] ?? 0) > 0)
+            .toList();
     final maxCount = dist.values.fold(0, (a, b) => a > b ? a : b);
 
     return Column(
@@ -225,30 +270,42 @@ class _CgpaTrajectoryScreenState extends State<CgpaTrajectoryScreen> {
             child: Row(
               children: [
                 SizedBox(
-                    width: 26,
-                    child: Text(g,
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.w600))),
+                  width: 26,
+                  child: Text(
+                    g,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
                 Expanded(
-                  child: LayoutBuilder(builder: (context, c) {
-                    final w = (c.maxWidth * (dist[g]! / maxCount)).clamp(6.0, c.maxWidth);
-                    return Align(
-                      alignment: Alignment.centerLeft,
-                      child: Container(
-                        height: 16,
-                        width: w,
-                        decoration: BoxDecoration(
-                          color: _gradeColor(scheme, g),
-                          borderRadius: AppDesign.innerBorderRadius(context),
+                  child: LayoutBuilder(
+                    builder: (context, c) {
+                      final w = (c.maxWidth * (dist[g]! / maxCount)).clamp(
+                        6.0,
+                        c.maxWidth,
+                      );
+                      return Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          height: 16,
+                          width: w,
+                          decoration: BoxDecoration(
+                            color: _gradeColor(scheme, g),
+                            borderRadius: AppDesign.innerBorderRadius(context),
+                          ),
                         ),
-                      ),
-                    );
-                  }),
+                      );
+                    },
+                  ),
                 ),
                 const SizedBox(width: 8),
-                Text('${dist[g]}',
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: scheme.onSurface.withValues(alpha: 0.7))),
+                Text(
+                  '${dist[g]}',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: scheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
               ],
             ),
           ),
@@ -266,40 +323,51 @@ class _CgpaTrajectoryScreenState extends State<CgpaTrajectoryScreen> {
 
   Widget _legend(BuildContext context, ColorScheme scheme) {
     Widget item(Color c, String label, {bool line = false}) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-                width: 14,
-                height: line ? 3 : 10,
-                decoration: BoxDecoration(
-                    color: c, borderRadius: AppDesign.borderRadiusXxs)),
-            const SizedBox(width: 5),
-            Text(label,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurface.withValues(alpha: 0.6))),
-          ],
-        );
-    return Wrap(spacing: 16, runSpacing: 6, children: [
-      item(scheme.primary.withValues(alpha: 0.5), 'SGPA (bar)'),
-      item(scheme.tertiary, 'CGPA (line)', line: true),
-    ]);
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 14,
+          height: line ? 3 : 10,
+          decoration: BoxDecoration(
+            color: c,
+            borderRadius: AppDesign.borderRadiusXxs,
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: scheme.onSurface.withValues(alpha: 0.6),
+          ),
+        ),
+      ],
+    );
+    return Wrap(
+      spacing: 16,
+      runSpacing: 6,
+      children: [
+        item(scheme.primary.withValues(alpha: 0.5), 'SGPA (bar)'),
+        item(scheme.tertiary, 'CGPA (line)', line: true),
+      ],
+    );
   }
 
-  Widget _card(BuildContext context, {required String title, required Widget child}) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
+  Widget _card(
+    BuildContext context, {
+    required String title,
+    required Widget child,
+  }) {
+    return TabulrSurface(
       padding: const EdgeInsets.all(AppDesign.spacingMd),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: AppDesign.cardBorderRadius(context),
-        border: Border.all(color: scheme.outline.withValues(alpha: 0.1)),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600)),
+          Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: 12),
           child,
         ],

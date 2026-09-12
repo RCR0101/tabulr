@@ -39,6 +39,18 @@ class ThemeGeometry extends ThemeExtension<ThemeGeometry> {
     this.bodyWeight = FontWeight.w400,
   });
 
+  static const brand = ThemeGeometry(
+    cardRadius: 14,
+    buttonRadius: 10,
+    dialogRadius: 20,
+    inputRadius: 12,
+    chipRadius: 10,
+    cardElevation: 0,
+    cardBorderWidth: 1,
+    headingWeight: FontWeight.w600,
+    bodyWeight: FontWeight.w400,
+  );
+
   @override
   ThemeGeometry copyWith({
     double? cardRadius,

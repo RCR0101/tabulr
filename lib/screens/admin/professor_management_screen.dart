@@ -26,13 +26,14 @@ Widget _profBadge(BuildContext context, String label, Color color) {
       borderRadius: AppDesign.chipBorderRadius(context),
       border: Border.all(color: color.withValues(alpha: 0.3)),
     ),
-    child: Text(label,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+    child: Text(
+      label,
+      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+    ),
   );
 }
 
-class _ProfessorManagementScreenState
-    extends State<ProfessorManagementScreen> {
+class _ProfessorManagementScreenState extends State<ProfessorManagementScreen> {
   static const _campusIds = CampusConstants.ids;
   static const _campusLabels = CampusConstants.labels;
 
@@ -68,8 +69,11 @@ class _ProfessorManagementScreenState
     setState(() => _loading = true);
     try {
       final q = _searchController.text.trim();
-      _profs = await _crud.fetchProfessors(_campusId,
-          query: q.isEmpty ? null : q, forceRefresh: force);
+      _profs = await _crud.fetchProfessors(
+        _campusId,
+        query: q.isEmpty ? null : q,
+        forceRefresh: force,
+      );
     } catch (e) {
       ToastService.showError('Failed to load professors');
     }
@@ -82,14 +86,18 @@ class _ProfessorManagementScreenState
 
   Future<void> _showDialog({Map<String, dynamic>? existing}) async {
     final isNew = existing == null;
-    final nameCtrl =
-        TextEditingController(text: existing?['name']?.toString() ?? '');
-    final chamberCtrl =
-        TextEditingController(text: existing?['chamber']?.toString() ?? '');
-    final emailCtrl =
-        TextEditingController(text: existing?['email']?.toString() ?? '');
-    final contactCtrl =
-        TextEditingController(text: existing?['contact']?.toString() ?? '');
+    final nameCtrl = TextEditingController(
+      text: existing?['name']?.toString() ?? '',
+    );
+    final chamberCtrl = TextEditingController(
+      text: existing?['chamber']?.toString() ?? '',
+    );
+    final emailCtrl = TextEditingController(
+      text: existing?['email']?.toString() ?? '',
+    );
+    final contactCtrl = TextEditingController(
+      text: existing?['contact']?.toString() ?? '',
+    );
 
     bool saving = false;
 
@@ -101,22 +109,27 @@ class _ProfessorManagementScreenState
         builder: (ctx, setDialogState) {
           final scheme = Theme.of(ctx).colorScheme;
 
-          Widget field(String label, TextEditingController ctrl,
-              {TextInputType? keyboardType}) {
+          Widget field(
+            String label,
+            TextEditingController ctrl, {
+            TextInputType? keyboardType,
+          }) {
             return Padding(
               padding: const EdgeInsets.only(bottom: AppDesign.spacingSm),
               child: TextField(
                 controller: ctrl,
                 keyboardType: keyboardType,
                 style: const TextStyle(fontSize: 13),
-                decoration:
-                    AppDesign.inputDecoration(ctx, label: label, hint: label),
+                decoration: AppDesign.inputDecoration(
+                  ctx,
+                  label: label,
+                  hint: label,
+                ),
               ),
             );
           }
 
-          final scheduleCount =
-              (existing?['schedule'] as List?)?.length ?? 0;
+          final scheduleCount = (existing?['schedule'] as List?)?.length ?? 0;
 
           return Column(
             mainAxisSize: MainAxisSize.min,
@@ -129,28 +142,39 @@ class _ProfessorManagementScreenState
                     children: [
                       field('Name', nameCtrl),
                       field('Chamber', chamberCtrl),
-                      field('Email', emailCtrl,
-                          keyboardType: TextInputType.emailAddress),
-                      field('Contact', contactCtrl,
-                          keyboardType: TextInputType.phone),
+                      field(
+                        'Email',
+                        emailCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                      ),
+                      field(
+                        'Contact',
+                        contactCtrl,
+                        keyboardType: TextInputType.phone,
+                      ),
                       if (!isNew && scheduleCount > 0)
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: scheme.surfaceContainerHighest
-                                .withValues(alpha: 0.2),
+                            color: scheme.surfaceContainerHighest.withValues(
+                              alpha: 0.2,
+                            ),
                             borderRadius: AppDesign.cardBorderRadius(ctx),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.schedule_rounded,
-                                  size: 16, color: AppDesign.muted(ctx)),
+                              Icon(
+                                Icons.schedule_rounded,
+                                size: 16,
+                                color: AppDesign.muted(ctx),
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 '$scheduleCount schedule entries (managed via rebuild)',
                                 style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppDesign.muted(ctx)),
+                                  fontSize: 12,
+                                  color: AppDesign.muted(ctx),
+                                ),
                               ),
                             ],
                           ),
@@ -168,29 +192,30 @@ class _ProfessorManagementScreenState
                         label: 'Delete',
                         icon: Icons.delete_outline_rounded,
                         variant: AppButtonVariant.danger,
-                        onTap: saving
-                            ? null
-                            : () async {
-                                final confirm = await AppDialog.confirm(
-                                  context: ctx,
-                                  title: 'Delete Professor',
-                                  message:
-                                      'Delete ${nameCtrl.text}?',
-                                  isDangerous: true,
-                                );
-                                if (confirm && ctx.mounted) {
-                                  try {
-                                    await _crud.deleteProfessor(
-                                        _campusId, existing['docId']);
-                                    ToastService.showSuccess('Deleted');
-                                    if (ctx.mounted) Navigator.pop(ctx);
-                                    _load();
-                                  } catch (e) {
-                                    ToastService.showError(
-                                        'Delete failed');
+                        onTap:
+                            saving
+                                ? null
+                                : () async {
+                                  final confirm = await AppDialog.confirm(
+                                    context: ctx,
+                                    title: 'Delete Professor',
+                                    message: 'Delete ${nameCtrl.text}?',
+                                    isDangerous: true,
+                                  );
+                                  if (confirm && ctx.mounted) {
+                                    try {
+                                      await _crud.deleteProfessor(
+                                        _campusId,
+                                        existing['docId'],
+                                      );
+                                      ToastService.showSuccess('Deleted');
+                                      if (ctx.mounted) Navigator.pop(ctx);
+                                      _load();
+                                    } catch (e) {
+                                      ToastService.showError('Delete failed');
+                                    }
                                   }
-                                }
-                              },
+                                },
                       ),
                     const Spacer(),
                     AppButton(
@@ -203,55 +228,63 @@ class _ProfessorManagementScreenState
                       label: 'Save',
                       icon: Icons.check_rounded,
                       isLoading: saving,
-                      onTap: saving
-                          ? null
-                          : () async {
-                              final name = nameCtrl.text.trim();
-                              if (name.isEmpty) {
-                                ToastService.showError('Name required');
-                                return;
-                              }
-                              setDialogState(() => saving = true);
-                              try {
-                                final docId = isNew
-                                    ? name
-                                        .toLowerCase()
-                                        .replaceAll(RegExp(r'\s+'), '_')
-                                    : existing['docId'];
-                                final data = <String, dynamic>{
-                                  'name': name,
-                                  'chamber': chamberCtrl.text.trim().isEmpty
-                                      ? 'Unavailable'
-                                      : chamberCtrl.text.trim(),
-                                  'updatedAt': DateTime.now()
-                                      .toIso8601String(),
-                                };
-                                if (isNew) {
-                                  data['id'] = docId;
-                                  data['createdAt'] =
-                                      DateTime.now().toIso8601String();
-                                  data['schedule'] = [];
+                      onTap:
+                          saving
+                              ? null
+                              : () async {
+                                final name = nameCtrl.text.trim();
+                                if (name.isEmpty) {
+                                  ToastService.showError('Name required');
+                                  return;
                                 }
-                                final email = emailCtrl.text.trim();
-                                final contact = contactCtrl.text.trim();
-                                if (email.isNotEmpty) {
-                                  data['email'] = email;
+                                setDialogState(() => saving = true);
+                                try {
+                                  final docId =
+                                      isNew
+                                          ? name.toLowerCase().replaceAll(
+                                            RegExp(r'\s+'),
+                                            '_',
+                                          )
+                                          : existing['docId'];
+                                  final data = <String, dynamic>{
+                                    'name': name,
+                                    'chamber':
+                                        chamberCtrl.text.trim().isEmpty
+                                            ? 'Unavailable'
+                                            : chamberCtrl.text.trim(),
+                                    'updatedAt':
+                                        DateTime.now().toIso8601String(),
+                                  };
+                                  if (isNew) {
+                                    data['id'] = docId;
+                                    data['createdAt'] =
+                                        DateTime.now().toIso8601String();
+                                    data['schedule'] = [];
+                                  }
+                                  final email = emailCtrl.text.trim();
+                                  final contact = contactCtrl.text.trim();
+                                  if (email.isNotEmpty) {
+                                    data['email'] = email;
+                                  }
+                                  if (contact.isNotEmpty) {
+                                    data['contact'] = contact;
+                                  }
+                                  await _crud.saveProfessor(
+                                    _campusId,
+                                    docId,
+                                    data,
+                                  );
+                                  ToastService.showSuccess('Saved');
+                                  if (ctx.mounted) Navigator.pop(ctx);
+                                  _load();
+                                } catch (e) {
+                                  ToastService.showError('Save failed');
+                                } finally {
+                                  if (ctx.mounted) {
+                                    setDialogState(() => saving = false);
+                                  }
                                 }
-                                if (contact.isNotEmpty) {
-                                  data['contact'] = contact;
-                                }
-                                await _crud.saveProfessor(_campusId, docId, data);
-                                ToastService.showSuccess('Saved');
-                                if (ctx.mounted) Navigator.pop(ctx);
-                                _load();
-                              } catch (e) {
-                                ToastService.showError('Save failed');
-                              } finally {
-                                if (ctx.mounted) {
-                                  setDialogState(() => saving = false);
-                                }
-                              }
-                            },
+                              },
                     ),
                   ],
                 ),
@@ -282,6 +315,9 @@ class _ProfessorManagementScreenState
     return Scaffold(
       appBar: AppDesign.appBar(context, title: 'Professor Management'),
       floatingActionButton: FloatingActionButton(
+        elevation: 2,
+        focusElevation: 2,
+        hoverElevation: 3,
         backgroundColor: scheme.primary,
         onPressed: () => _showDialog(),
         child: const Icon(Icons.person_add_rounded, color: Colors.white),
@@ -296,8 +332,10 @@ class _ProfessorManagementScreenState
                   onTap: _switchCampus,
                   borderRadius: AppDesign.buttonBorderRadius(context),
                   child: _profBadge(
-                                        context,
-                      _campusLabels[_campusId]!, scheme.primary),
+                    context,
+                    _campusLabels[_campusId]!,
+                    scheme.primary,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -311,36 +349,40 @@ class _ProfessorManagementScreenState
             ),
           ),
           if (_loading)
-            const Expanded(
-                child: Center(child: CircularProgressIndicator()))
+            const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (_profs.isEmpty)
             Expanded(
               child: Center(
-                child: Text('No professors found',
-                    style: TextStyle(color: AppDesign.muted(context))),
+                child: Text(
+                  'No professors found',
+                  style: TextStyle(color: AppDesign.muted(context)),
+                ),
               ),
             )
           else
             Expanded(
               child: ListView.builder(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AppDesign.spacingMd),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppDesign.spacingMd,
+                ),
                 itemCount: _profs.length,
                 itemBuilder: (_, i) {
                   final p = _profs[i];
                   final name = p['name']?.toString() ?? '';
                   final chamber = p['chamber']?.toString() ?? 'Unavailable';
                   final email = p['email']?.toString() ?? '';
-                  final schedCount =
-                      (p['schedule'] as List?)?.length ?? 0;
+                  final schedCount = (p['schedule'] as List?)?.length ?? 0;
                   final unavailable = chamber == 'Unavailable';
 
                   return Card(
+                    elevation: 0,
+                    surfaceTintColor: Colors.transparent,
                     margin: const EdgeInsets.only(bottom: 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: AppDesign.cardBorderRadius(context),
                       side: BorderSide(
-                          color: scheme.outline.withValues(alpha: 0.12)),
+                        color: scheme.outline.withValues(alpha: 0.12),
+                      ),
                     ),
                     child: InkWell(
                       borderRadius: AppDesign.buttonBorderRadius(context),
@@ -349,26 +391,32 @@ class _ProfessorManagementScreenState
                         decoration: BoxDecoration(
                           border: Border(
                             left: BorderSide(
-                              color: unavailable
-                                  ? scheme.error
-                                  : AppDesign.success(context),
+                              color:
+                                  unavailable
+                                      ? scheme.error
+                                      : AppDesign.success(context),
                               width: 3,
                             ),
                           ),
                         ),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                         child: Row(
                           children: [
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(name,
-                                      style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: scheme.onSurface)),
+                                  Text(
+                                    name,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: scheme.onSurface,
+                                    ),
+                                  ),
                                   const SizedBox(height: 4),
                                   Row(
                                     children: [
@@ -381,22 +429,29 @@ class _ProfessorManagementScreenState
                                       ),
                                       if (email.isNotEmpty) ...[
                                         const SizedBox(width: 6),
-                                        Icon(Icons.email_outlined,
-                                            size: 14,
-                                            color: AppDesign.muted(context)),
+                                        Icon(
+                                          Icons.email_outlined,
+                                          size: 14,
+                                          color: AppDesign.muted(context),
+                                        ),
                                       ],
                                       if (schedCount > 0) ...[
                                         const SizedBox(width: 6),
-                                        _profBadge(context, '$schedCount classes',
-                                            scheme.primary),
+                                        _profBadge(
+                                          context,
+                                          '$schedCount classes',
+                                          scheme.primary,
+                                        ),
                                       ],
                                     ],
                                   ),
                                 ],
                               ),
                             ),
-                            Icon(Icons.chevron_right_rounded,
-                                color: AppDesign.muted(context)),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              color: AppDesign.muted(context),
+                            ),
                           ],
                         ),
                       ),

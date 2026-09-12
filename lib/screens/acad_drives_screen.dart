@@ -24,6 +24,7 @@ import '../services/ui/tutorial_service.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_tappable.dart';
 import '../widgets/common/app_button.dart';
+import '../widgets/common/tabulr_surface.dart';
 import '../services/data/courses_master_service.dart';
 import '../utils/page_info_helper.dart';
 import '../widgets/acad_drives/acad_drives_layout.dart';
@@ -1358,55 +1359,56 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       if (code.isNotEmpty && seen.add(code)) courses.add(course);
     }
 
-    return Container(
+    return SizedBox(
       width: 350,
-      decoration: BoxDecoration(
-        color: scheme.surface.withValues(alpha: .9),
-        borderRadius: BorderRadius.circular(ThemeGeometry.of(context).dialogRadius),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: .75)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 17, 12, 10),
-            child: AcadDrivesSectionTitle(
-              title: 'Courses',
-              caption: '${courses.length} currently loaded',
-              trailing: IconButton(
-                onPressed: _goBackToCourses,
-                icon: const Icon(Icons.grid_view_rounded, size: 20),
-                tooltip: 'Open full course library',
+      child: TabulrSurface(
+        level: TabulrSurfaceLevel.panel,
+        borderRadius: BorderRadius.circular(
+          ThemeGeometry.of(context).dialogRadius,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 17, 12, 10),
+              child: AcadDrivesSectionTitle(
+                title: 'Courses',
+                caption: '${courses.length} currently loaded',
+                trailing: IconButton(
+                  onPressed: _goBackToCourses,
+                  icon: const Icon(Icons.grid_view_rounded, size: 20),
+                  tooltip: 'Open full course library',
+                ),
               ),
             ),
-          ),
-          Divider(
-            height: 1,
-            color: scheme.outlineVariant.withValues(alpha: .6),
-          ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: courses.length,
-              itemBuilder: (context, index) {
-                final course = courses[index];
-                final code = (course['code'] ?? '').toString();
-                return _CourseCard(
-                  course: course,
-                  compact: true,
-                  selected: code == _selectedCourse,
-                  enrolled: _enrolledCourseCodes.contains(code),
-                  starred: starredCodes.contains(code),
-                  onTap: () => _loadCourseFiles(code),
-                  onToggleStar: () {
-                    UserSettingsService().toggleStarredCourse(code);
-                    setState(() {});
-                  },
-                );
-              },
+            Divider(
+              height: 1,
+              color: scheme.outlineVariant.withValues(alpha: .6),
             ),
-          ),
-        ],
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: courses.length,
+                itemBuilder: (context, index) {
+                  final course = courses[index];
+                  final code = (course['code'] ?? '').toString();
+                  return _CourseCard(
+                    course: course,
+                    compact: true,
+                    selected: code == _selectedCourse,
+                    enrolled: _enrolledCourseCodes.contains(code),
+                    starred: starredCodes.contains(code),
+                    onTap: () => _loadCourseFiles(code),
+                    onToggleStar: () {
+                      UserSettingsService().toggleStarredCourse(code);
+                      setState(() {});
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1415,12 +1417,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     final scheme = Theme.of(context).colorScheme;
     final selectedEntry = _courseEntryFor(_selectedCourse);
     final title = (selectedEntry?['name'] ?? '').toString();
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.surface.withValues(alpha: .9),
-        borderRadius: AppDesign.borderRadiusXl,
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: .75)),
-      ),
+    return TabulrSurface(
+      level: TabulrSurfaceLevel.panel,
+      borderRadius: AppDesign.borderRadiusXl,
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [

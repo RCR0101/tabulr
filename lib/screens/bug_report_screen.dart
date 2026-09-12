@@ -8,6 +8,7 @@ import '../utils/design_constants.dart';
 import '../widgets/bug_status_chip.dart';
 import '../widgets/bug_thread.dart';
 import '../widgets/common/app_button.dart';
+import '../widgets/common/tabulr_surface.dart';
 import '../widgets/common/empty_state_widget.dart';
 import '../utils/page_info_helper.dart';
 
@@ -142,29 +143,32 @@ class _BugReportScreenState extends State<BugReportScreen> {
       );
     }
 
-    return Container(
+    return TabulrSurface(
+      level: TabulrSurfaceLevel.panel,
       padding: const EdgeInsets.all(AppDesign.spacingLg),
-      decoration: AppDesign.cardDecoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('New report',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            'New report',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: AppDesign.spacingLg),
           DropdownButtonFormField<String>(
             initialValue: _category,
             isExpanded: true,
             decoration: AppDesign.inputDecoration(context, label: 'Category'),
-            items: bugReportTaxonomy.keys
-                .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                .toList(),
-            onChanged: (v) => setState(() {
-              _category = v;
-              _subCategory = null; // reset dependent field
-            }),
+            items:
+                bugReportTaxonomy.keys
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+            onChanged:
+                (v) => setState(() {
+                  _category = v;
+                  _subCategory = null; // reset dependent field
+                }),
           ),
           const SizedBox(height: AppDesign.spacingMd),
           DropdownButtonFormField<String>(
@@ -175,12 +179,14 @@ class _BugReportScreenState extends State<BugReportScreen> {
               label: 'Sub-category',
               hint: _category == null ? 'Pick a category first' : null,
             ),
-            items: _subOptions
-                .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                .toList(),
-            onChanged: _category == null
-                ? null
-                : (v) => setState(() => _subCategory = v),
+            items:
+                _subOptions
+                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                    .toList(),
+            onChanged:
+                _category == null
+                    ? null
+                    : (v) => setState(() => _subCategory = v),
           ),
           const SizedBox(height: AppDesign.spacingMd),
           TextField(
@@ -203,8 +209,8 @@ class _BugReportScreenState extends State<BugReportScreen> {
                 child: Text(
                   'Reports are visible to you and the Tabulr team only.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurface.withValues(alpha: 0.5),
-                      ),
+                    color: scheme.onSurface.withValues(alpha: 0.5),
+                  ),
                 ),
               ),
               const SizedBox(width: AppDesign.spacingMd),
@@ -258,18 +264,18 @@ class _BugReportScreenState extends State<BugReportScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.only(
-                  left: AppDesign.spacingXs, bottom: AppDesign.spacingSm),
+                left: AppDesign.spacingXs,
+                bottom: AppDesign.spacingSm,
+              ),
               child: Text(
                 'Your reports (${reports.length})',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
             ...pageItems.map((r) => _reportCard(context, r)),
-            if (pageCount > 1)
-              _paginationBar(context, page, pageCount),
+            if (pageCount > 1) _paginationBar(context, page, pageCount),
           ],
         );
       },
@@ -291,10 +297,9 @@ class _BugReportScreenState extends State<BugReportScreen> {
               Expanded(
                 child: Text(
                   '${r.category} · ${r.subCategory}',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
               const SizedBox(width: AppDesign.spacingSm),
@@ -302,34 +307,32 @@ class _BugReportScreenState extends State<BugReportScreen> {
             ],
           ),
           const SizedBox(height: AppDesign.spacingXs),
-          Text(
-            r.description,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          Text(r.description, style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: AppDesign.spacingSm),
           Row(
             children: [
               Text(
                 formatRelativeDate(r.createdAt),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurface.withValues(alpha: 0.5),
-                    ),
+                  color: scheme.onSurface.withValues(alpha: 0.5),
+                ),
               ),
               const Spacer(),
               if (r.hasUnreadForUser && !open) ...[
                 Text(
                   'New reply',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: scheme.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    color: scheme.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(width: AppDesign.spacingSm),
               ],
               TextButton.icon(
-                onPressed: () => setState(() {
-                  if (!_openThreads.remove(r.id)) _openThreads.add(r.id);
-                }),
+                onPressed:
+                    () => setState(() {
+                      if (!_openThreads.remove(r.id)) _openThreads.add(r.id);
+                    }),
                 icon: Icon(
                   open ? Icons.expand_less : Icons.forum_outlined,
                   size: 18,
@@ -359,12 +362,15 @@ class _BugReportScreenState extends State<BugReportScreen> {
             icon: const Icon(Icons.chevron_left),
             tooltip: 'Previous',
           ),
-          Text('Page ${page + 1} of $pageCount',
-              style: Theme.of(context).textTheme.bodyMedium),
+          Text(
+            'Page ${page + 1} of $pageCount',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
           IconButton(
-            onPressed: page < pageCount - 1
-                ? () => setState(() => _page = page + 1)
-                : null,
+            onPressed:
+                page < pageCount - 1
+                    ? () => setState(() => _page = page + 1)
+                    : null,
             icon: const Icon(Icons.chevron_right),
             tooltip: 'Next',
           ),

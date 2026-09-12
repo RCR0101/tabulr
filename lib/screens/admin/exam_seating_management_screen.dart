@@ -10,6 +10,8 @@ import '../../utils/design_constants.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_dialog.dart';
 import '../../utils/course_code.dart';
+import '../../widgets/common/tabulr_surface.dart';
+import '../../widgets/admin/admin_workspace.dart';
 
 class ExamSeatingManagementScreen extends StatefulWidget {
   const ExamSeatingManagementScreen({super.key});
@@ -27,8 +29,10 @@ Widget _examBadge(BuildContext context, String label, Color color) {
       borderRadius: AppDesign.chipBorderRadius(context),
       border: Border.all(color: color.withValues(alpha: 0.3)),
     ),
-    child: Text(label,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+    child: Text(
+      label,
+      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+    ),
   );
 }
 
@@ -69,8 +73,11 @@ class _ExamSeatingManagementScreenState
     setState(() => _loading = true);
     try {
       final q = _searchController.text.trim();
-      _entries = await _crud.fetchExamSeating(_campusId,
-          query: q.isEmpty ? null : q, forceRefresh: force);
+      _entries = await _crud.fetchExamSeating(
+        _campusId,
+        query: q.isEmpty ? null : q,
+        forceRefresh: force,
+      );
     } catch (e) {
       ToastService.showError('Failed to load exam seating');
     }
@@ -84,9 +91,11 @@ class _ExamSeatingManagementScreenState
   Future<void> _showDialog({Map<String, dynamic>? existing}) async {
     final isNew = existing == null;
     final codeCtrl = TextEditingController(
-        text: docIdToCourseCode(existing?['docId']?.toString() ?? ''));
-    final dateCtrl =
-        TextEditingController(text: existing?['exam_date']?.toString() ?? '');
+      text: docIdToCourseCode(existing?['docId']?.toString() ?? ''),
+    );
+    final dateCtrl = TextEditingController(
+      text: existing?['exam_date']?.toString() ?? '',
+    );
 
     final rooms = <Map<String, dynamic>>[];
     if (existing?['rooms'] is List) {
@@ -108,14 +117,18 @@ class _ExamSeatingManagementScreenState
 
           Widget roomCard(int idx) {
             final r = rooms[idx];
-            final roomCtrl =
-                TextEditingController(text: r['roomNo']?.toString() ?? '');
-            final fromCtrl =
-                TextEditingController(text: r['idFrom']?.toString() ?? '');
-            final toCtrl =
-                TextEditingController(text: r['idTo']?.toString() ?? '');
+            final roomCtrl = TextEditingController(
+              text: r['roomNo']?.toString() ?? '',
+            );
+            final fromCtrl = TextEditingController(
+              text: r['idFrom']?.toString() ?? '',
+            );
+            final toCtrl = TextEditingController(
+              text: r['idTo']?.toString() ?? '',
+            );
             final countCtrl = TextEditingController(
-                text: r['studentCount']?.toString() ?? '');
+              text: r['studentCount']?.toString() ?? '',
+            );
 
             return Container(
               margin: const EdgeInsets.only(bottom: 8),
@@ -123,9 +136,7 @@ class _ExamSeatingManagementScreenState
               decoration: BoxDecoration(
                 color: scheme.surfaceContainerHighest.withValues(alpha: 0.2),
                 borderRadius: AppDesign.cardBorderRadius(ctx),
-                border: Border(
-                  left: BorderSide(color: accent, width: 3),
-                ),
+                border: Border(left: BorderSide(color: accent, width: 3)),
               ),
               child: Column(
                 children: [
@@ -136,11 +147,14 @@ class _ExamSeatingManagementScreenState
                           controller: roomCtrl,
                           style: const TextStyle(fontSize: 13),
                           decoration: const InputDecoration(
-                              hintText: 'Room No',
-                              isDense: true,
-                              border: OutlineInputBorder(),
-                              contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 8)),
+                            hintText: 'Room No',
+                            isDense: true,
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                          ),
                           onChanged: (v) => r['roomNo'] = v,
                         ),
                       ),
@@ -152,23 +166,30 @@ class _ExamSeatingManagementScreenState
                           keyboardType: TextInputType.number,
                           style: const TextStyle(fontSize: 13),
                           decoration: const InputDecoration(
-                              hintText: 'Count',
-                              isDense: true,
-                              border: OutlineInputBorder(),
-                              contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 8)),
-                          onChanged: (v) =>
-                              r['studentCount'] = int.tryParse(v),
+                            hintText: 'Count',
+                            isDense: true,
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                          ),
+                          onChanged: (v) => r['studentCount'] = int.tryParse(v),
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.delete_outline_rounded,
-                            size: 18, color: scheme.error),
-                        onPressed: () =>
-                            setDialogState(() => rooms.removeAt(idx)),
+                        icon: Icon(
+                          Icons.delete_outline_rounded,
+                          size: 18,
+                          color: scheme.error,
+                        ),
+                        onPressed:
+                            () => setDialogState(() => rooms.removeAt(idx)),
                         padding: const EdgeInsets.only(left: 8),
-                        constraints:
-                            const BoxConstraints(minWidth: 28, minHeight: 28),
+                        constraints: const BoxConstraints(
+                          minWidth: 28,
+                          minHeight: 28,
+                        ),
                       ),
                     ],
                   ),
@@ -180,29 +201,37 @@ class _ExamSeatingManagementScreenState
                           controller: fromCtrl,
                           style: const TextStyle(fontSize: 12),
                           decoration: const InputDecoration(
-                              hintText: 'ID From',
-                              isDense: true,
-                              border: OutlineInputBorder(),
-                              contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 8)),
+                            hintText: 'ID From',
+                            isDense: true,
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                          ),
                           onChanged: (v) => r['idFrom'] = v,
                         ),
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 6),
-                        child: Text('-',
-                            style: TextStyle(color: AppDesign.muted(ctx))),
+                        child: Text(
+                          '-',
+                          style: TextStyle(color: AppDesign.muted(ctx)),
+                        ),
                       ),
                       Expanded(
                         child: TextField(
                           controller: toCtrl,
                           style: const TextStyle(fontSize: 12),
                           decoration: const InputDecoration(
-                              hintText: 'ID To',
-                              isDense: true,
-                              border: OutlineInputBorder(),
-                              contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 8)),
+                            hintText: 'ID To',
+                            isDense: true,
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                          ),
                           onChanged: (v) => r['idTo'] = v,
                         ),
                       ),
@@ -224,49 +253,64 @@ class _ExamSeatingManagementScreenState
                     children: [
                       Padding(
                         padding: const EdgeInsets.only(
-                            bottom: AppDesign.spacingSm),
+                          bottom: AppDesign.spacingSm,
+                        ),
                         child: TextField(
                           controller: codeCtrl,
                           readOnly: !isNew,
                           style: const TextStyle(fontSize: 13),
-                          decoration: AppDesign.inputDecoration(ctx,
-                              label: 'Course Code',
-                              hint: 'e.g. CS F111'),
+                          decoration: AppDesign.inputDecoration(
+                            ctx,
+                            label: 'Course Code',
+                            hint: 'e.g. CS F111',
+                          ),
                         ),
                       ),
                       Padding(
                         padding: const EdgeInsets.only(
-                            bottom: AppDesign.spacingSm),
+                          bottom: AppDesign.spacingSm,
+                        ),
                         child: TextField(
                           controller: dateCtrl,
                           style: const TextStyle(fontSize: 13),
-                          decoration: AppDesign.inputDecoration(ctx,
-                              label: 'Exam Date',
-                              hint: 'e.g. 07/05/2026'),
+                          decoration: AppDesign.inputDecoration(
+                            ctx,
+                            label: 'Exam Date',
+                            hint: 'e.g. 07/05/2026',
+                          ),
                         ),
                       ),
                       const Divider(),
                       Row(
                         children: [
-                          Text('Rooms',
-                              style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: scheme.onSurface)),
+                          Text(
+                            'Rooms',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: scheme.onSurface,
+                            ),
+                          ),
                           const Spacer(),
                           TextButton.icon(
-                            icon: Icon(Icons.add_rounded,
-                                size: 16, color: accent),
-                            label: Text('Add Room',
-                                style: TextStyle(
-                                    fontSize: 12, color: accent)),
-                            onPressed: () => setDialogState(() =>
-                                rooms.add({
-                                  'roomNo': '',
-                                  'idFrom': null,
-                                  'idTo': null,
-                                  'studentCount': null,
-                                })),
+                            icon: Icon(
+                              Icons.add_rounded,
+                              size: 16,
+                              color: accent,
+                            ),
+                            label: Text(
+                              'Add Room',
+                              style: TextStyle(fontSize: 12, color: accent),
+                            ),
+                            onPressed:
+                                () => setDialogState(
+                                  () => rooms.add({
+                                    'roomNo': '',
+                                    'idFrom': null,
+                                    'idTo': null,
+                                    'studentCount': null,
+                                  }),
+                                ),
                           ),
                         ],
                       ),
@@ -284,29 +328,31 @@ class _ExamSeatingManagementScreenState
                         label: 'Delete',
                         icon: Icons.delete_outline_rounded,
                         variant: AppButtonVariant.danger,
-                        onTap: saving
-                            ? null
-                            : () async {
-                                final confirm = await AppDialog.confirm(
-                                  context: ctx,
-                                  title: 'Delete Exam Seating',
-                                  message:
-                                      'Delete seating for ${codeCtrl.text}?',
-                                  isDangerous: true,
-                                );
-                                if (confirm && ctx.mounted) {
-                                  try {
-                                    await _crud.deleteExamSeating(
-                                        _campusId, existing['docId']);
-                                    ToastService.showSuccess('Deleted');
-                                    if (ctx.mounted) Navigator.pop(ctx);
-                                    _load();
-                                  } catch (e) {
-                                    ToastService.showError(
-                                        'Delete failed');
+                        onTap:
+                            saving
+                                ? null
+                                : () async {
+                                  final confirm = await AppDialog.confirm(
+                                    context: ctx,
+                                    title: 'Delete Exam Seating',
+                                    message:
+                                        'Delete seating for ${codeCtrl.text}?',
+                                    isDangerous: true,
+                                  );
+                                  if (confirm && ctx.mounted) {
+                                    try {
+                                      await _crud.deleteExamSeating(
+                                        _campusId,
+                                        existing['docId'],
+                                      );
+                                      ToastService.showSuccess('Deleted');
+                                      if (ctx.mounted) Navigator.pop(ctx);
+                                      _load();
+                                    } catch (e) {
+                                      ToastService.showError('Delete failed');
+                                    }
                                   }
-                                }
-                              },
+                                },
                       ),
                     const Spacer(),
                     AppButton(
@@ -319,38 +365,41 @@ class _ExamSeatingManagementScreenState
                       label: 'Save',
                       icon: Icons.check_rounded,
                       isLoading: saving,
-                      onTap: saving
-                          ? null
-                          : () async {
-                              final code = codeCtrl.text.trim();
-                              if (code.isEmpty) {
-                                ToastService.showError(
-                                    'Course code required');
-                                return;
-                              }
-                              setDialogState(() => saving = true);
-                              try {
-                                final docId = isNew
-                                    ? code.replaceAll(
-                                        RegExp(r'\s+'), '_')
-                                    : existing['docId'];
-                                await _crud.saveExamSeating(_campusId, docId, {
-                                  'exam_date': dateCtrl.text.trim(),
-                                  'rooms': rooms,
-                                  'updated_at':
-                                      FieldValue.serverTimestamp(),
-                                });
-                                ToastService.showSuccess('Saved');
-                                if (ctx.mounted) Navigator.pop(ctx);
-                                _load();
-                              } catch (e) {
-                                ToastService.showError('Save failed');
-                              } finally {
-                                if (ctx.mounted) {
-                                  setDialogState(() => saving = false);
+                      onTap:
+                          saving
+                              ? null
+                              : () async {
+                                final code = codeCtrl.text.trim();
+                                if (code.isEmpty) {
+                                  ToastService.showError(
+                                    'Course code required',
+                                  );
+                                  return;
                                 }
-                              }
-                            },
+                                setDialogState(() => saving = true);
+                                try {
+                                  final docId =
+                                      isNew
+                                          ? code.replaceAll(RegExp(r'\s+'), '_')
+                                          : existing['docId'];
+                                  await _crud
+                                      .saveExamSeating(_campusId, docId, {
+                                        'exam_date': dateCtrl.text.trim(),
+                                        'rooms': rooms,
+                                        'updated_at':
+                                            FieldValue.serverTimestamp(),
+                                      });
+                                  ToastService.showSuccess('Saved');
+                                  if (ctx.mounted) Navigator.pop(ctx);
+                                  _load();
+                                } catch (e) {
+                                  ToastService.showError('Save failed');
+                                } finally {
+                                  if (ctx.mounted) {
+                                    setDialogState(() => saving = false);
+                                  }
+                                }
+                              },
                     ),
                   ],
                 ),
@@ -384,109 +433,127 @@ class _ExamSeatingManagementScreenState
         onPressed: () => _showDialog(),
         child: const Icon(Icons.add_rounded, color: Colors.white),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(AppDesign.spacingMd),
-            child: Row(
-              children: [
-                InkWell(
-                  onTap: _switchCampus,
-                  borderRadius: AppDesign.buttonBorderRadius(context),
-                  child: _examBadge(
-                                        context,
-                      _campusLabels[_campusId]!, accent),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: _onSearchChanged,
-                    style: const TextStyle(fontSize: 14),
-                    decoration: AppDesign.inputDecoration(context,
+      body: AdminWorkspace(
+        padding: EdgeInsets.zero,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(AppDesign.spacingMd),
+              child: Row(
+                children: [
+                  InkWell(
+                    onTap: _switchCampus,
+                    borderRadius: AppDesign.buttonBorderRadius(context),
+                    child: _examBadge(
+                      context,
+                      _campusLabels[_campusId]!,
+                      accent,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: _onSearchChanged,
+                      style: const TextStyle(fontSize: 14),
+                      decoration: AppDesign.inputDecoration(
+                        context,
                         label: 'Search',
                         hint: 'Search by course code...',
-                        prefixIcon: const Icon(Icons.search_rounded, size: 20)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (_loading)
-            const Expanded(
-                child: Center(child: CircularProgressIndicator()))
-          else if (_entries.isEmpty)
-            Expanded(
-              child: Center(
-                child: Text('No exam seating data',
-                    style: TextStyle(color: AppDesign.muted(context))),
-              ),
-            )
-          else
-            Expanded(
-              child: ListView.builder(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AppDesign.spacingMd),
-                itemCount: _entries.length,
-                itemBuilder: (_, i) {
-                  final e = _entries[i];
-                  final docId = e['docId']?.toString() ?? '';
-                  final date = e['exam_date']?.toString() ?? '';
-                  final roomCount = (e['rooms'] as List?)?.length ?? 0;
-
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: AppDesign.cardBorderRadius(context),
-                      side: BorderSide(
-                          color: scheme.outline.withValues(alpha: 0.12)),
-                    ),
-                    child: InkWell(
-                      borderRadius: AppDesign.buttonBorderRadius(context),
-                      onTap: () => _showDialog(existing: e),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          border: Border(
-                            left: BorderSide(color: accent, width: 3),
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 12),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(docIdToCourseCode(docId),
-                                      style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: scheme.onSurface)),
-                                  if (date.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 3),
-                                      child: Text(date,
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: AppDesign.muted(
-                                                  context))),
-                                    ),
-                                ],
-                              ),
-                            ),
-                            _examBadge(
-                                        context,
-                                '$roomCount rooms', scheme.secondary),
-                          ],
-                        ),
+                        prefixIcon: const Icon(Icons.search_rounded, size: 20),
                       ),
                     ),
-                  );
-                },
+                  ),
+                ],
               ),
             ),
-        ],
+            if (_loading)
+              const Expanded(child: Center(child: CircularProgressIndicator()))
+            else if (_entries.isEmpty)
+              Expanded(
+                child: Center(
+                  child: Text(
+                    'No exam seating data',
+                    style: TextStyle(color: AppDesign.muted(context)),
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppDesign.spacingMd,
+                  ),
+                  itemCount: _entries.length,
+                  itemBuilder: (_, i) {
+                    final e = _entries[i];
+                    final docId = e['docId']?.toString() ?? '';
+                    final date = e['exam_date']?.toString() ?? '';
+                    final roomCount = (e['rooms'] as List?)?.length ?? 0;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: TabulrSurface(
+                        child: InkWell(
+                          borderRadius: AppDesign.buttonBorderRadius(context),
+                          onTap: () => _showDialog(existing: e),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              border: Border(
+                                left: BorderSide(color: accent, width: 3),
+                              ),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        docIdToCourseCode(docId),
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: scheme.onSurface,
+                                        ),
+                                      ),
+                                      if (date.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 3,
+                                          ),
+                                          child: Text(
+                                            date,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: AppDesign.muted(context),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                _examBadge(
+                                  context,
+                                  '$roomCount rooms',
+                                  scheme.secondary,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -9,6 +9,8 @@ import '../../models/app_theme.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_dialog.dart';
 import '../../widgets/common/app_search_field.dart';
+import '../../widgets/admin/admin_workspace.dart';
+import '../../widgets/common/tabulr_surface.dart';
 
 /// Admin editor for course-equivalence (duplicate) mappings.
 ///
@@ -59,21 +61,23 @@ class _DuplicateCoursesManagementScreenState
   }
 
   Future<bool> _confirmDiscard() => AppDialog.confirm(
-        context: context,
-        title: 'Unsaved Changes',
-        message:
-            'You have unsaved mapping changes that will be lost. Leave anyway?',
-        confirmLabel: 'Leave',
-        cancelLabel: 'Stay',
-        isDangerous: true,
-      );
+    context: context,
+    title: 'Unsaved Changes',
+    message:
+        'You have unsaved mapping changes that will be lost. Leave anyway?',
+    confirmLabel: 'Leave',
+    cancelLabel: 'Stay',
+    isDangerous: true,
+  );
 
   bool _matches(List<String> group) {
     if (_search.isEmpty) return true;
     final q = _search.toUpperCase();
-    return group.any((c) =>
-        c.toUpperCase().contains(q) ||
-        _masterService.getTitle(c).toUpperCase().contains(q));
+    return group.any(
+      (c) =>
+          c.toUpperCase().contains(q) ||
+          _masterService.getTitle(c).toUpperCase().contains(q),
+    );
   }
 
   Future<void> _load() async {
@@ -132,95 +136,114 @@ class _DuplicateCoursesManagementScreenState
     final ctrl = TextEditingController();
     final result = await showDialog<String>(
       context: context,
-      builder: (ctx) => Dialog(
-        insetPadding: const EdgeInsets.all(16),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400, maxHeight: 240),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Add course to group',
-                    style: Theme.of(ctx)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 16),
-                Autocomplete<CourseMasterEntry>(
-                  optionsBuilder: (v) {
-                    if (v.text.isEmpty) return const [];
-                    final q = v.text.toUpperCase();
-                    return _masterService.allCourses
-                        .where((c) =>
-                            c.courseCode.toUpperCase().contains(q) ||
-                            c.title.toUpperCase().contains(q))
-                        .take(8);
-                  },
-                  displayStringForOption: (c) => c.courseCode,
-                  onSelected: (c) => ctrl.text = c.courseCode,
-                  optionsViewBuilder: (ctx, onSelected, options) => Align(
-                    alignment: Alignment.topLeft,
-                    child: Material(
-                      elevation: 4,
-                      borderRadius: BorderRadius.circular(ThemeGeometry.of(ctx).dialogRadius),
-                      child: ConstrainedBox(
-                        constraints:
-                            const BoxConstraints(maxHeight: 200, maxWidth: 360),
-                        child: ListView.builder(
-                          padding: EdgeInsets.zero,
-                          shrinkWrap: true,
-                          itemCount: options.length,
-                          itemBuilder: (_, i) {
-                            final c = options.elementAt(i);
-                            return ListTile(
-                              dense: true,
-                              title: Text(c.courseCode,
-                                  style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600)),
-                              subtitle: Text(c.title,
-                                  style: const TextStyle(fontSize: 12)),
-                              onTap: () => onSelected(c),
-                            );
-                          },
-                        ),
+      builder:
+          (ctx) => Dialog(
+            insetPadding: const EdgeInsets.all(16),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400, maxHeight: 240),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Add course to group',
+                      style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ),
-                  fieldViewBuilder: (_, textCtrl, focusNode, __) {
-                    textCtrl.text = ctrl.text;
-                    textCtrl.addListener(() => ctrl.text = textCtrl.text);
-                    return TextField(
-                      controller: textCtrl,
-                      focusNode: focusNode,
-                      style: const TextStyle(fontSize: 14),
-                      decoration: AppDesign.inputDecoration(ctx,
-                          label: 'Course Code', hint: 'e.g. CS F211'),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    AppButton(
-                        label: 'Cancel',
-                        variant: AppButtonVariant.ghost,
-                        onTap: () => Navigator.pop(ctx)),
-                    const SizedBox(width: 8),
-                    AppButton(
-                        label: 'Add',
-                        icon: Icons.add_rounded,
-                        onTap: () => Navigator.pop(ctx, ctrl.text.trim())),
+                    const SizedBox(height: 16),
+                    Autocomplete<CourseMasterEntry>(
+                      optionsBuilder: (v) {
+                        if (v.text.isEmpty) return const [];
+                        final q = v.text.toUpperCase();
+                        return _masterService.allCourses
+                            .where(
+                              (c) =>
+                                  c.courseCode.toUpperCase().contains(q) ||
+                                  c.title.toUpperCase().contains(q),
+                            )
+                            .take(8);
+                      },
+                      displayStringForOption: (c) => c.courseCode,
+                      onSelected: (c) => ctrl.text = c.courseCode,
+                      optionsViewBuilder:
+                          (ctx, onSelected, options) => Align(
+                            alignment: Alignment.topLeft,
+                            child: Material(
+                              elevation: 4,
+                              borderRadius: BorderRadius.circular(
+                                ThemeGeometry.of(ctx).dialogRadius,
+                              ),
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxHeight: 200,
+                                  maxWidth: 360,
+                                ),
+                                child: ListView.builder(
+                                  padding: EdgeInsets.zero,
+                                  shrinkWrap: true,
+                                  itemCount: options.length,
+                                  itemBuilder: (_, i) {
+                                    final c = options.elementAt(i);
+                                    return ListTile(
+                                      dense: true,
+                                      title: Text(
+                                        c.courseCode,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        c.title,
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                      onTap: () => onSelected(c),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                      fieldViewBuilder: (_, textCtrl, focusNode, __) {
+                        textCtrl.text = ctrl.text;
+                        textCtrl.addListener(() => ctrl.text = textCtrl.text);
+                        return TextField(
+                          controller: textCtrl,
+                          focusNode: focusNode,
+                          style: const TextStyle(fontSize: 14),
+                          decoration: AppDesign.inputDecoration(
+                            ctx,
+                            label: 'Course Code',
+                            hint: 'e.g. CS F211',
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        AppButton(
+                          label: 'Cancel',
+                          variant: AppButtonVariant.ghost,
+                          onTap: () => Navigator.pop(ctx),
+                        ),
+                        const SizedBox(width: 8),
+                        AppButton(
+                          label: 'Add',
+                          icon: Icons.add_rounded,
+                          onTap: () => Navigator.pop(ctx, ctrl.text.trim()),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
     );
     ctrl.dispose();
     return result;
@@ -244,43 +267,55 @@ class _DuplicateCoursesManagementScreenState
         if (await _confirmDiscard() && navigator.canPop()) navigator.pop();
       },
       child: Scaffold(
-      appBar:
-          AppDesign.appBar(context, title: 'Duplicate Courses', actions: [
-        IconButton(
-          icon: const Icon(Icons.add_rounded),
-          tooltip: 'New group',
-          onPressed: _loading ? null : _newGroup,
+        appBar: AppDesign.appBar(
+          context,
+          title: 'Duplicate Courses',
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              tooltip: 'New group',
+              onPressed: _loading ? null : _newGroup,
+            ),
+            if (_dirty)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: AppButton(
+                  label: 'Save',
+                  icon: Icons.check_rounded,
+                  isLoading: _saving,
+                  onTap: _saving ? null : _save,
+                ),
+              ),
+          ],
         ),
-        if (_dirty)
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: AppButton(
-                label: 'Save',
-                icon: Icons.check_rounded,
-                isLoading: _saving,
-                onTap: _saving ? null : _save),
-          ),
-      ]),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(AppDesign.spacingMd,
-                      AppDesign.spacingMd, AppDesign.spacingMd, AppDesign.spacingSm),
-                  child: AppSearchField(
-                    controller: _searchCtrl,
-                    hint: 'Search a course in the mappings',
-                    onChanged: (v) => setState(() => _search = v.trim()),
-                    onClear: () {
-                      _searchCtrl.clear();
-                      setState(() => _search = '');
-                    },
+        body:
+            _loading
+                ? const Center(child: CircularProgressIndicator())
+                : AdminWorkspace(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppDesign.spacingMd,
+                          AppDesign.spacingMd,
+                          AppDesign.spacingMd,
+                          AppDesign.spacingSm,
+                        ),
+                        child: AppSearchField(
+                          controller: _searchCtrl,
+                          hint: 'Search a course in the mappings',
+                          onChanged: (v) => setState(() => _search = v.trim()),
+                          onClear: () {
+                            _searchCtrl.clear();
+                            setState(() => _search = '');
+                          },
+                        ),
+                      ),
+                      Expanded(child: _groupList(scheme)),
+                    ],
                   ),
                 ),
-                Expanded(child: _groupList(scheme)),
-              ],
-            ),
       ),
     );
   }
@@ -288,25 +323,33 @@ class _DuplicateCoursesManagementScreenState
   Widget _groupList(ColorScheme scheme) {
     final visible = <int>[
       for (var i = 0; i < _groups.length; i++)
-        if (_matches(_groups[i])) i
+        if (_matches(_groups[i])) i,
     ];
 
     if (_groups.isEmpty) {
       return Center(
-        child: Text('No equivalence groups',
-            style: TextStyle(color: AppDesign.muted(context))),
+        child: Text(
+          'No equivalence groups',
+          style: TextStyle(color: AppDesign.muted(context)),
+        ),
       );
     }
     if (visible.isEmpty) {
       return Center(
-        child: Text('No group contains "$_search"',
-            style: TextStyle(color: AppDesign.muted(context))),
+        child: Text(
+          'No group contains "$_search"',
+          style: TextStyle(color: AppDesign.muted(context)),
+        ),
       );
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(AppDesign.spacingMd, 0,
-          AppDesign.spacingMd, 60),
+      padding: const EdgeInsets.fromLTRB(
+        AppDesign.spacingMd,
+        0,
+        AppDesign.spacingMd,
+        60,
+      ),
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: AppDesign.spacingSm),
@@ -324,72 +367,35 @@ class _DuplicateCoursesManagementScreenState
 
   Widget _groupCard(int index, ColorScheme scheme) {
     final group = _groups[index];
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppDesign.spacingXs + 2),
-      padding: const EdgeInsets.fromLTRB(10, 6, 4, 6),
-      decoration: AppDesign.cardDecoration(context),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                for (final code in group) _codeChip(index, code, scheme),
-                _addChip(() => _addCode(index), scheme, context),
-              ],
-            ),
-          ),
-          InkWell(
-            borderRadius: AppDesign.chipBorderRadius(context),
-            onTap: () => _deleteGroup(index),
-            child: Padding(
-              padding: const EdgeInsets.all(6),
-              child: Icon(Icons.delete_outline_rounded,
-                  size: 16, color: scheme.error.withValues(alpha: 0.7)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _codeChip(int groupIndex, String code, ColorScheme scheme) {
-    final title = _masterService.getTitle(code);
-    final highlighted = _search.isNotEmpty &&
-        (code.toUpperCase().contains(_search.toUpperCase()) ||
-            title.toUpperCase().contains(_search.toUpperCase()));
-    return Tooltip(
-      message: title.isEmpty ? code : '$code — $title',
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(9, 4, 4, 4),
-        decoration: BoxDecoration(
-          color: highlighted
-              ? scheme.primary.withValues(alpha: 0.14)
-              : scheme.surfaceContainerHighest.withValues(alpha: 0.4),
-          borderRadius: AppDesign.chipBorderRadius(context),
-          border: Border.all(
-              color: highlighted
-                  ? scheme.primary.withValues(alpha: 0.5)
-                  : scheme.outline.withValues(alpha: 0.18)),
-        ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppDesign.spacingXs + 2),
+      child: TabulrSurface(
+        level: TabulrSurfaceLevel.panel,
+        padding: const EdgeInsets.fromLTRB(10, 6, 4, 6),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(code,
-                style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurface)),
+            Expanded(
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  for (final code in group) _codeChip(index, code, scheme),
+                  _addChip(() => _addCode(index), scheme, context),
+                ],
+              ),
+            ),
             InkWell(
               borderRadius: AppDesign.chipBorderRadius(context),
-              onTap: () => _removeCode(groupIndex, code),
+              onTap: () => _deleteGroup(index),
               child: Padding(
-                padding: const EdgeInsets.only(left: 3),
-                child: Icon(Icons.close_rounded,
-                    size: 13, color: scheme.error.withValues(alpha: 0.7)),
+                padding: const EdgeInsets.all(6),
+                child: Icon(
+                  Icons.delete_outline_rounded,
+                  size: 16,
+                  color: scheme.error.withValues(alpha: 0.7),
+                ),
               ),
             ),
           ],
@@ -398,7 +404,63 @@ class _DuplicateCoursesManagementScreenState
     );
   }
 
-  Widget _addChip(VoidCallback onTap, ColorScheme scheme, BuildContext context) {
+  Widget _codeChip(int groupIndex, String code, ColorScheme scheme) {
+    final title = _masterService.getTitle(code);
+    final highlighted =
+        _search.isNotEmpty &&
+        (code.toUpperCase().contains(_search.toUpperCase()) ||
+            title.toUpperCase().contains(_search.toUpperCase()));
+    return Tooltip(
+      message: title.isEmpty ? code : '$code — $title',
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(9, 4, 4, 4),
+        decoration: BoxDecoration(
+          color:
+              highlighted
+                  ? scheme.primary.withValues(alpha: 0.14)
+                  : scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+          borderRadius: AppDesign.chipBorderRadius(context),
+          border: Border.all(
+            color:
+                highlighted
+                    ? scheme.primary.withValues(alpha: 0.5)
+                    : scheme.outline.withValues(alpha: 0.18),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              code,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: scheme.onSurface,
+              ),
+            ),
+            InkWell(
+              borderRadius: AppDesign.chipBorderRadius(context),
+              onTap: () => _removeCode(groupIndex, code),
+              child: Padding(
+                padding: const EdgeInsets.only(left: 3),
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 13,
+                  color: scheme.error.withValues(alpha: 0.7),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _addChip(
+    VoidCallback onTap,
+    ColorScheme scheme,
+    BuildContext context,
+  ) {
     return InkWell(
       borderRadius: AppDesign.chipBorderRadius(context),
       onTap: onTap,

@@ -26,9 +26,9 @@ class AppButton extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final (Color bg, Color fg, Color border) = switch (variant) {
       AppButtonVariant.primary => (
-        scheme.primary.withValues(alpha: 0.1),
         scheme.primary,
-        scheme.primary.withValues(alpha: 0.3),
+        scheme.onPrimary,
+        scheme.primary,
       ),
       AppButtonVariant.secondary => (
         scheme.surfaceContainerHighest.withValues(alpha: 0.5),
@@ -73,6 +73,7 @@ class AppButton extends StatelessWidget {
         foregroundColor: fg,
         elevation: 0,
         side: BorderSide(color: border),
+        minimumSize: const Size(0, AppDesign.buttonHeight),
         shape: RoundedRectangleBorder(
           borderRadius: AppDesign.buttonBorderRadius(context),
         ),

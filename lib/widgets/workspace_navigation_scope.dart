@@ -111,15 +111,10 @@ class _WorkspaceTabsState extends State<WorkspaceTabs> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        border: Border(
-          top: BorderSide(color: scheme.outline.withValues(alpha: .1)),
-        ),
-      ),
+      decoration: BoxDecoration(color: scheme.surfaceContainerLowest),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
         child: Row(
           children: [
             for (final entry in widget.entries)
@@ -136,25 +131,22 @@ class _WorkspaceTabsState extends State<WorkspaceTabs> {
                       entry.id == widget.selectedId
                           ? _selectedKey
                           : ValueKey(entry.id),
-                  margin: const EdgeInsets.only(right: 20),
+                  margin: const EdgeInsets.only(right: 6),
                   decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        width: 2,
-                        color:
-                            entry.id == widget.selectedId
-                                ? scheme.primary
-                                : Colors.transparent,
-                      ),
-                    ),
+                    border: Border.all(color: Colors.transparent),
+                    color:
+                        entry.id == widget.selectedId
+                            ? scheme.primaryContainer.withValues(alpha: .62)
+                            : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: TextButton(
                     style: TextButton.styleFrom(
-                      minimumSize: const Size(0, 48),
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      minimumSize: const Size(0, 40),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
                       foregroundColor:
                           entry.id == widget.selectedId
-                              ? scheme.primary
+                              ? scheme.onPrimaryContainer
                               : scheme.onSurfaceVariant,
                       shape: const RoundedRectangleBorder(),
                     ),

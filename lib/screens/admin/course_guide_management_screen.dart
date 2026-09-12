@@ -14,6 +14,8 @@ import '../../utils/design_constants.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_dialog.dart';
 import '../../widgets/common/course_picker_sheet.dart';
+import '../../widgets/admin/admin_workspace.dart';
+import '../../widgets/common/tabulr_surface.dart';
 import 'branch_group_management_screen.dart';
 
 class CourseGuideManagementScreen extends StatefulWidget {
@@ -93,18 +95,25 @@ class _CourseGuideManagementScreenState
   Future<void> _loadDualDegreeOverrides() async {
     try {
       final snap = await _branchesRef.get();
-      _dualDegreeOverrides = snap.docs
-          .map((d) => d.id)
-          .where((id) => id.contains('_') && !id.startsWith('_'))
-          .toList()
-        ..sort();
+      _dualDegreeOverrides =
+          snap.docs
+              .map((d) => d.id)
+              .where((id) => id.contains('_') && !id.startsWith('_'))
+              .toList()
+            ..sort();
     } catch (e) {
-      SecureLogger.warning('COURSE_GUIDE_ADMIN', 'Failed to load dual-degree overrides', {'error': e.toString()});
+      SecureLogger.warning(
+        'COURSE_GUIDE_ADMIN',
+        'Failed to load dual-degree overrides',
+        {'error': e.toString()},
+      );
     }
   }
 
-  CollectionReference<Map<String, dynamic>> get _branchesRef =>
-      _db.collection(FirestoreCollections.reference).doc(FirestoreCollections.branches).collection(FirestoreCollections.data);
+  CollectionReference<Map<String, dynamic>> get _branchesRef => _db
+      .collection(FirestoreCollections.reference)
+      .doc(FirestoreCollections.branches)
+      .collection(FirestoreCollections.data);
 
   Future<void> _loadBranch(String branchCode) async {
     setState(() => _loading = true);
@@ -114,7 +123,8 @@ class _CourseGuideManagementScreenState
       final data = doc.data() ?? {};
       final rawCdcs = data['cdcs'] as Map<String, dynamic>? ?? {};
       _cdcs = rawCdcs.map(
-          (k, v) => MapEntry(k, List<String>.from(v as List? ?? [])));
+        (k, v) => MapEntry(k, List<String>.from(v as List? ?? [])),
+      );
       _dels = List<String>.from(data['dels'] as List? ?? []);
       _huels = List<String>.from(data['huels'] as List? ?? []);
     } catch (e) {
@@ -131,30 +141,26 @@ class _CourseGuideManagementScreenState
     setState(() => _saving = true);
     try {
       final batch = _db.batch();
-      batch.set(
-        _branchesRef.doc(_selectedBranch!),
-        {
-          'branch_code': _selectedBranch,
-          'cdcs': _cdcs,
-          'dels': _dels,
-          'huels': _huels,
-        },
-        SetOptions(merge: true),
-      );
+      batch.set(_branchesRef.doc(_selectedBranch!), {
+        'branch_code': _selectedBranch,
+        'cdcs': _cdcs,
+        'dels': _dels,
+        'huels': _huels,
+      }, SetOptions(merge: true));
       // Bump the freshness marker, or every client — including this one — keeps
       // serving branch data from its local cache for up to 72 hours and the
       // edit simply does not appear (LocalCacheService.readIfFresh). Branch
       // Groups has always done this on save; this screen never did, so any
       // course added here was invisible until the cache aged out.
-      batch.set(
-        _branchesRef.doc('_metadata'),
-        {'lastUpdated': DateTime.now().toIso8601String()},
-        SetOptions(merge: true),
-      );
+      batch.set(_branchesRef.doc('_metadata'), {
+        'lastUpdated': DateTime.now().toIso8601String(),
+      }, SetOptions(merge: true));
       await batch.commit();
       BranchStructureService().clearCache();
       _setDirty(false);
-      ToastService.showSuccess('Saved ${constants.branchCodeToName[_selectedBranch] ?? _selectedBranch}');
+      ToastService.showSuccess(
+        'Saved ${constants.branchCodeToName[_selectedBranch] ?? _selectedBranch}',
+      );
     } catch (e) {
       ToastService.showError('Save failed');
     }
@@ -198,7 +204,8 @@ class _CourseGuideManagementScreenState
     if (picked == null) return;
     if (picked.length < 2) {
       ToastService.showInfo(
-          'Pick at least two courses — an optional CDC is a choice between them');
+        'Pick at least two courses — an optional CDC is a choice between them',
+      );
       return;
     }
     setState(() {
@@ -239,7 +246,6 @@ class _CourseGuideManagementScreenState
     _setDirty(true);
   }
 
-
   Future<void> _showCreateDualDegreeDialog() async {
     // Creating an override switches to it, discarding unsaved edits on the
     // current branch — confirm before opening the dialog.
@@ -249,86 +255,105 @@ class _CourseGuideManagementScreenState
     }
     String? msc;
     String? be;
-    final mscBranches = constants.branchCodeToName.entries
-        .where((e) => constants.isMscBranch(e.key))
-        .toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
-    final beBranches = constants.branchCodeToName.entries
-        .where((e) => constants.isBeBranch(e.key))
-        .toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+    final mscBranches =
+        constants.branchCodeToName.entries
+            .where((e) => constants.isMscBranch(e.key))
+            .toList()
+          ..sort((a, b) => a.key.compareTo(b.key));
+    final beBranches =
+        constants.branchCodeToName.entries
+            .where((e) => constants.isBeBranch(e.key))
+            .toList()
+          ..sort((a, b) => a.key.compareTo(b.key));
 
     final result = await showDialog<String>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => Dialog(
-          insetPadding: const EdgeInsets.all(16),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Create Dual-Degree Override',
-                    style: Theme.of(ctx)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  decoration: AppDesign.inputDecoration(ctx,
-                      label: 'MSc Branch (Primary)'),
-                  items: mscBranches
-                      .map((e) => DropdownMenuItem(
-                          value: e.key,
-                          child: Text('${e.key} - ${e.value}',
-                              style: const TextStyle(fontSize: 14))))
-                      .toList(),
-                  onChanged: (v) => setDialogState(() => msc = v),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  decoration: AppDesign.inputDecoration(ctx,
-                      label: 'BE Branch (Secondary)'),
-                  items: beBranches
-                      .map((e) => DropdownMenuItem(
-                          value: e.key,
-                          child: Text('${e.key} - ${e.value}',
-                              style: const TextStyle(fontSize: 14))))
-                      .toList(),
-                  onChanged: (v) => setDialogState(() => be = v),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    AppButton(
-                      label: 'Cancel',
-                      variant: AppButtonVariant.ghost,
-                      onTap: () => Navigator.pop(ctx),
+      builder:
+          (ctx) => StatefulBuilder(
+            builder:
+                (ctx, setDialogState) => Dialog(
+                  insetPadding: const EdgeInsets.all(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Create Dual-Degree Override',
+                          style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          decoration: AppDesign.inputDecoration(
+                            ctx,
+                            label: 'MSc Branch (Primary)',
+                          ),
+                          items:
+                              mscBranches
+                                  .map(
+                                    (e) => DropdownMenuItem(
+                                      value: e.key,
+                                      child: Text(
+                                        '${e.key} - ${e.value}',
+                                        style: const TextStyle(fontSize: 14),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                          onChanged: (v) => setDialogState(() => msc = v),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          decoration: AppDesign.inputDecoration(
+                            ctx,
+                            label: 'BE Branch (Secondary)',
+                          ),
+                          items:
+                              beBranches
+                                  .map(
+                                    (e) => DropdownMenuItem(
+                                      value: e.key,
+                                      child: Text(
+                                        '${e.key} - ${e.value}',
+                                        style: const TextStyle(fontSize: 14),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                          onChanged: (v) => setDialogState(() => be = v),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            AppButton(
+                              label: 'Cancel',
+                              variant: AppButtonVariant.ghost,
+                              onTap: () => Navigator.pop(ctx),
+                            ),
+                            const SizedBox(width: 8),
+                            AppButton(
+                              label: 'Create',
+                              icon: Icons.add_rounded,
+                              onTap:
+                                  msc != null && be != null
+                                      ? () => Navigator.pop(ctx, '${msc}_$be')
+                                      : null,
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    AppButton(
-                      label: 'Create',
-                      icon: Icons.add_rounded,
-                      onTap: msc != null && be != null
-                          ? () => Navigator.pop(ctx, '${msc}_$be')
-                          : null,
-                    ),
-                  ],
+                  ),
                 ),
-              ],
-            ),
           ),
-        ),
-      ),
     );
 
     if (result != null && !_dualDegreeOverrides.contains(result)) {
-      await _branchesRef.doc(result).set({
-        'branch_code': result,
-        'cdcs': {},
-      });
+      await _branchesRef.doc(result).set({'branch_code': result, 'cdcs': {}});
       setState(() {
         _dualDegreeOverrides.add(result);
         _dualDegreeOverrides.sort();
@@ -353,25 +378,36 @@ class _CourseGuideManagementScreenState
     final scheme = Theme.of(context).colorScheme;
 
     final dropdownItems = <DropdownMenuItem<String>>[];
-    final singleBranches = constants.branchCodeToName.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+    final singleBranches =
+        constants.branchCodeToName.entries.toList()
+          ..sort((a, b) => a.key.compareTo(b.key));
     for (final e in singleBranches) {
-      dropdownItems.add(DropdownMenuItem(
-        value: e.key,
-        child: Text('${e.key} - ${e.value}',
-            style: const TextStyle(fontSize: 14)),
-      ));
+      dropdownItems.add(
+        DropdownMenuItem(
+          value: e.key,
+          child: Text(
+            '${e.key} - ${e.value}',
+            style: const TextStyle(fontSize: 14),
+          ),
+        ),
+      );
     }
     if (_dualDegreeOverrides.isNotEmpty) {
       for (final key in _dualDegreeOverrides) {
         final parts = key.split('_');
         final msc = constants.branchCodeToName[parts[0]] ?? parts[0];
-        final be = constants.branchCodeToName[parts.length > 1 ? parts[1] : ''] ?? (parts.length > 1 ? parts[1] : '');
-        dropdownItems.add(DropdownMenuItem(
-          value: key,
-          child: Text('$key - $msc + $be',
-              style: TextStyle(fontSize: 14, color: scheme.tertiary)),
-        ));
+        final be =
+            constants.branchCodeToName[parts.length > 1 ? parts[1] : ''] ??
+            (parts.length > 1 ? parts[1] : '');
+        dropdownItems.add(
+          DropdownMenuItem(
+            value: key,
+            child: Text(
+              '$key - $msc + $be',
+              style: TextStyle(fontSize: 14, color: scheme.tertiary),
+            ),
+          ),
+        );
       }
     }
 
@@ -383,84 +419,113 @@ class _CourseGuideManagementScreenState
         if (await _confirmDiscard() && navigator.canPop()) navigator.pop();
       },
       child: Scaffold(
-      appBar: AppDesign.appBar(context, title: 'Course Guide', actions: [
-        IconButton(
-          icon: const Icon(Icons.add_rounded),
-          tooltip: 'Create dual-degree override',
-          onPressed: _showCreateDualDegreeDialog,
+        appBar: AppDesign.appBar(
+          context,
+          title: 'Course Guide',
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              tooltip: 'Create dual-degree override',
+              onPressed: _showCreateDualDegreeDialog,
+            ),
+            if (_dirty)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: AppButton(
+                  label: 'Save',
+                  icon: Icons.check_rounded,
+                  isLoading: _saving,
+                  onTap: _saving ? null : _save,
+                ),
+              ),
+          ],
         ),
-        if (_dirty)
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: AppButton(
-              label: 'Save',
-              icon: Icons.check_rounded,
-              isLoading: _saving,
-              onTap: _saving ? null : _save,
-            ),
-          ),
-      ]),
-      body: _initLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(AppDesign.spacingMd),
-            child: DropdownButtonFormField<String>(
-              key: ValueKey('branch-$_selectedBranch-$_branchPickerEpoch'),
-              initialValue: _selectedBranch,
-              decoration: AppDesign.inputDecoration(context,
-                  label: 'Branch',
-                  hint: 'Select a branch',
-                  prefixIcon: const Icon(Icons.school_rounded, size: 20)),
-              items: dropdownItems,
-              onChanged: (v) async {
-                if (v == null || v == _selectedBranch) return;
-                // Switching reloads the branch, discarding any unsaved edits on
-                // the current one — confirm first, and snap the dropdown back if
-                // the switch is declined.
-                if (_dirty) {
-                  final ok = await _confirmDiscard(confirmLabel: 'Switch');
-                  if (!mounted) return;
-                  if (!ok) {
-                    setState(() => _branchPickerEpoch++);
-                    return;
-                  }
-                }
-                setState(() => _selectedBranch = v);
-                _loadBranch(v);
-              },
-            ),
-          ),
-          if (_loading)
-            const Expanded(
-                child: Center(child: CircularProgressIndicator()))
-          else if (_selectedBranch == null)
-            Expanded(
-              child: Center(
-                child: Text('Select a branch to edit its course structure',
-                    style: TextStyle(color: AppDesign.muted(context))),
-              ),
-            )
-          else
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: AppDesign.spacingMd),
-                children: [
-                  for (final sem in _semesters) ...[
-                    _semesterSection(sem, scheme),
-                  ],
-                  _electiveSection(
-                      'Discipline Electives (DELs)', _dels, 'DEL', scheme),
-                  _electiveSection(
-                      'Humanities Electives (HUELs)', _huels, 'HUEL', scheme),
-                  const SizedBox(height: 80),
-                ],
-              ),
-            ),
-        ],
-      ),
+        body:
+            _initLoading
+                ? const Center(child: CircularProgressIndicator())
+                : AdminWorkspace(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(AppDesign.spacingMd),
+                        child: DropdownButtonFormField<String>(
+                          key: ValueKey(
+                            'branch-$_selectedBranch-$_branchPickerEpoch',
+                          ),
+                          initialValue: _selectedBranch,
+                          decoration: AppDesign.inputDecoration(
+                            context,
+                            label: 'Branch',
+                            hint: 'Select a branch',
+                            prefixIcon: const Icon(
+                              Icons.school_rounded,
+                              size: 20,
+                            ),
+                          ),
+                          items: dropdownItems,
+                          onChanged: (v) async {
+                            if (v == null || v == _selectedBranch) return;
+                            // Switching reloads the branch, discarding any unsaved edits on
+                            // the current one — confirm first, and snap the dropdown back if
+                            // the switch is declined.
+                            if (_dirty) {
+                              final ok = await _confirmDiscard(
+                                confirmLabel: 'Switch',
+                              );
+                              if (!mounted) return;
+                              if (!ok) {
+                                setState(() => _branchPickerEpoch++);
+                                return;
+                              }
+                            }
+                            setState(() => _selectedBranch = v);
+                            _loadBranch(v);
+                          },
+                        ),
+                      ),
+                      if (_loading)
+                        const Expanded(
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else if (_selectedBranch == null)
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              'Select a branch to edit its course structure',
+                              style: TextStyle(color: AppDesign.muted(context)),
+                            ),
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: ListView(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppDesign.spacingMd,
+                            ),
+                            children: [
+                              for (final sem in _semesters) ...[
+                                _semesterSection(sem, scheme),
+                              ],
+                              _electiveSection(
+                                'Discipline Electives (DELs)',
+                                _dels,
+                                'DEL',
+                                scheme,
+                              ),
+                              _electiveSection(
+                                'Humanities Electives (HUELs)',
+                                _huels,
+                                'HUEL',
+                                scheme,
+                              ),
+                              const SizedBox(height: 80),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
       ),
     );
   }
@@ -474,130 +539,170 @@ class _CourseGuideManagementScreenState
     final courses = _cdcs[semester] ?? [];
     final locked = _isFirstYear(semester);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppDesign.spacingSm),
-      decoration: AppDesign.cardDecoration(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                    color: scheme.outline
-                        .withValues(alpha: AppDesign.opacityDivider)),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: scheme.primary.withValues(alpha: 0.1),
-                    borderRadius: AppDesign.chipBorderRadius(context),
-                  ),
-                  child: Text(
-                    'Year ${semester.split('-')[0]} / Sem ${semester.split('-')[1]}',
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: scheme.primary),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppDesign.spacingSm),
+      child: TabulrSurface(
+        level: TabulrSurfaceLevel.panel,
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: scheme.outline.withValues(
+                      alpha: AppDesign.opacityDivider,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Text('${courses.length} courses',
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: scheme.primary.withValues(alpha: 0.1),
+                      borderRadius: AppDesign.chipBorderRadius(context),
+                    ),
+                    child: Text(
+                      'Year ${semester.split('-')[0]} / Sem ${semester.split('-')[1]}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${courses.length} courses',
                     style: TextStyle(
-                        fontSize: 12, color: AppDesign.muted(context))),
-                const Spacer(),
-                if (locked)
-                  InkWell(
-                    borderRadius: AppDesign.buttonBorderRadius(context),
-                    onTap: _openBranchGroups,
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.lock_outline_rounded,
-                              size: 14, color: AppDesign.muted(context)),
-                          const SizedBox(width: 4),
-                          Text('Branch Groups',
-                              style: TextStyle(
-                                  fontSize: 12, color: scheme.primary)),
-                          Icon(Icons.chevron_right_rounded,
-                              size: 16, color: scheme.primary),
-                        ],
-                      ),
-                    ),
-                  )
-                else ...[
-                  InkWell(
-                    borderRadius: AppDesign.buttonBorderRadius(context),
-                    onTap: () => _addCourse(semester),
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.add_rounded,
-                              size: 16, color: scheme.primary),
-                          const SizedBox(width: 2),
-                          Text('Add',
-                              style: TextStyle(
-                                  fontSize: 12, color: scheme.primary)),
-                        ],
-                      ),
+                      fontSize: 12,
+                      color: AppDesign.muted(context),
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  InkWell(
-                    borderRadius: AppDesign.buttonBorderRadius(context),
-                    onTap: () => _addChoice(semester),
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.alt_route_rounded,
-                              size: 16, color: scheme.tertiary),
-                          const SizedBox(width: 2),
-                          Text('Optional',
+                  const Spacer(),
+                  if (locked)
+                    InkWell(
+                      borderRadius: AppDesign.buttonBorderRadius(context),
+                      onTap: _openBranchGroups,
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.lock_outline_rounded,
+                              size: 14,
+                              color: AppDesign.muted(context),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Branch Groups',
                               style: TextStyle(
-                                  fontSize: 12, color: scheme.tertiary)),
-                        ],
+                                fontSize: 12,
+                                color: scheme.primary,
+                              ),
+                            ),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              size: 16,
+                              color: scheme.primary,
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else ...[
+                    InkWell(
+                      borderRadius: AppDesign.buttonBorderRadius(context),
+                      onTap: () => _addCourse(semester),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.add_rounded,
+                              size: 16,
+                              color: scheme.primary,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              'Add',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: scheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 4),
+                    InkWell(
+                      borderRadius: AppDesign.buttonBorderRadius(context),
+                      onTap: () => _addChoice(semester),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.alt_route_rounded,
+                              size: 16,
+                              color: scheme.tertiary,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              'Optional',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: scheme.tertiary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-          ),
-          if (locked)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
-              child: Text(
-                'First-year CDCs are managed by group in Branch Groups.',
-                style: TextStyle(
-                    fontSize: 11,
-                    fontStyle: FontStyle.italic,
-                    color: AppDesign.muted(context)),
               ),
             ),
-          if (courses.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text('No courses',
+            if (locked)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+                child: Text(
+                  'First-year CDCs are managed by group in Branch Groups.',
                   style: TextStyle(
-                      fontSize: 12,
-                      fontStyle: FontStyle.italic,
-                      color: AppDesign.muted(context))),
-            )
-          else
-            for (var i = 0; i < courses.length; i++)
-              _courseRow(semester, i, courses[i], scheme, locked: locked),
-        ],
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                    color: AppDesign.muted(context),
+                  ),
+                ),
+              ),
+            if (courses.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  'No courses',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                    color: AppDesign.muted(context),
+                  ),
+                ),
+              )
+            else
+              for (var i = 0; i < courses.length; i++)
+                _courseRow(semester, i, courses[i], scheme, locked: locked),
+          ],
+        ),
       ),
     );
   }
@@ -611,117 +716,160 @@ class _CourseGuideManagementScreenState
 
   /// A flat (not per-semester) list of elective courses — DELs or HUELs.
   Widget _electiveSection(
-      String title, List<String> list, String shortLabel, ColorScheme scheme) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppDesign.spacingSm),
-      decoration: AppDesign.cardDecoration(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                    color: scheme.outline
-                        .withValues(alpha: AppDesign.opacityDivider)),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: scheme.tertiary.withValues(alpha: 0.12),
-                    borderRadius: AppDesign.chipBorderRadius(context),
-                  ),
-                  child: Text(title,
-                      style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: scheme.tertiary)),
-                ),
-                const SizedBox(width: 8),
-                Text('${list.length} courses',
-                    style: TextStyle(
-                        fontSize: 12, color: AppDesign.muted(context))),
-                const Spacer(),
-                InkWell(
-                  borderRadius: AppDesign.buttonBorderRadius(context),
-                  onTap: () => _addElective(list, shortLabel),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.add_rounded,
-                            size: 16, color: scheme.primary),
-                        const SizedBox(width: 2),
-                        Text('Add',
-                            style: TextStyle(
-                                fontSize: 12, color: scheme.primary)),
-                      ],
+    String title,
+    List<String> list,
+    String shortLabel,
+    ColorScheme scheme,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppDesign.spacingSm),
+      child: TabulrSurface(
+        level: TabulrSurfaceLevel.panel,
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: scheme.outline.withValues(
+                      alpha: AppDesign.opacityDivider,
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
-          if (list.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text('No courses',
-                  style: TextStyle(
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: scheme.tertiary.withValues(alpha: 0.12),
+                      borderRadius: AppDesign.chipBorderRadius(context),
+                    ),
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.tertiary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${list.length} courses',
+                    style: TextStyle(
                       fontSize: 12,
-                      fontStyle: FontStyle.italic,
-                      color: AppDesign.muted(context))),
-            )
-          else
-            for (var i = 0; i < list.length; i++)
-              _electiveRow(list, i, list[i], scheme),
-        ],
+                      color: AppDesign.muted(context),
+                    ),
+                  ),
+                  const Spacer(),
+                  InkWell(
+                    borderRadius: AppDesign.buttonBorderRadius(context),
+                    onTap: () => _addElective(list, shortLabel),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.add_rounded,
+                            size: 16,
+                            color: scheme.primary,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            'Add',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: scheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (list.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  'No courses',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                    color: AppDesign.muted(context),
+                  ),
+                ),
+              )
+            else
+              for (var i = 0; i < list.length; i++)
+                _electiveRow(list, i, list[i], scheme),
+          ],
+        ),
       ),
     );
   }
 
   Widget _electiveRow(
-      List<String> list, int index, String code, ColorScheme scheme) {
+    List<String> list,
+    int index,
+    String code,
+    ColorScheme scheme,
+  ) {
     final title = _masterService.get(code)?.title ?? '';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-              color: scheme.outline.withValues(alpha: AppDesign.opacityDivider)),
+            color: scheme.outline.withValues(alpha: AppDesign.opacityDivider),
+          ),
         ),
       ),
       child: Row(
         children: [
           SizedBox(
             width: 100,
-            child: Text(code,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurface)),
+            child: Text(
+              code,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: scheme.onSurface,
+              ),
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(title,
-                style: TextStyle(
-                    fontSize: 12,
-                    color: scheme.onSurface
-                        .withValues(alpha: AppDesign.opacityMedium)),
-                overflow: TextOverflow.ellipsis),
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                color: scheme.onSurface.withValues(
+                  alpha: AppDesign.opacityMedium,
+                ),
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           InkWell(
             borderRadius: AppDesign.buttonBorderRadius(context),
             onTap: () => _removeElective(list, index),
             child: Padding(
               padding: const EdgeInsets.all(4),
-              child: Icon(Icons.close_rounded,
-                  size: 16, color: scheme.error.withValues(alpha: 0.7)),
+              child: Icon(
+                Icons.close_rounded,
+                size: 16,
+                color: scheme.error.withValues(alpha: 0.7),
+              ),
             ),
           ),
         ],
@@ -734,20 +882,23 @@ class _CourseGuideManagementScreenState
   /// editing an alternative means deleting it and adding it back, which is
   /// rare enough not to earn its own affordance.
   Widget _courseRow(
-      String semester, int index, String entry, ColorScheme scheme,
-      {bool locked = false}) {
+    String semester,
+    int index,
+    String entry,
+    ColorScheme scheme, {
+    bool locked = false,
+  }) {
     final slot = CdcSlot.tryParse(entry);
     if (slot == null) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: slot.isChoice
-            ? scheme.tertiary.withValues(alpha: 0.06)
-            : null,
+        color: slot.isChoice ? scheme.tertiary.withValues(alpha: 0.06) : null,
         border: Border(
           bottom: BorderSide(
-              color: scheme.outline.withValues(alpha: AppDesign.opacityDivider)),
+            color: scheme.outline.withValues(alpha: AppDesign.opacityDivider),
+          ),
         ),
       ),
       child: Row(
@@ -760,14 +911,16 @@ class _CourseGuideManagementScreenState
                 if (slot.isChoice)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 4),
-                    child: Text('Optional — student takes one',
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: scheme.tertiary)),
+                    child: Text(
+                      'Optional — student takes one',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.tertiary,
+                      ),
+                    ),
                   ),
-                for (final code in slot.options)
-                  _optionLine(code, scheme),
+                for (final code in slot.options) _optionLine(code, scheme),
               ],
             ),
           ),
@@ -777,8 +930,11 @@ class _CourseGuideManagementScreenState
               onTap: () => _removeCourse(semester, index),
               child: Padding(
                 padding: const EdgeInsets.all(4),
-                child: Icon(Icons.close_rounded,
-                    size: 16, color: scheme.error.withValues(alpha: 0.7)),
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 16,
+                  color: scheme.error.withValues(alpha: 0.7),
+                ),
               ),
             ),
         ],
@@ -794,30 +950,40 @@ class _CourseGuideManagementScreenState
         children: [
           SizedBox(
             width: 100,
-            child: Text(code,
-                style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurface)),
+            child: Text(
+              code,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: scheme.onSurface,
+              ),
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(master?.title ?? '',
-                style: TextStyle(
-                    fontSize: 12,
-                    color: scheme.onSurface
-                        .withValues(alpha: AppDesign.opacityMedium)),
-                overflow: TextOverflow.ellipsis),
+            child: Text(
+              master?.title ?? '',
+              style: TextStyle(
+                fontSize: 12,
+                color: scheme.onSurface.withValues(
+                  alpha: AppDesign.opacityMedium,
+                ),
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           if (master != null)
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: Text(
-                  '${master.effectiveCredits.toInt()}${master.isInCreditHours ? 'CH' : 'U'}',
-                  style: TextStyle(
-                      fontSize: 11,
-                      color: scheme.onSurface
-                          .withValues(alpha: AppDesign.opacityLow))),
+                '${master.effectiveCredits.toInt()}${master.isInCreditHours ? 'CH' : 'U'}',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: scheme.onSurface.withValues(
+                    alpha: AppDesign.opacityLow,
+                  ),
+                ),
+              ),
             ),
         ],
       ),

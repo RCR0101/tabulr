@@ -5,6 +5,7 @@ import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../constants/app_constants.dart';
 import '../utils/page_info_helper.dart';
+import '../widgets/common/tabulr_surface.dart';
 import '../utils/grade_utils.dart' as grade_utils;
 
 class CGBoosterScreen extends StatefulWidget {
@@ -30,7 +31,8 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
   double get _totalCredits => widget.cgpaData.effectiveTotalCredits;
   double get _totalGradePoints => widget.cgpaData.effectiveTotalGradePoints;
 
-  Color _gradeColor(String grade) => grade_utils.getGradeColor(grade, scheme: Theme.of(context).colorScheme);
+  Color _gradeColor(String grade) =>
+      grade_utils.getGradeColor(grade, scheme: Theme.of(context).colorScheme);
 
   @override
   void initState() {
@@ -52,23 +54,32 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
     // summer terms after final year.
     final latest = {
       for (final a in widget.cgpaData.latestAttempts().values)
-        a.entry.courseCode:
-            _CandidateInfo(entry: a.entry, semester: a.semester),
+        a.entry.courseCode: _CandidateInfo(
+          entry: a.entry,
+          semester: a.semester,
+        ),
     };
 
-    _candidates = latest.values
-        .where((c) => c.entry.gradePoints < 10.0 && c.entry.gradePoints > 0.0)
-        .map((c) => _RepeatCandidate(
-              courseCode: c.entry.courseCode,
-              courseTitle: c.entry.courseTitle,
-              credits: c.entry.credits,
-              currentGrade: c.entry.grade!,
-              currentGradePoints: c.entry.gradePoints,
-              semester: c.semester,
-              selected: true,
-            ))
-        .toList()
-      ..sort((a, b) => a.currentGradePoints.compareTo(b.currentGradePoints));
+    _candidates =
+        latest.values
+            .where(
+              (c) => c.entry.gradePoints < 10.0 && c.entry.gradePoints > 0.0,
+            )
+            .map(
+              (c) => _RepeatCandidate(
+                courseCode: c.entry.courseCode,
+                courseTitle: c.entry.courseTitle,
+                credits: c.entry.credits,
+                currentGrade: c.entry.grade!,
+                currentGradePoints: c.entry.gradePoints,
+                semester: c.semester,
+                selected: true,
+              ),
+            )
+            .toList()
+          ..sort(
+            (a, b) => a.currentGradePoints.compareTo(b.currentGradePoints),
+          );
   }
 
   void _calculate() {
@@ -88,9 +99,10 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
     }
 
     final maxCreditsText = _maxCreditsController.text.trim();
-    final maxCredits = maxCreditsText.isEmpty
-        ? double.infinity
-        : (double.tryParse(maxCreditsText) ?? double.infinity);
+    final maxCredits =
+        maxCreditsText.isEmpty
+            ? double.infinity
+            : (double.tryParse(maxCreditsText) ?? double.infinity);
 
     final selected = _candidates.where((c) => c.selected).toList();
     if (selected.isEmpty) {
@@ -175,20 +187,24 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
 
       final courseChanges = <_CourseChange>[];
       for (int i = 0; i < subset.length; i++) {
-        courseChanges.add(_CourseChange(
-          courseCode: subset[i].courseCode,
-          courseTitle: subset[i].courseTitle,
-          credits: subset[i].credits,
-          oldGrade: subset[i].currentGrade,
-          newGrade: newGrades[i],
-        ));
+        courseChanges.add(
+          _CourseChange(
+            courseCode: subset[i].courseCode,
+            courseTitle: subset[i].courseTitle,
+            credits: subset[i].credits,
+            oldGrade: subset[i].currentGrade,
+            newGrade: newGrades[i],
+          ),
+        );
       }
 
-      results.add(_BoostResult(
-        changes: courseChanges,
-        resultingCG: resultingCG,
-        totalRepeatCredits: subsetCredits,
-      ));
+      results.add(
+        _BoostResult(
+          changes: courseChanges,
+          resultingCG: resultingCG,
+          totalRepeatCredits: subsetCredits,
+        ),
+      );
     }
 
     // Sort: fewest credits first, then fewest courses, then closest to target
@@ -198,15 +214,17 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
       final countCmp = a.changes.length.compareTo(b.changes.length);
       if (countCmp != 0) return countCmp;
       return (a.resultingCG - targetCG).abs().compareTo(
-            (b.resultingCG - targetCG).abs(),
-          );
+        (b.resultingCG - targetCG).abs(),
+      );
     });
 
     // Deduplicate by course set
     final seen = <String>{};
     final unique = <_BoostResult>[];
     for (final r in results) {
-      final key = r.changes.map((c) => '${c.courseCode}:${c.newGrade}').join('|');
+      final key = r.changes
+          .map((c) => '${c.courseCode}:${c.newGrade}')
+          .join('|');
       if (seen.add(key)) unique.add(r);
       if (unique.length >= 10) break;
     }
@@ -225,7 +243,9 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
     // Start each course at the minimum improvement grade
     final gradeIndices = <int>[];
     for (final c in subset) {
-      final currentIdx = _gradePoints.indexWhere((gp) => gp == c.currentGradePoints);
+      final currentIdx = _gradePoints.indexWhere(
+        (gp) => gp == c.currentGradePoints,
+      );
       final minBetterIdx = currentIdx >= 1 ? currentIdx - 1 : -1;
       if (minBetterIdx < 0) return null;
       gradeIndices.add(minBetterIdx);
@@ -272,34 +292,38 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppDesign.appBar(context, title: 'CG Booster',
-          actions: [PageInfoHelper.infoButton(context, PageInfoHelper.cgBooster)]),
-      body: _candidates.isEmpty
-          ? _buildEmptyState(scheme)
-          : SingleChildScrollView(
-              padding: EdgeInsets.all(isMobile ? 16 : 24),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 900),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildCurrentCGCard(scheme),
-                      const SizedBox(height: 16),
-                      _buildInputSection(scheme),
-                      const SizedBox(height: 16),
-                      _buildCandidatesList(scheme),
-                      const SizedBox(height: 16),
-                      _buildCalculateButton(scheme),
-                      if (_results.isNotEmpty) ...[
-                        const SizedBox(height: 24),
-                        _buildResults(scheme),
+      appBar: AppDesign.appBar(
+        context,
+        title: 'CG Booster',
+        actions: [PageInfoHelper.infoButton(context, PageInfoHelper.cgBooster)],
+      ),
+      body:
+          _candidates.isEmpty
+              ? _buildEmptyState(scheme)
+              : SingleChildScrollView(
+                padding: EdgeInsets.all(isMobile ? 16 : 24),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 900),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildCurrentCGCard(scheme),
+                        const SizedBox(height: 16),
+                        _buildInputSection(scheme),
+                        const SizedBox(height: 16),
+                        _buildCandidatesList(scheme),
+                        const SizedBox(height: 16),
+                        _buildCalculateButton(scheme),
+                        if (_results.isNotEmpty) ...[
+                          const SizedBox(height: 24),
+                          _buildResults(scheme),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
     );
   }
 
@@ -308,7 +332,11 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.school_outlined, size: 64, color: scheme.onSurface.withValues(alpha: 0.3)),
+          Icon(
+            Icons.school_outlined,
+            size: 64,
+            color: scheme.onSurface.withValues(alpha: 0.3),
+          ),
           const SizedBox(height: 16),
           Text(
             'No graded courses found',
@@ -317,7 +345,10 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
           const SizedBox(height: 8),
           Text(
             'Import your grades in the CGPA calculator first.',
-            style: TextStyle(fontSize: 13, color: scheme.onSurface.withValues(alpha: 0.4)),
+            style: TextStyle(
+              fontSize: 13,
+              color: scheme.onSurface.withValues(alpha: 0.4),
+            ),
           ),
         ],
       ),
@@ -325,9 +356,9 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
   }
 
   Widget _buildCurrentCGCard(ColorScheme scheme) {
-    return Container(
+    return TabulrSurface(
+      level: TabulrSurfaceLevel.panel,
       padding: const EdgeInsets.all(16),
-      decoration: AppDesign.cardDecoration(context),
       child: Row(
         children: [
           Icon(Icons.analytics_outlined, color: scheme.primary),
@@ -335,10 +366,20 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Current CG', style: TextStyle(fontSize: 13, color: scheme.onSurface.withValues(alpha: 0.6))),
+              Text(
+                'Current CG',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: scheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
               Text(
                 _currentCGPA.toStringAsFixed(2),
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: scheme.primary),
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: scheme.primary,
+                ),
               ),
             ],
           ),
@@ -346,10 +387,20 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('Credits', style: TextStyle(fontSize: 13, color: scheme.onSurface.withValues(alpha: 0.6))),
+              Text(
+                'Credits',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: scheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
               Text(
                 _totalCredits.toStringAsFixed(0),
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: scheme.onSurface),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: scheme.onSurface,
+                ),
               ),
             ],
           ),
@@ -359,29 +410,47 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
   }
 
   Widget _buildInputSection(ColorScheme scheme) {
-    return Container(
+    return TabulrSurface(
+      level: TabulrSurfaceLevel.panel,
       padding: const EdgeInsets.all(16),
-      decoration: AppDesign.cardDecoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Configuration', style: TextStyle(fontWeight: FontWeight.w600, color: scheme.onSurface)),
+          Text(
+            'Configuration',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurface,
+            ),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: TextField(
                   controller: _targetController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: AppDesign.inputDecoration(context, label: 'Target CG', hint: 'e.g. 8.0'),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: AppDesign.inputDecoration(
+                    context,
+                    label: 'Target CG',
+                    hint: 'e.g. 8.0',
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: TextField(
                   controller: _maxCreditsController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: AppDesign.inputDecoration(context, label: 'Max credits to repeat', hint: 'optional'),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: AppDesign.inputDecoration(
+                    context,
+                    label: 'Max credits to repeat',
+                    hint: 'optional',
+                  ),
                 ),
               ),
             ],
@@ -392,9 +461,9 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
   }
 
   Widget _buildCandidatesList(ColorScheme scheme) {
-    return Container(
+    return TabulrSurface(
+      level: TabulrSurfaceLevel.panel,
       padding: const EdgeInsets.all(16),
-      decoration: AppDesign.cardDecoration(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -403,7 +472,10 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
               Expanded(
                 child: Text(
                   'Courses eligible for repeat',
-                  style: TextStyle(fontWeight: FontWeight.w600, color: scheme.onSurface),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurface,
+                  ),
                 ),
               ),
               TextButton(
@@ -415,7 +487,11 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
                     }
                   });
                 },
-                child: Text(_candidates.every((c) => c.selected) ? 'Deselect all' : 'Select all'),
+                child: Text(
+                  _candidates.every((c) => c.selected)
+                      ? 'Deselect all'
+                      : 'Select all',
+                ),
               ),
             ],
           ),
@@ -441,7 +517,8 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
                 height: 24,
                 child: Checkbox(
                   value: candidate.selected,
-                  onChanged: (v) => setState(() => candidate.selected = v ?? false),
+                  onChanged:
+                      (v) => setState(() => candidate.selected = v ?? false),
                   visualDensity: VisualDensity.compact,
                 ),
               ),
@@ -452,7 +529,10 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
                   candidate.courseCode,
                   style: TextStyle(
                     fontWeight: FontWeight.w500,
-                    color: candidate.selected ? scheme.onSurface : scheme.onSurface.withValues(alpha: 0.4),
+                    color:
+                        candidate.selected
+                            ? scheme.onSurface
+                            : scheme.onSurface.withValues(alpha: 0.4),
                   ),
                 ),
               ),
@@ -462,7 +542,10 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
                   candidate.courseTitle,
                   style: TextStyle(
                     fontSize: 13,
-                    color: candidate.selected ? scheme.onSurface.withValues(alpha: 0.7) : scheme.onSurface.withValues(alpha: 0.3),
+                    color:
+                        candidate.selected
+                            ? scheme.onSurface.withValues(alpha: 0.7)
+                            : scheme.onSurface.withValues(alpha: 0.3),
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -472,7 +555,10 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
                 child: Text(
                   '${candidate.credits.toStringAsFixed(0)}'
                   '${widget.cgpaData.isInCreditHours == true ? ' ch' : ' cr'}',
-                  style: TextStyle(fontSize: 12, color: scheme.onSurface.withValues(alpha: 0.5)),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: scheme.onSurface.withValues(alpha: 0.5),
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -480,7 +566,9 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
                 width: 36,
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: _gradeColor(candidate.currentGrade).withValues(alpha: 0.15),
+                  color: _gradeColor(
+                    candidate.currentGrade,
+                  ).withValues(alpha: 0.15),
                   borderRadius: AppDesign.cardBorderRadius(context),
                 ),
                 child: Text(
@@ -503,9 +591,14 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
   Widget _buildCalculateButton(ColorScheme scheme) {
     return FilledButton.icon(
       onPressed: _isCalculating ? null : _calculate,
-      icon: _isCalculating
-          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-          : const Icon(Icons.bolt),
+      icon:
+          _isCalculating
+              ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+              : const Icon(Icons.bolt),
       label: Text(_isCalculating ? 'Calculating...' : 'Find combinations'),
       style: FilledButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -519,10 +612,16 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
       children: [
         Text(
           '${_results.length} combination${_results.length != 1 ? 's' : ''} found',
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: scheme.onSurface),
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            color: scheme.onSurface,
+          ),
         ),
         const SizedBox(height: 12),
-        ..._results.asMap().entries.map((e) => _buildResultCard(e.key, e.value, scheme)),
+        ..._results.asMap().entries.map(
+          (e) => _buildResultCard(e.key, e.value, scheme),
+        ),
       ],
     );
   }
@@ -548,14 +647,22 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
                 child: Center(
                   child: Text(
                     '${index + 1}',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: scheme.primary),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: scheme.primary,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 12),
               Text(
                 'CG: ${result.resultingCG.toStringAsFixed(2)}',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: scheme.onSurface),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: scheme.onSurface,
+                ),
               ),
               const SizedBox(width: 8),
               Container(
@@ -566,69 +673,92 @@ class _CGBoosterScreenState extends State<CGBoosterScreen> {
                 ),
                 child: Text(
                   '+${cgDelta.toStringAsFixed(2)}',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.green),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.green,
+                  ),
                 ),
               ),
               const Spacer(),
               Text(
                 '${result.totalRepeatCredits.toStringAsFixed(0)} credits',
-                style: TextStyle(fontSize: 13, color: scheme.onSurface.withValues(alpha: 0.6)),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: scheme.onSurface.withValues(alpha: 0.6),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          ...result.changes.map((change) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: Text(
-                        '${change.courseCode} (${change.credits.toStringAsFixed(0)} cr)',
-                        style: TextStyle(fontSize: 13, color: scheme.onSurface),
-                      ),
+          ...result.changes.map(
+            (change) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      '${change.courseCode} (${change.credits.toStringAsFixed(0)} cr)',
+                      style: TextStyle(fontSize: 13, color: scheme.onSurface),
                     ),
-                    Container(
-                      width: 36,
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: _gradeColor(change.oldGrade).withValues(alpha: 0.1),
-                        borderRadius: AppDesign.cardBorderRadius(context),
-                      ),
-                      child: Text(
+                  ),
+                  Container(
+                    width: 36,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _gradeColor(
                         change.oldGrade,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: _gradeColor(change.oldGrade),
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+                      ).withValues(alpha: 0.1),
+                      borderRadius: AppDesign.cardBorderRadius(context),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Icon(Icons.arrow_forward, size: 14, color: scheme.onSurface.withValues(alpha: 0.4)),
-                    ),
-                    Container(
-                      width: 36,
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: _gradeColor(change.newGrade).withValues(alpha: 0.15),
-                        borderRadius: AppDesign.cardBorderRadius(context),
+                    child: Text(
+                      change.oldGrade,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _gradeColor(change.oldGrade),
                       ),
-                      child: Text(
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Icon(
+                      Icons.arrow_forward,
+                      size: 14,
+                      color: scheme.onSurface.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  Container(
+                    width: 36,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _gradeColor(
                         change.newGrade,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: _gradeColor(change.newGrade),
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+                      ).withValues(alpha: 0.15),
+                      borderRadius: AppDesign.cardBorderRadius(context),
                     ),
-                  ],
-                ),
-              )),
+                    child: Text(
+                      change.newGrade,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _gradeColor(change.newGrade),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

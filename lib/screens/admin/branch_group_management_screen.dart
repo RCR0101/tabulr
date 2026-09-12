@@ -9,6 +9,8 @@ import '../../utils/design_constants.dart';
 import '../../models/app_theme.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_dialog.dart';
+import '../../widgets/admin/admin_workspace.dart';
+import '../../widgets/common/tabulr_surface.dart';
 
 /// Admin tool to manage first-year CDC groups.
 ///
@@ -59,14 +61,13 @@ class _BranchGroupManagementScreenState
   }
 
   Future<bool> _confirmDiscard() => AppDialog.confirm(
-        context: context,
-        title: 'Unsaved Changes',
-        message:
-            'You have unsaved group changes that will be lost. Leave anyway?',
-        confirmLabel: 'Leave',
-        cancelLabel: 'Stay',
-        isDangerous: true,
-      );
+    context: context,
+    title: 'Unsaved Changes',
+    message: 'You have unsaved group changes that will be lost. Leave anyway?',
+    confirmLabel: 'Leave',
+    cancelLabel: 'Stay',
+    isDangerous: true,
+  );
 
   Future<void> _load() async {
     setState(() => _loading = true);
@@ -98,13 +99,15 @@ class _BranchGroupManagementScreenState
     final name = await _promptName('New Group', '');
     if (name == null) return;
     setState(() {
-      _groups.add(BranchGroup(
-        id: 'g${DateTime.now().millisecondsSinceEpoch}',
-        name: name.isEmpty ? 'Group ${_groups.length + 1}' : name,
-        sem11: [],
-        sem12: [],
-        branches: [],
-      ));
+      _groups.add(
+        BranchGroup(
+          id: 'g${DateTime.now().millisecondsSinceEpoch}',
+          name: name.isEmpty ? 'Group ${_groups.length + 1}' : name,
+          sem11: [],
+          sem12: [],
+          branches: [],
+        ),
+      );
     });
     _setDirty(true);
   }
@@ -120,7 +123,8 @@ class _BranchGroupManagementScreenState
     final ok = await AppDialog.confirm(
       context: context,
       title: 'Delete group?',
-      message: '"${group.name}" will be removed. Its ${group.branches.length} '
+      message:
+          '"${group.name}" will be removed. Its ${group.branches.length} '
           'branch(es) become ungrouped. Branch CDCs already saved are not '
           'cleared.',
       confirmLabel: 'Delete',
@@ -149,7 +153,11 @@ class _BranchGroupManagementScreenState
     _setDirty(true);
   }
 
-  Future<void> _addCourse(BranchGroup group, String sem, List<String> list) async {
+  Future<void> _addCourse(
+    BranchGroup group,
+    String sem,
+    List<String> list,
+  ) async {
     final code = await _showCoursePicker(group.name, sem);
     if (code == null || code.isEmpty) return;
     if (list.contains(code)) return;
@@ -166,107 +174,138 @@ class _BranchGroupManagementScreenState
       builder: (ctx) {
         final scheme = Theme.of(ctx).colorScheme;
         return StatefulBuilder(
-          builder: (ctx, setDialogState) => Dialog(
-            insetPadding: const EdgeInsets.all(16),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400, maxHeight: 300),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Add course to $groupName · Sem $sem',
-                        style: Theme.of(ctx)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 16),
-                    Autocomplete<CourseMasterEntry>(
-                      optionsBuilder: (v) {
-                        if (v.text.isEmpty) return const [];
-                        final q = v.text.toUpperCase();
-                        return _allCourses
-                            .where((c) =>
-                                c.courseCode.toUpperCase().contains(q) ||
-                                c.title.toUpperCase().contains(q))
-                            .take(8);
-                      },
-                      displayStringForOption: (c) => c.courseCode,
-                      onSelected: (c) {
-                        codeCtrl.text = c.courseCode;
-                        setDialogState(() => selectedName = c.title);
-                      },
-                      optionsViewBuilder: (ctx, onSelected, options) => Align(
-                        alignment: Alignment.topLeft,
-                        child: Material(
-                          elevation: 4,
-                          borderRadius: BorderRadius.circular(ThemeGeometry.of(ctx).dialogRadius),
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(
-                                maxHeight: 200, maxWidth: 360),
-                            child: ListView.builder(
-                              padding: EdgeInsets.zero,
-                              shrinkWrap: true,
-                              itemCount: options.length,
-                              itemBuilder: (_, i) {
-                                final c = options.elementAt(i);
-                                return ListTile(
-                                  dense: true,
-                                  title: Text(c.courseCode,
-                                      style: const TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w600)),
-                                  subtitle: Text(c.title,
-                                      style: const TextStyle(fontSize: 12)),
-                                  onTap: () => onSelected(c),
-                                );
-                              },
-                            ),
+          builder:
+              (ctx, setDialogState) => Dialog(
+                insetPadding: const EdgeInsets.all(16),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: 400,
+                    maxHeight: 300,
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Add course to $groupName · Sem $sem',
+                          style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ),
-                      fieldViewBuilder: (_, textCtrl, focusNode, __) {
-                        textCtrl.text = codeCtrl.text;
-                        textCtrl.addListener(() => codeCtrl.text = textCtrl.text);
-                        return TextField(
-                          controller: textCtrl,
-                          focusNode: focusNode,
-                          style: const TextStyle(fontSize: 14),
-                          decoration: AppDesign.inputDecoration(ctx,
-                              label: 'Course Code', hint: 'e.g. CS F111'),
-                        );
-                      },
-                    ),
-                    if (selectedName != null) ...[
-                      const SizedBox(height: 8),
-                      Text(selectedName!,
-                          style: TextStyle(
+                        const SizedBox(height: 16),
+                        Autocomplete<CourseMasterEntry>(
+                          optionsBuilder: (v) {
+                            if (v.text.isEmpty) return const [];
+                            final q = v.text.toUpperCase();
+                            return _allCourses
+                                .where(
+                                  (c) =>
+                                      c.courseCode.toUpperCase().contains(q) ||
+                                      c.title.toUpperCase().contains(q),
+                                )
+                                .take(8);
+                          },
+                          displayStringForOption: (c) => c.courseCode,
+                          onSelected: (c) {
+                            codeCtrl.text = c.courseCode;
+                            setDialogState(() => selectedName = c.title);
+                          },
+                          optionsViewBuilder:
+                              (ctx, onSelected, options) => Align(
+                                alignment: Alignment.topLeft,
+                                child: Material(
+                                  elevation: 4,
+                                  borderRadius: BorderRadius.circular(
+                                    ThemeGeometry.of(ctx).dialogRadius,
+                                  ),
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxHeight: 200,
+                                      maxWidth: 360,
+                                    ),
+                                    child: ListView.builder(
+                                      padding: EdgeInsets.zero,
+                                      shrinkWrap: true,
+                                      itemCount: options.length,
+                                      itemBuilder: (_, i) {
+                                        final c = options.elementAt(i);
+                                        return ListTile(
+                                          dense: true,
+                                          title: Text(
+                                            c.courseCode,
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          subtitle: Text(
+                                            c.title,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          onTap: () => onSelected(c),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          fieldViewBuilder: (_, textCtrl, focusNode, __) {
+                            textCtrl.text = codeCtrl.text;
+                            textCtrl.addListener(
+                              () => codeCtrl.text = textCtrl.text,
+                            );
+                            return TextField(
+                              controller: textCtrl,
+                              focusNode: focusNode,
+                              style: const TextStyle(fontSize: 14),
+                              decoration: AppDesign.inputDecoration(
+                                ctx,
+                                label: 'Course Code',
+                                hint: 'e.g. CS F111',
+                              ),
+                            );
+                          },
+                        ),
+                        if (selectedName != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            selectedName!,
+                            style: TextStyle(
                               fontSize: 13,
-                              color: scheme.onSurface
-                                  .withValues(alpha: AppDesign.opacityMedium))),
-                    ],
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        AppButton(
-                            label: 'Cancel',
-                            variant: AppButtonVariant.ghost,
-                            onTap: () => Navigator.pop(ctx)),
-                        const SizedBox(width: 8),
-                        AppButton(
-                            label: 'Add',
-                            icon: Icons.add_rounded,
-                            onTap: () =>
-                                Navigator.pop(ctx, codeCtrl.text.trim())),
+                              color: scheme.onSurface.withValues(
+                                alpha: AppDesign.opacityMedium,
+                              ),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            AppButton(
+                              label: 'Cancel',
+                              variant: AppButtonVariant.ghost,
+                              onTap: () => Navigator.pop(ctx),
+                            ),
+                            const SizedBox(width: 8),
+                            AppButton(
+                              label: 'Add',
+                              icon: Icons.add_rounded,
+                              onTap:
+                                  () =>
+                                      Navigator.pop(ctx, codeCtrl.text.trim()),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
         );
       },
     );
@@ -295,10 +334,11 @@ class _BranchGroupManagementScreenState
 
   Future<void> _showAddBranchDialog(BranchGroup target) async {
     // Any coded branch not already in this group can be added (moved).
-    final candidates = constants.branchCodeToName.keys
-        .where((c) => !target.branches.contains(c))
-        .toList()
-      ..sort();
+    final candidates =
+        constants.branchCodeToName.keys
+            .where((c) => !target.branches.contains(c))
+            .toList()
+          ..sort();
     if (candidates.isEmpty) {
       ToastService.showInfo('All branches are already in this group');
       return;
@@ -307,61 +347,74 @@ class _BranchGroupManagementScreenState
     final scheme = Theme.of(context).colorScheme;
     final picked = await showDialog<String>(
       context: context,
-      builder: (ctx) => Dialog(
-        insetPadding: const EdgeInsets.all(16),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420, maxHeight: 520),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Add branch to ${target.name}',
-                    style: Theme.of(ctx)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 12),
-                Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: candidates.length,
-                    itemBuilder: (_, i) {
-                      final code = candidates[i];
-                      final current = _groupOf(code);
-                      return ListTile(
-                        dense: true,
-                        title: Text(
-                            '$code · ${constants.branchCodeToName[code]}',
-                            style: const TextStyle(fontSize: 13)),
-                        subtitle: current != null
-                            ? Text('Currently in ${current.name}',
-                                style: TextStyle(
-                                    fontSize: 11, color: scheme.tertiary))
-                            : Text('Ungrouped',
-                                style: TextStyle(
-                                    fontSize: 11,
-                                    color: scheme.onSurface.withValues(
-                                        alpha: AppDesign.opacityLow))),
-                        onTap: () => Navigator.pop(ctx, code),
-                      );
-                    },
-                  ),
+      builder:
+          (ctx) => Dialog(
+            insetPadding: const EdgeInsets.all(16),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420, maxHeight: 520),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Add branch to ${target.name}',
+                      style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: candidates.length,
+                        itemBuilder: (_, i) {
+                          final code = candidates[i];
+                          final current = _groupOf(code);
+                          return ListTile(
+                            dense: true,
+                            title: Text(
+                              '$code · ${constants.branchCodeToName[code]}',
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                            subtitle:
+                                current != null
+                                    ? Text(
+                                      'Currently in ${current.name}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: scheme.tertiary,
+                                      ),
+                                    )
+                                    : Text(
+                                      'Ungrouped',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: scheme.onSurface.withValues(
+                                          alpha: AppDesign.opacityLow,
+                                        ),
+                                      ),
+                                    ),
+                            onTap: () => Navigator.pop(ctx, code),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: AppButton(
+                        label: 'Cancel',
+                        variant: AppButtonVariant.ghost,
+                        onTap: () => Navigator.pop(ctx),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: AppButton(
-                      label: 'Cancel',
-                      variant: AppButtonVariant.ghost,
-                      onTap: () => Navigator.pop(ctx)),
-                ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
     );
 
     if (picked != null) _assignBranch(picked, target);
@@ -394,33 +447,42 @@ class _BranchGroupManagementScreenState
         if (await _confirmDiscard() && navigator.canPop()) navigator.pop();
       },
       child: Scaffold(
-      appBar: AppDesign.appBar(context, title: 'Branch Groups', actions: [
-        IconButton(
-          icon: const Icon(Icons.add_rounded),
-          tooltip: 'New group',
-          onPressed: _loading ? null : _createGroup,
-        ),
-        if (_dirty)
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: AppButton(
-                label: 'Save',
-                icon: Icons.check_rounded,
-                isLoading: _saving,
-                onTap: _saving ? null : _save),
-          ),
-      ]),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(AppDesign.spacingMd),
-              children: [
-                _infoBanner(scheme, context),
-                for (final g in _groups) _groupCard(g, scheme, context),
-                _ungroupedCard(scheme, context),
-                const SizedBox(height: 60),
-              ],
+        appBar: AppDesign.appBar(
+          context,
+          title: 'Branch Groups',
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              tooltip: 'New group',
+              onPressed: _loading ? null : _createGroup,
             ),
+            if (_dirty)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: AppButton(
+                  label: 'Save',
+                  icon: Icons.check_rounded,
+                  isLoading: _saving,
+                  onTap: _saving ? null : _save,
+                ),
+              ),
+          ],
+        ),
+        body:
+            _loading
+                ? const Center(child: CircularProgressIndicator())
+                : AdminWorkspace(
+                  padding: EdgeInsets.zero,
+                  child: ListView(
+                    padding: const EdgeInsets.all(AppDesign.spacingMd),
+                    children: [
+                      _infoBanner(scheme, context),
+                      for (final g in _groups) _groupCard(g, scheme, context),
+                      _ungroupedCard(scheme, context),
+                      const SizedBox(height: 60),
+                    ],
+                  ),
+                ),
       ),
     );
   }
@@ -432,7 +494,7 @@ class _BranchGroupManagementScreenState
       decoration: BoxDecoration(
         color: scheme.primary.withValues(alpha: 0.06),
         borderRadius: AppDesign.cardBorderRadius(context),
-        border: Border.all(color: scheme.primary.withValues(alpha: 0.12)),
+        border: Border(left: BorderSide(color: scheme.primary, width: 3)),
       ),
       child: Row(
         children: [
@@ -444,9 +506,11 @@ class _BranchGroupManagementScreenState
               'group\'s courses or move branches between groups, then Save — '
               'each branch inherits its group\'s CDCs.',
               style: TextStyle(
-                  fontSize: 12,
-                  color:
-                      scheme.onSurface.withValues(alpha: AppDesign.opacityHigh)),
+                fontSize: 12,
+                color: scheme.onSurface.withValues(
+                  alpha: AppDesign.opacityHigh,
+                ),
+              ),
             ),
           ),
         ],
@@ -454,88 +518,121 @@ class _BranchGroupManagementScreenState
     );
   }
 
-  Widget _groupCard(BranchGroup group, ColorScheme scheme, BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppDesign.spacingMd),
-      decoration: AppDesign.cardDecoration(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                    color: scheme.outline
-                        .withValues(alpha: AppDesign.opacityDivider)),
+  Widget _groupCard(
+    BranchGroup group,
+    ColorScheme scheme,
+    BuildContext context,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppDesign.spacingMd),
+      child: TabulrSurface(
+        level: TabulrSurfaceLevel.panel,
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.fromLTRB(14, 8, 6, 8),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: scheme.outline.withValues(
+                      alpha: AppDesign.opacityDivider,
+                    ),
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.workspaces_rounded,
+                    size: 18,
+                    color: scheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      group.name,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${group.branches.length} branches',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppDesign.muted(context),
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    icon: Icon(
+                      Icons.more_vert_rounded,
+                      size: 18,
+                      color: AppDesign.muted(context),
+                    ),
+                    onSelected: (v) {
+                      if (v == 'rename') _renameGroup(group);
+                      if (v == 'delete') _deleteGroup(group);
+                    },
+                    itemBuilder:
+                        (_) => const [
+                          PopupMenuItem(value: 'rename', child: Text('Rename')),
+                          PopupMenuItem(value: 'delete', child: Text('Delete')),
+                        ],
+                  ),
+                ],
               ),
             ),
-            child: Row(
-              children: [
-                Icon(Icons.workspaces_rounded, size: 18, color: scheme.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(group.name,
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: scheme.onSurface)),
-                ),
-                Text('${group.branches.length} branches',
-                    style: TextStyle(
-                        fontSize: 12, color: AppDesign.muted(context))),
-                PopupMenuButton<String>(
-                  icon: Icon(Icons.more_vert_rounded,
-                      size: 18, color: AppDesign.muted(context)),
-                  onSelected: (v) {
-                    if (v == 'rename') _renameGroup(group);
-                    if (v == 'delete') _deleteGroup(group);
-                  },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'rename', child: Text('Rename')),
-                    PopupMenuItem(value: 'delete', child: Text('Delete')),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          _cdcSection(group, '1-1', group.sem11, scheme, context),
-          _cdcSection(group, '1-2', group.sem12, scheme, context),
-          // Branches
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _sectionLabel('Branches', scheme),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final code in group.branches)
-                      _removableChip(
-                        label: code,
-                        sub: constants.branchCodeToName[code],
-                        scheme: scheme,
-                        onRemove: () => _removeBranch(group, code),
-                        context: context,
+            _cdcSection(group, '1-1', group.sem11, scheme, context),
+            _cdcSection(group, '1-2', group.sem12, scheme, context),
+            // Branches
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _sectionLabel('Branches', scheme),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final code in group.branches)
+                        _removableChip(
+                          label: code,
+                          sub: constants.branchCodeToName[code],
+                          scheme: scheme,
+                          onRemove: () => _removeBranch(group, code),
+                          context: context,
+                        ),
+                      _addChip(
+                        'Add branch',
+                        scheme,
+                        () => _showAddBranchDialog(group),
+                        context,
                       ),
-                    _addChip('Add branch', scheme,
-                        () => _showAddBranchDialog(group), context),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _cdcSection(
-      BranchGroup group, String sem, List<String> codes, ColorScheme scheme, BuildContext context) {
+    BranchGroup group,
+    String sem,
+    List<String> codes,
+    ColorScheme scheme,
+    BuildContext context,
+  ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 2),
       child: Column(
@@ -555,8 +652,12 @@ class _BranchGroupManagementScreenState
                   onRemove: () => _removeCourse(codes, i),
                   context: context,
                 ),
-              _addChip('Add course', scheme,
-                  () => _addCourse(group, sem, codes), context),
+              _addChip(
+                'Add course',
+                scheme,
+                () => _addCourse(group, sem, codes),
+                context,
+              ),
             ],
           ),
         ],
@@ -577,16 +678,20 @@ class _BranchGroupManagementScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Ungrouped branches',
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: scheme.error)),
+          Text(
+            'Ungrouped branches',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: scheme.error,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text('These branches aren\'t in any group. Use "Add branch" in a '
-              'group to assign them.',
-              style: TextStyle(
-                  fontSize: 11, color: AppDesign.muted(context))),
+          Text(
+            'These branches aren\'t in any group. Use "Add branch" in a '
+            'group to assign them.',
+            style: TextStyle(fontSize: 11, color: AppDesign.muted(context)),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -594,14 +699,20 @@ class _BranchGroupManagementScreenState
             children: [
               for (final code in ungrouped)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                    color: scheme.surfaceContainerHighest.withValues(
+                      alpha: 0.4,
+                    ),
                     borderRadius: AppDesign.chipBorderRadius(context),
                   ),
-                  child: Text('$code · ${constants.branchCodeToName[code]}',
-                      style: const TextStyle(fontSize: 12)),
+                  child: Text(
+                    '$code · ${constants.branchCodeToName[code]}',
+                    style: const TextStyle(fontSize: 12),
+                  ),
                 ),
             ],
           ),
@@ -611,13 +722,14 @@ class _BranchGroupManagementScreenState
   }
 
   Widget _sectionLabel(String text, ColorScheme scheme) => Text(
-        text.toUpperCase(),
-        style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.4,
-            color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium)),
-      );
+    text.toUpperCase(),
+    style: TextStyle(
+      fontSize: 11,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.4,
+      color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
+    ),
+  );
 
   Widget _removableChip({
     required String label,
@@ -636,21 +748,28 @@ class _BranchGroupManagementScreenState
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label,
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: scheme.onSurface)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: scheme.onSurface,
+            ),
+          ),
           if (sub != null && sub.isNotEmpty) ...[
             const SizedBox(width: 6),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 150),
-              child: Text(sub,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: scheme.onSurface
-                          .withValues(alpha: AppDesign.opacityMedium))),
+              child: Text(
+                sub,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: scheme.onSurface.withValues(
+                    alpha: AppDesign.opacityMedium,
+                  ),
+                ),
+              ),
             ),
           ],
           InkWell(
@@ -658,8 +777,11 @@ class _BranchGroupManagementScreenState
             onTap: onRemove,
             child: Padding(
               padding: const EdgeInsets.only(left: 4),
-              child: Icon(Icons.close_rounded,
-                  size: 15, color: scheme.error.withValues(alpha: 0.75)),
+              child: Icon(
+                Icons.close_rounded,
+                size: 15,
+                color: scheme.error.withValues(alpha: 0.75),
+              ),
             ),
           ),
         ],
@@ -667,7 +789,12 @@ class _BranchGroupManagementScreenState
     );
   }
 
-  Widget _addChip(String label, ColorScheme scheme, VoidCallback onTap, BuildContext context) {
+  Widget _addChip(
+    String label,
+    ColorScheme scheme,
+    VoidCallback onTap,
+    BuildContext context,
+  ) {
     return InkWell(
       borderRadius: AppDesign.chipBorderRadius(context),
       onTap: onTap,
@@ -682,11 +809,14 @@ class _BranchGroupManagementScreenState
           children: [
             Icon(Icons.add_rounded, size: 14, color: scheme.primary),
             const SizedBox(width: 4),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.primary)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: scheme.primary,
+              ),
+            ),
           ],
         ),
       ),

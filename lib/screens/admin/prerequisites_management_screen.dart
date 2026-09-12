@@ -60,12 +60,15 @@ class _PrerequisitesManagementScreenState
   /// timetable courses).
   List<CourseMasterEntry> _masterMatches() {
     final q = _query.toUpperCase();
-    final list = _masterService.allCourses
-        .where((c) =>
-            c.courseCode.toUpperCase().contains(q) ||
-            c.title.toUpperCase().contains(q))
-        .toList()
-      ..sort((a, b) => a.courseCode.compareTo(b.courseCode));
+    final list =
+        _masterService.allCourses
+            .where(
+              (c) =>
+                  c.courseCode.toUpperCase().contains(q) ||
+                  c.title.toUpperCase().contains(q),
+            )
+            .toList()
+          ..sort((a, b) => a.courseCode.compareTo(b.courseCode));
     return list.take(60).toList();
   }
 
@@ -73,7 +76,8 @@ class _PrerequisitesManagementScreenState
     final saved = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-          builder: (_) => _PrereqEditorScreen(existing: existing)),
+        builder: (_) => _PrereqEditorScreen(existing: existing),
+      ),
     );
     if (saved == true) _load();
   }
@@ -81,10 +85,14 @@ class _PrerequisitesManagementScreenState
   /// Open the editor for any master course — loads its existing prereqs if it
   /// has a stored entry, otherwise seeds an empty (locked-code) entry.
   Future<void> _openEditorForCode(String code) async {
-    final existing = _prereqByCode[code] ??
+    final existing =
+        _prereqByCode[code] ??
         await _repo.getCoursePrerequisites(code) ??
         CoursePrerequisites(
-            courseCode: code, groups: const [], hasPrerequisites: false);
+          courseCode: code,
+          groups: const [],
+          hasPrerequisites: false,
+        );
     await _openEditor(existing);
   }
 
@@ -118,39 +126,49 @@ class _PrerequisitesManagementScreenState
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppDesign.appBar(context, title: 'Prerequisites', actions: [
-        IconButton(
-          icon: const Icon(Icons.add_rounded),
-          tooltip: 'Add prerequisites',
-          onPressed: () => _openEditor(null),
-        ),
-      ]),
+      appBar: AppDesign.appBar(
+        context,
+        title: 'Prerequisites',
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_rounded),
+            tooltip: 'Add prerequisites',
+            onPressed: () => _openEditor(null),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(AppDesign.spacingMd),
             child: TextField(
               controller: _searchCtrl,
-              decoration: AppDesign.inputDecoration(context,
-                  label: 'Search any course (code or title)',
-                  hint: 'e.g. CS F211',
-                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                  suffixIcon: _query.isEmpty
-                      ? null
-                      : IconButton(
+              decoration: AppDesign.inputDecoration(
+                context,
+                label: 'Search any course (code or title)',
+                hint: 'e.g. CS F211',
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                suffixIcon:
+                    _query.isEmpty
+                        ? null
+                        : IconButton(
                           icon: const Icon(Icons.close_rounded, size: 18),
                           onPressed: () {
                             _searchCtrl.clear();
                             setState(() => _query = '');
                           },
-                        )),
+                        ),
+              ),
               onChanged: (v) => setState(() => _query = v.trim()),
             ),
           ),
           if (_loading)
             const Expanded(child: Center(child: CircularProgressIndicator()))
           else
-            Expanded(child: _query.isEmpty ? _managedList(scheme) : _searchList(scheme)),
+            Expanded(
+              child:
+                  _query.isEmpty ? _managedList(scheme) : _searchList(scheme),
+            ),
         ],
       ),
     );
@@ -179,9 +197,10 @@ class _PrerequisitesManagementScreenState
         final title = _masterService.getTitle(c.courseCode);
         return _entryTile(
           code: c.courseCode,
-          subtitle: title.isEmpty
-              ? '${c.groups.length} prerequisite(s)'
-              : '$title · ${c.groups.length} prereq(s)',
+          subtitle:
+              title.isEmpty
+                  ? '${c.groups.length} prerequisite(s)'
+                  : '$title · ${c.groups.length} prereq(s)',
           scheme: scheme,
           onEdit: () => _openEditor(c),
           onDelete: () => _delete(c),
@@ -196,8 +215,10 @@ class _PrerequisitesManagementScreenState
     final matches = _masterMatches();
     if (matches.isEmpty) {
       return Center(
-        child: Text('No courses match "$_query"',
-            style: TextStyle(color: AppDesign.muted(context))),
+        child: Text(
+          'No courses match "$_query"',
+          style: TextStyle(color: AppDesign.muted(context)),
+        ),
       );
     }
     return ListView.separated(
@@ -209,9 +230,10 @@ class _PrerequisitesManagementScreenState
         final existing = _prereqByCode[m.courseCode];
         return _entryTile(
           code: m.courseCode,
-          subtitle: existing != null
-              ? '${m.title} · ${existing.groups.length} prereq(s)'
-              : m.title,
+          subtitle:
+              existing != null
+                  ? '${m.title} · ${existing.groups.length} prereq(s)'
+                  : m.title,
           scheme: scheme,
           hasEntry: existing != null,
           onTap: () => _openEditorForCode(m.courseCode),
@@ -233,33 +255,49 @@ class _PrerequisitesManagementScreenState
   }) {
     return Container(
       clipBehavior: Clip.antiAlias,
-      decoration: AppDesign.cardDecoration(context),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: AppDesign.cardBorderRadius(context),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.65),
+        ),
+      ),
       child: Material(
         color: Colors.transparent,
         child: ListTile(
-        onTap: onTap,
-        title: Text(code,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle,
+          onTap: onTap,
+          title: Text(
+            code,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+          subtitle: Text(
+            subtitle,
             style: const TextStyle(fontSize: 12),
-            overflow: TextOverflow.ellipsis),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: Icon(hasEntry ? Icons.edit_rounded : Icons.add_rounded,
-                  size: 18, color: scheme.primary),
-              onPressed: onEdit,
-            ),
-            if (onDelete != null)
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
               IconButton(
-                icon: Icon(Icons.delete_outline_rounded,
-                    size: 18, color: scheme.error.withValues(alpha: 0.8)),
-                onPressed: onDelete,
+                icon: Icon(
+                  hasEntry ? Icons.edit_rounded : Icons.add_rounded,
+                  size: 18,
+                  color: scheme.primary,
+                ),
+                onPressed: onEdit,
               ),
-          ],
+              if (onDelete != null)
+                IconButton(
+                  icon: Icon(
+                    Icons.delete_outline_rounded,
+                    size: 18,
+                    color: scheme.error.withValues(alpha: 0.8),
+                  ),
+                  onPressed: onDelete,
+                ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -296,11 +334,14 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
     final e = widget.existing;
     _codeCtrl = TextEditingController(text: e?.courseCode ?? '');
     _hasPrereqs = e?.hasPrerequisites ?? false;
-    _groups = e?.groups
-            .map((g) => _GroupDraft(
-                  g.options.map((o) => o.courseCode).toList(),
-                  g.type,
-                ))
+    _groups =
+        e?.groups
+            .map(
+              (g) => _GroupDraft(
+                g.options.map((o) => o.courseCode).toList(),
+                g.type,
+              ),
+            )
             .toList() ??
         [];
   }
@@ -324,7 +365,9 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
     if (code == null || code.isEmpty) return;
     final c = code.toUpperCase();
     setState(() {
-      if (!_groups[groupIndex].codes.contains(c)) _groups[groupIndex].codes.add(c);
+      if (!_groups[groupIndex].codes.contains(c)) {
+        _groups[groupIndex].codes.add(c);
+      }
     });
   }
 
@@ -332,95 +375,114 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
     final ctrl = TextEditingController();
     final result = await showDialog<String>(
       context: context,
-      builder: (ctx) => Dialog(
-        insetPadding: const EdgeInsets.all(16),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 400, maxHeight: 240),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: Theme.of(ctx)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 16),
-                Autocomplete<CourseMasterEntry>(
-                  optionsBuilder: (v) {
-                    if (v.text.isEmpty) return const [];
-                    final q = v.text.toUpperCase();
-                    return _masterService.allCourses
-                        .where((c) =>
-                            c.courseCode.toUpperCase().contains(q) ||
-                            c.title.toUpperCase().contains(q))
-                        .take(8);
-                  },
-                  displayStringForOption: (c) => c.courseCode,
-                  onSelected: (c) => ctrl.text = c.courseCode,
-                  optionsViewBuilder: (ctx, onSelected, options) => Align(
-                    alignment: Alignment.topLeft,
-                    child: Material(
-                      elevation: 4,
-                      borderRadius: BorderRadius.circular(ThemeGeometry.of(ctx).dialogRadius),
-                      child: ConstrainedBox(
-                        constraints:
-                            const BoxConstraints(maxHeight: 200, maxWidth: 360),
-                        child: ListView.builder(
-                          padding: EdgeInsets.zero,
-                          shrinkWrap: true,
-                          itemCount: options.length,
-                          itemBuilder: (_, i) {
-                            final c = options.elementAt(i);
-                            return ListTile(
-                              dense: true,
-                              title: Text(c.courseCode,
-                                  style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600)),
-                              subtitle: Text(c.title,
-                                  style: const TextStyle(fontSize: 12)),
-                              onTap: () => onSelected(c),
-                            );
-                          },
-                        ),
+      builder:
+          (ctx) => Dialog(
+            insetPadding: const EdgeInsets.all(16),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400, maxHeight: 240),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ),
-                  fieldViewBuilder: (_, textCtrl, focusNode, __) {
-                    textCtrl.text = ctrl.text;
-                    textCtrl.addListener(() => ctrl.text = textCtrl.text);
-                    return TextField(
-                      controller: textCtrl,
-                      focusNode: focusNode,
-                      style: const TextStyle(fontSize: 14),
-                      decoration: AppDesign.inputDecoration(ctx,
-                          label: 'Course Code', hint: 'e.g. CS F211'),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    AppButton(
-                        label: 'Cancel',
-                        variant: AppButtonVariant.ghost,
-                        onTap: () => Navigator.pop(ctx)),
-                    const SizedBox(width: 8),
-                    AppButton(
-                        label: 'Add',
-                        icon: Icons.add_rounded,
-                        onTap: () => Navigator.pop(ctx, ctrl.text.trim())),
+                    const SizedBox(height: 16),
+                    Autocomplete<CourseMasterEntry>(
+                      optionsBuilder: (v) {
+                        if (v.text.isEmpty) return const [];
+                        final q = v.text.toUpperCase();
+                        return _masterService.allCourses
+                            .where(
+                              (c) =>
+                                  c.courseCode.toUpperCase().contains(q) ||
+                                  c.title.toUpperCase().contains(q),
+                            )
+                            .take(8);
+                      },
+                      displayStringForOption: (c) => c.courseCode,
+                      onSelected: (c) => ctrl.text = c.courseCode,
+                      optionsViewBuilder:
+                          (ctx, onSelected, options) => Align(
+                            alignment: Alignment.topLeft,
+                            child: Material(
+                              elevation: 4,
+                              borderRadius: BorderRadius.circular(
+                                ThemeGeometry.of(ctx).dialogRadius,
+                              ),
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  maxHeight: 200,
+                                  maxWidth: 360,
+                                ),
+                                child: ListView.builder(
+                                  padding: EdgeInsets.zero,
+                                  shrinkWrap: true,
+                                  itemCount: options.length,
+                                  itemBuilder: (_, i) {
+                                    final c = options.elementAt(i);
+                                    return ListTile(
+                                      dense: true,
+                                      title: Text(
+                                        c.courseCode,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        c.title,
+                                        style: const TextStyle(fontSize: 12),
+                                      ),
+                                      onTap: () => onSelected(c),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                      fieldViewBuilder: (_, textCtrl, focusNode, __) {
+                        textCtrl.text = ctrl.text;
+                        textCtrl.addListener(() => ctrl.text = textCtrl.text);
+                        return TextField(
+                          controller: textCtrl,
+                          focusNode: focusNode,
+                          style: const TextStyle(fontSize: 14),
+                          decoration: AppDesign.inputDecoration(
+                            ctx,
+                            label: 'Course Code',
+                            hint: 'e.g. CS F211',
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        AppButton(
+                          label: 'Cancel',
+                          variant: AppButtonVariant.ghost,
+                          onTap: () => Navigator.pop(ctx),
+                        ),
+                        const SizedBox(width: 8),
+                        AppButton(
+                          label: 'Add',
+                          icon: Icons.add_rounded,
+                          onTap: () => Navigator.pop(ctx, ctrl.text.trim()),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
     );
     ctrl.dispose();
     return result;
@@ -434,21 +496,26 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
     }
     setState(() => _saving = true);
     try {
-      final groups = _hasPrereqs
-          ? _groups
-              .where((g) => g.codes.isNotEmpty)
-              .map((g) => PrerequisiteGroup(
-                    g.codes
-                        .map((c) => Prerequisite(courseCode: c, type: g.type))
-                        .toList(),
-                  ))
-              .toList()
-          : <PrerequisiteGroup>[];
-      await _repo.saveCoursePrerequisites(CoursePrerequisites(
-        courseCode: code,
-        groups: groups,
-        hasPrerequisites: _hasPrereqs && groups.isNotEmpty,
-      ));
+      final groups =
+          _hasPrereqs
+              ? _groups
+                  .where((g) => g.codes.isNotEmpty)
+                  .map(
+                    (g) => PrerequisiteGroup(
+                      g.codes
+                          .map((c) => Prerequisite(courseCode: c, type: g.type))
+                          .toList(),
+                    ),
+                  )
+                  .toList()
+              : <PrerequisiteGroup>[];
+      await _repo.saveCoursePrerequisites(
+        CoursePrerequisites(
+          courseCode: code,
+          groups: groups,
+          hasPrerequisites: _hasPrereqs && groups.isNotEmpty,
+        ),
+      );
       ToastService.showSuccess('Saved $code');
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
@@ -463,8 +530,10 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
     final isNew = widget.existing == null;
 
     return Scaffold(
-      appBar: AppDesign.appBar(context,
-          title: isNew ? 'Add Prerequisites' : 'Edit Prerequisites'),
+      appBar: AppDesign.appBar(
+        context,
+        title: isNew ? 'Add Prerequisites' : 'Edit Prerequisites',
+      ),
       body: ListView(
         padding: const EdgeInsets.all(AppDesign.spacingMd),
         children: [
@@ -472,8 +541,11 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
             controller: _codeCtrl,
             enabled: isNew,
             textCapitalization: TextCapitalization.characters,
-            decoration: AppDesign.inputDecoration(context,
-                label: 'Course Code', hint: 'e.g. CS F211'),
+            decoration: AppDesign.inputDecoration(
+              context,
+              label: 'Course Code',
+              hint: 'e.g. CS F211',
+            ),
           ),
           const SizedBox(height: AppDesign.spacingMd),
           SwitchListTile(
@@ -487,14 +559,17 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
             Row(
               children: [
                 Expanded(
-                  child: Text('Requirements (each must be met)',
-                      style: _labelStyle(scheme)),
+                  child: Text(
+                    'Requirements (each must be met)',
+                    style: _labelStyle(scheme),
+                  ),
                 ),
                 AppButton(
-                    label: 'Add requirement',
-                    icon: Icons.add_rounded,
-                    variant: AppButtonVariant.ghost,
-                    onTap: _addGroup),
+                  label: 'Add requirement',
+                  icon: Icons.add_rounded,
+                  variant: AppButtonVariant.ghost,
+                  onTap: _addGroup,
+                ),
               ],
             ),
             const SizedBox(height: 6),
@@ -507,14 +582,18 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
             if (_groups.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text('No requirements added',
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontStyle: FontStyle.italic,
-                        color: AppDesign.muted(context))),
+                child: Text(
+                  'No requirements added',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                    color: AppDesign.muted(context),
+                  ),
+                ),
               )
             else
-              for (var i = 0; i < _groups.length; i++) _groupCard(i, scheme, context),
+              for (var i = 0; i < _groups.length; i++)
+                _groupCard(i, scheme, context),
           ],
           const SizedBox(height: AppDesign.spacingLg),
           AppButton(
@@ -535,17 +614,26 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: AppDesign.spacingSm),
       padding: const EdgeInsets.all(12),
-      decoration: AppDesign.cardDecoration(context),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: AppDesign.cardBorderRadius(context),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.65),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text('Requirement ${index + 1}',
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: scheme.onSurfaceVariant)),
+              Text(
+                'Requirement ${index + 1}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
               const Spacer(),
               // Type applies to the whole requirement.
               Container(
@@ -553,8 +641,9 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
                 decoration: BoxDecoration(
                   color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
                   borderRadius: AppDesign.inputBorderRadius(context),
-                  border:
-                      Border.all(color: scheme.outline.withValues(alpha: 0.15)),
+                  border: Border.all(
+                    color: scheme.outline.withValues(alpha: 0.15),
+                  ),
                 ),
                 child: DropdownButton<String>(
                   // A square highlight inside a rounded box reads as a stray
@@ -565,19 +654,28 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
                   isDense: true,
                   borderRadius: AppDesign.inputBorderRadius(context),
                   style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: scheme.onSurface),
-                  items: _types
-                      .map((t) => DropdownMenuItem(
-                          value: t, child: Text(_typeLabels[t] ?? t)))
-                      .toList(),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurface,
+                  ),
+                  items:
+                      _types
+                          .map(
+                            (t) => DropdownMenuItem(
+                              value: t,
+                              child: Text(_typeLabels[t] ?? t),
+                            ),
+                          )
+                          .toList(),
                   onChanged: (v) => setState(() => g.type = v ?? 'pre'),
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.delete_outline_rounded,
-                    size: 18, color: scheme.error.withValues(alpha: 0.8)),
+                icon: Icon(
+                  Icons.delete_outline_rounded,
+                  size: 18,
+                  color: scheme.error.withValues(alpha: 0.8),
+                ),
                 tooltip: 'Remove requirement',
                 onPressed: () => setState(() => _groups.removeAt(index)),
               ),
@@ -585,11 +683,14 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
           ),
           if (isChoice) ...[
             const SizedBox(height: 2),
-            Text('Any one of:',
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppDesign.muted(context))),
+            Text(
+              'Any one of:',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: AppDesign.muted(context),
+              ),
+            ),
           ],
           const SizedBox(height: 6),
           Wrap(
@@ -600,16 +701,20 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
                 Chip(
                   label: Text(code, style: const TextStyle(fontSize: 12)),
                   deleteIcon: const Icon(Icons.close, size: 15),
-                  onDeleted: () => setState(() {
-                    g.codes.remove(code);
-                    if (g.codes.isEmpty) _groups.removeAt(index);
-                  }),
+                  onDeleted:
+                      () => setState(() {
+                        g.codes.remove(code);
+                        if (g.codes.isEmpty) _groups.removeAt(index);
+                      }),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   visualDensity: VisualDensity.compact,
                 ),
               ActionChip(
                 avatar: const Icon(Icons.add, size: 15),
-                label: const Text('Alternative', style: TextStyle(fontSize: 12)),
+                label: const Text(
+                  'Alternative',
+                  style: TextStyle(fontSize: 12),
+                ),
                 onPressed: () => _addOption(index),
                 visualDensity: VisualDensity.compact,
               ),
@@ -621,9 +726,10 @@ class _PrereqEditorScreenState extends State<_PrereqEditorScreen> {
   }
 
   TextStyle _labelStyle(ColorScheme scheme) => TextStyle(
-      fontSize: 12,
-      fontWeight: FontWeight.w600,
-      color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium));
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
+  );
 }
 
 /// Mutable working copy of one requirement group while editing.

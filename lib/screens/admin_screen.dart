@@ -26,6 +26,8 @@ import 'admin/professor_management_screen.dart';
 import 'admin/bug_tracker_screen.dart';
 import '../services/ui/tutorial_service.dart';
 import '../widgets/common/app_dropdown.dart';
+import '../widgets/admin/admin_workspace.dart';
+import '../widgets/common/tabulr_surface.dart';
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
@@ -62,8 +64,9 @@ class _AdminScreenState extends State<AdminScreen> {
   final Map<String, TextEditingController> _calToControllers = {
     for (final c in _campuses) c: TextEditingController(),
   };
-  final TextEditingController _examYearController =
-      TextEditingController(text: '2026');
+  final TextEditingController _examYearController = TextEditingController(
+    text: '2026',
+  );
 
   /// Which semester of the booklet is being uploaded. Files the upload under a
   /// term in the course-history record, and tells the calendar parser which
@@ -179,7 +182,7 @@ class _AdminScreenState extends State<AdminScreen> {
         padding: const EdgeInsets.only(top: 4),
         child: Text(
           '$label: $n${sample.isEmpty ? '' : '  —  ${sample.join(', ')}'
-              '${n > sample.length ? ', …' : ''}'}',
+                  '${n > sample.length ? ', …' : ''}'}',
           style: theme.textTheme.bodySmall?.copyWith(color: colour),
         ),
       );
@@ -187,87 +190,113 @@ class _AdminScreenState extends State<AdminScreen> {
 
     return showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(blocked ? 'Parse looks wrong' : 'Confirm timetable upload'),
-        content: SizedBox(
-          width: 520,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final e in previews.entries) ...[
-                  Text(_campusLabels[e.key] ?? e.key,
-                      style: theme.textTheme.titleSmall),
-                  Text(
-                    e.value.isFirstUpload
-                        ? '${e.value.parsed} courses parsed — first upload for this campus'
-                        : '${e.value.parsed} parsed vs ${e.value.live} live '
-                            '· ${e.value.unchanged} unchanged',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                  // Derived from the exam year and the semester dropdown, not
-                  // from the PDF, so it is confirmed here — filing a booklet
-                  // under the wrong term mislabels a semester of history.
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      e.value.term == null
-                          ? 'Course history: not recorded (no semester given)'
-                          : 'Course history: filed as ${e.value.term}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                          color: e.value.term == null
-                              ? theme.colorScheme.error
-                              : theme.colorScheme.onSurfaceVariant),
-                    ),
-                  ),
-                  line('Added', e.value.added, theme.colorScheme.primary,
-                      e.value.addedSample),
-                  line('Removed', e.value.removed, theme.colorScheme.error,
-                      e.value.removedSample),
-                  line('Changed', e.value.changed, theme.colorScheme.tertiary,
-                      e.value.changedSample),
-                  if (e.value.isDisruptive && e.value.problems.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        'This replaces more than half of the live collection — '
-                        'usually a wrong page range.',
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: theme.colorScheme.error),
-                      ),
-                    ),
-                  for (final p in e.value.problems)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text('⚠ $p',
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: theme.colorScheme.error)),
-                    ),
-                  Text('parser ${e.value.parserVersion}',
-                      style: theme.textTheme.labelSmall),
-                  const SizedBox(height: 12),
-                ],
-                if (blocked)
-                  Text(
-                    'The upload will be refused unless you tick "Force" and try '
-                    'again. Check the page range first.',
-                    style: theme.textTheme.bodySmall,
-                  ),
-              ],
+      builder:
+          (ctx) => AlertDialog(
+            title: Text(
+              blocked ? 'Parse looks wrong' : 'Confirm timetable upload',
             ),
+            content: SizedBox(
+              width: 520,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final e in previews.entries) ...[
+                      Text(
+                        _campusLabels[e.key] ?? e.key,
+                        style: theme.textTheme.titleSmall,
+                      ),
+                      Text(
+                        e.value.isFirstUpload
+                            ? '${e.value.parsed} courses parsed — first upload for this campus'
+                            : '${e.value.parsed} parsed vs ${e.value.live} live '
+                                '· ${e.value.unchanged} unchanged',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      // Derived from the exam year and the semester dropdown, not
+                      // from the PDF, so it is confirmed here — filing a booklet
+                      // under the wrong term mislabels a semester of history.
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          e.value.term == null
+                              ? 'Course history: not recorded (no semester given)'
+                              : 'Course history: filed as ${e.value.term}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color:
+                                e.value.term == null
+                                    ? theme.colorScheme.error
+                                    : theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      line(
+                        'Added',
+                        e.value.added,
+                        theme.colorScheme.primary,
+                        e.value.addedSample,
+                      ),
+                      line(
+                        'Removed',
+                        e.value.removed,
+                        theme.colorScheme.error,
+                        e.value.removedSample,
+                      ),
+                      line(
+                        'Changed',
+                        e.value.changed,
+                        theme.colorScheme.tertiary,
+                        e.value.changedSample,
+                      ),
+                      if (e.value.isDisruptive && e.value.problems.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            'This replaces more than half of the live collection — '
+                            'usually a wrong page range.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.error,
+                            ),
+                          ),
+                        ),
+                      for (final p in e.value.problems)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            '⚠ $p',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.error,
+                            ),
+                          ),
+                        ),
+                      Text(
+                        'parser ${e.value.parserVersion}',
+                        style: theme.textTheme.labelSmall,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    if (blocked)
+                      Text(
+                        'The upload will be refused unless you tick "Force" and try '
+                        'again. Check the page range first.',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(blocked ? 'Upload anyway' : 'Upload'),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(blocked ? 'Upload anyway' : 'Upload'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -295,8 +324,11 @@ class _AdminScreenState extends State<AdminScreen> {
       final previews = <String, TimetablePreview>{};
       for (final entry in toUpload.entries) {
         final campus = entry.key;
-        _setStateIfMounted(() => _timetableProgress =
-            'Checking ${_campusLabels[campus]} (${previews.length + 1}/$total)...');
+        _setStateIfMounted(
+          () =>
+              _timetableProgress =
+                  'Checking ${_campusLabels[campus]} (${previews.length + 1}/$total)...',
+        );
         final from = int.tryParse(_pageFromControllers[campus]!.text.trim());
         final to = int.tryParse(_pageToControllers[campus]!.text.trim());
         previews[campus] = await _adminService.previewTimetable(
@@ -324,8 +356,9 @@ class _AdminScreenState extends State<AdminScreen> {
       for (final entry in toUpload.entries) {
         final campus = entry.key;
         final label = _campusLabels[campus]!;
-        _setStateIfMounted(() => _timetableProgress =
-            'Uploading $label (${ done + 1}/$total)...');
+        _setStateIfMounted(
+          () => _timetableProgress = 'Uploading $label (${done + 1}/$total)...',
+        );
         final from = int.tryParse(_pageFromControllers[campus]!.text.trim());
         final to = int.tryParse(_pageToControllers[campus]!.text.trim());
         final calFrom = int.tryParse(_calFromControllers[campus]!.text.trim());
@@ -345,8 +378,11 @@ class _AdminScreenState extends State<AdminScreen> {
         );
         done++;
         results.add('$label: $count courses');
-        _setStateIfMounted(() => _timetableProgress =
-            '${results.join(' | ')}${done < total ? ' | Processing...' : ''}');
+        _setStateIfMounted(
+          () =>
+              _timetableProgress =
+                  '${results.join(' | ')}${done < total ? ' | Processing...' : ''}',
+        );
       }
       _setStateIfMounted(() {
         _timetableResult = results.join('\n');
@@ -484,7 +520,8 @@ class _AdminScreenState extends State<AdminScreen> {
       // in the old one — surface it so the effect is never a surprise.
       await ConfigService().reloadAppConfig();
       _setStateIfMounted(() {
-        _archiveResult = 'Archived $total timetables from $processed users ($skipped skipped)'
+        _archiveResult =
+            'Archived $total timetables from $processed users ($skipped skipped)'
             '${newTerm != null ? '\nCurrent term is now $newTerm — timetables from earlier terms are now read-only.' : ''}';
         _archiveProgress = null;
       });
@@ -507,7 +544,9 @@ class _AdminScreenState extends State<AdminScreen> {
     if (!ordered('semesterStart', 'semesterEnd') ||
         !ordered('midsemStart', 'midsemEnd') ||
         !ordered('endsemStart', 'endsemEnd')) {
-      ToastService.showError('Each start date must be on or before its end date');
+      ToastService.showError(
+        'Each start date must be on or before its end date',
+      );
       return;
     }
     _setStateIfMounted(() {
@@ -542,8 +581,7 @@ class _AdminScreenState extends State<AdminScreen> {
     }
   }
 
-  bool get _hasTimetableFiles =>
-      _timetableFiles.values.any((f) => f != null);
+  bool get _hasTimetableFiles => _timetableFiles.values.any((f) => f != null);
 
   Widget _buildSection({
     required String title,
@@ -552,56 +590,14 @@ class _AdminScreenState extends State<AdminScreen> {
     Key? key,
   }) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
+    return AdminSection(
       key: key,
-      margin: const EdgeInsets.only(bottom: AppDesign.spacingMd),
-      clipBehavior: Clip.antiAlias,
-      decoration: AppDesign.cardDecoration(context),
-      // ListTiles paint ink/background on the nearest Material; provide a
-      // transparent one above the decorated box so they stay visible.
-      child: Material(
-        color: Colors.transparent,
-        child: Column(
+      title: title,
+      subtitle: 'Operational controls and data maintenance',
+      trailing: Icon(icon, size: 19, color: scheme.primary),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(AppDesign.spacingMd),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: scheme.outline.withValues(alpha: AppDesign.opacityDivider),
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppDesign.spacingSm),
-                  decoration: BoxDecoration(
-                    color: scheme.primary.withValues(alpha: 0.1),
-                    borderRadius: AppDesign.innerBorderRadius(context),
-                  ),
-                  child: Icon(icon, size: 20, color: scheme.primary),
-                ),
-                const SizedBox(width: AppDesign.spacingSm + 4),
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: scheme.onSurface),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(AppDesign.spacingMd),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: children,
-            ),
-          ),
-        ],
-      ),
+        children: children,
       ),
     );
   }
@@ -616,14 +612,17 @@ class _AdminScreenState extends State<AdminScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: AppDesign.spacingSm),
       padding: const EdgeInsets.symmetric(
-          horizontal: AppDesign.spacingSm + 4, vertical: AppDesign.spacingSm),
+        horizontal: AppDesign.spacingSm + 4,
+        vertical: AppDesign.spacingSm,
+      ),
       decoration: BoxDecoration(
         color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(
-          color: file != null
-              ? scheme.primary.withValues(alpha: 0.3)
-              : scheme.outline.withValues(alpha: 0.15),
+          color:
+              file != null
+                  ? scheme.primary.withValues(alpha: 0.3)
+                  : scheme.outline.withValues(alpha: 0.15),
         ),
       ),
       child: Row(
@@ -635,17 +634,20 @@ class _AdminScreenState extends State<AdminScreen> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: scheme.onSurface.withValues(alpha: AppDesign.opacityHigh),
+                color: scheme.onSurface.withValues(
+                  alpha: AppDesign.opacityHigh,
+                ),
               ),
             ),
           ),
           const SizedBox(width: AppDesign.spacingSm),
           Expanded(
             child: InkWell(
-              onTap: () => _pickFile(
-                extensions: extensions,
-                onPicked: (f) => onChanged(f),
-              ),
+              onTap:
+                  () => _pickFile(
+                    extensions: extensions,
+                    onPicked: (f) => onChanged(f),
+                  ),
               borderRadius: AppDesign.buttonBorderRadius(context),
               child: Row(
                 children: [
@@ -654,9 +656,12 @@ class _AdminScreenState extends State<AdminScreen> {
                         ? Icons.check_circle_rounded
                         : Icons.upload_file_rounded,
                     size: 18,
-                    color: file != null
-                        ? scheme.primary
-                        : scheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
+                    color:
+                        file != null
+                            ? scheme.primary
+                            : scheme.onSurface.withValues(
+                              alpha: AppDesign.opacityMedium,
+                            ),
                   ),
                   const SizedBox(width: AppDesign.spacingSm),
                   Expanded(
@@ -665,9 +670,12 @@ class _AdminScreenState extends State<AdminScreen> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 13,
-                        color: file != null
-                            ? scheme.onSurface
-                            : scheme.onSurface.withValues(alpha: AppDesign.opacityLow),
+                        color:
+                            file != null
+                                ? scheme.onSurface
+                                : scheme.onSurface.withValues(
+                                  alpha: AppDesign.opacityLow,
+                                ),
                       ),
                     ),
                   ),
@@ -677,9 +685,13 @@ class _AdminScreenState extends State<AdminScreen> {
           ),
           if (file != null)
             IconButton(
-              icon: Icon(Icons.close_rounded,
-                  size: 16,
-                  color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium)),
+              icon: Icon(
+                Icons.close_rounded,
+                size: 16,
+                color: scheme.onSurface.withValues(
+                  alpha: AppDesign.opacityMedium,
+                ),
+              ),
               onPressed: () => onChanged(null),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
@@ -711,7 +723,8 @@ class _AdminScreenState extends State<AdminScreen> {
               controller: _examYearController,
               keyboardType: TextInputType.number,
               style: const TextStyle(fontSize: 13),
-              onChanged: (_) => setState(() {}), // keeps the term preview honest
+              onChanged:
+                  (_) => setState(() {}), // keeps the term preview honest
               decoration: InputDecoration(
                 hintText: '2026',
                 isDense: true,
@@ -720,17 +733,20 @@ class _AdminScreenState extends State<AdminScreen> {
                   vertical: AppDesign.spacingSm + 2,
                 ),
                 filled: true,
-                fillColor:
-                    scheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                fillColor: scheme.surfaceContainerHighest.withValues(
+                  alpha: 0.3,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: AppDesign.inputBorderRadius(context),
-                  borderSide:
-                      BorderSide(color: scheme.outline.withValues(alpha: 0.15)),
+                  borderSide: BorderSide(
+                    color: scheme.outline.withValues(alpha: 0.15),
+                  ),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: AppDesign.inputBorderRadius(context),
-                  borderSide:
-                      BorderSide(color: scheme.outline.withValues(alpha: 0.15)),
+                  borderSide: BorderSide(
+                    color: scheme.outline.withValues(alpha: 0.15),
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: AppDesign.inputBorderRadius(context),
@@ -767,7 +783,9 @@ class _AdminScreenState extends State<AdminScreen> {
               'files as ${_derivedTerm()}',
               style: TextStyle(
                 fontSize: 12,
-                color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
+                color: scheme.onSurface.withValues(
+                  alpha: AppDesign.opacityMedium,
+                ),
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -807,7 +825,9 @@ class _AdminScreenState extends State<AdminScreen> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: scheme.onSurface.withValues(alpha: AppDesign.opacityHigh),
+                  color: scheme.onSurface.withValues(
+                    alpha: AppDesign.opacityHigh,
+                  ),
                 ),
               ),
               const SizedBox(width: AppDesign.spacingXs),
@@ -815,7 +835,9 @@ class _AdminScreenState extends State<AdminScreen> {
                 '(optional — leave empty for all pages)',
                 style: TextStyle(
                   fontSize: 11,
-                  color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow),
+                  color: scheme.onSurface.withValues(
+                    alpha: AppDesign.opacityLow,
+                  ),
                 ),
               ),
             ],
@@ -833,10 +855,17 @@ class _AdminScreenState extends State<AdminScreen> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppDesign.spacingSm),
-                child: Text('–',
-                    style: TextStyle(
-                        color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium))),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppDesign.spacingSm,
+                ),
+                child: Text(
+                  '–',
+                  style: TextStyle(
+                    color: scheme.onSurface.withValues(
+                      alpha: AppDesign.opacityMedium,
+                    ),
+                  ),
+                ),
               ),
               SizedBox(
                 width: 80,
@@ -857,7 +886,9 @@ class _AdminScreenState extends State<AdminScreen> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: scheme.onSurface.withValues(alpha: AppDesign.opacityHigh),
+                  color: scheme.onSurface.withValues(
+                    alpha: AppDesign.opacityHigh,
+                  ),
                 ),
               ),
               const SizedBox(width: AppDesign.spacingXs),
@@ -865,7 +896,9 @@ class _AdminScreenState extends State<AdminScreen> {
                 '(optional — refreshes the calendar)',
                 style: TextStyle(
                   fontSize: 11,
-                  color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow),
+                  color: scheme.onSurface.withValues(
+                    alpha: AppDesign.opacityLow,
+                  ),
                 ),
               ),
             ],
@@ -883,10 +916,17 @@ class _AdminScreenState extends State<AdminScreen> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppDesign.spacingSm),
-                child: Text('–',
-                    style: TextStyle(
-                        color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium))),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppDesign.spacingSm,
+                ),
+                child: Text(
+                  '–',
+                  style: TextStyle(
+                    color: scheme.onSurface.withValues(
+                      alpha: AppDesign.opacityMedium,
+                    ),
+                  ),
+                ),
               ),
               SizedBox(
                 width: 80,
@@ -922,7 +962,9 @@ class _AdminScreenState extends State<AdminScreen> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: scheme.onSurface.withValues(alpha: AppDesign.opacityHigh),
+                color: scheme.onSurface.withValues(
+                  alpha: AppDesign.opacityHigh,
+                ),
               ),
             ),
             Text(
@@ -948,8 +990,9 @@ class _AdminScreenState extends State<AdminScreen> {
                       hintText: 'e.g. COMP CODE, SEATING ARRANGEMENT...',
                       hintStyle: TextStyle(
                         fontSize: 12,
-                        color: scheme.onSurface
-                            .withValues(alpha: AppDesign.opacityLow),
+                        color: scheme.onSurface.withValues(
+                          alpha: AppDesign.opacityLow,
+                        ),
                       ),
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(
@@ -957,8 +1000,9 @@ class _AdminScreenState extends State<AdminScreen> {
                         vertical: AppDesign.spacingSm + 2,
                       ),
                       filled: true,
-                      fillColor: scheme.surfaceContainerHighest
-                          .withValues(alpha: 0.3),
+                      fillColor: scheme.surfaceContainerHighest.withValues(
+                        alpha: 0.3,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: AppDesign.inputBorderRadius(context),
                         borderSide: BorderSide(
@@ -983,9 +1027,11 @@ class _AdminScreenState extends State<AdminScreen> {
                 ),
                 if (controllers.length > 1)
                   IconButton(
-                    icon: Icon(Icons.remove_circle_outline_rounded,
-                        size: 18,
-                        color: scheme.error.withValues(alpha: 0.7)),
+                    icon: Icon(
+                      Icons.remove_circle_outline_rounded,
+                      size: 18,
+                      color: scheme.error.withValues(alpha: 0.7),
+                    ),
                     onPressed: () {
                       _setStateIfMounted(() {
                         controllers[i].dispose();
@@ -993,8 +1039,10 @@ class _AdminScreenState extends State<AdminScreen> {
                       });
                     },
                     padding: const EdgeInsets.only(left: AppDesign.spacingXs),
-                    constraints:
-                        const BoxConstraints(minWidth: 28, minHeight: 28),
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
+                    ),
                   ),
               ],
             ),
@@ -1003,13 +1051,16 @@ class _AdminScreenState extends State<AdminScreen> {
           alignment: Alignment.centerLeft,
           child: InkWell(
             onTap: () {
-              _setStateIfMounted(() => controllers.add(TextEditingController()));
+              _setStateIfMounted(
+                () => controllers.add(TextEditingController()),
+              );
             },
             borderRadius: AppDesign.buttonBorderRadius(context),
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                  vertical: AppDesign.spacingXs,
-                  horizontal: AppDesign.spacingSm),
+                vertical: AppDesign.spacingXs,
+                horizontal: AppDesign.spacingSm,
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -1031,15 +1082,8 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Widget _buildProgressIndicator(String message) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.only(top: AppDesign.spacingSm),
-      padding: const EdgeInsets.symmetric(
-          horizontal: AppDesign.spacingSm + 4, vertical: AppDesign.spacingSm + 2),
-      decoration: BoxDecoration(
-        color: scheme.primary.withValues(alpha: 0.05),
-        borderRadius: AppDesign.cardBorderRadius(context),
-        border: Border.all(color: scheme.primary.withValues(alpha: 0.1)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(top: AppDesign.spacingSm),
       child: Row(
         children: [
           SizedBox(
@@ -1065,25 +1109,14 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget _buildResultBadge(String result) {
     final isError = result.startsWith('Error');
     final scheme = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.only(top: AppDesign.spacingSm),
-      padding: const EdgeInsets.symmetric(
-          horizontal: AppDesign.spacingSm + 4, vertical: AppDesign.spacingSm),
-      decoration: BoxDecoration(
-        color: isError
-            ? scheme.error.withValues(alpha: 0.1)
-            : scheme.primary.withValues(alpha: 0.08),
-        borderRadius: AppDesign.cardBorderRadius(context),
-        border: Border.all(
-          color: isError
-              ? scheme.error.withValues(alpha: 0.2)
-              : scheme.primary.withValues(alpha: 0.15),
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(top: AppDesign.spacingSm),
       child: Row(
         children: [
           Icon(
-            isError ? Icons.error_outline_rounded : Icons.check_circle_outline_rounded,
+            isError
+                ? Icons.error_outline_rounded
+                : Icons.check_circle_outline_rounded,
             size: 16,
             color: isError ? scheme.error : scheme.primary,
           ),
@@ -1113,53 +1146,56 @@ class _AdminScreenState extends State<AdminScreen> {
     final scheme = Theme.of(context).colorScheme;
     return Material(
       key: key,
-      color: scheme.surface,
-      borderRadius: AppDesign.buttonBorderRadius(context),
+      color: Colors.transparent,
       child: InkWell(
-        borderRadius: AppDesign.buttonBorderRadius(context),
+        borderRadius: AppDesign.innerBorderRadius(context),
         onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          decoration: BoxDecoration(
-            borderRadius: AppDesign.buttonBorderRadius(context),
-            border: Border.all(color: scheme.outline.withValues(alpha: 0.12)),
-          ),
+        child: TabulrSurface(
+          level: TabulrSurfaceLevel.panel,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           child: Row(
             children: [
+              Icon(icon, size: 19, color: color),
+              const SizedBox(width: 11),
               Container(
-                padding: const EdgeInsets.all(AppDesign.spacingSm + 2),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: AppDesign.innerBorderRadius(context),
-                ),
-                child: Icon(icon, size: 22, color: color),
+                width: 1,
+                height: 25,
+                color: color.withValues(alpha: 0.3),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 11),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: scheme.onSurface)),
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurface,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text(subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: scheme.onSurface
-                                .withValues(alpha: AppDesign.opacityMedium))),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: scheme.onSurface.withValues(
+                          alpha: AppDesign.opacityMedium,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              Icon(Icons.chevron_right_rounded,
-                  color:
-                      scheme.onSurface.withValues(alpha: AppDesign.opacityLow)),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow),
+              ),
             ],
           ),
         ),
@@ -1178,104 +1214,137 @@ class _AdminScreenState extends State<AdminScreen> {
         title: 'Course Management',
         subtitle: 'Courses, sections & exams',
         color: accent,
-        onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const CourseManagementScreen())),
+        onTap:
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CourseManagementScreen()),
+            ),
       ),
       _managementCard(
         icon: Icons.inventory_2_outlined,
         title: 'Courses Master',
         subtitle: 'The whole catalogue, offered or not',
         color: accent,
-        onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => const CoursesMasterManagementScreen())),
+        onTap:
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const CoursesMasterManagementScreen(),
+              ),
+            ),
       ),
       _managementCard(
         icon: Icons.workspace_premium_outlined,
         title: 'Minor Programmes',
         subtitle: 'Minor catalogue & course groups',
         color: accent,
-        onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const MinorManagementScreen())),
+        onTap:
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MinorManagementScreen()),
+            ),
       ),
       _managementCard(
         icon: Icons.event_seat_rounded,
         title: 'Exam Seating',
         subtitle: 'Rooms & allocations',
         color: secondary,
-        onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => const ExamSeatingManagementScreen())),
+        onTap:
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const ExamSeatingManagementScreen(),
+              ),
+            ),
       ),
       _managementCard(
         icon: Icons.person_rounded,
         title: 'Professor Chambers',
         subtitle: 'Chamber & contact info',
         color: tertiary,
-        onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => const ProfessorManagementScreen())),
+        onTap:
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const ProfessorManagementScreen(),
+              ),
+            ),
       ),
       _managementCard(
         icon: Icons.auto_stories_rounded,
         title: 'Course Guide',
         subtitle: 'CDC structure per branch',
         color: accent,
-        onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => const CourseGuideManagementScreen())),
+        onTap:
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const CourseGuideManagementScreen(),
+              ),
+            ),
       ),
       _managementCard(
         icon: Icons.workspaces_rounded,
         title: 'Branch Groups',
         subtitle: 'First-year course groups',
         color: secondary,
-        onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => const BranchGroupManagementScreen())),
+        onTap:
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const BranchGroupManagementScreen(),
+              ),
+            ),
       ),
       _managementCard(
         icon: Icons.account_tree_rounded,
         title: 'Prerequisites',
         subtitle: 'Prereqs & co-requisites',
         color: tertiary,
-        onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => const PrerequisitesManagementScreen())),
+        onTap:
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const PrerequisitesManagementScreen(),
+              ),
+            ),
       ),
       _managementCard(
         icon: Icons.content_copy_rounded,
         title: 'Duplicate Courses',
         subtitle: 'Equivalence groups',
         color: secondary,
-        onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => const DuplicateCoursesManagementScreen())),
+        onTap:
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const DuplicateCoursesManagementScreen(),
+              ),
+            ),
       ),
       _managementCard(
         icon: Icons.event_note_rounded,
         title: 'Academic Calendar',
         subtitle: 'Holidays, deadlines & exams',
         color: tertiary,
-        onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) => const AcademicCalendarManagementScreen())),
+        onTap:
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const AcademicCalendarManagementScreen(),
+              ),
+            ),
       ),
       _managementCard(
         icon: Icons.bug_report_rounded,
         title: 'Bug Tracker',
         subtitle: 'User reports & status',
         color: accent,
-        onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const BugTrackerScreen())),
+        onTap:
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const BugTrackerScreen()),
+            ),
       ),
     ];
   }
@@ -1292,8 +1361,8 @@ class _AdminScreenState extends State<AdminScreen> {
             label: 'PDF',
             file: _timetableFiles[campus],
             extensions: ['pdf'],
-            onChanged: (f) =>
-                _setStateIfMounted(() => _timetableFiles[campus] = f),
+            onChanged:
+                (f) => _setStateIfMounted(() => _timetableFiles[campus] = f),
           ),
           if (_timetableFiles[campus] != null) ...[
             _buildPageRange(campus),
@@ -1308,8 +1377,10 @@ class _AdminScreenState extends State<AdminScreen> {
         if (_timetableResult != null && _timetableResult!.contains('refusing'))
           CheckboxListTile(
             value: _forceTimetableUpload,
-            onChanged: (v) =>
-                _setStateIfMounted(() => _forceTimetableUpload = v ?? false),
+            onChanged:
+                (v) => _setStateIfMounted(
+                  () => _forceTimetableUpload = v ?? false,
+                ),
             dense: true,
             contentPadding: EdgeInsets.zero,
             controlAffinity: ListTileControlAffinity.leading,
@@ -1321,16 +1392,16 @@ class _AdminScreenState extends State<AdminScreen> {
         AppButton(
           label: 'Upload Timetables',
           icon: Icons.cloud_upload_rounded,
-          onTap: _hasTimetableFiles && !_uploadingTimetable
-              ? _uploadTimetables
-              : null,
+          onTap:
+              _hasTimetableFiles && !_uploadingTimetable
+                  ? _uploadTimetables
+                  : null,
           isLoading: _uploadingTimetable,
           expand: true,
         ),
         if (_timetableProgress != null)
           _buildProgressIndicator(_timetableProgress!),
-        if (_timetableResult != null)
-          _buildResultBadge(_timetableResult!),
+        if (_timetableResult != null) _buildResultBadge(_timetableResult!),
       ],
     );
   }
@@ -1352,14 +1423,12 @@ class _AdminScreenState extends State<AdminScreen> {
         AppButton(
           label: 'Upload Exam Seating',
           icon: Icons.cloud_upload_rounded,
-          onTap: _examFile != null && !_uploadingExam
-              ? _uploadExamSeating
-              : null,
+          onTap:
+              _examFile != null && !_uploadingExam ? _uploadExamSeating : null,
           isLoading: _uploadingExam,
           expand: true,
         ),
-        if (_examProgress != null)
-          _buildProgressIndicator(_examProgress!),
+        if (_examProgress != null) _buildProgressIndicator(_examProgress!),
         if (_examResult != null) _buildResultBadge(_examResult!),
       ],
     );
@@ -1380,10 +1449,9 @@ class _AdminScreenState extends State<AdminScreen> {
           'Optional — uses stored data if not provided',
           style: TextStyle(
             fontSize: 12,
-            color: Theme.of(context)
-                .colorScheme
-                .onSurface
-                .withValues(alpha: AppDesign.opacityLow),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: AppDesign.opacityLow),
           ),
         ),
         const SizedBox(height: AppDesign.spacingSm),
@@ -1404,8 +1472,7 @@ class _AdminScreenState extends State<AdminScreen> {
           isLoading: _rebuildingProfs,
           expand: true,
         ),
-        if (_profsProgress != null)
-          _buildProgressIndicator(_profsProgress!),
+        if (_profsProgress != null) _buildProgressIndicator(_profsProgress!),
         if (_profsResult != null) _buildResultBadge(_profsResult!),
       ],
     );
@@ -1424,7 +1491,11 @@ class _AdminScreenState extends State<AdminScreen> {
             hintText: '2025-2026',
             border: const OutlineInputBorder(),
             isDense: true,
-            labelStyle: TextStyle(color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium)),
+            labelStyle: TextStyle(
+              color: scheme.onSurface.withValues(
+                alpha: AppDesign.opacityMedium,
+              ),
+            ),
           ),
         ),
         const SizedBox(height: AppDesign.spacingSm),
@@ -1481,13 +1552,15 @@ class _AdminScreenState extends State<AdminScreen> {
               onTap: _savingDates ? null : () => _pickSemesterDate(key),
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: AppDesign.spacingSm + 4,
-                    vertical: AppDesign.spacingSm + 2),
+                  horizontal: AppDesign.spacingSm + 4,
+                  vertical: AppDesign.spacingSm + 2,
+                ),
                 decoration: BoxDecoration(
                   color: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
                   borderRadius: AppDesign.cardBorderRadius(context),
-                  border:
-                      Border.all(color: scheme.outline.withValues(alpha: 0.15)),
+                  border: Border.all(
+                    color: scheme.outline.withValues(alpha: 0.15),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -1495,19 +1568,27 @@ class _AdminScreenState extends State<AdminScreen> {
                       child: Text(
                         ConfigService.dateLabels[key] ?? key,
                         style: TextStyle(
-                            fontSize: 13,
-                            color: scheme.onSurface
-                                .withValues(alpha: AppDesign.opacityHigh)),
+                          fontSize: 13,
+                          color: scheme.onSurface.withValues(
+                            alpha: AppDesign.opacityHigh,
+                          ),
+                        ),
                       ),
                     ),
-                    Text(fmt(_semesterDates[key]!),
-                        style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: scheme.primary)),
+                    Text(
+                      fmt(_semesterDates[key]!),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.primary,
+                      ),
+                    ),
                     const SizedBox(width: AppDesign.spacingSm),
-                    Icon(Icons.edit_calendar_rounded,
-                        size: 16, color: AppDesign.muted(context)),
+                    Icon(
+                      Icons.edit_calendar_rounded,
+                      size: 16,
+                      color: AppDesign.muted(context),
+                    ),
                   ],
                 ),
               ),
@@ -1536,9 +1617,12 @@ class _AdminScreenState extends State<AdminScreen> {
 
     return Scaffold(
       appBar: AppDesign.appBar(context, title: 'Admin Dashboard'),
-      body: SingleChildScrollView(
-        padding: padding,
-        child: wide ? _wideLayout() : _narrowLayout(),
+      body: AdminWorkspace(
+        padding: EdgeInsets.zero,
+        child: SingleChildScrollView(
+          padding: padding,
+          child: wide ? _wideLayout() : _narrowLayout(),
+        ),
       ),
     );
   }
@@ -1546,10 +1630,12 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget _narrowLayout() {
     return Column(
       children: [
-        ..._managementCards().map((c) => Padding(
-              padding: const EdgeInsets.only(bottom: AppDesign.spacingSm),
-              child: c,
-            )),
+        ..._managementCards().map(
+          (c) => Padding(
+            padding: const EdgeInsets.only(bottom: AppDesign.spacingSm),
+            child: c,
+          ),
+        ),
         const SizedBox(height: AppDesign.spacingSm),
         _timetableUploadSection(),
         _archiveSection(),
@@ -1563,20 +1649,18 @@ class _AdminScreenState extends State<AdminScreen> {
   /// Lays out the management cards as centered rows of up to 4, with every
   /// card a uniform width so partial rows stay symmetric.
   Widget _managementGrid() {
-    const perRow = 4;
+    const perRow = 3;
     const gap = AppDesign.spacingMd;
     final cards = _managementCards();
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cardWidth =
-            (constraints.maxWidth - gap * (perRow - 1)) / perRow;
+        final cardWidth = (constraints.maxWidth - gap * (perRow - 1)) / perRow;
         return Wrap(
           alignment: WrapAlignment.center,
           spacing: gap,
           runSpacing: gap,
           children: [
-            for (final card in cards)
-              SizedBox(width: cardWidth, child: card),
+            for (final card in cards) SizedBox(width: cardWidth, child: card),
           ],
         );
       },
@@ -1586,6 +1670,23 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget _wideLayout() {
     return Column(
       children: [
+        AdminToolbar(
+          leading: const Text(
+            'Operations',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          children: [
+            Text(
+              '${_campuses.length} campuses',
+              style: TextStyle(color: AppDesign.muted(context)),
+            ),
+            Text(
+              'Uploads are previewed before writing',
+              style: TextStyle(color: AppDesign.muted(context)),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppDesign.spacingMd),
         _managementGrid(),
         const SizedBox(height: AppDesign.spacingMd),
         Row(
@@ -1594,10 +1695,7 @@ class _AdminScreenState extends State<AdminScreen> {
             Expanded(
               flex: 3,
               child: Column(
-                children: [
-                  _timetableUploadSection(),
-                  _archiveSection(),
-                ],
+                children: [_timetableUploadSection(), _archiveSection()],
               ),
             ),
             const SizedBox(width: AppDesign.spacingMd),

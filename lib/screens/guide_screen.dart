@@ -6,6 +6,7 @@ import '../utils/design_constants.dart';
 import '../utils/guide_content.dart';
 import '../utils/page_info_helper.dart';
 import '../widgets/common/app_search_field.dart';
+import '../widgets/common/tabulr_surface.dart';
 import '../widgets/common/app_tappable.dart';
 import '../widgets/common/app_toast.dart';
 import '../widgets/app_tools.dart';
@@ -429,60 +430,62 @@ class _GuideScreenState extends State<GuideScreen> {
 
   Widget _topicCard(BuildContext context, GuideTopic topic) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
+    return Padding(
       key: _keys[topic.anchor],
-      margin: const EdgeInsets.only(bottom: AppDesign.spacingMd),
-      padding: const EdgeInsets.all(AppDesign.spacingMd),
-      decoration: AppDesign.cardDecoration(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: scheme.primary.withValues(alpha: 0.10),
-                  borderRadius: AppDesign.innerBorderRadius(context),
+      padding: const EdgeInsets.only(bottom: AppDesign.spacingMd),
+      child: TabulrSurface(
+        level: TabulrSurfaceLevel.panel,
+        padding: const EdgeInsets.all(AppDesign.spacingMd),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: scheme.primary.withValues(alpha: 0.10),
+                    borderRadius: AppDesign.innerBorderRadius(context),
+                  ),
+                  child: Icon(topic.icon, size: 17, color: scheme.primary),
                 ),
-                child: Icon(topic.icon, size: 17, color: scheme.primary),
-              ),
-              const SizedBox(width: AppDesign.spacingSm + 2),
-              Expanded(
-                child: Text(
-                  topic.title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
+                const SizedBox(width: AppDesign.spacingSm + 2),
+                Expanded(
+                  child: Text(
+                    topic.title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.link, size: 17),
-                tooltip: 'Copy link to this section',
-                visualDensity: VisualDensity.compact,
-                onPressed: () => _copyLink(topic),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppDesign.spacingSm + 2),
-          Text(
-            topic.lead,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              height: 1.55,
-              color: scheme.onSurface.withValues(alpha: 0.85),
+                IconButton(
+                  icon: const Icon(Icons.link, size: 17),
+                  tooltip: 'Copy link to this section',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => _copyLink(topic),
+                ),
+              ],
             ),
-          ),
-          if (topic.steps.isNotEmpty) ...[
-            const SizedBox(height: AppDesign.spacingMd),
-            for (final (i, step) in topic.steps.indexed)
-              _step(context, i + 1, step),
+            const SizedBox(height: AppDesign.spacingSm + 2),
+            Text(
+              topic.lead,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                height: 1.55,
+                color: scheme.onSurface.withValues(alpha: 0.85),
+              ),
+            ),
+            if (topic.steps.isNotEmpty) ...[
+              const SizedBox(height: AppDesign.spacingMd),
+              for (final (i, step) in topic.steps.indexed)
+                _step(context, i + 1, step),
+            ],
+            if (topic.pageInfo != null) _features(context, topic.pageInfo!),
+            for (final visual in topic.visuals)
+              GuideVisualFrame(visual: visual, enabled: _showVisuals),
           ],
-          if (topic.pageInfo != null) _features(context, topic.pageInfo!),
-          for (final visual in topic.visuals)
-            GuideVisualFrame(visual: visual, enabled: _showVisuals),
-        ],
+        ),
       ),
     );
   }

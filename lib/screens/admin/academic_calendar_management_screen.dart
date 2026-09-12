@@ -7,6 +7,8 @@ import '../../services/ui/page_leave_warning_service.dart';
 import '../../services/ui/toast_service.dart';
 import '../../utils/design_constants.dart';
 import '../../widgets/common/app_dialog.dart';
+import '../../widgets/common/tabulr_surface.dart';
+import '../../widgets/admin/admin_workspace.dart';
 
 /// Admin review + CRUD for a campus's academic calendar
 /// (`campuses/{id}/academicCalendar/current`). The `upload_timetable` Cloud
@@ -56,7 +58,8 @@ class _AcademicCalendarManagementScreenState
       AppDialog.confirm(
         context: context,
         title: 'Unsaved Changes',
-        message: 'You have unsaved calendar changes that will be lost. Continue?',
+        message:
+            'You have unsaved calendar changes that will be lost. Continue?',
         confirmLabel: confirmLabel,
         cancelLabel: 'Stay',
         isDangerous: true,
@@ -86,15 +89,15 @@ class _AcademicCalendarManagementScreenState
     await _load();
   }
 
-  void _sortEvents() =>
-      _events.sort((a, b) => a.date.compareTo(b.date));
+  void _sortEvents() => _events.sort((a, b) => a.date.compareTo(b.date));
 
   Future<void> _addOrEdit([int? index]) async {
     final result = await showDialog<AcademicCalendarEvent>(
       context: context,
-      builder: (_) => _EventEditorDialog(
-        initial: index == null ? null : _events[index],
-      ),
+      builder:
+          (_) => _EventEditorDialog(
+            initial: index == null ? null : _events[index],
+          ),
     );
     if (result == null) return;
     setState(() {
@@ -146,39 +149,49 @@ class _AcademicCalendarManagementScreenState
         if (await _confirmDiscard() && navigator.canPop()) navigator.pop();
       },
       child: Scaffold(
-        appBar: AppDesign.appBar(context, title: 'Academic Calendar', actions: [
-          if (_dirty)
-            Padding(
-              padding: const EdgeInsets.only(right: AppDesign.spacingSm),
-              child: TextButton.icon(
-                onPressed: _saving ? null : _save,
-                icon: _saving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.save_rounded, size: 18),
-                label: const Text('Save'),
+        appBar: AppDesign.appBar(
+          context,
+          title: 'Academic Calendar',
+          actions: [
+            if (_dirty)
+              Padding(
+                padding: const EdgeInsets.only(right: AppDesign.spacingSm),
+                child: TextButton.icon(
+                  onPressed: _saving ? null : _save,
+                  icon:
+                      _saving
+                          ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : const Icon(Icons.save_rounded, size: 18),
+                  label: const Text('Save'),
+                ),
               ),
-            ),
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            tooltip: 'Add entry',
-            onPressed: () => _addOrEdit(),
-          ),
-        ]),
-        body: Column(
-          children: [
-            _campusSelector(),
-            const Divider(height: 1),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _events.isEmpty
-                      ? _emptyState()
-                      : _list(),
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              tooltip: 'Add entry',
+              onPressed: () => _addOrEdit(),
             ),
           ],
+        ),
+        body: AdminWorkspace(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: [
+              _campusSelector(),
+              const Divider(height: 1),
+              Expanded(
+                child:
+                    _loading
+                        ? const Center(child: CircularProgressIndicator())
+                        : _events.isEmpty
+                        ? _emptyState()
+                        : _list(),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -200,8 +213,10 @@ class _AcademicCalendarManagementScreenState
             ),
           const Spacer(),
           if (!_loading)
-            Text('${_events.length} entries',
-                style: Theme.of(context).textTheme.bodySmall),
+            Text(
+              '${_events.length} entries',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
         ],
       ),
     );
@@ -215,19 +230,25 @@ class _AcademicCalendarManagementScreenState
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.event_note_outlined,
-                size: 48,
-                color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow)),
+            Icon(
+              Icons.event_note_outlined,
+              size: 48,
+              color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow),
+            ),
             const SizedBox(height: AppDesign.spacingMd),
-            Text('No calendar for ${_campusLabel(_campusId)} yet',
-                style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'No calendar for ${_campusLabel(_campusId)} yet',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: AppDesign.spacingSm),
             Text(
               'Upload a timetable with an academic-calendar page range, '
               'or add entries manually with +.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: scheme.onSurface.withValues(alpha: AppDesign.opacityMedium),
+                color: scheme.onSurface.withValues(
+                  alpha: AppDesign.opacityMedium,
+                ),
               ),
             ),
           ],
@@ -243,22 +264,42 @@ class _AcademicCalendarManagementScreenState
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (context, i) {
         final e = _events[i];
-        return ListTile(
-          leading: _categoryChip(e.category),
-          title: Text(e.label),
-          subtitle: Text(_dateLabel(e)),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
+        return TabulrSurface(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                tooltip: 'Edit',
-                onPressed: () => _addOrEdit(i),
+              _categoryChip(e.category),
+              const SizedBox(width: AppDesign.spacingMd),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      e.label,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _dateLabel(e),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
               ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, size: 18),
-                tooltip: 'Delete',
-                onPressed: () => _delete(i),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    tooltip: 'Edit',
+                    onPressed: () => _addOrEdit(i),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    tooltip: 'Delete',
+                    onPressed: () => _delete(i),
+                  ),
+                ],
               ),
             ],
           ),
@@ -280,7 +321,10 @@ class _AcademicCalendarManagementScreenState
       child: Text(
         academicCategoryShort(c),
         style: TextStyle(
-            color: color, fontSize: 11, fontWeight: FontWeight.w600),
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -357,7 +401,10 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
             TextField(
               controller: _labelCtrl,
               autofocus: true,
-              decoration: AppDesign.inputDecoration(context, hint: 'Description'),
+              decoration: AppDesign.inputDecoration(
+                context,
+                hint: 'Description',
+              ),
               minLines: 1,
               maxLines: 3,
             ),
@@ -383,12 +430,13 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
               contentPadding: EdgeInsets.zero,
               title: const Text('End date (optional)'),
               subtitle: Text(_endDate == null ? 'Single day' : _fmt(_endDate!)),
-              trailing: _endDate == null
-                  ? const Icon(Icons.add, size: 18)
-                  : IconButton(
-                      icon: const Icon(Icons.clear, size: 18),
-                      onPressed: () => setState(() => _endDate = null),
-                    ),
+              trailing:
+                  _endDate == null
+                      ? const Icon(Icons.add, size: 18)
+                      : IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () => setState(() => _endDate = null),
+                      ),
               onTap: () => _pickDate(isEnd: true),
             ),
           ],
@@ -411,7 +459,9 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
               AcademicCalendarEvent(
                 date: _date,
                 endDate:
-                    (_endDate != null && _endDate!.isAfter(_date)) ? _endDate : null,
+                    (_endDate != null && _endDate!.isAfter(_date))
+                        ? _endDate
+                        : null,
                 label: label,
                 category: _category,
               ),
@@ -424,10 +474,10 @@ class _EventEditorDialogState extends State<_EventEditorDialog> {
   }
 
   static String _categoryLabel(AcademicEventCategory c) => switch (c) {
-        AcademicEventCategory.holiday => 'Holiday',
-        AcademicEventCategory.exam => 'Exam window',
-        AcademicEventCategory.deadline => 'Deadline',
-        AcademicEventCategory.milestone => 'Milestone',
-        AcademicEventCategory.event => 'Event',
-      };
+    AcademicEventCategory.holiday => 'Holiday',
+    AcademicEventCategory.exam => 'Exam window',
+    AcademicEventCategory.deadline => 'Deadline',
+    AcademicEventCategory.milestone => 'Milestone',
+    AcademicEventCategory.event => 'Event',
+  };
 }

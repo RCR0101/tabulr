@@ -36,7 +36,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('shared card geometry follows the selected palette', (
+  testWidgets('shared card geometry stays stable across palettes', (
     tester,
   ) async {
     BorderRadiusGeometry? githubRadius;
@@ -67,8 +67,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(githubRadius, BorderRadius.circular(6));
+    expect(githubRadius, BorderRadius.circular(14));
     expect(draculaRadius, BorderRadius.circular(14));
-    expect(githubRadius, isNot(draculaRadius));
+    expect(githubRadius, draculaRadius);
   });
 }

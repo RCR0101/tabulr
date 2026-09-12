@@ -442,6 +442,14 @@ class _TimetableComparisonScreenState extends State<TimetableComparisonScreen> {
     final rightStats = TimetableStats.fromTimetable(_rightTimetable!);
 
     return Card(
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppDesign.cardBorderRadius(context),
+        side: BorderSide(
+          color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.65),
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

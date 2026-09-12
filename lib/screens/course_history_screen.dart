@@ -535,7 +535,7 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
                       Text(
                         course.courseCode,
                         style: const TextStyle(
-                          fontSize: 13.5,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -549,7 +549,7 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
                     Text(
                       _titleOf(course.courseCode),
                       style: TextStyle(
-                        fontSize: 11.5,
+                        fontSize: 12.5,
                         color: scheme.onSurface.withValues(alpha: 0.62),
                       ),
                       maxLines: 1,
@@ -639,7 +639,7 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
                   Text(
                     prof.displayName,
                     style: const TextStyle(
-                      fontSize: 13.5,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -650,7 +650,7 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
                     // section of one, and only worth saying when they did.
                     '${prof.everInCharge.isEmpty ? '' : ' · ${prof.everInCharge.length} as IC'}',
                     style: TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 12.5,
                       color: scheme.onSurface.withValues(alpha: 0.62),
                     ),
                   ),
@@ -1073,7 +1073,7 @@ class _CourseHistoryScreenState extends State<CourseHistoryScreen> {
           Text(
             display,
             style: TextStyle(
-              fontSize: 11.5,
+              fontSize: 12.5,
               fontWeight: bold || inCharge ? FontWeight.w700 : FontWeight.w600,
               color:
                   inCharge

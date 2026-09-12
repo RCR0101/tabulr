@@ -7,6 +7,7 @@ import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../models/app_theme.dart';
 import '../utils/page_info_helper.dart';
+import '../widgets/common/tabulr_surface.dart';
 import '../utils/grade_utils.dart' as grade_utils;
 
 class GradePlannerScreen extends StatefulWidget {
@@ -43,7 +44,9 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
   /// planned semester and any retaken course excluded, matching the headline CGPA.
   ({double credits, double gradePoints}) get _standing =>
       widget.cgpaData.standingBefore(
-          semester: _selectedSemester, replacedCodes: _plannedCodes);
+        semester: _selectedSemester,
+        replacedCodes: _plannedCodes,
+      );
 
   // CGPA as it stands before the planned semester.
   double get _currentCGPA {
@@ -64,10 +67,11 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
         final semesterData = widget.cgpaData.semesters[semester];
         if (semesterData != null) {
           // Only include Normal courses (not ATC)
-          _rankedCourses = semesterData.courses
-              .where((c) => c.courseType == CourseType.normal)
-              .map((c) => c.copyWith())
-              .toList();
+          _rankedCourses =
+              semesterData.courses
+                  .where((c) => c.courseType == CourseType.normal)
+                  .map((c) => c.copyWith())
+                  .toList();
         }
       } else {
         _rankedCourses = [];
@@ -106,7 +110,8 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
       priorCredits: _priorCredits,
       priorGradePoints: _priorGradePoints,
       courses: [
-        for (final c in _rankedCourses) (code: c.courseCode, credits: c.credits),
+        for (final c in _rankedCourses)
+          (code: c.courseCode, credits: c.credits),
       ],
       targetCgpa: targetCGPA,
     );
@@ -125,7 +130,8 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
     ToastService.showError(message);
   }
 
-  Color _getGradeColor(String grade) => grade_utils.getGradeColor(grade, scheme: Theme.of(context).colorScheme);
+  Color _getGradeColor(String grade) =>
+      grade_utils.getGradeColor(grade, scheme: Theme.of(context).colorScheme);
 
   @override
   void dispose() {
@@ -138,28 +144,58 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
     final isMobile = ResponsiveService.isMobile(context);
 
     return Scaffold(
-      appBar: AppDesign.appBar(context, title: 'Grade Planner',
-          actions: [PageInfoHelper.infoButton(context, PageInfoHelper.gradePlanner)]),
-      body: _semestersWithCourses.isEmpty
-          ? _buildEmptyState()
-          : SingleChildScrollView(
-              padding: EdgeInsets.all(isMobile ? 16 : 24),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1400),
-                  child: !isMobile && _selectedSemester != null
-                      // Desktop layout - side by side
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Left side - All inputs and controls
-                            Expanded(
-                              flex: 3,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  _buildSemesterSelector(),
-                                  const SizedBox(height: 16),
+      appBar: AppDesign.appBar(
+        context,
+        title: 'Grade Planner',
+        actions: [
+          PageInfoHelper.infoButton(context, PageInfoHelper.gradePlanner),
+        ],
+      ),
+      body:
+          _semestersWithCourses.isEmpty
+              ? _buildEmptyState()
+              : SingleChildScrollView(
+                padding: EdgeInsets.all(isMobile ? 16 : 24),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1400),
+                    child:
+                        !isMobile && _selectedSemester != null
+                            // Desktop layout - side by side
+                            ? Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Left side - All inputs and controls
+                                Expanded(
+                                  flex: 3,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      _buildSemesterSelector(),
+                                      const SizedBox(height: 16),
+                                      _buildCurrentCGPACard(),
+                                      const SizedBox(height: 16),
+                                      _buildCourseRankingSection(),
+                                      const SizedBox(height: 16),
+                                      _buildTargetInput(),
+                                      const SizedBox(height: 24),
+                                      _buildCalculateButton(),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 24),
+                                // Right side - Results card
+                                Expanded(flex: 2, child: _buildResultsCard()),
+                              ],
+                            )
+                            // Mobile layout or no semester selected - stacked
+                            : Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _buildSemesterSelector(),
+                                const SizedBox(height: 16),
+                                if (_selectedSemester != null) ...[
                                   _buildCurrentCGPACard(),
                                   const SizedBox(height: 16),
                                   _buildCourseRankingSection(),
@@ -167,41 +203,16 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                                   _buildTargetInput(),
                                   const SizedBox(height: 24),
                                   _buildCalculateButton(),
+                                  if (_results.isNotEmpty) ...[
+                                    const SizedBox(height: 24),
+                                    _buildResultsCard(),
+                                  ],
                                 ],
-                              ),
-                            ),
-                            const SizedBox(width: 24),
-                            // Right side - Results card
-                            Expanded(
-                              flex: 2,
-                              child: _buildResultsCard(),
-                            ),
-                          ],
-                        )
-                      // Mobile layout or no semester selected - stacked
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildSemesterSelector(),
-                            const SizedBox(height: 16),
-                            if (_selectedSemester != null) ...[
-                              _buildCurrentCGPACard(),
-                              const SizedBox(height: 16),
-                              _buildCourseRankingSection(),
-                              const SizedBox(height: 16),
-                              _buildTargetInput(),
-                              const SizedBox(height: 24),
-                              _buildCalculateButton(),
-                              if (_results.isNotEmpty) ...[
-                                const SizedBox(height: 24),
-                                _buildResultsCard(),
                               ],
-                            ],
-                          ],
-                        ),
+                            ),
+                  ),
                 ),
               ),
-            ),
     );
   }
 
@@ -227,8 +238,8 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
               'Add courses to your semesters in the CGPA Calculator first.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
+                color: Theme.of(context).colorScheme.outline,
+              ),
             ),
           ],
         ),
@@ -237,72 +248,59 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
   }
 
   Widget _buildSemesterSelector() {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: AppDesign.cardBorderRadius(context),
-        side: BorderSide(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Select Semester to Plan',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _selectedSemester,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: AppDesign.cardBorderRadius(context),
-                ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    return TabulrSurface(
+      level: TabulrSurfaceLevel.panel,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Select Semester to Plan',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: _selectedSemester,
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: AppDesign.cardBorderRadius(context),
               ),
-              hint: const Text('Choose a semester'),
-              items: _semestersWithCourses.map((semester) {
-                final courseCount =
-                    widget.cgpaData.semesters[semester]?.courses.length ?? 0;
-                return DropdownMenuItem(
-                  value: semester,
-                  child: Text('$semester ($courseCount courses)'),
-                );
-              }).toList(),
-              onChanged: _onSemesterChanged,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
             ),
-          ],
-        ),
+            hint: const Text('Choose a semester'),
+            items:
+                _semestersWithCourses.map((semester) {
+                  final courseCount =
+                      widget.cgpaData.semesters[semester]?.courses.length ?? 0;
+                  return DropdownMenuItem(
+                    value: semester,
+                    child: Text('$semester ($courseCount courses)'),
+                  );
+                }).toList(),
+            onChanged: _onSemesterChanged,
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildCurrentCGPACard() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Theme.of(context).colorScheme.primary,
-            Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
-          ],
-        ),
-        borderRadius: AppDesign.cardBorderRadius(context),
-      ),
+    return TabulrSurface(
+      level: TabulrSurfaceLevel.raised,
       padding: const EdgeInsets.all(20),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
+              color: Theme.of(
+                context,
+              ).colorScheme.onPrimary.withValues(alpha: 0.2),
               borderRadius: AppDesign.cardBorderRadius(context),
             ),
             child: Icon(
@@ -319,15 +317,19 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                 Text(
                   'Current CGPA',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.9),
-                      ),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onPrimary.withValues(alpha: 0.9),
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '(excluding $_selectedSemester)',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.7),
-                      ),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onPrimary.withValues(alpha: 0.7),
+                  ),
                 ),
               ],
             ),
@@ -335,9 +337,9 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
           Text(
             _currentCGPA.toStringAsFixed(2),
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onPrimary,
-                  fontWeight: FontWeight.bold,
-                ),
+              color: Theme.of(context).colorScheme.onPrimary,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -361,8 +363,8 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
               'No Normal courses in this semester.\nATC courses are not included in CGPA.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
+                color: Theme.of(context).colorScheme.outline,
+              ),
             ),
           ),
         ),
@@ -393,8 +395,8 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                   child: Text(
                     'Rank Courses by Priority',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -403,8 +405,8 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
             Text(
               'Drag to reorder. Higher = more important for good grades.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
+                color: Theme.of(context).colorScheme.outline,
+              ),
             ),
             const SizedBox(height: 12),
             ReorderableListView.builder(
@@ -448,70 +450,69 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
       child: Material(
         color: Colors.transparent,
         child: ListTile(
-        leading: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Theme.of(context).colorScheme.primary,
-                Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
-              ],
-            ),
-            borderRadius: AppDesign.inputBorderRadius(context),
-          ),
-          child: Center(
-            child: Text(
-              '${index + 1}',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onPrimary,
-                fontWeight: FontWeight.bold,
+          leading: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Theme.of(context).colorScheme.primary,
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
+                ],
               ),
+              borderRadius: AppDesign.inputBorderRadius(context),
             ),
-          ),
-        ),
-        title: Text(
-          course.courseCode,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          course.courseTitle,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .primaryContainer
-                    .withValues(alpha: 0.5),
-                borderRadius: AppDesign.inputBorderRadius(context),
-              ),
+            child: Center(
               child: Text(
-                '${course.credits.toStringAsFixed(0)} credits',
+                '${index + 1}',
                 style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            ReorderableDragStartListener(
-              index: index,
-              child: Icon(
-                Icons.drag_handle_rounded,
-                color: Theme.of(context).colorScheme.outline,
+          ),
+          title: Text(
+            course.courseCode,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          subtitle: Text(
+            course.courseTitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer.withValues(alpha: 0.5),
+                  borderRadius: AppDesign.inputBorderRadius(context),
+                ),
+                child: Text(
+                  '${course.credits.toStringAsFixed(0)} credits',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+                ),
               ),
-            ),
-          ],
-        ),
+              const SizedBox(width: 8),
+              ReorderableDragStartListener(
+                index: index,
+                child: Icon(
+                  Icons.drag_handle_rounded,
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -533,15 +534,16 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
           children: [
             Text(
               'Target CGPA',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _targetCGPAController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: InputDecoration(
                 hintText: 'Enter target CGPA (e.g., 8.5)',
                 border: OutlineInputBorder(
@@ -558,20 +560,22 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
 
   Widget _buildCalculateButton() {
     return FilledButton.icon(
-      onPressed: _isCalculating || _rankedCourses.isEmpty
-          ? null
-          : _calculateGrades,
-      icon: _isCalculating
-          ? SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Theme.of(context).colorScheme.onPrimary,
-              ),
-            )
-          : const Icon(Icons.calculate_rounded),
-      label: Text(_isCalculating ? 'Calculating...' : 'Find Grade Combinations'),
+      onPressed:
+          _isCalculating || _rankedCourses.isEmpty ? null : _calculateGrades,
+      icon:
+          _isCalculating
+              ? SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
+              )
+              : const Icon(Icons.calculate_rounded),
+      label: Text(
+        _isCalculating ? 'Calculating...' : 'Find Grade Combinations',
+      ),
       style: FilledButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(
@@ -590,9 +594,7 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: AppDesign.cardBorderRadius(context),
-          side: BorderSide(
-            color: colorScheme.outline.withValues(alpha: 0.2),
-          ),
+          side: BorderSide(color: colorScheme.outline.withValues(alpha: 0.2)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -611,8 +613,12 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                   ],
                 ),
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(ThemeGeometry.of(context).cardRadius),
-                  topRight: Radius.circular(ThemeGeometry.of(context).cardRadius),
+                  topLeft: Radius.circular(
+                    ThemeGeometry.of(context).cardRadius,
+                  ),
+                  topRight: Radius.circular(
+                    ThemeGeometry.of(context).cardRadius,
+                  ),
                 ),
               ),
               child: Row(
@@ -620,7 +626,9 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.2),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onPrimary.withValues(alpha: 0.2),
                       borderRadius: AppDesign.inputBorderRadius(context),
                     ),
                     child: Icon(
@@ -636,9 +644,9 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                           ? 'Grade Combinations'
                           : 'Top ${_results.length} Combinations',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onPrimary,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        color: Theme.of(context).colorScheme.onPrimary,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -661,17 +669,17 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                     Text(
                       'No Results Yet',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: colorScheme.outline,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        color: colorScheme.outline,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Enter a target CGPA and tap Calculate to see the best grade combinations.',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.outline.withValues(alpha: 0.8),
-                          ),
+                        color: colorScheme.outline.withValues(alpha: 0.8),
+                      ),
                     ),
                   ],
                 ),
@@ -702,14 +710,24 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
     final target = _targetCGPAController.text.trim();
     final avg = solution.requiredSemesterAvg;
 
-    final (String msg, Color color, IconData icon) = !solution.feasible
-        ? ('Out of reach this semester — even straight A\'s reach only ${solution.maxAchievableCgpa.toStringAsFixed(2)}.',
-            scheme.error, Icons.error_outline)
-        : avg <= 0
-            ? ('You\'re already above $target — any passing semester holds it.',
-                AppDesign.success(context), Icons.check_circle_outline)
-            : ('Average ${avg.toStringAsFixed(2)} across these courses to reach $target.',
-                scheme.secondary, Icons.flag_outlined);
+    final (String msg, Color color, IconData icon) =
+        !solution.feasible
+            ? (
+              'Out of reach this semester — even straight A\'s reach only ${solution.maxAchievableCgpa.toStringAsFixed(2)}.',
+              scheme.error,
+              Icons.error_outline,
+            )
+            : avg <= 0
+            ? (
+              'You\'re already above $target — any passing semester holds it.',
+              AppDesign.success(context),
+              Icons.check_circle_outline,
+            )
+            : (
+              'Average ${avg.toStringAsFixed(2)} across these courses to reach $target.',
+              scheme.secondary,
+              Icons.flag_outlined,
+            );
 
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
@@ -723,9 +741,13 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
           Icon(icon, color: color, size: 20),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(msg,
-                style:
-                    TextStyle(color: scheme.onSurface, fontWeight: FontWeight.w500)),
+            child: Text(
+              msg,
+              style: TextStyle(
+                color: scheme.onSurface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ],
       ),
@@ -746,9 +768,10 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: AppDesign.cardBorderRadius(context),
         side: BorderSide(
-          color: isTargetAchieved
-              ? AppDesign.success(context).withValues(alpha: 0.5)
-              : colorScheme.outline.withValues(alpha: 0.2),
+          color:
+              isTargetAchieved
+                  ? AppDesign.success(context).withValues(alpha: 0.5)
+                  : colorScheme.outline.withValues(alpha: 0.2),
           width: isTargetAchieved ? 2 : 1,
         ),
       ),
@@ -760,8 +783,10 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
             Row(
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: colorScheme.primaryContainer,
                     borderRadius: AppDesign.inputBorderRadius(context),
@@ -777,8 +802,10 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                 const Spacer(),
                 if (isTargetAchieved)
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppDesign.success(context).withValues(alpha: 0.1),
                       borderRadius: AppDesign.inputBorderRadius(context),
@@ -786,8 +813,11 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.check_circle,
-                            color: AppDesign.success(context), size: 16),
+                        Icon(
+                          Icons.check_circle,
+                          color: AppDesign.success(context),
+                          size: 16,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'Target Achieved',
@@ -807,18 +837,18 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
                     Text(
                       'CGPA',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colorScheme.outline,
-                          ),
+                        color: colorScheme.outline,
+                      ),
                     ),
                     Text(
                       result.resultingCGPA.toStringAsFixed(4),
-                      style:
-                          Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: isTargetAchieved
-                                    ? AppDesign.success(context)
-                                    : colorScheme.onSurface,
-                              ),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color:
+                            isTargetAchieved
+                                ? AppDesign.success(context)
+                                : colorScheme.onSurface,
+                      ),
                     ),
                   ],
                 ),
@@ -830,49 +860,58 @@ class _GradePlannerScreenState extends State<GradePlannerScreen> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _rankedCourses.map((course) {
-                final grade = result.courseGrades[course.courseCode] ?? '?';
-                return Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _getGradeColor(grade).withValues(alpha: 0.15),
-                    borderRadius: AppDesign.inputBorderRadius(context),
-                    border: Border.all(
-                      color: _getGradeColor(grade).withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        course.courseCode,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colorScheme.onSurface.withValues(alpha: 0.8),
+              children:
+                  _rankedCourses.map((course) {
+                    final grade = result.courseGrades[course.courseCode] ?? '?';
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getGradeColor(grade).withValues(alpha: 0.15),
+                        borderRadius: AppDesign.inputBorderRadius(context),
+                        border: Border.all(
+                          color: _getGradeColor(grade).withValues(alpha: 0.3),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: _getGradeColor(grade),
-                          borderRadius: AppDesign.buttonBorderRadius(context),
-                        ),
-                        child: Text(
-                          grade,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onPrimary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            course.courseCode,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colorScheme.onSurface.withValues(
+                                alpha: 0.8,
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _getGradeColor(grade),
+                              borderRadius: AppDesign.buttonBorderRadius(
+                                context,
+                              ),
+                            ),
+                            child: Text(
+                              grade,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onPrimary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                );
-              }).toList(),
+                    );
+                  }).toList(),
             ),
           ],
         ),

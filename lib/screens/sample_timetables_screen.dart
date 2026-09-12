@@ -411,23 +411,11 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
           child: Container(
             padding: const EdgeInsets.all(AppDesign.spacingLg),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  scheme.primaryContainer.withValues(alpha: 0.44),
-                  scheme.surface,
-                ],
-              ),
+              color: scheme.surfaceContainerLow,
               borderRadius: AppDesign.cardBorderRadius(context),
-              border: Border.all(color: scheme.primary.withValues(alpha: 0.16)),
-              boxShadow: [
-                BoxShadow(
-                  color: scheme.shadow.withValues(alpha: 0.06),
-                  blurRadius: 28,
-                  offset: const Offset(0, 12),
-                ),
-              ],
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: 0.65),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

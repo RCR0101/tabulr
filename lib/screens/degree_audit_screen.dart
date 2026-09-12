@@ -9,6 +9,7 @@ import '../services/data/profile_service.dart';
 import '../utils/course_code.dart';
 import '../utils/design_constants.dart';
 import '../utils/page_info_helper.dart';
+import '../widgets/common/tabulr_surface.dart';
 
 /// P1 graduation audit: the student's transcript diffed against their degree's
 /// core requirements, plus how many electives they've already cleared. See
@@ -129,9 +130,10 @@ class _DegreeAuditScreenState extends State<DegreeAuditScreen> {
           PageInfoHelper.infoButton(context, PageInfoHelper.degreeAudit),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _buildBody(context),
+      body:
+          _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _buildBody(context),
     );
   }
 
@@ -186,8 +188,8 @@ class _DegreeAuditScreenState extends State<DegreeAuditScreen> {
           'aren\'t published in the branch data, so they\'re shown as counts, '
           'not "remaining".',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: scheme.onSurface.withValues(alpha: 0.5),
-              ),
+            color: scheme.onSurface.withValues(alpha: 0.5),
+          ),
         ),
       ],
     );
@@ -195,32 +197,25 @@ class _DegreeAuditScreenState extends State<DegreeAuditScreen> {
 
   Widget _headerCard(BuildContext context, DegreeAudit audit) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
+    return TabulrSurface(
+      level: TabulrSurfaceLevel.raised,
       padding: const EdgeInsets.all(AppDesign.spacingLg),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [scheme.primaryContainer, scheme.surfaceContainerHigh],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: AppDesign.chipBorderRadius(context),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Core courses cleared',
             style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: scheme.onSurface.withValues(alpha: 0.6),
-                ),
+              color: scheme.onSurface.withValues(alpha: 0.6),
+            ),
           ),
           const SizedBox(height: 2),
           Text(
             '${audit.cleared} / ${audit.total}',
             style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: scheme.onSurface,
-                ),
+              fontWeight: FontWeight.w700,
+              color: scheme.onSurface,
+            ),
           ),
           const SizedBox(height: 12),
           ClipRRect(
@@ -259,22 +254,22 @@ class _DegreeAuditScreenState extends State<DegreeAuditScreen> {
   }
 
   Widget _stat(BuildContext context, String label, Color color) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: Theme.of(
-              context,
-            ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
-          ),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
+      const SizedBox(width: 6),
+      Text(
+        label,
+        style: Theme.of(
+          context,
+        ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+      ),
+    ],
+  );
 
   Widget _bottleneckCard(BuildContext context, BottleneckReport report) {
     final scheme = Theme.of(context).colorScheme;
@@ -391,15 +386,15 @@ class _DegreeAuditScreenState extends State<DegreeAuditScreen> {
             Text(
               '$count',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: c,
-                  ),
+                fontWeight: FontWeight.w700,
+                color: c,
+              ),
             ),
             Text(
               label,
               style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: scheme.onSurface.withValues(alpha: 0.7),
-                  ),
+                color: scheme.onSurface.withValues(alpha: 0.7),
+              ),
             ),
           ],
         ),
@@ -427,14 +422,15 @@ class _DegreeAuditScreenState extends State<DegreeAuditScreen> {
       CoreStatus.cleared => (Icons.check_circle, AppDesign.success(context)),
       CoreStatus.failed => (Icons.replay_circle_filled, scheme.error),
       CoreStatus.pending => (
-          Icons.radio_button_unchecked,
-          scheme.onSurface.withValues(alpha: 0.35),
-        ),
+        Icons.radio_button_unchecked,
+        scheme.onSurface.withValues(alpha: 0.35),
+      ),
     };
     // A choice shows its options as "A or B"; a cleared choice names the one taken.
-    final label = r.status == CoreStatus.cleared && r.slot.isChoice
-        ? '${r.clearedBy}  (from ${r.slot.options.join(" / ")})'
-        : r.slot.options.join('  or  ');
+    final label =
+        r.status == CoreStatus.cleared && r.slot.isChoice
+            ? '${r.clearedBy}  (from ${r.slot.options.join(" / ")})'
+            : r.slot.options.join('  or  ');
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -456,9 +452,9 @@ class _DegreeAuditScreenState extends State<DegreeAuditScreen> {
             Text(
               'retake',
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.error,
-                    fontWeight: FontWeight.w600,
-                  ),
+                color: scheme.error,
+                fontWeight: FontWeight.w600,
+              ),
             ),
         ],
       ),
@@ -507,14 +503,8 @@ class _DegreeAuditScreenState extends State<DegreeAuditScreen> {
     required String title,
     required Widget child,
   }) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
+    return TabulrSurface(
       padding: const EdgeInsets.all(AppDesign.spacingMd),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: AppDesign.cardBorderRadius(context),
-        border: Border.all(color: scheme.outline.withValues(alpha: 0.1)),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

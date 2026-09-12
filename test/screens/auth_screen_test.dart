@@ -11,9 +11,10 @@ void main() {
     WidgetTester tester, {
     required Future<AuthSignInResult> Function() signIn,
     required Future<void> Function() guest,
+    Size size = const Size(390, 844),
   }) async {
     tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(390, 844);
+    tester.view.physicalSize = size;
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
 
@@ -24,6 +25,21 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+  }
+
+  for (final size in [const Size(320, 640), const Size(1200, 800)]) {
+    testWidgets('auth layout is usable at ${size.width}', (tester) async {
+      await pumpAuth(
+        tester,
+        size: size,
+        signIn: () async => AuthSignInResult.signedIn,
+        guest: () async {},
+      );
+
+      expect(find.text('Sign in with Google'), findsOneWidget);
+      expect(find.text('Continue as Guest'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   }
 
   testWidgets('guest progress does not make Google appear to be signing in', (

@@ -15,6 +15,7 @@ import '../services/ui/toast_service.dart';
 import '../services/ui/secure_logger.dart';
 import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_button.dart';
+import '../widgets/common/tabulr_surface.dart';
 import '../utils/design_constants.dart';
 import '../models/app_theme.dart';
 import '../utils/page_info_helper.dart';
@@ -48,27 +49,31 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
   bool _isLoading = false;
   String _searchText = '';
   final TextEditingController _searchController = TextEditingController();
-  
+
   // Category filtering
   bool _isLoadingCategories = false;
   Set<String> _huelCourses = {};
   Set<String> _delCourses = {};
-  final Set<CourseCategory> _selectedCategories = {CourseCategory.huel, CourseCategory.other}; // DEL not selected by default
-  
+  final Set<CourseCategory> _selectedCategories = {
+    CourseCategory.huel,
+    CourseCategory.other,
+  }; // DEL not selected by default
+
   // DEL-specific filtering parameters
   List<BranchInfo> _availableBranches = [];
   String? _primaryBranch;
   String? _secondaryBranch;
   String? _primarySemester;
   String? _secondarySemester;
-  
+
   // UI state
   bool _isSearchParamsExpanded = true;
-  
+
   final HumanitiesElectivesService _huelService = HumanitiesElectivesService();
   final DisciplineElectivesService _delService = DisciplineElectivesService();
-  
-  static final List<String> _semesterOptions = SemesterConstants.yearsOneToThree;
+
+  static final List<String> _semesterOptions =
+      SemesterConstants.yearsOneToThree;
 
   // Section shuffle state
   Course? _shuffleCourse;
@@ -101,7 +106,8 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     final profile = ProfileService().cached;
     final codes = _availableBranches.map((b) => b.code).toSet();
 
-    if (profile.primaryBranch != null && codes.contains(profile.primaryBranch)) {
+    if (profile.primaryBranch != null &&
+        codes.contains(profile.primaryBranch)) {
       _primaryBranch = profile.primaryBranch;
     }
     // The secondary dropdown excludes the primary, so never pre-fill it to the
@@ -128,29 +134,34 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
       _availableBranches = await _delService.getAvailableBranches();
       _prefillFromProfile();
 
-      final huelCourses = await _huelService.getAllHumanitiesElectives(widget.availableCourses);
+      final huelCourses = await _huelService.getAllHumanitiesElectives(
+        widget.availableCourses,
+      );
       _huelCourses = huelCourses.map((course) => course.courseCode).toSet();
     } catch (e) {
-      SecureLogger.warning('QuickReplace', 'Failed to load course categories', {'error': e.toString()});
+      SecureLogger.warning('QuickReplace', 'Failed to load course categories', {
+        'error': e.toString(),
+      });
     } finally {
       setState(() {
         _isLoadingCategories = false;
       });
     }
   }
-  
+
   // Load DEL courses based on selected branch and semester
   Future<void> _loadDelCourses() async {
     if (_primaryBranch != null && _primarySemester != null) {
       try {
         // Load filtered DEL courses with clash detection
-        final delElectives = await _delService.getFilteredDisciplineElectivesWithClashDetection(
-          _primaryBranch!,
-          _secondaryBranch,
-          _primarySemester!,
-          _secondarySemester,
-          widget.availableCourses,
-        );
+        final delElectives = await _delService
+            .getFilteredDisciplineElectivesWithClashDetection(
+              _primaryBranch!,
+              _secondaryBranch,
+              _primarySemester!,
+              _secondarySemester,
+              widget.availableCourses,
+            );
         _delCourses = delElectives.map((del) => del.courseCode).toSet();
       } catch (e) {
         // Fallback to all DEL courses
@@ -161,11 +172,11 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
       await _loadAllDelCourses();
     }
   }
-  
+
   // Load all DEL courses (fallback method)
   Future<void> _loadAllDelCourses() async {
     final allDelCourses = <String>{};
-    
+
     for (final branch in _availableBranches) {
       final delCourses = await _delService.getDisciplineElectives(branch.code);
       allDelCourses.addAll(delCourses.map((course) => course.courseCode));
@@ -174,10 +185,9 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
   }
 
   List<Course> get _selectedCourses {
-    final selectedCourseCodes = widget.selectedSections
-        .map((section) => section.courseCode)
-        .toSet();
-    
+    final selectedCourseCodes =
+        widget.selectedSections.map((section) => section.courseCode).toSet();
+
     return widget.availableCourses
         .where((course) => selectedCourseCodes.contains(course.courseCode))
         .toList();
@@ -203,39 +213,39 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
         return 'Other';
     }
   }
-  
+
   bool _canSearch() {
     // Must have selected a course
     if (_selectedCourse == null) return false;
-    
+
     // Must have selected at least one category
     if (_selectedCategories.isEmpty) return false;
-    
+
     // If DEL is selected, must have branch and semester
     if (_selectedCategories.contains(CourseCategory.del)) {
       if (_primaryBranch == null || _primarySemester == null) {
         return false;
       }
     }
-    
+
     return true;
   }
-  
+
   String _getValidationMessage() {
     if (_selectedCourse == null) {
       return 'Please select a course to replace';
     }
-    
+
     if (_selectedCategories.isEmpty) {
       return 'Please select at least one course category';
     }
-    
+
     if (_selectedCategories.contains(CourseCategory.del)) {
       if (_primaryBranch == null || _primarySemester == null) {
         return 'Please select branch and semester for DEL courses';
       }
     }
-    
+
     return '';
   }
 
@@ -250,26 +260,26 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     await Future.microtask(() {
       // First filter available courses by selected categories
       final filteredCoursePool = _getFilteredCoursePool();
-      
+
       final comparisons = CourseComparisonService.findSimilarCourses(
         _selectedCourse!,
         filteredCoursePool,
         limit: 50, // Increased limit since we're pre-filtering
       );
-      
+
       setState(() {
         _similarCourses = comparisons;
         _isLoading = false;
       });
     });
   }
-  
+
   // Get filtered course pool based on selected categories
   List<Course> _getFilteredCoursePool() {
     if (_selectedCategories.isEmpty) {
       return []; // No courses if no categories selected
     }
-    
+
     return widget.availableCourses.where((course) {
       final category = _getCourseCategory(course.courseCode);
       return _selectedCategories.contains(category);
@@ -279,12 +289,18 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
   List<CourseComparison> get _filteredCourses {
     // Only apply search text filtering since category filtering happens at course pool level
     if (_searchText.isEmpty) return _similarCourses;
-    
+
     final lowercaseSearch = _searchText.toLowerCase();
     return _similarCourses
-        .where((comparison) =>
-            comparison.course.courseCode.toLowerCase().contains(lowercaseSearch) ||
-            comparison.course.courseTitle.toLowerCase().contains(lowercaseSearch))
+        .where(
+          (comparison) =>
+              comparison.course.courseCode.toLowerCase().contains(
+                lowercaseSearch,
+              ) ||
+              comparison.course.courseTitle.toLowerCase().contains(
+                lowercaseSearch,
+              ),
+        )
         .toList();
   }
 
@@ -473,7 +489,9 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
   void _performLegacyReplace(Course replacementCourse) {
     // Check if both courses have only lecture sections
     if (!_canReplaceCourses(_selectedCourse!, replacementCourse)) {
-      ToastService.showWarning('Can only replace between courses that have only lecture sections');
+      ToastService.showWarning(
+        'Can only replace between courses that have only lecture sections',
+      );
       return;
     }
 
@@ -484,64 +502,82 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     }
 
     widget.onReplace(_selectedCourse!, replacementCourse);
-    
+
     ToastService.showSuccess(
       'Replaced ${_selectedCourse!.courseCode} with ${replacementCourse.courseCode}',
     );
-    
+
     Navigator.of(context).pop();
   }
 
   bool _canReplaceCourses(Course selectedCourse, Course replacementCourse) {
-    return CourseComparisonService.hasOnlyLectureSections(selectedCourse) && 
-           CourseComparisonService.hasOnlyLectureSections(replacementCourse);
+    return CourseComparisonService.hasOnlyLectureSections(selectedCourse) &&
+        CourseComparisonService.hasOnlyLectureSections(replacementCourse);
   }
 
   ClashCheckResult _checkForClashes(Course replacementCourse) {
-    final tempSelectedSections = widget.selectedSections
-        .where((section) => section.courseCode != _selectedCourse!.courseCode)
-        .toList();
-    
+    final tempSelectedSections =
+        widget.selectedSections
+            .where(
+              (section) => section.courseCode != _selectedCourse!.courseCode,
+            )
+            .toList();
+
     final replacementSections = replacementCourse.sections;
-    final lectureSection = replacementSections
-        .where((s) => s.type == SectionType.L)
-        .isNotEmpty ? replacementSections.firstWhere((s) => s.type == SectionType.L) : null;
-    
-    final tutorialSection = replacementSections
-        .where((s) => s.type == SectionType.T)
-        .isNotEmpty ? replacementSections.firstWhere((s) => s.type == SectionType.T) : null;
-    
-    final practicalSection = replacementSections
-        .where((s) => s.type == SectionType.P)
-        .isNotEmpty ? replacementSections.firstWhere((s) => s.type == SectionType.P) : null;
+    final lectureSection =
+        replacementSections.where((s) => s.type == SectionType.L).isNotEmpty
+            ? replacementSections.firstWhere((s) => s.type == SectionType.L)
+            : null;
+
+    final tutorialSection =
+        replacementSections.where((s) => s.type == SectionType.T).isNotEmpty
+            ? replacementSections.firstWhere((s) => s.type == SectionType.T)
+            : null;
+
+    final practicalSection =
+        replacementSections.where((s) => s.type == SectionType.P).isNotEmpty
+            ? replacementSections.firstWhere((s) => s.type == SectionType.P)
+            : null;
 
     if (lectureSection != null) {
-      tempSelectedSections.add(SelectedSection(
-        courseCode: replacementCourse.courseCode,
-        sectionId: lectureSection.sectionId,
-        section: lectureSection,
-      ));
-    }
-    
-    if (tutorialSection != null) {
-      tempSelectedSections.add(SelectedSection(
-        courseCode: replacementCourse.courseCode,
-        sectionId: tutorialSection.sectionId,
-        section: tutorialSection,
-      ));
-    }
-    
-    if (practicalSection != null) {
-      tempSelectedSections.add(SelectedSection(
-        courseCode: replacementCourse.courseCode,
-        sectionId: practicalSection.sectionId,
-        section: practicalSection,
-      ));
+      tempSelectedSections.add(
+        SelectedSection(
+          courseCode: replacementCourse.courseCode,
+          sectionId: lectureSection.sectionId,
+          section: lectureSection,
+        ),
+      );
     }
 
-    final clashes = ClashDetector.detectClashes(tempSelectedSections, widget.availableCourses);
-    final errorClashes = clashes.where((clash) => clash.severity == ClashSeverity.error).toList();
-    
+    if (tutorialSection != null) {
+      tempSelectedSections.add(
+        SelectedSection(
+          courseCode: replacementCourse.courseCode,
+          sectionId: tutorialSection.sectionId,
+          section: tutorialSection,
+        ),
+      );
+    }
+
+    if (practicalSection != null) {
+      tempSelectedSections.add(
+        SelectedSection(
+          courseCode: replacementCourse.courseCode,
+          sectionId: practicalSection.sectionId,
+          section: practicalSection,
+        ),
+      );
+    }
+
+    final clashes = ClashDetector.detectClashes(
+      tempSelectedSections,
+      widget.availableCourses,
+    );
+    final errorClashes =
+        clashes
+            .where((clash) => clash.severity == ClashSeverity.error)
+            .toList();
+
     return ClashCheckResult(
       hasClashes: errorClashes.isNotEmpty,
       clashWarnings: errorClashes,
@@ -563,26 +599,28 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 16),
-          ...clashes.map((clash) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.error,
-                  size: 16,
-                  color: Theme.of(context).colorScheme.error,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    clash.message,
-                    style: Theme.of(context).textTheme.bodySmall,
+          ...clashes.map(
+            (clash) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.error,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.error,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      clash.message,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          )),
+          ),
         ],
       ),
       actions: [
@@ -605,22 +643,46 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        actions: [PageInfoHelper.infoButton(context, PageInfoHelper.quickReplace)],
+        actions: [
+          PageInfoHelper.infoButton(context, PageInfoHelper.quickReplace),
+        ],
       ),
       body: SafeArea(
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: EdgeInsets.fromLTRB(
+                ResponsiveService.isMobile(context) ? 10 : 16,
+                6,
+                ResponsiveService.isMobile(context) ? 10 : 16,
+                6,
+              ),
               child: SizedBox(
                 width: double.infinity,
                 child: SegmentedButton<int>(
-                  segments: const [
-                    ButtonSegment(value: 0, label: Text('Replace Course'), icon: Icon(Icons.swap_horiz, size: 18)),
-                    ButtonSegment(value: 1, label: Text('Section Shuffle'), icon: Icon(Icons.shuffle, size: 18)),
+                  segments: [
+                    ButtonSegment(
+                      value: 0,
+                      label: Text(
+                        ResponsiveService.isMobile(context)
+                            ? 'Replace'
+                            : 'Replace Course',
+                      ),
+                      icon: const Icon(Icons.swap_horiz, size: 18),
+                    ),
+                    ButtonSegment(
+                      value: 1,
+                      label: Text(
+                        ResponsiveService.isMobile(context)
+                            ? 'Shuffle'
+                            : 'Section Shuffle',
+                      ),
+                      icon: const Icon(Icons.shuffle, size: 18),
+                    ),
                   ],
                   selected: {_selectedTab},
-                  onSelectionChanged: (set) => setState(() => _selectedTab = set.first),
+                  onSelectionChanged:
+                      (set) => setState(() => _selectedTab = set.first),
                   style: SegmentedButton.styleFrom(
                     selectedBackgroundColor: scheme.primaryContainer,
                     selectedForegroundColor: scheme.onPrimaryContainer,
@@ -629,7 +691,10 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
               ),
             ),
             Expanded(
-              child: _selectedTab == 0 ? _buildReplaceCourseTab() : _buildSectionShuffleTab(),
+              child:
+                  _selectedTab == 0
+                      ? _buildReplaceCourseTab()
+                      : _buildSectionShuffleTab(),
             ),
           ],
         ),
@@ -650,7 +715,9 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
               color: Theme.of(context).colorScheme.surface,
               borderRadius: AppDesign.cardBorderRadius(context),
               border: Border.all(
-                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                color: Theme.of(
+                  context,
+                ).colorScheme.outline.withValues(alpha: 0.2),
               ),
             ),
             child: _buildCompactCourseDetails(_selectedCourse!),
@@ -687,39 +754,52 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                         color: Theme.of(context).colorScheme.surface,
                         borderRadius: AppDesign.inputBorderRadius(context),
                         border: Border.all(
-                          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withValues(alpha: 0.3),
                         ),
                       ),
                       child: TextFormField(
                         controller: _searchController,
                         decoration: InputDecoration(
                           border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                           hintText: 'Search in results...',
                           hintStyle: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.6),
                             fontSize: 14,
                           ),
                           prefixIcon: Icon(
                             Icons.search,
                             size: 20,
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withValues(alpha: 0.6),
                           ),
-                          suffixIcon: _searchText.isNotEmpty
-                              ? IconButton(
-                                  icon: Icon(
-                                    Icons.clear,
-                                    size: 20,
-                                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _searchText = '';
-                                      _searchController.clear();
-                                    });
-                                  },
-                                )
-                              : null,
+                          suffixIcon:
+                              _searchText.isNotEmpty
+                                  ? IconButton(
+                                    icon: Icon(
+                                      Icons.clear,
+                                      size: 20,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withValues(alpha: 0.6),
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _searchText = '';
+                                        _searchController.clear();
+                                      });
+                                    },
+                                  )
+                                  : null,
                         ),
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurface,
@@ -737,52 +817,61 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
               ),
             ),
           Expanded(
-            child: _similarCourses.isEmpty && !_isLoading
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.search,
-                          size: 64,
-                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Ready to find courses',
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+            child:
+                _similarCourses.isEmpty && !_isLoading
+                    ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search,
+                            size: 64,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.3),
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Click "Find Similar Courses" when ready',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Ready to find courses',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.headlineSmall?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.6),
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  )
-                : _isLoading
+                          const SizedBox(height: 8),
+                          Text(
+                            'Click "Find Similar Courses" when ready',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.5),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    )
+                    : _isLoading
                     ? const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 12),
-                            Text('Finding similar courses...'),
-                          ],
-                        ),
-                      )
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 12),
+                          Text('Finding similar courses...'),
+                        ],
+                      ),
+                    )
                     : _buildCompactSimilarCoursesList(),
           ),
         ] else ...[
-          Expanded(
-            child: _buildEmptyState(),
-          ),
+          Expanded(child: _buildEmptyState()),
         ],
       ],
     );
@@ -812,39 +901,48 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
               const SizedBox(width: 8),
               Text(
                 'Course to Replace',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          
+
           // Custom styled dropdown with better theming
           Theme(
-            data: Theme.of(context).copyWith(
-              canvasColor: Theme.of(context).colorScheme.surface,
-            ),
+            data: Theme.of(
+              context,
+            ).copyWith(canvasColor: Theme.of(context).colorScheme.surface),
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: AppDesign.inputBorderRadius(context),
                 border: Border.all(
-                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.3),
                 ),
               ),
               child: DropdownButtonFormField<Course>(
                 initialValue: _selectedCourse,
                 decoration: InputDecoration(
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
                   hintText: 'Choose a course from your timetable...',
                   hintStyle: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                   prefixIcon: Icon(
-                    Icons.book_outlined, 
+                    Icons.book_outlined,
                     size: 20,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
                 isExpanded: true,
@@ -858,9 +956,13 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                     return Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primaryContainer,
+                            color:
+                                Theme.of(context).colorScheme.primaryContainer,
                             borderRadius: AppDesign.chipBorderRadius(context),
                           ),
                           child: Text(
@@ -868,7 +970,10 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
-                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                              color:
+                                  Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimaryContainer,
                             ),
                           ),
                         ),
@@ -887,44 +992,57 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                     );
                   }).toList();
                 },
-                items: _selectedCourses.map((course) {
-                  return DropdownMenuItem(
-                    value: course,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primaryContainer,
-                              borderRadius: AppDesign.chipBorderRadius(context),
-                            ),
-                            child: Text(
-                              course.courseCode,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                items:
+                    _selectedCourses.map((course) {
+                      return DropdownMenuItem(
+                        value: course,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      Theme.of(
+                                        context,
+                                      ).colorScheme.primaryContainer,
+                                  borderRadius: AppDesign.chipBorderRadius(
+                                    context,
+                                  ),
+                                ),
+                                child: Text(
+                                  course.courseCode,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    color:
+                                        Theme.of(
+                                          context,
+                                        ).colorScheme.onPrimaryContainer,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              course.courseTitle,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Theme.of(context).colorScheme.onSurface,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  course.courseTitle,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color:
+                                        Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
+                        ),
+                      );
+                    }).toList(),
                 onChanged: (course) {
                   setState(() {
                     _selectedCourse = course;
@@ -955,7 +1073,9 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
           Text(
             'Select a course from your timetable',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.6),
             ),
             textAlign: TextAlign.center,
           ),
@@ -963,7 +1083,9 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
           Text(
             'Find time-similar alternatives to replace it with',
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.5),
             ),
             textAlign: TextAlign.center,
           ),
@@ -980,16 +1102,18 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
           children: [
             Text(
               course.courseCode,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 course.courseTitle,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -1006,19 +1130,22 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     final List<Widget> items = [];
 
     // Lectures
-    final lectures = course.sections.where((s) => s.type == SectionType.L).toList();
+    final lectures =
+        course.sections.where((s) => s.type == SectionType.L).toList();
     if (lectures.isNotEmpty) {
       items.add(_buildCompactSection('L', lectures.first));
     }
 
     // Tutorials
-    final tutorials = course.sections.where((s) => s.type == SectionType.T).toList();
+    final tutorials =
+        course.sections.where((s) => s.type == SectionType.T).toList();
     if (tutorials.isNotEmpty) {
       items.add(_buildCompactSection('T', tutorials.first));
     }
 
     // Practicals
-    final practicals = course.sections.where((s) => s.type == SectionType.P).toList();
+    final practicals =
+        course.sections.where((s) => s.type == SectionType.P).toList();
     if (practicals.isNotEmpty) {
       items.add(_buildCompactSection('P', practicals.first));
     }
@@ -1027,15 +1154,23 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     if (course.midSemExam != null || course.endSemExam != null) {
       final examTexts = <String>[];
       if (course.midSemExam != null) {
-        examTexts.add('MidSem: ${course.midSemExam!.date.day}/${course.midSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot, campus: CampusService.campusId)}');
+        examTexts.add(
+          'MidSem: ${course.midSemExam!.date.day}/${course.midSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.midSemExam!.timeSlot, campus: CampusService.campusId)}',
+        );
       }
       if (course.endSemExam != null) {
-        examTexts.add('EndSem: ${course.endSemExam!.date.day}/${course.endSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot, campus: CampusService.campusId)}');
+        examTexts.add(
+          'EndSem: ${course.endSemExam!.date.day}/${course.endSemExam!.date.month} ${TimeSlotInfo.getTimeSlotName(course.endSemExam!.timeSlot, campus: CampusService.campusId)}',
+        );
       }
       items.add(
         Row(
           children: [
-            Icon(Icons.quiz, size: 14, color: Theme.of(context).colorScheme.primary),
+            Icon(
+              Icons.quiz,
+              size: 14,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             const SizedBox(width: 4),
             Expanded(
               child: Text(
@@ -1051,10 +1186,15 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: items.map((item) => Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: item,
-      )).toList(),
+      children:
+          items
+              .map(
+                (item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: item,
+                ),
+              )
+              .toList(),
     );
   }
 
@@ -1089,8 +1229,6 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     );
   }
 
-
-
   Widget _buildCompactSimilarCoursesList() {
     if (_filteredCourses.isEmpty) {
       return const EmptyStateWidget(
@@ -1120,144 +1258,151 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     final isPlanning =
         _isPlanningReplacement && _planningReplacementCode == course.courseCode;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: 1,
-      child: InkWell(
-        onTap: canReplace ? () => _performReplace(course) : null,
-        borderRadius: AppDesign.inputBorderRadius(context),
-        child: Opacity(
-          opacity: canReplace ? 1.0 : 0.5,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Text(
-                                  course.courseCode,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: TabulrSurface(
+        level:
+            canReplace ? TabulrSurfaceLevel.panel : TabulrSurfaceLevel.canvas,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: canReplace ? () => _performReplace(course) : null,
+          borderRadius: AppDesign.inputBorderRadius(context),
+          child: Opacity(
+            opacity: canReplace ? 1.0 : 0.5,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Text(
+                                    course.courseCode,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color:
+                                          canReplace
+                                              ? null
+                                              : Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface
+                                                  .withValues(alpha: 0.6),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  if (!_isLoadingCategories)
+                                    _buildCategoryBadge(
+                                      _getCourseCategory(course.courseCode),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            if (!canReplace)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppDesign.warning(
+                                    context,
+                                  ).withValues(alpha: 0.1),
+                                  borderRadius: AppDesign.buttonBorderRadius(
+                                    context,
+                                  ),
+                                  border: Border.all(
+                                    color: AppDesign.warning(context),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Text(
+                                  'Mixed Sections',
                                   style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                    color:
-                                        canReplace
-                                            ? null
-                                            : Theme.of(context)
-                                                .colorScheme
-                                                .onSurface
-                                                .withValues(alpha: 0.6),
+                                    fontSize: ResponsiveService.clampedFontSize(
+                                      context,
+                                      9,
+                                    ),
+                                    fontWeight: FontWeight.w600,
+                                    color: AppDesign.warning(context),
                                   ),
                                 ),
-                                const SizedBox(width: 6),
-                                if (!_isLoadingCategories)
-                                  _buildCategoryBadge(
-                                    _getCourseCategory(course.courseCode),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          if (!canReplace)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
                               ),
-                              decoration: BoxDecoration(
-                                color: AppDesign.warning(
-                                  context,
-                                ).withValues(alpha: 0.1),
-                                borderRadius: AppDesign.buttonBorderRadius(context),
-                                border: Border.all(
-                                  color: AppDesign.warning(context),
-                                  width: 1,
+                            if (canReplace)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
                                 ),
-                              ),
-                              child: Text(
-                                'Mixed Sections',
-                                style: TextStyle(
-                                  fontSize: ResponsiveService.clampedFontSize(
+                                decoration: BoxDecoration(
+                                  color: _getSimilarityColor(
+                                    score,
+                                  ).withValues(alpha: 0.1),
+                                  borderRadius: AppDesign.cardBorderRadius(
                                     context,
-                                    9,
                                   ),
-                                  fontWeight: FontWeight.w600,
-                                  color: AppDesign.warning(context),
-                                ),
-                              ),
-                            ),
-                          if (canReplace)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _getSimilarityColor(
-                                  score,
-                                ).withValues(alpha: 0.1),
-                                borderRadius: AppDesign.cardBorderRadius(context),
-                                border: Border.all(
-                                  color: _getSimilarityColor(score),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Text(
-                                '${(score * 100).round()}%',
-                                style: TextStyle(
-                                  fontSize: ResponsiveService.clampedFontSize(
-                                    context,
-                                    10,
+                                  border: Border.all(
+                                    color: _getSimilarityColor(score),
+                                    width: 1,
                                   ),
-                                  fontWeight: FontWeight.w600,
-                                  color: _getSimilarityColor(score),
+                                ),
+                                child: Text(
+                                  '${(score * 100).round()}%',
+                                  style: TextStyle(
+                                    fontSize: ResponsiveService.clampedFontSize(
+                                      context,
+                                      10,
+                                    ),
+                                    fontWeight: FontWeight.w600,
+                                    color: _getSimilarityColor(score),
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        course.courseTitle,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color:
-                              canReplace
-                                  ? Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface.withValues(alpha: 0.7)
-                                  : Theme.of(context).colorScheme.onSurface
-                                      .withValues(alpha: 0.4),
+                          ],
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      _buildCompactScheduleInfo(course),
-                    ],
+                        const SizedBox(height: 2),
+                        Text(
+                          course.courseTitle,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color:
+                                canReplace
+                                    ? Theme.of(context).colorScheme.onSurface
+                                        .withValues(alpha: 0.7)
+                                    : Theme.of(context).colorScheme.onSurface
+                                        .withValues(alpha: 0.4),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        _buildCompactScheduleInfo(course),
+                      ],
+                    ),
                   ),
-                ),
-                if (isPlanning)
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                else
-                  Icon(
-                    canReplace ? Icons.arrow_forward : Icons.block,
-                    size: 16,
-                    color:
-                        canReplace
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.error,
-                  ),
-              ],
+                  if (isPlanning)
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
+                    Icon(
+                      canReplace ? Icons.arrow_forward : Icons.block,
+                      size: 16,
+                      color:
+                          canReplace
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.error,
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1275,7 +1420,7 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
   Widget _buildCategoryBadge(CourseCategory category) {
     Color badgeColor;
     String categoryText;
-    
+
     switch (category) {
       case CourseCategory.huel:
         badgeColor = Theme.of(context).colorScheme.tertiary;
@@ -1336,7 +1481,10 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                 color: Theme.of(context).colorScheme.surfaceContainerLow,
                 borderRadius: BorderRadius.vertical(
                   top: Radius.circular(ThemeGeometry.of(context).cardRadius),
-                  bottom: _isSearchParamsExpanded ? Radius.zero : const Radius.circular(12),
+                  bottom:
+                      _isSearchParamsExpanded
+                          ? Radius.zero
+                          : const Radius.circular(12),
                 ),
               ),
               child: Row(
@@ -1358,19 +1506,25 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                     Text(
                       '${_selectedCategories.length} selected',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
                   const SizedBox(width: 8),
                   Icon(
-                    _isSearchParamsExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    _isSearchParamsExpanded
+                        ? Icons.expand_less
+                        : Icons.expand_more,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ],
               ),
             ),
           ),
-          
+
           // Expandable Content
           if (_isSearchParamsExpanded) ...[
             Padding(
@@ -1387,47 +1541,54 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                   ),
                   const SizedBox(height: 8),
                   _buildCategorySelection(),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // DEL-specific parameters (shown only if DEL is selected)
                   if (_selectedCategories.contains(CourseCategory.del))
                     _buildDelParametersSection(),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // Find Courses Button
                   SizedBox(
                     width: double.infinity,
                     child: Column(
                       children: [
                         FilledButton.icon(
-                          onPressed: _canSearch() 
-                              ? () => _findSimilarCourses()
-                              : null,
-                          icon: _isLoading
-                              ? SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Theme.of(context).colorScheme.onPrimary,
-                                  ),
-                                )
-                              : const Icon(Icons.search, size: 20),
+                          onPressed:
+                              _canSearch() ? () => _findSimilarCourses() : null,
+                          icon:
+                              _isLoading
+                                  ? SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color:
+                                          Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary,
+                                    ),
+                                  )
+                                  : const Icon(Icons.search, size: 20),
                           label: Text(
-                            _isLoading ? 'Finding Courses...' : 'Find Similar Courses',
+                            _isLoading
+                                ? 'Finding Courses...'
+                                : 'Find Similar Courses',
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                           style: FilledButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
-                              borderRadius: AppDesign.inputBorderRadius(context),
+                              borderRadius: AppDesign.inputBorderRadius(
+                                context,
+                              ),
                             ),
                             minimumSize: const Size(double.infinity, 44),
                           ),
                         ),
-                        
+
                         // Validation messages
                         if (!_canSearch())
                           Padding(
@@ -1458,57 +1619,63 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: CourseCategory.values.map((category) {
-        final isSelected = _selectedCategories.contains(category);
-        final categoryName = _getCategoryDisplayName(category);
-        
-        return FilterChip(
-          selected: isSelected,
-          label: Text(
-            categoryName,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: isSelected 
-                  ? Theme.of(context).colorScheme.onPrimary
-                  : Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-          onSelected: (selected) async {
-            setState(() {
-              if (selected) {
-                _selectedCategories.add(category);
-              } else {
-                _selectedCategories.remove(category);
-                // Clear DEL courses when DEL category is deselected
-                if (category == CourseCategory.del) {
-                  _delCourses.clear();
+      children:
+          CourseCategory.values.map((category) {
+            final isSelected = _selectedCategories.contains(category);
+            final categoryName = _getCategoryDisplayName(category);
+
+            return FilterChip(
+              selected: isSelected,
+              label: Text(
+                categoryName,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color:
+                      isSelected
+                          ? Theme.of(context).colorScheme.onPrimary
+                          : Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              onSelected: (selected) async {
+                setState(() {
+                  if (selected) {
+                    _selectedCategories.add(category);
+                  } else {
+                    _selectedCategories.remove(category);
+                    // Clear DEL courses when DEL category is deselected
+                    if (category == CourseCategory.del) {
+                      _delCourses.clear();
+                    }
+                  }
+                });
+
+                // Load DEL courses only when DEL category is selected AND we have branch/semester
+                if (category == CourseCategory.del && selected) {
+                  await _loadDelCourses();
+                  setState(() {});
                 }
-              }
-            });
-            
-            // Load DEL courses only when DEL category is selected AND we have branch/semester
-            if (category == CourseCategory.del && selected) {
-              await _loadDelCourses();
-              setState(() {});
-            }
-          },
-          selectedColor: Theme.of(context).colorScheme.primary,
-          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-          side: BorderSide(
-            color: isSelected 
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
-            width: 1,
-          ),
-          showCheckmark: false,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        );
-      }).toList(),
+              },
+              selectedColor: Theme.of(context).colorScheme.primary,
+              backgroundColor:
+                  Theme.of(context).colorScheme.surfaceContainerHighest,
+              side: BorderSide(
+                color:
+                    isSelected
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(
+                          context,
+                        ).colorScheme.outline.withValues(alpha: 0.3),
+                width: 1,
+              ),
+              showCheckmark: false,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            );
+          }).toList(),
     );
   }
 
-  // Build DEL parameters section  
+  // Build DEL parameters section
   Widget _buildDelParametersSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1543,13 +1710,13 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              
+
               // Primary Branch and Semester
               Text(
                 'Primary Branch & Semester',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 6),
               Row(
@@ -1566,9 +1733,15 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                           border: OutlineInputBorder(
                             borderRadius: AppDesign.chipBorderRadius(context),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 6,
+                          ),
                           filled: true,
-                          fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          fillColor:
+                              Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
                           isDense: true,
                         ),
                         style: TextStyle(
@@ -1576,18 +1749,20 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
                         dropdownColor: Theme.of(context).colorScheme.surface,
-                        items: _availableBranches.map((branch) {
-                          return DropdownMenuItem(
-                            value: branch.name,
-                            child: Text(
-                              branch.name,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                            ),
-                          );
-                        }).toList(),
+                        items:
+                            _availableBranches.map((branch) {
+                              return DropdownMenuItem(
+                                value: branch.name,
+                                child: Text(
+                                  branch.name,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color:
+                                        Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                         onChanged: (value) async {
                           setState(() {
                             _primaryBranch = value;
@@ -1611,9 +1786,15 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                           border: OutlineInputBorder(
                             borderRadius: AppDesign.chipBorderRadius(context),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 6,
+                          ),
                           filled: true,
-                          fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          fillColor:
+                              Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
                           isDense: true,
                         ),
                         style: TextStyle(
@@ -1621,18 +1802,20 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                           color: Theme.of(context).colorScheme.onSurface,
                         ),
                         dropdownColor: Theme.of(context).colorScheme.surface,
-                        items: _semesterOptions.map((semester) {
-                          return DropdownMenuItem(
-                            value: semester,
-                            child: Text(
-                              semester,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                            ),
-                          );
-                        }).toList(),
+                        items:
+                            _semesterOptions.map((semester) {
+                              return DropdownMenuItem(
+                                value: semester,
+                                child: Text(
+                                  semester,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color:
+                                        Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
                         onChanged: (value) async {
                           setState(() {
                             _primarySemester = value;
@@ -1645,15 +1828,15 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               // Secondary Branch and Semester
               Text(
                 'Secondary Branch & Semester',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 6),
               Row(
@@ -1670,9 +1853,15 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                           border: OutlineInputBorder(
                             borderRadius: AppDesign.chipBorderRadius(context),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 6,
+                          ),
                           filled: true,
-                          fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          fillColor:
+                              Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
                           isDense: true,
                         ),
                         style: TextStyle(
@@ -1698,7 +1887,8 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                                 branch.name,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Theme.of(context).colorScheme.onSurface,
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                             );
@@ -1728,9 +1918,15 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                           border: OutlineInputBorder(
                             borderRadius: AppDesign.chipBorderRadius(context),
                           ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 6,
+                          ),
                           filled: true,
-                          fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          fillColor:
+                              Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
                           isDense: true,
                         ),
                         style: TextStyle(
@@ -1756,25 +1952,28 @@ class _QuickReplaceScreenState extends State<QuickReplaceScreen> {
                                 semester,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Theme.of(context).colorScheme.onSurface,
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                             );
                           }),
                         ],
-                        onChanged: _secondaryBranch != null ? (value) async {
-                          setState(() {
-                            _secondarySemester = value;
-                          });
-                          await _loadDelCourses();
-                          setState(() {});
-                        } : null,
+                        onChanged:
+                            _secondaryBranch != null
+                                ? (value) async {
+                                  setState(() {
+                                    _secondarySemester = value;
+                                  });
+                                  await _loadDelCourses();
+                                  setState(() {});
+                                }
+                                : null,
                       ),
                     ),
                   ),
                 ],
               ),
-              
             ],
           ),
         ),
@@ -2180,8 +2379,5 @@ class ClashCheckResult {
   final bool hasClashes;
   final List<ClashWarning> clashWarnings;
 
-  ClashCheckResult({
-    required this.hasClashes,
-    required this.clashWarnings,
-  });
+  ClashCheckResult({required this.hasClashes, required this.clashWarnings});
 }

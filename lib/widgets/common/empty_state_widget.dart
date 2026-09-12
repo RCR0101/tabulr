@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+
 import '../../utils/design_constants.dart';
 import 'app_button.dart';
 
@@ -30,17 +30,14 @@ class EmptyStateWidget extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildIconFallback(scheme)
-                .animate()
-                .fadeIn(duration: AppDesign.motionStandard, curve: AppDesign.curveStandard)
-                .scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1), duration: AppDesign.motionEmphasized, curve: AppDesign.curveEmphasized),
+            _TimetableEmptyVisual(icon: icon).motionEntry(),
             const SizedBox(height: AppDesign.spacingLg),
             Text(
               title,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurface,
-                  ),
+                fontWeight: FontWeight.w600,
+                color: scheme.onSurface,
+              ),
               textAlign: TextAlign.center,
             ).motionFadeIn(delay: const Duration(milliseconds: 150)),
             if (subtitle != null) ...[
@@ -48,8 +45,8 @@ class EmptyStateWidget extends StatelessWidget {
               Text(
                 subtitle!,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: scheme.onSurface.withValues(alpha: 0.6),
-                    ),
+                  color: scheme.onSurface.withValues(alpha: 0.6),
+                ),
                 textAlign: TextAlign.center,
               ).motionFadeIn(delay: const Duration(milliseconds: 250)),
             ],
@@ -66,18 +63,69 @@ class EmptyStateWidget extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildIconFallback(ColorScheme scheme) {
-    return Container(
-      padding: const EdgeInsets.all(AppDesign.spacingLg),
-      decoration: BoxDecoration(
-        color: scheme.primary.withValues(alpha: 0.08),
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        icon,
-        size: 48,
-        color: scheme.primary.withValues(alpha: 0.6),
+class _TimetableEmptyVisual extends StatelessWidget {
+  const _TimetableEmptyVisual({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Semantics(
+      excludeSemantics: true,
+      child: SizedBox(
+        width: 124,
+        height: 82,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerLow,
+                  borderRadius: AppDesign.borderRadiusLg,
+                  border: Border.all(
+                    color: scheme.outlineVariant.withValues(alpha: 0.7),
+                  ),
+                ),
+              ),
+            ),
+            for (var column = 1; column < 4; column++)
+              Positioned(
+                left: column * 31,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 1,
+                  color: scheme.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
+            for (var row = 1; row < 3; row++)
+              Positioned(
+                left: 0,
+                right: 0,
+                top: row * 27,
+                child: Container(
+                  height: 1,
+                  color: scheme.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
+            Positioned(
+              left: 34,
+              top: 30,
+              child: Container(
+                width: 56,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer,
+                  borderRadius: AppDesign.borderRadiusSm,
+                ),
+                child: Icon(icon, size: 17, color: scheme.onPrimaryContainer),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

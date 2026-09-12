@@ -418,19 +418,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
   Widget _buildDashboard() {
     final scheme = Theme.of(context).colorScheme;
     return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            scheme.surface,
-            Color.alphaBlend(
-              scheme.primary.withValues(alpha: 0.035),
-              scheme.surface,
-            ),
-          ],
-        ),
-      ),
+      decoration: BoxDecoration(color: scheme.surfaceContainerLowest),
       child: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth >= 980) {
@@ -518,14 +506,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       key: const ValueKey('exam-lookup-panel'),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            scheme.primaryContainer.withValues(alpha: 0.66),
-            scheme.surfaceContainerLow,
-          ],
-        ),
+        color: scheme.surfaceContainerLow,
         borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: scheme.primary.withValues(alpha: 0.14)),
       ),
@@ -1122,17 +1103,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       key: ValueKey(course.courseCode),
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            scheme.surface,
-            Color.alphaBlend(
-              scheme.primary.withValues(alpha: 0.028),
-              scheme.surface,
-            ),
-          ],
-        ),
+        color: scheme.surfaceContainerLow,
         borderRadius: AppDesign.cardBorderRadius(context),
         border: Border.all(color: scheme.outlineVariant),
         boxShadow: [
@@ -1268,8 +1239,8 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
   Widget _dateTile(DateTime date) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      width: 58,
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      width: 72,
+      padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
         color: scheme.primary,
         borderRadius: AppDesign.cardBorderRadius(context),
@@ -1281,6 +1252,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: scheme.onPrimary,
               fontWeight: FontWeight.w800,
+              fontSize: 26,
               height: 1,
             ),
           ),
@@ -1290,7 +1262,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
             style: TextStyle(
               color: scheme.onPrimary.withValues(alpha: 0.82),
               fontWeight: FontWeight.w700,
-              fontSize: 9,
+              fontSize: 10,
               letterSpacing: 0.7,
             ),
           ),

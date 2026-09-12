@@ -17,6 +17,7 @@ import '../services/core/timetable_service.dart';
 import '../services/ui/toast_service.dart';
 import '../utils/design_constants.dart';
 import '../widgets/common/shimmer_loading.dart';
+import '../widgets/common/tabulr_surface.dart';
 import '../widgets/common/app_dialog.dart';
 import '../utils/page_info_helper.dart';
 import '../services/ui/tutorial_service.dart';
@@ -720,10 +721,10 @@ class _CourseAnnouncementsScreenState extends State<CourseAnnouncementsScreen> {
     final isAuthor = announcement.authorUid == _authService.userDocId;
     final authorTier = _authorTiers[announcement.authorUid];
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: AppDesign.cardBorderRadius(context)),
-      child: Padding(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TabulrSurface(
+        level: TabulrSurfaceLevel.panel,
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

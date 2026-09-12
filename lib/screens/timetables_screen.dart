@@ -2,10 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import '../services/ui/secure_logger.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
 import '../models/timetable.dart';
 import '../models/credit_mix.dart';
-import '../models/course.dart';
 import '../models/timetable_stats.dart';
 import '../utils/page_transitions.dart';
 import '../widgets/common/shimmer_loading.dart';
@@ -38,6 +36,7 @@ import 'timetable_editor_screen.dart';
 import 'archived_timetables_screen.dart';
 import '../utils/app_routes.dart';
 import '../widgets/app_tools.dart';
+import '../widgets/timetables/timetable_library_card.dart';
 
 class TimetablesScreen extends StatefulWidget {
   const TimetablesScreen({super.key});
@@ -789,7 +788,7 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
 
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 920),
+        constraints: const BoxConstraints(maxWidth: 1180),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 22, 20, 8),
           child: Column(
@@ -908,7 +907,6 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   }
 
   Widget _buildTimetableCard(Timetable timetable, int index) {
-    final scheme = Theme.of(context).colorScheme;
     final courseCodes =
         timetable.selectedSections
             .map((section) => section.courseCode)
@@ -922,260 +920,25 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     final basis = mix.basis ?? timetable.creditBasis;
     final totalCredits = mix.amountFor(basis) + timetable.projectCount * 3;
     final stats = TimetableStats.fromTimetable(timetable);
-    final accent =
-        AppDesign.timetableColors(context)[index %
-            AppDesign.timetableColors(context).length];
-    final isCustomSort =
-        _userSettingsService.sortOrder == TimetableListSortOrder.custom;
-    final metadata = <String>[
-      '${courseCodes.length} ${courseCodes.length == 1 ? 'course' : 'courses'}',
-      if (totalCredits > 0)
-        '${totalCredits % 1 == 0 ? totalCredits.toInt() : totalCredits.toStringAsFixed(1)}'
-            '${basis == CreditBasis.hours ? ' ch' : ' cr'}',
-      if (timetable.projectCount > 0)
-        '${timetable.projectCount} ${timetable.projectCount == 1 ? 'project' : 'projects'}',
-    ].join('  ·  ');
+    final colors = AppDesign.timetableColors(context);
 
-    final card = Builder(
-      builder:
-          (cardContext) => Material(
-            color: scheme.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: AppDesign.borderRadiusMd,
-              side: BorderSide(
-                color: scheme.outlineVariant.withValues(alpha: .8),
-              ),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: () => _openTimetableFromCard(timetable, cardContext),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 15, 10, 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        if (isCustomSort) ...[
-                          ReorderableDragStartListener(
-                            index: index,
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(0, 6, 12, 6),
-                              child: Icon(
-                                Icons.drag_indicator_rounded,
-                                size: 20,
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                        ],
-                        Container(
-                          width: 7,
-                          height: 7,
-                          decoration: BoxDecoration(
-                            color: accent,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            timetable.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(
-                              context,
-                            ).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -.2,
-                            ),
-                          ),
-                        ),
-                        PopupMenuButton<String>(
-                          tooltip: 'Plan actions',
-                          onSelected: (value) {
-                            switch (value) {
-                              case 'rename':
-                                _renameTimetable(timetable);
-                              case 'duplicate':
-                                _duplicateTimetable(timetable);
-                              case 'delete':
-                                _deleteTimetable(timetable);
-                            }
-                          },
-                          itemBuilder:
-                              (context) => [
-                                const PopupMenuItem(
-                                  value: 'rename',
-                                  child: ListTile(
-                                    leading: Icon(Icons.edit_outlined),
-                                    title: Text('Rename'),
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                ),
-                                const PopupMenuItem(
-                                  value: 'duplicate',
-                                  child: ListTile(
-                                    leading: Icon(Icons.copy_outlined),
-                                    title: Text('Duplicate'),
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                ),
-                                if (_sortedTimetables.length > 1)
-                                  PopupMenuItem(
-                                    value: 'delete',
-                                    child: ListTile(
-                                      leading: Icon(
-                                        Icons.delete_outline,
-                                        color: scheme.error,
-                                      ),
-                                      title: Text(
-                                        'Delete',
-                                        style: TextStyle(color: scheme.error),
-                                      ),
-                                      contentPadding: EdgeInsets.zero,
-                                    ),
-                                  ),
-                              ],
-                        ),
-                      ],
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 17),
-                      child: Text(
-                        metadata,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                    if (courseCodes.isNotEmpty) ...[
-                      const SizedBox(height: 13),
-                      Text(
-                        courseCodes.join('   '),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.labelMedium?.copyWith(
-                          color: scheme.onSurface,
-                          height: 1.45,
-                          letterSpacing: .1,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 13),
-                    Divider(
-                      height: 1,
-                      color: scheme.outlineVariant.withValues(alpha: .65),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: InkWell(
-                              onTap:
-                                  () => TimetableInsightsSheet.show(
-                                    context,
-                                    timetable,
-                                  ),
-                              borderRadius: AppDesign.borderRadiusXs,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 5,
-                                  vertical: 7,
-                                ),
-                                child: Text(
-                                  stats.hasExamClusters
-                                      ? 'Clustered exams'
-                                      : stats.summaryLine,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.bodySmall?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Text(
-                          _formatDate(timetable.updatedAt),
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(color: scheme.onSurfaceVariant),
-                        ),
-                        const SizedBox(width: 8),
-                        Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 17,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-    );
-
-    return KeyedSubtree(
-      key: ValueKey(timetable.id),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 920),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 6, 20, 6),
-            child: ClipRRect(
-              borderRadius: AppDesign.borderRadiusMd,
-              child: Slidable(
-                startActionPane: ActionPane(
-                  motion: const BehindMotion(),
-                  extentRatio: .34,
-                  children: [
-                    SlidableAction(
-                      onPressed: (_) => _renameTimetable(timetable),
-                      backgroundColor: scheme.primaryContainer,
-                      foregroundColor: scheme.onPrimaryContainer,
-                      icon: Icons.edit_outlined,
-                      label: 'Rename',
-                    ),
-                    SlidableAction(
-                      onPressed: (_) => _duplicateTimetable(timetable),
-                      backgroundColor: scheme.secondaryContainer,
-                      foregroundColor: scheme.onSecondaryContainer,
-                      icon: Icons.copy_outlined,
-                      label: 'Duplicate',
-                    ),
-                  ],
-                ),
-                endActionPane:
-                    _sortedTimetables.length > 1
-                        ? ActionPane(
-                          motion: const BehindMotion(),
-                          extentRatio: .22,
-                          children: [
-                            SlidableAction(
-                              onPressed: (_) => _deleteTimetable(timetable),
-                              backgroundColor: scheme.error,
-                              foregroundColor: scheme.onError,
-                              icon: Icons.delete_outline,
-                              label: 'Delete',
-                            ),
-                          ],
-                        )
-                        : null,
-                child: card,
-              ),
-            ),
-          ),
-        ),
-      ),
+    return TimetableLibraryCard(
+      timetable: timetable,
+      stats: stats,
+      courseCodes: courseCodes,
+      totalCredits: totalCredits,
+      creditBasis: basis,
+      accent: colors[index % colors.length],
+      index: index,
+      isCustomSort:
+          _userSettingsService.sortOrder == TimetableListSortOrder.custom,
+      canDelete: _sortedTimetables.length > 1,
+      updatedLabel: _formatDate(timetable.updatedAt),
+      onOpen: (cardContext) => _openTimetableFromCard(timetable, cardContext),
+      onInsights: () => TimetableInsightsSheet.show(context, timetable),
+      onRename: () => _renameTimetable(timetable),
+      onDuplicate: () => _duplicateTimetable(timetable),
+      onDelete: () => _deleteTimetable(timetable),
     );
   }
 

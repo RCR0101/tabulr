@@ -16,6 +16,7 @@ import '../widgets/common/app_dialog.dart';
 import '../widgets/common/app_tappable.dart';
 import '../widgets/common/app_button.dart';
 import '../widgets/common/app_loading_overlay.dart';
+import '../widgets/common/tabulr_surface.dart';
 import '../services/parsers/performance_sheet_parser.dart';
 import '../models/cgpa_data.dart';
 import '../models/course_type.dart';
@@ -201,14 +202,15 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
 
       if (!mounted) return;
 
-      final selectedCourses = await AppDialog.adaptive<Map<String, List<AllCourse>>>(
-        context: context,
-        title: 'Select Courses',
-        content: CourseSelectionDialog(
-          timetables: allTimetables,
-          semesters: _controller.semesters,
-        ),
-      );
+      final selectedCourses =
+          await AppDialog.adaptive<Map<String, List<AllCourse>>>(
+            context: context,
+            title: 'Select Courses',
+            content: CourseSelectionDialog(
+              timetables: allTimetables,
+              semesters: _controller.semesters,
+            ),
+          );
 
       if (selectedCourses == null || selectedCourses.isEmpty) return;
 
@@ -354,7 +356,9 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
           Text(
             'SGPA for each semester',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 16),
@@ -375,10 +379,9 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainer
-                          .withValues(alpha: 0.5),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainer.withValues(alpha: 0.5),
                       borderRadius: AppDesign.cardBorderRadius(context),
                       border: Border.all(
                         color: Theme.of(
@@ -396,10 +399,12 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               colors: [
-                                Theme.of(context).colorScheme.primary
-                                    .withValues(alpha: 0.8),
-                                Theme.of(context).colorScheme.primary
-                                    .withValues(alpha: 0.6),
+                                Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.8),
+                                Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.6),
                               ],
                             ),
                             borderRadius: AppDesign.cardBorderRadius(context),
@@ -408,10 +413,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                             child: Text(
                               '${index + 1}',
                               style: TextStyle(
-                                color:
-                                    Theme.of(
-                                      context,
-                                    ).colorScheme.onPrimary,
+                                color: Theme.of(context).colorScheme.onPrimary,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                               ),
@@ -425,11 +427,8 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                             children: [
                               Text(
                                 semesterName,
-                                style: Theme.of(
-                                  context,
-                                ).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w600),
                               ),
                               const SizedBox(height: 4),
                               Row(
@@ -465,14 +464,10 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: _getSGPAColor(
-                              sgpa,
-                            ).withValues(alpha: 0.15),
+                            color: _getSGPAColor(sgpa).withValues(alpha: 0.15),
                             borderRadius: AppDesign.cardBorderRadius(context),
                             border: Border.all(
-                              color: _getSGPAColor(
-                                sgpa,
-                              ).withValues(alpha: 0.3),
+                              color: _getSGPAColor(sgpa).withValues(alpha: 0.3),
                             ),
                           ),
                           child: Column(
@@ -498,9 +493,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                                 ).textTheme.labelSmall?.copyWith(
                                   color:
                                       semesterData.mixesCreditBasis
-                                          ? Theme.of(
-                                            context,
-                                          ).colorScheme.error
+                                          ? Theme.of(context).colorScheme.error
                                           : _getSGPAColor(sgpa),
                                   fontSize: 10,
                                 ),
@@ -529,9 +522,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
               const SizedBox(width: 8),
               Text(
                 'Overall CGPA: ${_controller.cgpaData.cgpa.toStringAsFixed(2)}',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.w600,
                 ),
@@ -573,7 +564,9 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
           Text(
             'Credits for each semester',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 16),
@@ -594,10 +587,9 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainer
-                          .withValues(alpha: 0.5),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainer.withValues(alpha: 0.5),
                       borderRadius: AppDesign.cardBorderRadius(context),
                       border: Border.all(
                         color: Theme.of(
@@ -615,10 +607,12 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               colors: [
-                                Theme.of(context).colorScheme.secondary
-                                    .withValues(alpha: 0.8),
-                                Theme.of(context).colorScheme.secondary
-                                    .withValues(alpha: 0.6),
+                                Theme.of(
+                                  context,
+                                ).colorScheme.secondary.withValues(alpha: 0.8),
+                                Theme.of(
+                                  context,
+                                ).colorScheme.secondary.withValues(alpha: 0.6),
                               ],
                             ),
                             borderRadius: AppDesign.cardBorderRadius(context),
@@ -627,10 +621,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                             child: Text(
                               '${index + 1}',
                               style: TextStyle(
-                                color:
-                                    Theme.of(
-                                      context,
-                                    ).colorScheme.onPrimary,
+                                color: Theme.of(context).colorScheme.onPrimary,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                               ),
@@ -644,11 +635,8 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                             children: [
                               Text(
                                 semesterName,
-                                style: Theme.of(
-                                  context,
-                                ).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w600),
                               ),
                               const SizedBox(height: 4),
                               Row(
@@ -738,9 +726,7 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
               const SizedBox(width: 8),
               Text(
                 'Total Credits: ${_controller.cgpaData.semesters.values.fold<double>(0.0, (sum, sem) => sum + sem.totalCredits).toStringAsFixed(0)}',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1351,41 +1337,9 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
   }) {
     final isMobile = ResponsiveService.isMobile(context);
 
-    return Container(
+    return TabulrSurface(
+      level: isPrimary ? TabulrSurfaceLevel.raised : TabulrSurfaceLevel.panel,
       padding: EdgeInsets.all(isMobile ? 8 : 12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Theme.of(context).colorScheme.surfaceContainerHigh.withValues(
-              alpha: isPrimary ? 0.9 : 0.7,
-            ),
-            Theme.of(context).colorScheme.surfaceContainer.withValues(
-              alpha: isPrimary ? 0.6 : 0.4,
-            ),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(isMobile ? 10 : 12),
-        border: Border.all(
-          color:
-              isPrimary
-                  ? Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.25)
-                  : Theme.of(
-                    context,
-                  ).colorScheme.outline.withValues(alpha: 0.2),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Theme.of(context).colorScheme.shadow.withValues(alpha: 0.08),
-            blurRadius: 6,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1608,7 +1562,9 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                               style: FilledButton.styleFrom(
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: AppDesign.buttonBorderRadius(context),
+                                  borderRadius: AppDesign.buttonBorderRadius(
+                                    context,
+                                  ),
                                 ),
                               ),
                             ),
@@ -1657,7 +1613,9 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                                 ).colorScheme.primary.withValues(alpha: 0.5),
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: AppDesign.buttonBorderRadius(context),
+                                borderRadius: AppDesign.buttonBorderRadius(
+                                  context,
+                                ),
                               ),
                             ),
                           ),
@@ -1683,7 +1641,9 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                             style: FilledButton.styleFrom(
                               elevation: 0,
                               shape: RoundedRectangleBorder(
-                                borderRadius: AppDesign.cardBorderRadius(context),
+                                borderRadius: AppDesign.cardBorderRadius(
+                                  context,
+                                ),
                               ),
                             ),
                           ),
@@ -2228,7 +2188,9 @@ class _CGPACalculatorScreenState extends State<CGPACalculatorScreen>
                             labelText: 'Search Course',
                             hintText: 'Enter course code or title',
                             border: OutlineInputBorder(
-                              borderRadius: AppDesign.inputBorderRadius(context),
+                              borderRadius: AppDesign.inputBorderRadius(
+                                context,
+                              ),
                             ),
                             prefixIcon: const Icon(
                               Icons.search_outlined,

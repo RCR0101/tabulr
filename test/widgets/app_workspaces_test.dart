@@ -137,12 +137,7 @@ void main() {
         final bodyHeight =
             tester.getSize(find.byKey(const ValueKey('feature-body'))).height;
         expect(bodyHeight, greaterThanOrEqualTo(size.height - 180));
-        await tester.tap(
-          find.descendant(
-            of: find.byType(NavigationBar),
-            matching: find.text('More'),
-          ),
-        );
+        await tester.tap(find.text('More'));
         await tester.pumpAndSettle();
         await tester.scrollUntilVisible(
           find.text('Help & support'),

@@ -902,19 +902,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
 
     return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            scheme.surfaceContainerLowest,
-            Color.alphaBlend(
-              scheme.primary.withValues(alpha: .025),
-              scheme.surfaceContainerLowest,
-            ),
-          ],
-        ),
-      ),
+      decoration: BoxDecoration(color: scheme.surfaceContainerLowest),
       child: Column(
         children: [
           compact ? _buildMobileHeader(theme) : _buildDesktopHeader(theme),
@@ -923,31 +911,34 @@ class _CalendarScreenState extends State<CalendarScreen> {
             child: Padding(
               padding: EdgeInsets.fromLTRB(
                 compact ? 10 : 20,
-                compact ? 8 : 0,
+                compact ? 8 : 16,
                 compact ? 10 : 20,
                 compact ? 10 : 20,
               ),
-              child: Container(
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: scheme.surface,
-                  borderRadius: AppDesign.borderRadiusLg,
-                  border: Border.all(
-                    color: scheme.outlineVariant.withValues(alpha: .65),
-                  ),
-                ),
-                child: AnimatedSwitcher(
-                  duration:
-                      reduceMotion
-                          ? Duration.zero
-                          : const Duration(milliseconds: 180),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder:
-                      (child, animation) =>
-                          FadeTransition(opacity: animation, child: child),
-                  child: view,
-                ),
+              child: AnimatedSwitcher(
+                duration:
+                    reduceMotion
+                        ? Duration.zero
+                        : const Duration(milliseconds: 180),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder:
+                    (child, animation) =>
+                        FadeTransition(opacity: animation, child: child),
+                child:
+                    compact
+                        ? view
+                        : Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(child: view),
+                            const SizedBox(width: 14),
+                            SizedBox(
+                              width: 272,
+                              child: _buildAgendaRail(theme),
+                            ),
+                          ],
+                        ),
               ),
             ),
           ),
@@ -955,6 +946,137 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
     );
   }
+
+  Widget _buildAgendaRail(ThemeData theme) {
+    final today = DateTime.now();
+    final dayIndex = today.weekday - 1;
+    final date = _weekStart.add(Duration(days: dayIndex));
+    final items = _itemsForDay(_bitsDayFor(dayIndex), date: date)
+      ..sort((a, b) => a.effectiveHour.compareTo(b.effectiveHour));
+    final banners = _bannersForDay(date);
+    final scheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        border: Border(left: BorderSide(color: scheme.outlineVariant)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'DAY FOCUS',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: scheme.primary,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.1,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            _sameDay(date, today) ? 'Today' : formatDayMonth(date),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            '${DayConstants.weekDays[dayIndex]}  ·  ${formatDayMonth(date)}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                if (banners.isNotEmpty) ...[
+                  _agendaLabel(theme, 'NOTICES'),
+                  ...banners.map((item) => _agendaItem(item, theme)),
+                  const SizedBox(height: 10),
+                ],
+                _agendaLabel(theme, 'SCHEDULE'),
+                if (items.isEmpty)
+                  Text(
+                    'Nothing scheduled today',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  )
+                else
+                  ...items.map((item) => _agendaItem(item, theme)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Tap an item for details',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _agendaLabel(ThemeData theme, String label) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      label,
+      style: theme.textTheme.labelSmall?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.1,
+      ),
+    ),
+  );
+
+  Widget _agendaItem(_CalendarItem item, ThemeData theme) => AppTappable(
+    onTap: () => _showItemDetail(context, item),
+    child: Padding(
+      padding: const EdgeInsets.only(bottom: 11),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 3,
+            height: 40,
+            margin: const EdgeInsets.only(right: 10),
+            decoration: BoxDecoration(
+              color: item.color,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'H${item.effectiveHour}${item.subtitle.isEmpty ? '' : '  ·  ${item.subtitle}'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 
   bool get isToday => _sameDay(_weekStart, _mondayOf(DateTime.now()));
 
@@ -1855,7 +1977,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             ),
                             decoration: BoxDecoration(
                               color: item.color.withValues(alpha: 0.15),
-                              borderRadius: AppDesign.innerBorderRadius(context),
+                              borderRadius: AppDesign.innerBorderRadius(
+                                context,
+                              ),
                               border: Border(
                                 left: BorderSide(color: item.color, width: 3),
                               ),

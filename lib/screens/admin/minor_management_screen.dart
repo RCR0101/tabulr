@@ -107,31 +107,34 @@ class _MinorManagementScreenState extends State<MinorManagementScreen> {
               if (all == null) {
                 return const Center(child: CircularProgressIndicator());
               }
-              final visible = all
-                  .where((m) => m.matches(_query))
-                  .where((m) => !_reviewOnly || m.needsReview)
-                  .toList();
+              final visible =
+                  all
+                      .where((m) => m.matches(_query))
+                      .where((m) => !_reviewOnly || m.needsReview)
+                      .toList();
 
               return Column(
                 children: [
                   _controls(context, all),
                   Expanded(
-                    child: visible.isEmpty
-                        ? const EmptyStateWidget(
-                            icon: Icons.inbox_outlined,
-                            title: 'Nothing here',
-                            subtitle: 'No minor matches these filters.',
-                          )
-                        : ListView(
-                            padding: const EdgeInsets.fromLTRB(
+                    child:
+                        visible.isEmpty
+                            ? const EmptyStateWidget(
+                              icon: Icons.inbox_outlined,
+                              title: 'Nothing here',
+                              subtitle: 'No minor matches these filters.',
+                            )
+                            : ListView(
+                              padding: const EdgeInsets.fromLTRB(
                                 AppDesign.spacingMd,
                                 0,
                                 AppDesign.spacingMd,
-                                96),
-                            children: [
-                              for (final m in visible) _row(context, m),
-                            ],
-                          ),
+                                96,
+                              ),
+                              children: [
+                                for (final m in visible) _row(context, m),
+                              ],
+                            ),
                   ),
                 ],
               );
@@ -162,8 +165,10 @@ class _MinorManagementScreenState extends State<MinorManagementScreen> {
                 onSelected: (v) => setState(() => _reviewOnly = v),
               ),
               const Spacer(),
-              Text('${all.length} total',
-                  style: Theme.of(context).textTheme.bodySmall),
+              Text(
+                '${all.length} total',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ],
           ),
         ],
@@ -176,7 +181,15 @@ class _MinorManagementScreenState extends State<MinorManagementScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: AppDesign.spacingSm),
       padding: const EdgeInsets.all(AppDesign.spacingMd),
-      decoration: AppDesign.cardDecoration(context),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: AppDesign.cardBorderRadius(context),
+        border: Border.all(
+          color: Theme.of(
+            context,
+          ).colorScheme.outlineVariant.withValues(alpha: 0.65),
+        ),
+      ),
       child: Row(
         children: [
           Expanded(
@@ -185,18 +198,17 @@ class _MinorManagementScreenState extends State<MinorManagementScreen> {
               children: [
                 Text(
                   m.name,
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   '${m.minCourses ?? '?'} courses · ${m.minUnits ?? '?'} units · '
                   '${m.courseCount} listed in ${m.groups.length} groups',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurface.withValues(alpha: 0.55),
-                      ),
+                    color: scheme.onSurface.withValues(alpha: 0.55),
+                  ),
                 ),
               ],
             ),
@@ -224,23 +236,28 @@ class _MinorManagementScreenState extends State<MinorManagementScreen> {
     return PopupMenuButton<MinorStatus>(
       tooltip: 'Set status',
       onSelected: (s) => _setStatus(m, s),
-      itemBuilder: (context) => [
-        for (final s in MinorStatus.values)
-          PopupMenuItem(
-            value: s,
-            child: Row(
-              children: [
-                Icon(Icons.circle, size: 10, color: statusColor(context, s)),
-                const SizedBox(width: AppDesign.spacingSm),
-                Text(s.label),
-                if (s == m.status) ...[
-                  const Spacer(),
-                  const Icon(Icons.check, size: 16),
-                ],
-              ],
-            ),
-          ),
-      ],
+      itemBuilder:
+          (context) => [
+            for (final s in MinorStatus.values)
+              PopupMenuItem(
+                value: s,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.circle,
+                      size: 10,
+                      color: statusColor(context, s),
+                    ),
+                    const SizedBox(width: AppDesign.spacingSm),
+                    Text(s.label),
+                    if (s == m.status) ...[
+                      const Spacer(),
+                      const Icon(Icons.check, size: 16),
+                    ],
+                  ],
+                ),
+              ),
+          ],
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
@@ -252,10 +269,10 @@ class _MinorManagementScreenState extends State<MinorManagementScreen> {
           children: [
             Text(
               m.status.label,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(color: color, fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             Icon(Icons.arrow_drop_down, size: 16, color: color),
           ],
@@ -285,9 +302,7 @@ class _MinorManagementScreenState extends State<MinorManagementScreen> {
 
   Future<void> _edit(MinorProgramme? existing) async {
     final saved = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => _MinorEditorScreen(minor: existing),
-      ),
+      MaterialPageRoute(builder: (_) => _MinorEditorScreen(minor: existing)),
     );
     if (saved == true) _reload();
   }
@@ -330,9 +345,10 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
     _minCourses = TextEditingController(text: m?.minCourses?.toString() ?? '');
     _minUnits = TextEditingController(text: m?.minUnits?.toString() ?? '');
     _status = m?.status ?? MinorStatus.notVerified;
-    _groups = (m?.groups ?? const <MinorCourseGroup>[])
-        .map(_GroupEditor.from)
-        .toList();
+    _groups =
+        (m?.groups ?? const <MinorCourseGroup>[])
+            .map(_GroupEditor.from)
+            .toList();
     if (_groups.isEmpty) {
       _groups.add(_GroupEditor(name: 'Core Courses'));
     }
@@ -424,18 +440,20 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
               children: [
                 TextFormField(
                   controller: _name,
-                  decoration:
-                      AppDesign.inputDecoration(context, label: 'Name'),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  decoration: AppDesign.inputDecoration(context, label: 'Name'),
+                  validator:
+                      (v) =>
+                          (v == null || v.trim().isEmpty) ? 'Required' : null,
                 ),
                 const SizedBox(height: AppDesign.spacingMd),
                 TextFormField(
                   controller: _description,
                   minLines: 2,
                   maxLines: 6,
-                  decoration: AppDesign.inputDecoration(context,
-                      label: 'Description'),
+                  decoration: AppDesign.inputDecoration(
+                    context,
+                    label: 'Description',
+                  ),
                 ),
                 const SizedBox(height: AppDesign.spacingMd),
                 Row(
@@ -444,8 +462,10 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
                       child: TextFormField(
                         controller: _minCourses,
                         keyboardType: TextInputType.number,
-                        decoration: AppDesign.inputDecoration(context,
-                            label: 'Min courses'),
+                        decoration: AppDesign.inputDecoration(
+                          context,
+                          label: 'Min courses',
+                        ),
                       ),
                     ),
                     const SizedBox(width: AppDesign.spacingMd),
@@ -453,8 +473,10 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
                       child: TextFormField(
                         controller: _minUnits,
                         keyboardType: TextInputType.number,
-                        decoration: AppDesign.inputDecoration(context,
-                            label: 'Min units'),
+                        decoration: AppDesign.inputDecoration(
+                          context,
+                          label: 'Min units',
+                        ),
                       ),
                     ),
                   ],
@@ -462,8 +484,10 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
                 const SizedBox(height: AppDesign.spacingMd),
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('Verification status',
-                      style: Theme.of(context).textTheme.labelLarge),
+                  child: Text(
+                    'Verification status',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
                 ),
                 const SizedBox(height: AppDesign.spacingSm),
                 SegmentedButton<MinorStatus>(
@@ -473,18 +497,17 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
                   ],
                   selected: {_status},
                   showSelectedIcon: false,
-                  onSelectionChanged: (sel) =>
-                      setState(() => _status = sel.first),
+                  onSelectionChanged:
+                      (sel) => setState(() => _status = sel.first),
                 ),
                 const SizedBox(height: AppDesign.spacingSm),
                 Text(
                   'Mark Verified once the groupings have been checked against the Bulletin.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.6),
-                      ),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
                 ),
                 const Divider(height: AppDesign.spacingLg),
                 for (final (i, g) in _groups.indexed) ...[
@@ -495,8 +518,10 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
                   label: 'Add group',
                   icon: Icons.add,
                   variant: AppButtonVariant.secondary,
-                  onTap: () => setState(() => _groups
-                      .add(_GroupEditor(name: 'Electives'))),
+                  onTap:
+                      () => setState(
+                        () => _groups.add(_GroupEditor(name: 'Electives')),
+                      ),
                 ),
                 const SizedBox(height: AppDesign.spacingLg),
                 AppButton(
@@ -518,7 +543,15 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
   Widget _groupEditor(BuildContext context, _GroupEditor g, int index) {
     return Container(
       padding: const EdgeInsets.all(AppDesign.spacingMd),
-      decoration: AppDesign.cardDecoration(context),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: AppDesign.cardBorderRadius(context),
+        border: Border.all(
+          color: Theme.of(
+            context,
+          ).colorScheme.outlineVariant.withValues(alpha: 0.65),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -527,8 +560,11 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
               Expanded(
                 child: TextFormField(
                   controller: g.nameController,
-                  decoration: AppDesign.inputDecoration(context,
-                      label: 'Group name', dense: true),
+                  decoration: AppDesign.inputDecoration(
+                    context,
+                    label: 'Group name',
+                    dense: true,
+                  ),
                 ),
               ),
               const SizedBox(width: AppDesign.spacingSm),
@@ -537,8 +573,11 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
                 child: TextFormField(
                   controller: g.requiredController,
                   keyboardType: TextInputType.number,
-                  decoration: AppDesign.inputDecoration(context,
-                      label: 'Required', dense: true),
+                  decoration: AppDesign.inputDecoration(
+                    context,
+                    label: 'Required',
+                    dense: true,
+                  ),
                   // Blank is meaningful (no per-group figure in the Bulletin),
                   // so only a nonsensical number is rejected.
                   validator: (v) {
@@ -553,9 +592,10 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
               IconButton(
                 icon: const Icon(Icons.delete_outline, size: 20),
                 tooltip: 'Remove group',
-                onPressed: _groups.length == 1
-                    ? null
-                    : () => setState(() {
+                onPressed:
+                    _groups.length == 1
+                        ? null
+                        : () => setState(() {
                           _groups.removeAt(index).dispose();
                         }),
               ),
@@ -564,15 +604,16 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
           const SizedBox(height: AppDesign.spacingSm),
           if (g.courses.isEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: AppDesign.spacingSm),
+              padding: const EdgeInsets.symmetric(
+                vertical: AppDesign.spacingSm,
+              ),
               child: Text(
                 'No courses yet.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.5),
-                    ),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.5),
+                ),
               ),
             )
           else
@@ -603,7 +644,8 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
     // pass, not something to silently discard on the next save. Stays quiet
     // until the catalogue has actually loaded, so rows don't all flash a
     // warning on first paint.
-    final known = _catalogueCodes.isEmpty ||
+    final known =
+        _catalogueCodes.isEmpty ||
         _catalogueCodes.contains(normalizeCourseCode(course.code));
 
     // Default IconButton padding is 48px each way, which made these rows twice
@@ -619,9 +661,9 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
             width: 96,
             child: Text(
               course.code,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
           Expanded(
@@ -630,8 +672,8 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurface.withValues(alpha: 0.7),
-                  ),
+                color: scheme.onSurface.withValues(alpha: 0.7),
+              ),
             ),
           ),
           // Fixed-width from here on, so the columns line up down the list
@@ -639,13 +681,17 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
           // carry.
           SizedBox(
             width: 22,
-            child: known
-                ? null
-                : Tooltip(
-                    message: 'Not in this campus catalogue',
-                    child: Icon(Icons.help_outline,
-                        size: 15, color: scheme.tertiary),
-                  ),
+            child:
+                known
+                    ? null
+                    : Tooltip(
+                      message: 'Not in this campus catalogue',
+                      child: Icon(
+                        Icons.help_outline,
+                        size: 15,
+                        color: scheme.tertiary,
+                      ),
+                    ),
           ),
           SizedBox(
             width: 30,
@@ -653,8 +699,8 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
               course.units == null ? '' : '${course.units}u',
               textAlign: TextAlign.right,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurface.withValues(alpha: 0.45),
-                  ),
+                color: scheme.onSurface.withValues(alpha: 0.45),
+              ),
             ),
           ),
           const SizedBox(width: 4),
@@ -662,29 +708,34 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
           // review queue, so it gets a control rather than a delete-and-re-add.
           SizedBox(
             width: 32,
-            child: _groups.length > 1
-                ? PopupMenuButton<int>(
-                    icon: const Icon(Icons.drive_file_move_outline, size: 18),
-                    tooltip: 'Move to group',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 160),
-                    iconSize: 18,
-                    onSelected: (target) => setState(() {
-                      group.courses.removeAt(courseIndex);
-                      _groups[target].courses.add(course);
-                    }),
-                    itemBuilder: (context) => [
-                      for (final (i, other) in _groups.indexed)
-                        if (i != groupIndex)
-                          PopupMenuItem(
-                            value: i,
-                            child: Text(other.nameController.text.trim().isEmpty
-                                ? 'Group ${i + 1}'
-                                : other.nameController.text.trim()),
-                          ),
-                    ],
-                  )
-                : null,
+            child:
+                _groups.length > 1
+                    ? PopupMenuButton<int>(
+                      icon: const Icon(Icons.drive_file_move_outline, size: 18),
+                      tooltip: 'Move to group',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 160),
+                      iconSize: 18,
+                      onSelected:
+                          (target) => setState(() {
+                            group.courses.removeAt(courseIndex);
+                            _groups[target].courses.add(course);
+                          }),
+                      itemBuilder:
+                          (context) => [
+                            for (final (i, other) in _groups.indexed)
+                              if (i != groupIndex)
+                                PopupMenuItem(
+                                  value: i,
+                                  child: Text(
+                                    other.nameController.text.trim().isEmpty
+                                        ? 'Group ${i + 1}'
+                                        : other.nameController.text.trim(),
+                                  ),
+                                ),
+                          ],
+                    )
+                    : null,
           ),
           IconButton(
             icon: const Icon(Icons.close, size: 18),
@@ -692,8 +743,8 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
             visualDensity: density,
             constraints: iconConstraints,
             padding: EdgeInsets.zero,
-            onPressed: () =>
-                setState(() => group.courses.removeAt(courseIndex)),
+            onPressed:
+                () => setState(() => group.courses.removeAt(courseIndex)),
           ),
         ],
       ),
@@ -717,13 +768,15 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
 
     setState(() {
       for (final course in picked) {
-        group.courses.add(MinorCourse(
-          code: course.courseCode,
-          title: course.title,
-          // The catalogue carries fractional credits for some courses; the
-          // Bulletin states minors in whole units.
-          units: course.credits > 0 ? course.credits.round() : null,
-        ));
+        group.courses.add(
+          MinorCourse(
+            code: course.courseCode,
+            title: course.title,
+            // The catalogue carries fractional credits for some courses; the
+            // Bulletin states minors in whole units.
+            units: course.credits > 0 ? course.credits.round() : null,
+          ),
+        );
       }
     });
   }
@@ -731,10 +784,10 @@ class _MinorEditorScreenState extends State<_MinorEditorScreen> {
 
 /// Shared so the list pill and the editor selector read the same.
 Color statusColor(BuildContext context, MinorStatus status) => switch (status) {
-      MinorStatus.notVerified => AppDesign.danger(context),
-      MinorStatus.inReview => AppDesign.warning(context),
-      MinorStatus.verified => AppDesign.success(context),
-    };
+  MinorStatus.notVerified => AppDesign.danger(context),
+  MinorStatus.inReview => AppDesign.warning(context),
+  MinorStatus.verified => AppDesign.success(context),
+};
 
 /// One group's working state in the editor.
 ///
@@ -742,17 +795,21 @@ Color statusColor(BuildContext context, MinorStatus status) => switch (status) {
 /// master via the picker, so there is nothing to parse and no way to mistype a
 /// code, title or unit count.
 class _GroupEditor {
-  _GroupEditor({required String name, List<MinorCourse>? courses, int? required})
-      : nameController = TextEditingController(text: name),
-        requiredController =
-            TextEditingController(text: required?.toString() ?? ''),
-        courses = [...?courses];
+  _GroupEditor({
+    required String name,
+    List<MinorCourse>? courses,
+    int? required,
+  }) : nameController = TextEditingController(text: name),
+       requiredController = TextEditingController(
+         text: required?.toString() ?? '',
+       ),
+       courses = [...?courses];
 
   factory _GroupEditor.from(MinorCourseGroup group) => _GroupEditor(
-        name: group.name,
-        courses: group.courses,
-        required: group.required,
-      );
+    name: group.name,
+    courses: group.courses,
+    required: group.required,
+  );
 
   final TextEditingController nameController;
 

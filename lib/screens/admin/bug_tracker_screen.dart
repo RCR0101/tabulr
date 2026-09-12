@@ -7,6 +7,7 @@ import '../../utils/design_constants.dart';
 import '../../widgets/bug_status_chip.dart';
 import '../../widgets/bug_thread.dart';
 import '../../widgets/common/empty_state_widget.dart';
+import '../../widgets/common/tabulr_surface.dart';
 
 class BugTrackerScreen extends StatefulWidget {
   const BugTrackerScreen({super.key});
@@ -56,9 +57,10 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
           }
 
           final all = snapshot.data ?? const <BugReport>[];
-          final filtered = _filter == null
-              ? all
-              : all.where((r) => r.status == _filter).toList();
+          final filtered =
+              _filter == null
+                  ? all
+                  : all.where((r) => r.status == _filter).toList();
 
           return Center(
             child: ConstrainedBox(
@@ -87,18 +89,23 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
         child: FilterChip(
           label: Text('$label (${count(status)})'),
           selected: selected,
-          onSelected: (_) => setState(() {
-            _filter = status;
-            _page = 0;
-          }),
+          onSelected:
+              (_) => setState(() {
+                _filter = status;
+                _page = 0;
+              }),
         ),
       );
     }
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.fromLTRB(AppDesign.spacingMd, AppDesign.spacingMd,
-          AppDesign.spacingMd, AppDesign.spacingSm),
+      padding: const EdgeInsets.fromLTRB(
+        AppDesign.spacingMd,
+        AppDesign.spacingMd,
+        AppDesign.spacingMd,
+        AppDesign.spacingSm,
+      ),
       child: Row(
         children: [
           chip('All', null),
@@ -120,14 +127,18 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
     final pageCount = (reports.length + _pageSize - 1) ~/ _pageSize;
     final page = _page.clamp(0, pageCount - 1);
     final start = page * _pageSize;
-    final pageItems =
-        reports.sublist(start, (start + _pageSize).clamp(0, reports.length));
+    final pageItems = reports.sublist(
+      start,
+      (start + _pageSize).clamp(0, reports.length),
+    );
 
     return Column(
       children: [
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: AppDesign.spacingMd),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppDesign.spacingMd,
+            ),
             children: pageItems.map((r) => _reportCard(context, r)).toList(),
           ),
         ),
@@ -141,74 +152,77 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
     final open = _openThreads.contains(r.id);
     return Container(
       margin: const EdgeInsets.only(bottom: AppDesign.spacingSm),
-      padding: const EdgeInsets.all(AppDesign.spacingMd),
-      decoration: AppDesign.cardDecoration(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${r.category} · ${r.subCategory}',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${r.authorEmail}  ·  ${_formatDateTime(r.createdAt)}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurface.withValues(alpha: 0.55),
-                          ),
-                    ),
-                  ],
+      child: TabulrSurface(
+        padding: const EdgeInsets.all(AppDesign.spacingMd),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${r.category} · ${r.subCategory}',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${r.authorEmail}  ·  ${_formatDateTime(r.createdAt)}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurface.withValues(alpha: 0.55),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppDesign.spacingSm),
-              if (r.hasUnreadForAdmin) ...[
-                const _UnreadDot(),
                 const SizedBox(width: AppDesign.spacingSm),
+                if (r.hasUnreadForAdmin) ...[
+                  const _UnreadDot(),
+                  const SizedBox(width: AppDesign.spacingSm),
+                ],
+                BugStatusChip(status: r.status, small: true),
               ],
-              BugStatusChip(status: r.status, small: true),
-            ],
-          ),
-          const SizedBox(height: AppDesign.spacingSm),
-          Text(r.description, style: Theme.of(context).textTheme.bodyMedium),
-          const SizedBox(height: AppDesign.spacingMd),
-          Row(
-            children: [
-              Text('Status',
+            ),
+            const SizedBox(height: AppDesign.spacingSm),
+            Text(r.description, style: Theme.of(context).textTheme.bodyMedium),
+            const SizedBox(height: AppDesign.spacingMd),
+            Row(
+              children: [
+                Text(
+                  'Status',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurface.withValues(alpha: 0.55),
-                      )),
-              const SizedBox(width: AppDesign.spacingSm),
-              _statusDropdown(context, r),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: () => setState(() {
-                  if (!_openThreads.remove(r.id)) _openThreads.add(r.id);
-                }),
-                icon: Icon(
-                  open ? Icons.expand_less : Icons.forum_outlined,
-                  size: 18,
+                    color: scheme.onSurface.withValues(alpha: 0.55),
+                  ),
                 ),
-                label: Text(open ? 'Hide' : 'Reply'),
-              ),
+                const SizedBox(width: AppDesign.spacingSm),
+                _statusDropdown(context, r),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed:
+                      () => setState(() {
+                        if (!_openThreads.remove(r.id)) _openThreads.add(r.id);
+                      }),
+                  icon: Icon(
+                    open ? Icons.expand_less : Icons.forum_outlined,
+                    size: 18,
+                  ),
+                  label: Text(open ? 'Hide' : 'Reply'),
+                ),
+              ],
+            ),
+            if (open) ...[
+              const SizedBox(height: AppDesign.spacingSm),
+              Divider(color: scheme.outline.withValues(alpha: 0.2)),
+              const SizedBox(height: AppDesign.spacingSm),
+              BugThread(reportId: r.id, asAdmin: true),
             ],
-          ),
-          if (open) ...[
-            const SizedBox(height: AppDesign.spacingSm),
-            Divider(color: scheme.outline.withValues(alpha: 0.2)),
-            const SizedBox(height: AppDesign.spacingSm),
-            BugThread(reportId: r.id, asAdmin: true),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -229,13 +243,18 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
           value: r.status,
           isDense: true,
           borderRadius: AppDesign.inputBorderRadius(context),
-          items: BugStatus.values
-              .map((s) => DropdownMenuItem(
-                    value: s,
-                    child: Text(s.label,
-                        style: Theme.of(context).textTheme.bodyMedium),
-                  ))
-              .toList(),
+          items:
+              BugStatus.values
+                  .map(
+                    (s) => DropdownMenuItem(
+                      value: s,
+                      child: Text(
+                        s.label,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  )
+                  .toList(),
           onChanged: (next) => _changeStatus(r, next),
         ),
       ),
@@ -264,12 +283,15 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
             icon: const Icon(Icons.chevron_left),
             tooltip: 'Previous',
           ),
-          Text('Page ${page + 1} of $pageCount',
-              style: Theme.of(context).textTheme.bodyMedium),
+          Text(
+            'Page ${page + 1} of $pageCount',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
           IconButton(
-            onPressed: page < pageCount - 1
-                ? () => setState(() => _page = page + 1)
-                : null,
+            onPressed:
+                page < pageCount - 1
+                    ? () => setState(() => _page = page + 1)
+                    : null,
             icon: const Icon(Icons.chevron_right),
             tooltip: 'Next',
           ),
