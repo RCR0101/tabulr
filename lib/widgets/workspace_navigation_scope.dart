@@ -121,34 +121,31 @@ class _WorkspaceTabsState extends State<WorkspaceTabs> {
               Semantics(
                 selected: entry.id == widget.selectedId,
                 button: true,
-                child: AnimatedContainer(
-                  duration:
-                      MediaQuery.disableAnimationsOf(context)
-                          ? Duration.zero
-                          : const Duration(milliseconds: 180),
-                  curve: Curves.easeOutCubic,
-                  key:
-                      entry.id == widget.selectedId
-                          ? _selectedKey
-                          : ValueKey(entry.id),
-                  margin: const EdgeInsets.only(right: 6),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.transparent),
-                    color:
-                        entry.id == widget.selectedId
-                            ? scheme.primaryContainer.withValues(alpha: .62)
-                            : Colors.transparent,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 6),
                   child: TextButton(
+                    // One pill does fill, hover and ripple: a square ripple over
+                    // a rounded fill was the shape that read as boxy.
+                    key:
+                        entry.id == widget.selectedId
+                            ? _selectedKey
+                            : ValueKey(entry.id),
                     style: TextButton.styleFrom(
                       minimumSize: const Size(0, 40),
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      backgroundColor:
+                          entry.id == widget.selectedId
+                              ? scheme.primaryContainer.withValues(alpha: .62)
+                              : Colors.transparent,
                       foregroundColor:
                           entry.id == widget.selectedId
                               ? scheme.onPrimaryContainer
                               : scheme.onSurfaceVariant,
-                      shape: const RoundedRectangleBorder(),
+                      shape: const StadiumBorder(),
+                      animationDuration:
+                          MediaQuery.disableAnimationsOf(context)
+                              ? Duration.zero
+                              : const Duration(milliseconds: 180),
                     ),
                     onPressed: () => widget.onSelected(entry),
                     child: Text(entry.label),

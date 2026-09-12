@@ -834,15 +834,12 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
               ),
               const SizedBox(height: 18),
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 9),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                 decoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(
-                      color: scheme.outlineVariant.withValues(alpha: .75),
-                    ),
-                    bottom: BorderSide(
-                      color: scheme.outlineVariant.withValues(alpha: .75),
-                    ),
+                  color: scheme.surfaceContainerLow,
+                  borderRadius: AppDesign.cardBorderRadius(context),
+                  border: Border.all(
+                    color: scheme.outlineVariant.withValues(alpha: .75),
                   ),
                 ),
                 child: LayoutBuilder(
@@ -923,6 +920,8 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
     final colors = AppDesign.timetableColors(context);
 
     return TimetableLibraryCard(
+      // ReorderableListView needs a key per item; without it the list throws.
+      key: ValueKey(timetable.id),
       timetable: timetable,
       stats: stats,
       courseCodes: courseCodes,

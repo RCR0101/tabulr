@@ -370,8 +370,20 @@ class _SampleTimetablesScreenState extends State<SampleTimetablesScreen> {
     final name = branch_constants.branchLabel(pick.primaryBranch);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(AppDesign.spacingMd),
-      color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+      margin: const EdgeInsets.fromLTRB(
+        AppDesign.spacingMd,
+        AppDesign.spacingSm,
+        AppDesign.spacingMd,
+        AppDesign.spacingXs,
+      ),
+      padding: const EdgeInsets.fromLTRB(AppDesign.spacingMd, 10, 10, 10),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: AppDesign.cardBorderRadius(context),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.65),
+        ),
+      ),
       child: Row(
         children: [
           Expanded(

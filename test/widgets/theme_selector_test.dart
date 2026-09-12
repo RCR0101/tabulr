@@ -67,8 +67,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(githubRadius, BorderRadius.circular(14));
-    expect(draculaRadius, BorderRadius.circular(14));
+    final brand = BorderRadius.circular(ThemeGeometry.brand.cardRadius);
+    expect(githubRadius, brand);
+    expect(draculaRadius, brand);
     expect(githubRadius, draculaRadius);
   });
 }

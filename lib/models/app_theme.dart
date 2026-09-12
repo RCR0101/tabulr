@@ -40,11 +40,11 @@ class ThemeGeometry extends ThemeExtension<ThemeGeometry> {
   });
 
   static const brand = ThemeGeometry(
-    cardRadius: 14,
-    buttonRadius: 10,
-    dialogRadius: 20,
-    inputRadius: 12,
-    chipRadius: 10,
+    cardRadius: 16,
+    buttonRadius: 12,
+    dialogRadius: 22,
+    inputRadius: 14,
+    chipRadius: 12,
     cardElevation: 0,
     cardBorderWidth: 1,
     headingWeight: FontWeight.w600,

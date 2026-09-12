@@ -393,9 +393,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       result = await showModalBottomSheet<CalendarEvent>(
         context: context,
         isScrollControlled: true,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
         builder:
             (ctx) => DraggableScrollableSheet(
               initialChildSize: 0.85,

@@ -111,15 +111,25 @@ class TimetableLibraryCard extends StatelessWidget {
       ),
     );
 
-    return KeyedSubtree(
-      key: ValueKey(timetable.id),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1180),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+    final radius = AppDesign.cardBorderRadius(context);
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1180),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+          // Hairline sits in front of the clip: the slide actions paint to the
+          // card's edge, so a border behind them would be covered.
+          child: DecoratedBox(
+            position: DecorationPosition.foreground,
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: .8),
+              ),
+            ),
             child: ClipRRect(
-              borderRadius: AppDesign.borderRadiusMd,
+              borderRadius: radius,
               child: Slidable(
                 startActionPane: ActionPane(
                   motion: const BehindMotion(),
