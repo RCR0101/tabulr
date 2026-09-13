@@ -23,14 +23,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="canonical" href="https://tabulr.net/">
 
-  <!--
-    Start the two biggest first-visit downloads immediately, in parallel with
-    the boot-watchdog + version check below (which otherwise delay them by a few
-    hundred ms). main.dart.js (~4.5 MB) is requested by the bootstrap under this
-    exact, un-versioned URL, so the preload lands on the same cache entry.
-    CanvasKit is served from gstatic, so we only warm the connection to it.
-  -->
-  <link rel="preload" href="main.dart.js" as="script" crossorigin>
+  <!-- Preload the entrypoint Flutter will choose. This avoids downloading the
+       JavaScript fallback on Chromium browsers that can run SkWasm. -->
+  <script>
+    (function () {
+      var wasmGcProbe = new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,95,1,120,0]);
+      var isBlink = navigator.vendor === 'Google Inc.' || navigator.userAgent.indexOf('Edg/') !== -1;
+      var canvas = document.createElement('canvas');
+      var hasWebGl = !!(canvas.getContext('webgl2') || canvas.getContext('webgl'));
+      var useWasm = isBlink && hasWebGl && WebAssembly.validate(wasmGcProbe);
+      var entry = document.createElement('link');
+      entry.rel = 'preload';
+      entry.href = useWasm ? 'main.dart.wasm' : 'main.dart.js';
+      entry.as = useWasm ? 'fetch' : 'script';
+      entry.crossOrigin = 'anonymous';
+      if (useWasm) entry.type = 'application/wasm';
+      document.head.appendChild(entry);
+    })();
+  </script>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 
   <!-- PWA theme color -->

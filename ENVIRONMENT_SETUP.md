@@ -52,9 +52,9 @@ sends `Cross-Origin-Opener-Policy: same-origin` and
 worker available. A plain static server still runs the Wasm build, but only in
 single-threaded mode.
 
-Do not copy these headers to production without migrating web authentication.
-The current Firebase popup depends on its opener relationship, while
-cross-origin isolation deliberately severs it.
+Production uses the same headers and redirect-based Google authentication. Set
+`FIREBASE_AUTH_DOMAIN=tabulr.net` on every production Wasm build, as the deploy
+workflow does.
 
 ## CI / Deployment
 
@@ -75,6 +75,7 @@ Both deploy workflows need these GitHub secrets:
 |---|---|
 | `firebase_options.dart not found` | Run `flutterfire configure` or get the file from a team member |
 | Google Sign-In fails on web | Add your domain (including `localhost`) to Firebase Console → Authentication → Settings → Authorized domains |
+| Redirect returns without signing in | Add `https://tabulr.net/__/auth/handler` to the Google OAuth web client's authorized redirect URIs and use `tabulr.net` as the Firebase web `authDomain` |
 | Google Sign-In fails on desktop | Ensure the OAuth client ID in `firebase_options.dart` matches the one in Firebase Console |
 | Firestore permission denied | Check `firestore.rules` — ensure the authenticated user's UID matches the document path |
 | `flutter pub get` fails | Verify your Flutter version matches `.fvmrc` (`flutter --version`) |

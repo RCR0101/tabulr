@@ -1,36 +1,49 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:timetable_maker/services/data/auth_service.dart';
+import 'package:timetable_maker/services/data/firebase_bootstrap_options.dart';
 
 void main() {
-  group('Google popup decisions', () {
-    test('user cancellation never falls back to redirect', () {
-      for (final code in [
-        'popup-closed-by-user',
-        'cancelled-popup-request',
-        'web-context-cancelled',
-      ]) {
-        expect(AuthService.isPopupCancellationCode(code), isTrue);
-        expect(AuthService.shouldUseRedirectForPopupCode(code), isFalse);
-      }
+  group('Firebase bootstrap options', () {
+    const configured = FirebaseOptions(
+      apiKey: 'key',
+      appId: 'app',
+      messagingSenderId: 'sender',
+      projectId: 'project',
+      authDomain: 'project.firebaseapp.com',
+    );
+
+    test('uses the same-origin auth domain on web', () {
+      final resolved = resolveFirebaseOptions(
+        configured,
+        isWeb: true,
+        authDomain: ' tabulr.net ',
+        currentHost: 'TABULR.NET',
+      );
+      expect(resolved.authDomain, 'tabulr.net');
     });
 
-    test('only popup capability failures use redirect', () {
-      for (final code in [
-        'popup-blocked',
-        'operation-not-supported-in-this-environment',
-        'web-storage-unsupported',
-      ]) {
-        expect(AuthService.shouldUseRedirectForPopupCode(code), isTrue);
-        expect(AuthService.isPopupCancellationCode(code), isFalse);
-      }
-
+    test('does not modify native, preview, or unconfigured builds', () {
       expect(
-        AuthService.shouldUseRedirectForPopupCode('network-request-failed'),
-        isFalse,
+        resolveFirebaseOptions(
+          configured,
+          isWeb: false,
+          authDomain: 'tabulr.net',
+        ),
+        same(configured),
       );
       expect(
-        AuthService.shouldUseRedirectForPopupCode('unauthorized-domain'),
-        isFalse,
+        resolveFirebaseOptions(
+          configured,
+          isWeb: true,
+          authDomain: 'tabulr.net',
+          currentHost: 'preview.web.app',
+        ),
+        same(configured),
+      );
+      expect(
+        resolveFirebaseOptions(configured, isWeb: true, authDomain: ''),
+        same(configured),
       );
     });
   });

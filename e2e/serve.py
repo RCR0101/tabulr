@@ -3,9 +3,9 @@
 
 `python3 -m http.server` 404s on `/prerequisites`, so it cannot exercise a
 cold-loaded deep link at all — the case where the browser asks for a path and
-the app has to work out what it means from the URL alone. This adds the one
-piece firebase.json contributes: static files win, everything else falls back
-to index.html.
+the app has to work out what it means from the URL alone. This adds the pieces
+firebase.json contributes: static files win, everything else falls back
+to index.html, and SkWasm receives cross-origin isolation headers.
 
     python3 e2e/serve.py [port]        # defaults to 8080, serving ../build/web
 """
@@ -27,6 +27,12 @@ class SpaHandler(http.server.SimpleHTTPRequestHandler):
             self.path = '/index.html'
         return super().send_head()
 
+    def end_headers(self):
+        self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
+        self.send_header('Cross-Origin-Embedder-Policy', 'credentialless')
+        self.send_header('Cache-Control', 'no-store')
+        super().end_headers()
+
     def log_message(self, format, *args):  # noqa: A002 - signature is the base class's
         pass
 
@@ -35,5 +41,5 @@ if __name__ == '__main__':
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
     if not os.path.isdir(ROOT):
         sys.exit(f'{ROOT} does not exist — run `flutter build web` first.')
-    print(f'serving {ROOT} with SPA fallback on http://localhost:{port}')
+    print(f'serving {ROOT} with isolated SPA fallback on http://localhost:{port}')
     http.server.ThreadingHTTPServer(('', port), SpaHandler).serve_forever()

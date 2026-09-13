@@ -5,7 +5,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../constants/app_constants.dart';
-import 'config_service.dart';
 import 'user_settings_service.dart';
 import '../ui/secure_logger.dart';
 import '../ui/tutorial_service.dart';
@@ -32,7 +31,6 @@ class AuthService {
   /// `FirebaseAuth.instance` throws when no app is initialised, taking that
   /// widget down with it.
   FirebaseAuth get _firebaseAuth => FirebaseAuth.instance;
-  final ConfigService _config = ConfigService();
   late final GoogleSignIn _googleSignIn;
 
   // Session-only guest mode tracker (not persisted)
@@ -41,6 +39,9 @@ class AuthService {
   // Stream controller for auth state changes including guest mode
   final StreamController<bool> _authStateController =
       StreamController<bool>.broadcast();
+  final StreamController<void> _authErrorController =
+      StreamController<void>.broadcast();
+  AuthFlowException? _pendingAuthError;
 
   // Feeds the current app-user id to the remote log sink; subscribed once in
   // initialize() so login/logout keep shipped logs attributable.
@@ -54,6 +55,13 @@ class AuthService {
 
   Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
   Stream<bool> get authMethodChosenStream => _authStateController.stream;
+  Stream<void> get authErrorEvents => _authErrorController.stream;
+
+  AuthFlowException? takePendingAuthError() {
+    final error = _pendingAuthError;
+    _pendingAuthError = null;
+    return error;
+  }
 
   // Initialization is shared by startup and AuthWrapper. Running it twice can
   // process a redirect twice or create duplicate auth-state subscriptions.
@@ -69,25 +77,16 @@ class AuthService {
 
   Future<void> _initialize() async {
     try {
-      // Validate Google Web Client ID for web
-      if (kIsWeb && !_config.isValidConfiguration) {
-        throw Exception('Invalid configuration. Missing: GOOGLE_WEB_CLIENT_ID');
-      }
-
-      // Persist auth across browser sessions on web
+      // Persist auth across browser sessions on web.
       if (kIsWeb) {
         await _firebaseAuth.setPersistence(Persistence.LOCAL);
       }
 
-      // Initialize GoogleSignIn with web client ID if on web
-      if (kIsWeb) {
-        _googleSignIn = GoogleSignIn(clientId: _config.googleWebClientId);
-      } else {
+      // FirebaseAuth owns the web redirect. google_sign_in is only needed by
+      // the native credential flow.
+      if (!kIsWeb) {
         _googleSignIn = GoogleSignIn();
       }
-
-      // Print configuration in debug mode
-      _config.printConfiguration();
 
       if (kIsWeb) {
         // Check for redirect result on web
@@ -103,7 +102,12 @@ class AuthService {
             SecureLogger.debug('AUTH', 'No redirect result found');
           }
         } catch (e) {
-          SecureLogger.debug('AUTH', 'No redirect result available');
+          final error = _friendlyAuthError(e);
+          _pendingAuthError = error;
+          _authErrorController.add(null);
+          SecureLogger.warning('AUTH', 'Redirect sign-in failed', {
+            'message': error.message,
+          });
         }
       }
 
@@ -139,18 +143,6 @@ class AuthService {
     }
   }
 
-  static bool isPopupCancellationCode(String code) => const {
-    'popup-closed-by-user',
-    'cancelled-popup-request',
-    'web-context-cancelled',
-  }.contains(code);
-
-  static bool shouldUseRedirectForPopupCode(String code) => const {
-    'popup-blocked',
-    'operation-not-supported-in-this-environment',
-    'web-storage-unsupported',
-  }.contains(code);
-
   AuthFlowException _friendlyAuthError(Object error) {
     if (error is AuthFlowException) return error;
     if (error is FirebaseAuthException) {
@@ -160,9 +152,6 @@ class AuthService {
         ),
         'unauthorized-domain' => const AuthFlowException(
           'This domain is not authorized for sign-in. Please contact support.',
-        ),
-        'popup-blocked' => const AuthFlowException(
-          'The sign-in popup was blocked. Allow popups and try again.',
         ),
         'too-many-requests' => const AuthFlowException(
           'Too many sign-in attempts. Wait a moment and try again.',
@@ -185,58 +174,17 @@ class AuthService {
     try {
       await initialize();
       if (kIsWeb) {
-        // Web authentication - use redirect method which is more reliable
         final GoogleAuthProvider googleProvider = GoogleAuthProvider();
-
-        // Add scopes
         googleProvider.addScope('email');
         googleProvider.addScope('profile');
         googleProvider.setCustomParameters({'prompt': 'select_account'});
 
-        try {
-          SecureLogger.info('AUTH', 'Starting Google Sign-In popup');
-          final userCredential = await _firebaseAuth.signInWithPopup(
-            googleProvider,
-          );
-
-          if (userCredential.user == null) {
-            return AuthSignInResult.cancelled;
-          }
-
-          SecureLogger.authEvent('Google Sign-In popup successful');
-
-          // Store auth preference
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setBool(StorageKeys.isAuthenticated, true);
-          await prefs.remove(StorageKeys.isGuest);
-
-          return AuthSignInResult.signedIn;
-        } catch (popupError) {
-          if (popupError is FirebaseAuthException &&
-              isPopupCancellationCode(popupError.code)) {
-            SecureLogger.info('AUTH', 'Google Sign-In popup cancelled');
-            return AuthSignInResult.cancelled;
-          }
-          if (popupError is! FirebaseAuthException ||
-              !shouldUseRedirectForPopupCode(popupError.code)) {
-            rethrow;
-          }
-
-          SecureLogger.warning('AUTH', 'Popup unavailable; using redirect', {
-            'code': popupError.code,
-          });
-          try {
-            await _firebaseAuth.signInWithRedirect(googleProvider);
-            return AuthSignInResult.redirecting;
-          } catch (redirectError) {
-            SecureLogger.error(
-              'AUTH',
-              'Redirect sign-in also failed',
-              redirectError,
-            );
-            throw _friendlyAuthError(redirectError);
-          }
-        }
+        // Multi-threaded SkWasm requires cross-origin isolation, which severs
+        // popup opener relationships. Redirect auth returns to this route and
+        // is completed by getRedirectResult() during initialize().
+        SecureLogger.info('AUTH', 'Starting Google Sign-In redirect');
+        await _firebaseAuth.signInWithRedirect(googleProvider);
+        return AuthSignInResult.redirecting;
       } else {
         // Mobile authentication
         final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();

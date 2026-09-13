@@ -41,17 +41,16 @@ typedef _Partial = (List<ConstraintSelectedSection>, Set<String>);
 
 class TimetableGenerator {
   /// Entry point. Returns up to [maxTimetables] clash-free, scored timetables.
-  /// How many scored candidates to evaluate before handing a frame back to the
-  /// event loop. Chosen so a batch stays well under one 60fps frame (~16ms) on
-  /// a mid-range phone while keeping the yield overhead negligible.
-  static const int _yieldEvery = 128;
+  /// Main-isolate budget before yielding to input and rendering. Four
+  /// milliseconds leaves useful headroom even at 120/144 Hz, while periodic
+  /// elapsed-time checks keep stopwatch overhead negligible.
+  static const Duration _mainIsolateBudget = Duration(milliseconds: 4);
 
-  /// Async so the UI can paint between batches. There is no isolate here on
-  /// purpose: web has none, and shipping [Course]/[TimetableConstraints] across
-  /// an isolate boundary would cost a full copy each way. Cooperative yielding
-  /// with `Future.delayed(Duration.zero)` unblocks the UI on web and native
-  /// alike — the old fully-synchronous loop froze it for seconds on large
-  /// optional sets (up to the 10,000-combination cap × scoring).
+  /// Async so the UI can paint between batches. SkWasm can render on worker
+  /// threads, but Flutter web does not run Dart application isolates; a custom
+  /// JS worker would duplicate this domain engine and its model serialization.
+  /// Time-budgeted cooperative yielding keeps one implementation responsive on
+  /// web and native, including high-refresh displays.
   static Future<List<GeneratedTimetable>> generateTimetables(
     List<Course> availableCourses,
     TimetableConstraints constraints, {
@@ -98,19 +97,22 @@ class TimetableGenerator {
 
     final seen = <String>{};
     final validTimetables = <GeneratedTimetable>[];
-    var sinceYield = 0;
+    final batchWatch = Stopwatch()..start();
 
     for (int i = 0; i < mandatoryCombos.length; i++) {
+      // Invalid mandatory combinations can dominate pathological searches, so
+      // yield before validation too rather than only after finding a survivor.
+      if ((i & 31) == 0 && batchWatch.elapsed >= _mainIsolateBudget) {
+        await Future<void>.delayed(Duration.zero);
+        batchWatch.reset();
+      }
       final base = mandatoryCombos[i];
       if (!_isValidCombination(base, allCourses)) continue;
 
       for (final ordering in optionalOrderings) {
-        // Hand a frame back periodically. Counting scored candidates (rather
-        // than outer combos) keeps batches even when one combo has many
-        // orderings.
-        if (++sinceYield >= _yieldEvery) {
-          sinceYield = 0;
+        if (batchWatch.elapsed >= _mainIsolateBudget) {
           await Future<void>.delayed(Duration.zero);
+          batchWatch.reset();
         }
 
         final result = _addOptionalCourses(
@@ -444,7 +446,10 @@ class TimetableGenerator {
 
     for (final optCourse in optionalCourses) {
       // "Any N of M": stop once the requested number of optionals is in.
-      if (constraints.optionalTarget != null && addedCodes.length >= constraints.optionalTarget!) break;
+      if (constraints.optionalTarget != null &&
+          addedCodes.length >= constraints.optionalTarget!) {
+        break;
+      }
       // Measured on the run's own basis: an hours course has no unit count, so
       // reading totalCredits here would score every one of them as free.
       final optAmount = optCourse.variantOn(basis)?.amount ?? 0;
@@ -522,7 +527,9 @@ class TimetableGenerator {
         for (final section in sections) {
           final cells = _cells(section);
           if (cells.isEmpty) continue; // no scheduled time — nothing to place
-          if (cells.any(occupied.contains)) continue; // L and P of the same course collide
+          if (cells.any(occupied.contains)) {
+            continue; // L and P of the same course collide
+          }
           next.add((
             [
               ...picked,
@@ -687,8 +694,12 @@ class TimetableGenerator {
       for (final entry in s.section.schedule) {
         final days = entry.days.length;
         for (final h in entry.hours) {
-          if (c.earliestStartSlot != null && h < c.earliestStartSlot!) penalty += 3 * days;
-          if (c.latestEndSlot != null && h > c.latestEndSlot!) penalty += 3 * days;
+          if (c.earliestStartSlot != null && h < c.earliestStartSlot!) {
+            penalty += 3 * days;
+          }
+          if (c.latestEndSlot != null && h > c.latestEndSlot!) {
+            penalty += 3 * days;
+          }
           if (c.protectLunchBreak && ScheduleConstants.lunchHours.contains(h)) {
             penalty += 1.5 * days;
           }
@@ -927,11 +938,15 @@ class TimetableGenerator {
         ));
         if (constraints.preferredMidsemSlot != null && course.midSemExam != null) {
           total++;
-          if (course.midSemExam!.timeSlot == constraints.preferredMidsemSlot) matched++;
+          if (course.midSemExam!.timeSlot == constraints.preferredMidsemSlot) {
+            matched++;
+          }
         }
         if (constraints.preferredCompreSlot != null && course.endSemExam != null) {
           total++;
-          if (course.endSemExam!.timeSlot == constraints.preferredCompreSlot) matched++;
+          if (course.endSemExam!.timeSlot == constraints.preferredCompreSlot) {
+            matched++;
+          }
         }
       }
       if (total > 0) {

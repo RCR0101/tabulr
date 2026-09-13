@@ -4,4 +4,4 @@ set -euo pipefail
 PORT="${1:-8080}"
 
 flutter build web --wasm --release
-node scripts/serve-skwasm.mjs "$PORT"
+python3 e2e/serve.py "$PORT"

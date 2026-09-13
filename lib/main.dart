@@ -11,6 +11,7 @@ import 'screens/maintenance_screen.dart';
 import 'widgets/common/shimmer_loading.dart';
 import 'widgets/app_shell.dart';
 import 'services/data/auth_service.dart';
+import 'services/data/firebase_bootstrap_options.dart';
 import 'services/ui/theme_service.dart' as theme_service;
 import 'services/data/campus_service.dart';
 import 'services/data/courses_master_service.dart';
@@ -48,8 +49,12 @@ void main() async {
 
   await SecureLogger.measureAsync(
     'firebase_init',
-    () =>
-        Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform),
+    () => Firebase.initializeApp(
+      options: resolveFirebaseOptions(
+        DefaultFirebaseOptions.currentPlatform,
+        isWeb: kIsWeb,
+      ),
+    ),
   );
 
   FirebaseFirestore.instance.settings = const Settings(

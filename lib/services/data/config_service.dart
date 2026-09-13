@@ -11,12 +11,10 @@ class ConfigService {
   final LocalCacheService _localCache = LocalCacheService();
   static const _cacheKey = 'app_config';
 
-  String get googleWebClientId => '497813124701-d5v3q5knljt4svch4l0b5q0cgv71o22l.apps.googleusercontent.com';
-
   // App Configuration
   String get appName => 'Tabulr';
   // Keep in sync with pubspec.yaml `version:` field.
-  String get appVersion => '2.5.77';
+  String get appVersion => '2.5.78';
 
   // Debug Settings
   bool get debugMode => false;
@@ -121,8 +119,6 @@ class ConfigService {
         {'start': midsemStart, 'end': midsemEnd},
         {'start': endsemStart, 'end': endsemEnd},
       ];
-
-  bool get isValidConfiguration => googleWebClientId.isNotEmpty;
 
   /// Load admin-set semester dates from Firestore, falling back to the local
   /// cache when offline. Safe to call at startup; idempotent unless [force].

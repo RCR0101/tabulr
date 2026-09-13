@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../services/data/auth_service.dart';
 import '../services/ui/toast_service.dart';
@@ -20,9 +22,33 @@ enum _AuthAction { google, guest }
 
 class _AuthScreenState extends State<AuthScreen> {
   final AuthService _authService = AuthService();
+  StreamSubscription<void>? _authErrorSubscription;
   _AuthAction? _activeAction;
 
   bool get _isLoading => _activeAction != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _authErrorSubscription = _authService.authErrorEvents.listen((_) {
+      _showPendingRedirectError();
+    });
+    _showPendingRedirectError();
+  }
+
+  void _showPendingRedirectError() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final error = _authService.takePendingAuthError();
+      if (error != null) _showErrorDialog(error.message, translate: false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _authErrorSubscription?.cancel();
+    super.dispose();
+  }
 
   Future<void> _signInWithGoogle() async {
     if (_isLoading) return;
