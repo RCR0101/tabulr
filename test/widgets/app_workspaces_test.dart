@@ -233,6 +233,40 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('workspace tabs use exact unboxed navigation geometry', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final entries = AppWorkspaces.of(AppWorkspace.timetables).entries;
+    WorkspaceEntry? selected;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: WorkspaceTabs(
+            entries: entries,
+            selectedId: entries.first.id,
+            onSelected: (entry) => selected = entry,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getSize(find.byType(WorkspaceTabs)).height,
+      WorkspaceTabs.preferredHeight,
+    );
+    expect(find.byType(TextButton), findsNothing);
+    await tester.tap(find.text('Samples'));
+    expect(selected?.label, 'Samples');
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('mobile workspace tabs follow scroll direction smoothly', (
     tester,
   ) async {

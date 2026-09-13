@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
 
 import '../models/user_settings.dart' as user_settings;
@@ -189,16 +187,10 @@ class ThemeSelectorDialog extends StatelessWidget {
             borderRadius: BorderRadius.vertical(
               top: Radius.circular(dialogRadius),
             ),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: AppDesign.glassBlur,
-                sigmaY: AppDesign.glassBlur,
-              ),
-              child: Container(
-                color: scheme.surface.withValues(alpha: 0.94),
-                height: MediaQuery.sizeOf(ctx).height * 0.88,
-                child: const ThemeSelectorDialog(),
-              ),
+            child: Container(
+              color: scheme.surface,
+              height: MediaQuery.sizeOf(ctx).height * 0.88,
+              child: const ThemeSelectorDialog(),
             ),
           );
         },

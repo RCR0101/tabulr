@@ -637,87 +637,83 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
 
   Widget _buildArchivedSection() {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppDesign.spacingMd),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Divider(height: 1),
-          // Timetables hidden by the term filter would otherwise look deleted.
-          if (_pastTermCount > 0)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(
-                '$_pastTermCount timetable${_pastTermCount == 1 ? '' : 's'} from a '
-                'previous semester ${_pastTermCount == 1 ? 'is' : 'are'} kept here.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurface.withValues(alpha: 0.6),
-                ),
-              ),
-            ),
-          InkWell(
-            onTap: () => setState(() => _archivesExpanded = !_archivesExpanded),
-            borderRadius: AppDesign.borderRadiusSm,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.history,
-                    size: 18,
-                    color: scheme.onSurface.withValues(alpha: 0.6),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Past Semesters',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: scheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(
-                    _archivesExpanded ? Icons.expand_less : Icons.expand_more,
-                    size: 20,
-                    color: scheme.onSurface.withValues(alpha: 0.4),
-                  ),
-                ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: 1),
+        if (_pastTermCount > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(
+              '$_pastTermCount timetable${_pastTermCount == 1 ? '' : 's'} from a '
+              'previous semester ${_pastTermCount == 1 ? 'is' : 'are'} kept here.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: scheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           ),
-          if (_archivesExpanded)
-            ..._archivedSemesters.map(
-              (archive) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Card(
-                  elevation: 0,
-                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: AppDesign.borderRadiusMd,
+        InkWell(
+          onTap: () => setState(() => _archivesExpanded = !_archivesExpanded),
+          borderRadius: AppDesign.borderRadiusSm,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.history,
+                  size: 18,
+                  color: scheme.onSurface.withValues(alpha: 0.6),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Past Semesters',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: scheme.onSurface.withValues(alpha: 0.7),
                   ),
-                  child: ListTile(
-                    leading: Icon(Icons.folder_outlined, color: scheme.primary),
-                    title: Text(archive.label),
-                    subtitle: Text(
-                      '${archive.timetableCount} timetable${archive.timetableCount != 1 ? 's' : ''}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurface.withValues(alpha: 0.5),
-                      ),
+                ),
+                const Spacer(),
+                Icon(
+                  _archivesExpanded ? Icons.expand_less : Icons.expand_more,
+                  size: 20,
+                  color: scheme.onSurface.withValues(alpha: 0.4),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_archivesExpanded)
+          ..._archivedSemesters.map(
+            (archive) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Card(
+                elevation: 0,
+                color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: AppDesign.borderRadiusMd,
+                ),
+                child: ListTile(
+                  leading: Icon(Icons.folder_outlined, color: scheme.primary),
+                  title: Text(archive.label),
+                  subtitle: Text(
+                    '${archive.timetableCount} timetable${archive.timetableCount != 1 ? 's' : ''}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurface.withValues(alpha: 0.5),
                     ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap:
-                        () => Navigator.push(
-                          context,
-                          FadeSlidePageRoute(
-                            page: ArchivedTimetablesScreen(semester: archive),
-                          ),
-                        ),
                   ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap:
+                      () => Navigator.push(
+                        context,
+                        FadeSlidePageRoute(
+                          page: ArchivedTimetablesScreen(semester: archive),
+                        ),
+                      ),
                 ),
               ),
             ),
-          const SizedBox(height: 8),
-        ],
-      ),
+          ),
+        const SizedBox(height: 8),
+      ],
     );
   }
 
@@ -944,9 +940,9 @@ class _TimetablesScreenState extends State<TimetablesScreen> {
   Widget _buildLibraryFooter() {
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1040),
+        constraints: const BoxConstraints(maxWidth: 1180),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

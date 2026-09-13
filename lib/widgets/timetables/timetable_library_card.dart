@@ -42,6 +42,11 @@ class TimetableLibraryCard extends StatelessWidget {
   final VoidCallback onDuplicate;
   final VoidCallback onDelete;
 
+  /// Left edge the title text sits on: the colour dot plus its gap, and the
+  /// drag handle before them when the list is hand-ordered. Everything under
+  /// the title lines up on it instead of guessing a constant.
+  double get _titleInset => (isCustomSort ? 32 : 0) + 19;
+
   String _creditsLabel() {
     final value =
         totalCredits % 1 == 0
@@ -246,7 +251,7 @@ class TimetableLibraryCard extends StatelessWidget {
     String metadata,
   ) {
     return Padding(
-      padding: const EdgeInsets.only(left: 19, top: 4),
+      padding: EdgeInsets.only(left: _titleInset, top: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

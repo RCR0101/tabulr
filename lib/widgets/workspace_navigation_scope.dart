@@ -30,7 +30,9 @@ class WorkspaceNavigationScope extends InheritedWidget {
     final workspaceBottom =
         mobile && entries.length > 1
             ? PreferredSize(
-              preferredSize: Size.fromHeight(48 * tabVisibility),
+              preferredSize: Size.fromHeight(
+                WorkspaceTabs.preferredHeight * tabVisibility,
+              ),
               child: ClipRect(
                 child: Align(
                   heightFactor: tabVisibility,
@@ -73,11 +75,17 @@ class WorkspaceTabs extends StatefulWidget {
     required this.entries,
     required this.selectedId,
     required this.onSelected,
+    this.inset = 16,
   });
 
   final List<WorkspaceEntry> entries;
   final String selectedId;
   final ValueChanged<WorkspaceEntry> onSelected;
+
+  static const double preferredHeight = 52;
+
+  /// Page margin the strip lines up on. Defaults to the mobile content margin.
+  final double inset;
 
   @override
   State<WorkspaceTabs> createState() => _WorkspaceTabsState();
@@ -102,57 +110,111 @@ class _WorkspaceTabsState extends State<WorkspaceTabs> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final target = _selectedKey.currentContext;
       if (mounted && target != null) {
-        Scrollable.ensureVisible(target, alignment: .5);
+        Scrollable.ensureVisible(
+          target,
+          alignment: .5,
+          duration:
+              MediaQuery.disableAnimationsOf(target)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+        );
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(color: scheme.surfaceContainerLowest),
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return SizedBox(
+      height: WorkspaceTabs.preferredHeight,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
+        padding: EdgeInsets.symmetric(horizontal: widget.inset),
         child: Row(
           children: [
             for (final entry in widget.entries)
-              Semantics(
+              _WorkspaceTab(
+                key:
+                    entry.id == widget.selectedId
+                        ? _selectedKey
+                        : ValueKey(entry.id),
+                label: entry.label,
                 selected: entry.id == widget.selectedId,
-                button: true,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: TextButton(
-                    // One pill does fill, hover and ripple: a square ripple over
-                    // a rounded fill was the shape that read as boxy.
-                    key:
-                        entry.id == widget.selectedId
-                            ? _selectedKey
-                            : ValueKey(entry.id),
-                    style: TextButton.styleFrom(
-                      minimumSize: const Size(0, 40),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      backgroundColor:
-                          entry.id == widget.selectedId
-                              ? scheme.primaryContainer.withValues(alpha: .62)
-                              : Colors.transparent,
-                      foregroundColor:
-                          entry.id == widget.selectedId
-                              ? scheme.onPrimaryContainer
-                              : scheme.onSurfaceVariant,
-                      shape: const StadiumBorder(),
-                      animationDuration:
-                          MediaQuery.disableAnimationsOf(context)
-                              ? Duration.zero
-                              : const Duration(milliseconds: 180),
-                    ),
-                    onPressed: () => widget.onSelected(entry),
-                    child: Text(entry.label),
-                  ),
-                ),
+                reduceMotion: reduceMotion,
+                onTap: () => widget.onSelected(entry),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WorkspaceTab extends StatelessWidget {
+  const _WorkspaceTab({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.reduceMotion,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final bool reduceMotion;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final duration =
+        reduceMotion ? Duration.zero : const Duration(milliseconds: 160);
+
+    return Semantics(
+      selected: selected,
+      button: true,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          hoverColor: scheme.primary.withValues(alpha: 0.05),
+          focusColor: scheme.primary.withValues(alpha: 0.08),
+          splashColor: scheme.primary.withValues(alpha: 0.08),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              minHeight: WorkspaceTabs.preferredHeight,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 15),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  AnimatedDefaultTextStyle(
+                    duration: duration,
+                    curve: Curves.easeOutCubic,
+                    style: Theme.of(context).textTheme.labelLarge!.copyWith(
+                      color:
+                          selected ? scheme.primary : scheme.onSurfaceVariant,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                    child: Text(label, maxLines: 1),
+                  ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 3,
+                    child: AnimatedContainer(
+                      duration: duration,
+                      curve: Curves.easeOutCubic,
+                      height: 2,
+                      color: selected ? scheme.primary : Colors.transparent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );

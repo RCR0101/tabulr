@@ -52,12 +52,19 @@ class SampleTimetableCard extends StatelessWidget {
     final strip = chips ?? generated.pros;
     final chipColor = chipsAreLosses ? scheme.error : scheme.primary;
     return Card(
-      margin: const EdgeInsets.fromLTRB(6, 8, 6, 8),
+      // Matches the page inset of the header above it — the two stacked on
+      // different left edges, which read as a misalignment rather than depth.
+      margin: const EdgeInsets.fromLTRB(
+        AppDesign.spacingMd,
+        AppDesign.spacingXs,
+        AppDesign.spacingMd,
+        AppDesign.spacingSm,
+      ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
             child: Row(
               children: [
                 Expanded(
@@ -96,7 +103,7 @@ class SampleTimetableCard extends StatelessWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                 child: Wrap(
                   spacing: 6,
                   runSpacing: 6,

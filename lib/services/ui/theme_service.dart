@@ -985,6 +985,26 @@ TextTheme _buildTextTheme(Color onSurface, ThemeGeometry g) {
   );
 }
 
+class _TabulrPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _TabulrPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    if (route.isFirst || MediaQuery.disableAnimationsOf(context)) return child;
+    final position = Tween<Offset>(
+      begin: const Offset(0.018, 0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
+    return SlideTransition(position: position, child: child);
+  }
+}
+
 ThemeData _buildTheme(_ThemeColors c) {
   final isDark = c.brightness == Brightness.dark;
   final base = isDark ? ThemeData.dark() : ThemeData.light();
@@ -1098,8 +1118,9 @@ ThemeData _buildTheme(_ThemeColors c) {
       ),
     ),
     cardTheme: CardThemeData(
-      color: c.surface,
+      color: c.surfaceContainerLow ?? c.surface,
       elevation: g.cardElevation,
+      surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(g.cardRadius),
         side:
@@ -1136,6 +1157,56 @@ ThemeData _buildTheme(_ThemeColors c) {
         ),
       ),
     ),
+    tabBarTheme: TabBarThemeData(
+      indicatorColor: c.primary,
+      indicatorSize: TabBarIndicatorSize.label,
+      dividerColor: Colors.transparent,
+      labelColor: c.primary,
+      unselectedLabelColor: c.labelColor ?? onSurface.withValues(alpha: 0.7),
+      labelStyle: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+      unselectedLabelStyle: textTheme.labelLarge,
+      overlayColor: WidgetStateProperty.resolveWith(
+        (states) =>
+            states.contains(WidgetState.hovered) ||
+                    states.contains(WidgetState.focused)
+                ? c.primary.withValues(alpha: 0.06)
+                : Colors.transparent,
+      ),
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        elevation: const WidgetStatePropertyAll(0),
+        visualDensity: VisualDensity.compact,
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected)
+                  ? onContainer(c.primary, primaryContainer)
+                  : c.labelColor ?? onSurface,
+        ),
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected)
+                  ? primaryContainer
+                  : c.surfaceContainerLow ?? c.surface,
+        ),
+        side: WidgetStateProperty.resolveWith(
+          (states) => BorderSide(
+            color:
+                states.contains(WidgetState.selected)
+                    ? c.primary.withValues(alpha: 0.45)
+                    : c.outline.withValues(alpha: 0.3),
+          ),
+        ),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(g.buttonRadius),
+          ),
+        ),
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        ),
+      ),
+    ),
     inputDecorationTheme:
         c.inputFill != null
             ? InputDecorationTheme(
@@ -1168,14 +1239,19 @@ ThemeData _buildTheme(_ThemeColors c) {
         c.inputFill != null
             ? ChipThemeData(
               backgroundColor: c.chipBgColor ?? c.inputFill,
-              selectedColor: c.primary,
+              selectedColor: primaryContainer,
               labelStyle: textTheme.labelLarge?.copyWith(color: onSurface),
               secondaryLabelStyle: textTheme.labelLarge?.copyWith(
-                color: c.chipSecondaryLabel ?? onPrimary,
+                color:
+                    c.chipSecondaryLabel ??
+                    onContainer(c.primary, primaryContainer),
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(g.chipRadius),
+                side: BorderSide(color: c.outline.withValues(alpha: 0.3)),
               ),
+              elevation: 0,
+              pressElevation: 0,
             )
             : null,
     dataTableTheme:
@@ -1246,6 +1322,16 @@ ThemeData _buildTheme(_ThemeColors c) {
       checkColor: WidgetStateProperty.all(onPrimary),
       side: BorderSide(color: effectiveBorderColor, width: 1.5),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+    ),
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: _TabulrPageTransitionsBuilder(),
+        TargetPlatform.iOS: _TabulrPageTransitionsBuilder(),
+        TargetPlatform.macOS: _TabulrPageTransitionsBuilder(),
+        TargetPlatform.windows: _TabulrPageTransitionsBuilder(),
+        TargetPlatform.linux: _TabulrPageTransitionsBuilder(),
+        TargetPlatform.fuchsia: _TabulrPageTransitionsBuilder(),
+      },
     ),
     visualDensity: VisualDensity.adaptivePlatformDensity,
     extensions: [

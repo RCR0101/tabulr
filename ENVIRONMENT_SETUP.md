@@ -40,6 +40,22 @@ flutter test            # run tests
 flutter analyze         # lint check
 ```
 
+### Profiling multi-threaded SkWasm locally
+
+```bash
+scripts/run-skwasm-local.sh       # optionally pass a port
+```
+
+Open the printed localhost URL in Chromium and use guest mode. The local server
+sends `Cross-Origin-Opener-Policy: same-origin` and
+`Cross-Origin-Embedder-Policy: credentialless`, which makes SkWasm's renderer
+worker available. A plain static server still runs the Wasm build, but only in
+single-threaded mode.
+
+Do not copy these headers to production without migrating web authentication.
+The current Firebase popup depends on its opener relationship, while
+cross-origin isolation deliberately severs it.
+
 ## CI / Deployment
 
 All workflows live in `.github/workflows/` and read the Flutter version from `.fvmrc`:

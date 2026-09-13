@@ -15,7 +15,7 @@ import '../data/config_service.dart';
 
 // Platform-specific implementations
 import 'export_service_stub.dart'
-    if (dart.library.html) 'export_service_web.dart'
+    if (dart.library.js_interop) 'export_service_web.dart'
     if (dart.library.io) 'export_service_io.dart';
 
 final Map<int, List<int>> _hourToTime = ScheduleConstants.hourToTime;
@@ -63,9 +63,14 @@ String _fmtDateForICS(DateTime dt) {
 /// matching UTC instant as an ICS string. Used for `RRULE` `UNTIL`, which must
 /// be UTC when `DTSTART` carries a `TZID`.
 String _istWallToUtcICS(DateTime istWall) {
-  final utc = DateTime.utc(istWall.year, istWall.month, istWall.day,
-          istWall.hour, istWall.minute, istWall.second)
-      .subtract(const Duration(hours: 5, minutes: 30));
+  final utc = DateTime.utc(
+    istWall.year,
+    istWall.month,
+    istWall.day,
+    istWall.hour,
+    istWall.minute,
+    istWall.second,
+  ).subtract(const Duration(hours: 5, minutes: 30));
   return _formatUtcForICS(utc);
 }
 
@@ -85,10 +90,10 @@ List<List<int>> _consecutiveRuns(List<int> hours) {
 }
 
 String _sectionTypeLabel(SectionType type) => switch (type) {
-      SectionType.L => 'Lecture',
-      SectionType.P => 'Practical',
-      SectionType.T => 'Tutorial',
-    };
+  SectionType.L => 'Lecture',
+  SectionType.P => 'Practical',
+  SectionType.T => 'Tutorial',
+};
 
 /// Fold a content line to the 75-octet limit (RFC 5545): continuation lines
 /// begin with a single space. Counted on characters — exact for the ASCII
@@ -145,8 +150,17 @@ String _generateExDates(DayOfWeek day, int startHour) {
     final end = (period['end'] as DateTime).add(const Duration(days: 1));
     while (current.isBefore(end)) {
       if (current.weekday == targetWeekday) {
-        exDates.add(_fmtLocalForICS(DateTime(current.year, current.month,
-            current.day, timeSlot[0], timeSlot[1])));
+        exDates.add(
+          _fmtLocalForICS(
+            DateTime(
+              current.year,
+              current.month,
+              current.day,
+              timeSlot[0],
+              timeSlot[1],
+            ),
+          ),
+        );
       }
       current = current.add(const Duration(days: 1));
     }
@@ -171,7 +185,9 @@ class ExportService {
     var academicEvents = const <AcademicCalendarEvent>[];
     if (campusId != null) {
       try {
-        academicEvents = await AcademicCalendarService().load(campusId: campusId);
+        academicEvents = await AcademicCalendarService().load(
+          campusId: campusId,
+        );
       } catch (_) {
         academicEvents = const [];
       }
@@ -208,9 +224,10 @@ class ExportService {
     // Stable per-timetable namespace, so re-importing after an edit updates the
     // same events instead of piling up duplicates (the old random-UUID UIDs
     // created a fresh copy every export).
-    final ns = (timetableId == null || timetableId.isEmpty)
-        ? 'tt'
-        : timetableId.replaceAll(RegExp(r'\s'), '');
+    final ns =
+        (timetableId == null || timetableId.isEmpty)
+            ? 'tt'
+            : timetableId.replaceAll(RegExp(r'\s'), '');
     final calName = _escapeText(
       'Tabulr${(calendarName != null && calendarName.isNotEmpty) ? ' — $calendarName' : ''}',
     );
@@ -219,7 +236,8 @@ class ExportService {
     // end of the last semester day.
     final semEnd = ConfigService().semesterEnd;
     final until = _istWallToUtcICS(
-        DateTime(semEnd.year, semEnd.month, semEnd.day, 23, 59, 59));
+      DateTime(semEnd.year, semEnd.month, semEnd.day, 23, 59, 59),
+    );
 
     String uid(String suffix) =>
         'tabulr-$ns-$suffix@tabulr.app'.replaceAll(RegExp(r'\s'), '');
@@ -259,8 +277,10 @@ class ExportService {
             final exdate = _generateExDates(day, run.first);
 
             final descLines = <String>[
-              if (options.showSectionId) '$typeLabel · Section ${sel.sectionId}',
-              if (options.showInstructor) 'Instructor: ${sel.section.instructor}',
+              if (options.showSectionId)
+                '$typeLabel · Section ${sel.sectionId}',
+              if (options.showInstructor)
+                'Instructor: ${sel.section.instructor}',
               if (options.showRoom) 'Room: ${sel.section.room}',
             ];
 
@@ -503,9 +523,10 @@ class ExportService {
 
       // Parse campus
       final campusString = timetableData['campus'] as String?;
-      final Campus campus = campusString != null
-          ? Campus.fromCode(campusString.toLowerCase())
-          : Campus.hyderabad;
+      final Campus campus =
+          campusString != null
+              ? Campus.fromCode(campusString.toLowerCase())
+              : Campus.hyderabad;
 
       // Parse courses
       final courses =
@@ -636,8 +657,10 @@ class ExportService {
       double pixelRatio = _preferredExportPixelRatio;
       if (longestSide > 0 &&
           longestSide * pixelRatio > _maxExportImageDimension) {
-        pixelRatio = (_maxExportImageDimension / longestSide)
-            .clamp(1.0, _preferredExportPixelRatio);
+        pixelRatio = (_maxExportImageDimension / longestSide).clamp(
+          1.0,
+          _preferredExportPixelRatio,
+        );
       }
 
       final ui.Image image = await boundary.toImage(pixelRatio: pixelRatio);
@@ -698,11 +721,15 @@ class ExportService {
     );
   }
 
-  static DateTime _getExamDateTime(ExamSchedule exam,
-      {bool endTime = false, String? campus}) {
+  static DateTime _getExamDateTime(
+    ExamSchedule exam, {
+    bool endTime = false,
+    String? campus,
+  }) {
     // Use campus-specific time slot mappings for the timetable's own campus.
     final slotTimes = TimeSlotInfo.getCampusExamTimes(
-        campus ?? CampusService.campusId);
+      campus ?? CampusService.campusId,
+    );
 
     final timeInfo = slotTimes[exam.timeSlot];
     if (timeInfo == null) {

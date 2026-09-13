@@ -7,6 +7,8 @@ import 'app_sidebar.dart';
 import 'app_workspaces.dart';
 import 'workspace_navigation_scope.dart';
 
+const double _pageInset = 20;
+
 /// Navigation chrome shared by every workspace, with feature bodies kept lazy
 /// by the shell. No nested Navigator: editor leave guards stay on the root.
 class WorkspaceFrame extends StatefulWidget {
@@ -43,20 +45,8 @@ class WorkspaceFrame extends StatefulWidget {
   State<WorkspaceFrame> createState() => _WorkspaceFrameState();
 }
 
-class _WorkspaceFrameState extends State<WorkspaceFrame>
-    with SingleTickerProviderStateMixin {
+class _WorkspaceFrameState extends State<WorkspaceFrame> {
   bool _tabsVisible = true;
-  late final AnimationController _contentController;
-
-  @override
-  void initState() {
-    super.initState();
-    _contentController = AnimationController(
-      vsync: this,
-      duration: AppDesign.animDurationFast,
-      value: 1,
-    );
-  }
 
   @override
   void didUpdateWidget(WorkspaceFrame oldWidget) {
@@ -64,16 +54,7 @@ class _WorkspaceFrameState extends State<WorkspaceFrame>
     if (oldWidget.selectedId != widget.selectedId ||
         oldWidget.workspace.workspace != widget.workspace.workspace) {
       _showTabs();
-      _contentController
-        ..reset()
-        ..forward();
     }
-  }
-
-  @override
-  void dispose() {
-    _contentController.dispose();
-    super.dispose();
   }
 
   void _showTabs() {
@@ -178,7 +159,9 @@ class _WorkspaceFrameState extends State<WorkspaceFrame>
     final desktopContent = Column(
       children: [
         Container(
-          padding: const EdgeInsets.fromLTRB(28, 20, 28, 0),
+          // Only the title takes the page inset; the tab strip runs edge to edge
+          // and insets itself, so its scroll doesn't dead-end in a padded box.
+          padding: const EdgeInsets.only(top: 20),
           decoration: BoxDecoration(
             color: scheme.surface,
             border: Border(
@@ -186,46 +169,71 @@ class _WorkspaceFrameState extends State<WorkspaceFrame>
             ),
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      widget.workspace.label,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -.6,
-                      ),
-                    ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: _pageInset),
+                child: Text(
+                  widget.workspace.label,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -.6,
                   ),
-                ],
+                ),
               ),
               if (widget.entries.length > 1)
                 WorkspaceTabs(
                   entries: widget.entries,
                   selectedId: widget.selectedId,
                   onSelected: widget.onEntrySelected,
+                  inset: _pageInset,
                 )
               else
                 const SizedBox(height: 14),
             ],
           ),
         ),
-        Expanded(
-          child: FadeTransition(
-            opacity: CurvedAnimation(
-              parent: _contentController,
-              curve: Curves.easeOut,
-            ),
-            child: widget.child,
-          ),
-        ),
+        Expanded(child: RepaintBoundary(child: widget.child)),
       ],
     );
     final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final shell = Scaffold(
+      body:
+          mobile
+              ? _WorkspaceScrollBody(
+                onNotification: _handleScrollNotification,
+                child: widget.child,
+              )
+              : Row(
+                children: [
+                  AppSidebar(
+                    currentWorkspace: widget.workspace.workspace,
+                    workspaces: widget.workspaces,
+                    onWorkspaceSelected: widget.onWorkspaceSelected,
+                    collapsed: tablet || widget.collapsed,
+                    onToggleCollapse: tablet ? null : widget.onToggleCollapse,
+                    onShowCommandPalette: widget.onSearch,
+                    onShowProfile: widget.onProfile,
+                    onShowTheme: widget.onTheme,
+                  ),
+                  Expanded(child: desktopContent),
+                ],
+              ),
+      bottomNavigationBar:
+          mobile
+              ? _WorkspaceDock(
+                destinations: primary,
+                selectedIndex: primaryIndex < 0 ? primary.length : primaryIndex,
+                onSelected:
+                    (index) =>
+                        index == primary.length
+                            ? _showMore(context)
+                            : widget.onWorkspaceSelected(
+                              primary[index].workspace,
+                            ),
+              )
+              : null,
+    );
     return TweenAnimationBuilder<double>(
       tween: Tween(end: keyboardVisible || !_tabsVisible ? 0 : 1),
       duration:
@@ -233,53 +241,16 @@ class _WorkspaceFrameState extends State<WorkspaceFrame>
               ? Duration.zero
               : const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
+      child: shell,
       builder:
-          (context, tabVisibility, _) => WorkspaceNavigationScope(
+          (context, tabVisibility, child) => WorkspaceNavigationScope(
             mobile: mobile,
             entries: widget.entries,
             selectedId: widget.selectedId,
             onEntrySelected: widget.onEntrySelected,
             onSearch: widget.onSearch,
             tabVisibility: tabVisibility,
-            child: Scaffold(
-              body:
-                  mobile
-                      ? _WorkspaceScrollBody(
-                        onNotification: _handleScrollNotification,
-                        child: widget.child,
-                      )
-                      : Row(
-                        children: [
-                          AppSidebar(
-                            currentWorkspace: widget.workspace.workspace,
-                            workspaces: widget.workspaces,
-                            onWorkspaceSelected: widget.onWorkspaceSelected,
-                            collapsed: tablet || widget.collapsed,
-                            onToggleCollapse:
-                                tablet ? null : widget.onToggleCollapse,
-                            onShowCommandPalette: widget.onSearch,
-                            onShowProfile: widget.onProfile,
-                            onShowTheme: widget.onTheme,
-                          ),
-                          Expanded(child: desktopContent),
-                        ],
-                      ),
-              bottomNavigationBar:
-                  mobile
-                      ? _WorkspaceDock(
-                        destinations: primary,
-                        selectedIndex:
-                            primaryIndex < 0 ? primary.length : primaryIndex,
-                        onSelected:
-                            (index) =>
-                                index == primary.length
-                                    ? _showMore(context)
-                                    : widget.onWorkspaceSelected(
-                                      primary[index].workspace,
-                                    ),
-                      )
-                      : null,
-            ),
+            child: child!,
           ),
     );
   }

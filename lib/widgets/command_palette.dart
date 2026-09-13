@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/data/auth_service.dart';
@@ -545,62 +544,52 @@ class _CommandPaletteState extends State<CommandPalette> {
             color: Colors.transparent,
             child: ClipRRect(
               borderRadius: radius,
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  key: const ValueKey('command-palette-surface'),
-                  width: math.min(700, screenSize.width - (compact ? 24 : 48)),
-                  constraints: BoxConstraints(maxHeight: maxHeight),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        scheme.surface.withValues(alpha: 0.98),
-                        Color.alphaBlend(
-                          scheme.primary.withValues(alpha: 0.035),
-                          scheme.surface.withValues(alpha: 0.98),
-                        ),
-                      ],
-                    ),
-                    borderRadius: radius,
-                    border: Border.all(
-                      color: scheme.primary.withValues(alpha: 0.16),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.22),
-                        blurRadius: 48,
-                        spreadRadius: -4,
-                        offset: const Offset(0, 20),
-                      ),
-                    ],
+              child: Container(
+                key: const ValueKey('command-palette-surface'),
+                width: math.min(700, screenSize.width - (compact ? 24 : 48)),
+                constraints: BoxConstraints(maxHeight: maxHeight),
+                decoration: BoxDecoration(
+                  color: Color.alphaBlend(
+                    scheme.primary.withValues(alpha: 0.025),
+                    scheme.surface,
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildHeader(scheme, compact),
-                      _buildSearchField(scheme),
-                      const SizedBox(height: 8),
-                      Flexible(
-                        child: AnimatedSwitcher(
-                          duration:
-                              media.disableAnimations
-                                  ? Duration.zero
-                                  : AppDesign.animDurationFast,
-                          switchInCurve: Curves.easeOutCubic,
-                          switchOutCurve: Curves.easeInCubic,
-                          child: KeyedSubtree(
-                            key: ValueKey(
-                              '${_controller.text}:${_filtered.length}',
-                            ),
-                            child: _buildResults(scheme),
+                  borderRadius: radius,
+                  border: Border.all(
+                    color: scheme.primary.withValues(alpha: 0.16),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.22),
+                      blurRadius: 24,
+                      spreadRadius: -2,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildHeader(scheme, compact),
+                    _buildSearchField(scheme),
+                    const SizedBox(height: 8),
+                    Flexible(
+                      child: AnimatedSwitcher(
+                        duration:
+                            media.disableAnimations
+                                ? Duration.zero
+                                : AppDesign.animDurationFast,
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        child: KeyedSubtree(
+                          key: ValueKey(
+                            '${_controller.text}:${_filtered.length}',
                           ),
+                          child: _buildResults(scheme),
                         ),
                       ),
-                      _buildFooter(scheme),
-                    ],
-                  ),
+                    ),
+                    _buildFooter(scheme),
+                  ],
                 ),
               ),
             ),

@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
 import '../../models/app_theme.dart';
 import '../../services/ui/responsive_service.dart';
@@ -34,87 +32,82 @@ class AppDialog {
             borderRadius: BorderRadius.vertical(
               top: Radius.circular(dialogRadius),
             ),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: AppDesign.glassBlur,
-                sigmaY: AppDesign.glassBlur,
-              ),
-              child: Container(
-                color: scheme.surface.withValues(alpha: 0.85),
-                child: SafeArea(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      left: 20,
-                      right: 20,
-                      top: 16,
-                      bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Center(
-                          child: Container(
-                            width: 32,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: scheme.onSurface.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
+            child: Container(
+              color: scheme.surface,
+              child: SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    left: 20,
+                    right: 20,
+                    top: 16,
+                    bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 32,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: scheme.onSurface.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(2),
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            if (icon != null) ...[
-                              Container(
-                                padding: const EdgeInsets.all(
-                                  AppDesign.spacingSm,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: (iconColor ?? scheme.primary)
-                                      .withValues(alpha: 0.1),
-                                  borderRadius: AppDesign.innerBorderRadius(ctx),
-                                ),
-                                child: Icon(
-                                  icon,
-                                  size: 20,
-                                  color: iconColor ?? scheme.primary,
-                                ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          if (icon != null) ...[
+                            Container(
+                              padding: const EdgeInsets.all(
+                                AppDesign.spacingSm,
                               ),
-                              const SizedBox(width: AppDesign.spacingSm + 4),
-                            ],
-                            Expanded(
-                              child: Text(
-                                title,
-                                style: Theme.of(ctx).textTheme.titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.w600),
+                              decoration: BoxDecoration(
+                                color: (iconColor ?? scheme.primary).withValues(
+                                  alpha: 0.1,
+                                ),
+                                borderRadius: AppDesign.innerBorderRadius(ctx),
+                              ),
+                              child: Icon(
+                                icon,
+                                size: 20,
+                                color: iconColor ?? scheme.primary,
                               ),
                             ),
+                            const SizedBox(width: AppDesign.spacingSm + 4),
                           ],
-                        ),
-                        const SizedBox(height: AppDesign.spacingMd),
-                        content,
-                        if (actions != null) ...[
-                          const SizedBox(height: AppDesign.spacingLg),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children:
-                                actions
-                                    .expand(
-                                      (a) => [
-                                        a,
-                                        const SizedBox(
-                                          width: AppDesign.spacingSm,
-                                        ),
-                                      ],
-                                    )
-                                    .toList()
-                                  ..removeLast(),
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: Theme.of(ctx).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: AppDesign.spacingMd),
+                      content,
+                      if (actions != null) ...[
+                        const SizedBox(height: AppDesign.spacingLg),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children:
+                              actions
+                                  .expand(
+                                    (a) => [
+                                      a,
+                                      const SizedBox(
+                                        width: AppDesign.spacingSm,
+                                      ),
+                                    ],
+                                  )
+                                  .toList()
+                                ..removeLast(),
+                        ),
                       ],
-                    ),
+                    ],
                   ),
                 ),
               ),

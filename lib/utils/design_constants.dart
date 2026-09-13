@@ -78,10 +78,10 @@ class AppDesign {
   static const double spacingXxl = 48.0;
 
   // Animation durations
-  static const Duration animDurationFast = Duration(milliseconds: 150);
+  static const Duration animDurationFast = Duration(milliseconds: 140);
   static const Duration animDurationNormal = Duration(milliseconds: 200);
-  static const Duration animDurationSlow = Duration(milliseconds: 500);
-  static const Curve animCurve = Curves.easeInOutCubic;
+  static const Duration animDurationSlow = Duration(milliseconds: 320);
+  static const Curve animCurve = Curves.easeOutCubic;
 
   // Sidebar dimensions
   static const double sidebarWidth = 260.0;
@@ -356,9 +356,9 @@ class AppDesign {
   }
 
   // ── Motion tokens ─────────────────────────────────────────────────
-  static const Duration motionFast = Duration(milliseconds: 160);
-  static const Duration motionStandard = Duration(milliseconds: 280);
-  static const Duration motionEmphasized = Duration(milliseconds: 400);
+  static const Duration motionFast = Duration(milliseconds: 140);
+  static const Duration motionStandard = Duration(milliseconds: 220);
+  static const Duration motionEmphasized = Duration(milliseconds: 320);
 
   static const Curve curveStandard = Curves.easeOutCubic;
   static const Curve curveEmphasized = Curves.easeInOutCubicEmphasized;

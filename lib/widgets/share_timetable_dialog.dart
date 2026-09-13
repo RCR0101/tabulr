@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/timetable.dart';
@@ -25,37 +23,33 @@ class ShareTimetableDialog extends StatefulWidget {
         builder: (ctx) {
           final scheme = Theme.of(ctx).colorScheme;
           return ClipRRect(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(ThemeGeometry.of(ctx).dialogRadius)),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: AppDesign.glassBlur,
-                sigmaY: AppDesign.glassBlur,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(ThemeGeometry.of(ctx).dialogRadius),
+            ),
+            child: Container(
+              color: scheme.surface,
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 16,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
               ),
-              child: Container(
-                color: scheme.surface.withValues(alpha: 0.85),
-                padding: EdgeInsets.only(
-                  left: 20,
-                  right: 20,
-                  top: 16,
-                  bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 32,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: scheme.onSurface.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 32,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: scheme.onSurface.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    ShareTimetableDialog(timetable: timetable),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 12),
+                  ShareTimetableDialog(timetable: timetable),
+                ],
               ),
             ),
           );
@@ -262,24 +256,18 @@ class _ShareTimetableDialogState extends State<ShareTimetableDialog> {
       );
     }
 
-    return BackdropFilter(
-      filter: ImageFilter.blur(
-        sigmaX: AppDesign.glassBlur / 2,
-        sigmaY: AppDesign.glassBlur / 2,
+    return AlertDialog(
+      shape: AppDesign.dialogShape(context),
+      backgroundColor: scheme.surface,
+      title: Row(
+        children: [
+          Icon(Icons.share, color: scheme.primary),
+          const SizedBox(width: 8),
+          const Text('Share Timetable'),
+        ],
       ),
-      child: AlertDialog(
-        shape: AppDesign.dialogShape(context),
-        backgroundColor: scheme.surface.withValues(alpha: 0.88),
-        title: Row(
-          children: [
-            Icon(Icons.share, color: scheme.primary),
-            const SizedBox(width: 8),
-            const Text('Share Timetable'),
-          ],
-        ),
-        content: SizedBox(width: 360, child: _buildContent(context)),
-        actions: _buildActions(context),
-      ),
+      content: SizedBox(width: 360, child: _buildContent(context)),
+      actions: _buildActions(context),
     );
   }
 }
