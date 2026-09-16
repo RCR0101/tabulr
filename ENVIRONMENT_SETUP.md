@@ -47,12 +47,18 @@ scripts/run-skwasm-local.sh       # optionally pass a port
 ```
 
 Open the printed localhost URL in Chromium and use guest mode. The local server
-sends `Cross-Origin-Opener-Policy: same-origin` and
-`Cross-Origin-Embedder-Policy: credentialless`, which makes SkWasm's renderer
-worker available. A plain static server still runs the Wasm build, but only in
-single-threaded mode.
+mirrors production's `Cross-Origin-Opener-Policy: same-origin-allow-popups`, so
+SkWasm runs single-threaded — the same way it runs live.
 
-Production uses the same headers and redirect-based Google authentication. Set
+SkWasm's renderer worker needs cross-origin isolation (COOP `same-origin` plus
+COEP), and we cannot have it. COEP blocks any nested document that does not
+assert its own COEP, Firebase Auth propagates the signed-in session through an
+iframe at `/__/auth/iframe`, and Firebase serves that path from its own auth
+infrastructure where `firebase.json` headers do not apply. Isolating the page
+gave every signed-in Chromium user `ERR_BLOCKED_BY_RESPONSE`; Safari was
+unaffected only because WebKit ignores `credentialless`.
+
+Production uses redirect-based Google authentication. Set
 `FIREBASE_AUTH_DOMAIN=tabulr.net` on every production Wasm build, as the deploy
 workflow does.
 

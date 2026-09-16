@@ -5,7 +5,11 @@
 cold-loaded deep link at all — the case where the browser asks for a path and
 the app has to work out what it means from the URL alone. This adds the pieces
 firebase.json contributes: static files win, everything else falls back
-to index.html, and SkWasm receives cross-origin isolation headers.
+to index.html, and COOP matches production.
+
+Deliberately NOT cross-origin isolated: COEP blocks Firebase Auth's
+/__/auth/iframe, so production cannot use it either (see firebase.json).
+SkWasm therefore runs single-threaded here, exactly as it does live.
 
     python3 e2e/serve.py [port]        # defaults to 8080, serving ../build/web
 """
@@ -28,8 +32,7 @@ class SpaHandler(http.server.SimpleHTTPRequestHandler):
         return super().send_head()
 
     def end_headers(self):
-        self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
-        self.send_header('Cross-Origin-Embedder-Policy', 'credentialless')
+        self.send_header('Cross-Origin-Opener-Policy', 'same-origin-allow-popups')
         self.send_header('Cache-Control', 'no-store')
         super().end_headers()
 

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { waitForFirstFrame } from './_helpers';
 
-test('Chromium uses isolated SkWasm rather than the JavaScript fallback', async ({
+test('Chromium uses SkWasm rather than the JavaScript fallback', async ({
   page,
   browserName,
 }) => {
@@ -21,9 +21,12 @@ test('Chromium uses isolated SkWasm rather than the JavaScript fallback', async 
       .some((entry) => entry.name.endsWith('/main.dart.wasm')),
   }));
 
-  expect(runtime.isolated).toBe(true);
   expect(runtime.skwasm).toBe(true);
   expect(runtime.wasmEntrypoint).toBe(true);
+  // Must stay false. Cross-origin isolation is what multi-threaded SkWasm wants,
+  // but it makes COEP block Firebase Auth's /__/auth/iframe and every signed-in
+  // Chromium user gets ERR_BLOCKED_BY_RESPONSE. See firebase.json.
+  expect(runtime.isolated).toBe(false);
 });
 
 test('the JavaScript fallback is downloaded once, not twice', async ({
