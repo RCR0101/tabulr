@@ -57,9 +57,10 @@ Writes crawlable HTML for the course catalogue into the built web app. The
 Flutter UI renders to a `<canvas>`, so these pages are the only thing a search
 engine can read.
 
-**This runs automatically** in `deploy-preview.yml` and `deploy-production.yml`,
-between `flutter build web` and the Firebase deploy. You only need to run it by
-hand to preview the output:
+**This runs automatically** in the `build-web` CI job, between
+`flutter build web` and the preview deployment. Production promotes that exact
+artifact instead of regenerating it. You only need to run it by hand to preview
+the output:
 
 ```bash
 node generate-static-pages.js --sample /tmp/preview   # renders the templates, no Firestore

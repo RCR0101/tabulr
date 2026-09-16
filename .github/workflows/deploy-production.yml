@@ -3,45 +3,53 @@ name: Deploy Production
 on:
   workflow_dispatch:
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: read
+
 jobs:
   deploy-production:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v5
 
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version-file: .fvmrc
-          cache: true
-
-      - run: flutter pub get
-
-      - run: echo "$FIREBASE_OPTIONS" > lib/firebase_options.dart
+      - name: Find successful CI build
+        id: ci-run
         env:
-          FIREBASE_OPTIONS: ${{ secrets.FIREBASE_OPTIONS_DART }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          run_id="$(gh api --method GET \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs" \
+            -f head_sha="${GITHUB_SHA}" \
+            -f status=success \
+            -f per_page=20 \
+            --jq '[.workflow_runs[] | select(.event == "push")] | first | .id // empty')"
+          if [[ -z "$run_id" ]]; then
+            echo "No successful CI build found for ${GITHUB_SHA}."
+            echo "Push this commit to main and wait for CI before deploying."
+            exit 1
+          fi
+          echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
 
-      - run: flutter analyze
-      - run: flutter test
-      - run: flutter build web --wasm --release --dart-define=LOGGER_API_KEY=${{ secrets.LOGGER_API_KEY }} --dart-define=FIREBASE_AUTH_DOMAIN=tabulr.net
-      - run: rm -f build/web/flutter_service_worker.js
-
-      # Node is pinned rather than taken from the runner image because the
-      # generator relies on global fetch (18+) and nothing else.
-      - uses: actions/setup-node@v4
+      - name: Download tested web build
+        uses: actions/download-artifact@v4
         with:
-          node-version: 20
+          name: web-${{ github.sha }}
+          path: build/web
+          run-id: ${{ steps.ci-run.outputs.run-id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Crawlable HTML for the course catalogue. The Flutter UI renders to a
-      # <canvas>, so these pages are the only thing a search engine can read.
-      # Runs after the build (it writes into build/web) and before the deploy.
-      # No credentials: it reads the public Firestore REST API with the web key
-      # out of lib/firebase_options.dart, written a few steps above.
-      #
-      # Deliberately allowed to fail the job. A Hosting deploy replaces the
-      # whole site, so shipping without these would 404 every course URL Google
-      # has already indexed — better to block and re-run than to un-publish them.
-      - run: node scripts/generate-static-pages.js
+      - name: Verify deploy artifact
+        run: |
+          test -f build/web/index.html
+          test -f build/web/main.dart.wasm
+          test -f build/web/flutter_service_worker.js
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -49,7 +57,4 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           projectId: timetable-maker-3c8e0
           channelId: live
-          # Newer firebase-tools handles the "premature close" release retry
-          # gracefully (avoids the false FAILED_PRECONDITION on re-POST).
           firebaseToolsVersion: latest
-

@@ -36,8 +36,10 @@
       entry.rel = 'preload';
       entry.href = useWasm ? 'main.dart.wasm' : 'main.dart.js';
       entry.as = useWasm ? 'fetch' : 'script';
-      entry.crossOrigin = 'anonymous';
-      if (useWasm) entry.type = 'application/wasm';
+      if (useWasm) {
+        entry.crossOrigin = 'anonymous';
+        entry.type = 'application/wasm';
+      }
       document.head.appendChild(entry);
     })();
   </script>

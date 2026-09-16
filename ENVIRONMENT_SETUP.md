@@ -60,14 +60,14 @@ workflow does.
 
 All workflows live in `.github/workflows/` and read the Flutter version from `.fvmrc`:
 
-- **Deploy Preview** (`deploy-preview.yml`) — triggers on push to `main`, deploys to Firebase Hosting preview channel.
-- **Deploy Production** (`deploy-production.yml`) — manual trigger, deploys to the `live` channel.
+- **CI + Preview** (`ci.yml`) — tests and builds in parallel on `main`, then deploys the tested artifact to the Firebase preview channel.
+- **Deploy Production** (`deploy-production.yml`) — manually promotes the successful `main` artifact to the `live` channel without rebuilding.
 - **Release Desktop** (`release-desktop.yml`) — manual trigger with version input, builds macOS/Windows/Linux and creates a draft GitHub Release.
 
-Both deploy workflows need these GitHub secrets:
+Web deployment uses these GitHub secrets:
 - `FIREBASE_OPTIONS_DART` — contents of `lib/firebase_options.dart`
-- `DOT_ENV` — contents of `.env`
-- `FIREBASE_SERVICE_ACCOUNT` — Firebase hosting service account JSON
+- `LOGGER_API_KEY` — release logger key compiled into the web build
+- `FIREBASE_SERVICE_ACCOUNT` — Firebase Hosting service account JSON
 
 ## Troubleshooting
 

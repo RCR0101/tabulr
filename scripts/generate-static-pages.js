@@ -6,8 +6,9 @@
  *   node scripts/generate-static-pages.js --sample /tmp/preview   # no Firestore
  *   firebase deploy --only hosting
  *
- * Runs automatically in .github/workflows/deploy-{preview,production}.yml,
- * between the build and the deploy. A manual run is only needed to preview.
+ * Runs automatically in the build-web job in .github/workflows/ci.yml,
+ * between the build and preview deploy; production promotes the same artifact.
+ * A manual run is only needed to preview.
  * No dependencies and no credentials: it reads the public Firestore REST API
  * with the web API key, exactly as a signed-out visitor does.
  *
@@ -593,14 +594,30 @@ async function main() {
   }
 
   const key = apiKey();
+
+  // Every campus and prerequisite collection is independent. Fetching all of
+  // them together removes avoidable network latency from every web build.
+  const prereqsPromise = fetchPrerequisites(key);
   const catalogues = {};
   const offerings = {};
-  for (const campusId of Object.keys(CAMPUSES)) {
-    catalogues[campusId] = await fetchCatalogue(key, campusId);
-    offerings[campusId] = await fetchOfferings(key, campusId);
-    console.log(`${campusId}: ${catalogues[campusId].size} catalogue entries, ${offerings[campusId].length} offered`);
+  const campusEntries = await Promise.all(
+    Object.keys(CAMPUSES).map(async (campusId) => {
+      const [catalogue, campusOfferings] = await Promise.all([
+        fetchCatalogue(key, campusId),
+        fetchOfferings(key, campusId),
+      ]);
+      console.log(
+        `${campusId}: ${catalogue.size} catalogue entries, ${campusOfferings.length} offered`,
+      );
+      return [campusId, catalogue, campusOfferings];
+    }),
+  );
+  for (const [campusId, catalogue, campusOfferings] of campusEntries) {
+    catalogues[campusId] = catalogue;
+    offerings[campusId] = campusOfferings;
   }
-  const prereqs = await fetchPrerequisites(key);
+
+  const prereqs = await prereqsPromise;
   console.log(`prerequisites: ${prereqs.size} courses`);
 
   const collated = collate({ catalogues, offerings, prereqs });

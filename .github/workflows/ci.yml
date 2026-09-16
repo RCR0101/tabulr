@@ -6,6 +6,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   analyze-and-test:
     runs-on: ubuntu-latest
@@ -20,10 +24,76 @@ jobs:
 
       - run: flutter pub get
 
-      # analyze/test only need the file to compile — the sample has the right
-      # shape and no real credentials, so forked PRs (which can't read secrets)
-      # still get full validation.
+      # Analysis and tests only need a correctly shaped options file. Keeping
+      # secrets out of this job allows the same checks to run on forked PRs.
       - run: cp lib/firebase_options.dart.sample lib/firebase_options.dart
 
-      - run: flutter analyze
-      - run: flutter test
+      - run: flutter analyze --no-pub
+      - run: flutter test --no-pub
+
+  build-web:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: .fvmrc
+          cache: true
+
+      - run: flutter pub get
+
+      - run: echo "$FIREBASE_OPTIONS" > lib/firebase_options.dart
+        env:
+          FIREBASE_OPTIONS: ${{ secrets.FIREBASE_OPTIONS_DART }}
+
+      # The auth-domain override is origin-guarded in Dart, so this one artifact
+      # works on the preview channel and becomes same-origin on tabulr.net.
+      - name: Build release web app
+        run: flutter build web --no-pub --wasm --release --dart-define=LOGGER_API_KEY=${{ secrets.LOGGER_API_KEY }} --dart-define=FIREBASE_AUTH_DOMAIN=tabulr.net
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Generate crawlable pages
+        run: node scripts/generate-static-pages.js
+
+      # flutter_service_worker.js must ship. Flutter 3.44 emits it as a tombstone
+      # that unregisters itself and re-navigates its clients, and the bootstrap
+      # only registers it on browsers that already hold a registration — so it is
+      # the one thing that can reach a phone stuck on a pre-2026-05-24 cached
+      # shell. Stripping it stranded them: the SPA rewrite answers the missing
+      # URL with index.html (200, text/html), so the registration update fails on
+      # the MIME type rather than 404ing the stale worker away.
+      - name: Store tested web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-${{ github.sha }}
+          path: build/web
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 1
+
+  deploy-preview:
+    if: github.event_name == 'push'
+    needs: [analyze-and-test, build-web]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-${{ github.sha }}
+          path: build/web
+
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: timetable-maker-3c8e0
+          channelId: preview
+          firebaseToolsVersion: latest
