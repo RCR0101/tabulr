@@ -163,7 +163,7 @@ class ExamSeatingParser {
       };
     }
 
-    const idPattern = '(\\d{4}[A-Z0-9]{4}\\d{4}[HGPD])';
+    const idPattern = '(\\d{4}[A-Z0-9]{4}\\d{4}[HGPU])';
 
     // Try dash/en-dash format first
     let idRangePattern = new RegExp(idPattern + '\\s*[-–]\\s*' + idPattern);

@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import '../constants/app_constants.dart';
 import '../services/data/exam_seating_service.dart';
+import '../services/data/courses_master_service.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../services/core/timetable_service.dart';
 import '../services/ui/responsive_service.dart';
@@ -10,6 +11,7 @@ import '../services/ui/toast_service.dart';
 import '../services/ui/page_leave_warning_service.dart';
 import '../services/data/profile_service.dart';
 import '../models/timetable.dart';
+import '../utils/course_code.dart';
 import '../utils/design_constants.dart';
 import '../widgets/command_palette.dart';
 import '../widgets/app_destinations.dart';
@@ -25,11 +27,10 @@ import '../utils/page_info_helper.dart';
 /// the whole entry *or* any of the hyphen-separated parts — otherwise a student
 /// in only one of a combined pair could never import their seating.
 bool examCoversCourse(String examCourseCode, String courseCode) {
-  String norm(String s) => s.replaceAll(' ', '').toUpperCase();
-  final target = norm(courseCode);
+  final target = normalizeCourseCode(courseCode);
   if (target.isEmpty) return false;
-  final exam = norm(examCourseCode);
-  return exam == target || exam.split('-').any((part) => part == target);
+  return normalizeCourseCode(examCourseCode) == target ||
+      examCourseCodes(examCourseCode).any((c) => normalizeCourseCode(c) == target);
 }
 
 /// Course code as it should read to a human. A combined exam is *stored* with a
@@ -130,18 +131,37 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
     _idListenerAttached = true;
   }
 
+  /// Reload Data / pull-to-refresh. Without dropping the service's caches this
+  /// just handed back the same in-memory list, so a fixed upload never showed.
+  Future<void> _reloadExamData() async {
+    await _examService.invalidateCache();
+    await _loadExamData();
+  }
+
   Future<void> _loadExamData() async {
+    // Saved state is restored once; on a reload it would re-add courses the
+    // user removed and overwrite an ID they're still typing.
+    final firstLoad = !_idListenerAttached;
     setState(() => _isLoading = true);
     final exams = await _examService.fetchAllExamSeating();
+    // Titles resolve from the catalogue on read; make sure it's there.
+    await CoursesMasterService().loadForCampus().catchError((_) {});
 
     // Load saved user data + profile defaults
-    final savedData = await _examService.loadUserData();
+    final savedData = firstLoad ? await _examService.loadUserData() : null;
     final profile = await ProfileService().load();
 
     if (!mounted) return;
     setState(() {
       _allExams = exams;
       _isLoading = false;
+
+      // Swap already-selected courses for their freshly loaded rooms.
+      for (var i = 0; i < _selectedCourses.length; i++) {
+        final code = _selectedCourses[i].courseCode;
+        final fresh = exams.where((e) => e.courseCode == code).firstOrNull;
+        if (fresh != null) _selectedCourses[i] = fresh;
+      }
 
       // Restore saved courses and student ID
       if (savedData != null) {
@@ -353,7 +373,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
                           _importCoursesFromTimetable();
                           break;
                         case 'reload':
-                          _loadExamData();
+                          _reloadExamData();
                           break;
                         case 'info':
                           PageInfoHelper.show(
@@ -407,7 +427,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
                   IconButton(
                     icon: const Icon(Icons.refresh),
                     tooltip: 'Reload Data',
-                    onPressed: _loadExamData,
+                    onPressed: _reloadExamData,
                   ),
                 ],
       ),
@@ -460,7 +480,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       ..sort((a, b) => _compareExamDates(a.examDate, b.examDate));
 
     return RefreshIndicator(
-      onRefresh: _loadExamData,
+      onRefresh: _reloadExamData,
       child: CustomScrollView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         physics: const AlwaysScrollableScrollPhysics(),
@@ -974,7 +994,7 @@ class _ExamSeatingScreenState extends State<ExamSeatingScreen> {
       switchOutCurve: Curves.easeInCubic,
       child: RefreshIndicator(
         key: ValueKey(sortedCourses.isEmpty ? 'empty-exams' : 'exam-plan'),
-        onRefresh: _loadExamData,
+        onRefresh: _reloadExamData,
         child: ListView.builder(
           physics: const AlwaysScrollableScrollPhysics(),
           scrollCacheExtent: ScrollCacheExtent.pixels(800),

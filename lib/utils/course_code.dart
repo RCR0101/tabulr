@@ -22,3 +22,29 @@ String courseCodeToDocId(String courseCode) => courseCode.replaceAll(' ', '_');
 
 /// Inverse of [courseCodeToDocId]: `"CS_F211"` -> `"CS F211"`.
 String docIdToCourseCode(String docId) => docId.replaceAll('_', ' ');
+
+/// The individual course codes inside a combined exam code, in order.
+///
+/// The seating sheet writes combined exams two ways, and the upload turns the
+/// slash into a dash: "CS F407-CS U407" (full codes) and "ECE-EEE F211" (shared
+/// number). A lone prefix borrows the next part's number, and a lone number
+/// ("MATH F424-U424") borrows the previous part's prefix.
+List<String> examCourseCodes(String code) {
+  final parts = code
+      .toUpperCase()
+      .split(RegExp(r'[-/]'))
+      .map((p) => RegExp(r'^\s*([A-Z]+(?=\s|$))?\s*([A-Z]?\d{3}[A-Z]?)?\s*$').firstMatch(p))
+      .toList();
+  if (parts.any((m) => m == null)) return [code.trim()];
+
+  String? near(Iterable<RegExpMatch?> ms, int group) =>
+      ms.map((m) => m!.group(group)).firstWhere((g) => g != null, orElse: () => null);
+
+  final codes = <String>[];
+  for (var i = 0; i < parts.length; i++) {
+    final prefix = parts[i]!.group(1) ?? near(parts.take(i).toList().reversed, 1);
+    final number = parts[i]!.group(2) ?? near(parts.skip(i + 1), 2);
+    if (prefix != null && number != null) codes.add('$prefix $number');
+  }
+  return codes.isEmpty ? [code.trim()] : codes;
+}

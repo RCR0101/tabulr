@@ -986,7 +986,7 @@ def parse_id_range(id_range):
     normalized = id_range.replace("\n", " ").strip()
     if re.search(r"all\s*(the)?\s*students", normalized, re.IGNORECASE):
         return {"from": None, "to": None, "allStudents": True}
-    pattern = r"(\d{4}[A-Z0-9]{4}\d{4}[HGPD])"
+    pattern = r"(\d{4}[A-Z0-9]{4}\d{4}[HGPU])"
     m = re.search(pattern + r"\s*[-–]\s*" + pattern, normalized)
     if m:
         return {"from": m.group(1), "to": m.group(2)}

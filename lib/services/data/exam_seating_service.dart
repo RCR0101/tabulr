@@ -64,16 +64,29 @@ class ExamRoom {
 /// Represents an exam with course details and room assignments
 class ExamSeating {
   final String courseCode;
-  final String courseTitle;
   final String examDate;
   final List<ExamRoom> rooms;
+  final String _courseTitle;
 
   ExamSeating({
     required this.courseCode,
-    required this.courseTitle,
+    String courseTitle = '',
     required this.examDate,
     required this.rooms,
-  });
+  }) : _courseTitle = courseTitle;
+
+  /// Resolved on read, not at parse time: seating can load before the course
+  /// catalogue does, and a title frozen then stayed the raw code all session.
+  /// A combined exam takes the title of its first code the catalogue knows.
+  String get courseTitle {
+    if (_courseTitle.isNotEmpty) return _courseTitle;
+    final master = CoursesMasterService();
+    for (final code in examCourseCodes(courseCode)) {
+      final title = master.get(code)?.title ?? '';
+      if (title.isNotEmpty) return title;
+    }
+    return '';
+  }
 
   factory ExamSeating.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
@@ -97,7 +110,6 @@ class ExamSeating {
 
     return ExamSeating(
       courseCode: code,
-      courseTitle: CoursesMasterService().getTitle(code),
       examDate: examDateStr,
       rooms: roomsList,
     );
@@ -143,10 +155,11 @@ class ExamSeatingService {
   DocumentReference<Map<String, dynamic>> get _metadataRef =>
       _firestore.doc('admin_metadata/exam_seating_${CampusService.campusId}');
 
-  void invalidateCache() {
+  /// Awaitable so a reload can't read the on-disk copy before it's gone.
+  Future<void> invalidateCache() async {
     _cachedExams = null;
     _cachedCampusId = null;
-    _localCache.invalidate(_cacheKey);
+    await _localCache.invalidate(_cacheKey);
   }
 
   CollectionReference<Map<String, dynamic>> get _collectionRef =>
