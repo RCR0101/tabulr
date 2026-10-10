@@ -66,3 +66,10 @@ storage.rules
 
 # Generated at deploy time by scripts/predeploy-python.sh
 functions-python/parser_version.py
+# Credentials for the data scripts and the acad-drives crawler — never commit
+**/serviceAccountKey.json
+**/gdrive-token.json
+scripts/acad-drives/downloads/
+scripts/acad-drives/node_modules/
+.wrangler/
+workers/**/.wrangler/

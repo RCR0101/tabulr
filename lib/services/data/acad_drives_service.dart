@@ -3,10 +3,12 @@ import '../ui/secure_logger.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import '../../constants/app_constants.dart';
+import 'admin_audit_logger.dart';
+import 'auth_service.dart';
 import 'local_cache_service.dart';
 
 class AcadDrivesService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
   final LocalCacheService _localCache = LocalCacheService();
 
   static const _cacheKey = 'acad_drives_index';
@@ -146,5 +148,60 @@ class AcadDrivesService {
 
   Future<void> submitDriveLink(Map<String, dynamic> data) {
     return _submissionsRef.add(data);
+  }
+
+  /// Unreviewed submissions, oldest first so the queue drains in order.
+  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> pendingSubmissions() {
+    return _submissionsRef.where('status', isEqualTo: 'pending').snapshots().map((s) {
+      final docs = s.docs.toList();
+      int at(QueryDocumentSnapshot<Map<String, dynamic>> d) =>
+          (d.data()['submittedAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+      docs.sort((a, b) => at(a).compareTo(at(b)));
+      return docs;
+    });
+  }
+
+  /// Adds the drive to the crawler's registry (`acad_drives_sources`) and
+  /// closes the submission in one batch. [name] becomes the drive's folder in
+  /// R2 and its identity in every file doc, so it must not collide.
+  /// Returns false, writing nothing, if a drive with that name already exists.
+  Future<bool> approveSubmission(
+    QueryDocumentSnapshot<Map<String, dynamic>> submission, {
+    required String name,
+  }) async {
+    final sourceRef = _firestore
+        .collection(FirestoreCollections.acadDrivesSources)
+        .doc(name.replaceAll('/', '-').trim());
+    if ((await sourceRef.get()).exists) return false;
+
+    final data = submission.data();
+    final reviewer = AuthService().userEmail;
+    final batch = _firestore.batch()
+      ..set(sourceRef, {
+        'name': name.trim(),
+        'driveLink': data['driveLink'],
+        'contributor': data['contributorName'],
+        if (data['courseCode'] != null) 'courseCode': data['courseCode'],
+        'submissionId': submission.id,
+        'addedBy': reviewer,
+        'addedAt': FieldValue.serverTimestamp(),
+      })
+      ..update(submission.reference, {
+        'status': 'approved',
+        'reviewedBy': reviewer,
+        'reviewedAt': FieldValue.serverTimestamp(),
+      });
+    await batch.commit();
+    AdminAuditLogger().success('acad_drive_approve', name, {'link': data['driveLink']});
+    return true;
+  }
+
+  Future<void> rejectSubmission(DocumentReference<Map<String, dynamic>> ref) async {
+    await ref.update({
+      'status': 'rejected',
+      'reviewedBy': AuthService().userEmail,
+      'reviewedAt': FieldValue.serverTimestamp(),
+    });
+    AdminAuditLogger().success('acad_drive_reject', ref.id);
   }
 }

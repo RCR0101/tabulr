@@ -1,42 +1,39 @@
-# Timetable Data Uploader
+# Data scripts
 
-This script parses XLSX timetable files and uploads the data to Firestore, making the app much faster by eliminating client-side parsing.
+Admin-side scripts that write Tabulr's reference data to Firestore. Day-to-day
+uploads don't need them: the timetable, academic calendar, exam seating and
+professor schedules are all uploaded from **Admin** in the app, through the
+`functions-python` and `functions` callables. See `docs/RUNBOOK.md` for the
+per-semester order.
 
-## Setup
+## Credentials
 
-1. **Install dependencies:**
-   ```bash
-   cd scripts
-   npm install
-   ```
-
-2. **Create Firebase Service Account:**
-   - Go to Firebase Console → Project Settings → Service Accounts
-   - Click "Generate New Private Key"
-   - Download the JSON file
-
-3. **Configure environment variables:**
-   ```bash
-   cp .env.example .env
-   ```
-   
-   Fill in the values from your service account JSON file:
-   - `FIREBASE_PROJECT_ID`: Your Firebase project ID
-   - `FIREBASE_PRIVATE_KEY`: The private key (with \n escaped)
-   - `FIREBASE_CLIENT_EMAIL`: The service account email
-   - Other fields from the service account JSON
-
-## Usage
+Scripts read a Firebase service account from `.env` (`FIREBASE_PROJECT_ID`,
+`FIREBASE_PRIVATE_KEY`, `FIREBASE_CLIENT_EMAIL`, …) or `serviceAccountKey.json`
+in this folder. Both are gitignored. Get the key from Firebase Console →
+Project Settings → Service Accounts.
 
 ```bash
-# Upload a timetable XLSX file
-npm run upload path/to/your/timetable.xlsx
-
-# Test the parser without uploading
-npm run test path/to/your/timetable.xlsx
+cd scripts && npm ci
 ```
 
-### Prerequisites (`upload-prerequisites.js`)
+## What each script is for
+
+| Script | When |
+|---|---|
+| `upload-courses-master.js` | A new course list. Writes `courses_master` and its catalogue bundle on all three campuses. |
+| `upload-branch-structure.js` | CDC structure changes (new batch or curriculum). |
+| `upload-duplicate-courses.js` | Cross-listed course groups change. |
+| `upload-prerequisites.js` | AUGSD publishes a new requisite CSV. Details below. |
+| `extract-bulletin-prereqs.py` → `apply-bulletin-prereqs.mjs` | A new Bulletin. Fills prerequisite gaps from its course descriptions. Details below. |
+| `fetch-prerequisites.mjs` | Read-only dump of the live prerequisite collection. |
+| `generate-static-pages.js` | Runs in CI. Builds the crawlable course pages. |
+| `predeploy-python.sh` | Runs before every `functions-python` deploy. Stamps the parser version. |
+| `upload_calendar_preview.py` | Local preview of the academic-calendar parse. |
+| `acad-drives/` | The Acad Drives sync crawler. It has its own README and `package.json`. |
+
+
+## Prerequisites (`upload-prerequisites.js`)
 
 Loads the official BITS requisite export (`BITS_PREREQ_LIST.csv`) into
 `reference/prerequisites/courses`. Upserts only the courses the CSV covers and
@@ -51,7 +48,7 @@ node upload-prerequisites.js --self-check                                # parse
 Read the dry run before committing: it lists the live options the CSV drops
 outright, which are the ones a human has to sign off on.
 
-### Static SEO pages (`generate-static-pages.js`)
+## Static SEO pages (`generate-static-pages.js`)
 
 Writes crawlable HTML for the course catalogue into the built web app. The
 Flutter UI renders to a `<canvas>`, so these pages are the only thing a search

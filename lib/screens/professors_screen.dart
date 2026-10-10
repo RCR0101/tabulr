@@ -9,6 +9,7 @@ import '../models/academic_record.dart';
 import '../models/timetable_selection_link.dart';
 import '../services/data/campus_service.dart';
 import '../services/data/professor_service.dart';
+import '../services/data/auth_service.dart';
 import '../services/ui/toast_service.dart';
 import '../widgets/campus_selector_widget.dart';
 import '../widgets/common/shimmer_loading.dart';
@@ -782,6 +783,14 @@ class _ProfessorDetailDialog extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              TextButton.icon(
+                onPressed: () => _suggestChamber(context),
+                icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
+                label: Text(professor.chamber == 'Unavailable'
+                    ? 'Know the chamber?'
+                    : 'Wrong chamber?'),
+              ),
+              const Spacer(),
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Close'),
@@ -791,6 +800,35 @@ class _ProfessorDetailDialog extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// The faculty directory publishes no chambers, so students are the source.
+  /// A report waits for an admin before anyone else sees it.
+  Future<void> _suggestChamber(BuildContext context) async {
+    final email = AuthService().userEmail;
+    if (email == null || AuthService().isGuest) {
+      ToastService.showInfo('Sign in with your BITS email to suggest a chamber.');
+      return;
+    }
+    final chamber = await AppDialog.input(
+      context: context,
+      title: 'Chamber for ${professor.name}',
+      initialValue: professor.chamber == 'Unavailable' ? '' : professor.chamber,
+      hint: 'e.g. D-207',
+      confirmLabel: 'Send',
+    );
+    final value = chamber?.trim() ?? '';
+    if (value.isEmpty || value == professor.chamber) return;
+    if (value.length > 40) {
+      ToastService.showError('That is longer than a chamber number.');
+      return;
+    }
+    try {
+      await ProfessorService().suggestChamber(professor, value, email: email);
+      ToastService.showSuccess('Thanks! An admin will check it.');
+    } catch (_) {
+      ToastService.showError('Could not send that. Try again later.');
+    }
   }
 
   Widget _buildScheduleTab(BuildContext context) {

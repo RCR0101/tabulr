@@ -13,4 +13,6 @@ void setLocalStorageItem(String key, String value) {}
 
 void usePathUrlStrategy() {}
 
+double msSinceNavigationStart() => 0;
+
 void downloadBlob(List<int> bytes, String filename) {}

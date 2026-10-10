@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'admin/bug_attention_badge.dart';
 import '../services/ui/tutorial_service.dart';
 import '../utils/design_constants.dart';
 import 'app_workspaces.dart';
@@ -232,6 +233,10 @@ class AppSidebar extends StatelessWidget {
     info.label,
     () => onWorkspaceSelected(info.workspace),
     selected: currentWorkspace == info.workspace,
+    // Only admins ever see this workspace, so only they open the stream.
+    badge: info.workspace == AppWorkspace.admin
+        ? BugAttentionBadge(dotOnly: collapsed)
+        : null,
   );
 
   Widget _item(
@@ -242,6 +247,7 @@ class AppSidebar extends StatelessWidget {
     bool selected = false,
     bool outlined = false,
     bool shortcut = false,
+    Widget? badge,
   }) {
     final scheme = Theme.of(context).colorScheme;
     final motion =
@@ -309,14 +315,21 @@ class AppSidebar extends StatelessWidget {
                                       ? MainAxisAlignment.center
                                       : MainAxisAlignment.start,
                               children: [
-                                Icon(
-                                  icon,
-                                  size: 20,
-                                  color: Color.lerp(
-                                    scheme.onSurface,
-                                    scheme.primary,
-                                    emphasis,
-                                  ),
+                                Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Icon(
+                                      icon,
+                                      size: 20,
+                                      color: Color.lerp(
+                                        scheme.onSurface,
+                                        scheme.primary,
+                                        emphasis,
+                                      ),
+                                    ),
+                                    if (badge != null && collapsed)
+                                      Positioned(top: -2, right: -3, child: badge),
+                                  ],
                                 ),
                                 if (!collapsed) ...[
                                   const SizedBox(width: 12),
@@ -349,6 +362,10 @@ class AppSidebar extends StatelessWidget {
                                         color: scheme.onSurfaceVariant,
                                       ),
                                     ),
+                                  if (badge != null) ...[
+                                    badge,
+                                    const SizedBox(width: 6),
+                                  ],
                                   if (!shortcut)
                                     SizedBox(
                                       width: 14,

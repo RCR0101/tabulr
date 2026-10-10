@@ -2,17 +2,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:timetable_maker/models/bug_report.dart';
 
 void main() {
-  BugReport report({DateTime? adminAt, DateTime? userAt}) => BugReport(
+  BugReport report({
+    DateTime? adminAt,
+    DateTime? userAt,
+    BugStatus status = BugStatus.pending,
+    bool hidden = false,
+  }) => BugReport(
         id: 'r1',
         authorUid: 'f20242005H',
         authorEmail: 'f20242005@hyderabad.bits-pilani.ac.in',
         category: 'CGPA Calculator',
         subCategory: 'Wrong calculation',
         description: 'CG differs from ERP',
-        status: BugStatus.pending,
+        status: status,
         createdAt: DateTime(2026, 7, 21, 14, 31),
         lastAdminReplyAt: adminAt,
         lastUserReplyAt: userAt,
+        hidden: hidden,
       );
 
   group('BugStatus', () {
@@ -102,6 +108,26 @@ void main() {
           expect(sub.length, lessThan(100));
         }
       }
+    });
+  });
+
+  group('needsAdminAttention', () {
+    test('a pending report nobody has touched needs a look', () {
+      expect(report().needsAdminAttention, isTrue);
+    });
+    test('a report being worked on, with no new reply, does not', () {
+      expect(report(status: BugStatus.inReview).needsAdminAttention, isFalse);
+    });
+    test('a reporter reply brings a report back', () {
+      final r = report(
+        status: BugStatus.devInProgress,
+        adminAt: DateTime(2026, 7, 22),
+        userAt: DateTime(2026, 7, 23),
+      );
+      expect(r.needsAdminAttention, isTrue);
+    });
+    test('hidden reports never count', () {
+      expect(report(hidden: true).needsAdminAttention, isFalse);
     });
   });
 }

@@ -1,6 +1,6 @@
 {
   "functions": [
-    { "source": "functions", "codebase": "node", "runtime": "nodejs20" },
+    { "source": "functions", "codebase": "node", "runtime": "nodejs22" },
     {
       "source": "functions-python",
       "codebase": "python",
@@ -67,7 +67,10 @@
         "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
       }
     ],
-    "rewrites": [{ "source": "**", "destination": "/index.html" }]
+    "rewrites": [
+      { "//": "Live calendar subscriptions: webcal://tabulr.net/cal/<token>.ics", "source": "/cal/**", "function": { "functionId": "calendarFeed", "region": "asia-south1" } },
+      { "source": "**", "destination": "/index.html" }
+    ]
   },
   "storage": { "rules": "storage.rules" },
   "firestore": { "rules": "firestore.rules", "indexes": "firestore.indexes.json" },

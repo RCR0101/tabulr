@@ -238,7 +238,7 @@ class ProfessorService extends ChangeNotifier {
   factory ProfessorService() => _instance;
   ProfessorService._internal();
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
   final LocalCacheService _localCache = LocalCacheService();
 
   List<Professor> _professors = [];
@@ -260,6 +260,19 @@ class ProfessorService extends ChangeNotifier {
 
   DocumentReference<Map<String, dynamic>> get _metadataRef =>
       _firestore.doc('admin_metadata/professors_${CampusService.campusId}');
+
+  /// A student's correction. An admin applies it from Professor Chambers.
+  Future<void> suggestChamber(Professor professor, String chamber, {required String email}) {
+    return _firestore.collection(FirestoreCollections.chamberSuggestions).add({
+      'campus': CampusService.campusId,
+      'professorId': professor.id,
+      'professorName': professor.name,
+      'chamber': chamber.trim(),
+      'submittedBy': email,
+      'status': 'pending',
+      'submittedAt': FieldValue.serverTimestamp(),
+    });
+  }
 
   Future<void> loadProfessors({bool forceRefresh = false}) async {
     final campusId = CampusService.campusId;

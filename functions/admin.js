@@ -1,4 +1,5 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onDocumentWritten } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 
 const db = admin.firestore();
@@ -288,6 +289,58 @@ function fuzzyNameMatch(name1, name2) {
 
 const FUZZY_MATCH_THRESHOLD = 0.7;
 
+// What a rebuilt professor doc keeps. A name, chamber, email or contact
+// already on the doc beats the roster's, which only fills gaps: students know
+// professors by the names they already see, not the faculty site's spelling.
+function professorFields(prof, prev = {}) {
+  const known = (v) => typeof v === "string" && v.trim() !== "" && v.trim() !== "Unavailable";
+  const chamber = (known(prev.chamber) ? prev.chamber : known(prof.chamber) ? prof.chamber : "Unavailable").trim();
+  const email = prev.email || prof.email;
+  const contact = prev.contact || prof.phone;
+  const name = String(prev.name || prof.name).trim();
+  return {
+    name,
+    chamber,
+    nameSearch: name.toLowerCase(),
+    chamberSearch: chamber.toLowerCase(),
+    ...(email ? { email } : {}),
+    ...(contact ? { contact } : {}),
+  };
+}
+
+// Pairs each roster entry with the professor doc it already has, so a rebuild
+// updates that doc instead of adding a twin. The faculty site and the
+// timetable spell names differently ("A. K. Jayesh" / "A K Jayesh",
+// "Vuppuluri Amol" / "Amol Vuppuluri"), so: exact name, then email, then the
+// same fuzzy match used for timetable names. Each doc is claimed at most once.
+// Returns an array parallel to `profs`: the matched existing entry or null.
+function matchExisting(profs, existing) {
+  const unclaimed = new Set(existing);
+  const claim = (e) => { unclaimed.delete(e); return e; };
+  const key = (n) => String(n || "").trim().toUpperCase();
+  const result = profs.map(() => null);
+  const passes = [
+    (p) => [...unclaimed].find((e) => key(e.name) === key(p.name)),
+    (p) => p.email && [...unclaimed].find((e) => e.email && e.email.toLowerCase() === p.email.toLowerCase()),
+    (p) => {
+      const pool = [...unclaimed];
+      const best = findBestMatch(key(p.name), pool.map((e) => key(e.name)));
+      const hit = best.match ? pool.find((e) => key(e.name) === best.match) : null;
+      // Two different addresses are two different people, however close the names.
+      if (hit && hit.email && p.email && hit.email.toLowerCase() !== p.email.toLowerCase()) return null;
+      return hit;
+    },
+  ];
+  for (const pass of passes) {
+    profs.forEach((p, i) => {
+      if (result[i] || !p.name) return;
+      const hit = pass(p);
+      if (hit) result[i] = claim(hit);
+    });
+  }
+  return result;
+}
+
 function findBestMatch(courseProfName, profsJsonNames) {
   let bestMatch = null;
   let bestScore = 0;
@@ -324,7 +377,7 @@ exports.rebuildProfessorSchedules = onCall(
   async (request) => {
     await requireAdmin(request);
 
-    const { profsJsonBase64, campusCode } = request.data || {};
+    const { profsJsonBase64, campusCode, usePending } = request.data || {};
     const campus = campusCode || "hyderabad";
     const validCampuses = ["hyderabad", "pilani", "goa"];
     if (!validCampuses.includes(campus)) {
@@ -345,14 +398,55 @@ exports.rebuildProfessorSchedules = onCall(
       await db.doc(profsMetaKey).set({ profs: profsData.profs });
     }
 
-    const profsDoc = await db.doc(profsMetaKey).get();
-    if (!profsDoc.exists || !profsDoc.data().profs) {
-      throw new HttpsError(
-        "failed-precondition",
-        "No professors data found for " + campus + ". Upload profs.json first."
-      );
+    // The weekly roster check (check_faculty_roster) leaves the directory's
+    // roster here when it finds new faculty; applying its notice promotes it.
+    if (usePending) {
+      const pendingRef = db.doc(`admin_metadata/professors_pending_${campus}`);
+      const pending = (await pendingRef.get()).data();
+      if (!pending || !Array.isArray(pending.profs)) {
+        throw new HttpsError("failed-precondition", "No pending roster for " + campus);
+      }
+      await db.doc(profsMetaKey).set({ profs: pending.profs });
+      await pendingRef.delete();
     }
-    const professorData = profsDoc.data();
+
+    return rebuildSchedules(campus);
+  }
+);
+
+// Rebuilds every professor's teaching schedule from the campus timetable as it
+// is now. Run by the admin callable and, automatically, whenever the timetable
+// changes (onTimetableChanged), so schedules never lag a new booklet.
+// `roster` stands in for the stored profs.json; `dryRun` returns the planned
+// writes without committing anything (used to review a rebuild against prod).
+async function rebuildSchedules(campus, { roster = null, dryRun = false } = {}) {
+    const professorsRef = db.collection(`reference/professors/${campus}-entries`);
+    const existingSnap = await professorsRef.get();
+    const existing = existingSnap.docs.map((d) => ({ ...d.data(), _ref: d.ref }));
+
+    // Without an uploaded roster the professor docs themselves are the roster,
+    // so schedules still follow the timetable on a campus nobody has set up.
+    const profsDoc = await db.doc(`admin_metadata/professors_data_${campus}`).get();
+    const uploaded = profsDoc.exists && Array.isArray(profsDoc.data().profs) ? profsDoc.data().profs : null;
+    const professorData = {
+      // A copy: the leftovers appended below must not leak into the caller's roster.
+      profs: [...(roster || uploaded || existing.map((e) => ({ name: e.name, chamber: e.chamber, email: e.email, phone: e.contact })))],
+    };
+    if (professorData.profs.length === 0) {
+      throw new HttpsError("failed-precondition",
+        "No professors for " + campus + " yet. Upload profs.json (functions-python/faculty.py makes one).");
+    }
+
+    // Pair the roster with the docs on file, then add everyone on file the
+    // roster missed (added by hand, or gone from the faculty site) as their
+    // own entry, so their timings are recomputed too instead of left stale.
+    const matched = matchExisting(professorData.profs, existing);
+    const claimed = new Set(matched.filter(Boolean));
+    for (const e of existing) {
+      if (claimed.has(e) || !e.name) continue;
+      professorData.profs.push({ name: e.name, chamber: e.chamber, email: e.email, phone: e.contact });
+      matched.push(e);
+    }
 
     const coursesSnapshot = await db
       .collection(`campuses/${campus}/timetable`)
@@ -413,59 +507,93 @@ exports.rebuildProfessorSchedules = onCall(
       }
     }
 
-    // Delete-then-recreate, batched. This was one independent write per
-    // document via Promise.all — several hundred round trips per campus.
-    const professorsRef = db.collection(`reference/professors/${campus}-entries`);
-    const existingRefs = await professorsRef.listDocuments();
-    await commitInBatches(db, existingRefs, (batch, ref) => batch.delete(ref));
+    // Updated in place, never wiped. Chambers, emails and contacts edited in
+    // Admin → Professor Chambers live only on these docs, and the roster may
+    // come from the faculty site, which publishes no chambers at all — so an
+    // existing real chamber wins and the roster only fills gaps. Professors
+    // added by hand (not in the roster) are left as they are.
+    // Spelling-only matches carry a chamber across to a differently written
+    // name, so the admin sees each one ("Ali Dar" may not be "Adil Dar").
+    const respelled = professorData.profs
+      .map((p, i) => matched[i] && String(matched[i].name).trim().toUpperCase() !== String(p.name).trim().toUpperCase()
+        ? `${matched[i].name} → ${p.name.trim()}` : null)
+      .filter(Boolean);
 
     const writes = [];
     let matchedCount = 0;
     let unmatchedCount = 0;
     const now = new Date();
-
-    professorData.profs.forEach((prof) => {
-      if (!prof.name || !prof.chamber) return;
+    professorData.profs.forEach((prof, i) => {
+      if (!prof.name) return;
 
       const profNameNormalized = prof.name.trim().toUpperCase();
       const schedule = mergedScheduleMap[profNameNormalized] || [];
+      const prev = matched[i] || {};
+      const docRef = matched[i]?._ref || professorsRef.doc();
 
       if (schedule.length > 0) matchedCount++;
       else unmatchedCount++;
 
-      const docRef = professorsRef.doc();
+      const fields = { id: docRef.id, ...professorFields(prof, prev), schedule };
+      // Runs on every timetable edit: only touch docs that actually changed.
+      if (matched[i] && sameProfessor(prev, fields)) return;
       writes.push({
         ref: docRef,
-        data: {
-          id: docRef.id,
-          name: prof.name.trim(),
-          chamber: prof.chamber.trim(),
-          nameSearch: prof.name.trim().toLowerCase(),
-          chamberSearch: prof.chamber.trim().toLowerCase(),
-          schedule,
-          createdAt: now,
-          updatedAt: now,
-        },
+        data: { ...fields, createdAt: prev.createdAt || now, updatedAt: now },
       });
     });
 
+    if (dryRun) {
+      return { writes, existing, matched, respelled, withSchedule: matchedCount, withoutSchedule: unmatchedCount };
+    }
+
     await commitInBatches(db, writes, (batch, w) => batch.set(w.ref, w.data));
 
-    await db.doc(`admin_metadata/professors_${campus}`).set({
-      totalProfessors: writes.length,
-      professorsWithSchedule: matchedCount,
-      professorsWithoutSchedule: unmatchedCount,
-      lastUpdated: new Date(),
-      version: "2.1.0",
-      uploadedBy: "admin_dashboard",
-    });
+    // Students' caches refresh when this moves, so leave it alone when nothing did.
+    if (writes.length > 0 || !(await db.doc(`admin_metadata/professors_${campus}`).get()).exists) {
+      await db.doc(`admin_metadata/professors_${campus}`).set({
+        totalProfessors: professorData.profs.length,
+        professorsWithSchedule: matchedCount,
+        professorsWithoutSchedule: unmatchedCount,
+        lastUpdated: new Date(),
+        version: "2.1.0",
+      });
+    }
 
     return {
       success: true,
       professorsUpdated: writes.length,
       withSchedule: matchedCount,
       withoutSchedule: unmatchedCount,
+      respelled,
     };
+}
+
+function sameProfessor(prev, next) {
+  // Key-sorted: Firestore does not hand map keys back in the order written.
+  const canon = (v) => Array.isArray(v) ? `[${v.map(canon).join(",")}]`
+    : v && typeof v === "object" ? `{${Object.keys(v).sort().map((k) => `${k}:${canon(v[k])}`).join(",")}}`
+    : JSON.stringify(v ?? null);
+  const pick = (o) => canon([o.name, o.chamber, o.email || null, o.contact || null, o.schedule || []]);
+  return pick(prev) === pick(next);
+}
+
+// The timetable changed (a booklet upload, or an admin editing a section after
+// an LMS "Timetable changes" notice): bring professor schedules along with it.
+// `version` moves on every such write; other metadata fields do not matter here.
+exports.onTimetableChanged = onDocumentWritten(
+  { document: "campuses/{campus}/metadata/current", region: REGION, timeoutSeconds: 540, memory: "512MiB" },
+  async (event) => {
+    const campus = event.params.campus;
+    const before = event.data?.before?.data()?.version;
+    const after = event.data?.after?.data()?.version;
+    if (!["hyderabad", "pilani", "goa"].includes(campus) || !after || before === after) return;
+    try {
+      const r = await rebuildSchedules(campus);
+      console.log(`[professors] ${campus}: ${r.professorsUpdated} updated, ${r.withSchedule} with a schedule`);
+    } catch (e) {
+      console.warn(`[professors] ${campus}: rebuild skipped: ${e.message}`);
+    }
   }
 );
 
@@ -571,3 +699,5 @@ exports.archiveTimetables = onCall(
     };
   }
 );
+
+exports._test = { professorFields, matchExisting, sameProfessor, rebuildSchedules };

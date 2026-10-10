@@ -1,0 +1,13 @@
+name = "test-logger"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+ALLOWED_ORIGIN = "https://tabulr.net"
+# API_KEY is set via `wrangler secret put API_KEY` — not stored in this file.
+# When set, all POST requests require `Authorization: Bearer <key>`.
+# When unset, write endpoints are open (dev-only).
+
+[[r2_buckets]]
+binding = "LOGS_BUCKET"
+bucket_name = "tabulr-test-logs"

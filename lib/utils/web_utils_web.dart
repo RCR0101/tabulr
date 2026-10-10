@@ -52,6 +52,9 @@ void usePathUrlStrategy() {
   setUrlStrategy(PathUrlStrategy());
 }
 
+/// Milliseconds since the browser started navigating to the page.
+double msSinceNavigationStart() => web.window.performance.now();
+
 void downloadBlob(List<int> bytes, String filename) {
   final blob = web.Blob(<web.BlobPart>[Uint8List.fromList(bytes).toJS].toJS);
   final url = web.URL.createObjectURL(blob);

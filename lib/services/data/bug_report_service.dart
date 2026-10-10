@@ -13,7 +13,9 @@ class BugReportService {
   factory BugReportService() => _instance;
   BugReportService._internal();
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  // Resolved on use: an eager field made constructing the service throw
+  // before Firebase init, which took the sidebar down with it in tests.
+  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
   final AuthService _auth = AuthService();
 
   /// Upper bound on how many reports a stream fetches. Bug volume is low for a
@@ -132,6 +134,22 @@ class BugReportService {
       return true;
     } catch (e) {
       SecureLogger.error('BUG_REPORT', 'Failed to send message', e);
+      return false;
+    }
+  }
+
+  /// Reports waiting on an admin, for the sidebar and dashboard badges.
+  Stream<int> attentionCount() => allReports()
+      .map((all) => all.where((r) => r.needsAdminAttention).length)
+      .handleError((_) {}); // non-admins get a permission error: show nothing
+
+  /// Moves a report to or from the Hidden tab (admin only).
+  Future<bool> setHidden(String reportId, bool hidden) async {
+    try {
+      await _col.doc(reportId).update({'hidden': hidden});
+      return true;
+    } catch (e) {
+      SecureLogger.error('BUG_REPORT', 'Failed to change visibility', e);
       return false;
     }
   }

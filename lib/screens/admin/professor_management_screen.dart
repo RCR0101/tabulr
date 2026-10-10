@@ -1,7 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../utils/debouncer.dart';
 import '../../services/data/admin_data_service.dart';
 import '../../services/data/admin_service.dart';
+import '../../services/data/auth_service.dart';
 import '../../services/data/campus_service.dart';
 import '../../services/ui/toast_service.dart';
 import '../../constants/app_constants.dart';
@@ -38,6 +40,10 @@ class _ProfessorManagementScreenState extends State<ProfessorManagementScreen> {
   static const _campusLabels = CampusConstants.labels;
 
   final _crud = AdminDataService();
+  // Kept across rebuilds: a fresh stream per build would resubscribe to
+  // Firestore on every search keystroke.
+  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>>? _reports;
+  String? _reportsCampus;
   final _searchController = TextEditingController();
   final _debounce = Debouncer(duration: const Duration(milliseconds: 400));
   List<Map<String, dynamic>> _profs = [];
@@ -301,6 +307,56 @@ class _ProfessorManagementScreenState extends State<ProfessorManagementScreen> {
     contactCtrl.dispose();
   }
 
+  /// Chambers students reported for this campus. Hidden when there are none.
+  Widget _buildChamberReports() {
+    return StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
+      stream: _reportsCampus == _campusId
+          ? _reports
+          : (_reports = _crud.pendingChamberSuggestions(_reportsCampus = _campusId)),
+      builder: (context, snap) {
+        final docs = snap.data ?? const [];
+        if (docs.isEmpty) return const SizedBox.shrink();
+        final reviewer = AuthService().userEmail ?? 'admin';
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppDesign.spacingMd, 0, AppDesign.spacingMd, AppDesign.spacingSm),
+          child: Card(
+            child: ExpansionTile(
+              initiallyExpanded: true,
+              leading: Icon(Icons.edit_location_alt_outlined, color: AppDesign.warning(context)),
+              title: Text('${docs.length} chamber report${docs.length == 1 ? '' : 's'} from students'),
+              children: [
+                for (final d in docs)
+                  ListTile(
+                    title: Text('${d.data()['professorName']} → ${d.data()['chamber']}'),
+                    subtitle: Text('${d.data()['submittedBy']}'),
+                    trailing: Wrap(spacing: 4, children: [
+                      TextButton(
+                        onPressed: () => _crud.rejectChamberSuggestion(d.reference, reviewer: reviewer),
+                        child: const Text('Reject'),
+                      ),
+                      FilledButton.tonal(
+                        onPressed: () async {
+                          try {
+                            await _crud.acceptChamberSuggestion(d, reviewer: reviewer);
+                            ToastService.showSuccess('Chamber updated');
+                            _load(force: true);
+                          } catch (e) {
+                            ToastService.showError('Could not apply: $e');
+                          }
+                        },
+                        child: const Text('Accept'),
+                      ),
+                    ]),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!AdminService().isAdmin) {
@@ -348,6 +404,7 @@ class _ProfessorManagementScreenState extends State<ProfessorManagementScreen> {
               ],
             ),
           ),
+          _buildChamberReports(),
           if (_loading)
             const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (_profs.isEmpty)

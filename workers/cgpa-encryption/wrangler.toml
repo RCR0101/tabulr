@@ -1,0 +1,7 @@
+name = "cgpa-encryption"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+ALLOWED_ORIGINS = '["https://tabulr.net","https://timetable-maker-3c8e0--preview-4mkkw3uw.web.app"]'
+FIREBASE_PROJECT_ID = "timetable-maker-3c8e0"

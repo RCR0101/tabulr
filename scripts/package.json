@@ -1,20 +1,15 @@
 {
   "name": "timetable-data-uploader",
   "version": "1.0.0",
-  "description": "Script to parse XLSX files and upload to Firestore",
-  "main": "upload-timetable.js",
+  "description": "Admin data scripts for Tabulr: catalogue uploads, prerequisites, static SEO pages",
   "scripts": {
-    "upload": "node upload-timetable.js",
-    "upload-goa": "node upload-timetable-goa.js",
-    "upload-guide": "node upload_course_guide.js",
-    "process": "node process-timetable.js"
+    "pages:preview": "node generate-static-pages.js --sample /tmp/tabulr-pages",
+    "prereqs": "node upload-prerequisites.js"
   },
   "dependencies": {
     "csv-parse": "^6.0.0",
     "dotenv": "^16.0.0",
-    "firebase-admin": "^12.0.0",
-    "pdf-parse": "^1.1.1",
-    "xlsx": "^0.18.5"
+    "firebase-admin": "^12.0.0"
   },
   "type": "module"
 }

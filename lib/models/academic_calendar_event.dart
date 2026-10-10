@@ -141,3 +141,64 @@ Color academicCategoryColor(BuildContext context, AcademicEventCategory c) {
     AcademicEventCategory.event => scheme.onSurface.withValues(alpha: 0.6),
   };
 }
+
+// ── Which days have class ────────────────────────────────────────────────
+// Mirrors noClassDates / classWindow in functions/ics.js, which builds the
+// .ics export and the live calendar feed. Change both together; the tests on
+// each side use the same booklet rows.
+
+final _noClassLabel = RegExp(
+  r'class\s*work\s+suspended|classes?\s+suspended|no\s+class|recess|vacation',
+  caseSensitive: false,
+);
+final _classesBegin = RegExp(r'class\s*work\s+begins|classes\s+begin', caseSensitive: false);
+final _classesEnd = RegExp(
+  r'last\s+(?:day|date)\s+(?:of|for)\s+class(?:es|work)',
+  caseSensitive: false,
+);
+
+/// Holidays, "(H)" rows, "classwork suspended" spans, recess and vacation.
+bool isNoClassDay(List<AcademicCalendarEvent> events, DateTime day) => events.any(
+      (e) =>
+          (e.category == AcademicEventCategory.holiday ||
+              e.label.contains('(H)') ||
+              _noClassLabel.hasMatch(e.label)) &&
+          e.coversDay(day),
+    );
+
+/// First and last day of classes from the calendar's own rows, else the
+/// admin's semester dates.
+({DateTime start, DateTime end}) classWindow(
+  List<AcademicCalendarEvent> events, {
+  required DateTime semesterStart,
+  required DateTime semesterEnd,
+}) {
+  AcademicCalendarEvent? find(RegExp re) {
+    for (final e in events) {
+      if (re.hasMatch(e.label)) return e;
+    }
+    return null;
+  }
+
+  final begin = find(_classesBegin);
+  final end = find(_classesEnd);
+  return (
+    start: begin?.date ?? semesterStart,
+    end: end?.endDate ?? end?.date ?? semesterEnd,
+  );
+}
+
+/// Whether [day] has class: inside the window and not a no-class day.
+bool hasClassOn(
+  List<AcademicCalendarEvent> events,
+  DateTime day, {
+  required DateTime semesterStart,
+  required DateTime semesterEnd,
+}) {
+  final d = DateTime(day.year, day.month, day.day);
+  final w = classWindow(events, semesterStart: semesterStart, semesterEnd: semesterEnd);
+  final start = DateTime(w.start.year, w.start.month, w.start.day);
+  final end = DateTime(w.end.year, w.end.month, w.end.day);
+  if (d.isBefore(start) || d.isAfter(end)) return false;
+  return !isNoClassDay(events, d);
+}

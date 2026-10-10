@@ -16,6 +16,8 @@ import '../services/data/profile_service.dart';
 import '../services/core/timetable_service.dart';
 import '../utils/course_utils.dart';
 import '../services/ui/export_service.dart';
+import '../services/data/calendar_feed_service.dart';
+import '../services/data/config_service.dart';
 import '../services/ui/secure_logger.dart';
 import '../services/data/auth_service.dart';
 import '../services/ui/toast_service.dart';
@@ -389,6 +391,13 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
           icon: Icons.calendar_today,
           category: CommandCategory.context,
           onSelect: exportToICS,
+        ),
+        CommandPaletteEntry(
+          label: 'Live Calendar Link',
+          subtitle: 'Subscribe so your calendar updates itself',
+          icon: Icons.event_repeat_rounded,
+          category: CommandCategory.context,
+          onSelect: subscribeToCalendar,
         ),
         CommandPaletteEntry(
           label: 'Export Timetable File',
@@ -1187,7 +1196,6 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     try {
       final filePath = await ExportService.exportToICS(
         tt.selectedSections,
-        tt.availableCourses,
         timetableId: tt.id,
         calendarName: tt.name,
         campusId: tt.campus.code,
@@ -1206,6 +1214,96 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
     } catch (e) {
       showErrorDialog('Export failed: $e');
     }
+  }
+
+  /// A link the student's calendar app subscribes to, so section changes,
+  /// holidays and their exam room arrive without re-exporting.
+  Future<void> subscribeToCalendar() async {
+    final tt = currentTimetable;
+    final owner = authService.userDocId;
+    if (owner == null || !authService.isAuthenticated) {
+      ToastService.showInfo('Sign in with your BITS email to get a live calendar link.');
+      return;
+    }
+    if (ConfigService().calendarFeedsOff) {
+      ToastService.showInfo('Live calendar links are switched off right now.');
+      return;
+    }
+    if (tt == null || tt.selectedSections.isEmpty) {
+      ToastService.showWarning('Add courses to your timetable first.');
+      return;
+    }
+    final String token;
+    try {
+      token = await CalendarFeedService().tokenFor(owner: owner, timetableId: tt.id);
+    } catch (e) {
+      showErrorDialog('Could not create the link: $e');
+      return;
+    }
+    if (!mounted) return;
+
+    Future<void> open(String url) =>
+        launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+
+    AppDialog.adaptive(
+      context: context,
+      title: 'Live calendar',
+      icon: Icons.event_repeat_rounded,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Subscribe once and your calendar keeps itself up to date: room and '
+            'timing changes, holidays and suspended classwork, and your exam '
+            'room once seating is out. Calendar apps re-check every few hours '
+            '(Google can take up to a day).',
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'It shows this timetable as last saved. Anyone with the link can see it.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 16),
+          AppButton(
+            label: 'Add to Google Calendar',
+            onTap: () => open(CalendarFeedService.googleCalendarUrl(token)),
+          ),
+          const SizedBox(height: 8),
+          AppButton(
+            label: 'Apple Calendar / Outlook',
+            variant: AppButtonVariant.secondary,
+            onTap: () => open(CalendarFeedService.webcalUrl(token)),
+          ),
+          const SizedBox(height: 8),
+          AppButton(
+            label: 'Copy link',
+            variant: AppButtonVariant.ghost,
+            onTap: () async {
+              await Clipboard.setData(ClipboardData(text: CalendarFeedService.httpsUrl(token)));
+              ToastService.showSuccess('Link copied');
+            },
+          ),
+        ],
+      ),
+      actions: [
+        AppButton(
+          label: 'Turn off link',
+          variant: AppButtonVariant.ghost,
+          onTap: () async {
+            final navigator = Navigator.of(context);
+            try {
+              await CalendarFeedService().turnOff(token);
+              ToastService.showSuccess('Link turned off. Calendars using it stop updating.');
+              navigator.pop();
+            } catch (e) {
+              ToastService.showError('Could not turn the link off: $e');
+            }
+          },
+        ),
+        AppButton(label: 'Done', onTap: () => Navigator.pop(context)),
+      ],
+    );
   }
 
   Future<void> exportToPNG() async {
@@ -2012,6 +2110,9 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
             case 'export_ics':
               exportToICS();
               break;
+            case 'calendar_feed':
+              subscribeToCalendar();
+              break;
             case 'export_png':
               exportToPNG();
               break;
@@ -2082,6 +2183,15 @@ mixin TimetableEditorMixin<T extends StatefulWidget> on State<T> {
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
+              if (authService.isAuthenticated && !ConfigService().calendarFeedsOff)
+                const PopupMenuItem(
+                  value: 'calendar_feed',
+                  child: ListTile(
+                    leading: Icon(Icons.event_repeat_rounded),
+                    title: Text('Live calendar link'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
               const PopupMenuItem(
                 value: 'export_png',
                 child: ListTile(

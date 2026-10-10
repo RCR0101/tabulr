@@ -1,7 +1,7 @@
 {
   "name": "tabulr-functions",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "index.js",
   "dependencies": {

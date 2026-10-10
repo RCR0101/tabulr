@@ -20,6 +20,8 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
   final BugReportService _service = BugReportService();
 
   BugStatus? _filter; // null = all
+  bool _attentionOnly = false;
+  bool _showHidden = false;
   int _page = 0;
   static const int _pageSize = 10;
 
@@ -56,17 +58,19 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
             );
           }
 
-          final all = snapshot.data ?? const <BugReport>[];
-          final filtered =
-              _filter == null
-                  ? all
-                  : all.where((r) => r.status == _filter).toList();
+          final everything = snapshot.data ?? const <BugReport>[];
+          final all = everything.where((r) => r.hidden == _showHidden).toList();
+          final filtered = all.where((r) {
+            if (_attentionOnly) return r.needsAdminAttention;
+            return _filter == null || r.status == _filter;
+          }).toList();
 
           return Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 900),
               child: Column(
                 children: [
+                  _buildTabs(context, everything),
                   _buildFilters(context, all),
                   Expanded(child: _buildList(context, filtered)),
                 ],
@@ -78,12 +82,36 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
     );
   }
 
+  Widget _buildTabs(BuildContext context, List<BugReport> everything) {
+    final hidden = everything.where((r) => r.hidden).length;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppDesign.spacingMd, AppDesign.spacingMd, AppDesign.spacingMd, 0),
+      child: SegmentedButton<bool>(
+        segments: [
+          ButtonSegment(value: false, label: Text('Active (${everything.length - hidden})')),
+          ButtonSegment(
+            value: true,
+            icon: const Icon(Icons.visibility_off_outlined, size: 18),
+            label: Text('Hidden ($hidden)'),
+          ),
+        ],
+        selected: {_showHidden},
+        onSelectionChanged: (v) => setState(() {
+          _showHidden = v.first;
+          _page = 0;
+        }),
+      ),
+    );
+  }
+
   Widget _buildFilters(BuildContext context, List<BugReport> all) {
     int count(BugStatus? s) =>
         s == null ? all.length : all.where((r) => r.status == s).length;
+    final attention = all.where((r) => r.needsAdminAttention).length;
 
     Widget chip(String label, BugStatus? status) {
-      final selected = _filter == status;
+      final selected = !_attentionOnly && _filter == status;
       return Padding(
         padding: const EdgeInsets.only(right: AppDesign.spacingSm),
         child: FilterChip(
@@ -91,6 +119,7 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
           selected: selected,
           onSelected:
               (_) => setState(() {
+                _attentionOnly = false;
                 _filter = status;
                 _page = 0;
               }),
@@ -108,6 +137,20 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
       ),
       child: Row(
         children: [
+          if (!_showHidden)
+            Padding(
+              padding: const EdgeInsets.only(right: AppDesign.spacingSm),
+              child: FilterChip(
+                avatar: Icon(Icons.priority_high_rounded,
+                    size: 16, color: AppDesign.warning(context)),
+                label: Text('Needs a look ($attention)'),
+                selected: _attentionOnly,
+                onSelected: (_) => setState(() {
+                  _attentionOnly = true;
+                  _page = 0;
+                }),
+              ),
+            ),
           chip('All', null),
           for (final s in BugStatus.values) chip(s.label, s),
         ],
@@ -185,6 +228,16 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
                   const _UnreadDot(),
                   const SizedBox(width: AppDesign.spacingSm),
                 ],
+                if (r.needsAdminAttention) ...[
+                  Text(
+                    r.hasUnreadForAdmin ? 'Reply waiting' : 'Not looked at',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppDesign.warning(context),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: AppDesign.spacingSm),
+                ],
                 BugStatusChip(status: r.status, small: true),
               ],
             ),
@@ -202,6 +255,17 @@ class _BugTrackerScreenState extends State<BugTrackerScreen> {
                 const SizedBox(width: AppDesign.spacingSm),
                 _statusDropdown(context, r),
                 const Spacer(),
+                IconButton(
+                  tooltip: r.hidden ? 'Move back to Active' : 'Hide',
+                  icon: Icon(
+                    r.hidden ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                    size: 18,
+                  ),
+                  onPressed: () async {
+                    final ok = await _service.setHidden(r.id, !r.hidden);
+                    if (!ok) ToastService.showError('Could not update the report');
+                  },
+                ),
                 TextButton.icon(
                   onPressed:
                       () => setState(() {

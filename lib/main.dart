@@ -29,6 +29,9 @@ import 'utils/design_constants.dart';
 import 'constants/app_constants.dart';
 
 void main() async {
+  // Download, compile and engine boot before any Dart runs, which
+  // total_startup cannot see because it starts here.
+  final bootToMain = web_utils.msSinceNavigationStart();
   final totalStopwatch = Stopwatch()..start();
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -46,6 +49,12 @@ void main() async {
     minLevelIndex: 2,
     apiKey: loggerKey,
   );
+  if (kIsWeb) {
+    SecureLogger.performance(
+      'boot_to_main',
+      Duration(milliseconds: bootToMain.round()),
+    );
+  }
 
   await SecureLogger.measureAsync(
     'firebase_init',

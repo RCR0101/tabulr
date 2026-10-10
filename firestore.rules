@@ -184,11 +184,19 @@ service cloud.firestore {
     }
     match /acad_drives_submissions/{docId} {
       // Schema mirrors the client payload (acad_drives_screen.dart): driveLink,
-      // title, contributorName, submittedBy, status, submittedAt. driveLink must
-      // be an https:// URL; other fields are length-bounded.
+      // title, contributorName, submittedBy, status, submittedAt, plus the
+      // optional courseCode / resourceType hints. driveLink must be an https://
+      // URL; other fields are length-bounded.
       allow create: if isBitsEmail() && writesAllowed()
         && request.resource.data.keys().hasOnly(
-             ['driveLink', 'title', 'contributorName', 'submittedBy', 'status', 'submittedAt'])
+             ['driveLink', 'title', 'contributorName', 'submittedBy', 'status', 'submittedAt',
+              'courseCode', 'resourceType'])
+        && (!('courseCode' in request.resource.data)
+            || (request.resource.data.courseCode is string
+                && request.resource.data.courseCode.size() < 20))
+        && (!('resourceType' in request.resource.data)
+            || (request.resource.data.resourceType is string
+                && request.resource.data.resourceType.size() < 20))
         && request.resource.data.keys().hasAll(
              ['driveLink', 'title', 'contributorName', 'submittedBy', 'status'])
         && request.resource.data.submittedBy == request.auth.token.email
@@ -204,7 +212,27 @@ service cloud.firestore {
       // These carry the submitter's raw email and the old rule needed no auth
       // at all. The client only ever writes here (acad_drives_service.dart).
       allow read: if isAdmin();
-      allow update, delete: if false;
+      // Review only moves the status; the submission itself stays as sent.
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'reviewedBy', 'reviewedAt'])
+        && request.resource.data.status in ['approved', 'rejected'];
+      allow delete: if false;
+    }
+    // Upstream changes the poll_upstream function found (LMS timetable-change
+    // posts, a new Bulletin). Admins work through them; only the status moves.
+    match /upstream_notices/{docId} {
+      allow read: if isAdmin();
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'handledBy', 'handledAt'])
+        && request.resource.data.status in ['new', 'done', 'dismissed'];
+      allow create, delete: if false;
+    }
+    // The crawler's drive registry. Admin-only: it lists every contributor's
+    // drive link, and approving a submission is what adds one.
+    match /acad_drives_sources/{docId} {
+      allow read, write: if isAdmin();
     }
     match /acad_drives_tags/{docId} {
       allow read: if true;
@@ -263,8 +291,9 @@ service cloud.firestore {
       allow update: if writesAllowed() && (
         (isAdmin()
           && request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['status', 'updatedAt', 'lastAdminReplyAt'])
-          && request.resource.data.status in ['pending', 'in_review', 'dev_in_progress', 'fixed'])
+               .hasOnly(['status', 'updatedAt', 'lastAdminReplyAt', 'hidden'])
+          && request.resource.data.status in ['pending', 'in_review', 'dev_in_progress', 'fixed']
+          && request.resource.data.get('hidden', false) is bool)
         ||
         (isBitsEmail()
           && resource.data.authorUid == userDocId()
@@ -304,7 +333,61 @@ service cloud.firestore {
     // Admin metadata — upload stats, written only by the Admin SDK.
     match /admin_metadata/{docId} {
       allow read: if true;
-      allow write: if false;
+      // Students cache the professor list until this marker moves, so an
+      // admin's chamber edit bumps it. Only that field, only those docs.
+      allow update: if isAdmin() && writesAllowed()
+        && docId.matches('professors_(hyderabad|pilani|goa)')
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastUpdated']);
+      // Never rebuilt through the app yet (the marker is missing): first edit makes it.
+      allow create: if isAdmin() && writesAllowed()
+        && docId.matches('professors_(hyderabad|pilani|goa)')
+        && request.resource.data.keys().hasOnly(['lastUpdated']);
+      allow delete: if false;
+    }
+
+    // Live calendar links. The doc id is the secret in the feed URL; the
+    // calendarFeed function reads it with the Admin SDK. Owners may find,
+    // create and revoke their own, and nothing else.
+    match /calendar_feeds/{token} {
+      allow get, list: if isBitsEmail() && resource.data.owner == userDocId();
+      allow create: if isBitsEmail() && writesAllowed()
+        && token.size() >= 20
+        && request.resource.data.keys().hasOnly(['owner', 'timetableId', 'options', 'createdAt'])
+        && request.resource.data.owner == userDocId()
+        && request.resource.data.timetableId is string
+        && request.resource.data.timetableId.size() > 0
+        && request.resource.data.timetableId.size() < 100
+        && (!('options' in request.resource.data) || request.resource.data.options is map);
+      allow update: if isBitsEmail() && writesAllowed()
+        && resource.data.owner == userDocId()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['options']);
+      allow delete: if isBitsEmail() && resource.data.owner == userDocId();
+    }
+
+    // A student's "this chamber is wrong" report. Admins accept or reject it
+    // in Professor Chambers; accepting writes the professor doc.
+    match /chamber_suggestions/{docId} {
+      allow create: if isBitsEmail() && writesAllowed()
+        && request.resource.data.keys().hasOnly(
+             ['campus', 'professorId', 'professorName', 'chamber', 'submittedBy', 'status', 'submittedAt'])
+        && request.resource.data.keys().hasAll(
+             ['campus', 'professorId', 'professorName', 'chamber', 'submittedBy', 'status'])
+        && request.resource.data.submittedBy == request.auth.token.email
+        && request.resource.data.status == 'pending'
+        && request.resource.data.campus in ['hyderabad', 'pilani', 'goa']
+        && request.resource.data.chamber is string
+        && request.resource.data.chamber.size() > 0
+        && request.resource.data.chamber.size() <= 40
+        && request.resource.data.professorId is string
+        && request.resource.data.professorId.size() < 100
+        && request.resource.data.professorName is string
+        && request.resource.data.professorName.size() < 200;
+      allow read: if isAdmin();
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'reviewedBy', 'reviewedAt'])
+        && request.resource.data.status in ['accepted', 'rejected'];
+      allow delete: if false;
     }
 
     // Admin allowlist — source of truth for admin access (doc id = lowercased

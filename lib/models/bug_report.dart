@@ -164,6 +164,10 @@ class BugReport {
   final DateTime? lastAdminReplyAt;
   final DateTime? lastUserReplyAt;
 
+  /// Admin triage only: moved to the tracker's Hidden tab and left out of the
+  /// "needs a look" count. The reporter still sees their report as before.
+  final bool hidden;
+
   const BugReport({
     required this.id,
     required this.authorUid,
@@ -176,6 +180,7 @@ class BugReport {
     this.updatedAt,
     this.lastAdminReplyAt,
     this.lastUserReplyAt,
+    this.hidden = false,
   });
 
   factory BugReport.fromFirestore(DocumentSnapshot doc) {
@@ -197,6 +202,7 @@ class BugReport {
       lastUserReplyAt: data['lastUserReplyAt'] != null
           ? _parseTimestamp(data['lastUserReplyAt'])
           : null,
+      hidden: data['hidden'] == true,
     );
   }
 
@@ -209,6 +215,10 @@ class BugReport {
   bool get hasUnreadForAdmin =>
       lastUserReplyAt != null &&
       (lastAdminReplyAt == null || lastUserReplyAt!.isAfter(lastAdminReplyAt!));
+
+  /// Nobody has picked it up yet, or the reporter is waiting on a reply.
+  bool get needsAdminAttention =>
+      !hidden && (status == BugStatus.pending || hasUnreadForAdmin);
 
   /// Payload for a brand-new report. `createdAt` uses the server clock so
   /// ordering is authoritative regardless of device time.

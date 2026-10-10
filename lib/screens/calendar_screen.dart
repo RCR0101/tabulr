@@ -558,6 +558,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
     // No classes on Sunday.
     if (day == null) return items;
 
+    // Nor on holidays, "classwork suspended" days, recess, or outside the
+    // first-to-last day of classes. Same rule as the .ics export and feed.
+    if (date != null &&
+        !hasClassOn(
+          _academicEvents,
+          date,
+          semesterStart: _config.semesterStart,
+          semesterEnd: _config.semesterEnd,
+        )) {
+      _addCustomEvents(items, day);
+      return items;
+    }
+
     // Collect raw per-hour entries grouped by section identity
     final sectionSlots = <String, _RawSlotGroup>{};
 

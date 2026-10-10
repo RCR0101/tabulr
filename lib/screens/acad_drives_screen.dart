@@ -17,6 +17,7 @@ import '../services/data/auth_service.dart';
 import '../constants/app_constants.dart';
 import '../utils/design_constants.dart';
 import '../models/app_theme.dart';
+import '../models/acad_resource_type.dart';
 import '../widgets/common/shimmer_loading.dart';
 import '../widgets/command_palette.dart';
 import '../widgets/app_destinations.dart';
@@ -27,7 +28,9 @@ import '../widgets/common/app_button.dart';
 import '../widgets/common/tabulr_surface.dart';
 import '../services/data/courses_master_service.dart';
 import '../utils/page_info_helper.dart';
+import '../utils/download_failure.dart';
 import '../widgets/acad_drives/acad_drives_layout.dart';
+import '../widgets/common/course_picker_sheet.dart';
 
 enum CourseSortOption { nameAsc, nameDesc, fileCountAsc, fileCountDesc }
 
@@ -90,6 +93,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   String _searchQuery = '';
   CourseSortOption _courseSortOption = CourseSortOption.fileCountDesc;
   FileSortOption _fileSortOption = FileSortOption.nameAsc;
+  AcadResourceType? _typeFilter;
   static const _coursePageSize = AppLimits.acadDriveCoursePageSize;
   static const _filePageSize = AppLimits.acadDriveFilePageSize;
 
@@ -105,6 +109,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   final TextEditingController _driveLinkController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contributorController = TextEditingController();
+  // Optional hints: a course pins the whole drive to it when it syncs.
+  String? _submitCourse;
+  AcadResourceType? _submitType;
 
   @override
   void initState() {
@@ -345,6 +352,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       _selectedDriveLinks =
           (courseEntry['driveLinks'] as Map<String, dynamic>?) ?? {};
       _courseFiles = [];
+      _typeFilter = null;
       _lastFileDoc = null;
       _hasMoreFiles = false;
     });
@@ -554,6 +562,11 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                 tags.contains(query);
           }).toList();
     }
+    if (_typeFilter != null) {
+      filtered = filtered
+          .where((f) => AcadResourceType.fromKey(f['resource_type'] as String?) == _typeFilter)
+          .toList();
+    }
 
     // Apply sorting
     switch (_fileSortOption) {
@@ -642,6 +655,53 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   bool _isDownloading = false;
   bool _downloadCancelled = false;
 
+  /// The files a zip download left out, each with a plain reason and, where
+  /// there is a link, a button to open that one file directly.
+  void _showDownloadFailures(List<({String path, String? url, String reason})> failures) {
+    if (!mounted) return;
+    final text = Theme.of(context).textTheme;
+    AppDialog.adaptive(
+      context: context,
+      title: '${failures.length} ${failures.length == 1 ? 'file' : 'files'} not in the zip',
+      icon: Icons.error_outline_rounded,
+      iconColor: AppDesign.warning(context),
+      content: SizedBox(
+        width: 520,
+        child: ListView.separated(
+          shrinkWrap: true,
+          itemCount: failures.length,
+          separatorBuilder: (_, __) => const Divider(height: 1),
+          itemBuilder: (context, i) {
+            final f = failures[i];
+            final slash = f.path.lastIndexOf('/');
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(f.path.substring(slash + 1),
+                  style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (slash > 0)
+                    Text(f.path.substring(0, slash),
+                        style: text.bodySmall?.copyWith(color: AppDesign.muted(context))),
+                  Text(f.reason, style: text.bodySmall?.copyWith(color: AppDesign.warning(context))),
+                ],
+              ),
+              trailing: f.url == null
+                  ? null
+                  : IconButton(
+                      tooltip: 'Open this file',
+                      icon: const Icon(Icons.open_in_new_rounded),
+                      onPressed: () => launchUrl(Uri.parse(f.url!), mode: LaunchMode.externalApplication),
+                    ),
+            );
+          },
+        ),
+      ),
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
+    );
+  }
+
   Future<void> _downloadAsZip(String zipName, _FolderTree folderTree) async {
     if (!kIsWeb) {
       ToastService.showError('Mass download is only available on web');
@@ -650,18 +710,25 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     if (_isDownloading) return;
 
     final allFiles = folderTree.collectAllFiles();
-    final downloadable =
-        allFiles.where((f) {
-          final url = f.file['url'];
-          if (url == null || url == 'NA' || url.toString().trim().isEmpty) {
-            return false;
-          }
-          final uri = Uri.tryParse(url.toString());
-          return uri != null && uri.scheme == 'https';
-        }).toList();
+    // Every file that doesn't make it into the zip, with why, so the student
+    // can see exactly what is missing instead of just a count.
+    final failures = <({String path, String? url, String reason})>[];
+    final downloadable = <({String path, Map<String, dynamic> file})>[];
+    for (final f in allFiles) {
+      final url = f.file['url']?.toString().trim() ?? '';
+      final uri = Uri.tryParse(url);
+      if (url.isEmpty || url == 'NA' || uri == null) {
+        failures.add((path: f.path, url: null, reason: downloadFailureReason()));
+      } else if (uri.scheme != 'https') {
+        failures.add((path: f.path, url: url, reason: downloadFailureReason(insecure: true)));
+      } else {
+        downloadable.add(f);
+      }
+    }
 
     if (downloadable.isEmpty) {
-      ToastService.showError('No downloadable files found');
+      ToastService.showError('None of these files can be downloaded',
+          actionLabel: 'See why', onAction: () => _showDownloadFailures(failures));
       return;
     }
 
@@ -724,13 +791,9 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
       for (final entry in downloadable) {
         if (_downloadCancelled) break;
+        final url = entry.file['url'].toString().trim();
         try {
-          final uri = Uri.parse(entry.file['url']);
-          if (uri.scheme != 'https') {
-            failed++;
-            continue;
-          }
-          final response = await http.get(uri);
+          final response = await http.get(Uri.parse(url)).timeout(const Duration(minutes: 2));
           if (_downloadCancelled) break;
           if (response.statusCode == 200) {
             archive.addFile(
@@ -743,9 +806,12 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
             fetched++;
           } else {
             failed++;
+            failures.add((path: entry.path, url: url,
+                reason: downloadFailureReason(status: response.statusCode)));
           }
-        } catch (_) {
+        } catch (e) {
           failed++;
+          failures.add((path: entry.path, url: url, reason: downloadFailureReason(error: e)));
         }
         progressValue.value = (fetched + failed) / total;
         progressNotifier.value =
@@ -761,7 +827,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
 
       if (fetched == 0) {
         if (mounted) Navigator.of(context).pop();
-        ToastService.showError('Failed to download any files');
+        ToastService.showError('None of the ${failures.length} files could be downloaded',
+            actionLabel: 'See why', onAction: () => _showDownloadFailures(failures));
         return;
       }
 
@@ -781,11 +848,13 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
       final sanitized = zipName.replaceAll(RegExp(r'[^\w\s\-.]'), '_');
       web_utils.downloadBlob(Uint8List.fromList(zipBytes), '$sanitized.zip');
 
-      ToastService.showSuccess(
-        failed > 0
-            ? 'Downloaded $fetched files ($failed failed)'
-            : 'Downloaded $fetched files',
-      );
+      if (failures.isEmpty) {
+        ToastService.showSuccess('Downloaded $fetched files');
+      } else {
+        ToastService.showWarning(
+            'Downloaded $fetched files; ${failures.length} are missing from the zip',
+            actionLabel: 'See which', onAction: () => _showDownloadFailures(failures));
+      }
     } catch (e) {
       if (mounted) Navigator.of(context).pop();
       ToastService.showError('Download failed: $e');
@@ -873,6 +942,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   }
 
   Future<void> _showSubmitDialog() async {
+    _submitCourse = _selectedCourse;
+    _submitType = null;
     return AppDialog.adaptive(
       context: context,
       title: 'Submit Academic Resource',
@@ -916,6 +987,40 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                 border: OutlineInputBorder(),
               ),
             ),
+            const SizedBox(height: 16),
+            StatefulBuilder(
+              builder: (context, setDialogState) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.school_outlined, size: 18),
+                    label: Text(_submitCourse == null
+                        ? 'Course (optional — leave empty for a multi-course drive)'
+                        : 'Course: $_submitCourse'),
+                    onPressed: () async {
+                      final picked = await showCoursePicker(context, title: 'Which course is this for?');
+                      if (picked == null || picked.isEmpty) return;
+                      setDialogState(() => _submitCourse = picked.first.courseCode);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<AcadResourceType?>(
+                    initialValue: _submitType,
+                    decoration: const InputDecoration(
+                      labelText: 'What is it? (optional)',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('A mix / not sure')),
+                      for (final t in AcadResourceType.values)
+                        if (t != AcadResourceType.other)
+                          DropdownMenuItem(value: t, child: Text(t.label)),
+                    ],
+                    onChanged: (t) => setDialogState(() => _submitType = t),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -954,6 +1059,8 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         'submittedBy': userEmail ?? 'anonymous',
         'status': 'pending',
         'submittedAt': FieldValue.serverTimestamp(),
+        if (_submitCourse != null) 'courseCode': _submitCourse,
+        if (_submitType != null) 'resourceType': _submitType!.key,
       };
 
       await _drivesService.submitDriveLink(submissionData);
@@ -1439,6 +1546,7 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
             height: 1,
             color: scheme.outlineVariant.withValues(alpha: .6),
           ),
+          _buildTypeFilter(),
           Expanded(child: _buildFilesView()),
         ],
       ),
@@ -1541,9 +1649,55 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   }
 
   Widget _buildMobileResourceToolbar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: _buildResourceToolbar(),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: _buildResourceToolbar(),
+        ),
+        _buildTypeFilter(),
+      ],
+    );
+  }
+
+  /// Files per resource type in the loaded page. Empty for drives synced before
+  /// the crawler classified files, which hides the filter row.
+  Map<AcadResourceType, int> get _typeCounts {
+    final counts = <AcadResourceType, int>{};
+    for (final file in _courseFiles) {
+      final key = file['resource_type'] as String?;
+      if (key == null) continue;
+      final type = AcadResourceType.fromKey(key);
+      counts[type] = (counts[type] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  Widget _buildTypeFilter() {
+    if (_selectedCourse == null || _showingBookmarks) return const SizedBox.shrink();
+    final counts = _typeCounts;
+    if (counts.isEmpty) return const SizedBox.shrink();
+    final types = AcadResourceType.values.where(counts.containsKey);
+    return SizedBox(
+      height: 48,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+        children: [
+          for (final type in <AcadResourceType?>[null, ...types])
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                label: Text(type == null
+                    ? 'All · ${_courseFiles.length}'
+                    : '${type.label} · ${counts[type]}'),
+                selected: _typeFilter == type,
+                onSelected: (_) => setState(() => _typeFilter = type),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -2434,8 +2588,13 @@ class _FileCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${formatFileSize(file['size'] ?? 0)}  ·  '
-                        '${formatDate(file['uploadedAt'])}',
+                        [
+                          [acadExamLabel(file['exam'] as String?), file['year']]
+                              .whereType<Object>()
+                              .join(' '),
+                          formatFileSize(file['size'] ?? 0),
+                          formatDate(file['uploadedAt']),
+                        ].where((s) => s.isNotEmpty).join('  ·  '),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: scheme.onSurfaceVariant,
                         ),

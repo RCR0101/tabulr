@@ -24,7 +24,15 @@ def get_bucket():
     return _bucket
 
 BATCH_SIZE = 450
-EXAM_YEAR = 2026
+def default_exam_year(now=None):
+    """Calendar year the coming exams fall in: a December upload is for the
+    even semester, whose exams are next year. Mirrors `defaultExamYear` in
+    lib/models/data_freshness.dart."""
+    now = now or datetime.utcnow()
+    return now.year + 1 if now.month == 12 else now.year
+
+
+EXAM_YEAR = default_exam_year()
 
 DEFAULT_TIMETABLE_HEADERS_HYD = [
     "COMP\nCODE",
@@ -78,11 +86,9 @@ DEFAULT_EXAM_HEADERS = [
     "S.No",
     "SEATING ARRANGEMENT",
     "Seating Arrangement",
-    "SEATING ARRANGEMENT FOR THE I SEMESTER 2025 -26",
     "COMPREHENSIVE EXAMINATION",
     "MIDSEMESTER EXAMINATION",
     "MID SEMSTER EXAMINATIONS",
-    "COMPREHENSIVE EXAMINATION SECOND SEMESTER 2025 -26",
     "COURSE CODE",
 ]
 
@@ -1064,7 +1070,10 @@ def parse_exam_seating_rows(data):
 CAL_MONTHS = {m: i + 1 for i, m in enumerate([
     "January", "February", "March", "April", "May", "June", "July",
     "August", "September", "October", "November", "December"])}
-CAL_MONTH_RE = "|".join(CAL_MONTHS)
+# Goa abbreviates some dates ("Dec 20 (Su) -- Jan 3"). Longest first, so the
+# alternation never stops at "Jun" inside "June".
+CAL_MONTH_NUM = {**CAL_MONTHS, **{m[:3]: n for m, n in CAL_MONTHS.items()}, "Sept": 9}
+CAL_MONTH_RE = "|".join(sorted(CAL_MONTH_NUM, key=len, reverse=True))
 
 # Leading month + day, optionally a (Dow), a comma/ampersand day list, or a
 # range to another day (or Month day). Stops before the alphabetic label.
@@ -1073,7 +1082,7 @@ CAL_DATE_RE = re.compile(
     r'(?P<body>\d{1,2}'
     r'(?:\s*\([^)]*\))?'
     r'(?:\s*[,&]\s*\d{1,2})*'
-    r'(?:\s*[-–—]\s*(?:(?:' + CAL_MONTH_RE + r')\s+)?\d{1,2}(?:\s*\([^)]*\))?)?'
+    r'(?:\s*[-–—]+\s*(?:(?:' + CAL_MONTH_RE + r')\s+)?\d{1,2}(?:\s*\([^)]*\))?)?'
     r')'
 )
 
@@ -1091,11 +1100,19 @@ def _cal_clean(s):
 def _cal_strip_label(s):
     s = CAL_GRID_HEADER_RE.sub(' ', s)
     s = CAL_GRID_NUMS_RE.sub(' ', s)
+    # Upper-case month names are the grid's own headings ("OCTOBER NOVEMBER").
+    s = re.sub(r'\b(?:' + '|'.join(m.upper() for m in CAL_MONTHS) + r')\b', ' ', s)
     # Trailing booklet footnotes / section headers that trail the last event.
     s = re.split(r'\*Holiday subject|\bNote:|HOLIDAYS\s+RECESS', s)[0]
+    # Section headings inside a column ("Summer Term 2026-27").
+    s = re.sub(r'\bSummer Term \d{4}\s*[-–]\s*\d{2,4}\b', ' ', s)
     s = _cal_clean(s)
+    # A day name missing its "(", as Pilani prints "January 3 Su)".
+    s = _cal_clean(re.sub(r'(?<![(\w])(?:Su|Th|M|T|W|F|S)\)', ' ', s))
     # An orphan "(Dow)" left when a date range wrapped to the next print line.
     s = re.sub(r'^\([^)]*\)\s*', '', s)
+    # Day names stranded by a wrapped date ("Ph.D. (M) Admissions").
+    s = re.sub(r'\s*\((?:Su|Th|M|T|W|F|S)\)(?=\s|$)', '', s)
     return _cal_clean(s)
 
 
@@ -1103,12 +1120,14 @@ def _cal_category(label):
     low = label.lower()
     if "(h)" in low:
         return "holiday"
-    if "exam" in low:
-        return "exam"
+    # Deadline wording first: "Last date for returning ... Mid-Semester exams"
+    # is a deadline that happens to mention exams.
     if any(k in low for k in (
             "last day", "last date", "registration", "withdrawal",
             "substitution")):
         return "deadline"
+    if "exam" in low:
+        return "exam"
     if any(k in low for k in (
             "classwork", "class work", "semester ends", "semester begins",
             "grading", "vacation", "summer term")):
@@ -1122,11 +1141,11 @@ def _cal_parse_body(mon, body):
     Years are assigned later (see [_assign_years]) because that depends on which
     semester the page belongs to, not on the blob alone.
     """
-    start_month = CAL_MONTHS[mon]
+    start_month = CAL_MONTH_NUM[mon]
     end_month = start_month
     m2 = re.search(r'(' + CAL_MONTH_RE + r')', body)
     if m2:
-        end_month = CAL_MONTHS[m2.group(1)]
+        end_month = CAL_MONTH_NUM[m2.group(1)]
     days = [int(x) for x in re.findall(r'\d{1,2}', body)]
     if not days:
         return None
@@ -1140,11 +1159,37 @@ def _cal_parse_body(mon, body):
     }
 
 
+def _join_around(seg, anchor, date_ids, on_date_line):
+    above = " ".join(w["text"] for w in seg if id(w) not in date_ids and w["top"] < anchor["top"] - 3)
+    below = " ".join(w["text"] for w in seg if id(w) not in date_ids and w["top"] > anchor["top"] + 3)
+    return f"{above} {on_date_line} {below}"
+
+
 def _cal_parse_page(page):
-    words = page.extract_words(use_text_flow=False, keep_blank_chars=False)
+    raw_words = page.extract_words(use_text_flow=False, keep_blank_chars=False)
+    # Some dates and labels come out one glyph per word ("M a y 3",
+    # "C h r i s t m a s"): rejoin them.
+    merged = []
+    for w in raw_words:
+        p = merged[-1] if merged else None
+        # Glyphs of one word sit flush (gaps of +-0.1pt); real word spaces are
+        # ~1.8pt, so a tight gap test never joins two words.
+        if (p and (len(w["text"]) == 1 or len(p["text"]) == 1)
+                and abs(w["top"] - p["top"]) < 1 and -1 < w["x0"] - p["x1"] < 0.5):
+            merged[-1] = {**p, "text": p["text"] + w["text"], "x1": w["x1"]}
+        else:
+            merged.append(dict(w))
+    words = []
+    for w in merged:
+        # Pilani prints "December25": split it so the date is still found.
+        g = re.match(r'^(' + CAL_MONTH_RE + r')(\d.*)$', w["text"])
+        if g:
+            words += [{**w, "text": g.group(1)}, {**w, "text": g.group(2), "x0": w["x0"] + 1}]
+        else:
+            words.append(w)
     anchors = []
     for i, w in enumerate(words):
-        if w["text"] in CAL_MONTHS:
+        if w["text"] in CAL_MONTH_NUM:
             nxt = words[i + 1]["text"] if i + 1 < len(words) else ""
             if re.match(r'^\d', nxt):
                 anchors.append(w)
@@ -1159,7 +1204,9 @@ def _cal_parse_page(page):
             starts.append(b)
 
     def col(x):
-        c = 0
+        # Left of every column is the month grid (Pilani prints it beside the
+        # list, on the same lines): it belongs to no column.
+        c = -1
         for i, st in enumerate(starts):
             if x >= st - 2:
                 c = i
@@ -1174,19 +1221,109 @@ def _cal_parse_page(page):
     for c, alist in per_col.items():
         alist.sort(key=lambda w: w["top"])
         cwords = [w for w in words if col(w["x0"]) == c]
-        for j, a in enumerate(alist):
-            top0 = a["top"] - 3
-            top1 = alist[j + 1]["top"] - 3 if j + 1 < len(alist) else 1e9
+
+        def line_of(anchor):
+            return sorted((w for w in cwords if abs(w["top"] - anchor["top"]) <= 3),
+                          key=lambda w: w["x0"])
+
+        gaps = sorted(b["top"] - a["top"] for a, b in zip(alist, alist[1:]) if b["top"] - a["top"] > 3)
+        pitch = gaps[len(gaps) // 2] if gaps else 15
+
+        # "October 5(M)-" ... "October 10(S)": a range printed over two date
+        # lines. The second date closes the range; it is not an event itself.
+        # Goa puts the label between ("March 08 (M)– Mid-semester ... /
+        # March 15 (M) suspended)"), so a dash right after the date also counts
+        # when the next date follows within a row.
+        ends = {}
+        for j in range(len(alist) - 1):
+            if j in ends.values():
+                continue
+            line = " ".join(w["text"] for w in line_of(alist[j]))
+            m0 = CAL_DATE_RE.match(line)
+            # A bare day between the two dates ("25(Su) ATMOS") is the real end;
+            # the next dated line is then an event of its own.
+            bare_end = any(re.match(r'^\d{1,2}\s*\(', w["text"])
+                           and alist[j]["top"] + 3 < w["top"] < alist[j + 1]["top"] - 3
+                           and w["x0"] < alist[j]["x0"] + 60
+                           for w in cwords)
+            dangling = not bare_end and (re.search(r'[-–—]$', line) or (
+                m0 and re.match(r'\s*[-–—]', line[m0.end():])
+                and alist[j + 1]["top"] - alist[j]["top"] <= pitch * 1.6))
+            if dangling:
+                ends[j] = j + 1
+        heads = [j for j in range(len(alist)) if j not in ends.values()]
+
+        for n, j in enumerate(heads):
+            a = alist[j]
+            last = alist[ends.get(j, j)]
+            # A wrapped label's lines go to whichever date they sit nearer:
+            # the booklet centres the date in a two-line cell, so the first
+            # line is ABOVE it ("Last day for returning evaluated answer
+            # scripts of" / "October 28 (W) Mid-Semester Test"). Cutting just
+            # above each date glued that line onto the previous event.
+            prev = alist[ends.get(heads[n - 1], heads[n - 1])]["top"] if n else None
+            nxt = alist[heads[n + 1]]["top"] if n + 1 < len(heads) else None
+            top0 = (prev + a["top"]) / 2 if prev is not None else a["top"] - pitch / 2
+            # The last event gets one more row at most, not the footnotes below.
+            top1 = (last["top"] + nxt) / 2 if nxt is not None else last["top"] + pitch * 1.5
             seg = [w for w in cwords if top0 <= w["top"] < top1]
             seg.sort(key=lambda w: (round(w["top"] / 6), w["x0"]))
-            text = _cal_clean(" ".join(w["text"] for w in seg))
+
+            # Read the date first (both lines of a split range), then the label
+            # in reading order, so lines printed above the date still lead it.
+            date_words = line_of(a) + (line_of(last) if last is not a else [])
+            date_ids = {id(w) for w in date_words}
+            text = _cal_clean(" ".join(w["text"] for w in date_words))
+            if last is not a:
+                # Put the two dates together ("March 08 (M) - March 15 (M)") and
+                # what follows each on its line after them, as the label.
+                l1 = _cal_clean(" ".join(w["text"] for w in line_of(a)))
+                l2 = _cal_clean(" ".join(w["text"] for w in line_of(last)))
+                m1, m2 = CAL_DATE_RE.match(l1), CAL_DATE_RE.match(l2)
+                if m1 and m2:
+                    rem1 = re.sub(r'^\s*[-–—]+', '', l1[m1.end():])
+                    text = f"{m1.group(0)} - {m2.group(0)} {rem1} {l2[m2.end():]}"
+                    text = _cal_clean(text)
             m = CAL_DATE_RE.match(text)
+            if m and not text[m.end():].strip() and last is a:
+                # "December 20" / "(Su)—January 3 (Su) Recess": the date runs
+                # on into the next line.
+                below = sorted((w for w in seg if w["top"] > a["top"] + 3), key=lambda w: w["top"])
+                if below:
+                    nxt_line = sorted((w for w in below if abs(w["top"] - below[0]["top"]) <= 3),
+                                      key=lambda w: w["x0"])
+                    date_words += nxt_line
+                    date_ids = {id(w) for w in date_words}
+                    text = _cal_clean(" ".join(w["text"] for w in date_words))
+                    m = CAL_DATE_RE.match(text)
             if not m:
                 continue
             parsed = _cal_parse_body(m.group("mon"), _cal_clean(m.group("body")))
             if not parsed:
                 continue
-            label = _cal_strip_label(text[m.end():])
+            on_date_lines = text[m.end():]
+            others = " ".join(w["text"] for w in seg if id(w) not in date_ids)
+            # "November 27(F) -" / "October 23 (F) -" with the end day printed
+            # on a later line ("28 (S) admissions", "25(Su) ATMOS"): the dash
+            # promises an end, so find it before the label is cleaned of
+            # stray day names. "May 18 (T)–May" puts the month first.
+            end_month = None
+            dangling = (last is a and parsed["end_day"] is None
+                        and re.match(r'\s*[-–—]', on_date_lines))
+            if dangling:
+                lead = re.match(r'\s*[-–—]+\s*(?:(' + CAL_MONTH_RE + r')\b)?\s*', on_date_lines)
+                end_month = CAL_MONTH_NUM[lead.group(1)] if lead.group(1) else None
+                on_date_lines = on_date_lines[lead.end():]
+            raw_label = _cal_clean(others + " " + on_date_lines if last is not a
+                                   else _join_around(seg, a, date_ids, on_date_lines))
+            if dangling:
+                end_m = re.search(r'\b(\d{1,2})\s*\((?:Su|Th|M|T|W|F|S)\)\s*', raw_label)
+                if end_m:
+                    parsed["end_day"] = int(end_m.group(1))
+                    parsed["end_month"] = end_month or parsed["start_month"] + (
+                        1 if parsed["end_day"] < parsed["start_day"] else 0)
+                    raw_label = raw_label[:end_m.start()] + " " + raw_label[end_m.end():]
+            label = _cal_strip_label(raw_label)
             if not label:
                 continue
             events.append({
@@ -1259,6 +1396,28 @@ def _assign_years(e, exam_year, semester):
     }
 
 
+def _drop_other_semester_columns(raw, semester):
+    """Goa prints both semesters side by side. A column that opens in
+    January-June is the even semester's list, so its July rows ("Summer term
+    ends") are next July, not this one. A column is only dropped when another
+    column on the same page does fit, so a one-column page never loses all."""
+    from collections import defaultdict
+    cols = defaultdict(list)
+    for e in raw:
+        cols[(e["_page"], e["_col"])].append(e)
+
+    def sem(col):
+        return 2 if min(col, key=lambda e: e["_top"])["start_month"] <= 6 else 1
+
+    keep = []
+    for (page, _), col in cols.items():
+        siblings = [v for (p, _), v in cols.items() if p == page]
+        if sem(col) != semester and any(sem(v) == semester for v in siblings):
+            continue
+        keep.extend(col)
+    return keep
+
+
 def parse_academic_calendar(pdf_path, page_range, exam_year, semester=None):
     import pdfplumber
 
@@ -1269,13 +1428,14 @@ def parse_academic_calendar(pdf_path, page_range, exam_year, semester=None):
 
     raw = []
     page_text = []
-    for page in pages:
-        raw.extend(_cal_parse_page(page))
+    for n, page in enumerate(pages):
+        raw.extend({**e, "_page": n} for e in _cal_parse_page(page))
         page_text.append(page.extract_text() or "")
     pdf.close()
 
     if semester is None:
         semester = _detect_semester("\n".join(page_text))
+    raw = _drop_other_semester_columns(raw, semester)
 
     events = []
     seen = set()
@@ -2062,7 +2222,7 @@ def upload_timetable(req: https_fn.CallableRequest):
     exclude_headers = DEFAULT_TIMETABLE_HEADERS.get(campus_code, []) + extra_headers
     page_range_raw = req.data.get("pageRange")
     calendar_range_raw = req.data.get("calendarPageRange")
-    EXAM_YEAR = req.data.get("examYear", 2026)
+    EXAM_YEAR = req.data.get("examYear") or default_exam_year()
 
     if not campus_code or not storage_path:
         raise https_fn.HttpsError(https_fn.FunctionalErrorCode.INVALID_ARGUMENT, "Missing fields")
@@ -2169,40 +2329,19 @@ def upload_timetable(req: https_fn.CallableRequest):
     }
 
 
-@https_fn.on_call(region="asia-south1", enforce_app_check=False, timeout_sec=300, memory=options.MemoryOption.MB_512)
-def upload_exam_seating(req: https_fn.CallableRequest):
-    require_admin(req)
+def parse_seating_pdf(pdf_path, extra_headers=()):
+    """Exam seating rows from a seating-arrangement PDF (the whole file)."""
+    rows = extract_pdf_tables(pdf_path, DEFAULT_EXAM_HEADERS + list(extra_headers))
+    return parse_exam_seating_rows(rows)
+
+
+def write_exam_seating(campus_code, exams):
+    """Replaces a campus's exam seating with [exams]. Shared by the admin
+    upload and the LMS notice's Apply."""
     db = get_db()
-    bucket = get_bucket()
-
-    campus_code = req.data.get("campusCode")
-    storage_path = req.data.get("storagePath")
-    extra_headers = req.data.get("excludeHeaders", [])
-    exclude_headers = DEFAULT_EXAM_HEADERS + extra_headers
-
-    if not campus_code or not storage_path:
-        raise https_fn.HttpsError(https_fn.FunctionalErrorCode.INVALID_ARGUMENT, "Missing fields")
-    if campus_code not in ("hyderabad", "pilani", "goa"):
-        raise https_fn.HttpsError(https_fn.FunctionalErrorCode.INVALID_ARGUMENT, "Invalid campus")
-
-    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
-        tmp_path = tmp.name
-        blob = bucket.blob(storage_path)
-        blob.download_to_filename(tmp_path)
-
-    try:
-        rows = extract_pdf_tables(tmp_path, exclude_headers)
-        exams = parse_exam_seating_rows(rows)
-    finally:
-        os.unlink(tmp_path)
-
-    if not exams:
-        raise https_fn.HttpsError(https_fn.FunctionalErrorCode.INVALID_ARGUMENT, "No exam data found in PDF")
-
     campus_id = CAMPUS_IDS.get(campus_code.lower(), "hyderabad")
     collection_path = f"campuses/{campus_id}/exam_seating"
 
-    # Clear existing
     existing = db.collection(collection_path).get()
     batch = db.batch()
     count = 0
@@ -2216,17 +2355,12 @@ def upload_exam_seating(req: https_fn.CallableRequest):
     if count > 0:
         batch.commit()
 
-    # Upload
     batch = db.batch()
     op_count = 0
     for exam in exams:
         doc_id = re.sub(r"\s+", "_", exam["courseCode"]).replace("/", "-")
-        doc_ref = db.collection(collection_path).document(doc_id)
-
-        exam_date_val = sanitize(exam.get("examDate", ""))
-
-        batch.set(doc_ref, {
-            "exam_date": exam_date_val,
+        batch.set(db.collection(collection_path).document(doc_id), {
+            "exam_date": sanitize(exam.get("examDate", "")),
             "rooms": exam["rooms"],
             "updated_at": firestore.SERVER_TIMESTAMP,
         })
@@ -2245,4 +2379,211 @@ def upload_exam_seating(req: https_fn.CallableRequest):
         "campus": CAMPUS_NAMES.get(campus_code.lower(), "Hyderabad"),
     }, merge=True)
 
+
+@https_fn.on_call(region="asia-south1", enforce_app_check=False, timeout_sec=300, memory=options.MemoryOption.MB_512)
+def upload_exam_seating(req: https_fn.CallableRequest):
+    require_admin(req)
+    db = get_db()
+    bucket = get_bucket()
+
+    campus_code = req.data.get("campusCode")
+    storage_path = req.data.get("storagePath")
+    extra_headers = req.data.get("excludeHeaders", [])
+
+    if not campus_code or not storage_path:
+        raise https_fn.HttpsError(https_fn.FunctionalErrorCode.INVALID_ARGUMENT, "Missing fields")
+    if campus_code not in ("hyderabad", "pilani", "goa"):
+        raise https_fn.HttpsError(https_fn.FunctionalErrorCode.INVALID_ARGUMENT, "Invalid campus")
+
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        tmp_path = tmp.name
+        blob = bucket.blob(storage_path)
+        blob.download_to_filename(tmp_path)
+
+    try:
+        exams = parse_seating_pdf(tmp_path, extra_headers)
+    finally:
+        os.unlink(tmp_path)
+
+    if not exams:
+        raise https_fn.HttpsError(https_fn.FunctionalErrorCode.INVALID_ARGUMENT, "No exam data found in PDF")
+
+    write_exam_seating(campus_code, exams)
     return {"success": True, "examsUploaded": len(exams)}
+
+
+# Weekly, and on demand from the admin dashboard: queue new LMS posts
+# (timetable changes, seating) and a newly published Bulletin for an admin
+# (see upstream.py). Read-only towards course data.
+from firebase_functions import scheduler_fn  # noqa: E402
+import upstream  # noqa: E402
+
+
+@scheduler_fn.on_schedule(schedule="every monday 06:00", timezone="Asia/Kolkata",
+                          region="asia-south1", timeout_sec=300, memory=options.MemoryOption.GB_1)
+def poll_upstream(event: scheduler_fn.ScheduledEvent) -> None:
+    upstream.poll(get_db(), parse_seating=parse_seating_pdf, summarize_changes=summarize_changes_pdf)
+
+
+# The "Check now" button: the same check, when an admin knows something was
+# just posted and does not want to wait for Monday.
+@https_fn.on_call(region="asia-south1", enforce_app_check=False, timeout_sec=300,
+                  memory=options.MemoryOption.GB_1)
+def check_upstream_now(req: https_fn.CallableRequest):
+    require_admin(req)
+    added = upstream.poll(get_db(), parse_seating=parse_seating_pdf, summarize_changes=summarize_changes_pdf)
+    return {"added": added}
+
+
+# Applies a seating PDF the poller found on the LMS: the same parse and write
+# as a manual upload, re-reading the PDF so what is written is what is posted.
+@https_fn.on_call(region="asia-south1", enforce_app_check=False, timeout_sec=300,
+                  memory=options.MemoryOption.GB_1)
+def apply_seating_notice(req: https_fn.CallableRequest):
+    require_admin(req)
+    notice_id = req.data.get("noticeId")
+    if not isinstance(notice_id, str) or not notice_id.startswith("lms_hyd_"):
+        raise https_fn.HttpsError(https_fn.FunctionalErrorCode.INVALID_ARGUMENT, "Unknown notice")
+    db = get_db()
+    ref = db.collection("upstream_notices").document(notice_id)
+    notice = (ref.get().to_dict() or {})
+    pdf = next((a for a in notice.get("attachments", []) if a.get("name", "").lower().endswith(".pdf")), None)
+    if notice.get("kind") != "seating" or not pdf:
+        raise https_fn.HttpsError(https_fn.FunctionalErrorCode.FAILED_PRECONDITION, "Not a seating notice with a PDF")
+
+    path = upstream.download(pdf["url"])
+    try:
+        exams = parse_seating_pdf(path)
+    finally:
+        os.unlink(path)
+    if not exams:
+        raise https_fn.HttpsError(https_fn.FunctionalErrorCode.FAILED_PRECONDITION, "No seating rows found in the PDF")
+
+    write_exam_seating("hyderabad", exams)
+    ref.update({
+        "status": "done",
+        "handledBy": (req.auth.token or {}).get("email") if req.auth else None,
+        "handledAt": firestore.SERVER_TIMESTAMP,
+    })
+    return {"success": True, "examsUploaded": len(exams), "preview": upstream.seating_preview(exams)}
+
+
+# Timetable-change PDFs from the LMS, proposed as section edits (changes.py).
+# Every preview and apply re-reads the PDF and the live timetable, so what an
+# admin approves is judged against the data as it is at that moment.
+import changes  # noqa: E402
+
+CHANGES_CAMPUS = "hyderabad"  # the LMS watched is Hyderabad's
+
+
+def _changes_inputs(rows):
+    db = get_db()
+    docs = {d.id: d.to_dict() or {} for d in db.collection(f"campuses/{CHANGES_CAMPUS}/timetable").stream()}
+    wanted = {changes.doc_id(r["course"]) for r in rows if r["kind"] == "new_course"}
+    master_ref = db.collection(f"campuses/{CHANGES_CAMPUS}/courses_master")
+    masters = {d.id: d.to_dict() for d in db.get_all([master_ref.document(i) for i in wanted]) if d.exists}
+    return docs, masters
+
+
+def summarize_changes_pdf(path):
+    rows = changes.parse_pdf(path)
+    return changes.summary(changes.propose(rows, *_changes_inputs(rows)))
+
+
+def _changes_notice(req, with_snippets=False):
+    require_admin(req)
+    notice_id = req.data.get("noticeId")
+    if not isinstance(notice_id, str) or not notice_id.startswith("lms_hyd_"):
+        raise https_fn.HttpsError(https_fn.FunctionalErrorCode.INVALID_ARGUMENT, "Unknown notice")
+    ref = get_db().collection("upstream_notices").document(notice_id)
+    notice = ref.get().to_dict() or {}
+    pdf = next((a for a in notice.get("attachments", []) if a.get("name", "").lower().endswith(".pdf")), None)
+    if notice.get("kind") != "timetable_changes" or not pdf:
+        raise https_fn.HttpsError(https_fn.FunctionalErrorCode.FAILED_PRECONDITION,
+                                  "Not a timetable-changes notice with a PDF")
+    path = upstream.download(pdf["url"])
+    try:
+        rows = changes.parse_pdf(path)
+        shots = changes.snippets(path, rows) if with_snippets else {}
+    finally:
+        os.unlink(path)
+    return ref, rows, shots
+
+
+@https_fn.on_call(region="asia-south1", enforce_app_check=False, timeout_sec=120,
+                  memory=options.MemoryOption.GB_1)
+def preview_changes_notice(req: https_fn.CallableRequest):
+    _, rows, shots = _changes_notice(req, with_snippets=True)
+    proposals = changes.propose(rows, *_changes_inputs(rows))
+    # Each row as printed (a PNG, base64), so what the PDF says can be read
+    # next to what Tabulr made of it. About 10 KB a row.
+    return {"changes": [{**p, "snippet": shots.get(p["key"])} for p in proposals],
+            "summary": changes.summary(proposals)}
+
+
+@https_fn.on_call(region="asia-south1", enforce_app_check=False, timeout_sec=120,
+                  memory=options.MemoryOption.GB_1)
+def apply_changes_notice(req: https_fn.CallableRequest):
+    ref, rows, _ = _changes_notice(req)
+    keys = req.data.get("keys")
+    if not isinstance(keys, list) or not keys:
+        raise https_fn.HttpsError(https_fn.FunctionalErrorCode.INVALID_ARGUMENT, "No changes selected")
+    docs, masters = _changes_inputs(rows)
+    touched, applied = changes.apply_selected(rows, docs, masters, keys)
+    db = get_db()
+    timetable = db.collection(f"campuses/{CHANGES_CAMPUS}/timetable")
+    batch = db.batch()
+    for did, doc in touched.items():
+        batch.set(timetable.document(did), doc)
+    email = (req.auth.token or {}).get("email") if req.auth else None
+    now = datetime.utcnow()
+    if applied:
+        # Clients refetch, and professor schedules rebuild (onTimetableChanged),
+        # when the campus version moves.
+        batch.set(db.document(f"campuses/{CHANGES_CAMPUS}/metadata/current"), {
+            "lastUpdated": now.isoformat() + "Z",
+            "version": str(int(now.timestamp() * 1000)),
+        }, merge=True)
+    remaining = changes.propose(rows, {**docs, **touched}, masters)
+    update = {"appliedChanges": firestore.ArrayUnion([{**a, "by": email, "at": now.isoformat() + "Z"} for a in applied])} if applied else {}
+    if not any(p["status"] in changes.SELECTABLE for p in remaining):
+        update.update({"status": "done", "handledBy": email, "handledAt": firestore.SERVER_TIMESTAMP})
+    update["preview"] = changes.summary(remaining)
+    batch.update(ref, update)
+    batch.commit()
+    return {"applied": len(applied), "changes": remaining, "summary": changes.summary(remaining)}
+
+
+# Weekly: compare the BITS faculty directory with Tabulr's professors. New
+# faculty become an Upstream changes notice; Apply (rebuildProfessorSchedules
+# with usePending) adds them. Nothing is written to the professor list here.
+import faculty  # noqa: E402
+
+
+@scheduler_fn.on_schedule(schedule="every monday 06:00", timezone="Asia/Kolkata",
+                          region="asia-south1", timeout_sec=540)
+def check_faculty_roster(event: scheduler_fn.ScheduledEvent) -> None:
+    import hashlib
+    db = get_db()
+    roster = faculty.scrape("hyderabad")
+    if len(roster) < 100:  # the site changed or failed; don't propose a broken roster
+        print(f"[faculty] only {len(roster)} entries scraped; skipping")
+        return
+    existing = [d.to_dict() for d in db.collection("reference/professors/hyderabad-entries").stream()]
+    new = faculty.new_faculty(roster, existing)
+    print(f"[faculty] {len(roster)} on the site, {len(new)} new")
+    if not new:
+        return
+    db.document("admin_metadata/professors_pending_hyderabad").set({
+        "profs": roster, "foundAt": firestore.SERVER_TIMESTAMP,
+    })
+    key = hashlib.sha1("|".join(sorted(p["name"] for p in new)).encode()).hexdigest()[:12]
+    names = [p["name"] for p in new]
+    upstream._record(db, f"roster_hyderabad_{key}", {
+        "source": "faculty",
+        "kind": "roster",
+        "title": f"{len(new)} new faculty on the BITS website",
+        "preview": ", ".join(names[:8]) + (f" and {len(names) - 8} more" if len(names) > 8 else ""),
+        "attachments": [{"name": p["name"], "url": p["profileUrl"]} for p in new[:10]],
+        "postedAt": datetime.utcnow().isoformat() + "Z",
+    })

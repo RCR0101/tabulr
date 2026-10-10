@@ -14,12 +14,15 @@ import main
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-CALENDAR_PAGE = {"hyd": [2, 2], "goa": [1, 1], "pilani": [2, 2]}
+# The 2026-27 first-semester booklets (the fixtures were refreshed 2026-07).
+# When next term's booklets replace them, re-derive these facts from the PDFs.
+CALENDAR_PAGE = {"hyd": [2, 2], "goa": [2, 2], "pilani": [2, 2]}
 
 
-def parse(campus):
+def parse(campus, semester=1, exam_year=2026):
     return main.parse_academic_calendar(
-        os.path.join(ROOT, f"timetable-{campus}.pdf"), CALENDAR_PAGE[campus], 2026)
+        os.path.join(ROOT, f"timetable-{campus}.pdf"), CALENDAR_PAGE[campus],
+        exam_year, semester=semester)
 
 
 def find(events, needle):
@@ -29,8 +32,7 @@ def find(events, needle):
 
 def test_hyderabad_extracts_every_row_cleanly():
     events = parse("hyd")
-    # The Hyd second-semester list has 37 dated rows.
-    assert len(events) == 37, len(events)
+    assert len(events) == 34, len(events)
     dates = [e["date"] for e in events]
     assert dates == sorted(dates)
     assert all(d.startswith("2026") for d in dates)
@@ -38,34 +40,94 @@ def test_hyderabad_extracts_every_row_cleanly():
 
 def test_key_deadlines_and_categories():
     events = parse("hyd")
-
     withdrawal = find(events, "withdrawal")
-    assert withdrawal and withdrawal["date"] == "2026-03-20"
+    assert withdrawal and withdrawal["date"] == "2026-09-21"
     assert withdrawal["category"] == "deadline"
-
     substitution = find(events, "substitution")
-    assert substitution and substitution["date"] == "2026-01-21"
+    assert substitution and substitution["date"] == "2026-08-17"
     assert substitution["category"] == "deadline"
 
 
 def test_ranges_carry_an_end_date():
-    midsem = find(parse("hyd"), "Mid Semester Exams")
-    assert midsem and midsem["date"] == "2026-03-09"
-    assert midsem["endDate"] == "2026-03-14"
+    events = parse("hyd")
+    # "October 5 (M)--10 (S)": a doubled dash is still a range.
+    midsem = find(events, "Mid sem Exam")
+    assert midsem and (midsem["date"], midsem["endDate"]) == ("2026-10-05", "2026-10-10")
     assert midsem["category"] == "exam"
+    assert not midsem["label"].startswith("-")
+    # "December 20" / "(Su)—January 3 (Su) Recess": the date runs onto the next line.
+    recess = find(events, "Recess")
+    assert recess and (recess["date"], recess["endDate"]) == ("2026-12-20", "2027-01-03")
+
+
+def test_wrapped_labels_stay_with_their_date():
+    # The booklet centres a date in a two-line cell, so a label's first line is
+    # printed ABOVE its date; it used to be glued onto the previous event.
+    events = parse("hyd")
+    atmos = find(events, "ATMOS")
+    assert atmos["label"] == "ATMOS - 2026 (Class work Suspended)", atmos
+    assert atmos["endDate"] == "2026-10-25"
+    returning = find(events, "returning evaluated")
+    assert returning["date"] == "2026-10-28"
+    assert returning["label"] == "Last day for returning evaluated answer scripts of Mid-Semester Test"
+    phd = find(events, "Ph.D.")
+    assert (phd["date"], phd["endDate"]) == ("2026-11-27", "2026-11-28")
+    assert phd["label"] == "Test/Interview for II Semester 2026-27 Ph.D. Admissions"
 
 
 def test_holidays_are_categorised():
-    holi = find(parse("hyd"), "Holi")
-    assert holi and holi["category"] == "holiday"
+    events = parse("hyd")
+    for name in ("Deepavali", "Christmas", "Independence Day"):
+        e = find(events, name)
+        assert e and e["category"] == "holiday", name
+
+
+def test_grid_beside_the_list_does_not_eat_rows():
+    # Pilani prints the month grid on the same lines as the list; those rows
+    # ("12 13 ... 19 August 3(M) Classwork begins") used to be dropped.
+    events = parse("pilani")
+    assert len(events) == 37, len(events)
+    assert find(events, "Classwork begins")["date"] == "2026-08-03"
+    assert find(events, "Deepavali")["date"] == "2026-11-08"
+    assert find(events, "substitution")["date"] == "2026-08-18"
+    assert not any("OCTOBER" in e["label"] or "Note" in e["label"] for e in events)
+    # Split over two date lines: "October 5(M)-" ... "October 10(S)".
+    midsem = find(events, "Mid-Semester Examinations")
+    assert (midsem["date"], midsem["endDate"]) == ("2026-10-05", "2026-10-10")
+    # "December25 (F) C h r i s t m a s ( H )": glued date, spaced letters.
+    assert find(events, "Christmas")["label"] == "Christmas (H)"
+    assert find(events, "Recess")["label"] == "Recess for students"
 
 
 def test_year_filter_drops_the_other_semester():
-    # Goa prints both semesters; only the 2026 (second) semester survives.
+    # Goa prints both semesters side by side. For the first semester, the
+    # even-semester column's July rows ("Summer term ends") are next July.
     events = parse("goa")
-    assert events, "expected some Goa second-semester events"
+    assert len(events) == 36, len(events)
     assert all(e["date"].startswith("2026") for e in events)
+    assert find(events, "Summer term") is None
+    assert find(events, "Makar Sankranti") is None
+    # "Dec 20 (Su) -- Jan 3": abbreviated months.
+    recess = find(events, "Recess")
+    assert (recess["date"], recess["endDate"]) == ("2026-12-20", "2027-01-03")
+    assert find(events, "Goa Liberation Day")["date"] == "2026-12-19"
+
+
+def test_goa_second_semester_column():
+    events = parse("goa", semester=2, exam_year=2027)
+    assert len(events) == 35, len(events)
     assert find(events, "Independence Day") is None
+    # "March 08 (M)– Mid-semester ... (classwork" / "March 15 (M) suspended)"
+    midsem = find(events, "Mid-semester examinations")
+    assert (midsem["date"], midsem["endDate"]) == ("2027-03-08", "2027-03-15")
+    assert midsem["label"] == "Mid-semester examinations (classwork suspended)"
+    # Letter-spaced "M a y 3 (M)".
+    assert find(events, "Comprehensive examinations begin")["date"] == "2027-05-03"
+    # "May 18 (T)–May" / "19 (W) admissions".
+    phd = find(events, "Ph.D.")
+    assert (phd["date"], phd["endDate"]) == ("2027-05-18", "2027-05-19")
+    assert phd["label"].startswith("Test/Interview")
+    assert find(events, "Buddha Purnima")["label"] == "Buddha Purnima (H)"
 
 
 def test_date_body_parsing_forms():
@@ -117,6 +179,10 @@ def test_first_semester_pdf_end_to_end():
     # The Dec→Jan recess range wraps into 2027.
     recess = find(events, "Recess")
     assert recess and recess.get("endDate", "").startswith("2027")
+    # "October 23 (F) -" / "25(Su) ATMOS": a bare end day, not the next date.
+    atmos = find(events, "ATMOS")
+    assert (atmos["date"], atmos["endDate"]) == ("2026-10-23", "2026-10-25")
+    assert find(events, "returning evaluated")["date"] == "2026-10-28"
 
 
 if __name__ == "__main__":

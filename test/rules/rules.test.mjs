@@ -240,6 +240,118 @@ await test('cannot submit under a forged email', async () => {
   );
 });
 
+await test('a submission may carry a course and type hint', async () => {
+  await assertSucceeds(
+    setDoc(doc(user(HYD), 'acad_drives_submissions/s4'), {
+      driveLink: 'https://drive.google.com/w', title: 'pyqs',
+      contributorName: 'me', submittedBy: HYD, status: 'pending',
+      courseCode: 'CS F211', resourceType: 'pyq',
+    }),
+  );
+});
+
+await test('a student CANNOT approve their own submission', async () => {
+  await assertFails(updateDoc(doc(user(HYD), 'acad_drives_submissions/s1'), { status: 'approved' }));
+});
+
+const ADMIN = 'admin@hyderabad.bits-pilani.ac.in';
+await seed(async (db) => {
+  await setDoc(doc(db, `admin_emails/${ADMIN}`), {});
+  await setDoc(doc(db, 'acad_drives_sources/Some Drive'), { name: 'Some Drive', driveLink: 'https://drive.google.com/s' });
+});
+
+await test('an admin can approve a submission', async () => {
+  await assertSucceeds(updateDoc(doc(user(ADMIN), 'acad_drives_submissions/s1'),
+    { status: 'approved', reviewedBy: ADMIN, reviewedAt: serverTimestamp() }));
+});
+
+await test('an admin CANNOT rewrite the submitted link while reviewing', async () => {
+  await assertFails(updateDoc(doc(user(ADMIN), 'acad_drives_submissions/s1'),
+    { status: 'rejected', driveLink: 'https://evil.example' }));
+});
+
+await test('drive sources are invisible to students', async () => {
+  await assertFails(getDoc(doc(user(HYD), 'acad_drives_sources/Some Drive')));
+  await assertFails(setDoc(doc(user(HYD), 'acad_drives_sources/x'), { name: 'x' }));
+});
+
+await test('an admin can add a drive source', async () => {
+  await assertSucceeds(setDoc(doc(user(ADMIN), 'acad_drives_sources/New'), { name: 'New', driveLink: 'https://drive.google.com/n' }));
+});
+
+await seed(async (db) => {
+  await setDoc(doc(db, 'upstream_notices/lms_hyd_707'), { title: 'Timetable changes - 6', status: 'new' });
+});
+
+await test('upstream notices are admin-only', async () => {
+  await assertFails(getDoc(doc(user(HYD), 'upstream_notices/lms_hyd_707')));
+  await assertSucceeds(getDoc(doc(user(ADMIN), 'upstream_notices/lms_hyd_707')));
+});
+
+await test('an admin can only move a notice\'s status', async () => {
+  await assertSucceeds(updateDoc(doc(user(ADMIN), 'upstream_notices/lms_hyd_707'),
+    { status: 'done', handledBy: ADMIN, handledAt: serverTimestamp() }));
+  await assertFails(updateDoc(doc(user(ADMIN), 'upstream_notices/lms_hyd_707'), { title: 'x' }));
+  await assertFails(setDoc(doc(user(ADMIN), 'upstream_notices/forged'), { status: 'new' }));
+});
+
+await test('a student can report a chamber, under their own email only', async () => {
+  const base = { campus: 'hyderabad', professorId: 'p1', professorName: 'A B',
+    chamber: 'D-207', status: 'pending' };
+  await assertSucceeds(setDoc(doc(user(HYD), 'chamber_suggestions/c1'), { ...base, submittedBy: HYD }));
+  await assertFails(setDoc(doc(user(HYD), 'chamber_suggestions/c2'), { ...base, submittedBy: OTHER }));
+  await assertFails(setDoc(doc(user(HYD), 'chamber_suggestions/c3'),
+    { ...base, submittedBy: HYD, chamber: 'x'.repeat(41) }));
+  await assertFails(getDoc(doc(user(HYD), 'chamber_suggestions/c1')));
+});
+
+await test('only an admin settles a chamber report', async () => {
+  await assertFails(updateDoc(doc(user(HYD), 'chamber_suggestions/c1'), { status: 'accepted' }));
+  await assertSucceeds(updateDoc(doc(user(ADMIN), 'chamber_suggestions/c1'),
+    { status: 'accepted', reviewedBy: ADMIN, reviewedAt: serverTimestamp() }));
+});
+
+await seed(async (db) => {
+  await setDoc(doc(db, 'admin_metadata/professors_hyderabad'), { lastUpdated: 'x', totalProfessors: 3 });
+});
+
+await test('an admin can bump the professors cache marker, and nothing else there', async () => {
+  await assertSucceeds(updateDoc(doc(user(ADMIN), 'admin_metadata/professors_hyderabad'), { lastUpdated: 'y' }));
+  await assertFails(updateDoc(doc(user(ADMIN), 'admin_metadata/professors_hyderabad'), { totalProfessors: 0 }));
+  await assertFails(updateDoc(doc(user(HYD), 'admin_metadata/professors_hyderabad'), { lastUpdated: 'z' }));
+});
+
+await test('an admin can create a missing professors marker, holding only the stamp', async () => {
+  await assertSucceeds(setDoc(doc(user(ADMIN), 'admin_metadata/professors_goa'), { lastUpdated: 'y' }));
+  await assertFails(setDoc(doc(user(ADMIN), 'admin_metadata/professors_pilani'), { lastUpdated: 'y', x: 1 }));
+  await assertFails(setDoc(doc(user(ADMIN), 'admin_metadata/exam_seating_goa'), { lastUpdated: 'y' }));
+});
+
+await test('only an admin can hide a bug report', async () => {
+  await assertFails(updateDoc(doc(user(DXB), 'bug_reports/report-dxb'), { hidden: true }));
+  await assertSucceeds(updateDoc(doc(user(ADMIN), 'bug_reports/report-dxb'), { hidden: true }));
+  await assertFails(updateDoc(doc(user(ADMIN), 'bug_reports/report-dxb'), { hidden: 'yes' }));
+});
+
+const FEED = 'abcdefghijklmnopqrst';
+await test('a student can make a calendar link for themselves only', async () => {
+  await assertSucceeds(setDoc(doc(user(HYD), `calendar_feeds/${FEED}`),
+    { owner: 'f20220123H', timetableId: 'tt1', options: {}, createdAt: serverTimestamp() }));
+  await assertFails(setDoc(doc(user(HYD), 'calendar_feeds/zyxwvutsrqponmlkjihg'),
+    { owner: 'f20229999H', timetableId: 'tt1' }));
+  await assertFails(setDoc(doc(user(HYD), 'calendar_feeds/short'),
+    { owner: 'f20220123H', timetableId: 'tt1' }));
+});
+
+await test("nobody else can read or revoke someone's calendar link", async () => {
+  await assertSucceeds(getDoc(doc(user(HYD), `calendar_feeds/${FEED}`)));
+  await assertFails(getDoc(doc(user(OTHER), `calendar_feeds/${FEED}`)));
+  await assertFails(getDocs(collection(user(OTHER), 'calendar_feeds')));
+  await assertFails(deleteDoc(doc(user(OTHER), `calendar_feeds/${FEED}`)));
+  await assertFails(updateDoc(doc(user(HYD), `calendar_feeds/${FEED}`), { owner: 'f20229999H' }));
+  await assertSucceeds(deleteDoc(doc(user(HYD), `calendar_feeds/${FEED}`)));
+});
+
 // ───────────────────────────────────────────────────────────────────────────
 group('isBitsEmail: unverified / non-Google identities are rejected');
 

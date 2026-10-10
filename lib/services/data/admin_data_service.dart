@@ -462,10 +462,69 @@ class AdminDataService {
   Future<void> saveProfessor(String campusId, String docId, Map<String, dynamic> data) async {
     await _profsRef(campusId).doc(docId).set(data, SetOptions(merge: true));
     _invalidate('profs', campusId);
+    await _bumpProfessorsMarker(campusId);
   }
 
   Future<void> deleteProfessor(String campusId, String docId) async {
     await _profsRef(campusId).doc(docId).delete();
     _invalidate('profs', campusId);
+    await _bumpProfessorsMarker(campusId);
+  }
+
+  /// Students keep the professor list until this marker moves; without the
+  /// bump an edit took up to the cache's 72h to reach them.
+  Future<void> _bumpProfessorsMarker(String campusId) async {
+    try {
+      await _db.doc('admin_metadata/professors_$campusId').set(
+          {'lastUpdated': DateTime.now().toUtc().toIso8601String()},
+          SetOptions(merge: true));
+    } catch (_) {
+      // The edit itself landed; students just see it when their cache expires.
+    }
+  }
+
+  // ── Chamber reports from students ──
+
+  CollectionReference<Map<String, dynamic>> get _chamberSuggestionsRef =>
+      _db.collection(FirestoreCollections.chamberSuggestions);
+
+  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> pendingChamberSuggestions(String campusId) {
+    return _chamberSuggestionsRef
+        .where('status', isEqualTo: 'pending')
+        .where('campus', isEqualTo: campusId)
+        .snapshots()
+        .map((s) => s.docs);
+  }
+
+  /// Writes the reported chamber onto the professor and closes the report.
+  Future<void> acceptChamberSuggestion(
+    QueryDocumentSnapshot<Map<String, dynamic>> suggestion, {
+    required String reviewer,
+  }) async {
+    final d = suggestion.data();
+    final campusId = d['campus'] as String;
+    final chamber = (d['chamber'] as String).trim();
+    await (_db.batch()
+          ..set(_profsRef(campusId).doc(d['professorId'] as String), {
+            'chamber': chamber,
+            'chamberSearch': chamber.toLowerCase(),
+            'updatedAt': DateTime.now().toIso8601String(),
+          }, SetOptions(merge: true))
+          ..update(suggestion.reference, {
+            'status': 'accepted',
+            'reviewedBy': reviewer,
+            'reviewedAt': FieldValue.serverTimestamp(),
+          }))
+        .commit();
+    _invalidate('profs', campusId);
+    await _bumpProfessorsMarker(campusId);
+  }
+
+  Future<void> rejectChamberSuggestion(DocumentReference<Map<String, dynamic>> ref, {required String reviewer}) {
+    return ref.update({
+      'status': 'rejected',
+      'reviewedBy': reviewer,
+      'reviewedAt': FieldValue.serverTimestamp(),
+    });
   }
 }

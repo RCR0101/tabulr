@@ -24,6 +24,14 @@ import 'admin/minor_management_screen.dart';
 import 'admin/exam_seating_management_screen.dart';
 import 'admin/professor_management_screen.dart';
 import 'admin/bug_tracker_screen.dart';
+import 'admin/drive_submissions_screen.dart';
+import '../widgets/admin/data_freshness_panel.dart';
+import '../widgets/admin/upstream_notices_panel.dart';
+import '../widgets/admin/bug_attention_badge.dart';
+import '../widgets/common/app_dialog.dart';
+import '../utils/admin_guide_content.dart';
+import 'guide_screen.dart';
+import '../models/data_freshness.dart';
 import '../services/ui/tutorial_service.dart';
 import '../widgets/common/app_dropdown.dart';
 import '../widgets/admin/admin_workspace.dart';
@@ -65,7 +73,7 @@ class _AdminScreenState extends State<AdminScreen> {
     for (final c in _campuses) c: TextEditingController(),
   };
   final TextEditingController _examYearController = TextEditingController(
-    text: '2026',
+    text: '${defaultExamYear(DateTime.now())}',
   );
 
   /// Which semester of the booklet is being uploaded. Files the upload under a
@@ -337,7 +345,7 @@ class _AdminScreenState extends State<AdminScreen> {
           fileName: entry.value.name,
           excludeHeaders: _getHeaders(_timetableHeaders[campus]!),
           pageRange: (from != null && to != null) ? [from, to] : null,
-          examYear: int.tryParse(_examYearController.text.trim()) ?? 2026,
+          examYear: int.tryParse(_examYearController.text.trim()) ?? defaultExamYear(DateTime.now()),
           semester: _uploadSemester,
         );
       }
@@ -363,7 +371,7 @@ class _AdminScreenState extends State<AdminScreen> {
         final to = int.tryParse(_pageToControllers[campus]!.text.trim());
         final calFrom = int.tryParse(_calFromControllers[campus]!.text.trim());
         final calTo = int.tryParse(_calToControllers[campus]!.text.trim());
-        final year = int.tryParse(_examYearController.text.trim()) ?? 2026;
+        final year = int.tryParse(_examYearController.text.trim()) ?? defaultExamYear(DateTime.now());
         final count = await _adminService.uploadTimetable(
           campusCode: campus,
           fileBytes: entry.value.bytes!,
@@ -480,8 +488,11 @@ class _AdminScreenState extends State<AdminScreen> {
       );
       final total = result['professorsUpdated'] ?? 0;
       final matched = result['withSchedule'] ?? 0;
+      final respelled = (result['respelled'] as List?)?.cast<Object>() ?? const [];
       _setStateIfMounted(() {
-        _profsResult = 'Updated $total professors ($matched matched)';
+        // Name-only matches moved a chamber across a spelling change: worth a look.
+        _profsResult = 'Updated $total professors ($matched matched)'
+            '${respelled.isEmpty ? '' : '\nMatched by spelling, check these:\n${respelled.join('\n')}'}';
         _profsProgress = null;
       });
       ToastService.showSuccess('Updated $total professors');
@@ -798,7 +809,7 @@ class _AdminScreenState extends State<AdminScreen> {
   /// Mirrors `term_id` in `functions-python/main.py`: a second semester's exams
   /// fall in the calendar year AFTER the session it belongs to opened.
   String _derivedTerm() {
-    final year = int.tryParse(_examYearController.text.trim()) ?? 2026;
+    final year = int.tryParse(_examYearController.text.trim()) ?? defaultExamYear(DateTime.now());
     final start = _uploadSemester == 1 ? year : year - 1;
     final end = ((start + 1) % 100).toString().padLeft(2, '0');
     return '$start-$end Sem $_uploadSemester';
@@ -1142,6 +1153,7 @@ class _AdminScreenState extends State<AdminScreen> {
     required Color color,
     required VoidCallback onTap,
     Key? key,
+    Widget? badge,
   }) {
     final scheme = Theme.of(context).colorScheme;
     return Material(
@@ -1192,6 +1204,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   ],
                 ),
               ),
+              if (badge != null) badge,
               Icon(
                 Icons.chevron_right_rounded,
                 color: scheme.onSurface.withValues(alpha: AppDesign.opacityLow),
@@ -1336,10 +1349,22 @@ class _AdminScreenState extends State<AdminScreen> {
             ),
       ),
       _managementCard(
+        icon: Icons.add_link_rounded,
+        title: 'Drive Submissions',
+        subtitle: 'Approve new Acad Drive links',
+        color: secondary,
+        onTap:
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DriveSubmissionsScreen()),
+            ),
+      ),
+      _managementCard(
         icon: Icons.bug_report_rounded,
         title: 'Bug Tracker',
         subtitle: 'User reports & status',
         color: accent,
+        badge: const BugAttentionBadge(),
         onTap:
             () => Navigator.push(
               context,
@@ -1446,7 +1471,8 @@ class _AdminScreenState extends State<AdminScreen> {
           onChanged: (f) => _setStateIfMounted(() => _profsFile = f),
         ),
         Text(
-          'Optional — uses stored data if not provided',
+          'Optional. Schedules rebuild by themselves whenever the timetable changes; '
+          'new faculty on the BITS website show up weekly under Upstream changes.',
           style: TextStyle(
             fontSize: 12,
             color: Theme.of(
@@ -1523,6 +1549,60 @@ class _AdminScreenState extends State<AdminScreen> {
         if (_archiveProgress != null)
           _buildProgressIndicator(_archiveProgress!),
         if (_archiveResult != null) _buildResultBadge(_archiveResult!),
+      ],
+    );
+  }
+
+  bool _savingFeedSwitch = false;
+
+  /// Switches every live calendar (webcal) link off at once, e.g. if links
+  /// are being shared around or the feed misbehaves. Feeds then serve an empty
+  /// calendar, which clears the events from subscribers' calendars.
+  Widget _calendarLinksSection() {
+    final off = ConfigService().calendarFeedsOff;
+    final color = off ? AppDesign.danger(context) : AppDesign.success(context);
+    return _buildSection(
+      title: 'Live Calendar Links',
+      icon: Icons.event_repeat_rounded,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                off
+                    ? 'Off: every link serves an empty calendar and the app hides the option.'
+                    : 'On: students can subscribe to their timetable from their calendar app.',
+                style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.w600),
+              ),
+            ),
+            Switch(
+              value: !off,
+              onChanged: _savingFeedSwitch
+                  ? null
+                  : (on) async {
+                      if (!on) {
+                        final ok = await AppDialog.confirm(
+                          context: context,
+                          title: 'Turn off all calendar links?',
+                          message: 'Every subscribed calendar empties at its next refresh. '
+                              'Turning them back on restores them; nobody needs to resubscribe.',
+                          confirmLabel: 'Turn off',
+                        );
+                        if (!ok) return;
+                      }
+                      _setStateIfMounted(() => _savingFeedSwitch = true);
+                      try {
+                        await ConfigService().setCalendarFeedsOff(!on);
+                        ToastService.showSuccess(on ? 'Calendar links are on' : 'Calendar links are off');
+                      } catch (e) {
+                        ToastService.showError('Could not change it: $e');
+                      } finally {
+                        _setStateIfMounted(() => _savingFeedSwitch = false);
+                      }
+                    },
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -1616,7 +1696,27 @@ class _AdminScreenState extends State<AdminScreen> {
     final wide = MediaQuery.sizeOf(context).width >= 800;
 
     return Scaffold(
-      appBar: AppDesign.appBar(context, title: 'Admin Dashboard'),
+      appBar: AppDesign.appBar(
+        context,
+        title: 'Admin Dashboard',
+        actions: [
+          TextButton.icon(
+            icon: const Icon(Icons.menu_book_outlined, size: 18),
+            label: const Text('Handbook'),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => GuideScreen(
+                  sections: adminGuideSections,
+                  title: 'Admin handbook',
+                  subtitle: 'What each part does, and the semester routine',
+                  linkable: false,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
       body: AdminWorkspace(
         padding: EdgeInsets.zero,
         child: SingleChildScrollView(
@@ -1637,11 +1737,14 @@ class _AdminScreenState extends State<AdminScreen> {
           ),
         ),
         const SizedBox(height: AppDesign.spacingSm),
+        const UpstreamNoticesPanel(),
+        const DataFreshnessPanel(),
         _timetableUploadSection(),
         _archiveSection(),
         _examUploadSection(),
         _profsSection(),
         _semesterDatesSection(),
+        _calendarLinksSection(),
       ],
     );
   }
@@ -1689,6 +1792,9 @@ class _AdminScreenState extends State<AdminScreen> {
         const SizedBox(height: AppDesign.spacingMd),
         _managementGrid(),
         const SizedBox(height: AppDesign.spacingMd),
+        const UpstreamNoticesPanel(),
+        const DataFreshnessPanel(),
+        const SizedBox(height: AppDesign.spacingMd),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1706,6 +1812,7 @@ class _AdminScreenState extends State<AdminScreen> {
                   _examUploadSection(),
                   _profsSection(),
                   _semesterDatesSection(),
+                  _calendarLinksSection(),
                 ],
               ),
             ),

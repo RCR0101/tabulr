@@ -1,0 +1,63 @@
+name: Acad Drives sync
+
+# Weekly: copy new files from approved drives (Admin → Drive Submissions) into
+# R2 and rebuild the course index. Runs here, not as a Cloud Function, because
+# a sync downloads gigabytes.
+#
+# Secrets (repo Settings → Secrets → Actions):
+#   ACAD_DRIVES_ENV              contents of scripts/acad-drives/.env (R2 + Google Drive client)
+#   ACAD_DRIVES_SERVICE_ACCOUNT  a Firebase Admin service-account JSON
+#   ACAD_DRIVES_GDRIVE_TOKEN     contents of gdrive-token.json (Drive OAuth refresh token)
+#
+# The repo is public, so its Actions logs are too: the full log (drive and
+# contributor names) stays inside the runner; only totals are printed.
+
+on:
+  schedule:
+    - cron: "30 21 * * 0" # Monday 03:00 IST
+  workflow_dispatch:
+
+concurrency:
+  group: acad-drives-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    defaults:
+      run:
+        working-directory: scripts/acad-drives
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Only files over 500 MB are compressed, but the tools must exist.
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq qpdf ffmpeg > /dev/null
+
+      - name: Credentials
+        env:
+          ENV_FILE: ${{ secrets.ACAD_DRIVES_ENV }}
+          SERVICE_ACCOUNT: ${{ secrets.ACAD_DRIVES_SERVICE_ACCOUNT }}
+          GDRIVE_TOKEN: ${{ secrets.ACAD_DRIVES_GDRIVE_TOKEN }}
+        run: |
+          printf '%s' "$ENV_FILE" > .env
+          printf '%s' "$SERVICE_ACCOUNT" > serviceAccountKey.json
+          printf '%s' "$GDRIVE_TOKEN" > gdrive-token.json
+
+      - run: npm ci --silent
+
+      - name: Sync
+        run: |
+          set +e
+          node acad-drive-master.js upload --apply > sync.log 2>&1
+          status=$?
+          grep -E '^\s+(Processed|Uploaded|Skipped|Errors)\s' sync.log | sed 's/\x1b\[[0-9;]*m//g'
+          exit $status
+
+      - name: Remove credentials
+        if: always()
+        run: rm -f .env serviceAccountKey.json gdrive-token.json sync.log

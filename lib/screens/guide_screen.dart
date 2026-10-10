@@ -18,7 +18,25 @@ class GuideScreen extends StatefulWidget {
   final String? initialAnchor;
   final bool embedded;
 
-  const GuideScreen({super.key, this.initialAnchor, this.embedded = false});
+  /// The content shown. Defaults to the student guide; the admin handbook
+  /// passes its own sections and title.
+  final List<GuideSection>? sections;
+  final String title;
+  final String subtitle;
+
+  /// Topic links point at the public /guide route, so only the student guide
+  /// offers them.
+  final bool linkable;
+
+  const GuideScreen({
+    super.key,
+    this.initialAnchor,
+    this.embedded = false,
+    this.sections,
+    this.title = 'Using Tabulr',
+    this.subtitle = 'Practical answers, one topic at a time',
+    this.linkable = true,
+  });
 
   @override
   State<GuideScreen> createState() => _GuideScreenState();
@@ -29,8 +47,11 @@ class _GuideScreenState extends State<GuideScreen> {
 
   final TextEditingController _search = TextEditingController();
   final ScrollController _scroll = ScrollController();
-  final Map<String, GlobalKey> _keys = {
-    for (final topic in guideTopics) topic.anchor: GlobalKey(),
+  List<GuideSection> get _sections => widget.sections ?? guideSections;
+
+  late final Map<String, GlobalKey> _keys = {
+    for (final section in _sections)
+      for (final topic in section.topics) topic.anchor: GlobalKey(),
   };
 
   String _query = '';
@@ -39,8 +60,8 @@ class _GuideScreenState extends State<GuideScreen> {
   bool _isNavigating = false;
   int _navigationSequence = 0;
 
-  final ValueNotifier<String?> _current = ValueNotifier(
-    guideSections.first.topics.first.anchor,
+  late final ValueNotifier<String?> _current = ValueNotifier(
+    _sections.first.topics.first.anchor,
   );
 
   @override
@@ -68,9 +89,9 @@ class _GuideScreenState extends State<GuideScreen> {
   }
 
   List<GuideSection> get _visible {
-    if (_query.isEmpty) return guideSections;
+    if (_query.isEmpty) return _sections;
     return [
-      for (final section in guideSections)
+      for (final section in _sections)
         if (section.topics.any((t) => t.matches(_query)))
           GuideSection(
             title: section.title,
@@ -154,8 +175,8 @@ class _GuideScreenState extends State<GuideScreen> {
                 titleWidget: AppDesign.iconTitle(
                   context,
                   icon: Icons.auto_stories_outlined,
-                  title: 'Using Tabulr',
-                  subtitle: 'Practical answers, one topic at a time',
+                  title: widget.title,
+                  subtitle: widget.subtitle,
                 ),
                 centerTitle: false,
               ),
@@ -252,7 +273,7 @@ class _GuideScreenState extends State<GuideScreen> {
       child: ListView(
         padding: const EdgeInsets.symmetric(vertical: AppDesign.spacingSm),
         children: [
-          for (final section in guideSections) ...[
+          for (final section in _sections) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppDesign.spacingMd,
@@ -353,7 +374,7 @@ class _GuideScreenState extends State<GuideScreen> {
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 children: [
-                  for (final section in guideSections)
+                  for (final section in _sections)
                     Padding(
                       padding: const EdgeInsets.only(
                         right: AppDesign.spacingSm,
@@ -460,12 +481,13 @@ class _GuideScreenState extends State<GuideScreen> {
                     ),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.link, size: 17),
-                  tooltip: 'Copy link to this section',
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () => _copyLink(topic),
-                ),
+                if (widget.linkable)
+                  IconButton(
+                    icon: const Icon(Icons.link, size: 17),
+                    tooltip: 'Copy link to this section',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => _copyLink(topic),
+                  ),
               ],
             ),
             const SizedBox(height: AppDesign.spacingSm + 2),
@@ -604,7 +626,9 @@ class _GuideScreenState extends State<GuideScreen> {
     return EmptyStateWidget(
       icon: Icons.search_off,
       title: 'Nothing matches "$_query"',
-      subtitle: 'Try a different word — "clash", "share", "minor", "seat".',
+      subtitle: widget.sections == null
+          ? 'Try a different word — "clash", "share", "minor", "seat".'
+          : 'Try a different word.',
       actionLabel: 'Clear search',
       actionIcon: Icons.close,
       onAction:

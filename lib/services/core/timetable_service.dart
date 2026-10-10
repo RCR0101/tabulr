@@ -202,9 +202,12 @@ class TimetableService {
     }
   }
 
-  Future<void> _hydrateCourses(List<Timetable> timetables) async {
+  Future<void> _hydrateCourses(
+    List<Timetable> timetables,
+    Future<List<Course>> coursesFuture,
+  ) async {
     try {
-      final courses = await _courseDataService.fetchCourses();
+      final courses = await coursesFuture;
       if (courses.isEmpty) return;
       final currentCampus = CampusService.currentCampus;
       for (final timetable in timetables) {
@@ -631,6 +634,12 @@ class TimetableService {
     try {
       List<Timetable> timetables = [];
 
+      // Started before the timetable fetch so the two network loads overlap.
+      // Errors are held in the future and surface in _hydrateCourses, so an
+      // early throw below cannot leave this one unhandled.
+      final coursesFuture = _courseDataService.fetchCourses();
+      coursesFuture.ignore();
+
       if (_authService.isAuthenticated) {
         final cloud = await _firestoreService.getAllTimetables();
         final pending = await _getAllTimetablesFromLocalStorage();
@@ -643,7 +652,7 @@ class TimetableService {
       // local form (toJson) embeds the catalog any more, so list entries load
       // with an empty availableCourses and need it filled from CourseDataService
       // before clash counts or the course panel can render.
-      await _hydrateCourses(timetables);
+      await _hydrateCourses(timetables, coursesFuture);
 
       // If no timetables exist, try to migrate from old format or create a default one
       if (timetables.isEmpty) {

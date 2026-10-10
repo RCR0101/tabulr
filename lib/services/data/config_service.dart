@@ -14,7 +14,7 @@ class ConfigService {
   // App Configuration
   String get appName => 'Tabulr';
   // Keep in sync with pubspec.yaml `version:` field.
-  String get appVersion => '2.5.81';
+  String get appVersion => '2.5.82';
 
   // Debug Settings
   bool get debugMode => false;
@@ -92,6 +92,21 @@ class ConfigService {
       term.isNotEmpty &&
       term != currentTerm;
 
+  // ── Live calendar links ─────────────────────────────────────────────────
+  // `calendar_feeds_off` on the same doc: an admin's switch that empties every
+  // webcal feed (calendarFeed checks it on each request) and hides the menu.
+  bool _calendarFeedsOff = false;
+  bool get calendarFeedsOff => _calendarFeedsOff;
+
+  Future<void> setCalendarFeedsOff(bool off) async {
+    await _configRef.set({
+      'calendar_feeds_off': off,
+      'updated_at': DateTime.now().toIso8601String(),
+    }, SetOptions(merge: true));
+    _calendarFeedsOff = off;
+    await _localCache.write(_cacheKey, [_serialize()]);
+  }
+
   bool get isMaintenance => _maintenance;
   String get maintenanceMessage => _maintenanceMessage.isNotEmpty
       ? _maintenanceMessage
@@ -133,6 +148,7 @@ class ConfigService {
         _maintenanceMessage = msg is String ? msg : '';
         final term = doc['current_term'];
         _currentTerm = term is String ? term : '';
+        _calendarFeedsOff = doc['calendar_feeds_off'] == true;
         final dates = doc['semester_dates'] as Map<String, dynamic>?;
         if (dates != null) _applyMap(dates);
         await _localCache.write(_cacheKey, [_serialize()]);
@@ -152,6 +168,7 @@ class ConfigService {
       if (msg is String) _maintenanceMessage = msg;
       final term = c['_current_term'];
       if (term is String) _currentTerm = term;
+      _calendarFeedsOff = c['_calendar_feeds_off'] == true;
     }
     _loaded = true;
   }
@@ -187,6 +204,7 @@ class ConfigService {
         '_maintenance': _maintenance,
         '_maintenance_message': _maintenanceMessage,
         '_current_term': _currentTerm,
+        '_calendar_feeds_off': _calendarFeedsOff,
       };
 
   void printConfiguration() {
