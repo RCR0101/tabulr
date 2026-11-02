@@ -2438,6 +2438,25 @@ def check_upstream_now(req: https_fn.CallableRequest):
     return {"added": added}
 
 
+# Reads a notice's PDFs again when the first read failed (the LMS timed out,
+# say): the "Retry" button on Upstream changes.
+@https_fn.on_call(region="asia-south1", enforce_app_check=False, timeout_sec=300,
+                  memory=options.MemoryOption.GB_1)
+def retry_notice(req: https_fn.CallableRequest):
+    require_admin(req)
+    notice_id = req.data.get("noticeId")
+    if not isinstance(notice_id, str) or not notice_id.startswith("lms_hyd_"):
+        raise https_fn.HttpsError(https_fn.FunctionalErrorCode.INVALID_ARGUMENT, "Unknown notice")
+    ref = get_db().collection("upstream_notices").document(notice_id)
+    notice = ref.get().to_dict()
+    if not notice:
+        raise https_fn.HttpsError(https_fn.FunctionalErrorCode.NOT_FOUND, "Unknown notice")
+    fields = upstream.read_notice(notice, parse_seating=parse_seating_pdf, summarize_changes=summarize_changes_pdf)
+    if fields:
+        ref.update(fields)
+    return fields
+
+
 # Applies a seating PDF the poller found on the LMS: the same parse and write
 # as a manual upload, re-reading the PDF so what is written is what is posted.
 @https_fn.on_call(region="asia-south1", enforce_app_check=False, timeout_sec=300,
@@ -2512,12 +2531,40 @@ def _changes_notice(req, with_snippets=False):
 @https_fn.on_call(region="asia-south1", enforce_app_check=False, timeout_sec=120,
                   memory=options.MemoryOption.GB_1)
 def preview_changes_notice(req: https_fn.CallableRequest):
-    _, rows, shots = _changes_notice(req, with_snippets=True)
+    ref, rows, shots = _changes_notice(req, with_snippets=True)
     proposals = changes.propose(rows, *_changes_inputs(rows))
     # Each row as printed (a PNG, base64), so what the PDF says can be read
     # next to what Tabulr made of it. About 10 KB a row.
     return {"changes": [{**p, "snippet": shots.get(p["key"])} for p in proposals],
-            "summary": changes.summary(proposals)}
+            "summary": changes.summary(proposals),
+            "applies": _applies_summary(ref)}
+
+
+# Every Apply keeps the course docs as they were before and after it, so an
+# admin can undo it (undo_changes_apply). Stored under the notice, admin-SDK
+# only. A course doc is a few KB; an Apply too big for one Firestore doc is
+# applied but cannot be undone.
+_UNDO_LIMIT = 900_000
+
+
+def _canon(doc):
+    return json.dumps(doc, sort_keys=True, default=str)
+
+
+def _applies_summary(ref):
+    out = []
+    for d in ref.collection("applies").stream():
+        a = d.to_dict() or {}
+        out.append({
+            "id": d.id,
+            "at": a.get("at"),
+            "by": a.get("by"),
+            "courses": sorted({c["course"] for c in a.get("changes", [])}),
+            "count": len(a.get("changes", [])),
+            "undone": bool(a.get("undone")),
+            "undoable": bool(a.get("docs")) and not a.get("undone"),
+        })
+    return sorted(out, key=lambda a: a["at"] or "", reverse=True)
 
 
 @https_fn.on_call(region="asia-south1", enforce_app_check=False, timeout_sec=120,
@@ -2543,6 +2590,12 @@ def apply_changes_notice(req: https_fn.CallableRequest):
             "lastUpdated": now.isoformat() + "Z",
             "version": str(int(now.timestamp() * 1000)),
         }, merge=True)
+    if applied:
+        snapshot = {did: {"before": docs.get(did), "after": doc} for did, doc in touched.items()}
+        record = {"at": now.isoformat() + "Z", "by": email, "changes": applied, "undone": False}
+        if len(_canon(snapshot)) < _UNDO_LIMIT:
+            record["docs"] = snapshot
+        batch.set(ref.collection("applies").document(), record)
     remaining = changes.propose(rows, {**docs, **touched}, masters)
     update = {"appliedChanges": firestore.ArrayUnion([{**a, "by": email, "at": now.isoformat() + "Z"} for a in applied])} if applied else {}
     if not any(p["status"] in changes.SELECTABLE for p in remaining):
@@ -2550,7 +2603,61 @@ def apply_changes_notice(req: https_fn.CallableRequest):
     update["preview"] = changes.summary(remaining)
     batch.update(ref, update)
     batch.commit()
-    return {"applied": len(applied), "changes": remaining, "summary": changes.summary(remaining)}
+    return {"applied": len(applied), "changes": remaining, "summary": changes.summary(remaining),
+            "applies": _applies_summary(ref)}
+
+
+def undo_apply(db, notice_ref, apply_id, email=None):
+    """Puts back the course docs one Apply changed. Refused, writing
+    nothing, when any of them has changed since (a later Apply, a booklet
+    upload, an edit in Course Management): undoing would silently drop that.
+    Returns the courses restored."""
+    apply_ref = notice_ref.collection("applies").document(apply_id)
+    record = apply_ref.get().to_dict()
+    if not record:
+        raise ValueError("No such apply")
+    if record.get("undone"):
+        raise ValueError("Already undone")
+    snapshot = record.get("docs")
+    if not snapshot:
+        raise ValueError("This apply was too large to keep an undo copy")
+    timetable = db.collection(f"campuses/{CHANGES_CAMPUS}/timetable")
+    edited = [did.replace("_", " ") for did, d in snapshot.items()
+              if _canon(timetable.document(did).get().to_dict()) != _canon(d["after"])]
+    if edited:
+        raise ValueError("Changed since this apply: " + ", ".join(sorted(edited))
+                         + ". Undo would overwrite that; fix those courses by hand.")
+    now = datetime.utcnow()
+    batch = db.batch()
+    for did, d in snapshot.items():
+        if d["before"] is None:
+            batch.delete(timetable.document(did))
+        else:
+            batch.set(timetable.document(did), d["before"])
+    batch.set(db.document(f"campuses/{CHANGES_CAMPUS}/metadata/current"), {
+        "lastUpdated": now.isoformat() + "Z",
+        "version": str(int(now.timestamp() * 1000)),
+    }, merge=True)
+    batch.update(apply_ref, {"undone": True, "undoneBy": email, "undoneAt": now.isoformat() + "Z"})
+    # Back in the queue: the PDF's rows are proposed again on Review.
+    batch.update(notice_ref, {"status": "new", "preview": "An apply was undone; press Review to see the changes again"})
+    batch.commit()
+    return sorted(did.replace("_", " ") for did in snapshot)
+
+
+@https_fn.on_call(region="asia-south1", enforce_app_check=False, timeout_sec=120)
+def undo_changes_apply(req: https_fn.CallableRequest):
+    require_admin(req)
+    notice_id, apply_id = req.data.get("noticeId"), req.data.get("applyId")
+    if not (isinstance(notice_id, str) and notice_id.startswith("lms_hyd_") and isinstance(apply_id, str) and apply_id):
+        raise https_fn.HttpsError(https_fn.FunctionalErrorCode.INVALID_ARGUMENT, "Unknown apply")
+    db = get_db()
+    email = (req.auth.token or {}).get("email") if req.auth else None
+    try:
+        restored = undo_apply(db, db.collection("upstream_notices").document(notice_id), apply_id, email)
+    except ValueError as e:
+        raise https_fn.HttpsError(https_fn.FunctionalErrorCode.FAILED_PRECONDITION, str(e))
+    return {"restored": restored}
 
 
 # Weekly: compare the BITS faculty directory with Tabulr's professors. New

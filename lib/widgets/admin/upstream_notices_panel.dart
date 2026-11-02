@@ -87,6 +87,26 @@ class _UpstreamNoticesPanelState extends State<UpstreamNoticesPanel> {
     }
   }
 
+  /// Reads the notice's PDFs again: the first read can fail on a slow LMS.
+  Future<void> _retry(QueryDocumentSnapshot<Map<String, dynamic>> d) async {
+    setState(() => _busy.add(d.id));
+    try {
+      final r = await _functions
+          .httpsCallable('retry_notice', options: HttpsCallableOptions(timeout: const Duration(minutes: 5)))
+          .call({'noticeId': d.id});
+      final data = (r.data as Map?) ?? const {};
+      if (data['readFailed'] == true) {
+        ToastService.showError('Still could not read it: ${data['preview']}');
+      } else {
+        ToastService.showSuccess('Read it: ${data['preview'] ?? 'done'}');
+      }
+    } catch (e) {
+      ToastService.showError('Could not retry: $e');
+    } finally {
+      if (mounted) setState(() => _busy.remove(d.id));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -137,6 +157,11 @@ class _UpstreamNoticesPanelState extends State<UpstreamNoticesPanel> {
                                   : () => _close(d.reference, 'dismissed'),
                               child: const Text('Dismiss'),
                             ),
+                            if (d.data()['readFailed'] == true)
+                              OutlinedButton(
+                                onPressed: _busy.contains(d.id) ? null : () => _retry(d),
+                                child: Text(_busy.contains(d.id) ? 'Reading…' : 'Retry'),
+                              ),
                             if (d.data()['kind'] == 'timetable_changes')
                               FilledButton(
                                 onPressed: () => AppDialog.adaptive(

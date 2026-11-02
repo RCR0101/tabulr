@@ -170,6 +170,29 @@ def _record(db, doc_id, notice):
         return False
 
 
+def read_notice(notice, parse_seating=None, summarize_changes=None):
+    """The fields reading a post's PDFs adds to its notice: `preview`,
+    `applicable`, and `readFailed` when the PDF could not be read (a timeout,
+    the LMS down for a minute), which the admin screen offers to retry."""
+    pdfs = pdf_attachments(notice)
+    reader = {"seating": parse_seating, "timetable_changes": summarize_changes}.get(notice.get("kind"))
+    if not (pdfs and reader):
+        return {}
+    path = None
+    try:
+        if notice["kind"] == "seating":
+            exams = read_seating(notice, reader)
+            return {"preview": seating_preview(exams) if exams else "No seating rows found in the PDF",
+                    "applicable": bool(exams), "readFailed": False}
+        path = download(pdfs[0]["url"])
+        return {"preview": reader(path), "applicable": True, "readFailed": False}
+    except Exception as e:  # noqa: BLE001 — the notice still goes up
+        return {"preview": f"Could not read the PDF: {e}", "applicable": False, "readFailed": True}
+    finally:
+        if path:
+            os.unlink(path)
+
+
 def poll(db, now=None, parse_seating=None, summarize_changes=None):
     """[parse_seating] turns a seating PDF path into exam rows; when given, a
     new seating post arrives already parsed, ready to apply.
@@ -184,24 +207,7 @@ def poll(db, now=None, parse_seating=None, summarize_changes=None):
             if db.collection("upstream_notices").document(doc_id).get().exists:
                 continue
             notice = {"source": "lms_hyd", "kind": post_kind(post), **post}
-            pdfs = pdf_attachments(notice)
-            reader = {"seating": parse_seating, "timetable_changes": summarize_changes}.get(notice["kind"])
-            if pdfs and reader:
-                path = None
-                try:
-                    if notice["kind"] == "seating":
-                        exams = read_seating(notice, reader)
-                        notice["preview"] = seating_preview(exams) if exams else "No seating rows found in the PDF"
-                        notice["applicable"] = bool(exams)
-                    else:
-                        path = download(pdfs[0]["url"])
-                        notice["preview"] = reader(path)
-                        notice["applicable"] = True
-                except Exception as e:  # noqa: BLE001 — the notice still goes up
-                    notice["preview"] = f"Could not read the PDF: {e}"
-                finally:
-                    if path:
-                        os.unlink(path)
+            notice.update(read_notice(notice, parse_seating, summarize_changes))
             if _record(db, doc_id, notice):
                 added.append(post["title"])
     except Exception as e:  # noqa: BLE001 — one dead source must not stop the others

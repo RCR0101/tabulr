@@ -1,6 +1,7 @@
 import 'dart:convert';
 import '../ui/secure_logger.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import '../../constants/app_constants.dart';
@@ -209,6 +210,21 @@ class AcadDrivesService {
     await batch.commit();
     AdminAuditLogger().success('acad_drive_approve', name, {'link': data['driveLink']});
     return true;
+  }
+
+  /// Starts the Acad Drives sync now (the GitHub Action) rather than at
+  /// Monday's run. Returns null when it started, else why not.
+  Future<String?> startSync() async {
+    try {
+      final r = await FirebaseFunctions.instanceFor(region: FirebaseConfig.functionsRegion)
+          .httpsCallable('startAcadDrivesSync')
+          .call();
+      final data = (r.data as Map?) ?? const {};
+      return data['started'] == true ? null : '${data['reason'] ?? 'It syncs on Monday.'}';
+    } catch (e) {
+      SecureLogger.warning('ACAD_DRIVES_SVC', 'Could not start the sync', {'error': e.toString()});
+      return 'Could not start the sync now; it runs on Monday.';
+    }
   }
 
   /// Every drive the crawler syncs, with the outcome of its last sync

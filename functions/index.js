@@ -743,6 +743,7 @@ exports.checkAdminStatus = adminFunctions.checkAdminStatus;
 exports.getAdmins = adminFunctions.getAdmins;
 exports.rebuildProfessorSchedules = adminFunctions.rebuildProfessorSchedules;
 exports.onTimetableChanged = adminFunctions.onTimetableChanged;
+exports.startAcadDrivesSync = adminFunctions.startAcadDrivesSync;
 
 const calendarFunctions = require("./calendar");
 exports.exportIcs = calendarFunctions.exportIcs;

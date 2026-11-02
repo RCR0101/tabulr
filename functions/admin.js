@@ -700,4 +700,49 @@ exports.archiveTimetables = onCall(
   }
 );
 
-exports._test = { professorFields, matchExisting, sameProfessor, rebuildSchedules };
+// ─── Acad Drives: sync as soon as a drive is approved ───
+//
+// The sync runs as the "Acad Drives sync" GitHub Action (it downloads
+// gigabytes, which a function cannot). Approving a drive starts it at once
+// instead of leaving the student waiting for Monday. The workflow's
+// concurrency group queues back-to-back starts, so there is no throttle here.
+// GITHUB_SYNC_TOKEN: a fine-grained token on RCR0101/tabulr with
+// "Actions: read and write" (firebase functions:secrets:set GITHUB_SYNC_TOKEN).
+const { defineSecret } = require("firebase-functions/params");
+const githubSyncToken = defineSecret("GITHUB_SYNC_TOKEN");
+const SYNC_WORKFLOW = "https://api.github.com/repos/RCR0101/tabulr/actions/workflows/acad-drives-sync.yml/dispatches";
+
+async function dispatchSync(token, fetchImpl = fetch) {
+  if (!token) return { started: false, reason: "No GitHub token is set; it syncs on Monday." };
+  const res = await fetchImpl(SYNC_WORKFLOW, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "tabulr-functions",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ ref: "main" }),
+  });
+  // 204 No Content is GitHub's "queued".
+  if (res.status === 204) return { started: true };
+  const detail = await res.text().catch(() => "");
+  console.warn(`[acad-sync] dispatch failed: ${res.status} ${detail.slice(0, 200)}`);
+  return { started: false, reason: `GitHub refused the start (${res.status}); it syncs on Monday.` };
+}
+
+exports.startAcadDrivesSync = onCall(
+  { region: REGION, secrets: [githubSyncToken], timeoutSeconds: 30 },
+  async (request) => {
+    await requireAdmin(request);
+    try {
+      return await dispatchSync(githubSyncToken.value());
+    } catch (e) {
+      console.warn(`[acad-sync] ${e.message}`);
+      return { started: false, reason: "Could not reach GitHub; it syncs on Monday." };
+    }
+  }
+);
+
+exports._test = { professorFields, matchExisting, sameProfessor, rebuildSchedules, dispatchSync };

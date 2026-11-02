@@ -38,9 +38,12 @@ In this order:
    then upload it with the rebuild. The faculty site publishes **no chambers**: edit those in
    Admin → Professor Chambers.
 3. **Archive** last term's timetables (Admin → Archive Timetables).
-4. **Acad Drives.** Approve new links in Admin → Drive Submissions. The
-   `Acad Drives sync` GitHub Action runs every Monday (03:00 IST) and can be run
-   by hand from the Actions tab. It needs three repo secrets:
+4. **Acad Drives.** Approve new links in Admin → Drive Submissions; approving
+   starts the `Acad Drives sync` GitHub Action straight away (`startAcadDrivesSync`,
+   which needs the `GITHUB_SYNC_TOKEN` function secret: a fine-grained token on this
+   repo with *Actions: read and write*, set with
+   `firebase functions:secrets:set GITHUB_SYNC_TOKEN`). Without it, approved drives
+   wait for the Monday run (03:00 IST); it can also be run by hand from the Actions tab. It needs three repo secrets:
    `ACAD_DRIVES_ENV` (the crawler's `.env`), `ACAD_DRIVES_SERVICE_ACCOUNT` and
    `ACAD_DRIVES_GDRIVE_TOKEN`. The Google OAuth app must be **in production,
    not testing**, or its refresh token expires after 7 days. The Actions log
@@ -66,10 +69,27 @@ In this order:
   - If the PDF layout changes, `functions-python/test_changes.py` is the check: put the PDFs in
     the repo root as `timetable-changes-N.pdf` and run it with the functions venv.
   - Students' saved timetables pick the change up on next open, with a "What changed" notice.
+  - **Undo**: Review lists each earlier Apply under "Applied earlier"
+    (`upstream_notices/<id>/applies`, which keeps the course docs before and after).
+    Undo (`undo_changes_apply`) refuses if any of those courses changed since.
+  - A notice whose PDF could not be read has **Retry** (`retry_notice`).
   - Mark the notice **Done**.
 - **Exam seating** (Hyderabad): seating posted on the LMS front page is read by
   `poll_upstream` (every PDF on the post) and appears under Upstream changes with a summary; **Apply**
   writes it (`apply_seating_notice`). Otherwise upload in Admin → Exam Seating.
+
+## Acad Drives upkeep
+
+Admin → **Acad Drives Quality**:
+
+- **Reports**: files students flagged. Fixes write `course_codes` / `resource_type` /
+  `hidden` on the file with `manual_course` / `manual_type`, which the crawler's
+  `rescore` and `reclassify` leave alone. Course counts catch up at the next sync.
+- **Coverage**: running courses with no files or no past papers, and what students
+  asked for (`acad_drives_requests`). Clear a course once it is covered.
+
+Students see their own submissions' progress in Acad Drives → My submissions
+(fed by the sync's `syncStatus` on each submission).
 
 ## Every year
 
@@ -114,6 +134,8 @@ Deploys:
 
 - **Web:** push to `main` deploys to preview; run "Deploy Production" to promote it.
 - **Functions:** `firebase deploy --only functions:python` or `--only functions:node`.
+  Checks first: `functions-python/venv/bin/python functions-python/test_upstream.py`,
+  `functions-python/test_changes.py`, and `node --test functions/test/`.
   The scheduled `poll_upstream` needs the Cloud Scheduler API enabled once.
 - **Workers:** `cd workers/<name> && npx wrangler deploy`.
 - **Rules:** `firebase deploy --only firestore:rules`, after `npm --prefix test/rules test`.

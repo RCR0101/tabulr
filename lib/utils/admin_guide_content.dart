@@ -75,6 +75,8 @@ final List<GuideSection> adminGuideSections = [
           "Press Review on the notice. Tabulr reads the PDF and lists every change against the live timetable: 'Ready' rows still match what the PDF calls existing and start ticked; 'Check' rows differ from it, so tick them only if the PDF is right anyway; 'Already in' rows need nothing. Press Apply.",
           "'Add by hand' rows are new courses with several sections sharing one hours line, which the PDF does not split; add those in Course Management.",
           "Students' saved timetables pick the change up on their next open, with a 'What changed' notice; live calendar links update at their next refresh; professor schedules rebuild by themselves.",
+          "Applied something by mistake? Review the notice again: 'Applied earlier' lists each Apply with Undo, which puts those courses back as they were. Undo refuses if a course was edited since, so it never overwrites a later fix.",
+          "A notice that says 'Could not read the PDF' (the LMS was slow) has Retry.",
           'Mark the notice Done. Dismiss anything that needs no action.',
           'Seating posted on the LMS arrives under Upstream changes already read, with a one-line summary (courses, rooms, dates). Check it and press Apply; it replaces Hyderabad\'s seating.',
           'Work through Bug Tracker and chamber reports (in Professor Chambers) every week or so.',
@@ -240,7 +242,7 @@ final List<GuideSection> adminGuideSections = [
         steps: [
           'Professor Chambers: edit a chamber, email or phone. Students see it straight away.',
           'Chamber reports from students appear at the top of Professor Chambers; Accept writes the chamber, Reject discards it.',
-          'New faculty: every Monday Tabulr compares the BITS faculty website with its list; new names appear under Upstream changes. Apply adds them (chambers and names already on file are kept).',
+          'New faculty: every Monday Tabulr compares the BITS faculty website with its list; new names appear under Upstream changes (names written differently, like "Amol Vuppuluri" for "Vuppuluri Amol", count as the same person). Apply adds them (chambers and names already on file are kept).',
           'Professor Schedules: Rebuild by hand only if something looks off; it also takes a roster file made by functions-python/faculty.py.',
           'After a rebuild, check the names it says it matched only by spelling.',
         ],
@@ -293,7 +295,7 @@ final List<GuideSection> adminGuideSections = [
         anchor: 'admin-drive-submissions',
         icon: Icons.add_link_rounded,
         lead:
-            "Google Drive links students submit from Acad Drives. Approving one adds it to the drive sync, which runs every Monday morning; its files appear after that.",
+            "Google Drive links students submit from Acad Drives. Approving one adds it to the drive sync and starts a sync run straight away; its files appear when that finishes. The sync also runs every Monday morning.",
         steps: [
           "Reject with a reason when you can (e.g. 'Not shared publicly'): the student sees it in My submissions and can fix and resend.",
           'Open the link and check it is academic material and publicly viewable. A warning on the card means the link is not a Drive folder or file, the drive is already synced, or another student sent the same one: reject those.',

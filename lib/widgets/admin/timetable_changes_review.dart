@@ -37,6 +37,10 @@ class _TimetableChangesReviewState extends State<TimetableChangesReview> {
   };
 
   List<Map<String, dynamic>>? _changes;
+  // Earlier Applies of this notice, newest first, each undoable until a
+  // course it touched is edited again (undo_changes_apply checks).
+  List<Map<String, dynamic>> _applies = [];
+  String? _undoing;
   String? _error;
   String _summary = '';
   final Set<String> _selected = {};
@@ -65,6 +69,7 @@ class _TimetableChangesReviewState extends State<TimetableChangesReview> {
     ]..sort((a, b) => _order.indexOf(a['status']).compareTo(_order.indexOf(b['status'])));
     _changes = list;
     _summary = '${data['summary'] ?? ''}';
+    _applies = [for (final a in (data['applies'] as List? ?? const [])) Map<String, dynamic>.from(a as Map)];
     for (final c in list) {
       final shot = c['snippet'];
       if (shot is String && !_shots.containsKey(c['key'])) {
@@ -99,6 +104,50 @@ class _TimetableChangesReviewState extends State<TimetableChangesReview> {
     } finally {
       if (mounted) setState(() => _applying = false);
     }
+  }
+
+  Future<void> _undo(Map<String, dynamic> apply) async {
+    setState(() => _undoing = apply['id'] as String);
+    try {
+      final r = await _call('undo_changes_apply').call({'noticeId': widget.noticeId, 'applyId': apply['id']});
+      final restored = ((r.data as Map)['restored'] as List?)?.join(', ') ?? '';
+      ToastService.showSuccess('Undone: $restored is back as it was');
+      await _load();
+    } catch (e) {
+      // FAILED_PRECONDITION names the courses edited since.
+      ToastService.showError(e is FirebaseFunctionsException ? (e.message ?? '$e') : 'Could not undo: $e');
+    } finally {
+      if (mounted) setState(() => _undoing = null);
+    }
+  }
+
+  Widget _appliesList(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 8),
+        Text('Applied earlier', style: text.titleSmall),
+        for (final a in _applies)
+          ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            title: Text('${a['count']} ${a['count'] == 1 ? 'change' : 'changes'}: ${(a['courses'] as List).join(', ')}',
+                maxLines: 2, overflow: TextOverflow.ellipsis),
+            subtitle: Text([
+              '${a['by'] ?? 'admin'}',
+              '${a['at'] ?? ''}'.split('T').first,
+              if (a['undone'] == true) 'undone',
+            ].join(' · ')),
+            trailing: a['undoable'] == true
+                ? TextButton(
+                    onPressed: _undoing == null && !_applying ? () => _undo(a) : null,
+                    child: Text(_undoing == a['id'] ? 'Undoing…' : 'Undo'),
+                  )
+                : null,
+          ),
+      ],
+    );
   }
 
   (Color, String) _status(BuildContext context, String status) => switch (status) {
@@ -194,10 +243,11 @@ class _TimetableChangesReviewState extends State<TimetableChangesReview> {
           Align(
             alignment: Alignment.centerRight,
             child: FilledButton(
-              onPressed: _selected.isEmpty || _applying ? null : _apply,
+              onPressed: _selected.isEmpty || _applying || _undoing != null ? null : _apply,
               child: Text(_applying ? 'Applying…' : 'Apply ${_selected.length}'),
             ),
           ),
+          if (_applies.isNotEmpty) _appliesList(context),
         ],
       ),
     );

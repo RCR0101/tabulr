@@ -103,14 +103,44 @@ def scrape(campus):
         return list(pool.map(_with_profile, cards))
 
 
+def _name_tokens(name):
+    return sorted(t for t in re.split(r"[^a-z]+", str(name or "").casefold()) if t)
+
+
+def same_person_name(a, b):
+    """Whether two spellings of a name are the same person, as the faculty
+    site and the timetable write them: word order ("Vuppuluri Amol" / "Amol
+    Vuppuluri"), initials' dots ("A. K. Jayesh" / "A K Jayesh") and a letter
+    or two of spelling. Strict on purpose: a miss here only means one extra
+    row in the notice, but a false match hides a new faculty member."""
+    from difflib import SequenceMatcher
+    ta, tb = _name_tokens(a), _name_tokens(b)
+    if not ta or not tb:
+        return False
+    if ta == tb:
+        return True
+    full_a, full_b = [t for t in ta if len(t) > 1], [t for t in tb if len(t) > 1]
+    if len(full_a) != len(full_b) or not full_a:
+        return False
+    return SequenceMatcher(None, " ".join(full_a), " ".join(full_b)).ratio() >= 0.9
+
+
 def new_faculty(roster, existing):
-    """Roster entries Tabulr has no professor for, by email or exact name.
-    Respelled names are left to the rebuild's matching, which reports them."""
+    """Roster entries Tabulr has no professor for: no doc with their email,
+    and none whose name is theirs however spelled (same_person_name). Two
+    different emails are two different people, however close the names."""
     emails = {str(e.get("email") or "").lower() for e in existing} - {""}
-    names = {str(e.get("name") or "").strip().upper() for e in existing}
-    return [p for p in roster
-            if str(p.get("email") or "").lower() not in emails
-            and p["name"].strip().upper() not in names]
+    out = []
+    for p in roster:
+        email = str(p.get("email") or "").lower()
+        if email and email in emails:
+            continue
+        if any(same_person_name(p["name"], e.get("name"))
+               and not (email and e.get("email") and str(e["email"]).lower() != email)
+               for e in existing):
+            continue
+        out.append(p)
+    return out
 
 
 def _self_check():
@@ -138,6 +168,18 @@ Dept. of Computer Science and Information Systems</p>'''
     roster = [{"name": "Kavi Devraj", "email": "KAVI.DEVRAJ@hyderabad.bits-pilani.ac.in"},
               {"name": "vuppuluri amol"}, {"name": "Manas Pradhan", "email": "m@x"}]
     assert [p["name"] for p in new_faculty(roster, existing)] == ["Manas Pradhan"]
+    # Respellings the timetable uses are the same person, not new faculty.
+    assert same_person_name("Vuppuluri Amol", "Amol Vuppuluri")
+    assert same_person_name("A. K. Jayesh", "A K Jayesh")
+    assert same_person_name("Sweta Agarwala", "Sweta Agarwal")
+    assert not same_person_name("Pranay Sharma", "Pranav Sharma Rao")
+    assert not same_person_name("Ravi Kumar", "Ravi Shankar")
+    assert not same_person_name("", "Ravi Kumar")
+    existing = [{"name": "Amol Vuppuluri"}, {"name": "A K Jayesh"}, {"name": "Ravi Kumar", "email": "rk@x"}]
+    roster = [{"name": "Vuppuluri Amol", "email": "va@x"}, {"name": "A. K. Jayesh"},
+              {"name": "Ravi Kumar", "email": "ravi.kumar2@x"}, {"name": "Ravi Shankar"}]
+    # A different email under the same name is a second Ravi Kumar.
+    assert [p["name"] for p in new_faculty(roster, existing)] == ["Ravi Kumar", "Ravi Shankar"], new_faculty(roster, existing)
     print("faculty.py self-check passed", file=sys.stderr)
 
 

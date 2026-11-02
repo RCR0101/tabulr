@@ -36,7 +36,7 @@ class _DriveSubmissionsScreenState extends State<DriveSubmissionsScreen> {
           context,
           icon: Icons.add_link_rounded,
           title: 'Drive Submissions',
-          subtitle: 'Approved drives sync on the next crawler run',
+          subtitle: 'Approving a drive starts the sync',
         ),
         centerTitle: false,
       ),
@@ -279,7 +279,12 @@ class _DriveSubmissionsScreenState extends State<DriveSubmissionsScreen> {
     try {
       final added = await _service.approveSubmission(doc, name: name);
       if (added) {
-        ToastService.showSuccess('Added "$name". It syncs on the next crawler run.');
+        final notStarted = await _service.startSync();
+        if (notStarted == null) {
+          ToastService.showSuccess('Added "$name". The sync has started; its files appear when it finishes.');
+        } else {
+          ToastService.showInfo('Added "$name". $notStarted');
+        }
       } else {
         ToastService.showError('A drive called "$name" already exists. Pick another name.');
       }
