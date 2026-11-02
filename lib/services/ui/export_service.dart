@@ -17,6 +17,8 @@ import 'export_service_stub.dart'
     if (dart.library.io) 'export_service_io.dart';
 
 class ExportService {
+  /// Current `.tt` format; unknown versions require an explicit migration.
+  static const ttFormatVersion = '1.0';
   /// Saves the timetable as an .ics file. Built by the `exportIcs` function,
   /// the same generator as the live calendar feed, so the file and the
   /// subscription agree on which days have class (holidays and "classwork
@@ -72,7 +74,7 @@ class ExportService {
     try {
       // Create .tt file format with metadata and timetable data
       final ttData = {
-        'version': '1.0',
+        'version': ttFormatVersion,
         'exportedAt': DateTime.now().toIso8601String(),
         'exportedBy': 'Tabulr',
         'timetable': {
@@ -172,11 +174,24 @@ class ExportService {
       final ttData = jsonDecode(ttContent);
 
       // Validate file format
-      if (ttData['version'] == null || ttData['timetable'] == null) {
+      if (ttData is! Map<String, dynamic> ||
+          ttData['version'] == null ||
+          ttData['timetable'] is! Map<String, dynamic>) {
         throw Exception('Invalid .tt file format');
       }
 
-      final timetableData = ttData['timetable'];
+      if (ttData['version'] != ttFormatVersion) {
+        throw Exception(
+          'Unsupported .tt version ${ttData['version']}; supported: $ttFormatVersion',
+        );
+      }
+      final timetableData = ttData['timetable'] as Map<String, dynamic>;
+      if (timetableData['courses'] is! List ||
+          timetableData['selectedSections'] is! List) {
+        throw Exception(
+          'Invalid .tt file format: courses and selectedSections must be lists',
+        );
+      }
 
       // Parse campus
       final campusString = timetableData['campus'] as String?;

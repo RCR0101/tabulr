@@ -110,6 +110,43 @@ void main() {
       expect(tt.selectedSections, isEmpty);
     });
 
+    test('rejects unknown or incorrectly typed format versions', () async {
+      for (final version in ['2.0', '1.1', '', 1.0, true, <String>[]]) {
+        final map = validTtMap()..['version'] = version;
+        await expectLater(
+          ExportService.importFromTTContent(jsonEncode(map)),
+          throwsA(
+            predicate((e) => e.toString().contains('Unsupported .tt version')),
+          ),
+        );
+      }
+    });
+
+    test('rejects malformed roots and required collections', () async {
+      for (final value in [
+        null,
+        [],
+        'text',
+        {'version': '1.0', 'timetable': []},
+      ]) {
+        await expectLater(
+          ExportService.importFromTTContent(jsonEncode(value)),
+          throwsA(
+            predicate((e) => e.toString().contains('Invalid .tt file format')),
+          ),
+        );
+      }
+      for (final key in ['courses', 'selectedSections']) {
+        final map = validTtMap();
+        map['timetable'] = Map<String, dynamic>.from(map['timetable'] as Map)
+          ..[key] = null;
+        await expectLater(
+          ExportService.importFromTTContent(jsonEncode(map)),
+          throwsA(predicate((e) => e.toString().contains('must be lists'))),
+        );
+      }
+    });
+
     test('throws on missing version', () async {
       final map = validTtMap()..remove('version');
       expect(() => ExportService.importFromTTContent(jsonEncode(map)),
