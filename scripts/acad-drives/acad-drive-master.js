@@ -368,6 +368,7 @@ class AcadDriveMaster {
         properties: { drive_link: s.driveLink || 'NA', contributor: s.contributor || 'Unknown' },
         courseCode: s.courseCode || null,
         resourceType: s.resourceType || null,
+        submissionId: s.submissionId || null,
       };
     }
   }
@@ -390,10 +391,11 @@ class AcadDriveMaster {
     } else if (!s.processed) {
       hint = 'No files found at this link.';
     }
+    const at = admin.firestore.FieldValue.serverTimestamp();
     try {
       await this.db.collection('acad_drives_sources').doc(AcadDriveMaster.sourceDocId(driveName)).set({
         lastSync: {
-          at: admin.firestore.FieldValue.serverTimestamp(),
+          at,
           processed: s.processed || 0,
           uploaded: s.uploaded || 0,
           errors: s.errors || 0,
@@ -401,6 +403,13 @@ class AcadDriveMaster {
           problem: hint,
         },
       }, { merge: true });
+      // The student who sent the link sees this in "My submissions".
+      const submissionId = this.credits[driveName]?.submissionId;
+      if (submissionId) {
+        await this.db.collection('acad_drives_submissions').doc(submissionId).set({
+          syncStatus: { at, files: s.processed || 0, problem: hint },
+        }, { merge: true });
+      }
     } catch (e) {
       console.error(`  ${this.red('✗')} could not record sync result: ${e.message}`);
     }
@@ -1954,6 +1963,11 @@ class AcadDriveMaster {
 
     for (const doc of snapshot.docs) {
       const data = doc.data();
+      // An admin filed it by hand from a student's report: that wins.
+      if (data.manual_course) {
+        unchanged++;
+        continue;
+      }
       const currentCodes = data.course_codes || data.courseCodes || [];
       const currentCode = currentCodes[0] || 'unclassified';
       const filePath = data.path || data.name;
@@ -2259,6 +2273,7 @@ class AcadDriveMaster {
 
     for (const doc of snapshot.docs) {
       const data = doc.data();
+      if (data.hidden) continue; // hidden by an admin from a student's report
       const courseCodes = data.course_codes || data.courseCodes || [];
       const driveName = data.driveName || 'Unknown';
       const uploadedAt = data.uploadedAt;
@@ -2455,6 +2470,7 @@ class AcadDriveMaster {
     const changes = [];
     for (const doc of snapshot.docs) {
       const d = doc.data();
+      if (d.manual_type) continue; // typed by an admin from a student's report
       const next = classifyResource(d.name || '', d.path || d.name || '', this.credits[d.driveName]?.resourceType);
       counts[next.resource_type] = (counts[next.resource_type] || 0) + 1;
       const same = d.resource_type === next.resource_type && d.exam === next.exam && d.year === next.year;

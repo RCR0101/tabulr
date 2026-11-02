@@ -14,6 +14,12 @@ class AcadDrivesService {
   static FirebaseFirestore? firestoreForTest;
 
   FirebaseFirestore get _firestore => firestoreForTest ?? FirebaseFirestore.instance;
+
+  /// Test seam: the signed-in admin's email. Never set from app code.
+  @visibleForTesting
+  static String? Function()? reviewerForTest;
+
+  String? get _reviewer => reviewerForTest != null ? reviewerForTest!() : AuthService().userEmail;
   final LocalCacheService _localCache = LocalCacheService();
 
   static const _cacheKey = 'acad_drives_index';
@@ -145,6 +151,7 @@ class AcadDrivesService {
       final batch = idList.sublist(i, i + 30 > idList.length ? idList.length : i + 30);
       final snapshot = await _filesRef.where(FieldPath.documentId, whereIn: batch).get();
       for (final doc in snapshot.docs) {
+        if (doc.data()['hidden'] == true) continue; // hidden after a report
         results.add({'id': doc.id, ...doc.data()});
       }
     }
@@ -180,7 +187,7 @@ class AcadDrivesService {
     if ((await sourceRef.get()).exists) return false;
 
     final data = submission.data();
-    final reviewer = AuthService().userEmail;
+    final reviewer = _reviewer;
     final batch = _firestore.batch()
       ..set(sourceRef, {
         'name': name.trim(),
@@ -219,12 +226,224 @@ class AcadDrivesService {
     AdminAuditLogger().success(disabled ? 'acad_drive_disable' : 'acad_drive_enable', ref.id);
   }
 
-  Future<void> rejectSubmission(DocumentReference<Map<String, dynamic>> ref) async {
+  /// [note] is shown to the student in "My submissions".
+  Future<void> rejectSubmission(DocumentReference<Map<String, dynamic>> ref, {String? note}) async {
     await ref.update({
       'status': 'rejected',
-      'reviewedBy': AuthService().userEmail,
+      'reviewedBy': _reviewer,
       'reviewedAt': FieldValue.serverTimestamp(),
+      if (note != null && note.trim().isNotEmpty) 'reviewNote': note.trim(),
     });
     AdminAuditLogger().success('acad_drive_reject', ref.id);
   }
+
+  // ── Students: their own submissions ──
+
+  /// What [email] has submitted, newest first. The rules let a student read
+  /// only their own, so the query must filter on submittedBy.
+  Stream<List<MySubmission>> mySubmissions(String email) {
+    return _submissionsRef.where('submittedBy', isEqualTo: email).snapshots().map((s) {
+      final list = s.docs.map((d) => MySubmission.fromMap(d.id, d.data())).toList()
+        ..sort((a, b) => (b.submittedAt ?? DateTime(3000)).compareTo(a.submittedAt ?? DateTime(3000)));
+      return list;
+    });
+  }
+
+  // ── Students: reporting a file ──
+
+  Future<void> reportFile(
+    Map<String, dynamic> file, {
+    required String reporterEmail,
+    required AcadFileProblem problem,
+    String? suggestedCourse,
+    String? suggestedType,
+    String? note,
+  }) {
+    final codes = (file['course_codes'] as List?) ?? const [];
+    return _firestore.collection(FirestoreCollections.acadDrivesReports).add({
+      'fileId': file['id'],
+      'fileName': '${file['name'] ?? ''}',
+      'driveName': '${file['driveName'] ?? ''}',
+      'currentCourse': codes.isEmpty ? '' : '${codes.first}',
+      'currentType': '${file['resource_type'] ?? 'other'}',
+      'problem': problem.key,
+      if (suggestedCourse != null) 'suggestedCourse': suggestedCourse,
+      if (suggestedType != null) 'suggestedType': suggestedType,
+      if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      'reportedBy': reporterEmail,
+      'status': 'open',
+      'reportedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // ── Students: asking for resources ──
+
+  /// Document id for one student's request: asking twice for the same course
+  /// and type is the same document, which the rules refuse to overwrite.
+  static String requestId(String course, String type, String userDocId) =>
+      '${course.trim().replaceAll(RegExp(r'\s+'), '_')}__${type}__$userDocId';
+
+  /// Returns false when this student has already asked for this.
+  Future<bool> requestResources({
+    required String course,
+    required String type,
+    required String email,
+    required String userDocId,
+    String? note,
+  }) async {
+    try {
+      await _firestore
+          .collection(FirestoreCollections.acadDrivesRequests)
+          .doc(requestId(course, type, userDocId))
+          .set({
+        'course': course,
+        'type': type,
+        'requestedBy': email,
+        'requestedAt': FieldValue.serverTimestamp(),
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+      });
+      return true;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') return false;
+      rethrow;
+    }
+  }
+
+  // ── Admins: reports, requests, fixes ──
+
+  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> openReports() {
+    return _firestore
+        .collection(FirestoreCollections.acadDrivesReports)
+        .where('status', isEqualTo: 'open')
+        .snapshots()
+        .map((s) => s.docs.toList()
+          ..sort((a, b) => ((a.data()['reportedAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0)
+              .compareTo((b.data()['reportedAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0)));
+  }
+
+  /// Applies an admin's fix to the reported file and closes the report, in
+  /// one batch. [course] / [type] re-file it (and stop the crawler undoing
+  /// that); [hide] takes it out of Acad Drives. Course counts on the course
+  /// list catch up at the next sync's index rebuild.
+  Future<void> resolveReport(
+    QueryDocumentSnapshot<Map<String, dynamic>> report, {
+    String? course,
+    String? type,
+    bool hide = false,
+  }) async {
+    final fileId = report.data()['fileId'] as String;
+    final fileRef = _filesRef.doc(fileId);
+    final changes = <String, dynamic>{
+      if (course != null) ...{'course_codes': [course], 'manual_course': true},
+      if (type != null) ...{
+        'resource_type': type,
+        'manual_type': true,
+        // Exam and year only make sense on papers and solutions.
+        if (type != 'pyq' && type != 'solutions') ...{
+          'exam': FieldValue.delete(),
+          'year': FieldValue.delete(),
+        },
+      },
+      if (hide) 'hidden': true,
+    };
+    final resolution = [
+      if (course != null) 'moved to $course',
+      if (type != null) 'typed as $type',
+      if (hide) 'hidden',
+    ].join(', ');
+    final batch = _firestore.batch();
+    if (changes.isNotEmpty) batch.update(fileRef, changes);
+    batch.update(report.reference, {
+      'status': changes.isEmpty ? 'dismissed' : 'fixed',
+      'reviewedBy': _reviewer,
+      'reviewedAt': FieldValue.serverTimestamp(),
+      if (resolution.isNotEmpty) 'resolution': resolution,
+    });
+    await batch.commit();
+    AdminAuditLogger().success('acad_drive_report', fileId, {'resolution': resolution});
+  }
+
+  /// Every open request, for the coverage view.
+  Future<List<Map<String, dynamic>>> fetchRequests() async {
+    final snap = await _firestore.collection(FirestoreCollections.acadDrivesRequests).get();
+    return [for (final d in snap.docs) {'id': d.id, ...d.data()}];
+  }
+
+  /// Clears a course's requests once it is covered.
+  Future<void> clearRequests(String course) async {
+    final snap = await _firestore
+        .collection(FirestoreCollections.acadDrivesRequests)
+        .where('course', isEqualTo: course)
+        .get();
+    final batch = _firestore.batch();
+    for (final d in snap.docs) {
+      batch.delete(d.reference);
+    }
+    await batch.commit();
+  }
 }
+
+
+/// What a student can report about a file.
+enum AcadFileProblem {
+  wrongCourse('wrong_course', 'Filed under the wrong course'),
+  wrongType('wrong_type', 'Wrong type (e.g. notes shown as a paper)'),
+  broken('broken', "Doesn't open, or is the wrong file"),
+  notAcademic('not_academic', 'Not academic material');
+
+  const AcadFileProblem(this.key, this.label);
+  final String key;
+  final String label;
+
+  static AcadFileProblem? fromKey(String? key) =>
+      values.where((p) => p.key == key).firstOrNull;
+}
+
+/// One of a student's own drive submissions, and where it has got to.
+class MySubmission {
+  MySubmission({
+    required this.id,
+    required this.title,
+    required this.driveLink,
+    required this.status,
+    this.submittedAt,
+    this.reviewNote,
+    this.syncedAt,
+    this.syncedFiles,
+    this.syncProblem,
+  });
+
+  factory MySubmission.fromMap(String id, Map<String, dynamic> d) {
+    final sync = d['syncStatus'] as Map?;
+    return MySubmission(
+      id: id,
+      title: '${d['title'] ?? ''}',
+      driveLink: '${d['driveLink'] ?? ''}',
+      status: '${d['status'] ?? 'pending'}',
+      submittedAt: (d['submittedAt'] as Timestamp?)?.toDate(),
+      reviewNote: d['reviewNote'] as String?,
+      syncedAt: (sync?['at'] as Timestamp?)?.toDate(),
+      syncedFiles: (sync?['files'] as num?)?.toInt(),
+      syncProblem: sync?['problem'] as String?,
+    );
+  }
+
+  final String id;
+  final String title;
+  final String driveLink;
+  final String status;
+  final DateTime? submittedAt;
+  final String? reviewNote;
+  final DateTime? syncedAt;
+  final int? syncedFiles;
+  final String? syncProblem;
+
+  MySubmissionStage get stage {
+    if (status == 'rejected') return MySubmissionStage.rejected;
+    if (status != 'approved') return MySubmissionStage.waiting;
+    if (syncedAt == null) return MySubmissionStage.approved;
+    return syncProblem == null ? MySubmissionStage.live : MySubmissionStage.problem;
+  }
+}
+
+enum MySubmissionStage { waiting, approved, live, problem, rejected }

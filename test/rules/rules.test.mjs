@@ -12,7 +12,7 @@ import {
   assertSucceeds,
 } from '@firebase/rules-unit-testing';
 import {
-  doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, serverTimestamp,
+  doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, serverTimestamp, query, where,
 } from 'firebase/firestore';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -218,8 +218,18 @@ await test('an anonymous visitor CANNOT list submissions', async () => {
     'acad_drives_submissions')));
 });
 
-await test('a signed-in student CANNOT read submissions', async () => {
-  await assertFails(getDoc(doc(user(HYD), 'acad_drives_submissions/s1')));
+await test("a student CANNOT read someone else's submission", async () => {
+  await assertFails(getDoc(doc(user(OTHER), 'acad_drives_submissions/s1')));
+});
+
+await test('a student can read their own submissions ("My submissions")', async () => {
+  await assertSucceeds(getDoc(doc(user(HYD), 'acad_drives_submissions/s1')));
+  await assertSucceeds(getDocs(query(collection(user(HYD), 'acad_drives_submissions'),
+    where('submittedBy', '==', HYD))));
+});
+
+await test('a student CANNOT list every submission', async () => {
+  await assertFails(getDocs(collection(user(HYD), 'acad_drives_submissions')));
 });
 
 await test('a student can still submit one', async () => {
@@ -268,6 +278,74 @@ await test('an admin can approve a submission', async () => {
 await test('an admin CANNOT rewrite the submitted link while reviewing', async () => {
   await assertFails(updateDoc(doc(user(ADMIN), 'acad_drives_submissions/s1'),
     { status: 'rejected', driveLink: 'https://evil.example' }));
+});
+
+await test('an admin can reject with a note the student sees', async () => {
+  await assertSucceeds(updateDoc(doc(user(ADMIN), 'acad_drives_submissions/s2'),
+    { status: 'rejected', reviewedBy: ADMIN, reviewedAt: serverTimestamp(), reviewNote: 'Not shared publicly' }));
+});
+
+group('acad drives reports, requests and admin fixes');
+
+await seed(async (db) => {
+  await setDoc(doc(db, 'acad_drives_files/f1'), {
+    name: 'a.pdf', url: 'https://x', course_codes: ['CS F211'], resource_type: 'other', driveName: 'D',
+  });
+});
+
+const report = (extra = {}) => ({
+  fileId: 'f1', fileName: 'a.pdf', driveName: 'D', currentCourse: 'CS F211', currentType: 'other',
+  problem: 'wrong_course', suggestedCourse: 'CS F212', note: 'this is DBMS',
+  reportedBy: HYD, status: 'open', reportedAt: serverTimestamp(), ...extra,
+});
+
+await test('a student can report a file', async () => {
+  await assertSucceeds(setDoc(doc(user(HYD), 'acad_drives_reports/r1'), report()));
+});
+
+await test('a report cannot be forged, pre-closed or padded', async () => {
+  await assertFails(setDoc(doc(user(HYD), 'acad_drives_reports/r2'), report({ reportedBy: OTHER })));
+  await assertFails(setDoc(doc(user(HYD), 'acad_drives_reports/r3'), report({ status: 'fixed' })));
+  await assertFails(setDoc(doc(user(HYD), 'acad_drives_reports/r4'), report({ problem: 'spam' })));
+  await assertFails(setDoc(doc(user(HYD), 'acad_drives_reports/r5'), report({ extra: 1 })));
+  await assertFails(setDoc(doc(env.unauthenticatedContext().firestore(), 'acad_drives_reports/r6'), report()));
+});
+
+await test('students cannot read reports; admins can and close them', async () => {
+  await assertFails(getDoc(doc(user(HYD), 'acad_drives_reports/r1')));
+  await assertSucceeds(getDoc(doc(user(ADMIN), 'acad_drives_reports/r1')));
+  await assertSucceeds(updateDoc(doc(user(ADMIN), 'acad_drives_reports/r1'),
+    { status: 'fixed', reviewedBy: ADMIN, reviewedAt: serverTimestamp(), resolution: 'moved to CS F212' }));
+  await assertFails(updateDoc(doc(user(ADMIN), 'acad_drives_reports/r1'), { problem: 'broken' }));
+});
+
+await test('an admin can re-file or hide a file, but not rewrite it', async () => {
+  await assertSucceeds(updateDoc(doc(user(ADMIN), 'acad_drives_files/f1'),
+    { course_codes: ['CS F212'], manual_course: true, resource_type: 'pyq', manual_type: true }));
+  await assertSucceeds(updateDoc(doc(user(ADMIN), 'acad_drives_files/f1'), { hidden: true }));
+  await assertFails(updateDoc(doc(user(ADMIN), 'acad_drives_files/f1'), { url: 'https://evil' }));
+  await assertFails(updateDoc(doc(user(HYD), 'acad_drives_files/f1'), { hidden: true }));
+});
+
+await test('a student can ask for resources once per course and type', async () => {
+  const id = 'CS_F211__pyq__f20220123H';
+  await assertSucceeds(setDoc(doc(user(HYD), `acad_drives_requests/${id}`),
+    { course: 'CS F211', type: 'pyq', requestedBy: HYD, requestedAt: serverTimestamp() }));
+  await assertFails(setDoc(doc(user(HYD), `acad_drives_requests/${id}`),
+    { course: 'CS F211', type: 'pyq', requestedBy: HYD, requestedAt: serverTimestamp() }));
+});
+
+await test("a request cannot be filed under someone else's id or with a bad type", async () => {
+  await assertFails(setDoc(doc(user(HYD), 'acad_drives_requests/CS_F211__pyq__f20229999H'),
+    { course: 'CS F211', type: 'pyq', requestedBy: HYD }));
+  await assertFails(setDoc(doc(user(HYD), 'acad_drives_requests/CS_F211__x__f20220123H'),
+    { course: 'CS F211', type: 'memes', requestedBy: HYD }));
+});
+
+await test('only admins see and clear requests', async () => {
+  await assertFails(getDocs(collection(user(HYD), 'acad_drives_requests')));
+  await assertSucceeds(getDocs(collection(user(ADMIN), 'acad_drives_requests')));
+  await assertSucceeds(deleteDoc(doc(user(ADMIN), 'acad_drives_requests/CS_F211__pyq__f20220123H')));
 });
 
 await test('drive sources are invisible to students', async () => {

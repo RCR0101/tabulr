@@ -180,7 +180,60 @@ service cloud.firestore {
     // Academic drives — three top-level collections
     match /acad_drives_files/{docId} {
       allow read: if true;
-      allow write: if false;
+      // Admins fix what students report (Admin → Acad Drives Quality): the
+      // course, the type, or hiding the file. Everything else is the sync's.
+      // The manual_* flags stop the crawler's rescore/reclassify undoing it.
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['course_codes', 'courseName', 'resource_type', 'exam', 'year',
+                       'manual_course', 'manual_type', 'hidden']);
+      allow create, delete: if false;
+    }
+    // "Report a problem" on a file. Students write; admins read and close.
+    match /acad_drives_reports/{docId} {
+      allow create: if isBitsEmail() && writesAllowed()
+        && request.resource.data.keys().hasOnly(
+             ['fileId', 'fileName', 'driveName', 'currentCourse', 'currentType',
+              'problem', 'suggestedCourse', 'suggestedType', 'note',
+              'reportedBy', 'status', 'reportedAt'])
+        && request.resource.data.keys().hasAll(['fileId', 'problem', 'reportedBy', 'status'])
+        && request.resource.data.reportedBy == request.auth.token.email
+        && request.resource.data.status == 'open'
+        && request.resource.data.fileId is string
+        && request.resource.data.fileId.size() < 100
+        && request.resource.data.problem in ['wrong_course', 'wrong_type', 'broken', 'not_academic']
+        && (!('note' in request.resource.data)
+            || (request.resource.data.note is string && request.resource.data.note.size() <= 500))
+        && (!('suggestedCourse' in request.resource.data)
+            || (request.resource.data.suggestedCourse is string
+                && request.resource.data.suggestedCourse.size() < 20))
+        && (!('suggestedType' in request.resource.data)
+            || (request.resource.data.suggestedType is string
+                && request.resource.data.suggestedType.size() < 20));
+      allow read: if isAdmin();
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'reviewedBy', 'reviewedAt', 'resolution'])
+        && request.resource.data.status in ['fixed', 'dismissed'];
+      allow delete: if false;
+    }
+    // "Ask for resources" on a course: one doc per student, course and type
+    // (the id ends in the student's user id, so asking twice is an update and
+    // is refused). Only admins see who asked; they clear a course once it is
+    // covered.
+    match /acad_drives_requests/{docId} {
+      allow create: if isBitsEmail() && writesAllowed()
+        && docId.matches('.*__' + userDocId() + '$')
+        && request.resource.data.keys().hasOnly(['course', 'type', 'note', 'requestedBy', 'requestedAt'])
+        && request.resource.data.requestedBy == request.auth.token.email
+        && request.resource.data.course is string
+        && request.resource.data.course.size() < 20
+        && request.resource.data.type in ['pyq', 'solutions', 'lectures', 'notes', 'books',
+                                          'assignments', 'handout', 'any']
+        && (!('note' in request.resource.data)
+            || (request.resource.data.note is string && request.resource.data.note.size() <= 300));
+      allow read, delete: if isAdmin();
+      allow update: if false;
     }
     match /acad_drives_submissions/{docId} {
       // Schema mirrors the client payload (acad_drives_screen.dart): driveLink,
@@ -209,13 +262,17 @@ service cloud.firestore {
         && request.resource.data.contributorName is string
         && request.resource.data.contributorName.size() < 100
         && request.resource.data.status == 'pending';
-      // These carry the submitter's raw email and the old rule needed no auth
-      // at all. The client only ever writes here (acad_drives_service.dart).
-      allow read: if isAdmin();
-      // Review only moves the status; the submission itself stays as sent.
+      // These carry the submitter's raw email: admins, and the student who
+      // sent it ("My submissions", which queries by submittedBy), only.
+      allow read: if isAdmin()
+        || (isBitsEmail() && resource.data.submittedBy == request.auth.token.email);
+      // Review only moves the status (with an optional note the student
+      // sees); the submission itself stays as sent.
       allow update: if isAdmin()
         && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['status', 'reviewedBy', 'reviewedAt'])
+             .hasOnly(['status', 'reviewedBy', 'reviewedAt', 'reviewNote'])
+        && (!('reviewNote' in request.resource.data)
+            || (request.resource.data.reviewNote is string && request.resource.data.reviewNote.size() <= 300))
         && request.resource.data.status in ['approved', 'rejected'];
       allow delete: if false;
     }

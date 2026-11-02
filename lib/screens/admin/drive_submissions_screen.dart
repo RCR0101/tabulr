@@ -291,9 +291,17 @@ class _DriveSubmissionsScreenState extends State<DriveSubmissionsScreen> {
   }
 
   Future<void> _reject(QueryDocumentSnapshot<Map<String, dynamic>> doc) async {
+    // Shown to the student in "My submissions", so they can fix and resend.
+    final note = await AppDialog.input(
+      context: context,
+      title: 'Reject this link?',
+      hint: 'Reason the student sees (optional), e.g. "Not shared publicly"',
+      confirmLabel: 'Reject',
+    );
+    if (note == null || !mounted) return;
     setState(() => _busy.add(doc.id));
     try {
-      await _service.rejectSubmission(doc.reference);
+      await _service.rejectSubmission(doc.reference, note: note.length > 300 ? note.substring(0, 300) : note);
     } catch (e) {
       ToastService.showError('Could not reject: $e');
     } finally {

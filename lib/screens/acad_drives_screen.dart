@@ -32,6 +32,8 @@ import '../utils/download_failure.dart';
 import '../utils/drive_link.dart';
 import '../widgets/acad_drives/acad_drives_layout.dart';
 import '../widgets/common/course_picker_sheet.dart';
+import '../widgets/acad_drives/acad_feedback_dialogs.dart';
+import '../widgets/acad_drives/my_submissions_view.dart';
 
 enum CourseSortOption { nameAsc, nameDesc, fileCountAsc, fileCountDesc }
 
@@ -138,6 +140,22 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           category: CommandCategory.context,
           onSelect: _showSubmitDialog,
         ),
+        if (AuthService().isAuthenticated)
+          CommandPaletteEntry(
+            label: 'My Submissions',
+            subtitle: 'See where the drives you shared have got to',
+            icon: Icons.outbox_rounded,
+            category: CommandCategory.context,
+            onSelect: _showMySubmissions,
+          ),
+        if (_selectedCourse != null)
+          CommandPaletteEntry(
+            label: 'Ask for Resources',
+            subtitle: 'Tell admins what is missing for this course',
+            icon: Icons.record_voice_over_outlined,
+            category: CommandCategory.context,
+            onSelect: () => showRequestResourcesDialog(context, _selectedCourse!),
+          ),
         if (_selectedCourse != null)
           CommandPaletteEntry(
             label: 'Back to Courses',
@@ -369,8 +387,11 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         return;
       }
 
-      final files =
-          snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList();
+      // Hidden by an admin after a student's report.
+      final files = [
+        for (final doc in snapshot.docs)
+          if (doc.data()['hidden'] != true) {'id': doc.id, ...doc.data()},
+      ];
       setState(() {
         _courseFiles = files;
         _lastFileDoc = snapshot.docs.isEmpty ? null : snapshot.docs.last;
@@ -420,8 +441,10 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         return;
       }
 
-      final moreFiles =
-          snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList();
+      final moreFiles = [
+        for (final doc in snapshot.docs)
+          if (doc.data()['hidden'] != true) {'id': doc.id, ...doc.data()},
+      ];
       setState(() {
         _courseFiles.addAll(moreFiles);
         _lastFileDoc = snapshot.docs.isEmpty ? cursor : snapshot.docs.last;
@@ -933,6 +956,15 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         ),
       ),
       actions: [
+        if (file['id'] != null)
+          AppButton(
+            label: 'Report a problem',
+            variant: AppButtonVariant.ghost,
+            onTap: () {
+              Navigator.of(context).pop();
+              showReportFileDialog(context, file);
+            },
+          ),
         AppButton(
           label: 'Close',
           variant: AppButtonVariant.ghost,
@@ -940,6 +972,12 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         ),
       ],
     );
+  }
+
+  Future<void> _showMySubmissions() async {
+    final email = AuthService().userEmail;
+    if (email == null) return;
+    await showMySubmissions(context, email: email);
   }
 
   Future<void> _showSubmitDialog() async {
@@ -1390,6 +1428,12 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
           ),
           label: Text(_showingBookmarks ? 'All courses' : 'Bookmarks'),
         ),
+        if (AuthService().isAuthenticated)
+          OutlinedButton.icon(
+            onPressed: _showMySubmissions,
+            icon: const Icon(Icons.outbox_rounded, size: 18),
+            label: const Text('My submissions'),
+          ),
         FilledButton.icon(
           key: TutorialKeys.acadDrivesSubmit,
           onPressed: _showSubmitDialog,
@@ -1719,7 +1763,6 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   Widget _buildTypeFilter() {
     if (_selectedCourse == null || _showingBookmarks) return const SizedBox.shrink();
     final counts = _typeCounts;
-    if (counts.isEmpty) return const SizedBox.shrink();
     final types = AcadResourceType.values.where(counts.containsKey);
     return SizedBox(
       height: 48,
@@ -1727,17 +1770,24 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
         children: [
-          for (final type in <AcadResourceType?>[null, ...types])
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(
-                label: Text(type == null
-                    ? 'All · ${_courseFiles.length}'
-                    : '${type.label} · ${counts[type]}'),
-                selected: _typeFilter == type,
-                onSelected: (_) => setState(() => _typeFilter = type),
+          if (counts.isNotEmpty)
+            for (final type in <AcadResourceType?>[null, ...types])
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text(type == null
+                      ? 'All · ${_courseFiles.length}'
+                      : '${type.label} · ${counts[type]}'),
+                  selected: _typeFilter == type,
+                  onSelected: (_) => setState(() => _typeFilter = type),
+                ),
               ),
-            ),
+          // What students say is missing is what admins go looking for.
+          ActionChip(
+            avatar: const Icon(Icons.record_voice_over_outlined, size: 16),
+            label: const Text('Missing something? Ask'),
+            onPressed: () => showRequestResourcesDialog(context, _selectedCourse!),
+          ),
         ],
       ),
     );
@@ -2257,6 +2307,14 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
                 color: AppDesign.muted(context),
               ),
             ),
+            if (_selectedCourse != null && _searchQuery.isEmpty && _typeFilter == null) ...[
+              const SizedBox(height: 12),
+              FilledButton.tonalIcon(
+                onPressed: () => showRequestResourcesDialog(context, _selectedCourse!),
+                icon: const Icon(Icons.record_voice_over_outlined, size: 18),
+                label: const Text('Ask for resources'),
+              ),
+            ],
           ],
         ),
       );

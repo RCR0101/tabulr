@@ -25,6 +25,7 @@ import 'admin/exam_seating_management_screen.dart';
 import 'admin/professor_management_screen.dart';
 import 'admin/bug_tracker_screen.dart';
 import 'admin/drive_submissions_screen.dart';
+import 'admin/acad_drives_quality_screen.dart';
 import '../widgets/admin/data_freshness_panel.dart';
 import '../widgets/admin/upstream_notices_panel.dart';
 import '../widgets/admin/bug_attention_badge.dart';
@@ -1357,6 +1358,17 @@ class _AdminScreenState extends State<AdminScreen> {
             () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const DriveSubmissionsScreen()),
+            ),
+      ),
+      _managementCard(
+        icon: Icons.fact_check_outlined,
+        title: 'Acad Drives Quality',
+        subtitle: 'File reports & missing courses',
+        color: secondary,
+        onTap:
+            () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AcadDrivesQualityScreen()),
             ),
       ),
       _managementCard(

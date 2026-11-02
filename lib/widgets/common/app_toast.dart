@@ -37,17 +37,24 @@ class AppToast {
 
     if (_currentState != null && _currentEntry != null) {
       _currentState!.animateOut().then((_) {
-        _currentEntry?.remove();
+        _removeCurrent();
         _currentEntry = null;
         _currentState = null;
         _insert(message, type, effectiveDuration, actionLabel, onAction);
       });
     } else {
-      _currentEntry?.remove();
+      _removeCurrent();
       _currentEntry = null;
       _currentState = null;
       _insert(message, type, effectiveDuration, actionLabel, onAction);
     }
+  }
+
+  /// The entry may already be gone (its overlay was torn down, or a quick
+  /// second toast raced the first's exit); removing it twice asserts.
+  static void _removeCurrent() {
+    final entry = _currentEntry;
+    if (entry != null && entry.mounted) entry.remove();
   }
 
   static void _insert(
@@ -92,7 +99,7 @@ class AppToast {
         entry?.remove();
       });
     } else {
-      _currentEntry?.remove();
+      _removeCurrent();
       _currentEntry = null;
       _currentState = null;
     }

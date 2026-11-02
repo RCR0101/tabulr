@@ -41,6 +41,8 @@ abstract final class FirestoreCollections {
   static const String acadDrivesFiles = 'acad_drives_files';
   static const String acadDrivesSubmissions = 'acad_drives_submissions';
   static const String acadDrivesSources = 'acad_drives_sources';
+  static const String acadDrivesReports = 'acad_drives_reports';
+  static const String acadDrivesRequests = 'acad_drives_requests';
   static const String chamberSuggestions = 'chamber_suggestions';
   static const String calendarFeeds = 'calendar_feeds';
   static const String examSeatingPrefs = 'exam_seating_prefs';

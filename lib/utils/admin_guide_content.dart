@@ -295,12 +295,27 @@ final List<GuideSection> adminGuideSections = [
         lead:
             "Google Drive links students submit from Acad Drives. Approving one adds it to the drive sync, which runs every Monday morning; its files appear after that.",
         steps: [
+          "Reject with a reason when you can (e.g. 'Not shared publicly'): the student sees it in My submissions and can fix and resend.",
           'Open the link and check it is academic material and publicly viewable. A warning on the card means the link is not a Drive folder or file, the drive is already synced, or another student sent the same one: reject those.',
           'Approve and give the drive a short name; students see that name. A name already in use is refused.',
           "If the student picked a course, every file in the drive is filed under it. If they said what it holds (papers, notes…), files whose names don't say are filed as that.",
           "Below the queue, 'Drives that failed to sync' lists drives the last sync could not read (usually not shared as 'Anyone with the link') or found empty. Ask the contributor to fix the sharing, or press Stop syncing; files already synced stay.",
         ],
         keywords: ['acad drives', 'drive link', 'submission', 'approve'],
+      ),
+      GuideTopic(
+        title: 'Acad Drives Quality',
+        anchor: 'admin-acad-quality',
+        icon: Icons.fact_check_outlined,
+        lead:
+            "Two lists that keep Acad Drives right and growing: files students reported, and courses with too little in them.",
+        steps: [
+          "Reports: each card says what the student thinks is wrong. One tap fixes it: Move to the course they named, change the type, or Hide a broken or non-academic file. The menu has the other fixes if they picked the wrong problem; Dismiss if the file is fine.",
+          'A fix shows inside the course at once; the course list counts catch up at the next sync. The sync never undoes a fix.',
+          "Coverage: courses in this semester's Hyderabad timetable with no files or no past papers, and any course students asked for, most-asked first, with their notes.",
+          "Use it to find contributors: ask seniors who took the top courses to share a drive through Submit resource. Clear a course's requests once it has what was asked for.",
+        ],
+        keywords: ['reports', 'wrong course', 'coverage', 'requests', 'missing', 'past papers'],
       ),
       GuideTopic(
         title: 'Bug Tracker',

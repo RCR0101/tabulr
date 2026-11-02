@@ -6,7 +6,7 @@ Copies students' Google Drive folders into R2 and records every file in Firestor
 
 ```bash
 cd scripts/acad-drives && npm ci
-node classify.js                         # resource-type self-check, no network
+npm test                                 # classifier + sync checks, no network
 node acad-drive-master.js upload         # dry run: lists what would sync
 node acad-drive-master.js upload --apply # sync new files, then rebuild the index
 ```

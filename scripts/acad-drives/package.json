@@ -4,6 +4,7 @@
   "description": "Scripts for processing Google Drive folders and uploading to R2/Firebase",
   "main": "acad-drive-master.js",
   "scripts": {
+    "test": "node classify.js && node test/crawler.test.js",
     "purge-firebase": "node acad-drive-master.js purge-firebase",
     "purge-r2": "node acad-drive-master.js purge-r2",
     "purge-all": "node acad-drive-master.js purge-all",
