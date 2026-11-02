@@ -17,11 +17,17 @@ Read the dry run first: it is the approval step.
 ## Where drives come from
 
 The registry is the `acad_drives_sources` collection. It is admin-only, so contributors'
-links stay out of this public repo. Each doc has `{name, driveLink, contributor, courseCode?, disabled?}`.
+links stay out of this public repo. Each doc has `{name, driveLink, contributor, courseCode?, resourceType?, disabled?}`,
+and after each `upload --apply` a `lastSync` the crawler writes: `{at, processed, uploaded, errors, unclassified, problem}`.
 
 - **New drives:** students submit a link in the app. An admin approves it in
   Admin → Drive submissions, which writes the source doc. The next `upload --apply` syncs it.
-- **`courseCode`** pins every file in that drive to one course, which overrides the name matching.
+- **`courseCode`** pins every file in that drive (or the single file a link points to) to one course,
+  which overrides the name matching.
+- **`resourceType`** is what the submitter said the drive holds. It only types files whose own
+  name and folders match no rule in `classify.js`.
+- **`lastSync.problem`** is set when the link could not be read (usually not shared as
+  "Anyone with the link") or held no files. Admin → Drive submissions lists those drives.
 - **`disabled: true`** skips a drive without deleting what it already synced.
 - **Sources with `driveLink: "NA"`** are local folders under `downloads/<name>/`
   (or `$DOWNLOADS_DIR/<name>/`).

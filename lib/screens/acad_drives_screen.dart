@@ -29,6 +29,7 @@ import '../widgets/common/tabulr_surface.dart';
 import '../services/data/courses_master_service.dart';
 import '../utils/page_info_helper.dart';
 import '../utils/download_failure.dart';
+import '../utils/drive_link.dart';
 import '../widgets/acad_drives/acad_drives_layout.dart';
 import '../widgets/common/course_picker_sheet.dart';
 
@@ -942,8 +943,18 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   }
 
   Future<void> _showSubmitDialog() async {
+    // Submissions need a BITS account (firestore.rules); say so before the
+    // form is filled in, not as a permission error after.
+    if (!AuthService().isAuthenticated) {
+      ToastService.showError('Sign in with your BITS email to submit a drive');
+      return;
+    }
     _submitCourse = _selectedCourse;
     _submitType = null;
+    // Most students credit themselves; their Google name is a fine default.
+    if (_contributorController.text.isEmpty) {
+      _contributorController.text = AuthService().userName ?? '';
+    }
     return AppDialog.adaptive(
       context: context,
       title: 'Submit Academic Resource',
@@ -961,12 +972,20 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            TextField(
-              controller: _driveLinkController,
-              decoration: const InputDecoration(
-                labelText: 'Google Drive Link *',
-                hintText: 'https://drive.google.com/file/d/...',
-                border: OutlineInputBorder(),
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _driveLinkController,
+              builder: (context, value, _) => TextField(
+                controller: _driveLinkController,
+                keyboardType: TextInputType.url,
+                decoration: InputDecoration(
+                  labelText: 'Google Drive Link *',
+                  hintText: 'https://drive.google.com/drive/folders/...',
+                  helperText: 'Share it as "Anyone with the link" first, or it cannot be synced',
+                  helperMaxLines: 2,
+                  errorText: value.text.trim().isEmpty ? null : driveLinkProblem(value.text),
+                  errorMaxLines: 2,
+                  border: const OutlineInputBorder(),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -992,16 +1011,30 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
               builder: (context, setDialogState) => Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.school_outlined, size: 18),
-                    label: Text(_submitCourse == null
-                        ? 'Course (optional — leave empty for a multi-course drive)'
-                        : 'Course: $_submitCourse'),
-                    onPressed: () async {
-                      final picked = await showCoursePicker(context, title: 'Which course is this for?');
-                      if (picked == null || picked.isEmpty) return;
-                      setDialogState(() => _submitCourse = picked.first.courseCode);
-                    },
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.school_outlined, size: 18),
+                          label: Text(_submitCourse == null
+                              ? 'Course (optional — leave empty for a multi-course drive)'
+                              : 'Course: $_submitCourse'),
+                          onPressed: () async {
+                            final picked = await showCoursePicker(context, title: 'Which course is this for?');
+                            if (picked == null || picked.isEmpty) return;
+                            setDialogState(() => _submitCourse = picked.first.courseCode);
+                          },
+                        ),
+                      ),
+                      // Pre-filled from the course being browsed; a drive
+                      // covering several courses must not be pinned to it.
+                      if (_submitCourse != null)
+                        IconButton(
+                          tooltip: 'Not just this course',
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => setDialogState(() => _submitCourse = null),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<AcadResourceType?>(
@@ -1036,10 +1069,17 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
   }
 
   Future<void> _submitLink() async {
-    if (_driveLinkController.text.isEmpty ||
-        _titleController.text.isEmpty ||
-        _contributorController.text.isEmpty) {
+    // The dialog's buttons are built once, so they don't see _isSubmitting.
+    if (_isSubmitting) return;
+    if (_driveLinkController.text.trim().isEmpty ||
+        _titleController.text.trim().isEmpty ||
+        _contributorController.text.trim().isEmpty) {
       ToastService.showError('Please fill in all required fields');
+      return;
+    }
+    final linkProblem = driveLinkProblem(_driveLinkController.text);
+    if (linkProblem != null) {
+      ToastService.showError(linkProblem);
       return;
     }
 
@@ -1080,9 +1120,11 @@ class _AcadDrivesScreenState extends State<AcadDrivesScreen> {
     } catch (e) {
       ToastService.showError('Failed to submit: $e');
     } finally {
-      setState(() {
-        _isSubmitting = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
   }
 

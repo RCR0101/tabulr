@@ -2412,21 +2412,24 @@ def upload_exam_seating(req: https_fn.CallableRequest):
     return {"success": True, "examsUploaded": len(exams)}
 
 
-# Weekly, and on demand from the admin dashboard: queue new LMS posts
+# Daily, and on demand from the admin dashboard: queue new LMS posts
 # (timetable changes, seating) and a newly published Bulletin for an admin
-# (see upstream.py). Read-only towards course data.
+# (see upstream.py). Read-only towards course data. Daily because the LMS
+# front page only lists the latest few posts: in exam weeks a weekly look
+# could miss one that had already scrolled off. A run with nothing new is one
+# page fetch.
 from firebase_functions import scheduler_fn  # noqa: E402
 import upstream  # noqa: E402
 
 
-@scheduler_fn.on_schedule(schedule="every monday 06:00", timezone="Asia/Kolkata",
+@scheduler_fn.on_schedule(schedule="every day 06:00", timezone="Asia/Kolkata",
                           region="asia-south1", timeout_sec=300, memory=options.MemoryOption.GB_1)
 def poll_upstream(event: scheduler_fn.ScheduledEvent) -> None:
     upstream.poll(get_db(), parse_seating=parse_seating_pdf, summarize_changes=summarize_changes_pdf)
 
 
 # The "Check now" button: the same check, when an admin knows something was
-# just posted and does not want to wait for Monday.
+# just posted and does not want to wait for the morning run.
 @https_fn.on_call(region="asia-south1", enforce_app_check=False, timeout_sec=300,
                   memory=options.MemoryOption.GB_1)
 def check_upstream_now(req: https_fn.CallableRequest):
@@ -2447,15 +2450,11 @@ def apply_seating_notice(req: https_fn.CallableRequest):
     db = get_db()
     ref = db.collection("upstream_notices").document(notice_id)
     notice = (ref.get().to_dict() or {})
-    pdf = next((a for a in notice.get("attachments", []) if a.get("name", "").lower().endswith(".pdf")), None)
-    if notice.get("kind") != "seating" or not pdf:
+    if notice.get("kind") != "seating" or not upstream.pdf_attachments(notice):
         raise https_fn.HttpsError(https_fn.FunctionalErrorCode.FAILED_PRECONDITION, "Not a seating notice with a PDF")
 
-    path = upstream.download(pdf["url"])
-    try:
-        exams = parse_seating_pdf(path)
-    finally:
-        os.unlink(path)
+    # Every PDF on the post, as the preview counted them.
+    exams = upstream.read_seating(notice, parse_seating_pdf)
     if not exams:
         raise https_fn.HttpsError(https_fn.FunctionalErrorCode.FAILED_PRECONDITION, "No seating rows found in the PDF")
 
@@ -2579,7 +2578,14 @@ def check_faculty_roster(event: scheduler_fn.ScheduledEvent) -> None:
     })
     key = hashlib.sha1("|".join(sorted(p["name"] for p in new)).encode()).hexdigest()[:12]
     names = [p["name"] for p in new]
-    upstream._record(db, f"roster_hyderabad_{key}", {
+    notice_id = f"roster_hyderabad_{key}"
+    # The roster saved above replaces the one an older open notice would have
+    # applied, so that notice can no longer be applied: retire it.
+    for old in db.collection("upstream_notices").where("kind", "==", "roster").where("status", "==", "new").stream():
+        if old.id != notice_id and old.id.startswith("roster_hyderabad_"):
+            old.reference.update({"status": "dismissed", "handledBy": "superseded by a newer roster check",
+                                  "handledAt": firestore.SERVER_TIMESTAMP})
+    upstream._record(db, notice_id, {
         "source": "faculty",
         "kind": "roster",
         "title": f"{len(new)} new faculty on the BITS website",

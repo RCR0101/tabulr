@@ -70,7 +70,7 @@ final List<GuideSection> adminGuideSections = [
         anchor: 'admin-during',
         icon: Icons.update_rounded,
         lead:
-            "The Timetable Division posts 'Timetable changes' PDFs on the LMS front page. Tabulr checks every Monday and lists new ones under Upstream changes; press Check now on Data freshness when you know something was just posted.",
+            "The Timetable Division posts 'Timetable changes' PDFs on the LMS front page. Tabulr checks every morning and lists new ones under Upstream changes; press Check now on Data freshness when you know something was just posted.",
         steps: [
           "Press Review on the notice. Tabulr reads the PDF and lists every change against the live timetable: 'Ready' rows still match what the PDF calls existing and start ticked; 'Check' rows differ from it, so tick them only if the PDF is right anyway; 'Already in' rows need nothing. Press Apply.",
           "'Add by hand' rows are new courses with several sections sharing one hours line, which the PDF does not split; add those in Course Management.",
@@ -225,7 +225,7 @@ final List<GuideSection> adminGuideSections = [
         lead:
             "Rooms and ID ranges for each exam (Hyderabad). Students see their room in Exam Seating, and in their live calendar once they have saved their ID.",
         steps: [
-          'Usually nothing to upload: seating posted on the LMS front page shows up under Upstream changes after the Monday check, or straight away with Check now, ready to Apply.',
+          'Usually nothing to upload: seating posted on the LMS front page shows up under Upstream changes after the morning check, or straight away with Check now, ready to Apply. Every PDF on the post is read, so seating split across several files arrives whole.',
           'For a PDF from anywhere else, upload it in the Exam Seating section.',
           'Fix or add a single course\'s rooms in the Exam Seating card.',
         ],
@@ -295,9 +295,10 @@ final List<GuideSection> adminGuideSections = [
         lead:
             "Google Drive links students submit from Acad Drives. Approving one adds it to the drive sync, which runs every Monday morning; its files appear after that.",
         steps: [
-          'Open the link and check it is academic material and publicly viewable.',
+          'Open the link and check it is academic material and publicly viewable. A warning on the card means the link is not a Drive folder or file, the drive is already synced, or another student sent the same one: reject those.',
           'Approve and give the drive a short name; students see that name. A name already in use is refused.',
-          "If the student picked a course, every file in the drive is filed under it.",
+          "If the student picked a course, every file in the drive is filed under it. If they said what it holds (papers, notes…), files whose names don't say are filed as that.",
+          "Below the queue, 'Drives that failed to sync' lists drives the last sync could not read (usually not shared as 'Anyone with the link') or found empty. Ask the contributor to fix the sharing, or press Stop syncing; files already synced stay.",
         ],
         keywords: ['acad drives', 'drive link', 'submission', 'approve'],
       ),
@@ -340,7 +341,7 @@ final List<GuideSection> adminGuideSections = [
         anchor: 'admin-scripts',
         icon: Icons.terminal_rounded,
         lead:
-            "Most checks run on their own: the LMS and the faculty website weekly (Check now runs the LMS check on demand), the Acad Drives sync weekly (GitHub Actions). What is left in the repository is yearly: Bulletin prerequisites and ERP exports. docs/RUNBOOK.md has the commands, credentials and deploy steps.",
+            "Most checks run on their own: the LMS daily and the faculty website weekly (Check now runs the LMS check on demand), the Acad Drives sync weekly (GitHub Actions). What is left in the repository is yearly: Bulletin prerequisites and ERP exports. docs/RUNBOOK.md has the commands, credentials and deploy steps.",
         steps: [
           'Every script is a dry run unless you add --apply (or --commit). Read the whole dry run first.',
           'Maintenance mode (taking the app offline for students) is the maintenance field on reference/app_config in the Firebase console.',

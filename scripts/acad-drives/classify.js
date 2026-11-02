@@ -37,7 +37,13 @@ function normalise(segment) {
   return segment.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase().replace(/[_.+\-()[\]]+/g, ' ');
 }
 
-function classifyResource(fileName, filePath = '') {
+const TYPES = new Set(TYPE_RULES.map(([t]) => t));
+
+// `hint` is what the student who submitted the drive said it holds (Acad
+// Drives → Submit → "What is it?"). It only fills in when the file's own name
+// and folders say nothing, so "Slides/1-intro.pdf" in a drive of past papers
+// is still lectures, and a seating chart is still not a paper.
+function classifyResource(fileName, filePath = '', hint = null) {
   const ext = (fileName.match(/\.[^.]+$/) || [''])[0].toLowerCase();
   const stem = ext ? fileName.slice(0, -ext.length) : fileName;
   const folders = filePath.split('/').slice(0, -1);
@@ -49,7 +55,9 @@ function classifyResource(fileName, filePath = '') {
     const hit = TYPE_RULES.find(([, re]) => re.test(segment));
     if (hit) { type = hit[0]; break; }
   }
-  if (!type) type = LECTURE_EXTENSIONS.has(ext) ? 'lectures' : 'other';
+  if (!type && LECTURE_EXTENSIONS.has(ext)) type = 'lectures';
+  if (!type && TYPES.has(hint)) type = hint;
+  if (!type) type = 'other';
 
   const result = { resource_type: type };
   if (type === 'pyq' || type === 'solutions') {
@@ -99,5 +107,13 @@ if (require.main === module) {
   check('DSA-L10.pdf', 'Drive/DSAmidsemSlides/DSA-L10.pdf', { resource_type: 'lectures' });
   check('TCP.pdf', 'CN/Assingment/TCP.pdf', { resource_type: 'assignments' });
   check('precompre-M3.pdf', 'M3/precompre-M3.pdf', { resource_type: 'pyq' });
+  // A drive's declared type fills in only where the path says nothing.
+  assert.deepStrictEqual(classifyResource('scan_004.pdf', 'scan_004.pdf', 'pyq'), { resource_type: 'pyq' });
+  assert.deepStrictEqual(classifyResource('Midsem 2023.pdf', 'Midsem 2023.pdf', 'pyq'),
+    { resource_type: 'pyq', exam: 'midsem', year: 2023 });
+  assert.deepStrictEqual(classifyResource('1-intro.pdf', 'Slides/1-intro.pdf', 'pyq'), { resource_type: 'lectures' });
+  assert.deepStrictEqual(classifyResource('Seating.pdf', 'Seating.pdf', 'pyq'), { resource_type: 'other' });
+  assert.deepStrictEqual(classifyResource('week3.pptx', 'week3.pptx', 'notes'), { resource_type: 'lectures' });
+  assert.deepStrictEqual(classifyResource('a.pdf', 'a.pdf', 'bogus'), { resource_type: 'other' });
   console.log('classify.js self-check passed');
 }

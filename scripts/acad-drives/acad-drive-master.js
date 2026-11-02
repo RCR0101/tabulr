@@ -367,12 +367,54 @@ class AcadDriveMaster {
         name: s.name,
         properties: { drive_link: s.driveLink || 'NA', contributor: s.contributor || 'Unknown' },
         courseCode: s.courseCode || null,
+        resourceType: s.resourceType || null,
       };
     }
   }
 
   static sourceDocId(name) {
     return name.replace(/\//g, '-').trim();
+  }
+
+  // Leaves each drive's outcome on its source doc (admin-only), where Admin →
+  // Drive Submissions shows the ones that failed. The Actions log stays
+  // totals-only because the repo is public, so this is the one place an admin
+  // can see that a drive was never shared or has gone.
+  async recordSyncResult(driveName, error) {
+    const s = this.driveStats[driveName] || {};
+    let hint = null;
+    if (error) {
+      hint = /not found|404|403|permission|insufficient/i.test(error)
+        ? 'Tabulr cannot open this link. Ask the contributor to share it as "Anyone with the link".'
+        : error;
+    } else if (!s.processed) {
+      hint = 'No files found at this link.';
+    }
+    try {
+      await this.db.collection('acad_drives_sources').doc(AcadDriveMaster.sourceDocId(driveName)).set({
+        lastSync: {
+          at: admin.firestore.FieldValue.serverTimestamp(),
+          processed: s.processed || 0,
+          uploaded: s.uploaded || 0,
+          errors: s.errors || 0,
+          unclassified: s.unclassified || 0,
+          problem: hint,
+        },
+      }, { merge: true });
+    } catch (e) {
+      console.error(`  ${this.red('✗')} could not record sync result: ${e.message}`);
+    }
+  }
+
+  // A file's course matches, given its own and those inherited from the drive
+  // (or folder) it sits in. The closer score wins; a tie keeps both.
+  static pickMatches(current, inherited) {
+    const best = (ms) => (ms.length > 0 ? Math.min(...ms.map(m => m.score)) : Infinity);
+    if (current.length === 0) return inherited;
+    if (inherited.length === 0 || best(current) < best(inherited)) return current;
+    if (best(current) > best(inherited)) return inherited;
+    const codes = new Set(inherited.map(m => m.code));
+    return [...inherited, ...current.filter(m => !codes.has(m.code))];
   }
 
   // One-shot seed from the old credits.json. Delete this command once run.
@@ -1037,18 +1079,21 @@ class AcadDriveMaster {
         : this.findCourseMatches(driveName, driveName);
 
       if (driveLink && driveLink !== 'NA') {
+        let driveError = null;
         try {
           const { id: driveId, isFile } = this.extractDriveId(driveLink);
           if (isFile) {
-            await this.processSingleDriveFile(driveId, driveName, contributor, dryRun);
+            await this.processSingleDriveFile(driveId, driveName, contributor, dryRun, driveNameMatches);
           } else {
             await this.processDriveFolder(driveId, driveName, contributor, '', dryRun, driveNameMatches);
           }
         } catch (error) {
+          driveError = error.message;
           console.error(`  ${this.red('✗')} ${error.message}`);
           this.stats.errors.push({ drive: driveName, error: error.message });
           this.driveStats[driveName].errors++;
         }
+        if (!dryRun) await this.recordSyncResult(driveName, driveError);
       }
 
       const localDir = path.join(this.config.downloadsDir, driveName);
@@ -1269,14 +1314,16 @@ class AcadDriveMaster {
         || msg.includes('timeout') || msg.includes('econnreset') || msg.includes('socket');
   }
 
-  async processSingleDriveFile(fileId, driveName, contributor, dryRun) {
+  async processSingleDriveFile(fileId, driveName, contributor, dryRun, inheritedMatches = []) {
     const meta = await this.drive.files.get({
       fileId,
       fields: 'id, name, mimeType, size',
     });
     const file = meta.data;
     const filePath = file.name;
-    const matches = this.findCourseMatches(file.name, filePath);
+    // The course the submitter picked (or the drive's name) counts here as it
+    // does for a folder: a lone "scan_004.pdf" is not left unclassified.
+    const matches = AcadDriveMaster.pickMatches(this.findCourseMatches(file.name, filePath), inheritedMatches);
     const bestCodes = this.getBestMatches(matches);
     if (bestCodes.length === 0) bestCodes.push('unclassified');
 
@@ -1739,7 +1786,7 @@ class AcadDriveMaster {
       contributor: data.contributor,
       mimeType: data.mimeType,
       size: data.size,
-      ...classifyResource(data.name, data.path),
+      ...classifyResource(data.name, data.path, this.credits[data.driveName]?.resourceType),
       uploadedAt: admin.firestore.FieldValue.serverTimestamp()
     };
 
@@ -2408,7 +2455,7 @@ class AcadDriveMaster {
     const changes = [];
     for (const doc of snapshot.docs) {
       const d = doc.data();
-      const next = classifyResource(d.name || '', d.path || d.name || '');
+      const next = classifyResource(d.name || '', d.path || d.name || '', this.credits[d.driveName]?.resourceType);
       counts[next.resource_type] = (counts[next.resource_type] || 0) + 1;
       const same = d.resource_type === next.resource_type && d.exam === next.exam && d.year === next.year;
       if (!same) changes.push({ doc, d, next });
@@ -2706,5 +2753,9 @@ Compression:
   }
 }
 
+module.exports = { AcadDriveMaster };
+
 // A fatal error must fail the process, or a scheduled sync looks green.
-main().catch((e) => { console.error(e); process.exit(1); });
+if (require.main === module) {
+  main().catch((e) => { console.error(e); process.exit(1); });
+}

@@ -39,7 +39,7 @@ class DataFreshnessPanel extends StatefulWidget {
 class _DataFreshnessPanelState extends State<DataFreshnessPanel> {
   bool _checking = false;
 
-  /// Runs the weekly LMS and Bulletin check now; anything new appears under
+  /// Runs the daily LMS and Bulletin check now; anything new appears under
   /// Upstream changes.
   Future<void> _checkNow() async {
     setState(() => _checking = true);

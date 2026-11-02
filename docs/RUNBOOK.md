@@ -43,7 +43,10 @@ In this order:
    by hand from the Actions tab. It needs three repo secrets:
    `ACAD_DRIVES_ENV` (the crawler's `.env`), `ACAD_DRIVES_SERVICE_ACCOUNT` and
    `ACAD_DRIVES_GDRIVE_TOKEN`. The Google OAuth app must be **in production,
-   not testing**, or its refresh token expires after 7 days. To run it locally:
+   not testing**, or its refresh token expires after 7 days. The Actions log
+   only prints totals (the repo is public); each drive's outcome is written to
+   its `acad_drives_sources` doc (`lastSync`), and Drive Submissions lists the
+   ones that failed. To run it locally:
    ```bash
    cd scripts/acad-drives && node acad-drive-master.js upload          # read the dry run
    node acad-drive-master.js upload --apply
@@ -53,7 +56,7 @@ In this order:
 ## During the semester
 
 - **Timetable changes.** The Timetable Division posts "Timetable changes-N" PDFs
-  on the LMS front page. `poll_upstream` checks every Monday (or now, via **Check now** on Data freshness) and queues them
+  on the LMS front page. `poll_upstream` checks every morning (or now, via **Check now** on Data freshness) and queues them
   under Upstream changes.
   - Press **Review**: `functions-python/changes.py` reads the PDF and judges each row against the
     live timetable (Ready / Check / Already in / Add by hand / Not found). Tick and **Apply**.
@@ -65,7 +68,7 @@ In this order:
   - Students' saved timetables pick the change up on next open, with a "What changed" notice.
   - Mark the notice **Done**.
 - **Exam seating** (Hyderabad): seating posted on the LMS front page is read by
-  `poll_upstream` and appears under Upstream changes with a summary; **Apply**
+  `poll_upstream` (every PDF on the post) and appears under Upstream changes with a summary; **Apply**
   writes it (`apply_seating_notice`). Otherwise upload in Admin → Exam Seating.
 
 ## Every year

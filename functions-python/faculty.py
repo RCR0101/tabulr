@@ -71,25 +71,36 @@ def parse_profile(page):
     }
 
 
+# Profile pages fetched at once. One at a time, a few hundred of them ran
+# close to the scheduled check's 540 s limit; a handful in parallel, each
+# still pausing between requests, stays polite and well inside it.
+PROFILE_WORKERS = 4
+MAX_PAGES = 100  # a listing that never ends is a changed site, not 2000 faculty
+
+
+def _with_profile(card):
+    try:
+        card.update(parse_profile(_fetch(card["profileUrl"])))
+    except Exception as e:  # noqa: BLE001 — keep the card, report the gap
+        print(f"  profile failed: {card['profileUrl']}: {e}", file=sys.stderr)
+    time.sleep(0.3)  # be polite to the institute's server
+    return card
+
+
 def scrape(campus):
-    profs, seen, page_no = [], set(), 1
-    while True:
+    from concurrent.futures import ThreadPoolExecutor
+    cards, seen = [], set()
+    for page_no in range(1, MAX_PAGES + 1):
         page = _fetch(AJAX, {"action": "fetch_faculties", "campus": CAMPUS_IDS[campus],
                              "department": "", "paged": page_no, "page_name": "faculty"})
-        cards = [c for c in parse_cards(page) if c["profileUrl"] not in seen]
-        if not cards:
+        new = [c for c in parse_cards(page) if c["profileUrl"] not in seen]
+        if not new:
             break
-        for card in cards:
-            seen.add(card["profileUrl"])
-            try:
-                card.update(parse_profile(_fetch(card["profileUrl"])))
-            except Exception as e:  # noqa: BLE001 — keep the card, report the gap
-                print(f"  profile failed: {card['profileUrl']}: {e}", file=sys.stderr)
-            profs.append(card)
-            time.sleep(0.3)  # be polite to the institute's server
-        print(f"page {page_no}: {len(profs)} so far", file=sys.stderr)
-        page_no += 1
-    return profs
+        seen.update(c["profileUrl"] for c in new)
+        cards += new
+        print(f"page {page_no}: {len(cards)} so far", file=sys.stderr)
+    with ThreadPoolExecutor(max_workers=PROFILE_WORKERS) as pool:
+        return list(pool.map(_with_profile, cards))
 
 
 def new_faculty(roster, existing):

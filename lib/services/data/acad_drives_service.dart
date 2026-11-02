@@ -1,6 +1,7 @@
 import 'dart:convert';
 import '../ui/secure_logger.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import '../../constants/app_constants.dart';
 import 'admin_audit_logger.dart';
@@ -8,7 +9,11 @@ import 'auth_service.dart';
 import 'local_cache_service.dart';
 
 class AcadDrivesService {
-  FirebaseFirestore get _firestore => FirebaseFirestore.instance;
+  /// Test seam: substitute an in-memory Firestore. Never set from app code.
+  @visibleForTesting
+  static FirebaseFirestore? firestoreForTest;
+
+  FirebaseFirestore get _firestore => firestoreForTest ?? FirebaseFirestore.instance;
   final LocalCacheService _localCache = LocalCacheService();
 
   static const _cacheKey = 'acad_drives_index';
@@ -182,6 +187,9 @@ class AcadDrivesService {
         'driveLink': data['driveLink'],
         'contributor': data['contributorName'],
         if (data['courseCode'] != null) 'courseCode': data['courseCode'],
+        // What the student said the drive holds; the crawler uses it for
+        // files whose names and folders don't say (classify.js).
+        if (data['resourceType'] != null) 'resourceType': data['resourceType'],
         'submissionId': submission.id,
         'addedBy': reviewer,
         'addedAt': FieldValue.serverTimestamp(),
@@ -194,6 +202,21 @@ class AcadDrivesService {
     await batch.commit();
     AdminAuditLogger().success('acad_drive_approve', name, {'link': data['driveLink']});
     return true;
+  }
+
+  /// Every drive the crawler syncs, with the outcome of its last sync
+  /// (`lastSync`, written by scripts/acad-drives after each run).
+  Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> sources() {
+    return _firestore
+        .collection(FirestoreCollections.acadDrivesSources)
+        .snapshots()
+        .map((s) => s.docs);
+  }
+
+  /// Takes a drive out of the sync without deleting what it already synced.
+  Future<void> setSourceDisabled(DocumentReference<Map<String, dynamic>> ref, bool disabled) async {
+    await ref.update({'disabled': disabled});
+    AdminAuditLogger().success(disabled ? 'acad_drive_disable' : 'acad_drive_enable', ref.id);
   }
 
   Future<void> rejectSubmission(DocumentReference<Map<String, dynamic>> ref) async {

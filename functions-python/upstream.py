@@ -83,6 +83,39 @@ def seating_preview(exams):
     return f"{len(exams)} courses, {rooms} room allocations, {span}"
 
 
+def pdf_attachments(notice):
+    return [a for a in notice.get("attachments", []) if str(a.get("name", "")).lower().endswith(".pdf")]
+
+
+def merge_seating(per_pdf):
+    """One seating list from several PDFs of the same post (a post may split
+    the exams by day or by department). A course printed in two of them keeps
+    the rooms from both."""
+    merged = {}
+    for exams in per_pdf:
+        for e in exams:
+            key = re.sub(r"\s+", " ", e["courseCode"]).strip().upper()
+            if key in merged:
+                have = merged[key]
+                have["rooms"] = have.get("rooms", []) + [r for r in e.get("rooms", []) if r not in have.get("rooms", [])]
+            else:
+                merged[key] = {**e, "rooms": list(e.get("rooms", []))}
+    return list(merged.values())
+
+
+def read_seating(notice, parse_seating):
+    """Exam rows from every PDF on a seating post. Applying only the first
+    would replace the campus's seating with part of it."""
+    per_pdf = []
+    for a in pdf_attachments(notice):
+        path = download(a["url"])
+        try:
+            per_pdf.append(parse_seating(path) or [])
+        finally:
+            os.unlink(path)
+    return merge_seating(per_pdf)
+
+
 def download(url, suffix=".pdf"):
     req = urllib.request.Request(url, headers=_UA)
     with urllib.request.urlopen(req, timeout=60) as r, \
@@ -105,9 +138,21 @@ def _get(url, method="GET", timeout=20):
 
 
 def _exists(url):
+    """Whether [url] is there. Any failure (timeout, refused HEAD) is "not
+    yet": the next run asks again, and the LMS check is never cut short."""
     try:
         return _get(url, method="HEAD")[0] == 200
-    except urllib.error.URLError:
+    except urllib.error.HTTPError as e:
+        if e.code not in (403, 405, 501):
+            return False
+    except Exception:  # noqa: BLE001
+        return False
+    # Some servers refuse HEAD; ask for the first byte instead.
+    try:
+        req = urllib.request.Request(url, headers={**_UA, "Range": "bytes=0-0"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return r.status in (200, 206)
+    except Exception:  # noqa: BLE001
         return False
 
 
@@ -139,17 +184,17 @@ def poll(db, now=None, parse_seating=None, summarize_changes=None):
             if db.collection("upstream_notices").document(doc_id).get().exists:
                 continue
             notice = {"source": "lms_hyd", "kind": post_kind(post), **post}
-            pdf = next((a for a in post["attachments"] if a["name"].lower().endswith(".pdf")), None)
+            pdfs = pdf_attachments(notice)
             reader = {"seating": parse_seating, "timetable_changes": summarize_changes}.get(notice["kind"])
-            if pdf and reader:
+            if pdfs and reader:
                 path = None
                 try:
-                    path = download(pdf["url"])
                     if notice["kind"] == "seating":
-                        exams = reader(path)
+                        exams = read_seating(notice, reader)
                         notice["preview"] = seating_preview(exams) if exams else "No seating rows found in the PDF"
                         notice["applicable"] = bool(exams)
                     else:
+                        path = download(pdfs[0]["url"])
                         notice["preview"] = reader(path)
                         notice["applicable"] = True
                 except Exception as e:  # noqa: BLE001 — the notice still goes up
@@ -209,6 +254,17 @@ if __name__ == "__main__":
     assert post_kind(p) == "timetable_changes"
     assert post_kind({"title": "MID SEMESTER EXAMINATION", "attachments": [{"name": "Seating Arrangement.pdf", "url": ""}]}) == "seating"
     assert post_kind(posts[1]) == "notice"
+    assert [a["name"] for a in pdf_attachments({"attachments": [
+        {"name": "Day 1.PDF", "url": "u1"}, {"name": "note.docx", "url": "u2"}, {"name": "Day 2.pdf", "url": "u3"}]})] == [
+        "Day 1.PDF", "Day 2.pdf"]
+    merged = merge_seating([
+        [{"courseCode": "CS F211", "examDate": "d", "rooms": [{"room": "F101"}]},
+         {"courseCode": "BIO F110", "examDate": "d", "rooms": [{"room": "F102"}]}],
+        [{"courseCode": "CS  F211", "examDate": "d", "rooms": [{"room": "F101"}, {"room": "F103"}]},
+         {"courseCode": "ME F212", "examDate": "e", "rooms": []}],
+    ])
+    assert [(e["courseCode"], [r["room"] for r in e["rooms"]]) for e in merged] == [
+        ("CS F211", ["F101", "F103"]), ("BIO F110", ["F102"]), ("ME F212", [])], merged
     assert seating_preview([
         {"examDate": "09 October 26 - 09:30\nAM to 11:00 AM", "rooms": [{}, {}]},
         {"examDate": "12 October 26 - 02:00 PM", "rooms": [{}]},
